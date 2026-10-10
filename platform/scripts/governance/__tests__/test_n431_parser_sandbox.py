@@ -62,10 +62,15 @@ def make_repo(tmp_path: pathlib.Path, parser_src: str = PARSER, extra: dict | No
     return root
 
 
-def write_manifest(root: pathlib.Path, rels, name: str = "pins.json") -> str:
+def runner_digest() -> str:
+    """The digest of the runner text the engine holds RIGHT NOW (tests that edit _RUNNER_SOURCE declare their pins after the edit, as a reviewer would after a runner change)."""
+    return hashlib.sha256(ps._RUNNER_SOURCE.encode("utf-8")).hexdigest() if ps._RUNNER_SOURCE is not None else ps.RUNNER_SHA256
+
+
+def write_manifest(root: pathlib.Path, rels, name: str = "pins.json", runner: str | None = None) -> str:
     """The declaration step: hash the files NOW and write a pin manifest into the fake repo (what R1's pin_files + a committed declaration do in production)."""
     entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in rels]
-    (root / name).write_text(json.dumps({"pinned_files": entries}), encoding="utf-8")
+    (root / name).write_text(json.dumps({"pinned_files": entries, "runner_sha256": runner or runner_digest()}), encoding="utf-8")
     return name
 
 
@@ -985,15 +990,16 @@ class TestPinManifest:
     def test_valid_manifest_round_trips_and_feeds_the_runner(self, tmp_path):
         root = make_repo(tmp_path)
         entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest().upper()} for r in CLOSURE]
-        got = ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}))
+        got = ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries, "runner_sha256": ps.RUNNER_SHA256.upper()}))
         assert got == [{"path": e["path"], "sha256": e["sha256"].lower()} for e in entries]  # digests come back lowercase
+        assert got.runner_sha256 == ps.RUNNER_SHA256  # lowercase too
         assert run(root, pinned=got)["ok"] is True
 
     def test_manifest_in_a_subdirectory(self, tmp_path):
         root = make_repo(tmp_path)
         (root / "decl").mkdir()
         entries = [{"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}]
-        assert ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}, "decl/m.json")) == entries
+        assert ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries, "runner_sha256": ps.RUNNER_SHA256}, "decl/m.json")) == entries
 
     def _good(self, root):
         return {"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}
@@ -1029,7 +1035,7 @@ class TestPinManifest:
             "nonhex_digest": {"pinned_files": [dict(g, sha256="z" * 64)]},
             "digest_not_str": {"pinned_files": [dict(g, sha256=12345)]},
             "duplicate_path": {"pinned_files": [g, dict(g)]},
-            "duplicate_json_key": '{"pinned_files": [], "pinned_files": [%s]}' % json.dumps(g),
+            "duplicate_json_key": '{"pinned_files": [], "pinned_files": [%s], "runner_sha256": "%s"}' % (json.dumps(g), ps.RUNNER_SHA256),
             "missing_file": {"pinned_files": [dict(g, path="lib/pkg/gone.py")]},
             "directory": {"pinned_files": [dict(g, path="lib/pkg")]},
             "too_many": {"pinned_files": [dict(g, path="lib/pkg/helper.py")] * 1},
@@ -1040,8 +1046,12 @@ class TestPinManifest:
         if case == "pinned_file_too_large":
             monkeypatch.setattr(ps, "MAX_PINNED_FILE_BYTES", 5)
             docs[case] = {"pinned_files": [g]}
-        with pytest.raises(ps.PinManifestError):
-            ps.load_pin_manifest(str(root), self._manifest(root, docs[case]))
+        doc = docs[case]
+        if isinstance(doc, dict) and "pinned_files" in doc and "runner_sha256" not in doc:
+            doc = dict(doc, runner_sha256=ps.RUNNER_SHA256)  # every case carries a valid runner pin, so the refusal below is for the case's own defect, not for the missing runner
+        with pytest.raises(ps.PinManifestError) as exc:
+            ps.load_pin_manifest(str(root), self._manifest(root, doc))
+        assert "does not pin the runner" not in str(exc.value)
 
     def test_manifest_too_large(self, tmp_path, monkeypatch):
         root = make_repo(tmp_path)
@@ -1073,7 +1083,7 @@ class TestPinManifest:
 
     def test_loader_does_not_hash_so_a_wrong_digest_is_caught_by_the_run_not_the_loader(self, tmp_path):
         root = make_repo(tmp_path)
-        doc = {"pinned_files": [dict(self._good(root), sha256="0" * 64)]}
+        doc = {"pinned_files": [dict(self._good(root), sha256="0" * 64)], "runner_sha256": ps.RUNNER_SHA256}
         got = ps.load_pin_manifest(str(root), self._manifest(root, doc))
         assert got[0]["sha256"] == "0" * 64  # declaration is syntactically fine; the run refuses it (pin_mismatch)
 
@@ -1081,6 +1091,132 @@ class TestPinManifest:
         root = make_repo(tmp_path)
         got = pins(root, CLOSURE)
         assert (root / "pins.json").is_file() and json.loads((root / "pins.json").read_text())["pinned_files"] == got
+        assert got.runner_sha256 == runner_digest() == ps.RUNNER_SHA256
+
+
+class TestRunnerPin:
+    """SS N-431 R2 round 4 (3): the committed manifest PINS THE RUNNER. The engine compares the sha256 of the runner text it will send with the manifest's runner_sha256 BEFORE it
+    spawns anything, and refuses with `runner_unpinned` (stage pin). The field is required (chosen fail-closed): a manifest without it does not load, and pins without a runner digest
+    are refused by the run, each unless a test-only flag says otherwise."""
+
+    def _declare(self, root, runner=None):
+        return ps.load_pin_manifest(str(root), write_manifest(root, CLOSURE, runner=runner))
+
+    def test_matching_runner_digest_runs_and_the_manifest_carries_it(self, tmp_path):
+        root = make_repo(tmp_path)
+        pinned = self._declare(root)
+        assert json.loads((root / "pins.json").read_text())["runner_sha256"] == pinned.runner_sha256 == ps.RUNNER_SHA256
+        r = run(root, pinned=pinned)
+        assert r["ok"] is True, r
+
+    def test_runner_digest_is_the_sha256_of_the_file_bytes(self):
+        assert ps.RUNNER_SHA256 == hashlib.sha256(pathlib.Path(ps.__file__).read_bytes()).hexdigest()
+
+    def test_a_one_byte_change_to_the_runner_text_is_refused_before_any_child_starts(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        pinned = self._declare(root)  # reviewed against the real runner
+        monkeypatch.setattr(ps, "_RUNNER_SOURCE", ps._RUNNER_SOURCE + "#")  # exactly one byte more
+        spy = PopenSpy(monkeypatch)
+        scratch = []
+        monkeypatch.setattr(ps.tempfile, "mkdtemp", lambda *a, **k: scratch.append(1) or "/nonexistent")
+        r = run(root, pinned=pinned)
+        assert r == {"ok": False, "error": "runner_unpinned: the loaded runner source does not match the manifest's runner_sha256", "stage": "pin", "assurance": ps.ASSURANCE}
+        assert spy.started == [] and scratch == []  # nothing was spawned, not even a scratch tree made
+
+    def test_a_runner_file_edited_before_the_engine_imported_it_is_refused(self, tmp_path):
+        """The real scenario: the file changed between review (manifest written) and run. A fresh import of the edited file reads the edited text."""
+        import importlib.util
+
+        root = make_repo(tmp_path)
+        pinned = self._declare(root)
+        edited = tmp_path / "parser_sandbox_edited.py"
+        edited.write_text(pathlib.Path(ps.__file__).read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("parser_sandbox_edited", str(edited))
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["parser_sandbox_edited"] = mod
+        try:
+            spec.loader.exec_module(mod)
+            started = []
+            real = mod.subprocess.Popen
+            mod.subprocess.Popen = type("Spy", (real,), {"__init__": lambda self, *a, **k: (started.append(1), real.__init__(self, *a, **k))[0]})
+            try:
+                r = mod.run_pinned_parser(str(root), "lib", pinned, "lib/pkg/parser.py", "parse", [{"n": 1}])
+            finally:
+                mod.subprocess.Popen = real
+        finally:
+            sys.modules.pop("parser_sandbox_edited", None)
+        assert r["ok"] is False and r["error"].startswith("runner_unpinned") and r["stage"] == "pin" and started == []
+        assert mod.RUNNER_SHA256 != pinned.runner_sha256
+
+    def test_a_manifest_without_the_runner_digest_does_not_load(self, tmp_path):
+        root = make_repo(tmp_path)
+        entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in CLOSURE]
+        (root / "old.json").write_text(json.dumps({"pinned_files": entries}), encoding="utf-8")
+        with pytest.raises(ps.PinManifestError, match="does not pin the runner"):
+            ps.load_pin_manifest(str(root), "old.json")
+
+    @pytest.mark.parametrize("bad", ["abc", "z" * 64, 12345, None, ""])
+    def test_a_malformed_runner_digest_does_not_load(self, tmp_path, bad):
+        root = make_repo(tmp_path)
+        entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in CLOSURE]
+        (root / "bad.json").write_text(json.dumps({"pinned_files": entries, "runner_sha256": bad}), encoding="utf-8")
+        with pytest.raises(ps.PinManifestError, match="runner_sha256"):
+            ps.load_pin_manifest(str(root), "bad.json")
+
+    def test_test_only_flag_loads_a_manifest_without_the_runner_but_the_run_still_refuses_it(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in CLOSURE]
+        (root / "old.json").write_text(json.dumps({"pinned_files": entries}), encoding="utf-8")
+        pinned = ps.load_pin_manifest(str(root), "old.json", _test_only_allow_missing_runner=True)
+        assert pinned.runner_sha256 is None and list(pinned) == entries
+        spy = PopenSpy(monkeypatch)
+        r = run(root, pinned=pinned)
+        assert r["ok"] is False and r["error"].startswith("runner_unpinned: the pins carry no runner digest") and r["stage"] == "pin"
+        assert spy.started == []
+        assert run(root, pinned=pinned, allow_unpinned_runner_for_tests=True)["ok"] is True  # the explicit test-only escape
+
+    def test_plain_lists_and_copies_of_a_manifest_carry_no_pin_and_are_refused(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        pinned = self._declare(root)
+        spy = PopenSpy(monkeypatch)
+        for plain in (list(pinned), pinned[:], pinned + [], [dict(e) for e in pinned]):
+            r = run(root, pinned=plain)
+            assert r["ok"] is False and r["error"].startswith("runner_unpinned") and r["stage"] == "pin", r
+        assert spy.started == []
+
+    def test_a_pin_problem_is_reported_before_the_runner_problem(self, tmp_path):
+        root = make_repo(tmp_path)
+        pinned = self._declare(root, runner="0" * 64)
+        (root / "lib/pkg/helper.py").write_text("X = 2\n", encoding="utf-8")  # now also a file mismatch
+        r = run(root, pinned=pinned)
+        assert r["error"].startswith("pin_mismatch") and r["stage"] == "pin"
+
+    def test_a_wrong_runner_digest_is_refused_even_when_every_file_pin_is_right(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        pinned = self._declare(root, runner="0" * 64)
+        spy = PopenSpy(monkeypatch)
+        r = run(root, pinned=pinned)
+        assert r["ok"] is False and r["error"].startswith("runner_unpinned") and r["stage"] == "pin" and spy.started == []
+
+    def test_the_text_that_was_compared_is_the_text_that_is_sent(self, tmp_path, monkeypatch):
+        """Swap _RUNNER_SOURCE for a stub in the window after the check and before the spawn: the child must still run the checked (real) runner, because the engine uses one local copy."""
+        stub = (
+            "import os, json\n"
+            "def _child_main(cfg):\n"
+            "    os.write(1, json.dumps({'v': 1, 'status': 'ok', 'outputs': ['swapped-after-check'], 'loaded': [], 'violations': []}).encode())\n"
+            "    os._exit(0)\n"
+        )
+        root = make_repo(tmp_path)
+        pinned = self._declare(root)
+        monkeypatch.setattr(ps, "_after_pin_check", lambda: monkeypatch.setattr(ps, "_RUNNER_SOURCE", stub))
+        r = run(root, pinned=pinned)
+        assert r["ok"] is True and r["outputs"] == [{"n": 2, "echo": {"n": 1}}], r
+
+    def test_runner_unpinned_is_in_the_vocabulary_and_documented(self):
+        assert "runner_unpinned" in ps.ERROR_CODES
+        doc = ps.__doc__
+        assert "runner_unpinned" in doc and "REMAINING WINDOW" in doc and "runner_sha256" in doc
+        assert ps._fail("runner_unpinned", "x", "pin")["assurance"] == ps.ASSURANCE
 
 
 class TestDefaultOutputCap:
@@ -1164,7 +1300,7 @@ class TestFailureVocabulary:
     def test_every_error_code_in_the_contract_exists(self):
         assert set(ps.ERROR_CODES) == {
             "pin_missing", "pin_mismatch", "unpinned_import", "spawn_failed", "timeout", "nonzero_exit",
-            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs",
+            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs", "runner_unpinned",
         }
 
 
@@ -1271,7 +1407,7 @@ def _TEST_HELPER_discover_closure_by_running(repo_root: pathlib.Path, inputs):
     accepted. Production pins come from a committed declaration (load_pin_manifest); the sandbox itself never discovers pins. Returns (result, pinned)."""
     pinned: list[dict] = []
     for _ in range(60):
-        r = ps.run_pinned_parser(str(repo_root), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
+        r = ps.run_pinned_parser(str(repo_root), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120, allow_unpinned_runner_for_tests=True)
         if r["ok"]:
             return r, pinned
         if r["error"].startswith("unpinned_import: "):
@@ -1305,7 +1441,7 @@ class TestRealParser:
         assert f"{SIDECAR}/brahmagyan/l0_semantic_release_v1.json" in r["loaded_repo_files"]  # a DATA file the parser reads at import is part of the closure
         assert not any(f.endswith("parser_sandbox.py") for f in r["loaded_repo_files"])  # the runner itself is not "loaded repo code"
         # reproducible: a second run, byte for byte
-        again = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
+        again = ps.run_pinned_parser(str(REPO_ROOT), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120, allow_unpinned_runner_for_tests=True)
         assert again["ok"] and ps.canonical_json(again["outputs"]) == ps.canonical_json(r["outputs"])
 
     def test_real_parser_matches_the_parser_run_in_process(self, inputs):
