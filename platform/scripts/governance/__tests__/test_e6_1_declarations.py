@@ -1932,12 +1932,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    371,
+    399,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    539,
+    567,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -2003,12 +2003,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    952,
+    979,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1310,
+    1298,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2063,7 +2063,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    274,
+    279,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2803,7 +2803,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 399, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4757, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
