@@ -217,7 +217,7 @@ def test_a_finding_ends_the_read_early_and_is_recorded(table):
 
 
 def test_the_constants_are_named_and_the_budget_is_larger_than_the_old_per_column_walk():
-    assert ac.KEYED_READ_MIN_ROWS == 100_000 and ac.ASSET_READ_BUDGET_SECS > ac.PROSE_NONE_WALK_BUDGET_SECS == 600
+    assert ac.KEYED_READ_MIN_ROWS == 300_000 and ac.ASSET_READ_BUDGET_SECS > ac.PROSE_NONE_WALK_BUDGET_SECS == 600
     assert ac.AssetReadBudget().total_secs == ac.ASSET_READ_BUDGET_SECS
 
 

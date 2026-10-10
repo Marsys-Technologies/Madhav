@@ -5771,7 +5771,7 @@ def source_estimate_rows(table: str):
 #     never PASS. A violation found in any partition is the finding, exactly as the whole-table read would report it.
 #   * The engine reads the data itself; nothing the part stores about itself is trusted.
 #   * The cumulative TIME budget of the keyed reads is per ASSET (`AssetReadBudget`), and the budget object records rows / partitions covered and seconds, printed in the cell text when a read is incomplete.
-KEYED_READ_MIN_ROWS = 100_000          # a table is read keyed only when MORE rows than this are in scope (and the catalog estimate agrees); below it the older path runs unchanged
+KEYED_READ_MIN_ROWS = 300_000          # a table is read keyed only when MORE rows than this are in scope (and the catalog estimate agrees); below it the older path runs unchanged. 300,000 (not 100,000): certified parts whose whole-table reads FINISH today (ga_fact_identity 133,832 rows, bg_muhurta_lattice 176,393, bo_samskara 126,918, bg_cohort 110,000: census_final/FINAL) must keep measuring exactly as before; only the very large table whose reads give up (ga_dashas 483,856) takes the keyed path
 KEYED_PARTITION_TARGET_ROWS = 20_000   # the leading key prefix is lengthened (up to KEYED_MAX_KEY_COLUMNS columns) until the largest partition has at most this many rows
 KEYED_MAX_PARTITIONS = 2_000           # more partitions than this is not a partitioning key (a per-row unique key): that index is skipped
 KEYED_MAX_KEY_COLUMNS = 4              # the longest leading prefix used as the partition key (chart_dashas: chart_id, ayanamsha_id, system_id, level_n)

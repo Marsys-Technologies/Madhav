@@ -33,6 +33,8 @@ class FakeKeyedDB:
 
     def install(self, monkeypatch):
         monkeypatch.setattr(ac, "scalar", self)
+        # these fakes model a 120,000-row table: "large" under the original 100,000 threshold; the shipped default is 300,000 (test_keyed_read_helper pins it), so pin the modelling threshold here
+        monkeypatch.setattr(ac, "KEYED_READ_MIN_ROWS", 100_000)
         return self
 
     def sum_n(self):
