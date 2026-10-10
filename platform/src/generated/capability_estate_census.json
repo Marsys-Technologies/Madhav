@@ -48,10 +48,10 @@
         "postgres_view": 1,
         "service": 8
       },
-      "non_writer_identities": 6,
+      "non_writer_identities": 5,
       "retired": 3,
       "total": 132,
-      "writer_identities": 126
+      "writer_identities": 127
     },
     "producer_output_contracts": {
       "by_disposition": {
@@ -10799,7 +10799,6 @@
       ],
       "non_writer_identity_ids": [
         "bg_ephemeris_engine",
-        "bg_gochara_citation_resolution",
         "bg_panchanga",
         "bg_sarvatobhadra_grid",
         "ka_gochara_sweep",
@@ -10823,6 +10822,7 @@
         "bg_formula_constants",
         "bg_ghatana",
         "bg_gochara_arcs",
+        "bg_gochara_citation_resolution",
         "bg_kota_chakra_rings",
         "bg_kp_sublord_division",
         "bg_medical_mappings",
@@ -21438,7 +21438,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "5e289f4f552dde10bd1f3550fbac7daee3173c07e3e4f258f480a789bd7bd4b8"
+        "sha256": "5fee086ad67a2f699d5440e02412b1d6d5c6a5d6697dd74435f13668b78bb8b8"
       },
       {
         "id": "public_registrar_source_set",
@@ -22432,7 +22432,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/parity_check.ts",
-            "sha256": "40704bb93bbf4fb38caa1190b4c726f2e3ed2750009160f91bb67c23cd4d838f"
+            "sha256": "94ea3dba67016b6df7937a68f559efc1302b8244db302e933848cfd0bf2368c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/schema_utils.ts",
@@ -22480,7 +22480,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "13a3e01e7235c999c82fd9bad2bc967439682c9cb8a7218036090ccab86ac006"
+        "sha256": "4852cda1a3deedf42c99686061f8e2024bf04f541f5cd507b943dd5ca9cafc90"
       },
       {
         "id": "service_effect_contracts",
@@ -22500,7 +22500,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "dcf360fa7693ebbf450003d238f553feb49e65c37a77f41a976a7b06843d421d"
+        "sha256": "2ee2cac269ad7e312f788f2e73b30c4b678b8722a30fea58ade760635a30e77b"
       }
     ]
   },
