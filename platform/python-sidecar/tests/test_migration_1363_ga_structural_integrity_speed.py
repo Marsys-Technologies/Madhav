@@ -970,7 +970,7 @@ def test_live_one_injected_violation_per_conjunct_old_and_new_agree(db, pg_clust
                 _inject_other_tables(c, CONJ_OLD[k], tag)
                 t = _differential(c, psycopg, only=[k])
                 _clear_injections(c, tag)
-                for key in totals:
+                for key in ("same_true", "same_false", "both_err", "allowed_asymmetry"):
                     totals[key] += t[key]
                 bad += t["bad"]
                 totals[f"style{style}_false"] += t["same_false"]
