@@ -51,7 +51,7 @@ __all__ = [
 # confidence-generating model.
 _LADDER_FLOORS = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]  # n=1..6+
 _ROBUSTNESS_FACTOR_MIN = 0.80
-_ROBUSTNESS_TERM_SKIPPED_FACTOR = 1.00  # NULL robustness: term SKIPPED (x1.0), NOT a measurement (SS N-341 B6)
+_ROBUSTNESS_FACTOR_STEP = 0.04   # factor = MIN + STEP * clamp(r,0,5); NULL (not measured) takes the r=0 floor (SS N-341/N-391)
 _CONF_CAP = 0.80
 
 # Required axes in derivation_ledger_jsonb
@@ -113,29 +113,29 @@ class SodhanaRecord:
     source_citation:        str = ''
 
 
+def _measured_robustness_factor(ayanamsha_robustness: int) -> float:
+    """Ceiling factor for a MEASURED robustness: MIN + STEP * clamp(r, 0, 5)  (0.80 .. 1.00)."""
+    return _ROBUSTNESS_FACTOR_MIN + _ROBUSTNESS_FACTOR_STEP * min(max(int(ayanamsha_robustness), 0), 5)
+
+
+_ROBUSTNESS_FLOOR_FACTOR = _measured_robustness_factor(0)  # strictest factor; derived, so it cannot drift from the scale
+
+
+def _effective_robustness_factor(ayanamsha_robustness: Optional[int]) -> float:
+    """The factor the ceiling really uses. NULL (not measured) -> the strictest factor, a stated
+    lower bound (SS N-391 floor ruling, §N.7.6): never x1.0 and never a fabricated 3 (0.92)."""
+    return _ROBUSTNESS_FLOOR_FACTOR if ayanamsha_robustness is None else _measured_robustness_factor(ayanamsha_robustness)
+
+
 def _g_ladder_ceiling(n_independent: Optional[int], ayanamsha_robustness: Optional[int]) -> float:
-    """
-    F-12 (L4_W1_ANALYSIS_BATCH_C.md §1.5(a), §N.7 item 1/6): `int(x or default)` treats a
-    genuine measured 0 identically to "unknown, use the default" -- the falsy-zero coercion
-    class this campaign has fixed repeatedly elsewhere.
+    """G-LADDER ceiling = min(cap, (0.50 + 0.05*n) * robustness factor); n clamped to 1..6.
 
-    For `n_independent` this is numerically inert (the clamp floor is already 1, so 0 and
-    None land on the same result either way) -- kept as an explicit None-check anyway so the
-    code says what it means, not because the output changes.
-
-    For `ayanamsha_robustness` this is NOT inert: 0 is a legal, meaningful value inside its
-    [0, 5] clamp range (the worst-robustness case, rob_factor floor 0.80) -- `0 or 3` silently
-    substituted the "normal middle" default (3) for the "zero robustness" measurement,
-    producing a MORE LENIENT ceiling than the true input warrants. A chart whose robustness
-    genuinely measures 0 would have confidence_inflation checked against a laxer bar than it
-    should be. SS N-341 (B6, §N.8 / §N.7 item 6): a NULL (= not measured) robustness used to
-    be filled with 3 (factor 0.92), a fabricated value; it is now SKIPPED (factor 1.0, neutral,
-    never reported as measured) and the confidence_inflation ledger records the skip.
+    F-12 (§N.7 items 1/6): no falsy-zero coercion -- a measured 0 is a legal value (factor 0.80),
+    not "missing". NULL is NOT measured: it takes the strictest factor (0.80) as a lower bound,
+    so an unmeasured input never loosens the bar (SS N-391; the old skip-to-1.0 was the loosest).
     """
     n   = min(max(n_independent if n_independent is not None else 1, 1), 6)
-    rob_factor = (_ROBUSTNESS_TERM_SKIPPED_FACTOR if ayanamsha_robustness is None
-                  else _ROBUSTNESS_FACTOR_MIN + 0.04 * min(max(ayanamsha_robustness, 0), 5))
-    return min(_CONF_CAP, (0.50 + 0.05 * n) * rob_factor)
+    return min(_CONF_CAP, (0.50 + 0.05 * n) * _effective_robustness_factor(ayanamsha_robustness))
 
 
 def detect_confidence_inflation(anchor: AnchorRow) -> Optional[SodhanaRecord]:
@@ -150,7 +150,7 @@ def detect_confidence_inflation(anchor: AnchorRow) -> Optional[SodhanaRecord]:
             anomaly_severity='major',
             detected_field='confidence_high',
             expected_value_text=f'<= {ceiling:.3f} (G-LADDER ceiling for n={anchor.dasha_consensus_count}, '
-                                f'rob={"NULL: not measured, term skipped" if anchor.ayanamsha_robustness is None else anchor.ayanamsha_robustness})',
+                                f'rob={"NULL: not measured, strictest factor applied as a lower bound" if anchor.ayanamsha_robustness is None else anchor.ayanamsha_robustness})',
             observed_value_text=str(anchor.confidence_high),
             leakage_class=None,
             recommendation_text=(
@@ -158,7 +158,7 @@ def detect_confidence_inflation(anchor: AnchorRow) -> Optional[SodhanaRecord]:
                 f'ayanamsha_robustness={anchor.ayanamsha_robustness} → ceiling={ceiling:.3f}. '
                 'Stage correction for native review before using this anchor in ph_pramana.'
             ),
-            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'ceiling': ceiling, 'observed': anchor.confidence_high, 'ayanamsha_robustness_term': 'skipped_not_measured' if anchor.ayanamsha_robustness is None else 'applied'},
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'ceiling': ceiling, 'observed': anchor.confidence_high, 'ayanamsha_robustness_term': 'not_measured_floor_applied' if anchor.ayanamsha_robustness is None else 'applied'},
             source_citation=f'ph_sodhana/confidence_inflation/{anchor.anchor_id}',
         )
     return None
@@ -356,20 +356,19 @@ def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRec
     """
     F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b), §N.8): detect_confidence_degenerate
     guards confidence_high's variance -- but confidence_high can vary for reasons
-    unrelated to the G-LADDER ceiling (it has 10 distinct values on the canonical
-    chart today and correctly passes that check) WHILE the ceiling's own two
-    inputs -- dasha_consensus_count and ayanamsha_robustness -- are simultaneously
-    a chart-wide constant (measured: exactly one (0, 3) pair across all 139
-    anchors). That is the live instance detect_confidence_degenerate exists to
-    catch, on a different axis it never looks at -- a detector that watches a
+    unrelated to the G-LADDER ceiling WHILE the ceiling's own two inputs --
+    dasha_consensus_count and ayanamsha_robustness -- are simultaneously a
+    chart-wide constant (once observed: one (0, 3) pair across all 139 anchors).
+    That is the instance detect_confidence_degenerate cannot see: it watches a
     proxy of the claim, not the claim itself.
 
-    This is the rewrite-floor-clean addition, not a replacement: it fires on a
-    real corruption class (ceiling inputs frozen chart-wide) the sibling detector
-    structurally cannot see, and does not touch that detector's own behaviour.
+    Rewrite-floor-clean addition: fires on a real corruption class (ceiling inputs frozen
+    chart-wide) the sibling detector cannot see. SS N-391 (Kala finding 4): it compares the
+    EFFECTIVE robustness factor each anchor's ceiling used, not the raw column, so NULL and 0
+    (both the 0.80 floor) are one value while {NULL, 5} (0.80 vs 1.00) is real variance.
     """
     n_values = [a.dasha_consensus_count for a in ctx.anchors if a.dasha_consensus_count is not None]
-    rob_values = [a.ayanamsha_robustness for a in ctx.anchors]  # None (not measured) is a state; keep it (SS N-341 B6)
+    rob_values = [round(_effective_robustness_factor(a.ayanamsha_robustness), 6) for a in ctx.anchors]  # EFFECTIVE factor the ceiling used (SS N-391), not the raw column
     if len(n_values) < _DEGENERATE_MIN_ANCHORS or len(rob_values) < _DEGENERATE_MIN_ANCHORS:
         return None
 
@@ -381,6 +380,7 @@ def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRec
     anchor = ctx.anchors[0]
     n_const = next(iter(n_distinct))
     rob_const = next(iter(rob_distinct))
+    raw_robustness = sorted({a.ayanamsha_robustness for a in ctx.anchors}, key=lambda v: (v is not None, v or 0))
     return SodhanaRecord(
         anchor_id=anchor.anchor_id,
         anomaly_type='ceiling_inputs_degenerate',
@@ -388,12 +388,12 @@ def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRec
         detected_field='dasha_consensus_count,ayanamsha_robustness',
         expected_value_text='dasha_consensus_count and ayanamsha_robustness varying per anchor '
                              '(the G-LADDER ceiling is meant to be a per-anchor calibration)',
-        observed_value_text=f'dasha_consensus_count={n_const}, ayanamsha_robustness={"NULL (not measured; term skipped)" if rob_const is None else rob_const} '
+        observed_value_text=f'dasha_consensus_count={n_const}, effective ayanamsha_robustness factor={rob_const:.2f} (raw values: {raw_robustness}) '
                              f'constant across all {len(n_values)} anchors',
         leakage_class=None,
         recommendation_text=(
             'The G-LADDER confidence ceiling (_g_ladder_ceiling) is computed from '
-            'dasha_consensus_count and ayanamsha_robustness (NULL = not measured) -- both are '
+            'dasha_consensus_count and the effective ayanamsha_robustness factor (NULL = not measured, strictest factor) -- both are '
             'identical across every anchor in this chart, so the "per-anchor calibration" '
             'confidence_inflation checks against is actually one chart-wide constant. '
             'confidence_inflation and confidence_degenerate can both stay clean while this '
@@ -405,7 +405,9 @@ def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRec
             'chart_id': str(ctx.chart_id),
             'anchor_count': len(n_values),
             'constant_dasha_consensus_count': n_const,
-            'constant_ayanamsha_robustness': rob_const,
+            'constant_ayanamsha_robustness': raw_robustness[0] if len(raw_robustness) == 1 else None,  # raw value when one; see ayanamsha_robustness_raw_values
+            'constant_ayanamsha_robustness_factor': rob_const,
+            'ayanamsha_robustness_raw_values': raw_robustness,
         },
         source_citation=f'ph_sodhana/ceiling_inputs_degenerate/{ctx.chart_id}',
     )

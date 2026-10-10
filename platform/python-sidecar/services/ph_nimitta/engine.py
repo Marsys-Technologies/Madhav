@@ -97,10 +97,9 @@ _DOMAIN_SYNONYMS = {
     'progeny_children': 'progeny',
 }
 
-# SS N-341 (B5, §N.8): NO default ayanamsha robustness -- unmeasured is None and compute_posterior SKIPS the term.
+# SS N-341/N-391: robustness modifier = MIN + SPAN*clamp(r,0,5)/5. Unmeasured (None) takes the STRICTEST value (r=0, the floor), never x1.0.
 
-# CR-66 root cause #3: a window already closed in the past is historical/retrodictive, not
-# a "near" (upcoming) prediction. ~3 years is the near horizon.
+# CR-66 root cause #3: a past-closed window is retrodictive, not "near" (upcoming); ~3 years is the near horizon.
 _NEAR_HORIZON_DAYS = 1096
 
 
@@ -216,11 +215,12 @@ class AnchorLiftVector:
     promise_lift:                 float
     activation_lift:              float
     trigger_lift:                 float
-    ayanamsha_robustness_modifier: Optional[float]   # None = not measured, term skipped (never a default)
+    ayanamsha_robustness_modifier: float   # measured value, or the FLOOR (strictest) when not measured -- never null
+    ayanamsha_robustness_status:  str      # 'measured' | 'not_measured_floor_applied'
     posterior:                    float
 
     def as_dict(self) -> dict:
-        return {**asdict(self), 'ayanamsha_robustness_status': _robustness_status(self.ayanamsha_robustness_modifier)}
+        return asdict(self)
 
 
 @dataclass
@@ -299,16 +299,16 @@ def compute_posterior(
 
     posterior = base_rate × promise_lift × activation_lift × trigger_lift × robustness_mod
 
-    Returns (posterior, AnchorLiftVector) — posterior clamped [0.02, 0.95]. robustness_mod is SKIPPED when None.
+    Returns (posterior, AnchorLiftVector) — posterior clamped [0.02, 0.95]. robustness_mod is the FLOOR when None (never x1.0).
 
     JL-009: base_rate priors are PLACEHOLDERS until native review and freeze.
     """
     promise    = _promise_lift(pratijna_grade, pratijna_status)
     activation = _activation_lift(multi_system_confirmation_count)
     trigger    = _trigger_lift(av_transit_potency)
-    rob_mod    = _robustness_modifier(ayanamsha_robustness)   # None = not measured -> term skipped
+    rob_mod, rob_status = _robustness_term(ayanamsha_robustness)   # None -> strictest factor (floor), status says so
 
-    raw       = float(base_rate) * promise * activation * trigger * (1.0 if rob_mod is None else rob_mod)
+    raw       = float(base_rate) * promise * activation * trigger * rob_mod
     posterior = round(min(0.95, max(0.02, raw)), 4)
 
     lift = AnchorLiftVector(
@@ -316,7 +316,7 @@ def compute_posterior(
         promise_lift=round(promise, 4),
         activation_lift=round(activation, 4),
         trigger_lift=round(trigger, 4),
-        ayanamsha_robustness_modifier=None if rob_mod is None else round(rob_mod, 4),
+        ayanamsha_robustness_modifier=round(rob_mod, 4), ayanamsha_robustness_status=rob_status,
         posterior=posterior,
     )
     return posterior, lift
@@ -775,23 +775,43 @@ def derive_anchor_from_discovery(
     )
 
 
-# ── ayanamsha robustness term (SS N-341 B5) ───────────────────────────────────
+# ── ayanamsha robustness term (SS N-341 B5 / N-391 floor ruling) ──────────────
 
-def _robustness_modifier(ayanamsha_robustness: Optional[int]) -> Optional[float]:
-    """Posterior modifier from a MEASURED cross-ayanamsha robustness in [0, 5].
+_ROBUSTNESS_MOD_MIN = 0.80    # modifier at robustness 0 (no supporting ayanamsha)
+_ROBUSTNESS_MOD_SPAN = 0.20   # modifier at robustness 5 = MIN + SPAN = 1.00
+_ROBUSTNESS_STATUS_MEASURED = 'measured'
+_ROBUSTNESS_STATUS_FLOOR = 'not_measured_floor_applied'
 
-    None means "not measured": nothing in this layer compares an anchor across ayanamsha
-    rows (kala_convergence has no such column), so the old constant 3 -- which injected a
-    0.92 modifier into every posterior and read as a 3-of-5 robustness claim -- was a
-    fabricated value (CLAUDE.md §N.8 / §N.7 item 6). None is returned unchanged; the
-    caller SKIPS the term (x1.0, neutral) and the lift vector reports it as not_measured.
-    A genuine measured 0 is a measurement (modifier 0.80), not "missing".
+
+def _measured_modifier(ayanamsha_robustness: int) -> float:
+    """Posterior modifier for a MEASURED cross-ayanamsha robustness, clamped to [0, 5]."""
+    return _ROBUSTNESS_MOD_MIN + (min(max(0, int(ayanamsha_robustness)), 5) / 5.0) * _ROBUSTNESS_MOD_SPAN
+
+
+# The strictest factor the mapping can give (robustness 0). Derived from the mapping above so the
+# floor and the measured scale cannot drift apart. Applied as a stated LOWER BOUND when unmeasured.
+_ROBUSTNESS_FLOOR_MODIFIER = _measured_modifier(0)
+
+
+def _robustness_modifier(ayanamsha_robustness: Optional[int]) -> float:
+    """Posterior modifier for ayanamsha_robustness: the measured value, or the floor if None.
+
+    None means "not measured": nothing in this layer compares an anchor across ayanamsha rows
+    (the former constant 3 -- a 0.92 modifier in every posterior -- was a fabricated value,
+    CLAUDE.md §N.8 / §N.7 item 6). An unmeasured term must not read as perfect support, so
+    it takes the STRICTEST factor (_ROBUSTNESS_FLOOR_MODIFIER, 0.80) as a stated lower bound;
+    the column stays NULL and the lift vector reports status not_measured_floor_applied.
     """
     if ayanamsha_robustness is None:
-        return None
-    return 0.80 + (min(max(0, int(ayanamsha_robustness)), 5) / 5.0) * 0.20
+        return _ROBUSTNESS_FLOOR_MODIFIER
+    return _measured_modifier(ayanamsha_robustness)
 
 
-def _robustness_status(modifier: Optional[float]) -> str:
-    """'measured' only when a modifier was actually computed from a supplied measurement."""
-    return 'not_measured' if modifier is None else 'measured'
+def _robustness_status(ayanamsha_robustness: Optional[int]) -> str:
+    """'measured' only when a real 0..5 value was supplied; else the floor-applied status."""
+    return _ROBUSTNESS_STATUS_FLOOR if ayanamsha_robustness is None else _ROBUSTNESS_STATUS_MEASURED
+
+
+def _robustness_term(ayanamsha_robustness: Optional[int]) -> tuple[float, str]:
+    """(modifier, status) for compute_posterior."""
+    return _robustness_modifier(ayanamsha_robustness), _robustness_status(ayanamsha_robustness)

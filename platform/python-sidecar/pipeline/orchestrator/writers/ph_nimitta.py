@@ -762,7 +762,7 @@ class PhNimittaWriter(WriterBase):
             # read as a measured cross-ayanamsha robustness and fed a 0.92 modifier into every
             # posterior. Nothing measures it, so it is None (stored as NULL in
             # phala_anchors.ayanamsha_robustness, a nullable smallint); compute_posterior()
-            # skips the term and records ayanamsha_robustness_status='not_measured'.
+            # applies the STRICTEST factor (0.80) as a lower bound, status not_measured_floor_applied.
             ayanamsha_robustness=None,
             # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
             # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
