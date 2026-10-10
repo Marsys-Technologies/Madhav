@@ -369,7 +369,7 @@ def m_null_default(aid: str, text: str):
 _NM = (
     ("Build.completion", "census-role-denied", "the integrity SQL needs an object the census role may not read (measured at build time under the runner role)",
      re.compile(r"NO_DETECTOR — integrity not measurable under the census role: ERROR: \d+: permission denied for function \w+; denied object: function \w+; the asset's integrity SQL needs objects the census role may not read\. "
-                r"Declared way to measure it: .*do NOT widen the census role \(it is NOT widened, and this is not a verdict on the data\) \[integrity_check_sql sha256:[0-9a-f]+, [\d.]+s\]; counts: rows_written=(\d+) = live=\1 \([^()]*\)", re.S)),
+                r"Declared way to measure it: .*do NOT widen the census role \(it is NOT widened, and this is not a verdict on the data\) \[integrity_check_sql sha256:[0-9a-f]+, [\d.]+s\](?: \[integrity budget \d+s; ran [\d.]+s(?:; cut off at the budget)?\])?; counts: rows_written=(\d+) = live=\1 \([^()]*\)", re.S)),
     ("Build.completion", "view-object", "a view: completion consistency is not measurable for a view",
      re.compile(r"NO_DETECTOR — view: live=\d+ \(counted by the census from the view \w+ \(chart-scoped\); the registry count_sql is a constant \(SELECT \d+ AS count\); chart [0-9a-f]{8}\); "
                 r"build record rows_written=\d+ counts the view object, not rows — completion consistency is not measurable for a view")),
