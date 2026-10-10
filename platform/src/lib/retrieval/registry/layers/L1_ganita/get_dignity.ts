@@ -7,6 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const DIGNITY_CATEGORIES = [
   'graha_dignity_per_varga', 'graha_effective_dignity_modified_by_aspects',
@@ -39,7 +40,7 @@ export const getDignityCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     varga:        { type: 'string', description: 'Filter to one varga (e.g. D1, D9, D10). Omit for all.' },
     categories:   { type: 'array', description: 'Explicit category list.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },
@@ -82,10 +83,9 @@ export const getDignityCapability: CapabilityDescriptor = {
         where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
         filterParams.push(buildFence.build_ids)
       }
-      if (args.ayanamsha_id) {
-        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
-        filterParams.push(args.ayanamsha_id as string)
-      }
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      where += kp.filter(filterParams)
       if (args.varga) {
         where += ` AND fact_key ILIKE $${filterParams.length + 1}`
         filterParams.push(`%${args.varga as string}%`)
@@ -95,15 +95,16 @@ export const getDignityCapability: CapabilityDescriptor = {
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
 
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
+      const rows = kp.label(result.rows ?? [])
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
+        content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: Number(countResult.rows?.[0]?.total ?? 0) },
         is_error: false,
       }
     } catch (err) {

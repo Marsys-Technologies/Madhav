@@ -54,7 +54,8 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { AYANAMSHA_SERVE_ORDER } from '../../constants'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
@@ -381,7 +382,18 @@ export const querySignalsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    // SS N-339/N-342 (PR-2): Lahiri-primary (omitted => lahiri_chitrapaksha); short ids normalise; an
+    // unknown id is an is_error result; ayanamsha_id:'all' / ayanamsha_scope:'all' is the explicit pooled opt-out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    // null under the 'all' opt-out. Companion reads that are inherently single-ayanamsha (signature-tier
+    // note, frame facet) stay pinned to the primary there and say so in the response.
+    const ayanamsha_id    = aya.id
+    const companionAyanamsha = aya.id ?? PRIMARY_AYANAMSHA
     // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
     const buildFence = classifyBuildFence(args['build_id'])
     if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('query_signals', chart_id)
@@ -442,9 +454,12 @@ export const querySignalsCapability: CapabilityDescriptor = {
     try {
       void _ctx
 
-      const filters: string[] = ['m.chart_id = $1', 'm.ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
+      const filters: string[] = ['m.chart_id = $1']
+      const params: unknown[] = [chart_id]
+      // pushAyanamshaFilter returns ' AND <pred>' (or '' for the 'all' opt-out); filters are joined with ' AND ' below.
+      const ayaPredicate = pushAyanamshaFilter(aya, params, { column: 'm.ayanamsha_id' })
+      if (ayaPredicate) filters.push(ayaPredicate.slice(' AND '.length))
+      let p = params.length + 1
 
       if (build_ids) {
         filters.push(`m.build_id = ANY($${p++}::uuid[])`)
@@ -502,7 +517,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // semantic_query: vertex embedding not available at query time; salience fallback used.
       // DENS-SERVED (SS N-211): the row tier is selected as a LITERAL item (it is always in projection.fetch, being one of the default-17 internal-required
       // columns), so the served select carries its verification tier in the SQL text the Dens scan reads; the rest of the list is the resolved projection.
-      const SIGNAL_COLUMNS = projection.fetch.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`).join(', ')
+      // Under the pooled 'all' opt-out every row must say which ayanamsha it belongs to, whatever the projection.
+      const fetchColumns = aya.id === null && !projection.fetch.includes('ayanamsha_id')
+        ? [...projection.fetch, 'ayanamsha_id']
+        : projection.fetch
+      const SIGNAL_COLUMNS = fetchColumns.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`).join(', ')
 
       // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
       const pBase = p
@@ -526,7 +545,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
           SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
-          ORDER BY m.computed_salience DESC NULLS LAST
+          ORDER BY m.computed_salience DESC NULLS LAST, ${ayanamshaServeOrderBy('m.ayanamsha_id')}
           LIMIT $${pBase}`
 
         const paramsB = [...params, CLASS_FORCED_TYPES, CLASS_FORCED_LIMIT]
@@ -535,7 +554,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
             AND m.signal_type_class = ANY($${pBase})
-          ORDER BY m.computed_salience DESC NULLS LAST
+          ORDER BY m.computed_salience DESC NULLS LAST, ${ayanamshaServeOrderBy('m.ayanamsha_id')}
           LIMIT $${pBase + 1}`
 
         const [rA, rB] = await Promise.all([query(sqlA, paramsA), query(sqlB, paramsB)])
@@ -557,7 +576,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
           SELECT m.verification_pass_status, ${SIGNAL_COLUMNS}
           FROM bodha_msr_signals m
           WHERE ${filters.join(' AND ')}
-          ORDER BY m.computed_salience DESC NULLS LAST
+          ORDER BY m.computed_salience DESC NULLS LAST, ${ayanamshaServeOrderBy('m.ayanamsha_id')}
           LIMIT ${topKPh} OFFSET ${offsetPh}`
         const result = await query(sql, params)
         rawRows = result.rows
@@ -570,10 +589,33 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
       if (useComposite && rawRows.length > 0) {
         const as_of_date = new Date().toISOString().split('T')[0]
-        const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_ids ?? undefined)
         // Cast through unknown: rawRows carries bodha_msr_signals columns; MsrSignalRow is satisfied at runtime.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const scoredAll = applyCompositeRanking(rawRows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain)
+        type CompositeRows = Parameters<typeof applyCompositeRanking>[0]
+        let scoredAll: ReturnType<typeof applyCompositeRanking>
+        if (aya.id !== null) {
+          const ctx = await fetchL1Context(chart_id, aya.id, as_of_date, build_ids ?? undefined)
+          scoredAll = applyCompositeRanking(rawRows as unknown as CompositeRows, ctx, domain)
+        } else {
+          // Pooled 'all' opt-out: the composite scorer's L1 context (graha strengths, dasha lords) and its
+          // within-class percentile are per-ayanamsha, so each ayanamsha's candidates are scored against ITS
+          // OWN context, then merged by final_rank_score (serve order — Lahiri first — on ties).
+          const byAyanamsha = new Map<string, Record<string, unknown>[]>()
+          for (const row of rawRows) {
+            const id = String(row['ayanamsha_id'] ?? '')
+            const bucket = byAyanamsha.get(id)
+            if (bucket) bucket.push(row)
+            else byAyanamsha.set(id, [row])
+          }
+          const serveRank = (row: unknown): number => {
+            const i = (AYANAMSHA_SERVE_ORDER as readonly string[]).indexOf(String((row as Record<string, unknown>)['ayanamsha_id'] ?? ''))
+            return i === -1 ? AYANAMSHA_SERVE_ORDER.length : i
+          }
+          const scoredGroups = await Promise.all([...byAyanamsha.entries()].map(async ([id, rows]) => {
+            const ctx = await fetchL1Context(chart_id, id, as_of_date, build_ids ?? undefined)
+            return applyCompositeRanking(rows as unknown as CompositeRows, ctx, domain)
+          }))
+          scoredAll = scoredGroups.flat().sort((a, b) => (b.final_rank_score - a.final_rank_score) || (serveRank(a) - serveRank(b)))
+        }
         // Slice to requested pagination window; strip internal _subscores from wire format
         const scoredSlice = scoredAll.slice(offset, offset + top_k)
         signals = scoredSlice.map(s => {
@@ -640,7 +682,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
       )).filter(Boolean)
       const [defect001, signatureTier] = await Promise.all([
         deriveDefect001Note(chart_id, referencedFactIds),
-        deriveSignatureTierNote(chart_id, ayanamsha_id),
+        deriveSignatureTierNote(chart_id, companionAyanamsha),
       ])
 
       // SS N-62 Q10 (display-side): L2 `ayurdaya:*` MSR signals carry the bare unreduced-base totals
@@ -656,7 +698,12 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // === null means ["*"] — serve everything fetched, no narrowing.
       if (projection.serve !== null) {
         // DENS-SERVED (SS N-212 M2): the row tier is part of EVERY served row, whatever the projection: a narrowed projection cannot drop the verification tier on the wire.
-        const serveCols = projection.serve.includes('verification_pass_status') ? projection.serve : [...projection.serve, 'verification_pass_status']
+        const serveCols = [
+          ...projection.serve,
+          ...(projection.serve.includes('verification_pass_status') ? [] : ['verification_pass_status']),
+          // pooled 'all' rows must always say which ayanamsha they belong to
+          ...(aya.id === null && !projection.serve.includes('ayanamsha_id') ? ['ayanamsha_id'] : []),
+        ]
         signals = signals.map(s => {
           const picked: Record<string, unknown> = {}
           for (const c of serveCols) if (c in s) picked[c] = s[c]
@@ -670,14 +717,14 @@ export const querySignalsCapability: CapabilityDescriptor = {
       if (frame !== 'lagna') {
         try {
           const { sign: referenceSign, ayanamsha_frame_sensitivity } =
-            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id, ...(build_ids ? { build_id: build_ids } : {}) })
+            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id: companionAyanamsha, ...(build_ids ? { build_id: build_ids } : {}) })
           const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
           const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
             `SELECT fact_subject, fact_value_text FROM chart_facts
              WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
                AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'
                ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}`,
-            build_ids ? [chart_id, ayanamsha_id, grahaCodes, build_ids] : [chart_id, ayanamsha_id, grahaCodes],
+            build_ids ? [chart_id, companionAyanamsha, grahaCodes, build_ids] : [chart_id, companionAyanamsha, grahaCodes],
           )
           const activeHouseByGraha: Record<string, number> = {}
           for (const r of signRes.rows) {
@@ -686,7 +733,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
               houseCountedFrom(referenceSign as ZodiacSign, r.fact_value_text as ZodiacSign)
           }
           frameContext = {
-            frame, reference_sign: referenceSign, ayanamsha_id,
+            frame, reference_sign: referenceSign, ayanamsha_id: companionAyanamsha,
             active_house_by_graha: activeHouseByGraha,
             note: `Each graha's actual house counted from ${frame} (${referenceSign}). Signal rows ` +
               `and computed_salience are unaffected by frame (frozen build-time formula output) — ` +
@@ -742,7 +789,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         build_id,
         frame,
         ...(frameContext ? { frame_context: frameContext } : {}),
-        ayanamsha_id,
+        ...ayanamshaScopeEcho(aya),
         ...(ayuDisclosure ? { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(ayuDisclosure) } : {}),
         ...(servedJudgmentFlags.length > 0 ? { judgment_flags: servedJudgmentFlags } : {}),
         signals,
@@ -775,12 +822,15 @@ export const querySignalsCapability: CapabilityDescriptor = {
         provenance: {
           tables: ['bodha_msr_signals'],
           ranking_note: useComposite
-            ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).`
+            ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).` +
+              (aya.id === null ? " ayanamsha_scope 'all': each ayanamsha's candidates are composite-scored against its own L1 context, then merged by final_rank_score (Lahiri first on ties)." : '')
             : `Salience-ranked (no domain specified — composite ranking requires domain).`,
           // Structured E-2 freshness objects (as_of/expires_on + live-derived status) — read
           // these, not any historical figure baked into documentation or memory.
           defect_001: defect001,
           signature_tier: signatureTier,
+          // Under the pooled 'all' opt-out the tier distribution (and the frame facet) is a single-ayanamsha read — label it.
+          ...(aya.id === null ? { signature_tier_ayanamsha_id: companionAyanamsha } : {}),
           // Legacy string fields retained for callers pattern-matching on prior wave's shape
           // (additive-only per R5.1 brief) — text now sourced from the SAME live derivation.
           defect_001_note: defect001.note,
