@@ -82,7 +82,7 @@ def _count_one(conn: Any, sql: str, params: list) -> int:
     return int(row[0] if isinstance(row, (tuple, list)) else row.get("count", 0))
 
 
-def _formula_version(conn: Any, chart_id: str, col: str, table: str) -> str | None:
+def _formula_version(conn: Any, chart_id: str, col: str, sql: str) -> str | None:
     """Fetch the most-recently-computed non-null formula version string from a
     bodha table.
 
@@ -97,8 +97,8 @@ def _formula_version(conn: Any, chart_id: str, col: str, table: str) -> str | No
     """
     try:
         row = conn.execute(
-            f"SELECT {col} FROM {table} WHERE chart_id = %s "
-            f"ORDER BY computed_at DESC, {col} DESC LIMIT 1",
+            # `sql` is one of the four literal module-level _*_VERSION_SQL constants (bottom of the module):
+            sql,    # the SQL text is never built at run time
             [chart_id],
         ).fetchone()
         if row:
@@ -592,19 +592,19 @@ def detect_l2_contract_integrity(conn: Any, chart_id: str) -> dict[str, dict]:
     # read as a clean pass -- a detector that cannot go red (CLAUDE.md N.8). No
     # live table carries the calculation context or generation state it checked,
     # so there is nothing honest to redirect it to; it is removed, not stubbed.
-    for name, sql, params in (
-        ("signed_relation_and_cancellation", _SIGNED_RELATION_SQL, [chart_id, chart_id]),
-    ):
-        try:
-            count = _count_one(conn, sql, params)
-            results[name] = {
-                "pass": count == 0, "violation_count": count, "error": None,
-            }
-        except Exception as exc:
-            logger.warning("[bo_pramana_mapa] %s detector unevaluable: %s", name, exc)
-            results[name] = {
-                "pass": None, "violation_count": None, "error": str(exc),
-            }
+    name = "signed_relation_and_cancellation"      # the one L2 polarity gate counted below
+    # It reads the literal module constant directly (no loop variable carries the SQL), so the
+    # census can trace exactly what this gate runs.
+    try:
+        count = _count_one(conn, _SIGNED_RELATION_SQL, [chart_id, chart_id])
+        results[name] = {
+            "pass": count == 0, "violation_count": count, "error": None,
+        }
+    except Exception as exc:
+        logger.warning("[bo_pramana_mapa] %s detector unevaluable: %s", name, exc)
+        results[name] = {
+            "pass": None, "violation_count": None, "error": str(exc),
+        }
     return results
 
 
@@ -719,10 +719,10 @@ class BoPramanaMapa(WriterBase):
             )
 
         # Formula versions
-        sal_ver  = _formula_version(conn, chart_id, "salience_formula_version", "bodha_msr_signals")
-        link_ver = _formula_version(conn, chart_id, "linkage_formula_version", "bodha_cdlm_cells")
-        res_ver  = _formula_version(conn, chart_id, "resonance_score_formula_version", "bodha_rm_resonances")
-        conv_ver = _formula_version(conn, chart_id, "convergence_formula_version", "bodha_convergence")
+        sal_ver  = _formula_version(conn, chart_id, "salience_formula_version", _SALIENCE_VERSION_SQL)
+        link_ver = _formula_version(conn, chart_id, "linkage_formula_version", _LINKAGE_VERSION_SQL)
+        res_ver  = _formula_version(conn, chart_id, "resonance_score_formula_version", _RESONANCE_VERSION_SQL)
+        conv_ver = _formula_version(conn, chart_id, "convergence_formula_version", _CONVERGENCE_VERSION_SQL)
 
         # ── §N.8 earned-signal detectors (lane B-N8-FIX + PŪRṆATĀ; register
         # F-07…F-10, F-13) ──────────────────────────────────────────────────
@@ -884,3 +884,23 @@ class BoPramanaMapa(WriterBase):
 
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"msr={msr_count} cdlm={cdlm_count} nodes={node_count} trap1={trap1_count}")
+
+
+# The four formula-version reads of `_formula_version`, each a string LITERAL (the text is exactly what the former f-string built from `col` / `table`), so the SQL the writer runs is
+# readable from source (the census traces literals only).
+_SALIENCE_VERSION_SQL = (
+    "SELECT salience_formula_version FROM bodha_msr_signals WHERE chart_id = %s "
+    "ORDER BY computed_at DESC, salience_formula_version DESC LIMIT 1"
+)
+_LINKAGE_VERSION_SQL = (
+    "SELECT linkage_formula_version FROM bodha_cdlm_cells WHERE chart_id = %s "
+    "ORDER BY computed_at DESC, linkage_formula_version DESC LIMIT 1"
+)
+_RESONANCE_VERSION_SQL = (
+    "SELECT resonance_score_formula_version FROM bodha_rm_resonances WHERE chart_id = %s "
+    "ORDER BY computed_at DESC, resonance_score_formula_version DESC LIMIT 1"
+)
+_CONVERGENCE_VERSION_SQL = (
+    "SELECT convergence_formula_version FROM bodha_convergence WHERE chart_id = %s "
+    "ORDER BY computed_at DESC, convergence_formula_version DESC LIMIT 1"
+)
