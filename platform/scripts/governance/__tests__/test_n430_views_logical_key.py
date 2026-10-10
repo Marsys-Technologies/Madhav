@@ -31,7 +31,7 @@ LK = dict(object="vw_chart_digest", columns=["chart_id", "ayanamsha_id"], basis=
 PP = dict(why="the asset is a read-only projection: the view definition is preserved and the writer runs no DDL or DML", evidence=EV)
 SAMVADA = "bo_samvada"
 
-# what pg_get_viewdef(oid, true) writes for the view (PostgreSQL's pretty form: qualified columns, `AS` on every alias, a sub-select in parentheses, the GROUP BY last)
+# what pg_get_viewdef(oid, true) writes for the view (PostgreSQL's pretty form: columns qualified by the alias when the view joins or correlates a sub-select (a one-relation view is written unqualified, see VD_SINGLE), `AS` on every alias, a sub-select in parentheses, the GROUP BY last)
 VD = """ SELECT m.chart_id,
     m.ayanamsha_id,
     count(DISTINCT m.signal_id) AS msr_signal_count,
@@ -125,6 +125,23 @@ def test_the_pg_style_definition_proves_the_group_by_key_and_ignores_the_inner_g
     assert _proves(VD) is None
     assert "not the whole GROUP BY" in _proves(VD, ("chart_id",))
     assert "is not a GROUP BY column" in _proves(VD, ("chart_id", "ayanamsha_id", "digest_at"))
+
+
+VD_SINGLE = """ SELECT chart_id,
+    ayanamsha_id,
+    count(DISTINCT signal_id) AS n
+   FROM lk_src m
+  GROUP BY chart_id, ayanamsha_id;"""                                                                         # what PostgreSQL's pretty form writes for a one-relation view: no alias on a column
+
+
+def test_the_unqualified_single_relation_pretty_form_proves_the_same_key(monkeypatch):
+    r = ac.viewdef_group_by(VD_SINGLE)
+    assert r["ok"] and r["group_by"] == [(None, "chart_id"), (None, "ayanamsha_id")] and r["exposed"]["chart_id"] == (None, "chart_id")
+    assert _proves(VD_SINGLE) is None and "not the whole GROUP BY" in _proves(VD_SINGLE, ("chart_id",))
+    World(monkeypatch, defn=VD_SINGLE)
+    res = _ident()
+    assert res["v"] == PASS and res["logical_key"]["group_by"] == ["chart_id", "ayanamsha_id"]
+    assert ac.logical_key_block_problem(res) is None                                                          # the block validator accepts the unqualified names too
 
 
 def test_the_real_writers_view_statement_proves_the_same_key():
@@ -423,7 +440,9 @@ def test_live_pg_the_real_pg_get_viewdef_proves_the_key_and_the_data_probes_run(
     ac.set_read_scope({"vw_lk": dict(where=f"chart_id = '{fs.CHART_A}'", label="measured chart")})
     decl = dict(logical_key=dict(LK, object="vw_lk"))
     r = ac.logical_key_identity("vw_lk", decl, cat)
-    assert r["v"] == PASS and r["logical_key"]["group_by"] == ["m.chart_id", "m.ayanamsha_id"], r
+    # pg_get_viewdef(oid, true) drops the table alias on a single-relation view (CI's PostgreSQL wrote `GROUP BY chart_id, ayanamsha_id`) and keeps it when a join or a correlated
+    # sub-select needs it: what is proven is the COLUMNS, qualifier or not
+    assert r["v"] == PASS and [g.rsplit(".", 1)[-1] for g in r["logical_key"]["group_by"]] == ["chart_id", "ayanamsha_id"], r
     ungrouped = dict(logical_key=dict(LK, object="vw_lk_nogroup"))
     r = ac.logical_key_identity("vw_lk_nogroup", ungrouped, cat)
     assert r["v"] == ND and "cannot prove a key" in r["measured"]                                             # the same columns, unique today by luck of the data: a data probe alone is not a proof
