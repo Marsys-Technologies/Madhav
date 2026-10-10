@@ -125,6 +125,8 @@ describe('PATCH /api/charts/[id] — structured failures', () => {
     ['CLEAR_SPEC_MISSING', 422],
     ['CHART_NOT_FOUND', 404],
     ['RECOMPUTE_PREPARATION_FAILED', 500],
+    ['AYANAMSHA_EDIT_BLOCKED', 403],
+    ['AYANAMSHA_EDIT_NEEDS_CONFIRMATION', 409],
   ] as const)('%s → HTTP %i with its code', async (code, status) => {
     mockUpdate.mockRejectedValue(new ChartUpdateError(code, `message for ${code}`))
     const res = await PATCH(req(BODY), ctx)
@@ -132,6 +134,13 @@ describe('PATCH /api/charts/[id] — structured failures', () => {
     const body = await res.json()
     expect(body.code).toBe(code)
     expect(body.error).toBe(`message for ${code}`)
+  })
+
+  it('passes confirm_destructive through to the service untouched (the service enforces the policy)', async () => {
+    mockUpdate.mockResolvedValue({ mode: 'recompute-started', chartId: CHART, changedFields: ['ayanamshas'], runId: 'run-1' })
+    const body = { name: 'Test', ayanamshas: ['kp'], confirm_destructive: true }
+    expect((await PATCH(req(body), ctx)).status).toBe(202)
+    expect(mockUpdate).toHaveBeenCalledWith({ chartId: CHART, principalId: 'owner-uid', input: body })
   })
 
   it('an unexpected error is a 500 RECOMPUTE_PREPARATION_FAILED with no internals', async () => {
