@@ -92,7 +92,6 @@ const SIDECAR_BACKED_URIS: ReadonlySet<CapabilityUri> = new Set([
   'marsys://tool/L0/query_aspects_at_time',
   'marsys://tool/L0/query_retrograde_periods',
   'marsys://resource/ephemeris-cache/year/{yyyy}',       // ephemeris_cache_year
-  'marsys://resource/ephemeris-cache/native-lifetime',    // ephemeris_cache_native_lifetime
   // register_d7_channel.ts — sutravali block, sidecarUrl + fetch (lines ~356-593)
   'marsys://tool/L0/query_sutravali_rules',
   'marsys://tool/L0/query_sutravali_rules_for_planet',

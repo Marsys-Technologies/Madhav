@@ -43,7 +43,7 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
     ]))
     let sourceRefsChecked = 0
 
-    expect(snapshot.scus).toHaveLength(182)
+    expect(snapshot.scus).toHaveLength(181)
     for (const scu of snapshot.scus) {
       expect(scu.editorial).toBe(true)
       expect(scu.description.trim().length).toBeGreaterThan(0)
@@ -73,7 +73,9 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
     // synergy_pipeline both moved from descriptor_metadata_review (2 editorial_sources each)
     // to authored_declaration (1 editorial_sources entry, matching query_planet_transit's own
     // authored precedent) so each could carry a genuine second, per-mode binding — 355 -> 353.
-    expect(sourceRefsChecked).toBe(353)
+    // SS N-373: the retired ephemeris_cache_native_lifetime SCU was a descriptor_metadata_review one
+    // (2 editorial_sources entries) — 353 -> 351.
+    expect(sourceRefsChecked).toBe(351)
   })
 
   it('preserves the declared four-item historical manual sample in every layer', () => {

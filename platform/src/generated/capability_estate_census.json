@@ -6,15 +6,15 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "50f4e21c3a3869ad51cea368afc53909a5206a6769b12c7f7952214365e2e8b8",
+  "content_sha256": "eb3f678b19f23e3e8cee0946ce36b8814fa0768d08e0328025f39b4a2a785a94",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
         "reviewed_exposed": 71,
-        "reviewed_not_exposed": 115
+        "reviewed_not_exposed": 114
       },
-      "denominator": 186,
-      "descriptor_content_untyped": 181,
+      "denominator": 185,
+      "descriptor_content_untyped": 180,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
       "non_exhaustible_paginated": 95
@@ -22,7 +22,7 @@
     "planner_addressable_descriptors": {
       "excluded": 3,
       "policy": "live descriptor has a callable handler/loader and calibration_context_only is not true; public dispatchability is reported separately",
-      "total": 183
+      "total": 182
     },
     "producer_assets": {
       "active": 129,
@@ -68,11 +68,11 @@
     },
     "public_registrar_resolution": {
       "ambiguous": 0,
-      "descriptor_denominator": 186,
+      "descriptor_denominator": 185,
       "literal_public_names": 131,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
-      "not_exposed": 115,
+      "not_exposed": 114,
       "resolved_including_ambiguous": 71,
       "unambiguous_uri_bindings": 70,
       "unresolved": 0,
@@ -90,12 +90,12 @@
     },
     "runtime_descriptors": {
       "by_data_source": {
-        "computed": 21,
+        "computed": 20,
         "hybrid": 1,
         "stored": 164
       },
       "by_layer": {
-        "L0": 67,
+        "L0": 66,
         "L1": 40,
         "L2": 32,
         "L3": 21,
@@ -103,16 +103,16 @@
         "L5": 15
       },
       "by_scope": {
-        "global": 71,
+        "global": 70,
         "per_chart": 115
       },
-      "callable": 186,
+      "callable": 185,
       "output_schema_declared": 5,
       "paginated_declared": 100,
       "prompts": 1,
-      "resources": 5,
+      "resources": 4,
       "tools": 180,
-      "total": 186
+      "total": 185
     }
   },
   "details": {
@@ -302,33 +302,6 @@
         "public_tool_names": [
           "catalog_assets_l0"
         ]
-      },
-      {
-        "capability_uri": "marsys://resource/ephemeris-cache/native-lifetime",
-        "descriptor_name": "ephemeris_cache_native_lifetime",
-        "descriptor_type": "resource",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
-        "full_profile_enforcement": "enforced",
-        "input_contract": null,
-        "internal_route": "loader",
-        "internal_route_evidence": [
-          "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
-          "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts"
-        ],
-        "output_contract": null,
-        "output_contract_state": "descriptor_content_untyped",
-        "pagination": {
-          "disposition": "not_paginated"
-        },
-        "planner_disposition": "addressable",
-        "planner_reason": null,
-        "public_route_disposition": "reviewed_not_exposed",
-        "public_route_evidence": [
-          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
-        ],
-        "public_routes": [],
-        "public_tool_names": []
       },
       {
         "capability_uri": "marsys://resource/ephemeris-cache/year/{yyyy}",
@@ -21052,7 +21025,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-10T00:03:35.000Z",
+  "generated_at": "2026-10-10T00:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21074,7 +21047,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "6eca23e260b7ec1a6c967133714a8ce4e1e047d06aec7b29338731fa9b2b869e"
+        "sha256": "cb69cd811be352a656878d520a1f20c70a1b75998f73ffa866281be4fe0493fe"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21685,11 +21658,11 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 206,
+        "member_count": 205,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
-            "sha256": "9eabb20b87f5a92c8fc00b8576e3c109ee657c77b4216bf11a02bfa01c5e017d"
+            "sha256": "564e68cbbcd027fa01a97d8b04c64788d6ec56efdec09368638873e798e1ef6f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/chart_agnostic_gate.ts",
@@ -21705,7 +21678,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
-            "sha256": "6f91966dfac1f422a6f86a5dbf27ce0b5c027bdd6cdb7618dbe303d9a5657f46"
+            "sha256": "2d69e126b866a9e77d72d9f14b3f0aab93a401845860f34226087b8688dafda9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/generated_web_tool_bridge.ts",
@@ -21729,7 +21702,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "6046232e2674498db9e4cbc418a1141ef82a8bb62cb00887a612605dac125741"
+            "sha256": "950dfb061a74a4ab6c23185311c38b59b77def08d5f7141b0c80c4639d913e75"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21800,16 +21773,12 @@
             "sha256": "d1ae4f3f31c10444e2e90b477c3b05bc85eff902598e6221002d2289ad6e8d50"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
-            "sha256": "574503c5f3ee8065491ceb28c14ceaaa496b9713a983a0f20aa72abafd2c3746"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
             "sha256": "b94ac96da418c28089adca1614132e862ad51a34a8a4a86fd48f381e8c7705d0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
-            "sha256": "9936c60ddb7667b772eda1ef2dd64c2489133f23fbcb838a35315934bf8db3f8"
+            "sha256": "fdaeecf716561720e192b7357c5987f0bcc0f02eeabe3ab9baf33dcedb6cf88d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts",
@@ -22461,7 +22430,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
-            "sha256": "d35b9d7e9b284e1794149c975c6f7353aedbe50aa68471ea8f48c9780691b0dd"
+            "sha256": "fa8ae8c778fc38826ae8b51522d5faef2bd6803cd82b6d5633422b23669fa9fe"
           },
           {
             "path": "platform/src/lib/retrieval/registry/parity_check.ts",
@@ -22513,7 +22482,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "86efff4995ce5a46572f5f285768179b9d2ce95780f558621cad933685e222e5"
+        "sha256": "40c571779437ea9bc8f5f73c551ab46cd5c62dab604a728acf2b76e559ebb0ef"
       },
       {
         "id": "service_effect_contracts",
@@ -22538,5 +22507,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e083cadf00e271f8798cccc386fa46e253d42b82"
+  "source_revision": "403b7da54f07b43684e53f6e5ab39fd34501c5c0"
 }
