@@ -274,6 +274,9 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     _pn = ac.passive_count_integrity(dict(v=ac.PARTIAL, measured="m"), "count_sql=yes", _pb)
     assert _pi["v"] == NA and _pn["v"] == NA, (_pi, _pn)
     observed.update({("Idem.pattern", _pi["cause"]), ("Build.count_integrity", _pn["cause"])})
+    _cd = ac.corpus_derived_cells("bg_rules", dict(v=ac.PASS, measured="4 stored row(s) reproduced", block=dict(assurance="software-guarded, reviewed code only")))      # SS N-431: emitted by `corpus_derived_cells` (tested in test_n431_corpus_derived_detector)
+    assert _cd and all(r["v"] == NA for r in _cd.values()), _cd
+    observed.update({(_c, _r["cause"]) for _c, _r in _cd.items()})
     # SS 2026-10-05 R-c / R-d: the causes emitted by measure() on the no-writer / service / static assets (tested in test_ss_build_record_no_writer.py and test_ss_rd_service_static.py)
     import test_ss_rd_service_static as rd  # noqa: PLC0415
     rd._stub(monkeypatch, tmp_path, {rd.SVC: rd._row(rd.SVC, "service"), rd.STA: rd._row(rd.STA, "data", deps=["bg_dep"], target_table="bg_static_tbl"), "bg_dep": rd._row("bg_dep", "data", has_writer=True)},

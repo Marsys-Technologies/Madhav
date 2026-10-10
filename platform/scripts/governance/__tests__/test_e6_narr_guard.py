@@ -835,8 +835,8 @@ def test_the_registry_revision_and_the_four_narr_criteria_carry_the_new_declared
     assert 16 in p1.PINNED_FINGERPRINTS and ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS)     # the NARR-GUARD pin (16) is stacked under later pins
     for c in NARR:
         e = ac.CRITERION_REGISTRY[c]
-        assert e["revision"] == (7 if c in ("Narr.lint", "Narr.agree") else 6) and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
-    assert ac.NA_CAUSES["Narr.agree"] == ("no-prose", "no-table-no-prose") and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
+        assert e["revision"] == {"Narr.lint": 7, "Narr.agree": 8, "Narr.checkable": 7, "Narr.fidelity_test": 7}[c] and "prose_coupling to carriage_d1" in e["applicability"] and "NARR-GUARD" in e["applicability"], c
+    assert ac.NA_CAUSES["Narr.agree"] == ("no-prose", "no-table-no-prose", "corpus-derived") and all(f"{c}#measured:no-prose" in ac.NA_RULE_DECISIONS for c in NARR)
     head, tail = pathlib.Path(ac.__file__).read_text(encoding="utf-8").split(f"REGISTRY_REVISION = {ac.REGISTRY_REVISION}", 1)
     note = tail.split("\n", 1)[0]
     assert note[:200].lstrip(" #").startswith(f"{ac.REGISTRY_REVISION} (provisional): ") and "16 (provisional): NARR-GUARD" in head     # the leading note is the current revision's; the 16 note is carried

@@ -96,6 +96,8 @@ PINNED_FINGERPRINTS = {
     26: "e3b11162f186818e22e1a0b34d7f83ef7281e7863c332aaece6f57da32bc25bd",
     # 27 (SS N-305, §N.8): Build.completion revision 7 - an unread latest-attempt log never leaves a PASS standing (the PASS is cut to PARTIAL naming the unread fact)
     27: "a556dc49ba1e9ceff91087b35300f98fea61e78c2d333d9fd76056a75a5f4cf2",
+    # 28 (SS N-429/N-431, ONE bump for all engine forms): (provisional): SS N-430/N-431 engine forms, ONE revision (the registry text edits of rev28_registry_edits.json); vocab_json_kinds, a CHECKED per-JSON-path kind for the Vocab.alias value detector (opt-in; an undeclared asset measures exactly as before)
+    28: "a8e18168b71510ea3ff87a1fa7bdeaf1673a8f0df57ca22e34fbca3959b76386",
 }
 
 

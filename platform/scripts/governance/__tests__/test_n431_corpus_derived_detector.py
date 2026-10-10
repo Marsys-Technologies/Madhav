@@ -1086,12 +1086,16 @@ def _roll(cells, facts=None):
     return r["Narr"], r["Null"]
 
 
-def test_the_registry_is_untouched_until_the_director_bumps_it():
-    assert "corpus-derived" not in sum((list(v) for v in ac.NA_CAUSES.values()), [])
-    assert not any("corpus-derived" in k for k in ac.NA_RULE_DECISIONS)
+def test_the_registry_carries_the_cause_and_the_five_rules_since_revision_28():
+    # the director's single revision-28 bump merged R1's data constants (before it this test pinned the opposite: "untouched until the bump")
+    assert sorted(c for c, v in ac.NA_CAUSES.items() if "corpus-derived" in v) == sorted(FIVE[:3] + FIVE[3:])
+    assert sorted(k for k in ac.NA_RULE_DECISIONS if "corpus-derived" in k) == sorted(f"{c}#measured:corpus-derived" for c in FIVE)
 
 
 def test_before_registration_the_na_is_never_honoured(world, monkeypatch):
+    # revision 28 registered the cause; the guard is exercised by taking the registration AWAY again (a registry without the five rules never releases the cells)
+    monkeypatch.setattr(ac, "NA_CAUSES", {c: tuple(x for x in v if x != "corpus-derived") for c, v in ac.NA_CAUSES.items()})
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {k: v for k, v in ac.NA_RULE_DECISIONS.items() if "corpus-derived" not in k})
     narr, null = _roll(measure_prose(world, monkeypatch))
     assert narr["v"] == NO_DET and null["v"] == NO_DET and "not a registered cause" in json.dumps(narr)
 
