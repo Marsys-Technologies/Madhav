@@ -593,12 +593,14 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
   ayanamsha_id: z.string().optional().describe(
     'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
     'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
-    'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
+    'Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
+    'KP exception (one frame by doctrine): the KP dasha system (system=vimshottari_kp) is always read at ' +
+    'krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever is passed here.'),
   include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check for the current Vimshottari Mahadasha lord even when the page does not serve it: the other four ayanamshas as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
   as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
-  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system; vimshottari_kp = the KP sub-period chain, read in the KP frame at krishnamurti).'),
   system_id:     z.string().optional().describe('Alias for `system` using the raw column name (F-0354). Same vocabulary; precedence system > dasha_system > system_id.'),
   dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
   level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
@@ -1114,7 +1116,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     // contradiction on the surface an LLM caller reads first. Corrected to match.
     'ayanamsha_id defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
     'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ' +
-    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
+    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha ' +
+    '(except system=vimshottari_kp, the KP sub-period chain: always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)"). ' +
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
     'as_of_date=<today> — ayanamsha_id may be omitted; it already resolves to the gate\'s ' +
     'canonical single-row shape.',
@@ -1597,10 +1600,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // pagination so this alias is at full parity with query_chart_facts.
   server.tool(
     'ganita_chart_facts_get',
-    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT); discloses pagination (total + more_available) over the 5,566 subjects.',
+    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), except that KP-frame categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti ("KP frame (Krishnamurti ayanamsha)") whatever ayanamsha_id is passed; discloses pagination (total + more_available) over the 5,566 subjects.',
     {
       chart_id:         z.string().uuid().describe('Chart UUID'),
-      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable."),
+      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable. " +
+        'KP exception (one frame by doctrine): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, ' +
+        'kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled ' +
+        '"KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied).'),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -2220,7 +2226,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     // GA-5 review finding on #1393: matched to DASHA_FACET_SCHEMA's own updated
     // ayanamsha_id describe() (same self-contradiction fix as ganita_dashas_get above).
     'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id defaults server-side ' +
-    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape.',
+    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape. ' +
+    'Exception: system=vimshottari_kp (the KP sub-period chain) is always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)".',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
@@ -2229,7 +2236,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
     'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
     'level<=3, window=now±5y. ayanamsha_id defaults server-side to "lahiri_chitrapaksha" when ' +
-    'omitted — a bare call already returns the single-row current-dasha gate shape.',
+    'omitted — a bare call already returns the single-row current-dasha gate shape. ' +
+    'Exception: system=vimshottari_kp (the KP sub-period chain) is always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)".',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 

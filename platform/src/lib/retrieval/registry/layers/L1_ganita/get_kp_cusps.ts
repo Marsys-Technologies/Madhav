@@ -100,8 +100,10 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     'start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord,',
     'Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every',
     'value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators,',
-    'bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha;',
-    'pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true',
+    'bhava_cusps, kp_ruling_planets_natal). By KP doctrine (one frame) this tool ALWAYS reads the',
+    'Krishnamurti ayanamsha and labels the response "KP frame (Krishnamurti ayanamsha)" (kp_frame_label);',
+    'ayanamsha_id / ayanamsha_scope are accepted but not applied, and an explicit different id is',
+    'reported in ayanamsha_note. Pass include_graha_kp_lords=true',
     'to also get each graha\'s own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp',
     'carries the source fact_ids for Bodha constituent_facts_array back-reference.',
   ].join(' '),
@@ -109,7 +111,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:               { type: 'string',  description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:           { type: 'string',  description: `Ayanamsha (default '${DEFAULT_AYANAMSHA}', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.` },
+    ayanamsha_id:           { type: 'string',  description: `Accepted but NOT applied: KP has one frame by doctrine, so the cusps are always read at '${DEFAULT_AYANAMSHA}' (labelled "KP frame (Krishnamurti ayanamsha)"); a different explicit id (or "all") is reported in ayanamsha_note.` },
     include_graha_kp_lords: { type: 'boolean', description: 'If true, also return the per-graha KP lord chain (graha_kp_lords). Default false.' },
   },
 

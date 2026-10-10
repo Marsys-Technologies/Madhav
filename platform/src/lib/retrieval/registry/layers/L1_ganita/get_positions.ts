@@ -48,7 +48,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
@@ -106,7 +106,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: 'Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.',
+      description: KP_AWARE_AYANAMSHA_ID_TEXT,
     },
     categories: {
       type: 'array',

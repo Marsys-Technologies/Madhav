@@ -851,19 +851,19 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, ' +
     'Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every ' +
     'value is an already-stored L1 fact (chart_facts categories cusp_kp_lords, ' +
-    'kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical ' +
+    'kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Reads the KP-canonical ' +
     "Krishnamurti ayanamsha by doctrine (SS N-342: the KP cusps, sub-lords and significators are " +
     'a FRAME, not the Lahiri primary reading) and the response is labelled "' + KP_FRAME_LABEL + '". ' +
-    'Pass ayanamsha_id only to inspect the KP chain in another stored ayanamsha (the label then ' +
-    'names the frame actually used). Pass ' +
+    'KP has ONE frame by doctrine: the tool always reads krishnamurti, whatever ayanamsha_id is passed ' +
+    '(accepted but not applied; a different explicit id or "all" is reported in ayanamsha_note). Pass ' +
     'include_graha_kp_lords=true to also get each graha’s own KP chain (graha_kp_lords). ' +
     'Each cusp carries its source fact_ids for grounding back-reference.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional()
-        .describe("Ayanamsha (default: 'krishnamurti', the KP-canonical one; the response is labelled " +
-          `"${KP_FRAME_LABEL}"). Also: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical ` +
-          '(short aliases such as lahiri / kp accepted, any case). "all" is not meaningful for a single KP frame.'),
+        .describe("Accepted but NOT applied: KP has one frame by doctrine, so the cusps are always read at 'krishnamurti' " +
+          `(the response is labelled "${KP_FRAME_LABEL}"). A different explicit id (stored id or short alias, any case) or "all" ` +
+          'is reported in ayanamsha_note, never used as the frame.'),
       include_graha_kp_lords: z.boolean().optional()
         .describe('If true, also return the per-graha KP star/sub/sub_sub/prana chain. Default false.'),
     },

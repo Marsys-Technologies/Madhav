@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-08T11:49:55.885Z
+ * generated_at: 2026-10-10T05:15:19.121Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-08T11:49:55.885Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-10T05:15:19.121Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -339,7 +339,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the highest-scoring member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the highest-scoring member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -358,6 +358,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -665,6 +669,10 @@ export const MCP_SURFACE_PROFILES: {
               "type": "string",
               "description": "Filter by event_class_id. Omit for all."
             },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class's status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label."
+            },
             "limit": {
               "type": "number",
               "description": "Max rows (default 50, max 50)."
@@ -911,6 +919,10 @@ export const MCP_SURFACE_PROFILES: {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
             },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
+            },
             "vargas": {
               "type": "array",
               "description": "Additional varga codes to assemble (e.g. [\"D2\",\"D10\",\"D11\"]). Additive to D1 (and D9 if include_navamsa is set) -- served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.",
@@ -1081,7 +1093,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_chart_facts_get",
-        "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).",
+        "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are always read at krishnamurti). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT; \"all\" for the explicit raw multi-ayanamsha rows), shape, limit, offset. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1127,7 +1139,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4)."
+              "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default; \"all\" = explicit raw multi-ayanamsha rows). One ayanamsha per call by design (§1 E4). Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "shape": {
               "type": "string",
@@ -1259,7 +1271,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_kp_cusps_get",
-        "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha; pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference.",
+        "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). By KP doctrine (one frame) this tool ALWAYS reads the Krishnamurti ayanamsha and labels the response \"KP frame (Krishnamurti ayanamsha)\" (kp_frame_label); ayanamsha_id / ayanamsha_scope are accepted but not applied, and an explicit different id is reported in ayanamsha_note. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1273,7 +1285,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical."
+              "description": "Accepted but NOT applied: KP has one frame by doctrine, so the cusps are always read at 'krishnamurti' (labelled \"KP frame (Krishnamurti ayanamsha)\"); a different explicit id (or \"all\") is reported in ayanamsha_note."
             },
             "include_graha_kp_lords": {
               "type": "boolean",
@@ -1426,7 +1438,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "categories": {
               "type": "array",
@@ -1463,6 +1475,11 @@ export const MCP_SURFACE_PROFILES: {
                 "karakamsha"
               ],
               "default": "lagna"
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every graha on this page under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check (Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\" (that is the raw multi-row option).",
+              "default": false
             },
             "offset": {
               "type": "number",
@@ -1502,7 +1519,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "categories": {
               "type": "array",
@@ -1594,7 +1611,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "tradition": {
               "type": "string",
@@ -1651,7 +1668,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha_id. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "categories": {
               "type": "array",
@@ -2042,6 +2059,10 @@ export const MCP_SURFACE_PROFILES: {
               "items": {
                 "type": "string"
               }
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
             },
             "include": {
               "type": "array",
@@ -3621,7 +3642,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the highest-scoring member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the highest-scoring member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -3640,6 +3661,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -3762,6 +3787,10 @@ export const MCP_SURFACE_PROFILES: {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
             },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
+            },
             "vargas": {
               "type": "array",
               "description": "Additional varga codes to assemble (e.g. [\"D2\",\"D10\",\"D11\"]). Additive to D1 (and D9 if include_navamsa is set) -- served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.",
@@ -3824,7 +3853,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_chart_facts_get",
-        "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).",
+        "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are always read at krishnamurti). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT; \"all\" for the explicit raw multi-ayanamsha rows), shape, limit, offset. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -3870,7 +3899,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4)."
+              "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default; \"all\" = explicit raw multi-ayanamsha rows). One ayanamsha per call by design (§1 E4). Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha."
             },
             "shape": {
               "type": "string",
@@ -3994,6 +4023,10 @@ export const MCP_SURFACE_PROFILES: {
               "items": {
                 "type": "string"
               }
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\"."
             },
             "include": {
               "type": "array",
@@ -4582,7 +4615,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "bodha_discoveries_get",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the highest-scoring member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the highest-scoring member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -4601,6 +4634,10 @@ export const MCP_SURFACE_PROFILES: {
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -4643,6 +4680,10 @@ export const MCP_SURFACE_PROFILES: {
             "include_navamsa": {
               "type": "boolean",
               "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false."
             },
             "vargas": {
               "type": "array",

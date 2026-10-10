@@ -5,7 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, pushAyanamshaFilter, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
+import { planKpAwareRead, pushAyanamshaFilter, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const YD_CATEGORIES = ['yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag']
 
@@ -45,7 +45,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     type:         { type: 'string', description: 'yoga | dosha | flag. Omit for all.', enum: ['yoga', 'dosha', 'flag'] },
     categories:   { type: 'array',  description: 'Subset of categories.', items: { type: 'string' } },
     facet:        { type: 'string', description: "Structural facet alias from ganita_structural_get " +

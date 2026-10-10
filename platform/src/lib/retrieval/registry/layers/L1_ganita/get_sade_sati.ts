@@ -38,7 +38,9 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
     'Covers 15 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    // Plain literal on purpose: this is a platform-mcp codegen PILOT descriptor (registry_manifest.ts), whose input_schema must be
+    // statically evaluable. Equality with KP_AWARE_AYANAMSHA_ID_TEXT is pinned by __tests__/kp_descriptor_text.test.ts.
+    ayanamsha_id: { type: 'string', description: 'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.' },
     categories:   { type: 'array',  description: 'Subset of Sade Sati categories.', items: { type: 'string' } },
     all: {
       type: 'boolean',

@@ -58,7 +58,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const STRUCTURAL_SIGNAL_CATEGORIES = [
@@ -100,7 +100,7 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
     'residual-coverage complement to those. Covers 19 fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     domain: {
       type: 'string',
       description: 'Filter by domain: relational | graph | special_point | per_varga | dosha.',

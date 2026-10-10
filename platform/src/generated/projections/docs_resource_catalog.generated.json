@@ -1,7 +1,7 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-10T05:15:19.121Z",
   "total": 185,
   "capabilities": [
     {
@@ -1036,7 +1036,7 @@
       "layer": "L1",
       "name": "chart_facts_query",
       "short_label": "Chart Facts Query",
-      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha).",
+      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are…",
       "scope": "per_chart",
       "archetype": "flat_fact",
       "tool_role": "umbrella",

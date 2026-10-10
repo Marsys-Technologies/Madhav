@@ -28,7 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SP_CATEGORIES = [
@@ -60,7 +60,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
     'Covers 22 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     tradition:    {
       type: 'string',
       description: 'Filter by tradition: esoteric | bhrigu | lal_kitab | maharsi | arabic_parts | saturn.',

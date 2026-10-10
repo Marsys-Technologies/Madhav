@@ -8,7 +8,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const BB_CATEGORIES = [
   'bhava_bala_aspectual', 'bhava_bala_directional', 'bhava_bala_lord',
@@ -30,7 +30,7 @@ export const getBhavaBalaCapability: CapabilityDescriptor = {
     'Covers 10 bhava bala fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     house_number: { type: 'number', description: 'Filter to one bhava (1–12). Omit for all.' },
     categories:   { type: 'array',  description: 'Subset of bhava bala categories.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },

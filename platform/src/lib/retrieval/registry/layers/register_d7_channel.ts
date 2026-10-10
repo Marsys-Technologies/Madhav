@@ -57,7 +57,7 @@ import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
 import {
   planKpCategories, resolveKpFrameAyanamsha, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
-  tryResolveHandlerAyanamsha, ayanamshaScopeEcho, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA,
+  tryResolveHandlerAyanamsha, ayanamshaScopeEcho, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA, KP_FRAME_DESCRIPTOR_NOTE,
 } from '../handler_ayanamsha'
 import { KP_FRAME_LABEL } from '../../kp_frame'
 import { withAyurdayaFigureDisclosure } from './L1_ganita/ayurdaya_unreduced_base'
@@ -837,7 +837,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
   scope: 'per_chart',
 
   description: [
-    'Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha).',
+    'Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are always read at krishnamurti).',
     'Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more.',
     'Default shape="pivoted": rows are grouped by fact_subject into ONE wide row per subject',
     '(e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows.',
@@ -849,7 +849,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     'Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign,',
     'nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list),',
     'ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman,',
-    'surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset.',
+    'surya_siddhanta_classical, true_chitra, INVARIANT; "all" for the explicit raw multi-ayanamsha rows), shape, limit, offset.',
+    KP_FRAME_DESCRIPTOR_NOTE,
     'Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across',
     'the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit),',
     'so a caller can page the full subject set without silent truncation.',
@@ -925,7 +926,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: 'Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4).',
+      description: 'Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default; "all" = explicit raw multi-ayanamsha rows). One ayanamsha per call by design (§1 E4). ' + KP_FRAME_DESCRIPTOR_NOTE,
     },
     shape: {
       type: 'string',

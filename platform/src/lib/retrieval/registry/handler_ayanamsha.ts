@@ -35,6 +35,22 @@ import { InvalidAyanamshaError, resolveAyanamshaArg } from '../chart_facts_helpe
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../kp_frame'
 import { KP_FRAME_CATEGORIES, isKpFrameCategory, partitionKpCategories } from './kp_categories'
 
+/**
+ * LLM-visible text of the KP-frame exception (one source, so no descriptor can drift from the rule the handlers apply).
+ * By KP doctrine (SS N-342 / N-358 / N-362) the six KP categories are read at `krishnamurti` whatever ayanamsha the
+ * caller passed; every other category follows the requested/primary ayanamsha.
+ */
+export const KP_FRAME_DESCRIPTOR_NOTE =
+  `Exception by KP doctrine (one frame): the KP categories (${KP_FRAME_CATEGORIES.join(', ')}) are always read at ` +
+  `${KP_FRAME_AYANAMSHA} and labelled "${KP_FRAME_LABEL}", whatever ayanamsha_id is passed (an explicit different id ` +
+  'is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows ' +
+  'from the requested or primary ayanamsha.'
+
+/** `ayanamsha_id` input text for a reader that can serve KP-frame categories (replaces the pre-primary "Omit for all"). */
+export const KP_AWARE_AYANAMSHA_ID_TEXT =
+  `Ayanamsha to read: a stored id or short alias, any case. Omitted = ${PRIMARY_AYANAMSHA} (the Lahiri primary reading); ` +
+  '"all" = the explicit raw multi-ayanamsha rows. ' + KP_FRAME_DESCRIPTOR_NOTE
+
 export interface HandlerAyanamsha {
   /** Stored id to filter on, or `null` for the explicit `"all"` opt-out. */
   id: string | null

@@ -22,6 +22,7 @@ import { query } from '@/lib/db/client'
 import {
   resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
   planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+  KP_AWARE_AYANAMSHA_ID_TEXT,
 } from '../../handler_ayanamsha'
 
 const KARAKA_CATEGORIES = [
@@ -60,11 +61,14 @@ export const getKarakasCapability: CapabilityDescriptor = {
     'available on request (not on the default page — large per-varga/per-house-pair row sets): ' +
     '`karaka_web_per_varga` (karaka relationships recomputed per divisional chart) and ' +
     '`karaka_bhava_concordance` (per-house karaka concordance) — pass ' +
-    'categories:["karaka_web_per_varga"] / ["karaka_bhava_concordance"] explicitly to fetch them.',
+    'categories:["karaka_web_per_varga"] / ["karaka_bhava_concordance"] explicitly to fetch them. ' +
+    'Frames: the Jaimini/other categories are read at the requested ayanamsha (omitted = lahiri_chitrapaksha, ' +
+    'the Lahiri primary); the KP categories (kp_cuspal_significators, kp_ruling_planets_natal, system=kp) are ' +
+    'always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)" whatever ayanamsha_id is passed.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
-    system:       { type: 'string', description: 'Filter by system: jaimini | kp. Omit for all.', enum: ['jaimini', 'kp'] },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
+    system:       { type: 'string', description: 'Filter by system: jaimini | kp. Omit for both. system=kp is always read at krishnamurti ("KP frame (Krishnamurti ayanamsha)"), whatever ayanamsha_id is passed.', enum: ['jaimini', 'kp'] },
     categories:   {
       type: 'array',
       description: 'Explicit category list — overrides the default page entirely. Also the only ' +

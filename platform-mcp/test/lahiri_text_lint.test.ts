@@ -26,24 +26,20 @@ const PROJECTIONS = join(REPO_ROOT, 'platform/src/generated/projections')
  * generated chat / MCP / family projections copy that text from the handler descriptor, so the
  * fix is in the handler (PR-2 changes each handler's omitted-id default and its text together).
  * Keyed by the capability name (the last segment of the capability URI).
+ *
+ * Combined Lahiri batch: the 15 readers that can serve KP-frame categories (get_aspects, get_ashtakavarga, get_avasthas,
+ * get_bhava_bala, get_dignity, get_dispositors, get_sensitive_points, get_positions, get_nakshatra, get_karakas,
+ * get_structural, get_sade_sati, get_panchanga, get_strength, get_yoga_dosha) were rewritten with the shared
+ * KP_AWARE_AYANAMSHA_ID_TEXT and left this list; the remaining entries are still open.
  */
 const KNOWN_DEFERRED_TO_PR2: ReadonlySet<string> = new Set([
-  'get_argala', 'get_ashtakavarga', 'get_aspects',
-  'get_avasthas', 'get_ayurdaya', 'get_bhava_bala',
-  'get_condition_composite', 'get_dignity', 'get_dispositors',
-  'get_divisionals', 'get_graha_yuddha', 'get_karakas',
-  'get_medical_indications', 'get_nakshatra', 'get_panchanga',
-  'get_positions', 'get_prashna_lagna', 'get_sade_sati',
-  'get_sensitive_degrees', 'get_sensitive_points', 'get_strength',
-  'get_structural', 'get_tajik', 'get_tara_chandra_bala',
-  'get_transit_anchors', 'get_vastu_directions', 'get_vichara',
-  'get_yoga_dosha', 'get_yoga_firings', 'query_cdlm_summary',
-  'query_cgm_motifs', 'query_cgm_paths', 'query_chart_gestalt',
-  'query_discoveries', 'query_mechanisms', 'query_planet',
-  'query_pratijna', 'query_question_lenses', 'query_rm_chart_summary',
+  'get_argala', 'get_ayurdaya', 'get_condition_composite', 'get_divisionals', 'get_graha_yuddha',
+  'get_medical_indications', 'get_prashna_lagna', 'get_sensitive_degrees', 'get_tajik',
+  'get_tara_chandra_bala', 'get_transit_anchors', 'get_vastu_directions', 'get_vichara', 'get_yoga_firings',
+  'query_cdlm_summary', 'query_cgm_motifs', 'query_cgm_paths', 'query_chart_gestalt', 'query_discoveries',
+  'query_mechanisms', 'query_planet', 'query_pratijna', 'query_question_lenses', 'query_rm_chart_summary',
   'query_rm_dasha_windowed_prescriptions', 'query_rm_dosha_remedy_bundles', 'query_rm_pattern_remedies',
-  'query_rm_prescriptions', 'query_rm_resonances', 'query_triangulation',
-  'traverse_chart_graph',
+  'query_rm_prescriptions', 'query_rm_resonances', 'query_triangulation', 'traverse_chart_graph',
 ])
 
 const OMIT_RE = /omit for (all|unfiltered|default)/i

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "561cde7834d7db40ed0dbd9c57e4ab38502531d7ba5f80e4441341811a6a42c9",
+  "content_sha256": "dc39b5740556522d330b1f7ceace05310593061fc5b4619a59bc9e4762eddbd4",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -427,7 +427,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -480,7 +480,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -533,7 +533,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -586,7 +586,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -841,7 +841,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha filter (default: 'LAHIRI').",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "build_id": {
@@ -3484,7 +3484,7 @@
             "type": "object"
           },
           "ayanamsha_id": {
-            "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4).",
+            "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default; \"all\" = explicit raw multi-ayanamsha rows). One ayanamsha per call by design (§1 E4). Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "category": {
@@ -3588,6 +3588,10 @@
             "description": "Chart UUID",
             "required": true,
             "type": "string"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false.",
+            "type": "boolean"
           },
           "include_navamsa": {
             "description": "Also include the D9 (navamsa) grid. Default: false (D1 only).",
@@ -3750,7 +3754,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -3805,7 +3809,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -3959,7 +3963,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4075,7 +4079,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4275,7 +4279,7 @@
             "type": "string"
           },
           "ayanamsha_id": {
-            "description": "Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | surya_siddhanta_classical | true_chitra). Unknown values are rejected. F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha.",
+            "description": "Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | surya_siddhanta_classical | true_chitra). Unknown values are rejected. F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. Exception: the KP dasha system (system=vimshottari_kp) is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever is passed here.",
             "type": "string"
           },
           "chart_id": {
@@ -4299,6 +4303,10 @@
             "description": "Projection facet. \"compact\" (default) — fact-card fields only (lord, sign, span, natal condition, citation); \"all\" — every chart_dashas column (verification metadata, jsonb sandhi/concurrent-lord detail); or a comma-separated column list for a custom projection.",
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` for the current Vimshottari Mahadasha lord (as of as_of_date/date_contains, else today) under the other four ayanamshas, even if this page does not itself carry that Mahadasha. A LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality of the lord only). Independently of this flag, a single-ayanamsha Vimshottari page that serves the current Mahadasha always carries the compact identity cross-check. Not applied under ayanamsha_id:\"all\" (the raw multi-row option).",
+            "type": "boolean"
+          },
           "level": {
             "description": "Dasha level facet — exact level. Accepts a number (1=Maha, 2=Antar, 3=Pratyantar, 4=Sookshma, 5=Prana) or the level name. When set, overrides the default level-cap (see all_levels).",
             "type": "string"
@@ -4320,7 +4328,7 @@
             "type": "string"
           },
           "system": {
-            "description": "Dasha system facet. One of: vimshottari | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka). Pass \"all\" to disable the system filter (all 7 systems). Default: vimshottari.",
+            "description": "Dasha system facet. One of: vimshottari | vimshottari_kp (the KP sub-period chain; read in the KP frame, krishnamurti) | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka, \"kp\" to vimshottari_kp). Pass \"all\" to disable the system filter (all systems). Default: vimshottari.",
             "type": "string"
           },
           "system_id": {
@@ -4427,7 +4435,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4491,7 +4499,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4612,6 +4620,10 @@
         "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
+          "ayanamsha_id": {
+            "description": "Ayanamsha (stored id or alias, default 'lahiri_chitrapaksha' = the primary reading). Pass 'all' for the raw rows of every ayanamsha.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID",
             "required": true,
@@ -4702,7 +4714,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4726,7 +4738,7 @@
             "type": "number"
           },
           "system": {
-            "description": "Filter by system: jaimini | kp. Omit for all.",
+            "description": "Filter by system: jaimini | kp. Omit for both. system=kp is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever ayanamsha_id is passed.",
             "enum": [
               "jaimini",
               "kp"
@@ -4765,7 +4777,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.",
+            "description": "Accepted but NOT applied: KP has one frame by doctrine, so the cusps are always read at 'krishnamurti' (labelled \"KP frame (Krishnamurti ayanamsha)\"); a different explicit id (or \"all\") is reported in ayanamsha_note.",
             "type": "string"
           },
           "build_id": {
@@ -4784,6 +4796,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts"
@@ -4879,7 +4892,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4895,7 +4908,7 @@
             "type": "string"
           },
           "domain": {
-            "description": "Filter by domain: identity | kp | relational | strength | meta.",
+            "description": "Filter by domain: identity | kp | relational | strength | meta. domain=kp is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever ayanamsha_id is passed.",
             "enum": [
               "identity",
               "kp",
@@ -4945,7 +4958,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5015,7 +5028,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -5053,6 +5066,11 @@
               "karakamsha"
             ],
             "type": "string"
+          },
+          "include_cross_check": {
+            "default": false,
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every graha on this page under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check (Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\" (that is the raw multi-row option).",
+            "type": "boolean"
           },
           "include_upagrahas": {
             "default": false,
@@ -5172,7 +5190,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5295,7 +5313,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5376,7 +5394,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha_id. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -5460,7 +5478,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5875,7 +5893,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -6168,6 +6186,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\".",
+            "type": "boolean"
           },
           "operative_vargas": {
             "description": "Which vargas to call out as \"operative\" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless.",
@@ -6489,6 +6511,10 @@
             "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all.",
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false.",
+            "type": "boolean"
+          },
           "limit": {
             "description": "Max rows (default 50, max 50). Applies independently to both rows and discovery_families.",
             "type": "number"
@@ -6721,6 +6747,10 @@
           "event_class_id": {
             "description": "Filter by event_class_id. Omit for all.",
             "type": "string"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class's status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label.",
+            "type": "boolean"
           },
           "limit": {
             "description": "Max rows (default 50, max 50).",
@@ -9346,7 +9376,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas.",
+            "description": "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored id or short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Pass \"all\" for the explicit raw five-ayanamsha candidate list.",
             "type": "string"
           },
           "chart_id": {
@@ -21047,7 +21077,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "cb69cd811be352a656878d520a1f20c70a1b75998f73ffa866281be4fe0493fe"
+        "sha256": "c1bc981a3c9e180d3c3ef0a7728d881a192e8947d21d6209600b88b63a798621"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21456,7 +21486,7 @@
           },
           {
             "path": "platform-mcp/src/tools/dossier.ts",
-            "sha256": "55cc23b608cdfc5473bb52d0cf71b300d8357b1199eac399c1c99076ab44201a"
+            "sha256": "8da4c5840760a6fd14869415e0a8ed61a8a1ae3839e10aeca02bb0d840340976"
           },
           {
             "path": "platform-mcp/src/tools/errors_that_teach.ts",
@@ -21472,7 +21502,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "f5f63f56d4cb98c32e9f9dc4603eb15c3f9f694694057adfd335b9ce16e86ce7"
+            "sha256": "ad3c30254d8a5c86ed64fd4a8dabdec0bcd601b715d77c1f33ee9d3c2ac05b6d"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -21484,11 +21514,11 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "f8043fcb726a866034871718e7c23df0f9c8f18e04d3009b9a0e3b317eaf6873"
+            "sha256": "827f12f4ef8a6103e187e2d81195dedf245114c27c112ea2e9bba584b7c61d07"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "67d507ae293483ab1933b915a28b22646ba2cfc6d0540e8991f1c8c1e0949f6e"
+            "sha256": "834cd69e8caa130cc95452f4b1e7b7fa6e5aad9c94cb2d88c0662e57342f090a"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -21524,11 +21554,11 @@
           },
           {
             "path": "platform-mcp/src/tools/l0_ephemeris.ts",
-            "sha256": "353b35b146d3a5fb0d674ab07a7dd24dfe24c006ae6b4e81224368049b6b718e"
+            "sha256": "737eae6dc33a4c5e08c5f3293aeada2c1f6d6f64fb213351939fd615adf39cd6"
           },
           {
             "path": "platform-mcp/src/tools/mechanism_retrodiction.ts",
-            "sha256": "7b631d7ecf6f5853f9728a78b9e09a78cb235141f9e5f19bb04d02d7426e9d73"
+            "sha256": "c10f80ef0614c4a3cf02e817d3f37abca7b79686103ea2bb45c8f2f82c469d5e"
           },
           {
             "path": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
@@ -21572,11 +21602,11 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "8adc10c9bc7977acce676e42f1a0b5d6fff02519d3aae802d6d4313d80ce3845"
+            "sha256": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
-            "sha256": "02bee61649464ed7285e19a024930174140a09c65596620bb0555da5bde74e4b"
+            "sha256": "ce0a85803edae6165f4d69b4abb6957569701f161a99e735d671c6514ee9958a"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
@@ -21584,7 +21614,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
+            "sha256": "a6feac5e8e4bfcda9b8b66de0bc21734fc4e58d86d9223a48a562a5d7906fb12"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21608,7 +21638,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "99b8c196e8d1712cca75c56790b088daa60c957dae20f686f5d1d5845e34e26c"
+            "sha256": "63f366f517405811fc565facb9df22c33279da555a6aebd803d7bc4566b11aa0"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21620,7 +21650,7 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/pyhora_natal.ts",
-            "sha256": "4d9eda143a9cd878564dee64a1f40f084c7a9550761b21bf096f189cf4b03cd1"
+            "sha256": "ae7415c75e0d2f089da5fbbabdeb4aa0a843c734c7fefb19de0db90ff14f2cf4"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
@@ -21636,7 +21666,7 @@
           },
           {
             "path": "platform-mcp/src/tools/scan_fetch_signals.ts",
-            "sha256": "4450e3f934d6b40c021c57cc1795c64737268f02ccd12e6964facd18648355fb"
+            "sha256": "dcf9590b9b0e1f6493afdab2530a9acf76a541c80593237780544e40558d9cd4"
           },
           {
             "path": "platform-mcp/src/tools/session_tools.ts",
@@ -21644,7 +21674,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "7a401801d1cee61d0ed601da54473fa9d6425273251c0a8a8cc74f7bf1b0a47e"
+        "sha256": "e0a200bc35f5c0d5e5cb693d27df92b8f2aa6b5420a16aee8bfd71d1f05d6a58"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21658,7 +21688,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 205,
+        "member_count": 208,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21670,7 +21700,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/constants.ts",
-            "sha256": "6b776b83ee5a4b9f915db0eafe3d6e34967f6a725515c2cae15a6b8dd6cf14cc"
+            "sha256": "23df4cd0b32b70842f9086665868fa6f96f1e6d91781419faa3112fead0587a1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
@@ -21691,6 +21721,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/generation/served_generation.ts",
             "sha256": "1b912281874d43041abbbe824f552fa6bfcd8841e8787ef917dfad84d4c44727"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
+            "sha256": "47b22307bba2f21b0f709a7dadf5e7d1af5d90d92c70f57111cd7b1a648822f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -21746,7 +21780,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "c95cd2a5d061b58395e933d2f172d287ecb172ec9b851cbcc7f33d837418e535"
+            "sha256": "306b21eb40a6de69dc5de1c5e533e65b50548e0f261643fdf06a0d26f983acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21755,6 +21789,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
             "sha256": "66fe0dcf219d82c47e14a427eca773430d4e950eed1d597fda923b5f95a6bbed"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/kp_categories.ts",
+            "sha256": "f77b2e433095829c6f22defb47d46bd33de3fca868085c5a906bb2e2adad6ad8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21949,6 +21987,10 @@
             "sha256": "afa6725b35ee5ff9a6fa02d57d03e359cd412bf5fb6488fdcba33c766de620ab"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/citation_narration.ts",
+            "sha256": "54c65a348bfbcdf9b998b8fee3a952ce1b0e091887060607ab9ec9847940a712"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_aliases.ts",
             "sha256": "b4549bdace0f67e11724740f155fb200d402a97887fdab7852cf1feb3b29bd5f"
           },
@@ -21962,51 +22004,51 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
-            "sha256": "8451abdf4f836b8c2eb72b78f34ff3aca335b5f237ac185f210117b91b4cadc3"
+            "sha256": "f9c3eb428828ff9193f433fe04122af196304c1d2369424c50e6a55b73a43991"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
-            "sha256": "98c8543fc4d7366e44d6dd14cbfded5eec02005de86fa5b6ed4aada6d15078dc"
+            "sha256": "965cf3e48a423d8da670551340473a35cc5aef431fa7cab2f32b6574a2beb7a5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "1b430efab124f5c304b7ff6b3788ee6a23cd86fad059833bedf1994ad4949a45"
+            "sha256": "4ccaecafbef0166e95ef781b119d7b4a4438d657af923c9041201b4129d06d4c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-            "sha256": "2f79d75d060d24169cb34405bc6f4706dacda149f5e4822a030501c23e8e0fae"
+            "sha256": "f78ce291d6489490e78ee04a698e7aa3288e6bc2b545f213e05cc1cd0fd773cd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
-            "sha256": "24653dc1f1878ebfa601232df0a749a0b820bb2f8c52b1422549b516bf518258"
+            "sha256": "0eefe7edd914987bc90802d7edfc2b3a01735b7ddef196fadc274c782063e797"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
-            "sha256": "0d854853124e730335c4392d6978fe6e093e577cdb32873fdcc3c574b4908000"
+            "sha256": "4c62adbad681445c798d164e3c07832778144902540587f02ac26e29fe1c4f11"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
-            "sha256": "56e8c9be0bfffbb7444c61ddad798a04d56e28ece06066d488db369dcd48e52b"
+            "sha256": "cbedf0897e497c799f4f92a012e90280237dc5a53be2b69308f31b4ad1b1acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts",
-            "sha256": "c3d200e0fa2d41852ed778949f9dea7862ed7d7aa0144aa2bbc6a421ac604bc6"
+            "sha256": "8de25e12e779768d3855dde155d9d366015479727ff5fb55fc2df0749371384d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts",
-            "sha256": "3d4b5e2604b0ddc372f8230603a436d0339d4afb5e2b140e46e12ada57f1b6ce"
+            "sha256": "b2c6186f65ce44ce96dc287b3499ffdf606f3eed08c2b7e0f8374ad3a9d07f56"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
-            "sha256": "d879196139c9591435451b35ef22292b3a56e9430673082f3746f0b3fef776a9"
+            "sha256": "f5cd52b2ea0f08fe68601d4eab9837a091c025195fd1a090351d2b9bb94ece4d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
-            "sha256": "2d3a0364def4ae893303f299c3bd8e6b341142d1f1ffc3b267855e06043b3051"
+            "sha256": "5b43aad2b6bae4876a18cda3d479af42cc85364dcaa7f05c535db93d6e7439f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "7ad2386313b1fa087e5a4eca1047a094bcd488e03220acd14399d986da532aa9"
+            "sha256": "54bcb8218561f0afd8495ce693abc58648589d638fe2f0d2d178129dff0bda81"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22014,99 +22056,99 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
-            "sha256": "22fd718f853ef35d037cd4fbc160515947af4ea10c3a8669d843cae3d46993b8"
+            "sha256": "6eaa72a8d2299e454cc84df84b328902e9b02e55e0dacf151567b5424a07e4f8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "180c8a5b991085e300fb9977d5ad0d328516b18ef375a6274ca97c945cbb6670"
+            "sha256": "278a8a97ee62d334bbdafd27db04071e9106ff768be53f2bf7fc92d8db8483ba"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "e8e81a05d71f3e77a97a09392268211d1bb7bcaad201fda498fed0f15fe5c7d2"
+            "sha256": "0caeccb6ee6f3725b234b1f8e21e24b87d7c14b750fe30a5a818dc96d91ba43e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
-            "sha256": "5d0ed3dd87113298e5cc24695d3d244c92298c2ae1003cb1994dda76f8f8d875"
+            "sha256": "34d22d09abe647fa96089d02c4668e4729de48d23be99c971515471c6fe37504"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "ea0cc924ac629bc7aaf3427c0d8a15583b75de839bf730003216fc4fbb00e06e"
+            "sha256": "59e7e5e1624261814eea378a49a46c7593215f77f604d1806505d57cbcab7dd1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
-            "sha256": "4255680b6955b008f1cfcd29448e13e99519e3866685c9b330ecdadc6ee63780"
+            "sha256": "1003461d6a5bf84901e7f88c9670f62e3a17b4d3ca97e20c04cff9304e1aaf7f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "16e98b3b5c107a3d7574ad0f8d48c77f4e77f04bc70c74dffaee007040a2feff"
+            "sha256": "930999751c56dff3127e37e64f1a0e0eef83f8fa0c49bd99872c0f928a007087"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
-            "sha256": "cd5d60969494d93b3b4fce61c7346716cc8090fae3468178a365d36bdfd171da"
+            "sha256": "e7d51945c6fbc30cd3557c82104877e97bbf62f667687a043580ee3875ea726d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "36201481d0dd4a40677ce0b64c38f7054471524a850c13ff5ae147bad46d040b"
+            "sha256": "56fe79fe07851607218bbdb47c119c02d92dfbe1cf15a05726eebe8da355a04d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
-            "sha256": "d7d482b7ac0c1e6ec0ae1add59cc2b69696e5fe78f32b938e86f282272fc6503"
+            "sha256": "8e621dab1b115f6cbedae05405c26669dfd0cad1b8dd92e835a55d1a088a7934"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "bfe28171d610c8f9ce559d1208e36518dded6d9b91ae6ea8e193edc205be46b2"
+            "sha256": "13479e56b3750f44c89f93b8f887a89928aa5ccc01a699ff823f736276b2d959"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
-            "sha256": "6093c220c703eccbd38b369dc5ed8bf2fe69ef289313ea90a4a2f0a9d12e5a5c"
+            "sha256": "afdec5308cb19dc282b7ad546a2427b0c01f8d3b23740538be288a06ab66a4fa"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
-            "sha256": "2f655b24f7d12644fc0059d1c2b8b90112e9ddea3621285ea33139111635a001"
+            "sha256": "92e2d1ca41d28c4d6a578d8e3d3c913ef57871ff662eb4dedd1cb24dbdf1c42c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
-            "sha256": "7d2aa4d3ae7b927d00e458f9782f9df51111483b9a76b5b50a26bf2f35d425fc"
+            "sha256": "ed0ed640693b25281e6f83161e77536c6d1ca12dced20d0d7b2eb552a9ca0496"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "af405982ac3a9886c2519251f2020742bd51769f200e60cb2ec94747ea1f3601"
+            "sha256": "52a89cd9ce6906cbeaf7df0a69279ce9781216ca769943416d39a09f25c8cd38"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "564bbb75c6fc05485e1c3f88c4a3db0b7a02c8b9e1a178afa740d05b784a639d"
+            "sha256": "f649381e8a4ad5fc9af7f7e56fab7fd204056c0c3230dd2f766660d6226f70b2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-            "sha256": "ddffc1c785eb301db7cdece3c8b990b12957bf2e02c2cdcd537506e5c57fcc51"
+            "sha256": "2a1f3a647b4ad91e3582335c995dffa81573afa471954a49820c9c2e71068b5d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
-            "sha256": "686dbaacc4c3abea6745a21aeb828dbc779ac2a63cfbb2ceaab70c495c4c1f9c"
+            "sha256": "0217d68a66a801a99d1cf895518dc84fc1d0826d1d93ccfda2e3b4870b486b1a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
-            "sha256": "2cd81d1c54b55c486b98b67cabcf246dcb21baadb6da3d8550c36488ecee4d30"
+            "sha256": "744bceddd32dc08de5cda07fe4eb539f9f9a9c1c67553d62b0adefd4272254d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts",
-            "sha256": "df804a4b12675e710216b2bf07849b65d2f3c0529802aa88e0a2be63ac6efe7d"
+            "sha256": "af3046cf8bcc2949e8d0349193986bc21c6cdea4090e38d28b7d7a0274a048b0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
-            "sha256": "ec2a979384243fb4243fd007b71481015086d1dc739a2129715df1b32d4a626e"
+            "sha256": "70007950531b6074afabfdbb35d1fb961fa885e0b98f22ef9a64eed99d93fe83"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts",
-            "sha256": "132832ba6a5e5cee4ced26c0b45d6ad4089651cec1b65d1daae45bf4dec388a5"
+            "sha256": "4cb970fe87cc8d31777a790ec5c1daaa6751686f0cefc8b9a568a28fa24b70a3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "7b2aaecfe02df408dccff6bf23ae4536fa3e4d64a981ad6510d9af8a7cb03784"
+            "sha256": "4ea1fb249f8ee304ae0416d933adf56c407a724faceec5b5a9bb3d4043cd6c5e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
+            "sha256": "3875f19d06a616f159e5dc619ac92855c7c6cdabb6eed4711e712ce31fb13085"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -22114,7 +22156,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "a5ea014254d4bdbd5f99c919785ce0bfe2aae24e5d1f0d4c3767e73b0b060b38"
+            "sha256": "4ba699fd7d838e4049a81027582458b61f7e00fe423ee6fdb621a75ae23fa01e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -22122,7 +22164,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "69602a32786364ed8381c77c1c06cdae75d653f8566a9f3a28df4da99f3a089c"
+            "sha256": "cd355359dd35bf5381d4b96823ce73e8c64f19552b86a69ad344c7664f53071e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -22130,19 +22172,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-            "sha256": "7f75679d48625a6854473a417ca37615d31357c4c3333515d68cff5787d4a4c2"
+            "sha256": "f106c95294ceac07df04a22b694ca15fcf50d07df73d03e8e1524027ff51d25a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-            "sha256": "d59a89f778e3c55ea354eafe852b12172be1a3cee8409eec13321aa7ddf3c465"
+            "sha256": "002753e0883a2ac4214baf7bb98e9555b5f2429acd6acd7983eedeefbfb84c28"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-            "sha256": "6a6c4b284de8ced7b4c9c1aacc1abf69553d94f98a6bb39e1971a37e75d314c9"
+            "sha256": "216c78d92ee8919fb4edab3cadaf107c4c05aeadf99c2669326f8b11dcc428ac"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
-            "sha256": "5928b0fae1f1e099a84b92323fd1cb92d8ab230cd4541916dd956bd9fa4afc3b"
+            "sha256": "2e7b34f7035f2a66b2beecb2bec2e642398a8e5c1366301c8668c1b2e6538eea"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
@@ -22150,7 +22192,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
-            "sha256": "7ac963e85d673e64539b030491f5fd71b9c427b073de02221f0311947323b7e1"
+            "sha256": "aee13efdfca464c4632662d3700b5b0350cc1af32c10200fd37200ace851e29c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
@@ -22158,11 +22200,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "69aef68f0a23848444b9a9a00f9e6aba287dedd309db7699e424959ea616aac7"
+            "sha256": "85b8344064ae219aece2381795af39dd8a2f6ceab7c851bad85125e173221494"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
-            "sha256": "7b6bee806c5d8fdc8bcca3625f09aa77dc3321719b6ac88d61ea676a2cd8da65"
+            "sha256": "604531263388437f910a3d2cc15a70af5990dcb2697aba2f9fcaa9eaf07c6c87"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
@@ -22170,7 +22212,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts",
-            "sha256": "8e653bf2be204c3314afc76d71df231ec20b54b270c4e6f4b0e6a58b35c0e0d4"
+            "sha256": "cc3f20647d62788ed215f0bdce166fb83fcca58af027be7891cba87cce743049"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
@@ -22178,39 +22220,39 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-            "sha256": "ef211f36f272e9bc96672d42e4166289e9df8e1252fcd14a56aae85caed09403"
+            "sha256": "2a37b90862ca7e62caac69ff640c14e1a2a57fb4e2d8fc7aa4920bb23aaf3b48"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts",
-            "sha256": "c372bf403000f67658af9d36334bd43288f0cd27de18feff4c8c1abfa598904f"
+            "sha256": "859abdb40a39ac06824b571f27071ee04d94dcf56c048f30c051473364e73a6d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts",
-            "sha256": "da9298c813322d699ef6d45fb57ad89294a142cde636b8461abc05c3008dff42"
+            "sha256": "561c7985333382c3ca9adecf2caef5c1e17021cc4a12985418c2911363002783"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts",
-            "sha256": "bc78e132a363c9c3ac6be4ad8f352f3d87056a4e782b9bd1f90d412a686848b7"
+            "sha256": "8bf1416119ab2bee2ca5040c0e32a91495b1fffcae2ae46281e5efd0c3947c74"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts",
-            "sha256": "7cc91f55d344cf04917d02c4dc35977ebc1b8be4ef1be84ce4cf2c2b7c1b266a"
+            "sha256": "0812f4e020394095620dad779a1cb3b316aa0e0d76cc8752cb6dde9bb73163c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts",
-            "sha256": "782d3ef19c148856790c2346607ff637caf9e717725dc4af71b99b15b05fe88d"
+            "sha256": "c52173d3e2d435145ba297b1d92e51120e0997bb6a1382cecf5fd195adc7a974"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "c543b898430790476bbfe266ccc0411ccf0548b38d3f5bbfbf0a4c5ab759c9c2"
+            "sha256": "87ec58d7a6e014ebc654c33f9c6b55c2b89b24310564bc80b49b08e9e668ec4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
-            "sha256": "41f27f820fcd9b69822026adfd8d142aba20a6e30c1d853de7ffcdcc4cd58c3a"
+            "sha256": "983d429e05bea30600e6a31216ef726ef06f9ac955627a7871694fe3b97c9532"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
-            "sha256": "b287feac6e64ad8ebdcf987a832f88e61fcd188375775db5adf3088429a11a05"
+            "sha256": "360885fc8029bddd69813dd3b3e44caf1e1c06416bece60a4e7b51448bc9643f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
@@ -22218,7 +22260,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "2c580621abc51d2f9fb6aea195ed66e4bb2ef7458ee757b3c9608d33009c8af5"
+            "sha256": "1f0e40d87c59f1411b4bdfb6c29d91858ce28fed6ca8f696fcc5b25fd1219d78"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
@@ -22306,7 +22348,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
-            "sha256": "fd71e047e9a5654c9609d32b27539b5ea3f31e4547a24f2d1f37de26574827af"
+            "sha256": "31cab2e1aa0550d77c7afa56dc6d8aa18ecd98ea1a2541aa6527e7ff26be4e4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
@@ -22390,7 +22432,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "ccf9704c917e1775261c58578427461b1de954829eee600fcfb8a5552e298fbf"
+            "sha256": "2a9cb20e0276b77d4bc851c477e204d63566284c02d4436b0dc967a8d9ef3cde"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
@@ -22406,15 +22448,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "edad33814859b10a9db07540d741b7887920e12e9285dd8b7c895e8e3406ed2e"
+            "sha256": "fdd9e12ff4a77f88da2f92bef0e6e0f517a8c1e4cfe8e67a095a71ba577967c2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "8eed667ce4020730d48358bcc4e67aa36091faa3e41ca176ca65c52fa40b2943"
+            "sha256": "183981ecc2fe999a839f406959c2b8aac49663098d0d8d888738241270000d92"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "3dff951d46cbed29bbb7796b5b8df1955eb27ef29c92d4b74364826e9c552de9"
+            "sha256": "9a9465b92a40ff0e3583526215a427ed93c246951da35652c222177eecc3c20d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22446,7 +22488,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
-            "sha256": "e26c7496fc5201814a1aeebc9c003ac3a3796daa9081fd14a66914c4f07762e1"
+            "sha256": "6262742030e0a7c843b3b68b3732eb296e9d3f3d4886150c9b5d588b488f70da"
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_search.ts",
@@ -22482,7 +22524,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f5ffbd7f40cc0fb64ceb2363e66482010fdccc6df80e20c46883081aa8b2ca05"
+        "sha256": "800e598a06d123562d241c1515f5f57ecf8564336ea96542bad95f66f9181a55"
       },
       {
         "id": "service_effect_contracts",

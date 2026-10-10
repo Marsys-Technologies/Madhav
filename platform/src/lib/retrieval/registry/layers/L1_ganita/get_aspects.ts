@@ -8,7 +8,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const ASPECT_CATEGORIES = [
   'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
@@ -33,7 +33,7 @@ export const getAspectsCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     tradition:    { type: 'string', description: 'Filter by tradition: parashari | jaimini | tajik. Omit for all.', enum: ['parashari', 'jaimini', 'tajik'] },
     categories:   { type: 'array',  description: 'Subset of aspect categories.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },

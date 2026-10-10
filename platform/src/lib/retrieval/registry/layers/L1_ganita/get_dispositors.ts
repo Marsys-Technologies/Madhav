@@ -16,7 +16,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const DISP_CATEGORIES = [
   'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
@@ -43,7 +43,7 @@ export const getDispositorsCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     categories:   { type: 'array',  description: 'Subset of dispositor categories.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 500 },

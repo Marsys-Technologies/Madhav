@@ -373,7 +373,11 @@ export const getDashasCapability: CapabilityDescriptor = {
     'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
     'F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it ' +
     'returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one ' +
-    'row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha.',
+    'row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha. ' +
+    'KP exception (one frame by doctrine): system="vimshottari_kp" (the Moon\'s KP sub-period / sub-lord chain, ' +
+    'an 8th system id) is always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever ' +
+    'ayanamsha_id is passed; under system="all" its rows come from krishnamurti and every other system\'s rows ' +
+    'from the requested or primary ayanamsha.',
   input_schema: {
     chart_id:      { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id:  {
@@ -383,14 +387,17 @@ export const getDashasCapability: CapabilityDescriptor = {
         'surya_siddhanta_classical | true_chitra). Unknown values are rejected. ' +
         'F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) ' +
         'when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass ' +
-        'this explicitly only to request a different, non-canonical ayanamsha.',
+        'this explicitly only to request a different, non-canonical ayanamsha. Exception: the KP ' +
+        'dasha system (system=vimshottari_kp) is always read at krishnamurti ("KP frame (Krishnamurti ' +
+        'ayanamsha)"), whatever is passed here.',
     },
     system: {
       type: 'string',
       description:
-        'Dasha system facet. One of: vimshottari | yogini | ashtottari | chara_karaka | kalachakra | ' +
-        'mudda | naisargika (case-insensitive; "chara"/"jaimini" alias to chara_karaka). ' +
-        'Pass "all" to disable the system filter (all 7 systems). Default: vimshottari.',
+        'Dasha system facet. One of: vimshottari | vimshottari_kp (the KP sub-period chain; read in the KP ' +
+        'frame, krishnamurti) | yogini | ashtottari | chara_karaka | kalachakra | ' +
+        'mudda | naisargika (case-insensitive; "chara"/"jaimini" alias to chara_karaka, "kp" to vimshottari_kp). ' +
+        'Pass "all" to disable the system filter (all systems). Default: vimshottari.',
     },
     dasha_system: {
       type: 'string',

@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef",
-  "source_catalog_fingerprint": "sha256:78f8100474b8fb9739c2d8679e241cbc620ea2be47c976bf6da0ea0475aac120",
-  "semantic_review_fingerprint": "sha256:aae8dca2e0fb54553cded58bc2c3aee37948af5421cd7faf1c08ee867bbda9de",
+  "content_hash": "sha256:4bfb3cd887aae892922a5220c2cc69a9f56549f127809a1b8b34a746f75364a5",
+  "source_catalog_fingerprint": "sha256:3b0324fa9d56797d02f926e5a3faaf7b032622bc18fcb5ddbdb595f3b1ca2140",
+  "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -2655,7 +2655,7 @@
       "scu_id": "scu.catalog.chart_facts_query",
       "version": 1,
       "label": "Chart Facts Query",
-      "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata). Evidence use: establish concrete chart facts and coordinate-frame safety before analytical retrieval.",
+      "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are always read at krishnamurti). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT; \"all\" for the explicit raw multi-ayanamsha rows), shape, limit, offset. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata). Evidence use: establish concrete chart facts and coordinate-frame safety before analytical retrieval.",
       "kind": "datum",
       "domains": [
         "chart_state"
@@ -2884,6 +2884,7 @@
       "inputs": [
         "ayanamsha_id",
         "chart_id",
+        "include_cross_check",
         "include_navamsa",
         "vargas"
       ],
@@ -2930,6 +2931,7 @@
           "input_contract": {
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
+            "include_cross_check": "boolean:optional",
             "include_navamsa": "boolean:optional",
             "vargas": "array:optional"
           },
@@ -3945,7 +3947,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-argala:v1",
               "capability_uri": "marsys://tool/L1/get_argala",
-              "contract_sha256": "sha256:429ee05fc2a9e928e87f3530637eff8cabf2b9fce3e1cbbdb1edba4453e01f12",
+              "contract_sha256": "sha256:83ae992e6b8c13cec114e3f53a4f5c1d1ad0750a62a1695e30e1078cbb140103",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:112-155 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -4133,7 +4135,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-ashtakavarga:v1",
               "capability_uri": "marsys://tool/L1/get_ashtakavarga",
-              "contract_sha256": "sha256:dcbdf75b26f16441732d797de01bc3829556c530849fc45151819c64c61acb3e",
+              "contract_sha256": "sha256:87f5d41ff7be74b95b9ea39470ce9a87b32ebaa0d165a5768b44d664a7519bfe",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:118-140 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -4321,7 +4323,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-aspects:v1",
               "capability_uri": "marsys://tool/L1/get_aspects",
-              "contract_sha256": "sha256:b5fc6a4bfc7b41b181ba5cd1f7f7363c86d0904442bc658b0e17e51c26079e5d",
+              "contract_sha256": "sha256:5769c1e868e15bfb075c762c47a652ad4177c05fe8c6e8e4cb4aec4e04ff7095",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -4769,7 +4771,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-avasthas:v1",
               "capability_uri": "marsys://tool/L1/get_avasthas",
-              "contract_sha256": "sha256:36b1758c541570f56f5952f8b85b6a48cbb1c0d7e96bea66d4cdeefc85a38990",
+              "contract_sha256": "sha256:ab5d2ab3ee79ed97825163b2bdd2ce489159110fda33d6541193c026da5d73dd",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -4955,7 +4957,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-ayurdaya:v1",
               "capability_uri": "marsys://tool/L1/get_ayurdaya",
-              "contract_sha256": "sha256:42e4401e0a9642ced334459897bbe833f7655a8ed66a8a5f849a0820378e9d09",
+              "contract_sha256": "sha256:db46db575be5e1d3cda9ca5ec5fe00bc7e026333da5937ea1f9ba0c528e6c5c9",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-131 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -5145,7 +5147,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-bhava-bala:v1",
               "capability_uri": "marsys://tool/L1/get_bhava_bala",
-              "contract_sha256": "sha256:13ac7c06be7bf7842900dfef26a45cb4ee8bb8e074720263554fe2ff8dbec0d7",
+              "contract_sha256": "sha256:5054623e622fccb10b36a9204ebc5e4ea06ccacd63b37d226935a3197ce867b5",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -5502,7 +5504,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-condition-composite:v1",
               "capability_uri": "marsys://tool/L1/get_condition_composite",
-              "contract_sha256": "sha256:09638aae4dc6b93887488b19017a2b68b3360881b5e623b9dfe0551aae8b95c0",
+              "contract_sha256": "sha256:ef01614deb9ba592f6f87364a8bafcfe1133ef94a7cca03861713a4bc1a994a9",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:75-107 | platform/migrations/251_ga_condition_composite.sql:1-73"
             }
@@ -5926,6 +5928,7 @@
             "date_contains": "string:optional",
             "date_from": "string:optional",
             "fields": "string:optional",
+            "include_cross_check": "boolean:optional",
             "level": "string:optional",
             "limit": "number:optional",
             "lord_graha": "string:optional",
@@ -6275,7 +6278,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-dignity:v1",
               "capability_uri": "marsys://tool/L1/get_dignity",
-              "contract_sha256": "sha256:7e807f7f897ff0be33bcd56ce1f871aee204a0854c27e43654dca6ca15fc28c5",
+              "contract_sha256": "sha256:5671d2f07600b0a031b312a0de0dd32e2cff43ba470eaea7dfd85bb89204739c",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -6466,7 +6469,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-dispositors:v1",
               "capability_uri": "marsys://tool/L1/get_dispositors",
-              "contract_sha256": "sha256:65e3e013834ebb7ad933ee60a6024be32d94c8cf22090516b962f3d2f0d04c9c",
+              "contract_sha256": "sha256:8138d3aa8db1c14b0d35c811de3f60f39fef26d39402460dfec4dda336ae2d8b",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -6904,6 +6907,7 @@
       ],
       "scope": "chart",
       "inputs": [
+        "ayanamsha_id",
         "chart_id",
         "limit",
         "offset"
@@ -6936,7 +6940,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-eclipse-flags:v1",
               "capability_uri": "marsys://tool/L1/get_eclipse_flags",
-              "contract_sha256": "sha256:5807f661835279fc855ce3f26b3223fde38ff538082a6ebdcddc183bc082d254",
+              "contract_sha256": "sha256:73f0459315de9a803f3b3626d99935c7855e1a96975f2c7e6be87c18c3ba6428",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -6951,6 +6955,7 @@
           "relation": "primary",
           "capability_uri": "marsys://tool/L1/get_eclipse_flags",
           "input_contract": {
+            "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
             "offset": "number:optional"
@@ -7115,7 +7120,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-graha-yuddha:v1",
               "capability_uri": "marsys://tool/L1/get_graha_yuddha",
-              "contract_sha256": "sha256:a5e9d87238ad476843eeab658dbf5db2bf0b01397602b58abe68d1022a660e20",
+              "contract_sha256": "sha256:24bc672492143c2655b547497a4dc1f70cbfd8a15891f489bc4e1c887cbaae7d",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:165-218 | platform/supabase/migrations/0001_brahma_baseline.sql:1579-1607 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/migrations/ws2_l0_ephemeris.sql:18-45"
             }
@@ -7237,7 +7242,7 @@
       "scu_id": "scu.catalog.get_karakas",
       "version": 1,
       "label": "Get Karakas",
-      "description": "Retrieve Jaimini karaka and KP (Krishnamurti Paddhati) data for a chart. Includes: Chara Karaka positions (AK/AmK/BK/MK/PK/GK/DK — the 7 temporal significators), Karakamsa position (rashi/house where AK sits in Navamsha), Swamsa position, Arudha Padas (A1–A12 across ayanamshas and divisionals), Bhava Arudha (A1-A12 + Arudha Lagna + Upapada, full Parashari 2-exception rule — on the default page alongside arudha_pada; a sibling arudha reckoning, not a duplicate), Karaka-house-lord overlap flags (e.g. AK also lords the 10th house), Karakatva strength per significator (how strongly each graha signifies its karakatvas), KP cuspal significators (Star lord + Sub lord + Sub-sub for each of 12 cusps), KP ruling planets for the natal moment, and Jaimini Tri-Deva role (Brahma/Vishnu/Maheshvara graha identification). Covers 10 fact_categories on the default page. Two further real, computed categories are available on request (not on the default page — large per-varga/per-house-pair row sets): `karaka_web_per_varga` (karaka relationships recomputed per divisional chart) and `karaka_bhava_concordance` (per-house karaka concordance) — pass categories:[\"karaka_web_per_varga\"] / [\"karaka_bhava_concordance\"] explicitly to fetch them. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
+      "description": "Retrieve Jaimini karaka and KP (Krishnamurti Paddhati) data for a chart. Includes: Chara Karaka positions (AK/AmK/BK/MK/PK/GK/DK — the 7 temporal significators), Karakamsa position (rashi/house where AK sits in Navamsha), Swamsa position, Arudha Padas (A1–A12 across ayanamshas and divisionals), Bhava Arudha (A1-A12 + Arudha Lagna + Upapada, full Parashari 2-exception rule — on the default page alongside arudha_pada; a sibling arudha reckoning, not a duplicate), Karaka-house-lord overlap flags (e.g. AK also lords the 10th house), Karakatva strength per significator (how strongly each graha signifies its karakatvas), KP cuspal significators (Star lord + Sub lord + Sub-sub for each of 12 cusps), KP ruling planets for the natal moment, and Jaimini Tri-Deva role (Brahma/Vishnu/Maheshvara graha identification). Covers 10 fact_categories on the default page. Two further real, computed categories are available on request (not on the default page — large per-varga/per-house-pair row sets): `karaka_web_per_varga` (karaka relationships recomputed per divisional chart) and `karaka_bhava_concordance` (per-house karaka concordance) — pass categories:[\"karaka_web_per_varga\"] / [\"karaka_bhava_concordance\"] explicitly to fetch them. Frames: the Jaimini/other categories are read at the requested ayanamsha (omitted = lahiri_chitrapaksha, the Lahiri primary); the KP categories (kp_cuspal_significators, kp_ruling_planets_natal, system=kp) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\" whatever ayanamsha_id is passed. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
       "kind": "datum",
       "domains": [
         "planetary_condition"
@@ -7293,7 +7298,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-karakas:v1",
               "capability_uri": "marsys://tool/L1/get_karakas",
-              "contract_sha256": "sha256:3db0d5d4f01e2927ed330e73cf6105c559b7dd94a5f6a645bb9e2c270cd295f5",
+              "contract_sha256": "sha256:28f50d2ca8c0fc8b4fdf66d72c2724dac837e9ffd004d25f6f8bd08e5e6995d5",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -7425,7 +7430,7 @@
       "scu_id": "scu.catalog.get_kp_cusps",
       "version": 1,
       "label": "Get Kp Cusps",
-      "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha; pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). By KP doctrine (one frame) this tool ALWAYS reads the Krishnamurti ayanamsha and labels the response \"KP frame (Krishnamurti ayanamsha)\" (kp_frame_label); ayanamsha_id / ayanamsha_scope are accepted but not applied, and an explicit different id is reported in ayanamsha_note. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "datum",
       "domains": [
         "planetary_state"
@@ -7658,7 +7663,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-medical-indications:v1",
               "capability_uri": "marsys://tool/L1/get_medical_indications",
-              "contract_sha256": "sha256:fb5389c775853ca5497d90ef13d6ec6549ecb8ad19c1b3a7e07f68be763b35d4",
+              "contract_sha256": "sha256:1143e135a8399027f634db6dbaa6be4f75fa9fdcb9440d5d725aa406bb4ae7cd",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:76-95 | platform/migrations/279_ga_medical.sql:21-55"
             }
@@ -7793,7 +7798,7 @@
       "scu_id": "scu.catalog.get_nakshatra",
       "version": 1,
       "label": "Get Nakshatra",
-      "description": "Retrieve the nakshatra-semantic layer for a chart: graha-nakshatra/pada joins, nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and cusps plus KP house/planet significators, gandanta and degree-flag markers, nakshatra dispositor/exchange/conjunction/co-gravity relations, graha tara bala, and cross-ayanamsha nakshatra statistics. Covers 16 fact_categories. Evidence use: establish the relevant computed or stored planetary state before analysis.",
+      "description": "Retrieve the nakshatra-semantic layer for a chart: graha-nakshatra/pada joins, nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and cusps plus KP house/planet significators, gandanta and degree-flag markers, nakshatra dispositor/exchange/conjunction/co-gravity relations, graha tara bala, and cross-ayanamsha nakshatra statistics. Covers 16 fact_categories. Frames: all categories are read at the requested ayanamsha (omitted = lahiri_chitrapaksha, the Lahiri primary) EXCEPT the KP categories (graha_kp_lords, cusp_kp_lords, kp_house_significators, kp_planet_significations; domain=kp), which are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\" whatever ayanamsha_id is passed. Evidence use: establish the relevant computed or stored planetary state before analysis.",
       "kind": "datum",
       "domains": [
         "planetary_state"
@@ -7849,7 +7854,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-nakshatra:v1",
               "capability_uri": "marsys://tool/L1/get_nakshatra",
-              "contract_sha256": "sha256:0e220b6a3a03ac5bfa74b22b6b596f9f91f9dd014322fea25092c1171d8c00d9",
+              "contract_sha256": "sha256:53d9b7d1488cb8ac91c719683b14c3e49c5645cda938fa02fb918f8baa238001",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -8046,7 +8051,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-panchanga:v1",
               "capability_uri": "marsys://tool/L1/get_panchanga",
-              "contract_sha256": "sha256:db8f8d6a4d498bc1a2e4a98770534ccaed0205a0ef2f26f4507c0b316a1b6f91",
+              "contract_sha256": "sha256:fb369ea00ed6bfc22f359d1033080a1de055405959a705707a648fe3cc1ff311",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:13-27 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:128-158 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -8209,6 +8214,7 @@
         "categories",
         "chart_id",
         "frame",
+        "include_cross_check",
         "include_upagrahas",
         "limit",
         "offset",
@@ -8258,7 +8264,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-positions:v1",
               "capability_uri": "marsys://tool/L1/get_positions",
-              "contract_sha256": "sha256:cb6507bdd348792244a9310cc921bc86e541c9dc4bf8aa930f53a0f562622585",
+              "contract_sha256": "sha256:52ddeff4e4b16c585790b33b5877ddb9accee961066fbf47de47fc83ac790d12",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -8278,6 +8284,7 @@
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
+            "include_cross_check": "boolean:optional",
             "include_upagrahas": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional",
@@ -8397,7 +8404,7 @@
       "scu_id": "scu.catalog.get_prashna_lagna",
       "version": 1,
       "label": "Get Prashna Lagna",
-      "description": "Retrieve the computed Prashna-Lagna (horary ascendant) for a prashna chart from ga_prashna_lagna. Per-method row: lagna_method (e.g. tajik_moment_lagna, kp_249), lagna_rashi, lagna_degree, kp_sub_lord (for kp_249), is_primary flag, classical_citation. chart_id here references prashna_charts (the horary-question chart), not the natal chart. Filters: ayanamsha_id, lagna_method, primary_only. Bounded to 20 rows with a disclosed total. Evidence use: distinguish configured rules from chart-specific formation or horary evidence.",
+      "description": "Retrieve the computed Prashna-Lagna (horary ascendant) for a prashna chart from ga_prashna_lagna. Per-method row: lagna_method (e.g. tajik_moment_lagna, kp_249), lagna_rashi, lagna_degree, is_primary flag, classical_citation, and a kp_sub_lord column that is ALWAYS NULL today: ga_prashna never computes a KP sub-lord, and a kp_249 row carries the ordinary ascendant (rashi/degree), not a KP-number lagna, so no KP sub-lord reading is served from this tool. chart_id here references prashna_charts (the horary-question chart), not the natal chart. Filters: ayanamsha_id, lagna_method, primary_only. Bounded to 20 rows with a disclosed total. Evidence use: distinguish configured rules from chart-specific formation or horary evidence.",
       "kind": "datum",
       "domains": [
         "yoga_and_prashna"
@@ -8452,7 +8459,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-prashna-lagna:v1",
               "capability_uri": "marsys://tool/L1/get_prashna_lagna",
-              "contract_sha256": "sha256:c007c6e0f6f0685123d6730381b8697fd2483db758ff3734294dfebc6464aff7",
+              "contract_sha256": "sha256:573a8cef59a234b05cf0b5b2d057a7700d7a797dc32b5fbc4a628e69b2d9e728",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:70-95 | platform/migrations/289_ga_prashna_lagna.sql"
             }
@@ -8643,7 +8650,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-sade-sati:v1",
               "capability_uri": "marsys://tool/L1/get_sade_sati",
-              "contract_sha256": "sha256:15dace1b966b7cb7a04608d9d97676fc427dc3c8ef0fd28b7a462c7f5f14954e",
+              "contract_sha256": "sha256:dd1dcf614198081bb3c36658cc948d37b0d16a4dc7c27e47ca60bcd7f0e52585",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -8834,7 +8841,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-sensitive-degrees:v1",
               "capability_uri": "marsys://tool/L1/get_sensitive_degrees",
-              "contract_sha256": "sha256:9c6ffbed11ae74dd5bc39e5b6dc6fb2b34f4ff07fb5b2fd56e0448476409c493",
+              "contract_sha256": "sha256:7e32f32bdc8067d4a2ce2812b2b4e98a28ab9ed05699d42019cddfb64f3ccb25",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -9025,7 +9032,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-sensitive-points:v1",
               "capability_uri": "marsys://tool/L1/get_sensitive_points",
-              "contract_sha256": "sha256:f7644c045201d1d6e95cc38bb5bd84d86e76103b15b26b788651cd13a3c1f67f",
+              "contract_sha256": "sha256:23d753584d54aa3192ba81c61759910be3ebcacc185208b51ec06c95aed4c374",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -9415,7 +9422,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-structural:v1",
               "capability_uri": "marsys://tool/L1/get_structural",
-              "contract_sha256": "sha256:6ee54ddbcd92d426eceb5c5e877e81ad508c930cb5cdc71829be966bef72d4d3",
+              "contract_sha256": "sha256:70a6fd417deb244aada62fba517400f480ee473a3f943532f77aa348f8070cd4",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:151-171 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -9613,7 +9620,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-tajik:v1",
               "capability_uri": "marsys://tool/L1/get_tajik",
-              "contract_sha256": "sha256:2106c67e134a58c1173690933c24c139b7f54707635cf1ece290dc081b1e0f7b",
+              "contract_sha256": "sha256:007a2e53ba0a701fecd940a7e191ae9445533acb5fbf0e53f0bae9955264a22c",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:123-218 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -9808,7 +9815,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-tara-chandra-bala:v1",
               "capability_uri": "marsys://tool/L1/get_tara_chandra_bala",
-              "contract_sha256": "sha256:9947cadeb0500ae99b69c522ac5ed3f36e137e8847175db715f2462783276271",
+              "contract_sha256": "sha256:1445f9a97c652881025edc257a3c2fb432afbfef703f432b6d959a040f8fbd7c",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -9997,7 +10004,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-transit-anchors:v1",
               "capability_uri": "marsys://tool/L1/get_transit_anchors",
-              "contract_sha256": "sha256:e0602524420476c0f87a9f51ab5f10a0d77f5d88c0d49175e1654970007ef5d0",
+              "contract_sha256": "sha256:43949bbaa5afacfcc063cfae1ba9dcda267b7072e802ddf99005e825a3bdddf1",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:67-109 | platform/migrations/267_ga_transit_anchors.sql:20-49 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -10190,7 +10197,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-vastu-directions:v1",
               "capability_uri": "marsys://tool/L1/get_vastu_directions",
-              "contract_sha256": "sha256:9e1709cac30206edeea91847365d5f43839b903246442903049c1fcb6b950705",
+              "contract_sha256": "sha256:54110552d1b73e348562240c48aa0976d21e275afd8101bed06c355ff48ef9bf",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:91-117 | platform/migrations/284_bg_vastu_directions.sql:37-66 | platform/migrations/286_ga_vastu_planet_direction_map.sql:8-38"
             }
@@ -10381,7 +10388,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-vichara:v1",
               "capability_uri": "marsys://tool/L1/get_vichara",
-              "contract_sha256": "sha256:72310ed4c75beca1c673e2ab276ac6eb726008d32dba3369777e0baaed377f12",
+              "contract_sha256": "sha256:f8676995d2177435ee9bf912a5bb5bfdcc9a35a2cbc1ddc8785228df5d2b7086",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:151-176 | platform/migrations/435_ga_vichara.sql:44-83"
             }
@@ -10577,7 +10584,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-yoga-dosha:v1",
               "capability_uri": "marsys://tool/L1/get_yoga_dosha",
-              "contract_sha256": "sha256:8ccb6b76955a2f6c7e0d685d0ee42cac6704c7e8a6279c78ff7759cf4247b364",
+              "contract_sha256": "sha256:c745a09e84d8bc56d99b003a198830b9ed71cf1f68c43a1caaa70340db4155e4",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:5-6 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:107-174 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts:206-218 | platform/migrations/240_ga_yoga.sql:4-48 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -10737,6 +10744,7 @@
         "chart_id",
         "graha",
         "include",
+        "include_cross_check",
         "operative_vargas"
       ],
       "outputs": [
@@ -10792,6 +10800,7 @@
             "chart_id": "string:required",
             "graha": "string:required",
             "include": "array:optional",
+            "include_cross_check": "boolean:optional",
             "operative_vargas": "array:optional"
           },
           "output_contract": {
@@ -14438,7 +14447,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-cdlm-summary:v1",
               "capability_uri": "marsys://tool/L2/query_cdlm_summary",
-              "contract_sha256": "sha256:1a74c2417aaa140260ad7fdfa1b30e249cb52ae253ceda0a77964a29132ad3eb",
+              "contract_sha256": "sha256:290881d9a238248feba421365af20379a063ef2be42e6de24d89484eff4d6a22",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:32-73 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:182-201 | platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:10-86"
             }
@@ -14617,7 +14626,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-cgm-motifs:v1",
               "capability_uri": "marsys://tool/L2/query_cgm_motifs",
-              "contract_sha256": "sha256:ee9fe8f73582ff95b21e95ea6cc1f6a3db56c83a399c57170d1dcaed7b59ef6d",
+              "contract_sha256": "sha256:7461548be5d97f247e7c8830eeb7413981a4027cf71fe9a5dbf4d4a9b8bba611",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:67-84 | platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql:1-80"
             }
@@ -14804,7 +14813,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-cgm-paths:v1",
               "capability_uri": "marsys://tool/L2/query_cgm_paths",
-              "contract_sha256": "sha256:40657ad02e34ae576e3d167523bc18695dd38590e979f424503315b4958f26a1",
+              "contract_sha256": "sha256:0c960d16d5358a19918fd188550b4a8b909a64092d4d1fdc93dcbddb88073edc",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:66-83 | platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql:1-80"
             }
@@ -17021,7 +17030,7 @@
       "scu_id": "scu.catalog.query_discoveries",
       "version": 1,
       "label": "Query Discoveries",
-      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the highest-scoring member's narrative fields. Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
+      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the highest-scoring member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\"). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
       "kind": "contradiction",
       "domains": [
         "evidence_quality"
@@ -17046,6 +17055,7 @@
         "chart_id",
         "discovery_class",
         "domain",
+        "include_cross_check",
         "limit",
         "offset"
       ],
@@ -17077,7 +17087,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-discoveries:v1",
               "capability_uri": "marsys://tool/L2/query_discoveries",
-              "contract_sha256": "sha256:c6a6b64862229752101f1c2854874be275e207c841dcd5027143db0bf493a1e6",
+              "contract_sha256": "sha256:46be499f0191e5d74384f3fabfaf64487ef2445f27911462554f95367de9d672",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181"
             }
@@ -17096,6 +17106,7 @@
             "chart_id": "string:required",
             "discovery_class": "string:optional",
             "domain": "string:optional",
+            "include_cross_check": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional"
           },
@@ -23427,6 +23438,7 @@
         "ayanamsha_id",
         "chart_id",
         "event_class_id",
+        "include_cross_check",
         "limit",
         "offset",
         "status"
@@ -23459,7 +23471,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-pratijna:v1",
               "capability_uri": "marsys://tool/L2/query_pratijna",
-              "contract_sha256": "sha256:3710dce083200c784bc25a25970c0e24bfeb9e09f3fea7c05fac227b86e55381",
+              "contract_sha256": "sha256:699e71700f3ac2f8f0e86999eb13b89ea8dd0a023b0eff406186c573aeb910bc",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:155-177 | platform/migrations/665_bo_pratijna_integrity_check.sql:10-91"
             }
@@ -23477,6 +23489,7 @@
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "event_class_id": "string:optional",
+            "include_cross_check": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional",
             "status": "string:optional"
@@ -24431,7 +24444,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-question-lenses:v1",
               "capability_uri": "marsys://tool/L2/query_question_lenses",
-              "contract_sha256": "sha256:a4452c4cbde4065269e2f5637e8b376324e9b64959e93187edc6d680ee6d7bf9",
+              "contract_sha256": "sha256:429a9610974a45f98d53502b4b1eec3e737c54cfc856567866683ae0c93d77d3",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts:84-117 | platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql:1-80"
             }
@@ -24567,7 +24580,7 @@
       "scu_id": "scu.catalog.query_rectification",
       "version": 1,
       "label": "Query Rectification",
-      "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id is an OPTIONAL filter — the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); OMIT it to return candidates across ALL ayanamshas. Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
+      "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id: the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); the stored long ids (e.g. lahiri_chitrapaksha) are accepted. The default is the PRIMARY reading 'lahiri_chitrapaksha' (Lahiri-only candidate list, labelled `candidates_basis`); pass \"all\" for the explicit raw candidates across all five ayanamshas. The chart-level best-offset values (best_lel_fit_score, confidence_*, win_margin, competing_candidates) are pooled over all five ayanamshas and are labelled `best_candidate_basis`: \"consensus over five ayanamshas\". Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
       "kind": "datum",
       "domains": [
         "evidence_quality"
@@ -25918,7 +25931,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-chart-summary:v1",
               "capability_uri": "marsys://tool/L2/query_rm_chart_summary",
-              "contract_sha256": "sha256:360759476d21e94a793f09747da6bb417881298ee94297b8b7dc33dc2316e518",
+              "contract_sha256": "sha256:54a5c39cb1ceba8baa3022af061433a45b6a7b2203a810950f0a2e9eaf24369d",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88"
             }
@@ -26104,7 +26117,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-dasha-windowed-prescriptions:v1",
               "capability_uri": "marsys://tool/L2/query_rm_dasha_windowed_prescriptions",
-              "contract_sha256": "sha256:5c6c3eceab89f0d6d2a98a9d5438629a696cc4d82262b8152f1a3322b480cbf9",
+              "contract_sha256": "sha256:4dbb6fa7fd995efca5954e58490730bda14fdf1c123e041b7c72ca20d9b3bae2",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:74-102"
             }
@@ -26291,7 +26304,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-dosha-remedy-bundles:v1",
               "capability_uri": "marsys://tool/L2/query_rm_dosha_remedy_bundles",
-              "contract_sha256": "sha256:79b1da32d587800e213ce9c95cb384857319d31c55f21b0aa9502ec8441ed6f3",
+              "contract_sha256": "sha256:3bd04f3e6c2536d4f3012578038dd1425593e66f6633f54e4347872f5c028f3d",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96"
             }
@@ -26476,7 +26489,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-pattern-remedies:v1",
               "capability_uri": "marsys://tool/L2/query_rm_pattern_remedies",
-              "contract_sha256": "sha256:8f1b46b0a1333e1774b4a8b6cdc2f0b550bbe3405a9eb27dc920b5395a044ccd",
+              "contract_sha256": "sha256:be6cd212f733ed446905ad8d2f2161ae66a8fd2df06a2ae25d12e849fdfea3f0",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81"
             }
@@ -26663,7 +26676,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-prescriptions:v1",
               "capability_uri": "marsys://tool/L2/query_rm_prescriptions",
-              "contract_sha256": "sha256:00993490d4543e9704d19b151771fbe48e3c9f97d8544564884e3f770e0aa7ad",
+              "contract_sha256": "sha256:7ad54971c5e0f053e11eaf5af1805a567f1b79e47fdcbf20b54409edd3f968a4",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts:65-91"
             }
@@ -26851,7 +26864,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-rm-resonances:v1",
               "capability_uri": "marsys://tool/L2/query_rm_resonances",
-              "contract_sha256": "sha256:bdd7653285cfb6011b91e397a01f928cf70705284c830be737da4c3e31792e52",
+              "contract_sha256": "sha256:4e51ef83e72c45d4f1c5e1c2aac25cc89feb996e10f660e8c6da91c9a128bec8",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts:57-82"
             }
@@ -30165,7 +30178,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-triangulation:v1",
               "capability_uri": "marsys://tool/L2/query_triangulation",
-              "contract_sha256": "sha256:28782be52e090734032e7c3ee3a4dfd48252a255d19d935d044f196772393e64",
+              "contract_sha256": "sha256:39cd2cd2f440f17b7d4b14bd442bc950783960e90235270134d8d5dedeeaa829",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:74-98"
             }
@@ -32906,7 +32919,7 @@
               "kind": "source_query",
               "contract_id": "source-query:traverse-chart-graph:v1",
               "capability_uri": "marsys://tool/L2/traverse_chart_graph",
-              "contract_sha256": "sha256:e3707d50c402035541e943c0fcf26d02e946953fdf312402ba1f8f6282ab4236",
+              "contract_sha256": "sha256:0ca5c4898368802fb3f238472cc16cf2a482ca3c5a61a88ef8be052b609cdeb8",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172"
             }

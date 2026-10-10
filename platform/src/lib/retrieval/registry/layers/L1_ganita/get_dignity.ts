@@ -7,7 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const DIGNITY_CATEGORIES = [
   'graha_dignity_per_varga', 'graha_effective_dignity_modified_by_aspects',
@@ -40,7 +40,7 @@ export const getDignityCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     varga:        { type: 'string', description: 'Filter to one varga (e.g. D1, D9, D10). Omit for all.' },
     categories:   { type: 'array', description: 'Explicit category list.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },

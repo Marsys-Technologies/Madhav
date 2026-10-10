@@ -104,7 +104,7 @@ const SCHOOL_CONVENTIONS_TEXT = `# MARSYS-JIS School Conventions
 \`ranked_significators\` is the deduped union in that order. An empty limb reports the literal \`none\`. KP's nodal agency rule (Rahu/Ketu acting for conjoined/aspecting planets) is NOT applied — each node carries an explicit \`nodal_agency_not_applied\` disclosure row.
 
 **Known disagreements:**
-- Ayanamsha: KP uses the Krishnamurti ayanamsha (~23°05′ for 1984); the project's primary elsewhere is Lahiri (23°37′). This is served as DATA, not reconciled: all 5 ayanamshas including \`krishnamurti\` are stored per chart, and \`ganita_kp_cusps_get\` already DEFAULTS to \`ayanamsha_id='krishnamurti'\`.
+- Ayanamsha: KP uses the Krishnamurti ayanamsha (~23°05′ for 1984); the project's primary elsewhere is Lahiri (23°37′). This is served as DATA, not reconciled: all 5 ayanamshas including \`krishnamurti\` are stored per chart, and \`ganita_kp_cusps_get\` ALWAYS reads \`krishnamurti\` (KP has one frame by doctrine; a different \`ayanamsha_id\` is accepted but not applied, and the response is labelled "KP frame (Krishnamurti ayanamsha)").
 - House system: KP is cuspal (Placidus); the project's primary frame is whole-sign. Both are stored — \`bhava_cusps\` holds Placidus AND Sripati, and \`kp_planet_significations\` carries \`kp_cuspal_house\`, \`whole_sign_house\` and an explicit \`house_system_divergence\` flag per graha. A planet can be 9th cuspally and 10th whole-sign; neither value overwrites the other.
 - Node type: KP uses True Node; the project's primary uses Mean Node.
 - KP is NOT an independent timing generator. \`chart_dashas.system_id='vimshottari_kp'\` sub-periods are proportional subdivisions of the SAME Vimshottari windows already counted once — which is why the transit-permission plurality count deliberately excludes them. KP's independence is a judgment-method independence, not a clock.
@@ -157,7 +157,7 @@ For scores < 0.50: report each school's stance explicitly; do not synthesize as 
 |---|---|---|
 | Natal synthesis | \`holistic_bundle\` + \`query_signals\` | \`vector_search\` (UCN) |
 | Jaimini karakas | \`query_chart_facts(category: "dasha_chara")\` | — (\`cross_school_lookup\` PARKED, F-WP17-1) |
-| KP cusps / sub-lords | \`ganita_kp_cusps_get\` (dedicated serving face; defaults to \`ayanamsha_id='krishnamurti'\`) | \`ganita_chart_facts_get(category: "cusp_kp_lords")\` |
+| KP cusps / sub-lords | \`ganita_kp_cusps_get\` (dedicated serving face; always reads \`krishnamurti\`, labelled "KP frame (Krishnamurti ayanamsha)") | \`ganita_chart_facts_get(category: "cusp_kp_lords")\` |
 | KP significators | \`ganita_chart_facts_get(category: "kp_house_significators")\` | \`ganita_chart_facts_get(category: "kp_planet_significations")\` |
 | Tajaka annual | \`ganita_tajaka_get\` | \`ganita_chart_facts_get\` on a \`tajik_*\` category |
 | Multi-school claim | read each school through its own face above (\`ganita_kp_cusps_get\`, \`ganita_tajaka_get\`, \`query_chart_facts(category: "dasha_chara")\`) and compare explicitly; no merged multi-school tool exists (SS N-344) | — |

@@ -24,8 +24,10 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the computed Prashna-Lagna (horary ascendant) for a prashna chart from',
     'ga_prashna_lagna. Per-method row: lagna_method (e.g. tajik_moment_lagna, kp_249),',
-    'lagna_rashi, lagna_degree, kp_sub_lord (for kp_249), is_primary flag,',
-    'classical_citation. chart_id here references prashna_charts (the horary-question',
+    'lagna_rashi, lagna_degree, is_primary flag, classical_citation, and a kp_sub_lord',
+    'column that is ALWAYS NULL today: ga_prashna never computes a KP sub-lord, and a kp_249',
+    'row carries the ordinary ascendant (rashi/degree), not a KP-number lagna, so no KP sub-lord',
+    'reading is served from this tool. chart_id here references prashna_charts (the horary-question',
     'chart), not the natal chart. Filters: ayanamsha_id, lagna_method, primary_only.',
     'Bounded to 20 rows with a disclosed total.',
   ].join(' '),

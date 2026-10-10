@@ -24,6 +24,7 @@ import { query } from '@/lib/db/client'
 import {
   resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
   planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+  KP_AWARE_AYANAMSHA_ID_TEXT,
 } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
@@ -53,13 +54,16 @@ export const getNakshatraCapability: CapabilityDescriptor = {
     'nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and cusps ' +
     'plus KP house/planet significators, gandanta and degree-flag markers, nakshatra ' +
     'dispositor/exchange/conjunction/co-gravity relations, graha tara bala, and ' +
-    'cross-ayanamsha nakshatra statistics. Covers 16 fact_categories.',
+    'cross-ayanamsha nakshatra statistics. Covers 16 fact_categories. Frames: all categories are read at the ' +
+    'requested ayanamsha (omitted = lahiri_chitrapaksha, the Lahiri primary) EXCEPT the KP categories ' +
+    '(graha_kp_lords, cusp_kp_lords, kp_house_significators, kp_planet_significations; domain=kp), which are ' +
+    'always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)" whatever ayanamsha_id is passed.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     domain: {
       type: 'string',
-      description: 'Filter by domain: identity | kp | relational | strength | meta.',
+      description: 'Filter by domain: identity | kp | relational | strength | meta. domain=kp is always read at krishnamurti ("KP frame (Krishnamurti ayanamsha)"), whatever ayanamsha_id is passed.',
       enum: ['identity', 'kp', 'relational', 'strength', 'meta'],
     },
     categories: { type: 'array', description: 'Explicit category list.', items: { type: 'string' } },

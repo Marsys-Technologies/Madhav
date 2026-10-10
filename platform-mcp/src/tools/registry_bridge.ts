@@ -3683,13 +3683,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // R5_JUDGMENT_LEDGER for the ruling on both changes.
   server.tool(
     'query_chart_facts',
-    'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha per call). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
+    'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, one ayanamsha per page; KP-frame categories are always read at krishnamurti). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe(
         "Ayanamsha to query. Any of the 6 stored ayanamshas is reachable: 'lahiri_chitrapaksha' " +
         "(default), 'krishnamurti' (alias 'kp'), 'raman', 'surya_siddhanta_classical', " +
-        "'true_chitra' (alias 'true_citra'), 'INVARIANT'. One ayanamsha per call."
+        "'true_chitra' (alias 'true_citra'), 'INVARIANT'. One ayanamsha per call. " +
+        'KP exception (one frame by doctrine): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied).'
       ),
       about: z.union([
         z.string(),

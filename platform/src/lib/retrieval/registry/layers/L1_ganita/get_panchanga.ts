@@ -5,7 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 // Exported so other capabilities (e.g. chart_facts_query's category-alias resolution, which
@@ -40,7 +40,7 @@ export const getPanchangaCapability: CapabilityDescriptor = {
     'Shukla Tritiya tithi, Ravivara vara, Shiva yoga, Garaja karana).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     limb:         {
       type: 'string',
       description: 'Filter to one panchanga domain: tithi|vara|nakshatra|yoga|karana|muhurta|time_window|special.',

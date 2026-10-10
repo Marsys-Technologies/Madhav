@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T00:54:17.471Z",
+  "generated_at": "2026-10-10T05:15:19.121Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
@@ -2274,7 +2274,7 @@
         "mcp_compact"
       ],
       "short_label": "Chart Facts Query",
-      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha).",
+      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
