@@ -3,8 +3,8 @@
 WHAT IT PROVES. A table whose rows are the OUTPUT of a committed, sha256-pinned deterministic parser over a text corpus (bg_rules: 27 regular expressions over classical_text_chunks) is not
 hand-typed prose and holds no stand-in for a missing value, IF re-running that parser reproduces the stored rows. This module re-runs the pinned parser (through an injected sandbox runner)
 over the source chunks the stored rows cite, applies the declared post-processing (`derived`: drop ephemeral keys, keep only rows at or above a threshold constant of the parser, null a foreign
-key not found in its reference table, first writer wins on a duplicate key) and compares the result with the stored rows, column by column. A bounded sample of chunks nobody cites must yield no row
-(the table is the FULL output of the parser).
+key not found in its reference table, first writer wins on a duplicate key) and compares the result with the stored rows, column by column. Chunks nobody cites must yield no row (the table is the FULL output of the parser): EVERY such chunk is re-run while the source holds at most CAPS['full_scan_chunks'] chunks
+(only a re-run can show that a chunk whose rules were all deleted still yields them), else a bounded deterministic sample of them (the declared `scope.uncited_chunks.sample`).
 
 THIS MODULE IS PURE apart from reading the pinned files named in the declaration (to re-hash them and to read one numeric constant by AST). Every other outside effect is injected:
   * `fetch(request: dict) -> value`   the bounded data reads (ops below); the real one is built in asset_census (capped psql), the tests pass fakes;
@@ -53,6 +53,7 @@ CAPS = dict(
     stored_bytes=48 * 1024 * 1024, # JSON bytes of the stored rows read
     source_ids=200_000,            # source chunk ids listed (needed to know which chunks nobody cites, and the writer's chunk order)
     chunks=50_000,                 # source chunks fetched (cited ones plus the uncited sample)
+    full_scan_chunks=25_000,       # at most this many source chunks in all (cited + uncited): EVERY uncited chunk is re-run, not a sample (see UNCITED SCAN); 0 turns the full scan off
     chunk_bytes=64 * 1024 * 1024,  # text bytes of the fetched chunks (the sandbox's own max_output_bytes default is 64_000_000)
     distinct=100_000,              # distinct values of an extra-argument / reference column
     rows_page=500,                 # stored rows per statement
@@ -704,6 +705,9 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     if not present:
         raise _Stop("read", "no stored row cites a source chunk: there is nothing to re-derive (zero inputs are never a PASS)")
     sample, n_uncited = sample_uncited(idset, cited, n_sample)
+    full_scan = len(idset) <= cap["full_scan_chunks"]
+    if full_scan:                                     # UNCITED SCAN: a chunk whose rules were ALL deleted is no longer cited by any stored row, so only re-running the parser over it can show that it yields
+        sample = sorted(i for i in idset if i not in cited)
     want = present + sample
     if len(want) > cap["chunks"]:
         raise _Stop("read", f"{len(want)} chunks to fetch, past the cap of {cap['chunks']}: not read")
@@ -778,7 +782,7 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     block = dict(checked=True, verified=cmp["v"] == PASS, v=cmp["v"], table=table, key_columns=keys, cite_column=cite, ignore_columns=ignore, parser=pblock,
                  pinned_files=[p["path"] for p in pins], loaded_repo_files=loaded_n,
                  stored_rows=len(stored), matched_rows=cmp["counts"]["matched"], mismatches=mism, chunks_run=len(want), cited_chunks=len(present),
-                 uncited_sampled=len(sample), uncited_total=n_uncited, uncited_yield=dc.get("uncited_chunk_yields_rule", 0), blank_leaves=cmp["counts"]["blank_leaves"],
+                 uncited_sampled=len(sample), uncited_total=n_uncited, uncited_scan="full" if full_scan else "sample", uncited_yield=dc.get("uncited_chunk_yields_rule", 0), blank_leaves=cmp["counts"]["blank_leaves"],
                  shadowed=cmp["counts"]["shadowed"], first_differences=cmp["first_differences"], difference_counts=dc,
                  assurance=assurance, assurance_from_runner=isinstance(res.get("assurance"), str) and bool(res.get("assurance")),
                  extra_args=sorted(extras), keep_when_threshold=threshold, caps={k: cap[k] for k in ("stored_rows", "stored_bytes", "chunks", "chunk_bytes")}, elapsed_s=res.get("elapsed_s"))
@@ -787,6 +791,6 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
         block = dict(block, verified=False, v=NO_DET)
     if cmp["v"] == NO_DET:
         return dict(v=NO_DET, stage="output", measured=f"NO_DETECTOR: corpus_derived: {cmp['measured']}", block=dict(block, stage="output", reason=cmp["measured"]))
-    head = (f"re-ran the pinned parser {pblock['file']}:{pblock['function']} ({len(pins)} pinned file(s)) over {len(present)} cited chunk(s) and {len(sample)} of {n_uncited} uncited chunk(s) of {stable}; "
+    head = (f"re-ran the pinned parser {pblock['file']}:{pblock['function']} ({len(pins)} pinned file(s)) over {len(present)} cited chunk(s) and {'all ' + str(n_uncited) if full_scan else str(len(sample)) + ' of ' + str(n_uncited)} uncited chunk(s) of {stable}; "
             f"[assurance: {assurance}] stored table {table}{'' if flt is None else ' (' + flt['column'] + ' = ' + flt['equals'] + ')'}: {len(stored)} row(s) compared on every column except {ignore}; ")
     return dict(v=cmp["v"], stage=None, measured=head + cmp["measured"], block=block)

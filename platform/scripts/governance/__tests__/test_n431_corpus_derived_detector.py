@@ -210,6 +210,7 @@ def allowed_for(world):
 
 def run_detect(world, entry=None, stored=None, chunks=None, db=None, runner=None, pin_check=None, **kw):
     kw.setdefault("allowed", allowed_for(world))
+    kw["caps"] = {"full_scan_chunks": 0, **(kw.get("caps") or {})}                  # the fake world is tiny: unless a test asks for it, the declared SAMPLE is what is tested (see the full-scan tests)
     chunks = chunks if chunks is not None else mk_chunks()
     if db is None:
         st = stored if stored is not None else simulate_writer(world, chunks)
@@ -602,6 +603,31 @@ def test_deleted_stored_row_fails(world):
     res, _ = run_detect(world, stored=st, entry=entry_for(world, sample=1))                # BOUNDED SAMPLE: with a sample of 1 (c03) the deleted chunk (c04) is never looked at
     assert res["v"] == PASS and res["block"]["uncited_sampled"] == 1
     assert run_detect(world, stored=st, entry=entry_for(world, sample=100))[0]["v"] == FAIL
+
+
+def test_a_chunk_whose_every_rule_was_deleted_is_caught_by_the_full_uncited_scan_whatever_the_sample(world):
+    """Deleting ALL the rules of a chunk leaves nothing that cites it, so it is only ever seen by re-running the parser over it: the full scan does that for every uncited chunk."""
+    full = dict(full_scan_chunks=25_000)
+    for gone_at, chunk in ((2, "c02"), (3, "c04")):
+        st = simulate_writer(world, mk_chunks())
+        st.pop(gone_at)                                                 # the only row citing c02 / c04
+        res, _ = run_detect(world, stored=st, entry=entry_for(world, sample=1), caps=full)             # a sample of 1 would be c03 only
+        d = res["block"]["first_differences"][0]
+        assert res["v"] == FAIL and d["kind"] == "uncited_chunk_yields_rule" and d["chunk"] == chunk, res["measured"]
+        assert res["block"]["uncited_scan"] == "full" and res["block"]["uncited_sampled"] == res["block"]["uncited_total"] == 9 + 1 and res["block"]["chunks_run"] == 12
+    st = simulate_writer(world, mk_chunks())
+    st.pop(3)
+    res, _ = run_detect(world, stored=st, entry=entry_for(world, sample=1))                             # beyond the full-scan cap the declared sample is all that is read: the documented boundary
+    assert res["v"] == PASS and res["block"]["uncited_scan"] == "sample" and res["block"]["uncited_sampled"] == 1
+    res, _ = run_detect(world, stored=st, entry=entry_for(world, sample=1), caps=dict(full_scan_chunks=11))      # 12 source chunks > 11: back to the sample
+    assert res["v"] == PASS and res["block"]["uncited_scan"] == "sample"
+    res, _ = run_detect(world, stored=simulate_writer(world, mk_chunks()), caps=full)                   # an intact table still passes the full scan, and says so
+    assert res["v"] == PASS and res["block"]["uncited_scan"] == "full" and "all 9 uncited chunk(s)" in res["measured"] and res["block"]["uncited_yield"] == 0
+
+
+def test_the_full_scan_still_reads_no_detector_when_the_chunk_text_exceeds_the_byte_cap(world):
+    res, _ = run_detect(world, caps=dict(full_scan_chunks=25_000, chunk_bytes=300))
+    assert res["v"] == NO_DET and res["stage"] == "read" and "byte cap" in res["measured"]
 
 
 def test_extra_stored_row_fails(world):
@@ -1206,9 +1232,9 @@ def _real_world(root):
     return db, stored
 
 
-def _real_detect(root, db, decl=None):
+def _real_detect(root, db, decl=None, **kw):
     return cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl or _real_decl(root)}, fetch=db, runner=parser_sandbox.run_pinned_parser, normaliser=ac.normalise_corpus_derived,
-                                     pin_check=lambda e: ac.corpus_derived_pin_problem(e, root), repo_root=str(root))
+                                     pin_check=lambda e: ac.corpus_derived_pin_problem(e, root), repo_root=str(root), **kw)
 
 
 def test_the_real_declaration_the_real_parser_and_the_real_sandbox_reproduce_a_simulated_seed_rules_table(real_repo):
@@ -1257,6 +1283,16 @@ def test_the_real_pipeline_sees_an_uncited_chunk_that_yields(real_repo):
     uncited["content_en"] = "Mars in the tenth house gives power and fame to the native."
     res = _real_detect(real_repo, db, _real_decl(real_repo, sample=1000))
     assert res["v"] == FAIL and res["block"]["uncited_yield"] >= 1
+
+
+def test_the_real_pipeline_catches_a_chunk_whose_every_rule_was_deleted_with_a_sample_that_does_not_reach_it(real_repo):
+    db, stored = _real_world(real_repo)
+    victim, before = stored[-1]["extraction_pass_log"][0]["chunk_id"], len(stored)       # not the first chunk by id: a sample of 1 starts at the first uncited id
+    db.tables["sutravali_rules"][:] = [r for r in db.tables["sutravali_rules"] if r["extraction_pass_log"][0]["chunk_id"] != victim]
+    assert len(db.tables["sutravali_rules"]) < before
+    assert _real_detect(real_repo, db, _real_decl(real_repo, sample=1), caps=dict(full_scan_chunks=0))["v"] == PASS          # the documented boundary of the SAMPLE: it does not reach the victim
+    res = _real_detect(real_repo, db, _real_decl(real_repo, sample=1))                # the full scan is on by default
+    assert res["v"] == FAIL and res["block"]["uncited_scan"] == "full" and res["block"]["first_differences"][0] == dict(kind="uncited_chunk_yields_rule", chunk=victim, key=res["block"]["first_differences"][0]["key"], columns=[])
 
 
 def test_a_changed_real_parser_or_data_file_is_refused_at_the_pin(real_repo):
