@@ -93,7 +93,7 @@ UNION ALL SELECT 'row security and policies', concat_ws(' ', 'policy', p.polname
   FROM pg_policy p JOIN t ON p.polrelid = t.toid
 UNION ALL SELECT 'comments', concat_ws(' ', 'sub', d.objsubid::text, d.description)
   FROM pg_description d JOIN t ON d.objoid = t.toid AND d.classoid = 'pg_class'::regclass
-UNION ALL SELECT 'triggers', concat_ws(' ', g.tgname, g.tgenabled::text, g.tgisinternal::text) FROM pg_trigger g JOIN t ON g.tgrelid = t.toid
+UNION ALL SELECT 'triggers', concat_ws(' ', g.tgname, g.tgenabled::text, g.tgisinternal::text, pg_get_triggerdef(g.oid)) FROM pg_trigger g JOIN t ON g.tgrelid = t.toid
 """
 EXTRA_CATEGORIES = ("column types", "constraints", "indexes", "row security and policies", "comments", "triggers")
 ACL_SQL = "SELECT COALESCE(c.relacl::text, '') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = %s"

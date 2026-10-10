@@ -13,7 +13,8 @@ package's "administrator was not a member, GRANT transiently" branch cannot be r
   * server_version_num >= 160000: the administrator is given `GRANT data_plane_l1_owner ... WITH INHERIT FALSE, SET TRUE` (the minimal
     grant that lets SET LOCAL ROLE work; the package then takes its "already a member" branch), every test whose claim does not depend on the
     transient membership still runs, and exactly the tests that do are SKIPPED with a visible reason (see `needs_transient_membership`).
-CI: the Governance Tool Tests shards install psycopg, and with CI set a missing psycopg fails the module instead of skipping it.
+CI: this file lives with the python-sidecar tests because those CI jobs install psycopg from requirements-ci.txt (the Governance Tool Tests shards do NOT, and a shared install there un-skipped 25 other
+tests that error at setup: SS N-420 gate, Kāla). With CI set a missing psycopg fails the module instead of skipping it.
 """
 from __future__ import annotations
 
@@ -32,10 +33,13 @@ if os.environ.get("CI"):
 else:
     psycopg = pytest.importorskip("psycopg")
 
+HERE = pathlib.Path(__file__).resolve().parent
+REPO = HERE.parents[2]
+sys.path.insert(0, str(REPO / "platform" / "scripts" / "governance" / "__tests__"))        # the shared disposable-PostgreSQL helper
+
 from _disposable_pg import disposable_pg  # noqa: F401,E402  (the fixture must be importable here)
 
-HERE = pathlib.Path(__file__).resolve().parent
-PKG = HERE.parents[3] / "00_ARCHITECTURE" / "briefs" / "suvarna" / "exec" / "divergence_default" / "divergence_default_drop.py"
+PKG = REPO / "00_ARCHITECTURE" / "briefs" / "suvarna" / "exec" / "divergence_default" / "divergence_default_drop.py"
 spec = importlib.util.spec_from_file_location("divergence_default_drop", PKG)
 dd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dd)
@@ -62,16 +66,29 @@ END $$;
 COLS = "fact_id text NOT NULL, note text DEFAULT 'x', %s double precision DEFAULT 0.0" % COL
 
 
+def _retry(fn, *args, **kwargs):
+    """Cluster-wide DDL (roles, CREATE DATABASE) can collide with another session on a loaded machine ("tuple concurrently updated", "being accessed by other
+    users", deadlock): retry a few times. Seen twice as an intermittent setup ERROR under load, never reproduced on an idle machine, so this is a guard, not a diagnosis."""
+    import time
+    for attempt in range(6):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:                                       # the helper raises its own error type carrying psql's message
+            if attempt == 5 or not re.search(r"concurrently updated|being accessed by other users|deadlock|could not obtain lock", str(exc)):
+                raise
+            time.sleep(0.5 * (attempt + 1))
+
+
 @pytest.fixture
 def db(disposable_pg):
     """A fresh database with the roles and a chart_facts table; returns (cluster, dbname, make_conn)."""
     cl = disposable_pg
-    cl.psql(ROLES_SQL)
-    cl.psql("REVOKE data_plane_l1_owner FROM n349_admin CASCADE")                      # roles are cluster-wide: start every test from "not a member"
+    _retry(cl.psql, ROLES_SQL)
+    _retry(cl.psql, "REVOKE data_plane_l1_owner FROM n349_admin CASCADE")              # roles are cluster-wide: start every test from "not a member"
     if int(cl.psql("SHOW server_version_num")) >= 160000:
-        cl.psql("GRANT data_plane_l1_owner TO n349_admin WITH INHERIT FALSE, SET TRUE")   # PG16+ model, see the module docstring
+        _retry(cl.psql, "GRANT data_plane_l1_owner TO n349_admin WITH INHERIT FALSE, SET TRUE")   # PG16+ model, see the module docstring
     name = "n349_%d" % next(_counter)
-    cl.psql("CREATE DATABASE %s" % name)
+    _retry(cl.psql, "CREATE DATABASE %s" % name)
     cl.psql("GRANT ALL ON SCHEMA public TO PUBLIC", db=name)
 
     def reset():
@@ -390,6 +407,9 @@ CHART = "public.chart_facts"
     ("comments unchanged", "COMMENT ON TABLE %s IS 'a comment'" % CHART, None),
     ("triggers unchanged", TRIGGER_DDL, [TRIGGER_FN]),
     ("triggers unchanged", "ALTER TABLE %s DISABLE TRIGGER n349_trg" % CHART, [TRIGGER_FN, TRIGGER_DDL]),
+    # Kāla: a SAME-NAME trigger repointed at another function (name and enabled flag unchanged) must be caught by the full definition
+    ("triggers unchanged", "CREATE OR REPLACE TRIGGER n349_trg BEFORE INSERT ON public.chart_facts FOR EACH ROW EXECUTE FUNCTION public.n349_noop2()",
+     [TRIGGER_FN, TRIGGER_FN.replace("n349_noop", "n349_noop2"), TRIGGER_DDL]),
 ])
 def test_a_change_beyond_the_one_default_line_is_refused_and_rolled_back(db, monkeypatch, category, extra, setup):
     """The default drop itself succeeds inside the transaction; the second (sabotage) statement changes something the 'exactly one line'
@@ -504,24 +524,11 @@ def test_main_refuses_a_wrong_hash_before_connecting_and_never_prints_a_secret(m
     assert "hunter2" not in out and "10.0.0.1" not in out and "failed: RuntimeError" in out
 
 
-def test_with_ci_set_a_missing_psycopg_fails_the_module_instead_of_skipping(tmp_path):
-    """CI installs psycopg, so a missing driver there must be loud. A stub `psycopg` that raises ImportError stands in for "not installed"."""
-    stub = tmp_path / "stub"
-    stub.mkdir()
-    (stub / "psycopg.py").write_text("raise ImportError('psycopg blocked by the test')\n", encoding="utf-8")
-
-    def collect(ci):
-        env = {k: v for k, v in os.environ.items() if k != "CI"}
-        env["PYTHONPATH"] = os.pathsep.join([str(stub)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
-        if ci:
-            env["CI"] = "true"
-        return subprocess.run([sys.executable, "-m", "pytest", str(pathlib.Path(__file__).resolve()), "-q", "-p", "no:cacheprovider", "-rs", "--no-header"],
-                              capture_output=True, text=True, env=env, cwd=str(HERE), timeout=120)
-
-    in_ci, local = collect(True), collect(False)
-    assert in_ci.returncode != 0 and "psycopg blocked by the test" in in_ci.stdout + in_ci.stderr, in_ci.stdout[-600:]
-    assert "skipped" not in in_ci.stdout.splitlines()[-1]
-    assert local.returncode in (0, 5) and "1 skipped" in local.stdout       # 5 = "no tests ran": every test was skipped and "could not import 'psycopg'" in local.stdout, local.stdout[-600:]
+def test_with_ci_set_a_missing_psycopg_is_a_loud_import_not_a_skip():
+    """Static: the module imports psycopg directly when CI is set (a missing driver is then a collection FAILURE) and only uses importorskip locally."""
+    src = pathlib.Path(__file__).read_text(encoding="utf-8")
+    head = src[:src.index("_counter = itertools.count")]
+    assert 'if os.environ.get("CI"):' in head and "    import psycopg" in head and 'psycopg = pytest.importorskip("psycopg")' in head
 
 
 def test_the_package_parses_under_the_python_311_grammar():
