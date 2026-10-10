@@ -1641,8 +1641,8 @@
      ],
      "naive_utc_columns": [],
      "write_evidence": [
-      "platform/python-sidecar/brahmagyan/l0_rules.py:1559",
-      "platform/python-sidecar/brahmagyan/l0_rules.py:1609"
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1589",
+      "platform/python-sidecar/brahmagyan/l0_rules.py:1639"
      ],
      "ownership_evidence": [
       "00_ARCHITECTURE/control/FINGERPRINT_OWNERSHIP_PROBES_2026-10-03.txt:2"
