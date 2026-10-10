@@ -363,24 +363,24 @@ describe('POST /api/auth/resolve-username', () => {
 
   describe('privacy of the requested username', () => {
     it('the raw username is never logged and never used as a limiter key (only its sha256)', async () => {
-      const secret = '  Very.Secret.Name  '
+      const rawName = '  Very.Needle.Name  '
       const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}))
       queryMock.mockResolvedValueOnce({ rows: [{ email: 'a@b.test', status: 'active' }] })
       queryMock.mockRejectedValueOnce(new Error('db down'))
       const route = await load()
-      await run(route, req(secret, '198.51.100.1')) // found
-      await run(route, req(secret, '198.51.100.2')) // db error
-      for (let i = 0; i < USERNAME_RPM; i++) await run(route, req(secret, '198.51.100.3')) // reaches throttle
+      await run(route, req(rawName, '198.51.100.1')) // found
+      await run(route, req(rawName, '198.51.100.2')) // db error
+      for (let i = 0; i < USERNAME_RPM; i++) await run(route, req(rawName, '198.51.100.3')) // reaches throttle
       const { ip, username } = limiters()
-      const expected = sha('very.secret.name')
+      const expected = sha('very.needle.name')
       expect(username.keys.length).toBeGreaterThanOrEqual(USERNAME_RPM + 1)
       expect(new Set(username.keys)).toEqual(new Set([expected]))
       expect(username.keys[0]).toMatch(/^[0-9a-f]{64}$/)
       for (const k of [...username.keys, ...ip.keys]) {
-        expect(k.toLowerCase()).not.toContain('secret')
+        expect(k.toLowerCase()).not.toContain('needle')
       }
       const logged = JSON.stringify(spies.flatMap((s) => s.mock.calls))
-      expect(logged.toLowerCase()).not.toContain('secret')
+      expect(logged.toLowerCase()).not.toContain('needle')
     })
   })
 })
