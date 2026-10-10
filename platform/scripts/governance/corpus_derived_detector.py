@@ -58,6 +58,15 @@ CAPS = dict(
     rows_page=500,                 # stored rows per statement
     chunks_page=100,               # chunks per statement
 )
+ASSURANCE = "software-guarded, reviewed code only"     # what a sandbox PASS rests on (SS security review of #3423): printed on every PASS; the runner's own `assurance` is printed when it reports one
+# The ONLY parser/adapter pairs this detector will run (SS security review): the pinned, reviewed bg_rules parser, through its pinned ADAPTER. A declaration naming any other (module_root, file,
+# function), or pinning fewer than `must_pin` files, is refused at stage `declaration`. The adapter is the census' OWN committed file (R2's _n431_rules_adapter.py is a test fixture); the director
+# creates it at this path with the declaration. Tests pass their own `allowed`.
+BG_RULES_MODULE_ROOT = "platform/python-sidecar"
+BG_RULES_ADAPTER = "platform/python-sidecar/brahmagyan/n431_rules_adapter.py"
+ALLOWED_PARSERS = (dict(module_root=BG_RULES_MODULE_ROOT, file=BG_RULES_ADAPTER, function="run_chunk",
+                        must_pin=("platform/python-sidecar/brahmagyan/l0_rules.py", "platform/python-sidecar/brahmagyan/__init__.py", "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
+                                  "platform/python-sidecar/brahmagyan/l0_semantic_release.py", "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json", BG_RULES_ADAPTER)),)
 RUN_TIMEOUT_S = 300                # the sandbox run; the default 120 s is thin for a few thousand chunks through 27 patterns
 MAX_FIRST_DIFFERENCES = 5          # the bounded sample of differences reported by the pure comparison (key and column NAMES only, never values)
 DIFF_ORDER = ("differs", "extra_stored", "missing_stored", "uncited_chunk_yields_rule", "cited_chunk_absent", "stored_row_cites_no_chunk", "stored_duplicate_key", "derived_key_collision", "blank_leaf")
@@ -483,12 +492,13 @@ def _decl_problem(d) -> str | None:
 
 
 def build_inputs(decl_norm: dict, chunk_rows, extras: dict) -> list:
-    """The sandbox inputs, one per chunk, in order. Shape `chunk_row_dict` (R1's only shape): ONE dict per chunk, {id_column, text_columns..., extra_columns...} plus each declared extra argument
-    BY NAME (a sorted list of its distinct values). The sandbox calls function(item) with that one dict. Raises ValueError for an unknown shape."""
+    """The sandbox inputs, one per chunk, in order. Shape `chunk_row_dict`: ONE dict per chunk, {"chunk": {id_column, text_columns..., extra_columns...}, <each declared extra argument BY NAME>:
+    a sorted list of its distinct values}. The sandbox calls function(item) with that one dict; the pinned ADAPTER function maps it onto the parser's real signature (the pattern of R2's
+    _n431_rules_adapter.run_chunk: `extract_rules_from_chunk(item["chunk"], set(item["valid_text_ids"]))`). ONE place to adapt if the item layout changes. Raises ValueError for an unknown shape."""
     shape = (decl_norm.get("parser") or {}).get("input_shape") or "chunk_row_dict"
     if shape != "chunk_row_dict":
         raise ValueError(f"unsupported parser.input_shape {shape!r}")
-    return [dict(dict(r), **{k: list(v) for k, v in extras.items()}) for r in chunk_rows]
+    return [dict({"chunk": dict(r)}, **{k: list(v) for k, v in extras.items()}) for r in chunk_rows]
 
 
 def pins_summary(decl_norm: dict) -> list:
@@ -538,6 +548,23 @@ def module_constant(source: str, name: str):
     return hits[0].value
 
 
+def _find_constant(texts: dict, parser_file: str, name: str):
+    """The numeric literal `name`: in the parser file when it defines it, else in exactly one other pinned python file (the parser file may be a thin pinned ADAPTER over the module that holds the
+    constant). Raises _Stop(pin) when no pinned file, or more than one, defines it as a single numeric literal."""
+    order = [parser_file] + [p for p in texts if p != parser_file and p.endswith(".py")]
+    found = []
+    for p in order:
+        try:
+            found.append((p, module_constant(texts[p], name)))
+        except (ValueError, SyntaxError):
+            continue
+        if p == parser_file:
+            break
+    if len(found) != 1:
+        raise _Stop("pin", f"keep_when constant {name} is {'defined in several pinned files' if found else 'not a single numeric literal in the parser file or any other pinned python file'}")
+    return found[0][1]
+
+
 def sample_uncited(source_ids, cited_set, n: int) -> tuple[list, int]:
     """(sample, total uncited): the uncited ids (source ids nobody cites), in id order, every k-th with k = max(1, total // n), at most n of them. Deterministic."""
     unc = sorted(i for i in source_ids if i not in cited_set)
@@ -559,20 +586,20 @@ def _size(x) -> int:
     return len(json.dumps(x, default=str, ensure_ascii=False).encode("utf-8"))
 
 
-def detect_corpus_derived(entry, *, fetch, runner, normaliser, repo_root, pin_check=None, caps=None, run_timeout_s: int = RUN_TIMEOUT_S) -> dict:
+def detect_corpus_derived(entry, *, fetch, runner, normaliser, repo_root, pin_check=None, caps=None, run_timeout_s: int = RUN_TIMEOUT_S, allowed=None) -> dict:
     """Re-derive the stored rows of the declared table with the pinned parser and compare. Returns dict(v, stage, measured, block); `v` is PASS / FAIL / NO_DETECTOR; `stage` (NO_DETECTOR only)
     names the stage that did not complete; `block` is the record the cells carry (checked, verified, counts, parser pins, first_differences, and R1's fields: table, stored_rows, matched_rows,
     mismatches, chunks_run, uncited_sampled, uncited_yield, blank_leaves, parser{file, function, sha256}, pinned_files, loaded_repo_files)."""
     cap = dict(CAPS, **(caps or {}))
     try:
-        return _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_timeout_s)
+        return _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_timeout_s, ALLOWED_PARSERS if allowed is None else allowed)
     except _Stop as s:
         return _no(s.stage, s.detail)
     except Unread as exc:
         return _no("read", str(exc))
 
 
-def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_timeout_s) -> dict:
+def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_timeout_s, allowed) -> dict:
     try:
         d = normaliser(entry)
     except Exception as exc:                          # the normaliser is R1's: whatever it refuses is a declaration problem, never a verdict
@@ -582,6 +609,12 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
         raise _Stop("declaration", bad)
     par = d["parser"]
     pins = pins_summary(d)
+    ok_pair = [a for a in allowed if a["module_root"] == par["module_root"] and a["file"] == par["file"] and a["function"] == par["function"]]
+    if not ok_pair:
+        raise _Stop("declaration", f"the parser {par['file']}:{par['function']} (module_root {par['module_root']}) is not one this detector may run: only the reviewed, pinned bg_rules parser through its pinned adapter is allowed")
+    missing_pins = sorted(set(ok_pair[0]["must_pin"]) - {p["path"] for p in pins})
+    if missing_pins:
+        raise _Stop("declaration", f"the declaration does not pin {missing_pins[:3]}: the parser, its closure, its data file and its adapter must all be pinned in the committed declaration")
     # ── the pins: R1's check against the tree (import closure, function, constant), then our own re-hash of every pinned file (data files included) ──
     if pin_check is not None:
         pb = pin_check(entry)
@@ -593,10 +626,7 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     der = d.get("derived") or {}
     threshold = None
     if der.get("keep_when"):
-        try:
-            threshold = module_constant(texts[par["file"]], der["keep_when"]["at_least_constant"])
-        except (ValueError, SyntaxError, KeyError) as exc:
-            raise _Stop("pin", f"keep_when constant: {exc}")
+        threshold = _find_constant(texts, par["file"], der["keep_when"]["at_least_constant"])
     table, keys, cite, cpath = d["table"], list(d["key_columns"]), d["cite_column"], d.get("cite_path")
     ignore = list(d.get("ignore_columns") or [])
     src = d["source"]
@@ -656,6 +686,8 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     if absent:
         raise _Stop("read", f"{len(absent)} stored cite(s) do not resolve to a row of {stable} (e.g. {absent[0]}): the stored rows cannot be re-derived")
     present = sorted(cited)
+    if not present:
+        raise _Stop("read", "no stored row cites a source chunk: there is nothing to re-derive (zero inputs are never a PASS)")
     sample, n_uncited = sample_uncited(idset, cited, n_sample)
     want = present + sample
     if len(want) > cap["chunks"]:
@@ -701,7 +733,8 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     if not isinstance(res, dict) or res.get("ok") is not True:
         err = res.get("error") if isinstance(res, dict) else repr(res)
         st = res.get("stage") if isinstance(res, dict) else None
-        raise _Stop(st if st in ("pin", "spawn", "run", "output") else "run", f"the sandbox did not complete: {str(err)[:300]}")
+        more = f" (unpinned files: {res['unpinned_files'][:5]})" if isinstance(res, dict) and isinstance(res.get("unpinned_files"), list) else ""
+        raise _Stop(st if st in ("pin", "spawn", "run", "output") else "run", f"the sandbox did not complete: {str(err)[:300]}{more}")
     declared = {_norm_path(p["path"]) for p in par["pinned_files"]}
     loaded = res.get("loaded_repo_files")
     if not isinstance(loaded, (list, tuple)):
@@ -724,6 +757,7 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
         cmp = compare_corpus_derived(stored, derived, d, chunk_order=allids)
     except ValueError as exc:
         raise _Stop("output", f"the parser output cannot be aligned with the stored rows: {exc}")
+    assurance = res.get("assurance") if isinstance(res.get("assurance"), str) and res.get("assurance") else ASSURANCE
     dc = cmp["difference_counts"]
     mism = sum(v for k, v in dc.items() if k != "blank_leaf")
     block = dict(checked=True, verified=cmp["v"] == PASS, v=cmp["v"], table=table, key_columns=keys, cite_column=cite, ignore_columns=ignore, parser=pblock,
@@ -731,9 +765,13 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
                  stored_rows=len(stored), matched_rows=cmp["counts"]["matched"], mismatches=mism, chunks_run=len(want), cited_chunks=len(present),
                  uncited_sampled=len(sample), uncited_total=n_uncited, uncited_yield=dc.get("uncited_chunk_yields_rule", 0), blank_leaves=cmp["counts"]["blank_leaves"],
                  shadowed=cmp["counts"]["shadowed"], first_differences=cmp["first_differences"], difference_counts=dc,
+                 assurance=assurance, assurance_from_runner=isinstance(res.get("assurance"), str) and bool(res.get("assurance")),
                  extra_args=sorted(extras), keep_when_threshold=threshold, caps={k: cap[k] for k in ("stored_rows", "stored_bytes", "chunks", "chunk_bytes")}, elapsed_s=res.get("elapsed_s"))
+    if cmp["v"] == PASS and (cmp["counts"]["matched"] < 1 or not present or not want):
+        cmp = dict(cmp, v=NO_DET, measured="nothing was compared (no matched stored row or no cited chunk): a PASS over zero comparisons is refused")
+        block = dict(block, verified=False, v=NO_DET)
     if cmp["v"] == NO_DET:
         return dict(v=NO_DET, stage="output", measured=f"NO_DETECTOR: corpus_derived: {cmp['measured']}", block=dict(block, stage="output", reason=cmp["measured"]))
     head = (f"re-ran the pinned parser {pblock['file']}:{pblock['function']} ({len(pins)} pinned file(s)) over {len(present)} cited chunk(s) and {len(sample)} of {n_uncited} uncited chunk(s) of {stable}; "
-            f"stored table {table}{'' if flt is None else ' (' + flt['column'] + ' = ' + flt['equals'] + ')'}: {len(stored)} row(s) compared on every column except {ignore}; ")
+            f"[assurance: {assurance}] stored table {table}{'' if flt is None else ' (' + flt['column'] + ' = ' + flt['equals'] + ')'}: {len(stored)} row(s) compared on every column except {ignore}; ")
     return dict(v=cmp["v"], stage=None, measured=head + cmp["measured"], block=block)

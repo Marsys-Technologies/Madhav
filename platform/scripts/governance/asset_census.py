@@ -19259,13 +19259,18 @@ def _cd_default_pin_check():
     return corpus_derived_pin_problem
 
 
-def corpus_derived_detect(aid: str, decl, *, fetch=None, runner=None, normaliser=None, pin_check=None) -> dict:
+def _cd_default_allowed():
+    """None = the detector's own ALLOWED_PARSERS (the reviewed bg_rules parser through its pinned adapter, nothing else)."""
+    return None
+
+
+def corpus_derived_detect(aid: str, decl, *, fetch=None, runner=None, normaliser=None, pin_check=None, allowed=None) -> dict:
     """The detector result for one asset (dict(v, stage, measured, block)); memoised once per measure() run (the engine's `_memo`). The collaborators default to the real reads, R2's sandbox,
     R1's normaliser and R1's pin check against the tree."""
     def compute():
         cdm = _corpus_derived_mod()
         return cdm.detect_corpus_derived(decl, fetch=fetch or _cd_default_fetch(), runner=runner or _cd_default_runner(), normaliser=normaliser or _cd_default_normaliser(),
-                                         pin_check=pin_check or _cd_default_pin_check(), repo_root=str(ROOT))
+                                         pin_check=pin_check or _cd_default_pin_check(), repo_root=str(ROOT), allowed=allowed if allowed is not None else _cd_default_allowed())
     return copy.deepcopy(_memo(("corpus_derived", aid), compute))
 
 
@@ -19278,7 +19283,7 @@ def corpus_derived_cells(aid: str, res: dict) -> dict:
         if reading is None:
             continue
         if v == PASS:
-            out[c] = _na(f"{CORPUS_DERIVED_NA_TEXT}: {res['measured']}", CORPUS_DERIVED_CAUSE)
+            out[c] = _na(f"{CORPUS_DERIVED_NA_TEXT} [{blk.get('assurance')}]: {res['measured']}", CORPUS_DERIVED_CAUSE)
         elif v == FAIL:
             if reading == FAIL:
                 first = (blk.get("first_differences") or [])[:3]
