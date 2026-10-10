@@ -4780,7 +4780,7 @@ def vocab_multi_kind_label(c: dict) -> str:
     kinds = ", ".join(k_ + "/" + v_ for k_, v_ in mk["declared"].items() if k_ in mk["verified"])
     listed = mk.get("non_vocabulary_list") or []
     shown = ", ".join(repr(x) for x in listed[:VOCAB_MULTI_KIND_TEXT_LIST]) + (" (+" + str(len(listed) - VOCAB_MULTI_KIND_TEXT_LIST) + " more)" if len(listed) > VOCAB_MULTI_KIND_TEXT_LIST else "")
-    return "; MULTI-KIND, verified over the whole column: " + kinds + "; " + str(mk["non_vocabulary_values"]) + " value(s) outside the vocabulary, not graded" + ((": " + shown) if listed else "")
+    return VOCAB_MULTI_KIND_LABEL + kinds + "; " + str(mk["non_vocabulary_values"]) + VOCAB_MULTI_KIND_NOT_GRADED + ((": " + shown) if listed else "")
 
 
 def vocab_values_record(cols: list, problems: list, tables, aid: str = "", declared: dict | None = None, scopes: dict | None = None, embedded_exempt=frozenset(), embedded_exempt_auto=frozenset(), pair_reports: dict | None = None) -> dict:
@@ -7504,6 +7504,8 @@ VOCAB_MULTI_KIND_MAX = 4
 VOCAB_MULTI_KIND_MAX_KINDS = 6
 VOCAB_MULTI_KIND_MAX_DISTINCT = 500
 VOCAB_MULTI_KIND_TEXT_LIST = 40         # the values outside the vocabulary shown in the record text (the whole list, at most MAX_DISTINCT, is stored)
+VOCAB_MULTI_KIND_LABEL = "; MULTI-KIND, verified over the whole column: "          # the two fixed wordings of the multi-kind label (vocab_multi_kind_label); census_postprocess builds its matcher from these, so the two cannot drift
+VOCAB_MULTI_KIND_NOT_GRADED = " value(s) outside the vocabulary, not graded"
 
 
 def vocab_multi_kind_problem(entry) -> str | None:
