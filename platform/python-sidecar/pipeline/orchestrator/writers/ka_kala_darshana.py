@@ -6,8 +6,8 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-@register('ka_kala_darshana')
-class KaKalaDarshanaWriter(WriterBase):
+# Legacy implementation retained until the qualified K9-4b cutover.
+class _LegacyKaKalaDarshanaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         if 'kala_assertion_fixture' in ctx.config:
             from services.kala_core.assertion.slice import run_fixture_slice
@@ -236,3 +236,18 @@ def _build_narrative(mode: str, effective_score: float, net_label: str,
             caution = f"Moderate obstruction: {moderate[0]['type']}. Intensity reduced."
 
     return {'headline': headline, 'context': context, 'caution': caution}
+
+
+@register('ka_kala_darshana')
+class KaKalaDarshanaWriter(_LegacyKaKalaDarshanaWriter):
+    """Explicit fixture preparation; default legacy computation stays intact."""
+
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
+    def run(self, ctx) -> WriterResult:
+        if 'jury_reader_generation' in ctx.config:
+            from services.ka_sangam.jury.reader import preparation_result
+            return preparation_result(ctx, 'ka_kala_darshana')
+        return super().run(ctx)
