@@ -1,29 +1,29 @@
 {
-    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v23",
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v24",
     "campaign_id": "madhav-purna-anvesana",
-    "packet_id": "DISCOVERIES-ORDER-FIX-DESCRIPTION-REPIN",
+    "packet_id": "SS-N373-RETIRE-EPHEMERIS-CACHE-NATIVE-LIFETIME",
     "predecessor": {
-        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v22.json",
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v23.json",
         "acceptance_version": "beyond-acarya-source-acceptance-v2",
-        "capability_content_hash": "sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634",
-        "report_hash": "sha256:0acf2879414236d4bbc92af49cebfde2264c9a0bfbcab3a81eb18745b28847bb"
+        "capability_content_hash": "sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737",
+        "report_hash": "sha256:b333f59c56c51ed27c82d28cf825f1507314962d760b056aca4596db980e3c39"
     },
     "preserves_historical_predecessor": true,
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "403b7da54f07b43684e53f6e5ab39fd34501c5c0",
+    "evaluated_source_revision": "ef4649e8fe0ed73abc62e502f9817f612d91b574",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:acaca06e2782041c37a8f26b362af3a6dbbb00224d11002baaf0ca020af3c252",
-        "capability_content_hash": "sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737",
-        "source_catalog_fingerprint": "sha256:2847bca917187ee3522573abef80296e138d29d4a40ac0b4f9b005198dd36d67",
-        "semantic_review_fingerprint": "sha256:8b5895accf778dccc39e8e1b3c5326fbee49a722e11006b509acc845ead709c5",
+        "snapshot_file_sha256": "sha256:5be33e85b21cded55aa660d309628bf64c905dfbcab940b81158fd3091bb277a",
+        "capability_content_hash": "sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef",
+        "source_catalog_fingerprint": "sha256:78f8100474b8fb9739c2d8679e241cbc620ea2be47c976bf6da0ea0475aac120",
+        "semantic_review_fingerprint": "sha256:aae8dca2e0fb54553cded58bc2c3aee37948af5421cd7faf1c08ee867bbda9de",
         "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
     },
-    "capability_content_hash": "sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737",
-    "report_hash": "sha256:b333f59c56c51ed27c82d28cf825f1507314962d760b056aca4596db980e3c39",
+    "capability_content_hash": "sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef",
+    "report_hash": "sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "query_discoveries tool-description correction (ordering wording; PR #3387): the corrected generated tool text and its source-query availability probe in knowledge/source_query_availability.ts moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint coincides with v22's; no SCU, edge, proof kind or availability disposition changed. v22 stays immutable by hash. evaluated_source_revision is origin/main at #3365 (403b7da54), the base this change was merged with. Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+    "provenance_note": "SS N-373 PR-S2: the registry capability ephemeris_cache_native_lifetime is retired (its hard-coded sidecar route native_lifetime_meta is removed). The retirement removes one reviewed SCU and its single registry binding (182 -> 181 SCUs, 188 -> 187 executable bindings, 186 -> 185 runtime descriptors), which moved source_catalog_fingerprint, semantic_review_fingerprint, hence capability_content_hash and report_hash; producer_contract_fingerprint coincides with v23's. No other SCU, edge, proof kind or availability disposition changed, and every metric of v23 is unchanged (novel 13/13, omission 0/25, route 34/34, edges 9/9). v23 stays immutable by hash. evaluated_source_revision is origin/main at ef4649e8f (#3387, which added v23; this change was renumbered from v23 to v24 on top of it). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
 }
