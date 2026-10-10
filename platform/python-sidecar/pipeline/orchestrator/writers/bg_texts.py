@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
-from brahmagyan.l0_texts import TEXTS
+from brahmagyan.l0_texts import TEXTS, TEXTS as _CANONICAL_TEXTS  # alias: the legacy-row convergence reads the committed seed, whatever a test patches into TEXTS
 
 logger = logging.getLogger(__name__)
 
@@ -435,6 +435,14 @@ class TextsWriter(WriterBase):
             cur.execute("DELETE FROM classical_texts WHERE text_id = 'lal_kitab'")
             if cur.rowcount:
                 logger.info("[bg_texts] removed lal_kitab from classical_texts (DROPPED corpus text)")
+
+            # Legacy MCP-schema alias of bphs_jaimini: never deleted (chunks FK ON DELETE CASCADE; the
+            # l0_dasha_systems / l0_yogas citations resolve to it), but its tradition / source_edition
+            # converge to the registry: tradition = the bphs_jaimini TEXTS value, source_edition = NULL.
+            cur.execute(
+                "UPDATE classical_texts SET tradition = %s, source_edition = NULL WHERE text_id = 'jaimini_sutram'",
+                (next(t["tradition"] for t in _CANONICAL_TEXTS if t["text_id"] == "bphs_jaimini"),),
+            )
 
         # ── Step 1: Upsert classical_texts registry rows ──────────────────────
         for text in TEXTS:

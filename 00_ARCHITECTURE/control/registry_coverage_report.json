@@ -1,8 +1,8 @@
 {
  "schema": 2,
- "registry_revision": 27,
- "registry_fingerprint": "a556dc49ba1e9ceff91087b35300f98fea61e78c2d333d9fd76056a75a5f4cf2",
- "inspector_commit": "95b315619fbd47278f97922ae48a203b44f824a7",
+ "registry_revision": 28,
+ "registry_fingerprint": "a8e18168b71510ea3ff87a1fa7bdeaf1673a8f0df57ca22e34fbca3959b76386",
+ "inspector_commit": "5e7a360a4408807bf2a816bbc5804146dbe721cf",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -37,7 +37,9 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
-    "measure"
+    "measure",
+    "passive_count_integrity",
+    "passive_projection_scan_problem"
    ]
   },
   {
@@ -189,7 +191,9 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
-    "measure"
+    "_measure_idem",
+    "measure",
+    "passive_projection_scan_problem"
    ]
   },
   {
@@ -208,6 +212,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "_apply_constant_phrases",
     "_apply_curated_corpus",
     "_measure_prose",
     "grade_prose_none",
@@ -367,6 +372,10 @@
    "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
   },
   {
+   "rule_id": "Build.count_integrity#measured:passive-projection-constant-count",
+   "decision": "SS N-430 count_integrity passive projection: a view target whose registry count_sql is a constant by design (the census counts the view itself); declaration-keyed (passive_projection {why, evidence}) and checked against the same writer scan and the live catalog, and against the constant count_sql of a view target"
+  },
+  {
    "rule_id": "Build.count_integrity#measured:service-no-writer-no-count-sql",
    "decision": "SS 2026-10-05 R-d: a writer-less service has no count_sql to compare; declaration-keyed (has_writer: false, kind service) and checked against the registry row (has_writer false, asset_kind service) and the @register scan"
   },
@@ -479,6 +488,10 @@
    "decision": "N-150 R5: no writer; declaration-keyed (has_writer: false) and checked against the registry row and the @register scan"
   },
   {
+   "rule_id": "Idem.pattern#measured:passive-projection",
+   "decision": "SS N-430 Idem passive projection: the asset is a view whose writer runs no DDL or DML, so there is no own-table write to replace; declaration-keyed (passive_projection {why, evidence}) and checked against the writer scope (no write of any table, scan complete, no executed DDL) and the live catalog (the target is a view)"
+  },
+  {
    "rule_id": "Idem.pattern#measured:update-only-by-intent",
    "decision": "SS 2026-10-05 Idem update-only: the writer UPDATEs its own table(s) in place by declared intent (update_only {why, evidence}); checked against the writer scope: only UPDATE statements on the own tables, no INSERT / upsert / DELETE, no cut or dynamic statement, no accumulating assignment"
   },
@@ -499,6 +512,10 @@
    "decision": "N-177 (SS 2026-10-07): UNSOURCED_DECLARED, a closed-list residual: rows with no traceable source are an honest, DECLARED label, not a FAIL; declaration-keyed (source.residual with why / evidence) and CHECKED against the live rows (every judged row lacks a source or states it is not traced; one row that carries a source refuses the label); a certified-at-a-ceiling reading printed as 'Ldgr: unsourced (declared)', never a PASS"
   },
   {
+   "rule_id": "Narr.agree#measured:corpus-derived",
+   "decision": "SS N-431: a corpus-derived table holds no narration that could disagree with a fact: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded repo file is pinned), else FAIL / NO_DETECTOR, never N/A; beside a declared non-empty prose_fields (SS N-457) the cell is released ONLY on the re-derivation proof that the stored prose is the pinned function's own output, which proves reproducibility and not the absence of a stand-in word: Null.schema_default and Null.blank_rows are never released that way"
+  },
+  {
    "rule_id": "Narr.agree#measured:no-prose",
    "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
   },
@@ -507,12 +524,20 @@
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
   },
   {
+   "rule_id": "Narr.checkable#measured:corpus-derived",
+   "decision": "SS N-431: a corpus-derived table holds no composed rows a checker could grade: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded repo file is pinned), else FAIL / NO_DETECTOR, never N/A; beside a declared non-empty prose_fields (SS N-457) the cell is released ONLY on the re-derivation proof that the stored prose is the pinned function's own output, which proves reproducibility and not the absence of a stand-in word: Null.schema_default and Null.blank_rows are never released that way"
+  },
+  {
    "rule_id": "Narr.checkable#measured:no-prose",
    "decision": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)"
   },
   {
    "rule_id": "Narr.checkable#measured:no-table-no-prose",
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
+  },
+  {
+   "rule_id": "Narr.fidelity_test#measured:corpus-derived",
+   "decision": "SS N-431: a corpus-derived table holds no a narration builder a golden test could pin: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded repo file is pinned), else FAIL / NO_DETECTOR, never N/A; released only while prose_fields is undeclared: beside a declared prose_fields this cell is measured by its own detector and a record claiming this N/A is refused (SS N-457)"
   },
   {
    "rule_id": "Narr.fidelity_test#measured:no-prose",
@@ -535,12 +560,20 @@
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
   },
   {
+   "rule_id": "Null.blank_rows#measured:corpus-derived",
+   "decision": "SS N-431: a corpus-derived table holds no a column in which a blank or placeholder could stand in for NULL: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded repo file is pinned), else FAIL / NO_DETECTOR, never N/A; released only while prose_fields is undeclared: beside a declared prose_fields this cell is measured by its own detector and a record claiming this N/A is refused (SS N-457)"
+  },
+  {
    "rule_id": "Null.blank_rows#measured:no-prose-declared",
    "decision": "N-150 R1: N/A only for an asset whose declared-none prose form (prose_none) is CHECKED against the live schema"
   },
   {
    "rule_id": "Null.blank_rows#measured:no-table-no-prose",
    "decision": "SS 2026-10-05 no-table-no-prose: a service that owns no table has no column that could carry prose; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan"
+  },
+  {
+   "rule_id": "Null.schema_default#measured:corpus-derived",
+   "decision": "SS N-431: a corpus-derived table holds no a column whose default or NULL is the writer's choice: its rows are verbatim slices and templated output of a committed, sha256-pinned deterministic parser over cited source chunks; declaration-keyed (corpus_derived) and CHECKED by regeneration (every stored row equals the re-derived row, no uncited chunk yields a row, every loaded repo file is pinned), else FAIL / NO_DETECTOR, never N/A; released only while prose_fields is undeclared: beside a declared prose_fields this cell is measured by its own detector and a record claiming this N/A is refused (SS N-457)"
   },
   {
    "rule_id": "Null.schema_default#measured:no-prose-declared",
@@ -769,6 +802,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -787,6 +821,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -805,6 +840,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -823,6 +859,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -841,6 +878,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -859,6 +897,7 @@
    "uncovered": [],
    "declared_na_rules": [
     "Idem.pattern#measured:no-writer-registry-agrees",
+    "Idem.pattern#measured:passive-projection",
     "Idem.pattern#measured:update-only-by-intent"
    ]
   },
@@ -1004,8 +1043,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1026,8 +1067,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1048,8 +1091,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1070,8 +1115,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1092,8 +1139,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1114,8 +1163,10 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Null.blank_rows#measured:corpus-derived",
     "Null.blank_rows#measured:no-prose-declared",
     "Null.blank_rows#measured:no-table-no-prose",
+    "Null.schema_default#measured:corpus-derived",
     "Null.schema_default#measured:no-prose-declared",
     "Null.schema_default#measured:no-table-no-prose"
    ]
@@ -1488,10 +1539,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1519,10 +1573,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1550,10 +1607,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1581,10 +1641,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1612,10 +1675,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1643,10 +1709,13 @@
    "per_asset_pending": [],
    "uncovered": [],
    "declared_na_rules": [
+    "Narr.agree#measured:corpus-derived",
     "Narr.agree#measured:no-prose",
     "Narr.agree#measured:no-table-no-prose",
+    "Narr.checkable#measured:corpus-derived",
     "Narr.checkable#measured:no-prose",
     "Narr.checkable#measured:no-table-no-prose",
+    "Narr.fidelity_test#measured:corpus-derived",
     "Narr.fidelity_test#measured:no-prose",
     "Narr.fidelity_test#measured:no-table-no-prose",
     "Narr.lint#measured:lint-not-applicable",
@@ -1800,6 +1869,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",
@@ -1842,6 +1912,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",
@@ -1884,6 +1955,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",
@@ -1926,6 +1998,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",
@@ -1968,6 +2041,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",
@@ -2010,6 +2084,7 @@
    "declared_na_rules": [
     "Build.completion#measured:service-no-writer-no-count-sql",
     "Build.contract#measured:no-writer-registry-agrees",
+    "Build.count_integrity#measured:passive-projection-constant-count",
     "Build.count_integrity#measured:service-no-writer-no-count-sql",
     "Build.dep_liveness#measured:no-declared-dependencies",
     "Build.dep_liveness#measured:static-data-existence-only",

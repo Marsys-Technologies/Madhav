@@ -526,7 +526,7 @@ _SUBASSETS = frozenset({
 _SEED_ONLY_ALLOWED = frozenset({
     # ── No writer (has_writer=false in DB) ────────────────────────────────────
     "lel_events",              # user-authored source data; has_writer=false
-    "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11)
+    "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11); RETIRED in the live registry by migration 1360 (SS N-430), seed row kept (the seed upsert preserves a RETIRED row)
     "bg_gochara_citation_resolution",  # migration-565-owned static reference data; has_writer=false
     # ── Migration INSERT format not detected by line extractor ────────────────
     # These all have genuine migration INSERTs but use multi-row VALUES format

@@ -115,8 +115,8 @@ def test_REAL_WRITER_every_pinned_charity_action_is_in_the_table_the_writer_buil
 
 
 def test_REAL_WRITER_narr_agree_passes_and_the_null_cells_keep_their_cap_with_the_reason_named(db, monkeypatch):
-    """The 31 charity constant_write findings are covered by the waiver pin; the 136 prescription constant writes (and the ones citation pass 2 adds) are covered by no corpus, and the sweep's
-    `content_en` read from the database (l0_remedy_corpus.py:3259) is unresolved: the cap stays and says so."""
+    """The 31 charity constant_write findings are covered by the waiver pin; the 136 prescription constant writes (and the ones citation pass 2 adds) are covered by no corpus: the cap stays and says so. (The sweep's
+    `content_en` read from the database, l0_remedy_corpus.py:3259, is `source_row.get(...)` and no longer an unresolved write path.)"""
     got = _m(db, monkeypatch)
     assert got["Narr.agree"]["v"] == PASS
     for c in ("Null.schema_default", "Null.blank_rows"):
