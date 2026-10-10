@@ -28,7 +28,7 @@ const LAHIRI = 'lahiri_chitrapaksha'
 const KEY = 'ayanamsha_cross_check'
 const OTHERS_IN_ORDER = ['true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical']
 // fixture rows are emitted in ALPHABETICAL order on purpose: the builder must re-order to serve order
-const ALPHA = [...AYANAMSHA_SERVE_ORDER].sort()
+const ALPHA: string[] = [...AYANAMSHA_SERVE_ORDER].sort()
 
 type Cc = Record<string, any>
 const cc = (x: unknown): Cc => (x as Record<string, any>)[KEY]
