@@ -163,6 +163,13 @@ const historicalV22 = {
   artifact_hash: 'sha256:21b1520b9fc42916de0c400645277d5bbd8e1500c84e6c6a5b36b49a5e1072dc',
 } as const
 
+// The query_discoveries tool-description correction successor of v22 (PR #3387, v23). Immutable since the ephemeris_cache_native_lifetime retirement (SS N-373, v24) superseded it.
+const historicalV23 = {
+  capability_content_hash: 'sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737',
+  report_hash: 'sha256:b333f59c56c51ed27c82d28cf825f1507314962d760b056aca4596db980e3c39',
+  artifact_hash: 'sha256:edbd68c082fda664345decfba78a42bea90266ff9e6b0069df949c0452aa79eb',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -259,7 +266,10 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // query_discoveries tool-description correction (v23): the corrected generated tool text (ordering wording) and its source-query availability probe moved
     // source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint coincides with v22's;
     // no SCU, edge, proof kind or availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:b333f59c56c51ed27c82d28cf825f1507314962d760b056aca4596db980e3c39')
+    // ephemeris_cache_native_lifetime retirement (v24, SS N-373): the capability (one reviewed SCU, one registry binding) is removed from the catalog,
+    // which moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint
+    // coincides with v23's and every metric assertion above is unchanged. Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -817,9 +827,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v23 source-successor artifact to the current executable report without claiming live acceptance (query_discoveries description correction)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v23 source-successor artifact immutable after the ephemeris_cache_native_lifetime retirement', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v23.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV23.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v23',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v22.json',
+        capability_content_hash: historicalV22.capability_content_hash,
+        report_hash: historicalV22.report_hash,
+      },
+      capability_content_hash: historicalV23.capability_content_hash,
+      report_hash: historicalV23.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v24 source-successor artifact to the current executable report without claiming live acceptance (ephemeris_cache_native_lifetime retirement, SS N-373)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v24.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -827,12 +858,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v23',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v24',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v22.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v23.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV22.capability_content_hash,
-        report_hash: historicalV22.report_hash,
+        capability_content_hash: historicalV23.capability_content_hash,
+        report_hash: historicalV23.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -875,9 +906,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // query_discoveries description correction: generated tool text + availability probe; snapshot regenerated with its committed generated_at.
-      // Base: origin/main at 403b7da54f07b43684e53f6e5ab39fd34501c5c0.
-      evaluated_source_revision: '403b7da54f07b43684e53f6e5ab39fd34501c5c0',
+      // ephemeris_cache_native_lifetime retirement (SS N-373): one SCU and its binding leave the catalog;
+      // the snapshot is regenerated with its committed generated_at. Base: origin/main at ef4649e8fe0ed73abc62e502f9817f612d91b574 (#3387, v23).
+      evaluated_source_revision: 'ef4649e8fe0ed73abc62e502f9817f612d91b574',
     })
   })
 })

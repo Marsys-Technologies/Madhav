@@ -1064,7 +1064,7 @@ def test_all_committed_exemption_producers_are_snapshot_backed():
                 if p.get("asset_id") not in probe_assets.get(scu_id, set()):
                     unbacked.append((scu_id, p.get("asset_id"), disp))
     assert unbacked == []
-    assert exemption_count == 24
+    assert exemption_count == 23  # SS N-373: ephemeris_cache_native_lifetime retired (24 -> 23)
 
 
 # ── B_REVIEW4: three siblings of the R7 defect, plus a test-gap and a ────────
@@ -1380,7 +1380,7 @@ def test_committed_artifact_summary_agrees_with_its_entries():
 # from stale line anchors and source refactors). Update it in the same PR as the regenerated artifact, and
 # explain any drop in the PR body.
 PINNED_PRODUCERS_BY_DISPOSITION = {
-    "derived_from_service_probe": 9,
+    "derived_from_service_probe": 8,  # SS N-373: ephemeris_cache_native_lifetime retired (9 -> 8)
     "derived_from_source_query": 290,
     "reviewed_output": 14,
     "route_evidence_only": 1,
@@ -1648,7 +1648,7 @@ def test_all_snapshot_declared_producers_are_present_in_the_committed_artifact()
         present = {p["asset_id"] for p in payload["scus"][scu_id]["producers"]
                    if p["disposition"] == "derived_from_service_probe"}
         missing += [(scu_id, a) for a in assets - present]
-    assert (n_claims, n_probes, missing) == (15, 9, [])
+    assert (n_claims, n_probes, missing) == (15, 8, [])  # SS N-373: 9 -> 8 service probes
 
 
 def test_check_fails_when_a_reviewed_scus_producers_are_erased_and_replaced_with_a_fake_reason(

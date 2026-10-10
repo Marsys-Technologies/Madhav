@@ -20,20 +20,20 @@ describe('capability estate census', () => {
     expect(census.denominators.runtime_descriptors).toMatchObject({
       // K7-1a adds seven stored-stage readers and seven public compatibility
       // descriptors. Neither implies a producer or reviewed output contract.
-      total: 200,
+      total: 199,
       tools: 194,
-      resources: 5,
+      resources: 4,
       prompts: 1,
     })
     expect(census.denominators.planner_addressable_descriptors).toMatchObject({
-      total: 197,
+      total: 196,
       excluded: 3,
     })
     expect(census.denominators.public_registrar_resolution).toMatchObject({
       verified: 78,
       resolved_including_ambiguous: 78,
       unresolved: 0,
-      not_exposed: 122,
+      not_exposed: 121,
       ambiguous: 0,
       name_only_unverified: 0,
     })
@@ -157,16 +157,16 @@ describe('capability estate census', () => {
       expect(blocked?.known_gaps.join(' ')).not.toHaveLength(0)
     }
 
-    expect(census.details.descriptor_route_contracts).toHaveLength(200)
+    expect(census.details.descriptor_route_contracts).toHaveLength(199)
     expect(census.denominators.descriptor_route_contracts).toMatchObject({
-      denominator: 200,
+      denominator: 199,
       non_exhaustible_paginated: 107,
       exhaustible_paginated: 5,
-      descriptor_content_untyped: 195,
+      descriptor_content_untyped: 194,
       full_profile_allowlist_enforced: true,
     })
     expect(Object.values(census.denominators.descriptor_route_contracts.by_public_route_disposition)
-      .reduce((sum, value) => sum + value, 0)).toBe(200)
+      .reduce((sum, value) => sum + value, 0)).toBe(199)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.internal_route_evidence.length > 0)).toBe(true)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.full_profile_enforcement === 'enforced')).toBe(true)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.public_route_evidence.length > 0)).toBe(true)
@@ -185,7 +185,7 @@ describe('capability estate census', () => {
         { tool_name: 'ref_entities_list', route_kind: 'exact_uri_binding' },
       ]))
     expect(census.details.descriptor_route_contracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed'))
-      .toHaveLength(122)
+      .toHaveLength(121)
   })
 
   it('is deterministic and binds its SHA-256 to canonical content and source hashes', async () => {
