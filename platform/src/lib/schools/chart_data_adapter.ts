@@ -11,8 +11,8 @@
  *   bodha_msr_signals → signal metadata (score, domain, signal_id, signal_name)
  *   school_signal_coverage → per-signal per-school classification (populated by Task A.0)
  *
- * NEVER writes to any table. Never references ABHISEK_CHART for real charts.
- * defaultSignals in the engines is the FALLBACK-OF-LAST-RESORT (guarded + warns).
+ * NEVER writes to any table. No chart is hardcoded anywhere in this package.
+ * The engines have no default signals: an empty result here makes the school not available.
  */
 import 'server-only'
 import { query } from '../db/client'
@@ -63,7 +63,7 @@ const _toTypesSign = (factSign: string): string => factSign.toLowerCase()
 /**
  * Build a real ChartData for any chartId from L1 (chart_facts + chart_dashas).
  * Returns a ChartData with live planet positions, dasha state, and yogini state.
- * Does NOT reference ABHISEK_CHART or any hardcoded constant.
+ * Does NOT reference any hardcoded chart constant.
  */
 export async function buildChartData(
   chartId: string,
@@ -258,7 +258,7 @@ export async function buildChartData(
  *
  * coverageTypes defaults to ['primary'] for own-tradition signals.
  * Falls through to an empty array if school_signal_coverage is not yet populated
- * (Task A.0 prerequisite) — engines' defaultSignals then acts as guarded fallback.
+ * (Task A.0 prerequisite) — the school is then reported not available (no default signals).
  */
 export async function buildSchoolSignals(
   chartId: string,
