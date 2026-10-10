@@ -73,6 +73,7 @@ SS N-430 (hygiene of the reads; verdict-neutral with the cap off):
   statement cap  SUVARNA_CENSUS_STATEMENT_CAP_SECS (OFF by default: unset or empty = today's behaviour exactly). A positive integer N makes every census psql session start with
                  `SET statement_timeout = N*1000` and `SET lock_timeout = 5000`. The integrity runner (a registry-stored integrity_check_sql) is EXEMPT and keeps its own budget. A malformed
                  value exits 14 before any read. A read the cap (or the role's own limit) cancels reads NO_DETECTOR naming the timeout, never ERRORED and never PASS.
+  retry          a read-only statement whose connection drops (`server closed the connection unexpectedly` ...) is retried once; the timing entry says `retries: 1`.
   Full semantics: the block comment above `_psql_run`.
 """
 
@@ -11712,8 +11713,8 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
     return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
 
 
-# ─────────────────────── SS N-430: per-read timing, the optional statement cap ───────────────────────
-# (1) READ TIMINGS (T1, verdict-neutral). Every psql read `_psql_run` makes is timed (monotonic seconds) and appended to an in-memory log:
+# ─────────────────────── SS N-430: per-read timing, the optional statement cap, one retry on connection loss ───────────────────────
+# (1) READ TIMINGS (T1, verdict-neutral). Every psql read `_psql_run` makes is timed (monotonic seconds, the retry pause included) and appended to an in-memory log:
 #     {asset, label, seconds, retries, outcome}. `asset` is the asset being measured (`measure()` sets it per asset; the stamp phase says `(run)`; none = `(layer)`), `label` is the
 #     criterion / probe name when the caller declared one (`read_label`) else the statement's first 60 characters with every literal (strings, dollar-quoted bodies, numbers) replaced by `?`.
 #     NEVER stored: a host, a credential, a value, the full statement or the error text. `outcome` is ok / error / timeout. `main()` drains the log into each layer head's `read_timings`
@@ -11729,10 +11730,15 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
 #       `CensusCapRefused` (a SystemExit, which the per-check `except Exception` guards cannot swallow) before it starts psql.
 #     The INTEGRITY RUNNER (`psql_read_only`, a registry-stored integrity_check_sql) is EXEMPT: it keeps its own budget (`SET LOCAL statement_timeout` = 90% of its client limit) whatever the cap is,
 #     because no certified part may lose its verdict to a cap (ga_fact_identity's integrity SQL alone takes ~74 s). The argv is a list: no shell string is ever built; the numbers are validated ints.
+# (3) ONE RETRY ON CONNECTION LOSS (T4). A READ-ONLY statement whose psql run fails with a dropped-connection message (`server closed the connection unexpectedly`, `connection to server was lost`,
+#     `could not receive data from server`, `SSL SYSCALL error: EOF detected`, `Connection reset by peer`, `no connection to the server`) and NO `ERROR:` line and no timeout text is run ONE more
+#     time after CONN_RETRY_PAUSE_SECONDS; the read timing entry says `retries: 1`. A second failure is reported exactly as a first one always was. A timeout and an SQL error are never retried;
+#     a statement that is not provably read-only (see `_retry_safe`) is never retried.
 CENSUS_STATEMENT_CAP_ENV = "SUVARNA_CENSUS_STATEMENT_CAP_SECS"
 CENSUS_STATEMENT_CAP_MAX_SECONDS = 86_400
 CENSUS_LOCK_TIMEOUT_SECONDS = 5
 EXIT_STATEMENT_CAP_REFUSED = 14
+CONN_RETRY_PAUSE_SECONDS = 1.0
 READ_TIMINGS_SLOWEST_PER_ASSET = 5
 READ_TIMINGS_REPORT_TOP = 10
 
@@ -11838,6 +11844,28 @@ def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
     return "\n".join(lines) if lines else "no read_timings in this census"
 
 
+_CONN_LOSS_MARKERS = ("server closed the connection unexpectedly", "connection to server was lost", "could not receive data from server",
+                      "ssl syscall error: eof detected", "connection reset by peer", "no connection to the server")
+_RETRY_UNSAFE_WORDS = re.compile(r"\b(insert|update|delete|merge|into|copy|truncate|alter|create|drop|grant|revoke|lock|vacuum|call|reindex|cluster|refresh|comment|nextval|setval|set_config|"
+                                 r"pg_advisory\w*|pg_notify|lo_\w+|dblink\w*)\b", re.I)
+
+
+def _is_connection_loss(stderr_text: str) -> bool:
+    """psql's stderr says the connection dropped (and is neither a server `ERROR:` nor a timeout)."""
+    t = stderr_text.casefold()
+    if _read_timeout_kind(t) is not None or any(ln.lstrip().startswith("error:") for ln in t.splitlines()):
+        return False
+    return any(m in t for m in _CONN_LOSS_MARKERS)
+
+
+def _retry_safe(cmds: list[str]) -> bool:
+    """True when running the batch twice is harmless: it opens a server-enforced `BEGIN READ ONLY` transaction, or every command is a SELECT / WITH / SHOW / VALUES with no write-ish word in it
+    (conservative: a word inside a string literal only costs the retry)."""
+    if any(re.fullmatch(r"\s*BEGIN\s+READ\s+ONLY\s*", c, re.I) for c in cmds):
+        return True
+    return all(re.match(r"\s*(select|with|show|values)\b", c, re.I) and not _RETRY_UNSAFE_WORDS.search(c) for c in cmds)
+
+
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
               cap: int | None = None, via_stdin: bool = False, session_cap: bool = True) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
@@ -11845,13 +11873,15 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
     script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
     the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
-    variable interpolation). SS N-430: every run is timed (`_record_read`); `session_cap` False exempts the run from SUVARNA_CENSUS_STATEMENT_CAP_SECS (the integrity runner)."""
+    variable interpolation). SS N-430: every run is timed (`_record_read`); `session_cap` False exempts the run from SUVARNA_CENSUS_STATEMENT_CAP_SECS (the integrity runner);
+    a dropped connection on a read-only batch is retried once (see the block comment above)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     named = cmds[label]                                         # the command a timeout message names (a cap prelude is added in front of the list below)
     cap_secs = census_statement_cap_secs()                   # refuses a malformed cap BEFORE psql is started (the exempt integrity run included: a bad setting is never ignored)
     if not session_cap:
         cap_secs = None                                      # EXEMPT: the integrity runner keeps its own budget
+    retry_ok = _retry_safe(list(cmds))
     if cap_secs is not None:
         cmds = census_session_prelude(cap_secs) + list(cmds)   # the timeouts ride in the SAME session, first; `-q` keeps their command tags out of the rows
         quiet = True
@@ -11864,15 +11894,21 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     else:
         for c in cmds:
             argv += ["-c", c]
-    t0, outcome = time.monotonic(), "error"
+    t0, retries, outcome = time.monotonic(), 0, "error"
     try:
-        try:
-            # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-            p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
-        except subprocess.TimeoutExpired as exc:
-            outcome = "timeout"
-            raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
-                               f"{' '.join(named.split())[:120]}") from exc
+        while True:
+            try:
+                # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
+                p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
+            except subprocess.TimeoutExpired as exc:
+                outcome = "timeout"
+                raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
+                                   f"{' '.join(named.split())[:120]}") from exc
+            if p.returncode != 0 and retries == 0 and retry_ok and _is_connection_loss(p.stderr.decode("utf-8", errors="replace")):
+                retries = 1                                     # SS N-430 T4: a dropped connection on a read-only batch: ONE more run after a short pause
+                time.sleep(CONN_RETRY_PAUSE_SECONDS)
+                continue
+            break
         if p.returncode != 0:
             err = p.stderr.decode("utf-8", errors="replace")
             first = (err.strip().splitlines() or ["psql failed"])[0][:400]
@@ -11888,7 +11924,7 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
         outcome = "ok"
         return rows
     finally:
-        _record_read(named, time.monotonic() - t0, 0, outcome)
+        _record_read(named, time.monotonic() - t0, retries, outcome)
 
 
 def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
