@@ -484,7 +484,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "JUP",
 "fact_value_num": null,
-"fact_value_text": "Mula",
+"fact_value_text": "Moola",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -2894,7 +2894,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "JUP",
 "fact_value_num": null,
-"fact_value_text": "Mula",
+"fact_value_text": "Moola",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -5304,7 +5304,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "JUP",
 "fact_value_num": null,
-"fact_value_text": "Mula",
+"fact_value_text": "Moola",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -7274,7 +7274,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "SUN",
 "fact_value_num": null,
-"fact_value_text": "Dhanishta",
+"fact_value_text": "Dhanishtha",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -7714,7 +7714,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "JUP",
 "fact_value_num": null,
-"fact_value_text": "Mula",
+"fact_value_text": "Moola",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -9684,7 +9684,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "SUN",
 "fact_value_num": null,
-"fact_value_text": "Dhanishta",
+"fact_value_text": "Dhanishtha",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },
@@ -10124,7 +10124,7 @@
 "fact_key": "nakshatra",
 "fact_subject": "JUP",
 "fact_value_num": null,
-"fact_value_text": "Mula",
+"fact_value_text": "Moola",
 "source_calculation": "pyjhora_adapter.positions/pyjhora/1.0.0",
 "verification_pass_status": "single"
 },

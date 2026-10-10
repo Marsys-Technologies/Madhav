@@ -1,11 +1,13 @@
 """
 test_ga_medical_nakshatra_spelling.py -- TI-prose-batch2-writers: a Moon in nakshatra 23 got no body part.
 
-The L1 facts spell nakshatra 23 "Dhanishta" (`pyjhora_adapter._names.NAKSHATRA_NAMES`, the spelling
-chart_facts carries) while the L0 seed table the writer looks up (`bg_nakshatra_medical`, seeded from
-`brahmagyan.l0_medical.NAKSHATRA_MEDICAL`) spells it "Dhanishtha", so the exact-match lookup returned
-no row and `ga_medical.nakshatra_body_part` stayed NULL for a Moon there. The lookup now folds the
-name to the seed's spelling.
+Before the one-canonical-spelling change the L1 facts spelled nakshatra 23 "Dhanishta" (the spelling
+chart_facts still carries until the rebuild) while the L0 seed table the writer looks up
+(`bg_nakshatra_medical`, seeded from `brahmagyan.l0_medical.NAKSHATRA_MEDICAL`) spells it "Dhanishtha",
+so the exact-match lookup returned no row and `ga_medical.nakshatra_body_part` stayed NULL for a Moon
+there. The lookup folds the name to the seed's spelling; the L1 adapter now writes the lexicon's
+spellings (Mrigasira / Moola / Dhanishtha) and the pre-rebuild ones (Mrigashira / Mula / Dhanishta)
+must still reach their rows.
 
 The fake connection below answers the writer's own SQL from the REAL seed list, by exact name match
 (as the table's `WHERE nakshatra_name = %s` does), so a spelling the seed does not carry returns no row.
@@ -61,14 +63,15 @@ def test_every_one_of_the_27_nakshatras_maps_to_a_body_part(number):
 
 
 def test_nakshatra_23_is_the_spelling_that_failed_before():
-    assert NAKSHATRA_NAMES[23] == "Dhanishta"
+    assert NAKSHATRA_NAMES[23] == "Dhanishtha"          # L1 now writes the lexicon's spelling
     assert SEED_BY_NUMBER[23]["nakshatra_name"] == "Dhanishtha"
     assert med._load_nakshatra_body_part(_Conn(), "Dhanishta") == "back/knees"
-    # the seed's own spelling still resolves
+    # the lexicon's / seed's spelling resolves
     assert med._load_nakshatra_body_part(_Conn(), "Dhanishtha") == "back/knees"
 
 
-@pytest.mark.parametrize("variant,number", [("Moola", 19), ("Mrigasira", 5), ("moola", 19), (" Purva  Bhadrapada ", 25)])
+@pytest.mark.parametrize("variant,number", [("Moola", 19), ("Mrigasira", 5), ("moola", 19), (" Purva  Bhadrapada ", 25),
+                                            ("Mula", 19), ("Mrigashira", 5)])   # last two: the pre-rebuild L1 spellings
 def test_the_other_spelling_families_reach_the_same_row(variant, number):
     assert med._load_nakshatra_body_part(_Conn(), variant) == SEED_BY_NUMBER[number]["body_part"]
 
