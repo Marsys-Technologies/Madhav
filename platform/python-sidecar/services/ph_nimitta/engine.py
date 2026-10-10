@@ -795,3 +795,60 @@ def _robustness_modifier(ayanamsha_robustness: Optional[int]) -> Optional[float]
 def _robustness_status(modifier: Optional[float]) -> str:
     """'measured' only when a modifier was actually computed from a supplied measurement."""
     return 'not_measured' if modifier is None else 'measured'
+
+
+# ── measured cross-ayanamsha robustness (SS N-391, ratified N-394) ────────────
+
+def measure_ayanamsha_robustness(
+    own_ayanamsha: str,
+    signal_type_key: Optional[tuple],
+    event_class_id: Optional[str],
+    own_status: Optional[str],
+    signals_by_aya: dict,
+    pratijna_status_by_aya_event: dict,
+    canonical_ayanamshas,
+) -> Optional[int]:
+    """MEASURED cross-ayanamsha robustness of one anchor, an int in [1, 5], or None.
+
+    DEFINITION (provisional, accepted by SS/Kala as written, N-394; change it HERE only).
+    The anchor derives from an MSR signal S under ayanamsha A (``own_ayanamsha``) with
+    signal key T = ``signal_type_key`` = (bodha_msr_signals.signal_type_id, varga_id)
+    (varga_id may be None: the column is nullable), event class E (``event_class_id``) and
+    own pratijna status P (``own_status`` = bodha_pratijna.status of (chart, A, E)).
+
+      * an ayanamsha X SUPPORTS the anchor iff
+          (a) X has at least one bodha_msr_signals row for the chart with the same key T
+              (``T in signals_by_aya[X]``), AND
+          (b) bodha_pratijna (chart, X, E) has a status EQUAL to P
+              (``pratijna_status_by_aya_event[(X, E)] == P``).
+      * robustness = the number of supporting ayanamshas among the canonical five (the
+        anchor's own ayanamsha is one of them and counts when its own row supports it).
+      * X is BUILT iff ``signals_by_aya`` holds at least one signal key for X. If any of
+        the canonical ayanamshas is NOT built for the chart, the result is None: a 0..5 scale
+        cannot tell "not built" from "built and disagrees", so it is not measured.
+
+    Further honest-null cases that the definition implies but does not spell out: when
+    ``own_ayanamsha`` is not one of the canonical five, or when the signal key, the event
+    class or the own pratijna status is unknown (None), there is no claim to compare other
+    ayanamshas against, so the result is None (an absent status must never "match" another
+    absent status). Nothing here returns a default number.
+
+    Inputs: ``signals_by_aya`` = {ayanamsha_id: set of (signal_type_id, varga_id)};
+    ``pratijna_status_by_aya_event`` = {(ayanamsha_id, event_class_id): status}.
+    """
+    if signal_type_key is None or event_class_id is None or own_status is None:
+        return None
+    canonical = list(canonical_ayanamshas)
+    if not canonical or own_ayanamsha not in canonical:
+        return None   # an anchor from a non-canonical ayanamsha is not on the five-ayanamsha scale
+    for aya in canonical:
+        if not signals_by_aya.get(aya):
+            return None   # fewer than all canonical ayanamshas built -> not measured
+    supporting = 0
+    for aya in canonical:
+        if signal_type_key not in signals_by_aya[aya]:
+            continue
+        if pratijna_status_by_aya_event.get((aya, event_class_id)) != own_status:
+            continue
+        supporting += 1
+    return supporting
