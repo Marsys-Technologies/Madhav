@@ -164,7 +164,7 @@ def test_the_new_keys_are_only_those_and_no_measurement_or_asset_is_touched(monk
     h = copy.deepcopy(doc["L0"])
     h.pop("generated")
     extra = set(h) - set(raw)
-    assert extra == STAMP_KEYS | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()) \
+    assert extra == STAMP_KEYS | {"read_timings"} | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()) \
         | ({"declarations_unavailable"} if h["declarations_sha256"] is None or h["declarations_version"] is None else set()), extra
     assert h["tool_commit"] is None or h["tool_dirty"] is False
     assert {k: v for k, v in h.items() if k in raw} == json.loads(json.dumps(raw, default=str))
