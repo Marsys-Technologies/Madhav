@@ -189,6 +189,7 @@ def _jd_from_date(d: DateType) -> float:
         return 2451545.0 + days
 
 
+# Public registration is on the candidate-aware wrapper below.
 @records_swiss_backend
 class _LegacyKaVighnakaraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
