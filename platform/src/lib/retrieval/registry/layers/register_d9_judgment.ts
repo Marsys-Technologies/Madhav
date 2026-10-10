@@ -1608,7 +1608,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         judgment_flags.push(judgmentFlag(
           'kp_cusp_chain_unavailable',
           `no KP cuspal facts resolved for cusp(s) ${kpCusps.join('/')} ` +
-          '— the KP cuspal asset may not be built for this chart/ayanamsha.',
+          `— the KP cuspal asset may not be built for this chart in the ${kp.frame_label}.`,
         ))
       }
 
@@ -1724,7 +1724,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             : 'ganita_special_lagnas_get',
         },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
-        { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
+        { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `${kp.frame_label}: KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         {
           unit: 'yogi_avayogi',
           state: spec.signal_domain === 'wealth'
@@ -1934,7 +1934,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             timing_hooks: timing,
             // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
             sensitive_degree_firings: sensitive.firings,
-            kp_cusp_chain: { cusps: kp.cusps, note: kp.note },
+            kp_cusp_chain: { frame_label: kp.frame_label, ayanamsha_id: kp.ayanamsha_id, cusps: kp.cusps, note: kp.note },
             gochara_sweep: {
               domain: spec.signal_domain,
               domain_covered: gochara.domain_covered,

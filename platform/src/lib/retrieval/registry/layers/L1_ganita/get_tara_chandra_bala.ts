@@ -5,6 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_tara_chandra_bala',
@@ -54,17 +55,15 @@ export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
 
       const whereParams: unknown[] = [chartId, ['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']]
       let where = `chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        whereParams.push(args.ayanamsha_id as string)
-        where += ` AND ayanamsha_id = $${whereParams.length}`
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      where += pushAyanamshaFilter(aya, whereParams)
 
       const sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${whereParams.length + 1} OFFSET $${whereParams.length + 2}`
 
       const [rowsRes, countRes] = await Promise.all([
@@ -76,11 +75,12 @@ export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           rows,
           total_matching,
           more_available: total_matching > rows.length,
           ...(total_matching === 0
-            ? { empty_reason: `No Tara Bala/Chandra Bala facts for chart ${chartId}${args.ayanamsha_id ? ` ayanamsha '${args.ayanamsha_id}'` : ''}.` }
+            ? { empty_reason: `No Tara Bala/Chandra Bala facts for chart ${chartId}${aya.id ? ` ayanamsha '${aya.id}'` : ''}.` }
             : {}),
         },
         is_error: false,

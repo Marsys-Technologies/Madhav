@@ -5,6 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, pushAyanamshaFilter, ayanamshaServeOrderBy, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 
 const YD_CATEGORIES = ['yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag']
 
@@ -100,12 +101,14 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       // `total` (D5 coverage receipt — family size, envelope.ts buildCoverageStamp)
       // genuinely reflects the SAME filter conditions the page was drawn from, not a
       // re-guess or the page length mislabeled as the family size (the prior bug here).
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
+      // The kala-sarpa verdict below is read from ONE ayanamsha row: the requested one, else Lahiri.
+      const verdictAyanamsha = aya.id ?? PRIMARY_AYANAMSHA
       const baseParams: unknown[] = [chartId, categories]
       let whereClause = `chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        baseParams.push(args.ayanamsha_id as string)
-        whereClause += ` AND ayanamsha_id = $${baseParams.length}`
-      }
+      whereClause += kp.filter(baseParams)
       if (buildIds) {
         baseParams.push(buildIds)
         whereClause += ` AND build_id = ANY($${baseParams.length}::uuid[])`
@@ -130,10 +133,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       // computation (B.10), same bounded-query discipline as the total/count query above.
       const firingsParams: unknown[] = [chartId]
       let firingsWhere = `chart_id = $1 AND fired = true`
-      if (args.ayanamsha_id) {
-        firingsParams.push(args.ayanamsha_id as string)
-        firingsWhere += ` AND ayanamsha_id = $${firingsParams.length}`
-      }
+      firingsWhere += pushAyanamshaFilter(aya, firingsParams)
       if (buildIds) {
         firingsParams.push(buildIds)
         firingsWhere += ` AND build_id = ANY($${firingsParams.length}::uuid[])`
@@ -144,10 +144,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       // since the gate clause isn't applied to whereClause in that case).
       const gatedCountParams: unknown[] = [chartId, categories]
       let gatedCountWhere = `chart_id = $1 AND fact_category = ANY($2::text[]) AND NOT (${doshaGateClause})`
-      if (args.ayanamsha_id) {
-        gatedCountParams.push(args.ayanamsha_id as string)
-        gatedCountWhere += ` AND ayanamsha_id = $${gatedCountParams.length}`
-      }
+      gatedCountWhere += kp.filter(gatedCountParams)
       if (buildIds) {
         gatedCountParams.push(buildIds)
         gatedCountWhere += ` AND build_id = ANY($${gatedCountParams.length}::uuid[])`
@@ -163,7 +160,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
            FROM chart_facts
            WHERE ${whereClause}
-           ORDER BY fact_category, ayanamsha_id, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
           [...baseParams, limit, offset],
         ),
@@ -178,6 +175,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
+      const servedRows = kp.label(result.rows ?? [])
       const doshaLabelGatedTotal = Number(doshaGatedCountResult.rows[0]?.total ?? 0)
       const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
       const firingsPointer = {
@@ -215,10 +213,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       if (facet === 'dosha_fires') {
         const ksParams: unknown[] = [chartId]
         let ksWhere = `chart_id = $1 AND fact_category = 'kala_sarpa_per_varga' AND fact_key = 'ks_detection'`
-        if (args.ayanamsha_id) {
-          ksParams.push(args.ayanamsha_id as string)
-          ksWhere += ` AND ayanamsha_id = $${ksParams.length}`
-        }
+        ksWhere += pushAyanamshaFilter(aya, ksParams)
         if (buildIds) {
           ksParams.push(buildIds)
           ksWhere += ` AND build_id = ANY($${ksParams.length}::uuid[])`
@@ -226,7 +221,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         const ksResult = await query<Record<string, unknown>>(
           `SELECT fact_id, ayanamsha_id, fact_value_jsonb, fact_value_text, verification_pass_status, citation_ref
            FROM chart_facts WHERE ${ksWhere}
-           ORDER BY ayanamsha_id, (fact_value_jsonb->>'varga')`,
+           ORDER BY ${ayanamshaServeOrderBy()}, (fact_value_jsonb->>'varga')`,
           ksParams,
         )
         const ksRows = ksResult.rows ?? []
@@ -247,12 +242,15 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       let kalaSarpaReconciliation: Record<string, unknown> | undefined
       if (kalaSarpaPerVarga) {
         const doshaLabelRow = (result.rows ?? []).find(
-          r => r['fact_category'] === 'dosha_label' && r['fact_subject'] === 'kala_sarpa',
+          r => r['fact_category'] === 'dosha_label' && r['fact_subject'] === 'kala_sarpa' && r['ayanamsha_id'] === verdictAyanamsha,
         )
         const doshaLabelFires = doshaLabelRow
           ? ((doshaLabelRow['fact_value_jsonb'] as { fires?: boolean | null } | null)?.fires ?? null)
           : null
-        const perVargaD1 = kalaSarpaPerVarga.natal[0]
+        // Pinned to the verdict ayanamsha row (never `natal[0]`, which under "all" is whichever
+        // ayanamsha sorts first): the reconciliation compares one ayanamsha's label with that
+        // SAME ayanamsha's computed D1 fact.
+        const perVargaD1 = kalaSarpaPerVarga.natal.find(r => r['ayanamsha_id'] === verdictAyanamsha)
         const perVargaFires = perVargaD1
           ? ((perVargaD1['fact_value_jsonb'] as { fires?: boolean } | null)?.fires ?? null)
           : null
@@ -264,6 +262,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
           ? null
           : perVargaFires === effectiveDoshaLabelFires
         kalaSarpaReconciliation = {
+          verdict_ayanamsha_id: verdictAyanamsha,
           dosha_label_row_served: !!doshaLabelRow,
           dosha_label_fires: effectiveDoshaLabelFires,
           per_varga_d1_fires: perVargaFires,
@@ -285,13 +284,13 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       const empty_reason = total === 0
         ? `No chart_facts rows match categories=[${categories.join(', ')}]` +
           (args.type ? ` type='${String(args.type)}'` : '') +
-          (args.ayanamsha_id ? ` ayanamsha_id='${String(args.ayanamsha_id)}'` : '') +
+          (aya.id ? ` ayanamsha_id='${aya.id}'` : '') +
           ` for chart ${chartId}.`
         : undefined
 
       return {
         content: {
-          chart_id: chartId, categories, rows: result.rows ?? [], total,
+          chart_id: chartId, ...kp.echo(servedRows), categories, rows: servedRows, total,
           ...(empty_reason ? { empty_reason } : {}),
           firings_pointer: firingsPointer,
           catalog_only_rows_in_page: catalogOnlyCount,

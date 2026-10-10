@@ -23,6 +23,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -101,7 +102,14 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const discovery_class = args['discovery_class'] ? String(args['discovery_class']) : null
     const domain = args['domain'] ? String(args['domain']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
@@ -109,11 +117,11 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)    { filters.push(`ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (discovery_class) { filters.push(`discovery_class = $${p++}`); params.push(discovery_class) }
     if (domain)          { filters.push(`$${p++} = ANY(affected_domains_array)`); params.push(domain) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT discovery_id, ayanamsha_id, discovery_class, discovery_subsystem,
@@ -216,11 +224,12 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
       // discovery read that a caller actually asked for. buildTailWatch already returns
       // an explained empty rather than throwing, and distinguishes "assessed and empty"
       // from "could not be assessed" — so an empty tail here is never silent.
-      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
+      const tail = await buildTailWatch(chart_id, aya.id ?? PRIMARY_AYANAMSHA)
 
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           // Budget-protected: declared hardFloor with minKeep >= 1 and a member of
           // IMMUNE_HONESTY_FIELDS, so no trim can zero it (platform-mcp
@@ -228,6 +237,8 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
           tail_watch: tail.tail_watch,
           tail_watch_empty_reason: tail.tail_watch_empty_reason,
           tail_watch_components: tail.tail_watch_components,
+          // Under the explicit 'all' opt-out the rows are pooled but the tail is a separate section pinned to the primary ayanamsha — label it.
+          ...(aya.id === null ? { tail_watch_ayanamsha_id: PRIMARY_AYANAMSHA } : {}),
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
@@ -243,7 +254,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
               : `no discoveries for chart ${chart_id}` +
                 (discovery_class ? ` of class ${discovery_class}` : '') +
                 (domain ? ` in domain ${domain}` : '') +
-                (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+                ` at ${describeAyanamshaScope(aya)}` +
                 '. bo_anveshana writes this ledger; an absent set means the writer has not run ' +
                 'for this chart, not that the chart yielded nothing non-obvious. Note the tail_watch ' +
                 'section is computed independently and may be populated even when this set is empty.',

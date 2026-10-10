@@ -13,6 +13,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -69,17 +70,24 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const question_type = args['question_type'] ? String(args['question_type']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
     const offset = Math.max(Number(args['offset'] ?? 0), 0)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)  { filters.push(`ayanamsha_id = $${p++}`);  params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (question_type) { filters.push(`question_type = $${p++}`); params.push(question_type) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     // COALESCE the ranked-signal count from either object-shaped ({total_count, ranked_signals})
     // or flat-array-shaped all_relevant_ranked_jsonb; never inline the raw payload.
@@ -99,7 +107,7 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_question_lenses
       WHERE ${where}
-      ORDER BY question_type, ayanamsha_id
+      ORDER BY question_type, ${ayanamshaServeOrderBy()}
       LIMIT $${p} OFFSET $${p + 1}`
 
     try {
@@ -111,10 +119,11 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
       // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
       // tail_watch section". Best-effort — buildTailWatch returns an explained empty
       // rather than throwing, so the tail can never fail the read the caller asked for.
-      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
+      const tail = await buildTailWatch(chart_id, aya.id ?? PRIMARY_AYANAMSHA)
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
@@ -122,12 +131,14 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
           tail_watch: tail.tail_watch,
           tail_watch_empty_reason: tail.tail_watch_empty_reason,
           tail_watch_components: tail.tail_watch_components,
+          // Under the explicit 'all' opt-out the rows are pooled but the tail is a separate section pinned to the primary ayanamsha — label it.
+          ...(aya.id === null ? { tail_watch_ayanamsha_id: PRIMARY_AYANAMSHA } : {}),
           empty_reason: rowsRes.rows.length > 0 ? null
             : total_matching > 0
               ? `offset ${offset} is past the end of ${total_matching} matching lenses`
               : `no question lenses for chart ${chart_id}` +
                 (question_type ? ` and question_type ${question_type}` : '') +
-                (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+                ` at ${describeAyanamshaScope(aya)}` +
                 '. bo_drishti writes one lens per (question_type, ayanamsha); an absent row ' +
                 'means the writer has not run, not that the question has no lens.',
           filters: { ayanamsha_id, question_type, limit, offset },

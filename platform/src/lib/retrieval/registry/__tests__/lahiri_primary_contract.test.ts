@@ -25,7 +25,6 @@ import { getCatalog } from '../catalog'
 import { getToolByName } from '../tool_name_bridge'
 import {
   AYANAMSHA_SERVE_ORDER,
-  INVARIANT_BEARING_CAPABILITY_URIS,
   KP_FRAME_CAPABILITY_URIS,
 } from '../constants'
 import type { CapabilityDescriptor } from '../types'
@@ -33,8 +32,12 @@ import type { CapabilityDescriptor } from '../types'
 const CHART_ID = '11111111-aaaa-4aaa-aaaa-aaaaaaaaaaaa'
 const LAHIRI = 'lahiri_chitrapaksha'
 
-/** Capabilities the bridge deliberately does NOT default to Lahiri on omission (KP doctrine, INVARIANT rows). */
-const NOT_INJECTED = new Set<string>([...KP_FRAME_CAPABILITY_URIS, ...INVARIANT_BEARING_CAPABILITY_URIS])
+/**
+ * Capabilities the bridge deliberately does NOT default to Lahiri on omission: KP doctrine only.
+ * (PR-2: get_panchanga/get_nakshatra/get_strength/query_planet now read IN ($n,'INVARIANT') in their
+ * handlers, so they were REMOVED from INVARIANT_BEARING_CAPABILITY_URIS and receive Lahiri here.)
+ */
+const NOT_INJECTED = new Set<string>([...KP_FRAME_CAPABILITY_URIS])
 
 function hasAyanamshaInput(c: CapabilityDescriptor): boolean {
   return !!c.input_schema && Object.prototype.hasOwnProperty.call(c.input_schema, 'ayanamsha_id')
@@ -99,14 +102,8 @@ describe('catalog shape this contract depends on', () => {
 })
 
 describe('omitted ayanamsha_id -> Lahiri on every per_chart capability that declares it', () => {
-  it('the set of capabilities NOT defaulted to Lahiri is exactly the declared KP-frame + INVARIANT-bearing set', () => {
-    expect([...NOT_INJECTED].sort()).toEqual([
-      'marsys://tool/L1/get_kp_cusps',
-      'marsys://tool/L1/get_nakshatra',
-      'marsys://tool/L1/get_panchanga',
-      'marsys://tool/L1/get_strength',
-      'marsys://tool/L1/query_planet',
-    ])
+  it('the set of capabilities NOT defaulted to Lahiri is exactly the declared KP-frame set', () => {
+    expect([...NOT_INJECTED].sort()).toEqual(['marsys://tool/L1/get_kp_cusps'])
     const all = new Set(getCatalog().map((c) => c.uri as string))
     for (const uri of NOT_INJECTED) expect(all.has(uri), `stale exclusion ${uri}`).toBe(true)
     for (const uri of NOT_INJECTED) expect(perChartWithAya.some((c) => c.uri === uri), `${uri} has no ayanamsha_id input`).toBe(true)
@@ -126,11 +123,11 @@ describe('omitted ayanamsha_id -> Lahiri on every per_chart capability that decl
     expect(injected).toBe(perChartWithAya.length - NOT_INJECTED.size)
   })
 
-  it('INVARIANT-bearing capabilities keep their pre-N-342 omitted behaviour (no id injected), but still normalise an explicit one', async () => {
-    for (const uri of INVARIANT_BEARING_CAPABILITY_URIS) {
-      const cap = perChartWithAya.find((c) => c.uri === uri)!
-      expect('ayanamsha_id' in (await handlerArgsViaBridge(cap, undefined)), uri).toBe(false)
-      expect((await handlerArgsViaBridge(cap, { ayanamsha_id: 'LAHIRI' }))['ayanamsha_id'], uri).toBe(LAHIRI)
+  it('the former INVARIANT-bearing capabilities (PR-2) now receive Lahiri on omission and normalise an explicit id', async () => {
+    for (const name of ['get_panchanga', 'get_nakshatra', 'get_strength', 'query_planet']) {
+      const cap = perChartWithAya.find((c) => c.uri === `marsys://tool/L1/${name}`)!
+      expect((await handlerArgsViaBridge(cap, undefined))['ayanamsha_id'], name).toBe(LAHIRI)
+      expect((await handlerArgsViaBridge(cap, { ayanamsha_id: 'LAHIRI' }))['ayanamsha_id'], name).toBe(LAHIRI)
     }
   })
 

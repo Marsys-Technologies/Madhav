@@ -2905,7 +2905,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 3,
+      "input_param_count": 4,
       "projection_tags": [
         "mcp_full"
       ],

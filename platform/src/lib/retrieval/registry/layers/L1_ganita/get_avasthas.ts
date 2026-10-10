@@ -7,6 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 
 const AVASTHA_CATEGORIES = [
   'graha_avastha_baladi', 'graha_avastha_deepta', 'graha_avastha_jagrad',
@@ -73,24 +74,24 @@ export const getAvasthsCapability: CapabilityDescriptor = {
         where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
         filterParams.push(buildFence.build_ids)
       }
-      if (args.ayanamsha_id) {
-        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
-        filterParams.push(args.ayanamsha_id as string)
-      }
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      where += kp.filter(filterParams)
       const pageSql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
 
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
+      const rows = kp.label(result.rows ?? [])
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
+        content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: Number(countResult.rows?.[0]?.total ?? 0) },
         is_error: false,
       }
     } catch (err) {

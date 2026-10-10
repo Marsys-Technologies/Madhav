@@ -10,6 +10,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { grahaCodeOf } from '@/lib/retrieval/graha_labels'
 
 // F-D25 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6; D-SERVICE ≤2 hops to L1): the writer
@@ -74,17 +75,15 @@ export const getTransitAnchorsCapability: CapabilityDescriptor = {
         FROM ga_transit_anchors
         WHERE chart_id = $1
       `
-      if (args.ayanamsha_id) {
-        params.push(args.ayanamsha_id as string)
-        sql += ` AND ayanamsha_id = $${params.length}`
-      }
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params)
       if (args.graha) {
         params.push((args.graha as string).toLowerCase())
         sql += ` AND graha = $${params.length}`
       }
       params.push(limit)
       params.push(offset)
-      sql += ` ORDER BY ayanamsha_id, graha LIMIT $${params.length - 1} OFFSET $${params.length}`
+      sql += ` ORDER BY ${ayanamshaServeOrderBy()}, graha LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const anchors = result.rows ?? []
@@ -123,8 +122,9 @@ export const getTransitAnchorsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           ...(anchors.length === 0
-            ? { empty_reason: `No transit anchors for chart ${chartId}${args.ayanamsha_id ? ` ayanamsha '${args.ayanamsha_id}'` : ''}${args.graha ? ` graha '${args.graha}'` : ''}.` }
+            ? { empty_reason: `No transit anchors for chart ${chartId}${aya.id ? ` ayanamsha '${aya.id}'` : ''}${args.graha ? ` graha '${args.graha}'` : ''}.` }
             : {}),
           anchors: groundedAnchors,
           total: groundedAnchors.length,

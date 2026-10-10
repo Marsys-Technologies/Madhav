@@ -203,6 +203,8 @@ async function callPrimitive(
 
 interface BundleEntry {
   sub_tool: string
+  /** Reading frame of this evidence when it is not the Lahiri primary (KP: Krishnamurti ayanamsha). */
+  frame_label?: string
   errored: boolean
   /** Always present (F-30/F-74): HTTP status from the upstream primitives call.
    *  200 on success; real status (400/401/403/408/500/…) on failure so callers
@@ -525,11 +527,21 @@ export interface MultiSchoolBundleParams {
   behavioral_overrides?: BehavioralOverridesPatch
 }
 
-function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
+/**
+ * KP school frame. LOCAL constants on purpose (PR-4 adds retrieval/kp_frame.ts on its own branch;
+ * the two are deduplicated at the combined batch): KP is read on the Krishnamurti ayanamsha, not on
+ * the Lahiri primary, and the evidence says so.
+ */
+export const KP_SCHOOL_AYANAMSHA_ID = 'krishnamurti'
+export const KP_SCHOOL_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
+
+export function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
   switch (school) {
     case 'parashara': return { toolName: 'query_signals', params: { limit: 20 } }
     case 'jaimini': return { toolName: 'query_chart_facts', params: { category: 'strength_extra', limit: 20 } }
-    case 'kp': return { toolName: 'query_chart_facts', params: { category: 'kp_cusp', limit: 20 } }
+    // KP is Krishnamurti BY DOCTRINE (SS N-342): pinned explicitly so the Lahiri-primary default
+    // (bridge/handler) never reads the KP chain from Lahiri facts.
+    case 'kp': return { toolName: 'query_chart_facts', params: { category: 'kp_cusp', ayanamsha_id: KP_SCHOOL_AYANAMSHA_ID, limit: 20 } }
     case 'tajaka': return { toolName: 'query_chart_facts', params: { category: 'varshphal', limit: 20 } }
   }
 }
@@ -571,6 +583,7 @@ export async function executeMultiSchoolBundle(
       const spec = buildSchoolSpec(school)
       return spec
         ? runSubTool(`${school}_evidence`, spec.toolName, spec.params, principal, onEvent)
+            .then((entry): BundleEntry => (school === 'kp' ? { ...entry, frame_label: KP_SCHOOL_FRAME_LABEL } : entry))
         : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, upstream_status: 0, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
     }),
   ]
@@ -607,6 +620,8 @@ export async function executeMultiSchoolBundle(
     served_from_cache: false,
     claim: params.claim,
     schools: schoolsToRun,
+    // Non-primary reading frames, named (KP stays on Krishnamurti by doctrine, SS N-342).
+    ...(schoolsToRun.includes('kp') ? { school_frames: { kp: KP_SCHOOL_FRAME_LABEL } } : {}),
     // R4 metadata
     response_format: responseFormat,
     model_family: modelFamily,

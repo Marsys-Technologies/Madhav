@@ -113,3 +113,34 @@ describe('executeHolisticBundle — CR-39/CR-14 chart_id threading', () => {
     }
   })
 })
+
+describe('executeMultiSchoolBundle — KP school stays on Krishnamurti (SS N-342, Lahiri-primary PR-2)', () => {
+  it('the kp school spec pins ayanamsha_id=krishnamurti; the other schools carry none (they get the Lahiri primary)', async () => {
+    const { buildSchoolSpec } = await import('../bundle_adapters')
+    expect(buildSchoolSpec('kp')?.params).toMatchObject({ category: 'kp_cusp', ayanamsha_id: 'krishnamurti' })
+    for (const school of ['parashara', 'jaimini', 'tajaka'] as const) {
+      expect(buildSchoolSpec(school)?.params).not.toHaveProperty('ayanamsha_id')
+    }
+  })
+
+  it('sends ayanamsha_id=krishnamurti on the kp_cusp primitive call and labels the kp evidence as the KP frame', async () => {
+    const { calls } = stubFetchCapturingPrimitiveCalls()
+    const { executeMultiSchoolBundle } = await import('../bundle_adapters')
+    let envelope: Record<string, unknown> | undefined
+    await executeMultiSchoolBundle(
+      { claim: 'career', tier: 'client', chart_id: CHART_ID },
+      PRINCIPAL,
+      (event) => { if (event.type === 'bundle.completed') envelope = (event as unknown as { envelope: Record<string, unknown> }).envelope },
+    )
+    const kpCall = calls.find((c) => c.body['category'] === 'kp_cusp')
+    expect(kpCall, 'kp_cusp primitive call').toBeDefined()
+    expect(kpCall!.body['ayanamsha_id']).toBe('krishnamurti')
+    for (const c of calls.filter((x) => x.body['category'] !== 'kp_cusp' && x.toolName !== 'cross_school_lookup')) {
+      expect(c.body['ayanamsha_id']).toBeUndefined()
+    }
+    const entries = envelope!['bundle_entries'] as Array<Record<string, unknown>>
+    expect(entries.find((e) => e['sub_tool'] === 'kp_evidence')?.['frame_label']).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(entries.filter((e) => e['sub_tool'] !== 'kp_evidence').every((e) => e['frame_label'] === undefined)).toBe(true)
+    expect(envelope!['school_frames']).toEqual({ kp: 'KP frame (Krishnamurti ayanamsha)' })
+  })
+})
