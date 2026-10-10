@@ -173,7 +173,12 @@ function densityFourYogaDoshaRowsNeverDropped(): AssertionResult {
   const id = 'DENSITY-4'
   try {
     const src = readSource('platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts')
-    if (!/rows:\s*result\.rows\s*\?\?\s*\[\]/.test(src)) {
+    // The served `rows` is the unfiltered query result, either directly (`rows: result.rows ?? []`) or through the KP-frame labelling map (Lahiri-primary PR-2):
+    // `const servedRows = kp.label(result.rows ?? [])` + `rows: servedRows`. `label` is `rows.map(...)` (labelKpFrameRows: additive `frame_label`, same length, or the
+    // identity), so neither form can drop a row; any other source of `rows` (a filter, a slice, a different variable) is red.
+    const direct = /rows:\s*result\.rows\s*\?\?\s*\[\]/.test(src)
+    const labelled = /const\s+servedRows\s*=\s*kp\.label\(\s*result\.rows\s*\?\?\s*\[\]\s*\)/.test(src) && /\brows:\s*servedRows\b/.test(src)
+    if (!direct && !labelled) {
       return { id, status: 'red', evidence: 'served rows field no longer maps 1:1 from the unfiltered query result — cannot confirm rows are never dropped' }
     }
     if (!/catalogOnlyCount\s*=\s*\(result\.rows\s*\?\?\s*\[\]\)\.filter/.test(src)) {

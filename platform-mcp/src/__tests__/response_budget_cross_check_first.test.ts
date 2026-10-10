@@ -61,7 +61,7 @@ describe('ayanamsha_cross_check is trimmed BEFORE confirmed data', () => {
     const sec: TrimmableSection<typeof env> = {
       path: 'content.rows', label: 'rows', minKeep: 10, hardFloor: true,
       getArray: (e) => e.content.rows, setArray: (e, kept) => { e.content.rows = kept as Row[] },
-      recover: { instrument: 't', hint: 'h' },
+      recover: { instrument: 'bodha_signals_get', hint: 'h' },
     }
     const res = applyResponseBudget(env, 0.5, [sec])
     expect(res.content.content.rows.every((r) => r.ayanamsha_cross_check === undefined)).toBe(true)
