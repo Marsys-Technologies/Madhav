@@ -71,14 +71,14 @@ beforeEach(() => {
 
 describe('EditClientForm — structure', () => {
   it('groups fields into Identity, Birth coordinates, Time standard and Computation frame', () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     for (const name of ['Identity', 'Birth coordinates', 'Time standard', 'Computation frame']) {
       expect(screen.getByRole('group', { name })).toBeInTheDocument()
     }
   })
 
   it('shows the effective offset the server will verify', () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     expect(screen.getByTestId('effective-offset')).toHaveTextContent('UTC+05:30')
   })
 })
@@ -86,7 +86,7 @@ describe('EditClientForm — structure', () => {
 describe('EditClientForm — display-only edits', () => {
   it('a name-only edit saves directly, with Save changes and no dialog', async () => {
     respond(200, { data: { mode: 'display-only', chartId: 'c1', changedFields: ['name'] } })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^full name/i), { target: { value: 'Renamed Native' } })
     const submit = screen.getByRole('button', { name: 'Save changes' })
     fireEvent.click(submit)
@@ -94,7 +94,10 @@ describe('EditClientForm — display-only edits', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchMock.mock.calls[0][0]).toBe('/api/charts/c1')
     expect(fetchMock.mock.calls[0][1].method).toBe('PATCH')
-    expect(sentBody()).toMatchObject({ name: 'Renamed Native', birth_time: '10:43', lat: 20.2961, lon: 85.8245, tz_offset: 5.5, ayanamshas: ['lahiri'] })
+    expect(sentBody()).toMatchObject({ name: 'Renamed Native', birth_time: '10:43', lat: 20.2961, lon: 85.8245, tz_offset: 5.5 })
+    // The selection was not touched, so no ayanamsha list is sent (never an ayanamsha edit).
+    expect(sentBody()).not.toHaveProperty('ayanamshas')
+    expect(sentBody()).not.toHaveProperty('confirm_destructive')
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/clients/c1'))
   })
 })
@@ -106,7 +109,7 @@ describe('EditClientForm — computation-affecting edits', () => {
     ['latitude', /^latitude/i, '20.4625'],
     ['longitude', /^longitude/i, '85.883'],
   ])('a %s change asks to Save and recompute and confirms first', async (_label, field, value) => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(field), { target: { value } })
     fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
@@ -114,19 +117,19 @@ describe('EditClientForm — computation-affecting edits', () => {
   })
 
   it('a timezone change recomputes', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^timezone/i), { target: { value: 'Asia/Dhaka' } })
     expect(screen.getByRole('button', { name: 'Save and recompute' })).toBeInTheDocument()
   })
 
   it('an ayanāṃśa change recomputes', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.click(screen.getByRole('checkbox', { name: 'KP' }))
     expect(screen.getByRole('button', { name: 'Save and recompute' })).toBeInTheDocument()
   })
 
   it('the dialog lists each before/after change and the archive notice', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^time of birth/i), { target: { value: '10:44' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
     const row = await screen.findByTestId('change-birth_time')
@@ -137,7 +140,7 @@ describe('EditClientForm — computation-affecting edits', () => {
 
   it('202 recompute-started returns to the workspace', async () => {
     respond(202, { data: { mode: 'recompute-started', chartId: 'c1', changedFields: ['birth_time'], runId: 'r1' } })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^time of birth/i), { target: { value: '10:44' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save and recompute' }))
@@ -151,7 +154,7 @@ describe('EditClientForm — computation-affecting edits', () => {
       code: 'JOB_DISPATCH_FAILED',
       data: { mode: 'needs-rebuild', chartId: 'c1', changedFields: ['birth_time'], runId: 'r9', error: 'spawn' },
     })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^time of birth/i), { target: { value: '10:44' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save and recompute' }))
@@ -159,7 +162,7 @@ describe('EditClientForm — computation-affecting edits', () => {
   })
 
   it('dialog Cancel returns focus to the submit trigger and sends nothing', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^time of birth/i), { target: { value: '10:44' } })
     const submit = screen.getByRole('button', { name: 'Save and recompute' })
     fireEvent.click(submit)
@@ -172,7 +175,7 @@ describe('EditClientForm — computation-affecting edits', () => {
 describe('EditClientForm — server refusals keep the form', () => {
   it('409 keeps values and announces the build in progress', async () => {
     respond(409, { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE' })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^full name/i), { target: { value: 'Renamed Native' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/build is in progress/i)
@@ -182,7 +185,7 @@ describe('EditClientForm — server refusals keep the form', () => {
 
   it('422 maps server field errors onto the matching inputs', async () => {
     respond(422, { error: 'Some chart details are invalid.', code: 'VALIDATION_FAILED', fields: { lat: 'Latitude out of range', tz_offset: 'Offset disagrees' } })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^full name/i), { target: { value: 'Renamed Native' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(await screen.findByText('Latitude out of range')).toBeInTheDocument()
@@ -191,7 +194,7 @@ describe('EditClientForm — server refusals keep the form', () => {
   })
 
   it('a chart with no stored timezone requires one before saving', async () => {
-    render(<EditClientForm chart={{ ...CHART, timezone_id: null, tz_offset_hours: null }} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={{ ...CHART, timezone_id: null, tz_offset_hours: null }} />)
     expect(screen.getByText(/choose the birth timezone/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
     expect(fetchMock).not.toHaveBeenCalled()
@@ -200,7 +203,7 @@ describe('EditClientForm — server refusals keep the form', () => {
 
 describe('EditClientForm — computation-safe birthplace', () => {
   it('refuses a new place typed without new coordinates, naming what to reselect, and sends nothing', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^birth place/i), { target: { value: 'Cuttack, Odisha' } })
     expect(screen.getByRole('note', { name: /reselect/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Save and recompute' }))
@@ -212,7 +215,7 @@ describe('EditClientForm — computation-safe birthplace', () => {
   })
 
   it('accepts a new place entered with its own coordinates', async () => {
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^birth place/i), { target: { value: 'Cuttack, Odisha' } })
     fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.4625' } })
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.883' } })
@@ -223,7 +226,7 @@ describe('EditClientForm — computation-safe birthplace', () => {
   it('a selected place updates place, coordinates and timezone together', async () => {
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'test-key')
     respond(202, { data: { mode: 'recompute-started', chartId: 'c1', changedFields: ['birth_place'], runId: 'r2' } })
-    render(<EditClientForm chart={{ ...CHART, timezone_id: 'Asia/Dhaka', tz_offset_hours: 6 }} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={{ ...CHART, timezone_id: 'Asia/Dhaka', tz_offset_hours: 6 }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Pick Cuttack' }))
     expect(screen.getByLabelText(/^birth place/i)).toHaveValue('Cuttack, Odisha, India')
     expect(screen.getByLabelText(/^latitude/i)).toHaveValue(20.4625)
@@ -238,7 +241,7 @@ describe('EditClientForm — computation-safe birthplace', () => {
 
   it('a selected place whose timezone is not a known IANA zone leaves the timezone to be chosen', async () => {
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'test-key')
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.click(screen.getByRole('button', { name: 'Pick unknown zone' }))
     expect(screen.getByLabelText(/^timezone/i)).toHaveValue('')
     vi.unstubAllEnvs()
@@ -246,7 +249,7 @@ describe('EditClientForm — computation-safe birthplace', () => {
 
   it('shows the server’s birthplace field errors when it refuses the change', async () => {
     respond(422, { error: 'Reselect the new birth place.', code: 'VALIDATION_FAILED', fields: { birth_place: 'Server says reselect the place.', lat: 'Enter the latitude of the new place.' } })
-    render(<EditClientForm chart={CHART} />)
+    render(<EditClientForm ayanamshaEditPolicy="off" chart={CHART} />)
     fireEvent.change(screen.getByLabelText(/^full name/i), { target: { value: 'Renamed Native' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(await screen.findByText('Server says reselect the place.')).toBeInTheDocument()
