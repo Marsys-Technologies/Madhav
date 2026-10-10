@@ -16,17 +16,28 @@ EVERY result, ok or failure, carries `"assurance": ASSURANCE` ("software-guarded
 `canonical_json(obj)` is the canonical serialisation (sorted keys, no spaces, ASCII, no NaN) a caller should compare byte-for-byte.
 
 What it does, in order
-  1. PIN CHECK (engine process, before anything runs): sha256 of every pinned file is computed from the bytes on disk and compared with the declared digest. A missing file
-     or a differing digest returns ok False at stage "pin" and NOTHING is executed. The same check is repeated AFTER the run (a file changed while the child ran is refused).
-  2. SPAWN: `[sys.executable, -s -S -P -B, <this file>, --child-v1]`, an environment built from a tiny allowlist (nothing is inherited), cwd and HOME and TMPDIR in a fresh
-     empty temp tree, stdin = the JSON request, stdout = the JSON result, stderr discarded, close_fds. The parent enforces a wall-clock timeout and an output-size cap and
-     kills ONLY the child it started (by its own Popen handle).
+  1. PIN CHECK (engine process, before anything runs): each pinned file is read from disk EXACTLY ONCE, as bytes, and the sha256 of THOSE bytes is compared with the declared
+     digest. A missing file, an oversize file or a differing digest returns ok False at stage "pin" and NOTHING is executed. Those same bytes are what is sent to the child:
+     the proof is "the bytes that ran are the bytes that were hashed". The disk is not consulted again for pinned content, so a file edited after the check (a TOCTOU attacker,
+     or an editor) cannot change what runs, and there is deliberately NO post-run re-hash of the disk (it would reject a correct run and prove nothing the first read did not).
+  2. SPAWN: `[sys.executable, -s -S -P -B, -c, <bootstrap>]`, an environment built from a tiny allowlist (nothing is inherited), cwd and HOME and TMPDIR in a fresh empty temp
+     tree, stdin = ONE JSON document {"runner": <this module's source>, "request": {..., "files": {path: base64 bytes}, "modules": {...}}}, stdout = the JSON result,
+     stderr discarded, close_fds. The parent enforces a wall-clock timeout and an output-size cap and kills ONLY the child it started (by its own Popen handle).
+     RUNNER INTEGRITY, design chosen = IN MEMORY: the runner (the child's own code, which is not pinned) is this file's text, read once at import into _RUNNER_SOURCE
+     (digest published as RUNNER_SHA256) and compiled by the bootstrap from stdin. The child never opens a file of ours to get its code, so editing parser_sandbox.py on disk
+     during or after the engine imported it has no effect on any run. (Residual, same class as editing the engine itself: a change between the interpreter compiling this
+     module and this module reading its own text a moment later; the engine is trusted code reviewed in git.)
   3. INSIDE THE CHILD, before the parser is imported: resource limits; network blocked; process spawning blocked; opening/creating/removing files outside the temp tree
-     blocked; ctypes blocked; bytecode neither read from nor written to the repo (pycache_prefix points at an empty temp dir); an import recorder installed.
-  4. The parser module is imported (first on sys.path: `module_root`), `function(input)` is called for each input in order, each result is serialised to canonical JSON.
+     blocked; ctypes blocked; bytecode neither read from nor written to the repo (pycache_prefix points at an empty temp dir); the repo is reachable ONLY through the passed
+     bytes: a sys.meta_path finder placed first serves every pinned module by compiling the passed source (module names are mapped from the paths relative to `module_root`,
+     package __init__.py included), and builtins.open / io.open / io.open_code serve a pinned file (a data file such as a .json read at import) from the passed bytes.
+     ANY OTHER read or import of a file inside repo_root (an unpinned module that exists on disk, an unpinned data file, a raw FileIO or os.open of a repo file) is refused
+     BEFORE it executes or is read, recorded, and ends the run as "unpinned_import". Stdlib and site modules outside repo_root keep working.
+  4. The parser module is imported (from the passed bytes), `function(input)` is called for each input in order, each result is serialised to canonical JSON.
      A function that returns a generator/iterator is materialised with list() inside the child.
-  5. The parent checks: no guard violation was recorded (even one the parser caught and swallowed), and EVERY repo file the child loaded (every import found under repo_root,
-     every repo file it opened) is in `pinned_files`. A parser that quietly imports an unpinned helper is unverifiable: ok False, "unpinned_import", even if it produced output.
+  5. The parent checks: no guard violation was recorded (even one the parser caught and swallowed; an unpinned import or read cannot be swallowed), and, as a second layer, EVERY
+     repo file the child reports as loaded is in `pinned_files`. A parser that quietly imports an unpinned helper is unverifiable: ok False, "unpinned_import".
+     The run stops at the FIRST refused file (it is never executed), so unpinned_files lists what was refused, not the whole closure; pin it and retry.
 
 Deviation from the brief, stated plainly: the interpreter flags are `-s -S -P -B`, NOT `-I`. `-I` implies `-E`, which makes the interpreter IGNORE PYTHONHASHSEED (measured: with
 `-I` two runs of hash('abc') differ even with PYTHONHASHSEED=0). Determinism needs the seed honoured, so the flags are the rest of what `-I` does (-s no user site, -P no cwd/script
@@ -40,7 +51,7 @@ Failure vocabulary (fixed; the detail never echoes a host path or a secret, only
   parser_raised detail is "index=<i> type=<ExceptionType>"; index -1 means the parser module failed to import / the function was missing (before any input ran).
   bad_output covers a malformed result envelope and a result that is not canonical-JSON serialisable ("index=<i>").
   unpinned_import ALSO carries "unpinned_files": [sorted repo-relative paths, at most 50] (the only failure-only extra key; "assurance" is on every result).
-  Stages: pin (pin checks, before and after), spawn (bad arguments / could not start), run (child ran: timeout, exit status, parser_raised, guard violations, unpinned_import),
+  Stages: pin (the single read-and-hash of the pinned files), spawn (bad arguments / could not start), run (child ran: timeout, exit status, parser_raised, guard violations, unpinned_import),
   output (the result: bad_output, output_too_large).
 
 PERMITTED USE (a rule, not a suggestion)
@@ -58,22 +69,23 @@ WHAT THIS DOES NOT GUARANTEE (read this before trusting a green)
     functions the guard list omits, mutate the guard's own globals through `gc`/`sys.modules`, write to an inherited descriptor...).
   * The protection is therefore (a) the parser file and its entire import closure are pinned by sha256 and reviewed in git, so what runs is what was reviewed, and (b) the
     guards stop ACCIDENTS (a parser that opens a DB handle, fetches a URL, shells out, or writes a file), not attacks. Do not run unreviewed code through this.
-  * READS are not restricted: the child can read any file the user can (the guard only records reads under repo_root so an unpinned repo file it reads is caught).
-    Reading is not an effect, but it can leak into the returned output; the pinned, reviewed parser is what prevents that.
+  * READS outside repo_root are not restricted: the child can read any file the user can. Inside repo_root only the passed pinned bytes are readable (everything else is
+    refused as unpinned_import). Reading is not an effect, but it can leak into the returned output; the pinned, reviewed parser is what prevents that.
   * Resource limits: RLIMIT_CPU, RLIMIT_CORE, RLIMIT_FSIZE, RLIMIT_NOFILE and RLIMIT_AS are requested best-effort; a platform may refuse or ignore any of them (macOS ignores
     RLIMIT_AS for most purposes). The wall-clock timeout and the output cap are enforced by the PARENT and do not depend on them.
   * Threads started by the parser share the process; a parser that spawns a thread which outlives its call is stopped only by the timeout. os.kill and signal sending are not
     blocked (a parser could signal the parent); the parent supervises by waiting on its own child only.
   * Determinism: PYTHONHASHSEED=0, TZ=UTC, UTF-8 mode, no bytecode, inputs and outputs in order. A parser that reads the clock or `random` is not made deterministic by this module.
-  * Pyc: the child never reads or writes bytecode in the repo (sys.pycache_prefix is an empty temp dir), so the code that runs is compiled from the source bytes on disk; the
-    post-run re-hash closes the (tiny) window between the pre-run hash and the import.
+  * Pyc: the child never reads or writes bytecode in the repo (sys.pycache_prefix is an empty temp dir) and never reads repo source from disk: pinned code is compiled from
+    the hashed bytes the parent sent.
   * Windows is not supported (the guards and the process flags assume POSIX).
 
-The child is this very file run as a script (`--child-v1`), so the code that guards the parser is in git and syntax-checked like the rest. The census module must list this
-file where it lists its subprocess users: this is a Python child process, not psql or git.
+The child's code is this very file (sent from memory, see step 2), so the code that guards the parser is in git and syntax-checked like the rest. The census module must list
+this file where it lists its subprocess users: this is a Python child process, not psql or git.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -119,7 +131,6 @@ MAX_PINNED_FILES = 512
 MAX_PINNED_FILE_BYTES = 8 << 20
 
 CHILD_FLAGS = ("-s", "-S", "-P", "-B")
-CHILD_ARG = "--child-v1"
 ENVELOPE_VERSION = 1
 
 # The ONLY environment the child sees (HOME and TMPDIR are filled in per run). Nothing is inherited from the parent.
@@ -135,6 +146,39 @@ CHILD_CPU_GRACE_S = 2
 
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _MAX_DETAIL = 160
+
+
+def _read_runner_source() -> str | None:
+    """The child's code is THIS FILE's text, read exactly once, here, at import time. Every run sends this in-memory string to the child (see the bootstrap below); the file on
+    disk is never consulted again, so editing it during or between runs changes nothing for the already-imported engine."""
+    path = globals().get("__file__")  # absent when the child execs this source from memory
+    if not isinstance(path, str):
+        return None
+    try:
+        with open(path, "rb") as fh:
+            return fh.read().decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+_RUNNER_SOURCE = _read_runner_source()
+RUNNER_SHA256 = hashlib.sha256(_RUNNER_SOURCE.encode("utf-8")).hexdigest() if _RUNNER_SOURCE is not None else None  # recorded so a census can show which runner it used
+
+# The child interpreter is started with `-c <this bootstrap>`: it reads ONE JSON document from stdin ({"runner": <source>, "request": {...}}), compiles the runner source in
+# memory and calls its _child_main(request). No file of ours is opened by the child to obtain its own code. (Passed on stdin, not in argv, to stay under ARG_MAX limits.)
+_CHILD_BOOTSTRAP = (
+    "import sys, json\n"
+    "d = json.loads(sys.stdin.buffer.read().decode('utf-8'))\n"
+    "g = {'__name__': 'parser_sandbox_child'}\n"
+    "exec(compile(d['runner'], '<parser_sandbox_runner>', 'exec', dont_inherit=True), g)\n"
+    "g['_child_main'](d['request'])\n"
+)
+
+
+def _after_pin_check() -> None:
+    """Test hook, a no-op in production. Called in the engine after every pinned file has been read ONCE and hashed, and before the child is spawned. Tests monkeypatch it to
+    mutate files on disk at exactly the moment a TOCTOU attacker would, and show the child still runs the hashed bytes."""
+    return None
 
 
 def canonical_json(obj) -> str:
@@ -234,14 +278,6 @@ def load_pin_manifest(repo_root, manifest_rel) -> list[dict]:
     return out
 
 
-def _sha256_file(path: str) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for block in iter(lambda: fh.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
 def _rel_ok(rel) -> str | None:
     """Normalise a repo-relative path (posix, no '..', not absolute); None if it is not one."""
     if not isinstance(rel, str) or not rel or "\x00" in rel or "\\" in rel or rel.startswith("/"):
@@ -256,19 +292,27 @@ def _inside(path: str, root: str) -> bool:
     return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
 
 
-def _check_pins(root: str, pins: dict[str, str]) -> tuple[str, str] | None:
-    """Hash every pinned file now. None if all match, else (code, detail)."""
+def _read_pinned(root: str, pins: dict[str, str]) -> tuple[dict[str, bytes] | None, tuple[str, str] | None]:
+    """Read EVERY pinned file exactly once and hash THOSE bytes against the declared digest. Returns ({rel: bytes}, None) or (None, (code, detail)).
+    The bytes returned here are the bytes sent to the child and executed; nothing is read from disk again, so there is no window between "checked" and "used"."""
+    sources: dict[str, bytes] = {}
+    total = 0
     for rel in sorted(pins):
         real = os.path.realpath(os.path.join(root, rel))
         if not _inside(real, root) or not os.path.isfile(real):
-            return ("pin_missing", rel)
+            return None, ("pin_missing", rel)
         try:
-            digest = _sha256_file(real)
+            with open(real, "rb") as fh:
+                data = fh.read(MAX_PINNED_FILE_BYTES + 1)
         except OSError:
-            return ("pin_missing", rel)
-        if digest != pins[rel]:
-            return ("pin_mismatch", rel)
-    return None
+            return None, ("pin_missing", rel)
+        total += len(data)
+        if len(data) > MAX_PINNED_FILE_BYTES or total > 4 * MAX_PINNED_FILE_BYTES:
+            return None, ("pin_missing", rel + " (too large to pin)")
+        if hashlib.sha256(data).hexdigest() != pins[rel]:
+            return None, ("pin_mismatch", rel)
+        sources[rel] = data
+    return sources, None
 
 
 def _module_name_for(file_rel: str, module_root_rel: str) -> str | None:
@@ -354,15 +398,25 @@ def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inpu
     file_rel = _rel_ok(file)
     if file_rel is None or file_rel not in pins:
         return _fail("pin_missing", "file is not one of pinned_files", "pin")
-    bad = _check_pins(root, pins)  # NOTHING has been executed yet
+    sources, bad = _read_pinned(root, pins)  # NOTHING has been executed yet; each file is read once and these bytes are what will run
     if bad is not None:
         return _fail(bad[0], bad[1], "pin")
 
     if not inputs:
         return _fail("no_inputs", "inputs is empty; a run over nothing proves nothing", "run")
 
+    modules: dict[str, str] = {}
+    for rel in sorted(pins):
+        name = _module_name_for(rel, mr)
+        if name is not None:
+            if name in modules:
+                return _fail("spawn_failed", "two pinned files map to the module " + name, "spawn")
+            modules[name] = rel
     module_name = _module_name_for(file_rel, mr)
     file_abs = os.path.join(root, file_rel)
+    if _RUNNER_SOURCE is None:
+        return _fail("spawn_failed", "runner source unavailable", "spawn")
+    _after_pin_check()
 
     # ---- spawn ----
     try:
@@ -389,11 +443,38 @@ def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inpu
             "fsize_bytes": CHILD_MAX_FILE_BYTES,
             "nofile": CHILD_MAX_OPEN_FILES,
             "inputs_json": request_inputs,
+            "files": {rel: base64.b64encode(data).decode("ascii") for rel, data in sources.items()},  # the hashed bytes themselves
+            "modules": modules,
         }
-        request = canonical_json(cfg).encode("utf-8")
+        request = canonical_json({"runner": _RUNNER_SOURCE, "request": cfg}).encode("utf-8")
         return _supervise(root, pins, file_rel, len(inputs), request, work, home, tmp, float(timeout_s), int(max_output_bytes), t0)
     finally:
         _rmtree_quiet(scratch)
+
+
+def _repo_rel_split(root: str, pins: dict[str, str], paths) -> tuple[set[str], set[str]]:
+    """Of the absolute paths the child reports, those under repo_root as repo-relative names: (all of them, the ones that are not pinned)."""
+    in_repo: set[str] = set()
+    unpinned: set[str] = set()
+    for p in paths:
+        lex = os.path.abspath(p)
+        real = os.path.realpath(p)
+        if not _inside(lex, root) and not _inside(real, root):
+            continue
+        rel = os.path.relpath(lex if _inside(lex, root) else real, root).replace(os.sep, "/")
+        in_repo.add(rel)
+        if rel not in pins or not _inside(real, root):
+            unpinned.add(rel)
+    return in_repo, unpinned
+
+
+def _unpinned_failure(root: str, refused=(), unpinned_rel=None) -> dict:
+    names = sorted(unpinned_rel) if unpinned_rel is not None else sorted(_repo_rel_split(root, {}, refused)[1])
+    if not names:
+        names = ["(path not reported)"]
+    res = _fail("unpinned_import", ", ".join(names[:2]) + (" (+%d more)" % (len(names) - 2) if len(names) > 2 else ""), "run")
+    res["unpinned_files"] = names[:50]  # additive key on this one failure: the refused files, so a caller can show or pin them
+    return res
 
 
 def _rmtree_quiet(path: str) -> None:
@@ -403,7 +484,7 @@ def _rmtree_quiet(path: str) -> None:
 
 
 def _supervise(root, pins, file_rel, n_inputs, request, work, home, tmp, timeout_s, max_output_bytes, t0) -> dict:
-    argv = [sys.executable, *CHILD_FLAGS, os.path.abspath(__file__), CHILD_ARG]
+    argv = [sys.executable, *CHILD_FLAGS, "-c", _CHILD_BOOTSTRAP]
     try:
         proc = subprocess.Popen(
             argv,
@@ -483,11 +564,15 @@ def _supervise(root, pins, file_rel, n_inputs, request, work, home, tmp, timeout
         return _fail("bad_output", "malformed result envelope", "output")
     violations = env.get("violations")
     loaded = env.get("loaded")
-    if not isinstance(violations, list) or not all(isinstance(x, str) for x in violations) or not isinstance(loaded, list) or not all(isinstance(x, str) for x in loaded):
+    refused = env.get("unpinned", [])
+    if (not isinstance(violations, list) or not all(isinstance(x, str) for x in violations) or not isinstance(loaded, list) or not all(isinstance(x, str) for x in loaded)
+            or not isinstance(refused, list) or not all(isinstance(x, str) for x in refused)):
         return _fail("bad_output", "malformed result envelope", "output")
 
     # A guard violation wins over everything, including a parser that caught the exception and carried on (the child records it independently).
     for code in violations:
+        if code == "unpinned_import":
+            return _unpinned_failure(root, refused)
         if code in _GUARD_CODES:
             return _fail(code, "blocked by the sandbox guard", "run")
 
@@ -502,36 +587,18 @@ def _supervise(root, pins, file_rel, n_inputs, request, work, home, tmp, timeout
     if not isinstance(outputs, list) or len(outputs) != n_inputs:
         return _fail("bad_output", "outputs do not match inputs", "output")
 
-    # Every repo file the child loaded must be pinned.
-    loaded_rel: set[str] = set()
-    unpinned: set[str] = set()
-    for p in loaded:
-        lex = os.path.abspath(p)
-        real = os.path.realpath(p)
-        if not _inside(lex, root) and not _inside(real, root):
-            continue
-        rel = os.path.relpath(lex if _inside(lex, root) else real, root).replace(os.sep, "/")
-        loaded_rel.add(rel)
-        if rel not in pins or not _inside(real, root):
-            unpinned.add(rel)
+    # Second layer: every repo file the child reports as loaded must be pinned. (The first layer is the child refusing an unpinned import or read before it happens.)
+    loaded_rel, unpinned = _repo_rel_split(root, pins, loaded)
     if unpinned:
-        names = sorted(unpinned)
-        res = _fail("unpinned_import", ", ".join(names[:2]) + (" (+%d more)" % (len(names) - 2) if len(names) > 2 else ""), "run")
-        res["unpinned_files"] = names[:50]  # additive key on this one failure: the full list, so a caller can show or pin the whole closure
-        return res
+        return _unpinned_failure(root, unpinned_rel=unpinned)
     if file_rel not in loaded_rel:
         return _fail("bad_output", "pinned parser file was not the file loaded", "output")
-
-    # Post-run re-hash: a pinned file changed while the child ran is refused.
-    bad = _check_pins(root, pins)
-    if bad is not None:
-        return _fail("pin_missing" if bad[0] == "pin_missing" else "pin_mismatch", bad[1] + " (changed during the run)", "pin")
 
     return {"ok": True, "outputs": outputs, "loaded_repo_files": sorted(loaded_rel), "elapsed_s": elapsed, "assurance": ASSURANCE}
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# Child side (this file run as `python -s -S -P -B parser_sandbox.py --child-v1`). Everything below runs in the guarded interpreter, never in the engine.
+# Child side (this source is sent on stdin to `python -s -S -P -B -c <bootstrap>` and compiled there). Everything below runs in the guarded interpreter, never in the engine.
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -540,7 +607,7 @@ class _GuardViolation(BaseException):
 
 
 _VIOLATIONS: list[str] = []
-_G: dict = {"root": None, "write_root": None, "touched": set(), "found": set()}
+_G: dict = {"root": None, "write_root": None, "touched": set(), "found": set(), "files": {}, "modules": {}, "unpinned": set()}
 
 
 def _violate(code: str):
@@ -574,24 +641,81 @@ def _write_allowed(p) -> bool:
     return n == wr or n.startswith(wr + os.sep)
 
 
-def _note_read(p) -> None:
-    """Remember a repo file the parser opened, so an unpinned data/helper file it reads shows up in loaded_repo_files."""
+def _under(p: str, root: str) -> bool:
+    return p == root or p.startswith(root + os.sep)
+
+
+def _repo_path(p):
+    """The absolute path of `p` if it is (lexically, or after resolving symlinks) inside repo_root; None for a descriptor, a non-path, or a path outside the repo."""
     if isinstance(p, int):
-        return
+        return None
     try:
         q = os.fspath(p)
         if isinstance(q, bytes):
             q = os.fsdecode(q)
+        if "\x00" in q:
+            return None
         lex = os.path.abspath(q)
     except (TypeError, ValueError):
-        return
+        return None
     root = _G["root"]
-    if root and (lex == root or lex.startswith(root + os.sep)):
-        _G["touched"].add(lex)
+    if not root:
+        return None
+    if _under(lex, root):
+        return lex
+    real = os.path.realpath(lex)
+    return real if _under(real, root) else None
+
+
+def _refuse(path: str):
+    """An in-repo path that was not passed to us as pinned bytes: record it and stop. BaseException, so the parser cannot swallow it."""
+    _G["unpinned"].add(path)
+    _violate("unpinned_import")
+
+
+def _pinned_bytes(path: str):
+    """The passed (hashed) bytes for an in-repo path, or refuse. `path` came from _repo_path."""
+    files = _G["files"]
+    data = files.get(path)
+    if data is None:
+        data = files.get(os.path.realpath(path))
+        if data is not None:
+            path = os.path.realpath(path)
+    if data is None:
+        _refuse(path)
+    _G["touched"].add(path)
+    return path, data
 
 
 def _install_write_guards(builtins, io, _io, posix) -> None:
     real_open = builtins.open
+
+    class _PinnedBytes(io.BytesIO):
+        """A read-only file object over the passed bytes of a pinned file."""
+
+        def __init__(self, data, name):
+            super().__init__(data)
+            self.name = name
+            self.mode = "rb"
+
+        def writable(self):
+            return False
+
+    def serve_open(file, mode, args, kw):
+        """open() of an in-repo path for reading: the passed bytes for a pinned file, a refusal for anything else. None if `file` is not in the repo."""
+        path = _repo_path(file)
+        if path is None:
+            return None
+        key, data = _pinned_bytes(path)
+        names = ("buffering", "encoding", "errors", "newline", "closefd", "opener")
+        opts = dict(zip(names, args))
+        opts.update(kw)
+        if "b" in mode:
+            if any(opts.get(n) is not None for n in ("encoding", "errors", "newline")):
+                raise ValueError("binary mode doesn't take an encoding, errors or newline argument")
+            return _PinnedBytes(data, key)
+        text = io.TextIOWrapper(_PinnedBytes(data, key), encoding=opts.get("encoding") or "utf-8", errors=opts.get("errors") or "strict", newline=opts.get("newline"))
+        return text
 
     def guarded_open(file, mode="r", *args, **kw):
         if "mode" in kw:
@@ -600,12 +724,25 @@ def _install_write_guards(builtins, io, _io, posix) -> None:
             if not _write_allowed(file):
                 _violate("write_attempt")
         else:
-            _note_read(file)
+            served = serve_open(file, mode if isinstance(mode, str) else "r", args, kw)
+            if served is not None:
+                return served
         return real_open(file, mode, *args, **kw)
 
     builtins.open = guarded_open
     io.open = guarded_open
     _io.open = guarded_open
+
+    real_open_code = _io.open_code
+
+    def guarded_open_code(path):
+        served = serve_open(path, "rb", (), {})
+        if served is not None:
+            return served
+        return real_open_code(path)
+
+    _io.open_code = guarded_open_code
+    io.open_code = guarded_open_code
 
     real_fileio = _io.FileIO
 
@@ -615,7 +752,9 @@ def _install_write_guards(builtins, io, _io, posix) -> None:
                 if not _write_allowed(file):
                     _violate("write_attempt")
             else:
-                _note_read(file)
+                path = _repo_path(file)
+                if path is not None:
+                    _refuse(path)  # a raw FileIO of a repo file cannot be served from the passed bytes: fail closed
             super().__init__(file, mode, *args, **kw)
 
     _io.FileIO = GuardedFileIO
@@ -652,8 +791,10 @@ def _install_write_guards(builtins, io, _io, posix) -> None:
             if flags & write_flags:
                 if kw.get("dir_fd") is not None or not _write_allowed(path):
                     _violate("write_attempt")
-            else:
-                _note_read(path)
+            elif kw.get("dir_fd") is None:
+                repo = _repo_path(path)
+                if repo is not None:
+                    _refuse(repo)  # a descriptor-level read of a repo file cannot be served from the passed bytes: fail closed
             return real(path, flags, *args, **kw)
 
         return guarded_os_open
@@ -735,12 +876,51 @@ def _install_network_guards(socket_mod, _socket) -> None:
                 setattr(mod, n, deny)
 
 
-def _make_recorder():
-    class Recorder:
-        """First on sys.meta_path: delegates to the real finders (identical resolution) and records the file every found spec points at."""
+def _make_finder(importlib_machinery):
+    """First on sys.meta_path. A module the parent passed as pinned bytes is served from those bytes (the disk copy is never read). Every other name is resolved by the real
+    finders exactly as usual, but a result that lands on a FILE inside the repo is an unpinned import and is refused BEFORE it can execute."""
 
+    class PinnedLoader:
+        def __init__(self, fullname, path, data, is_pkg):
+            self.name, self.path, self.data, self.is_pkg = fullname, path, data, is_pkg
+
+        def create_module(self, spec):
+            return None
+
+        def exec_module(self, module):
+            exec(self.get_code(self.name), module.__dict__)
+
+        def get_code(self, fullname):
+            return compile(self.data, self.path, "exec", dont_inherit=True)
+
+        def get_source(self, fullname):
+            return self.data.decode("utf-8", "replace")
+
+        def get_filename(self, fullname):
+            return self.path
+
+        def is_package(self, fullname):
+            return self.is_pkg
+
+        def get_data(self, path):
+            return _pinned_bytes(os.path.abspath(path))[1]
+
+    def spec_for(name, path, data, is_pkg):
+        spec = importlib_machinery.ModuleSpec(name, PinnedLoader(name, path, data, is_pkg), origin=path, is_package=is_pkg)
+        spec.has_location = True
+        if is_pkg:
+            spec.submodule_search_locations = [os.path.dirname(path)]
+        return spec
+
+    class Finder:
         @classmethod
         def find_spec(cls, name, path=None, target=None):
+            rel = _G["modules"].get(name)
+            if rel is not None:
+                abs_path = _G["root"] + os.sep + rel.replace("/", os.sep)
+                data = _G["files"][abs_path]
+                _G["found"].add(abs_path)
+                return spec_for(name, abs_path, data, rel.rsplit("/", 1)[-1] == "__init__.py")
             for finder in sys.meta_path:
                 if finder is cls:
                     continue
@@ -751,11 +931,15 @@ def _make_recorder():
                 if spec is not None:
                     origin = getattr(spec, "origin", None)
                     if getattr(spec, "has_location", False) and isinstance(origin, str) and os.path.isabs(origin):
-                        _G["found"].add(os.path.abspath(origin))
+                        in_repo = _repo_path(origin)
+                        if in_repo is not None:
+                            _refuse(in_repo)  # a repo file that was not passed as pinned bytes: never executed
                     return spec
             return None
 
-    return Recorder
+    Finder.spec_for = staticmethod(spec_for)
+    Finder.PinnedLoader = PinnedLoader
+    return Finder
 
 
 def _collect_loaded(stdlib_roots) -> list[str]:
@@ -789,10 +973,12 @@ def _emit(result_fd: int, payload: str) -> None:
         view = view[n:]
 
 
-def _child_main() -> None:
+def _child_main(cfg) -> None:
+    """Entry point of the guarded child. `cfg` is the request the bootstrap parsed from stdin (the runner source itself arrived on the same stdin)."""
     # Everything the guards and the loader need is imported FIRST, before module_root is put on sys.path (so a repo file named like a stdlib module cannot shadow it).
     import builtins
     import importlib
+    import importlib.machinery
     import importlib.util
     import io
     import socket
@@ -814,7 +1000,6 @@ def _child_main() -> None:
         _posixsubprocess = None
 
     sys.dont_write_bytecode = True
-    cfg = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     inputs = json.loads(cfg["inputs_json"])
 
     # stdout becomes /dev/null for the parser; the result goes out on a private duplicate of the original pipe.
@@ -842,6 +1027,9 @@ def _child_main() -> None:
     stdlib_roots = [os.path.realpath(p) for p in sys.path if p]
     _G["root"] = cfg["root"]
     _G["write_root"] = cfg["write_root"]
+    # The pinned files, as the bytes the parent hashed: keyed by lexical absolute path. This table is the ONLY source of repo code and repo data in this process.
+    _G["files"] = {cfg["root"] + os.sep + rel.replace("/", os.sep): base64.b64decode(b64) for rel, b64 in cfg["files"].items()}
+    _G["modules"] = dict(cfg["modules"])
 
     _install_write_guards(builtins, io, _io, posix)
     _install_spawn_guards(subprocess, posix, _posixsubprocess)
@@ -850,7 +1038,8 @@ def _child_main() -> None:
     sys.modules["_ctypes"] = None
 
     sys.path.insert(0, cfg["module_root_abs"])
-    sys.meta_path.insert(0, _make_recorder())
+    finder = _make_finder(importlib.machinery)
+    sys.meta_path.insert(0, finder)
 
     dumps = json.dumps
     texts: list[str] = []
@@ -860,11 +1049,13 @@ def _child_main() -> None:
             if cfg["module_name"]:
                 mod = importlib.import_module(cfg["module_name"])
             else:
-                spec = importlib.util.spec_from_file_location("_pinned_parser_module", cfg["file_abs"])
+                # a pinned file outside module_root: not importable by name, so it is loaded by location, still from the passed bytes
+                spec = finder.spec_for("_pinned_parser_module", cfg["file_abs"], _G["files"][cfg["file_abs"]], False)
+                _G["found"].add(cfg["file_abs"])
                 mod = importlib.util.module_from_spec(spec)
                 sys.modules["_pinned_parser_module"] = mod
                 spec.loader.exec_module(mod)
-            if os.path.realpath(getattr(mod, "__file__", "") or "") != os.path.realpath(cfg["file_abs"]):
+            if getattr(mod, "__file__", None) != cfg["file_abs"]:
                 raise ImportError("module resolved to a different file than the pinned one")
             fn = getattr(mod, cfg["function"])
             if not callable(fn):
@@ -895,12 +1086,13 @@ def _child_main() -> None:
 
     loaded = _collect_loaded(stdlib_roots)
     violations = list(_VIOLATIONS)
+    unpinned = sorted(_G["unpinned"])
     if violations:
-        payload = dumps({"v": ENVELOPE_VERSION, "status": "error", "code": "parser_raised", "detail": "guard", "loaded": loaded, "violations": violations}, sort_keys=True)
+        payload = dumps({"v": ENVELOPE_VERSION, "status": "error", "code": "parser_raised", "detail": "guard", "loaded": loaded, "violations": violations, "unpinned": unpinned}, sort_keys=True)
     elif error is not None:
-        payload = dumps({"v": ENVELOPE_VERSION, "status": "error", "code": error[0], "detail": error[1], "loaded": loaded, "violations": violations}, sort_keys=True)
+        payload = dumps({"v": ENVELOPE_VERSION, "status": "error", "code": error[0], "detail": error[1], "loaded": loaded, "violations": violations, "unpinned": unpinned}, sort_keys=True)
     else:
-        payload = '{"loaded":%s,"outputs":[%s],"status":"ok","v":%d,"violations":%s}' % (dumps(loaded), ",".join(texts), ENVELOPE_VERSION, dumps(violations))
+        payload = '{"loaded":%s,"outputs":[%s],"status":"ok","unpinned":[],"v":%d,"violations":%s}' % (dumps(loaded), ",".join(texts), ENVELOPE_VERSION, dumps(violations))
     try:
         _emit(result_fd, payload)
     except OSError:
@@ -909,8 +1101,6 @@ def _child_main() -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2 and sys.argv[1] == CHILD_ARG:
-        _child_main()
-    else:
-        sys.stderr.write("parser_sandbox is a library; the child entry point is internal\n")
-        sys.exit(2)
+    # The child is NOT started by running this file: it is started with -c and receives this file's source (read once at import by the parent) on stdin.
+    sys.stderr.write("parser_sandbox is a library; the child entry point is internal\n")
+    sys.exit(2)
