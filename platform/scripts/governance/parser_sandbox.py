@@ -6,7 +6,9 @@ child interpreter with no DB handle and no network, read-only inputs passed in.
 
     run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=64_000_000) -> dict
 
-Returns {"ok": True, "outputs": [...], "loaded_repo_files": [...], "elapsed_s": float} or {"ok": False, "error": "<code>: <short detail>", "stage": "pin"|"spawn"|"run"|"output"}.
+Returns {"ok": True, "outputs": [...], "loaded_repo_files": [...], "elapsed_s": float, "assurance": ASSURANCE} or
+{"ok": False, "error": "<code>: <short detail>", "stage": "pin"|"spawn"|"run"|"output", "assurance": ASSURANCE}.
+EVERY result, ok or failure, carries `"assurance": ASSURANCE` ("software-guarded, reviewed code only"), so the census can print that exact label on any pass derived from this tool.
 `canonical_json(obj)` is the canonical serialisation (sorted keys, no spaces, ASCII, no NaN) a caller should compare byte-for-byte.
 
 What it does, in order
@@ -33,11 +35,20 @@ Failure vocabulary (fixed; the detail never echoes a host path or a secret, only
   empty case that fails: a parser that legitimately returns an empty list FOR AN INPUT is fine.
   parser_raised detail is "index=<i> type=<ExceptionType>"; index -1 means the parser module failed to import / the function was missing (before any input ran).
   bad_output covers a malformed result envelope and a result that is not canonical-JSON serialisable ("index=<i>").
-  unpinned_import ALSO carries "unpinned_files": [sorted repo-relative paths, at most 50] (the only extra key any result has).
+  unpinned_import ALSO carries "unpinned_files": [sorted repo-relative paths, at most 50] (the only failure-only extra key; "assurance" is on every result).
   Stages: pin (pin checks, before and after), spawn (bad arguments / could not start), run (child ran: timeout, exit status, parser_raised, guard violations, unpinned_import),
   output (the result: bad_output, output_too_large).
 
+PERMITTED USE (a rule, not a suggestion)
+  This tool may ONLY ever run the pinned, reviewed l0_rules parser (the bg_rules rule extractor) and its pinned adapter. It must never be pointed at any other code, at code
+  that has not been reviewed in git, or at anything a user, a document or a database row supplied. A pass derived from it is evidence of "this reviewed code, run under software
+  guards, reproduces the stored rows" and nothing stronger; the census prints ASSURANCE next to it.
+
 WHAT THIS DOES NOT GUARANTEE (read this before trusting a green)
+  * THE RESULT CHANNEL LIVES IN THE PARSER'S OWN PROCESS. The envelope the parent reads is written by the child runner, in the same Python process as the parser, so a HOSTILE
+    pinned parser could forge an ok envelope (or edit the recorded violations / loaded list). This is a documented, accepted limit, not a bug to be fixed here. What the design
+    protects against: ACCIDENTS (a parser that opens a socket, spawns a process, writes a file, reads an unpinned helper) and an UNREVIEWED CHANGE to the parser or its closure
+    (the sha256 pins). What it does NOT protect against: a MALICIOUS pinned parser. The only defence against that is review in git, which is why the PERMITTED USE rule exists.
   * It is NOT a kernel sandbox. There is no seccomp, no namespace, no chroot, no sandbox-exec, no container. The guards are SOFTWARE guards inside the same Python process
     as the parser. A determined or malicious parser can bypass them (import a C extension, use `socket.socket.__mro__` to reach the original `_socket.socket`, call `posix`
     functions the guard list omits, mutate the guard's own globals through `gc`/`sys.modules`, write to an inherited descriptor...).
@@ -91,6 +102,9 @@ ERROR_CODES = (
 _GUARD_CODES = ("network_attempt", "write_attempt", "spawn_attempt")
 STAGES = ("pin", "spawn", "run", "output")
 
+# The label every result carries. It states the strength of the evidence honestly: software guards in the parser's own process, over reviewed code. See the docstring.
+ASSURANCE = "software-guarded, reviewed code only"
+
 CHILD_FLAGS = ("-s", "-S", "-P", "-B")
 CHILD_ARG = "--child-v1"
 ENVELOPE_VERSION = 1
@@ -128,7 +142,7 @@ def _clean(text, limit: int = _MAX_DETAIL) -> str:
 def _fail(code: str, detail: str, stage: str) -> dict:
     assert code in ERROR_CODES and stage in STAGES
     d = _clean(detail)
-    return {"ok": False, "error": (code + ": " + d) if d else code, "stage": stage}
+    return {"ok": False, "error": (code + ": " + d) if d else code, "stage": stage, "assurance": ASSURANCE}
 
 
 def _sha256_file(path: str) -> str:
@@ -424,7 +438,7 @@ def _supervise(root, pins, file_rel, n_inputs, request, work, home, tmp, timeout
     if bad is not None:
         return _fail("pin_missing" if bad[0] == "pin_missing" else "pin_mismatch", bad[1] + " (changed during the run)", "pin")
 
-    return {"ok": True, "outputs": outputs, "loaded_repo_files": sorted(loaded_rel), "elapsed_s": elapsed}
+    return {"ok": True, "outputs": outputs, "loaded_repo_files": sorted(loaded_rel), "elapsed_s": elapsed, "assurance": ASSURANCE}
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------------

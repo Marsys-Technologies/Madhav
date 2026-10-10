@@ -111,7 +111,7 @@ class TestHappyPath:
         assert r["outputs"] == [{"n": i * 2, "echo": {"n": i}} for i in (5, 1, 4, 2, 3)]
         assert r["loaded_repo_files"] == sorted(CLOSURE)
         assert isinstance(r["elapsed_s"], float) and r["elapsed_s"] > 0
-        assert set(r) == {"ok", "outputs", "loaded_repo_files", "elapsed_s"}
+        assert set(r) == {"ok", "outputs", "loaded_repo_files", "elapsed_s", "assurance"}
 
     def test_parser_returning_an_empty_list_for_an_input_is_still_ok(self, tmp_path):
         """Only the zero-INPUT case fails (no_inputs); a parser may legitimately yield nothing for an input."""
@@ -470,11 +470,76 @@ class TestNoInputs:
         assert "no_inputs" in ps.ERROR_CODES
 
 
+class TestAssuranceLabel:
+    """SS N-431 R2 finding (2): the result channel lives in the parser's own process, so a hostile pinned parser could forge an ok envelope. Documented limit; the
+    census must be able to print the strength of the evidence on every pass, so EVERY result carries the label."""
+
+    def test_constant_value(self):
+        assert ps.ASSURANCE == "software-guarded, reviewed code only"
+
+    def test_ok_result_carries_it(self, tmp_path):
+        r = run(make_repo(tmp_path))
+        assert r["ok"] is True and r["assurance"] == ps.ASSURANCE
+
+    @pytest.mark.parametrize(
+        "case",
+        ["pin_mismatch", "pin_missing", "unpinned_import", "spawn_failed_args", "spawn_failed_exe", "timeout", "nonzero_exit", "bad_output", "output_too_large",
+         "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs"],
+    )
+    def test_every_failure_carries_it(self, tmp_path, monkeypatch, case):
+        kw: dict = {}
+        src = PARSER
+        pinned = None
+        inputs = None
+        if case == "pin_mismatch":
+            root = make_repo(tmp_path)
+            pinned = pins(root, CLOSURE)
+            (root / "lib/pkg/helper.py").write_text(HELPER + "# x\n", encoding="utf-8")
+            r = run(root, pinned=pinned)
+        else:
+            if case == "timeout":
+                src, kw = parser_with("time.sleep(20)\nreturn 1"), {"timeout_s": 1}
+            elif case == "nonzero_exit":
+                src = parser_with("os._exit(3)")
+            elif case == "bad_output":
+                src = parser_with("return {1, 2}")
+            elif case == "output_too_large":
+                src, kw = parser_with("return 'x' * 100000"), {"max_output_bytes": 1000}
+            elif case == "parser_raised":
+                src = parser_with("raise ValueError('x')")
+            elif case == "network_attempt":
+                src = parser_with("import socket\nsocket.socket()\nreturn 1")
+            elif case == "write_attempt":
+                src = parser_with("open(%r, 'w')\nreturn 1" % str(tmp_path / "w.txt"))
+            elif case == "spawn_attempt":
+                src = parser_with("os.system('echo')\nreturn 1")
+            elif case == "no_inputs":
+                inputs = []
+            elif case == "spawn_failed_args":
+                kw = {"timeout_s": 0}
+            elif case == "spawn_failed_exe":
+                monkeypatch.setattr(ps.sys, "executable", str(tmp_path / "no_such_python"))
+            root = make_repo(tmp_path, src)
+            if case == "pin_missing":
+                pinned = pins(root, CLOSURE)[:1]
+            elif case == "unpinned_import":
+                pinned = pins(root, ["lib/pkg/__init__.py", "lib/pkg/parser.py"])
+            r = run(root, pinned=pinned, inputs=inputs, **kw)
+        assert r["ok"] is False, r
+        assert r["error"].split(":")[0] == case.replace("_args", "").replace("_exe", ""), r
+        assert r["assurance"] == ps.ASSURANCE
+
+    def test_docstring_states_the_forgery_limit_and_the_permitted_use(self):
+        doc = ps.__doc__
+        assert "HOSTILE" in doc and "forge an ok envelope" in doc and "MALICIOUS pinned parser" in doc
+        assert "PERMITTED USE" in doc and "l0_rules" in doc
+
+
 class TestFailureVocabulary:
     def test_parser_raising_on_input_3_reports_index_and_type_only(self, tmp_path):
         src = parser_with("if item['n'] == 3:\n    raise ValueError('secret /etc/passwd token=abc')\nreturn item")
         r = run(make_repo(tmp_path, src), inputs=[{"n": i} for i in range(6)])
-        assert r == {"ok": False, "error": "parser_raised: index=3 type=ValueError", "stage": "run"}
+        assert r == {"ok": False, "error": "parser_raised: index=3 type=ValueError", "stage": "run", "assurance": ps.ASSURANCE}
         assert "secret" not in r["error"] and "/etc" not in r["error"]
 
     def test_exception_in_the_parser_at_import_time_has_index_minus_one(self, tmp_path):
