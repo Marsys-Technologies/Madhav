@@ -5760,6 +5760,255 @@ def source_estimate_rows(table: str):
     return n if n >= 0 else None
 
 
+# ───────────── the KEYED EXACT READ: one statement per partition of a large table's leading index key (Nikasha lane W3, n430 ga_dashas) ─────────────
+# A full-table read of a very large table (ga_dashas: ~484 000 rows) can exceed the census role's statement timeout whatever its shape: 13 template regexes over every row, or a jsonb path walk over every row, or
+# an existence scan that must visit every row to prove a PASS. The census used to give up there (NO_DETECTOR). The keyed read keeps the verdict EXACT and splits the SAME read into one statement per
+# partition of the table's leading index key (the table's own unique / natural-key index, read from the catalog), each small enough to finish.
+#   * OPT-IN BY STRUCTURE: it applies only when the catalog estimate AND the measured in-scope row count exceed KEYED_READ_MIN_ROWS and a btree index with a partitionable leading key exists. Every other table (and
+#     every failure to establish the plan) follows the older code path unchanged, byte for byte.
+#   * SOUND: a PASS needs EVERY partition proven clean. The partition list is trusted only when its row counts ADD UP to the in-scope row count (one statement, one snapshot); each partition read also counts its own
+#     rows and they must equal the planned count (a table that changed under the read is not trusted). A partition that times out, errors, or is cut by the asset budget is NOT read: the cell reads NO_DETECTOR,
+#     never PASS. A violation found in any partition is the finding, exactly as the whole-table read would report it.
+#   * The engine reads the data itself; nothing the part stores about itself is trusted.
+#   * The cumulative TIME budget of the keyed reads is per ASSET (`AssetReadBudget`), and the budget object records rows / partitions covered and seconds, printed in the cell text when a read is incomplete.
+KEYED_READ_MIN_ROWS = 100_000          # a table is read keyed only when MORE rows than this are in scope (and the catalog estimate agrees); below it the older path runs unchanged
+KEYED_PARTITION_TARGET_ROWS = 20_000   # the leading key prefix is lengthened (up to KEYED_MAX_KEY_COLUMNS columns) until the largest partition has at most this many rows
+KEYED_MAX_PARTITIONS = 2_000           # more partitions than this is not a partitioning key (a per-row unique key): that index is skipped
+KEYED_MAX_KEY_COLUMNS = 3              # the longest leading prefix used as the partition key
+ASSET_READ_BUDGET_SECS = 3600          # the TIME budget of ALL keyed reads of ONE asset together (cumulative, by `_chunk_clock`): 6x the old per-column walk budget (PROSE_NONE_WALK_BUDGET_SECS, 600). The total work of a
+#                                        keyed read equals the whole-table read it replaces, so its wall-clock was not known when this was set: the budget object records how far a read got, and the cell text names it.
+KEYED_KEY_TYPES = frozenset(("smallint", "integer", "bigint", "text", "character varying", "uuid", "boolean", "date"))     # key columns whose text form round-trips exactly through `col = 'text'`
+KEYED_REASON_CHARS = 90
+
+
+class AssetReadBudget:
+    """The cumulative time budget of the keyed reads of ONE asset, and the record of how far they got: `spent` seconds over all keyed reads so far, and one entry in `reads` per keyed read
+    (`what`, partitions covered / total, rows covered / total, seconds, whether complete). Created per asset by `begin_asset_read_budget`; a read made outside an asset run gets a fresh one."""
+
+    def __init__(self, total_secs=None):
+        self.total_secs = ASSET_READ_BUDGET_SECS if total_secs is None else total_secs
+        self.spent = 0.0
+        self.reads: list = []
+
+    def charge(self, secs) -> None:
+        self.spent += max(0.0, float(secs))
+
+    def exhausted(self) -> bool:
+        return self.spent >= self.total_secs
+
+    def over(self, extra_secs) -> bool:
+        """True when `extra_secs` of a statement still in flight take the asset past its budget."""
+        return self.spent + max(0.0, float(extra_secs)) > self.total_secs
+
+    def record(self, outcome: "KeyedOutcome") -> None:
+        self.reads.append(dict(what=outcome.what, partitions_covered=len(outcome.answers), partitions_total=len(outcome.plan.partitions), rows_covered=outcome.rows_covered,
+                               rows_total=outcome.plan.total, secs=round(outcome.secs, 1), complete=outcome.complete, stopped_on_finding=outcome.stopped))
+
+    @property
+    def rows_covered(self) -> int:
+        return sum(r["rows_covered"] for r in self.reads)
+
+    @property
+    def partitions_covered(self) -> int:
+        return sum(r["partitions_covered"] for r in self.reads)
+
+
+_ASSET_READ_BUDGET: "AssetReadBudget | None" = None
+
+
+def begin_asset_read_budget(total_secs=None) -> "AssetReadBudget":
+    """Start the keyed-read budget of the asset about to be measured (called once per asset, beside `set_read_scope`)."""
+    global _ASSET_READ_BUDGET
+    _ASSET_READ_BUDGET = AssetReadBudget(total_secs)
+    return _ASSET_READ_BUDGET
+
+
+def end_asset_read_budget() -> None:
+    global _ASSET_READ_BUDGET
+    _ASSET_READ_BUDGET = None
+
+
+def asset_read_budget() -> "AssetReadBudget":
+    """The budget of the asset being measured; outside an asset run (a direct call) a fresh one per call, never a stale shared one."""
+    return _ASSET_READ_BUDGET if _ASSET_READ_BUDGET is not None else AssetReadBudget()
+
+
+class KeyedPartition:
+    """One partition of the leading key: its key values as text (None = SQL NULL), the row count the plan measured, and the predicate that selects exactly it."""
+
+    def __init__(self, columns, key, n):
+        self.key, self.n = tuple(key), int(n)
+        self.pred = " AND ".join(f'"{c}" IS NULL' if v is None else f'"{c}" = {_sql_lit(v)}' for c, v in zip(columns, key))
+
+    def label(self) -> str:
+        return "(" + ", ".join("NULL" if v is None else str(v)[:30] for v in self.key) + ")"
+
+
+class KeyedPlan:
+    """The trusted partitioning of one table's in-scope rows: `partitions` (sorted by key), their `total` row count (equal to the independently counted in-scope rows), the index and key `columns` it came from."""
+
+    def __init__(self, table, index, columns, partitions, total):
+        self.table, self.index, self.columns, self.partitions, self.total = table, index, tuple(columns), partitions, int(total)
+
+    def key_text(self) -> str:
+        return f"{self.table}({', '.join(self.columns)})"
+
+
+class KeyedOutcome:
+    """What a keyed read got: `answers` [(partition, answer)], `unread` [(partition, why)], `not_read` (partitions left when the asset budget ran out), `stopped` (a finding made the rest unnecessary)."""
+
+    def __init__(self, plan: KeyedPlan, what: str):
+        self.plan, self.what = plan, what
+        self.answers: list = []
+        self.unread: list = []
+        self.not_read: list = []
+        self.stopped = False
+        self.secs = 0.0
+
+    @property
+    def rows_covered(self) -> int:
+        return sum(p.n for p, _a in self.answers)
+
+    @property
+    def complete(self) -> bool:
+        """Every partition was read and none was cut or failed."""
+        return not self.unread and not self.not_read and len(self.answers) == len(self.plan.partitions)
+
+    def coverage_text(self, budget: "AssetReadBudget") -> str:
+        t = len(self.plan.partitions)
+        why = "; ".join(f"partition {p.label()} {w}"[:KEYED_REASON_CHARS + 30] for p, w in self.unread[:3])
+        more = f" (+{len(self.unread) - 3} more)" if len(self.unread) > 3 else ""
+        cut = f"; {len(self.not_read)} partition(s) not reached: the asset read budget of {budget.total_secs:.0f}s ran out" if self.not_read else ""
+        return (f"keyed read of {self.what} by {self.plan.key_text()}: covered {len(self.answers)} of {t} partition(s) ({self.rows_covered} of {self.plan.total} rows) in {self.secs:.0f}s, "
+                f"asset read budget {budget.spent:.0f}s of {budget.total_secs:.0f}s spent" + (f"; {why}{more}" if why else "") + cut)
+
+
+def _keyed_catalog_sql(table: str) -> str:
+    """ONE catalog statement (pure): the valid, non-partial btree indexes of `table`, primary key first, then unique, then by name, each with its key columns in order {c: name or null for an expression, t: type}."""
+    return ("SELECT coalesce(jsonb_agg(jsonb_build_object('name', x.name, 'unique', x.uq, 'nkeys', x.nk, 'cols', x.cols) ORDER BY x.pk DESC, x.uq DESC, x.name), '[]'::jsonb)::text FROM ("
+            "SELECT ic.relname::text AS name, i.indisunique AS uq, i.indisprimary AS pk, i.indnkeyatts::int AS nk, "
+            "(SELECT jsonb_agg(jsonb_build_object('c', a.attname::text, 't', format_type(a.atttypid, NULL)) ORDER BY k.ord) "
+            "FROM unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord) LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum WHERE k.ord <= i.indnkeyatts) AS cols "
+            "FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_am am ON am.oid = ic.relam "
+            f"WHERE i.indrelid = to_regclass('\"{table}\"') AND i.indisvalid AND i.indisready AND i.indpred IS NULL AND am.amname = 'btree') x")
+
+
+def _keyed_base_conds(table: str, filt=None) -> list:
+    """The conditions that define 'the rows in scope' of `table`: the produced-table slice and the measured-chart read scope (the same two the data reads apply)."""
+    conds = []
+    if filt:
+        conds.append(_slice_pred(filt))
+    sp = _scope_pred(table)
+    if sp:
+        conds.append(f"({sp})")
+    return conds
+
+
+def _keyed_groups_sql(table: str, cols, base: list) -> str:
+    """ONE statement (pure): the in-scope row count and the row count per distinct value of the key `cols`, from ONE snapshot, as {total, groups: [{k: [text or null, ...], n}]}; at most KEYED_MAX_PARTITIONS + 1 groups."""
+    where = (" WHERE " + " AND ".join(base)) if base else ""
+    arr = ", ".join(f'"{c}"::text' for c in cols)
+    grp = ", ".join(f'"{c}"' for c in cols)
+    return (f"SELECT jsonb_build_object('total', (SELECT count(*) FROM \"{table}\"{where}), 'groups', (SELECT coalesce(jsonb_agg(jsonb_build_object('k', g.k, 'n', g.n)), '[]'::jsonb) FROM "
+            f"(SELECT jsonb_build_array({arr}) AS k, count(*) AS n FROM \"{table}\"{where} GROUP BY {grp} LIMIT {KEYED_MAX_PARTITIONS + 1}) g))::text")
+
+
+def _keyed_sort_key(key):
+    return tuple((v is None, v if v is not None else "") for v in key)
+
+
+def keyed_plan(table: str, filt=None, *, est="read", min_rows=None):
+    """The KeyedPlan for reading `table` keyed, or None when the older whole-table path applies (the table is not large, no btree index has a partitionable leading key, or the plan statements failed or were not
+    readable: all fall back to today's behaviour). Raises KeyedReadIncomplete when the plan CAN be made but cannot be trusted (the partition counts do not add up to the in-scope row count): the read is then unread."""
+    min_rows = KEYED_READ_MIN_ROWS if min_rows is None else min_rows
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        return None
+    if est == "read":
+        est = source_estimate_rows(table)
+    if est is None or est <= min_rows:
+        return None
+    try:
+        cands = json.loads(scalar(_keyed_catalog_sql(table)) or "[]")
+    except (Unknown, ValueError):
+        return None
+    if not isinstance(cands, list):
+        return None
+    base = _keyed_base_conds(table, filt)
+    for cand in cands:
+        try:
+            cols = []
+            for c in cand["cols"]:                                       # the leading SIMPLE columns of the right type; the first expression / unsafe type ends the usable prefix
+                if not (isinstance(c, dict) and isinstance(c.get("c"), str) and _D1_SQL_IDENT.fullmatch(c["c"]) and c.get("t") in KEYED_KEY_TYPES):
+                    break
+                cols.append(c["c"])
+            nk = cand["nkeys"]
+        except (KeyError, TypeError):
+            continue
+        cols = cols[:KEYED_MAX_KEY_COLUMNS]
+        if not cols or (cand.get("unique") and nk == 1):                  # a single-column unique key holds one row per value: it partitions nothing
+            continue
+        chosen = None
+        for k in range(1, len(cols) + 1):
+            try:
+                got = json.loads(scalar(_keyed_groups_sql(table, cols[:k], base)) or "null")
+            except (Unknown, ValueError):
+                return None
+            groups = got.get("groups") if isinstance(got, dict) else None
+            if not (isinstance(got, dict) and isinstance(got.get("total"), int) and isinstance(groups, list)) or len(groups) > KEYED_MAX_PARTITIONS:
+                break                                                     # too many partitions at this depth: keep the previous depth, if any
+            try:
+                parts = sorted((KeyedPartition(cols[:k], g["k"], g["n"]) for g in groups), key=lambda p: _keyed_sort_key(p.key))
+            except (KeyError, TypeError, ValueError, Unknown):
+                break
+            if any(len(p.key) != k for p in parts):
+                break
+            chosen = (k, got["total"], parts)
+            if not parts or max(p.n for p in parts) <= KEYED_PARTITION_TARGET_ROWS:
+                break
+        if chosen is None:
+            continue
+        k, total, parts = chosen
+        if sum(p.n for p in parts) != total:                              # the partition list is trusted ONLY if its counts add up to the in-scope row count
+            raise KeyedReadIncomplete(f"keyed plan of {table}({', '.join(cols[:k])}) not trusted: its {len(parts)} partition(s) count {sum(p.n for p in parts)} row(s) but {total} are in scope")
+        if total <= min_rows:
+            return None                                                   # not large in scope: the older path
+        return KeyedPlan(table, cand.get("name"), cols[:k], parts, total)
+    return None
+
+
+def keyed_read(plan: KeyedPlan, read_part, *, what: str, budget=None, unread_reason=None, stop_when=None) -> KeyedOutcome:
+    """Run `read_part(partition)` once per partition, in key order, under the asset budget, and return the KeyedOutcome (never a verdict: the caller grades it). A partition whose read raises Unknown is UNREAD when
+    `unread_reason(exc)` gives a reason (default: only a statement timeout does; any other Unknown propagates, as it would from the whole-table read); a `KeyedPartitionChanged` is always unread. Partitions left when
+    the asset budget is exhausted are `not_read`. `stop_when(answer, outcome)` ends the read early once the verdict is already decided (a finding). Each partition's time is charged to the asset budget."""
+    budget = asset_read_budget() if budget is None else budget
+    out = KeyedOutcome(plan, what)
+    t_all = _chunk_clock()
+    for i, part in enumerate(plan.partitions):
+        if budget.exhausted():
+            out.not_read = list(plan.partitions[i:])
+            break
+        t0 = _chunk_clock()
+        try:
+            ans = read_part(part)
+        except KeyedPartitionChanged as exc:
+            out.unread.append((part, " ".join(str(exc).split())[:KEYED_REASON_CHARS]))
+        except Unknown as exc:
+            why = unread_reason(exc) if unread_reason else ("timed out (cancelled by the database timeout)" if _is_statement_timeout(exc) else None)
+            if why is None:
+                raise
+            out.unread.append((part, " ".join(str(why).split())[:KEYED_REASON_CHARS]))
+        else:
+            out.answers.append((part, ans))
+            if stop_when is not None and stop_when(ans, out):
+                out.stopped = True
+                break
+        finally:
+            budget.charge(_chunk_clock() - t0)
+    out.secs = _chunk_clock() - t_all
+    budget.record(out)
+    return out
+
+
 def source_presence_sql(table: str, pred: str, keycols=(), exc=None) -> str:
     """The ONE existence statement (pure): any row, any judged row, any excepted row, up to LDGR_SAMPLE_LIMIT rows that lack a source, and whether any judged row names one. Every sub-select is an
     EXISTS ... LIMIT 1 or a LIMIT: there is no count(*) and no ORDER BY over `table`. `pred` is a predicate built by `source_entry_lacking` (never user text); identifiers are matched before this runs."""
@@ -11557,6 +11806,15 @@ class Unknown(Exception):
 
 class ProseNoneBudget(Unknown):
     """The chunked closure walk of one column exceeded PROSE_NONE_WALK_BUDGET_SECS. An `Unknown`: the caller grades it as an UNREAD column (NO_DETECTOR with the reason), never as ERRORED and never as a closure."""
+
+
+class KeyedReadIncomplete(ProseNoneBudget):
+    """A keyed read that did not finish (a partition timed out or failed, the asset budget ran out, or the plan could not be trusted). An `Unknown`: every caller grades it as an UNREAD read (NO_DETECTOR carrying
+    the coverage text), never ERRORED and never a PASS. A subclass of `ProseNoneBudget` so the closure-walk caller already passes its message through whole."""
+
+
+class KeyedPartitionChanged(Unknown):
+    """A partition read counted a different number of rows than the plan did (the table changed under the read): that partition is not trusted."""
 
 
 class CheckTimeout(Unknown):
@@ -19334,6 +19592,7 @@ def measure(layer_key: str, assets=None) -> dict:
     set_read_scope(None)
     for aid, r in reg.items():
         set_read_scope(None)                                  # the measured-chart scope of the live data reads is per asset (set below, after the owned tables are known)
+        begin_asset_read_budget()                             # the time budget of the keyed whole-table reads is per ASSET (set_read_scope's twin)
         _rscopes: dict = {}
         m: dict[str, dict] = {}
         files = regd_all.get(aid) or regd.get(aid, [])
@@ -19904,6 +20163,7 @@ def measure(layer_key: str, assets=None) -> dict:
         m["Dens.served"] = dens_uniform_authority_gate(m.get("Dens.served"), m.get("Ldgr.source_presence"))      # SS N-212 (M3): a uniform-authority PASS needs this run's own source reading
         stamp_read_scope(m, _rscopes)
         set_read_scope(None)
+        end_asset_read_budget()
         br = radius.get(aid)
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
                            reach=reach,
