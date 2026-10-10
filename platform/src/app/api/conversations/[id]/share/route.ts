@@ -57,7 +57,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       [id]
     )
 
-    return Response.json({ share: rows[0] ?? null })
+    // SS N-379: tell the dialog whether hide options are OFFERED on a NEW share.
+    // (The share PAGE applies a stored share's options regardless of this flag.)
+    return Response.json({
+      share: rows[0] ?? null,
+      selective_share_enabled: getFlag('R10_SELECTIVE_SHARE'),
+    })
   } catch {
     return res.dbError()
   }
@@ -70,6 +75,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const limited = rateLimitShareMutation(user.uid)
   if (limited) return limited
 
+  // R10_SELECTIVE_SHARE only controls whether hide options are OFFERED on a NEW
+  // share: flag off -> the body is not even read and both options are stored false.
+  // Stored options of existing shares are always honoured by the page (SS N-379).
   let hideReasoning = false
   let hideMethodology = false
   if (getFlag('R10_SELECTIVE_SHARE')) {

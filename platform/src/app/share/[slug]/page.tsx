@@ -1,12 +1,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import type { UIMessage } from 'ai'
 import { query } from '@/lib/db/client'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
-import { getFlag } from '@/lib/config/index'
-import { filterMessages } from '@/lib/share/filterMessages'
+import { buildShareViewMessages } from '@/lib/share/shareView'
 import { SharedConversation } from './SharedConversation'
 
 export const dynamic = 'force-dynamic'
@@ -19,19 +17,30 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 }
 
+const SLUG_SHAPE = /^[A-Za-z0-9]{10}$/
+
+function loginPathFor(slug: string): string {
+  return SLUG_SHAPE.test(slug)
+    ? `/login?next=${encodeURIComponent(`/share/${slug}`)}`
+    : '/login'
+}
+
 export default async function SharedConversationPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
+  const { slug } = await params
+
   // SS N-376 / PR-S4: share links are authenticated BY DESIGN. proxy.ts only checks
   // the cookie's shape, so verify the session here (firebase-admin
   // verifySessionCookie with revocation check + an ACTIVE profile) before ANY read
   // of the share, conversation, chart or messages. Any verified, active user who
   // holds the slug may view: no owner check, that is the point of a share link.
-  await requireActiveUserPage()
-
-  const { slug } = await params
+  // SS N-379: a refused visitor goes to /login?next=/share/<slug> so the login page
+  // can bring them back (it re-validates `next` with safeNextPath). The slug is
+  // only echoed when it has the exact minted shape; otherwise plain /login.
+  await requireActiveUserPage(loginPathFor(slug))
 
   const shareResult = await query<{
     conversation_id: string
@@ -47,12 +56,11 @@ export default async function SharedConversationPage({
 
   if (!share) notFound()
 
+  // SS N-379: read only what the page renders (no SELECT *).
   const conversationResult = await query<{
-    id: string
-    title: string
+    title: string | null
     chart_id: string
-    created_at: string
-  }>('SELECT * FROM conversations WHERE id=$1', [share.conversation_id])
+  }>('SELECT title, chart_id FROM conversations WHERE id=$1', [share.conversation_id])
   const conversation = conversationResult.rows[0] ?? null
   if (!conversation) notFound()
 
@@ -62,20 +70,23 @@ export default async function SharedConversationPage({
   )
   const chart = chartResult.rows[0] ?? null
 
-  const messages = await loadConversationMessagesV2(conversation.id)
+  const messages = await loadConversationMessagesV2(share.conversation_id)
 
-  // X-S8: selective share. Same flag helper as the share route (one switch).
-  // The hidden sections are removed HERE, on the server: SharedConversation is a
-  // client component, so anything passed to it is in the RSC payload the viewer's
-  // browser receives. Filtering inside it would hide the text but still ship it.
-  const selectiveShareEnabled = getFlag('R10_SELECTIVE_SHARE')
-  const hideReasoning = selectiveShareEnabled && (share.hide_reasoning ?? false)
-  const hideMethodology = selectiveShareEnabled && (share.hide_methodology ?? false)
-  const visibleMessages = filterMessages(
-    messages as unknown as Record<string, unknown>[],
-    hideReasoning,
-    hideMethodology,
-  ) as unknown as UIMessage[]
+  // X-S8 / SS N-379: the STORED hide options of the share row are ALWAYS applied,
+  // whatever R10_SELECTIVE_SHARE says. The flag only controls whether the options
+  // are OFFERED on NEW shares (the dialog control and the POST body parsing): a
+  // switch must never un-hide content someone chose to hide.
+  //
+  // The reduction happens HERE, on the server: SharedConversation is a client
+  // component, so anything passed to it is in the RSC payload the viewer's browser
+  // receives. buildShareViewMessages applies the hide options and then builds a NEW
+  // minimal message per turn (text only, opaque display role); tool-call parts,
+  // data-* parts and message metadata never leave the server.
+  const visibleMessages = buildShareViewMessages(
+    messages,
+    share.hide_reasoning === true,
+    share.hide_methodology === true,
+  )
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-4 py-6 print:max-w-none print:px-0 print:py-0">

@@ -18,12 +18,16 @@ import { getServerUserWithProfile } from '@/lib/auth/access-control'
  * No role or ownership check: any verified, active user passes. Callers that
  * need more (owner, super_admin) layer it on top.
  *
+ * `loginPath` is where a refused visitor is sent (default `/login`). A caller may
+ * pass `/login?next=<encoded same-origin path>` so the login page can return the
+ * visitor to the page; the login page validates `next` itself (safeNextPath).
+ *
  * Verification is real (`getServerUserWithProfile` -> firebase-admin
  * `verifySessionCookie(cookie, checkRevoked=true)` + the `profiles` row).
  */
-export async function requireActiveUserPage() {
+export async function requireActiveUserPage(loginPath: string = '/login') {
   const ctx = await getServerUserWithProfile()
-  if (!ctx) redirect('/login')
-  if (ctx.profile.status !== 'active') redirect('/login')
+  if (!ctx) redirect(loginPath)
+  if (ctx.profile.status !== 'active') redirect(loginPath)
   return ctx
 }

@@ -4,6 +4,8 @@
  *   2. NEW shares expire (default 30 days); listing/reuse ignore expired rows.
  *   5. hide_* body fields are parsed through the repo flag helper, default ON.
  *   6. create (POST) and revoke (DELETE) are rate-limited per VERIFIED user.
+ * SS N-379 (v): R10_SELECTIVE_SHARE only controls whether hide options are OFFERED
+ *   on NEW shares (POST body parsing + the dialog control, fed by GET).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -101,6 +103,34 @@ describe('hide_* options go through the repo flag helper, default ON (item 5)', 
     await POST(post({ hide_reasoning: true, hide_methodology: true }), ctx())
     const [, params] = insertCall() as [string, unknown[]]
     expect(params.filter((p) => p === true)).toHaveLength(0)
+  })
+})
+
+describe('R10_SELECTIVE_SHARE controls only what is OFFERED on NEW shares (SS N-379 v)', () => {
+  it('flag off: a new share ignores hide fields in the POST body and does not even read the body', async () => {
+    process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE = 'false'
+    const { POST } = await loadRoute()
+    const req = post({ hide_reasoning: true, hide_methodology: true })
+    const jsonSpy = vi.spyOn(req, 'json')
+    const r = await POST(req, ctx())
+    expect(r.status).toBe(200)
+    expect(jsonSpy).not.toHaveBeenCalled()
+    const [, params] = insertCall() as [string, unknown[]]
+    expect(params.filter((p) => p === true)).toHaveLength(0)
+    expect(params.filter((p) => p === false)).toHaveLength(2)
+  })
+
+  it('GET tells the dialog whether the options are offered: true by default', async () => {
+    const { GET } = await loadRoute()
+    const body = await (await GET(get(), ctx())).json()
+    expect(body.selective_share_enabled).toBe(true)
+  })
+
+  it('GET tells the dialog the options are NOT offered when the flag is off', async () => {
+    process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE = 'false'
+    const { GET } = await loadRoute()
+    const body = await (await GET(get(), ctx())).json()
+    expect(body.selective_share_enabled).toBe(false)
   })
 })
 
