@@ -22308,7 +22308,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
-            "sha256": "f86a3103f817314269b41ad29cead32d6f7f93f2b81d7990d56e4332e1fc6a11"
+            "sha256": "552ce5f17bd5498d4e6723a23d96aa1029225420a3dc6d2ce23b748a9b670998"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
@@ -22480,7 +22480,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f5ffbd7f40cc0fb64ceb2363e66482010fdccc6df80e20c46883081aa8b2ca05"
+        "sha256": "13a3e01e7235c999c82fd9bad2bc967439682c9cb8a7218036090ccab86ac006"
       },
       {
         "id": "service_effect_contracts",
@@ -22500,7 +22500,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "4aa518900bc072848c137e9df29cd4fdd89eceb497e80df56d405e3ad4fec607"
+        "sha256": "dcf360fa7693ebbf450003d238f553feb49e65c37a77f41a976a7b06843d421d"
       }
     ]
   },
