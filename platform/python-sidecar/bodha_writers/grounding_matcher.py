@@ -104,12 +104,14 @@ def _occupies_pairs(antecedent_jsonb: Any) -> list[tuple[str, int]] | None:
 
 def classify_yoga_dosha_firing(
     *,
-    firing_id: int,
+    firing_id: int | str,
     constituent_planets: list[str],
     constituent_houses: list[int],
     candidate_rules: list[dict[str, Any]],
 ) -> GroundingMatch:
-    """`candidate_rules`: every sutravali_rules row worth considering for this
+    """`firing_id` is the firing's STABLE identity: the yoga_canonical_id (UNIQUE per chart and ayanamsha), never the
+    serial `ga_yoga_firings.id`, which ga_yoga renumbers on every rebuild (N-307; the digested key must not move on
+    identical content). `candidate_rules`: every sutravali_rules row worth considering for this
     firing (caller pre-filters by relevance; see grounding_writer.py). Each
     row: {rule_id, text_id, verse_ref, antecedent_jsonb, yoga_canonical_id}.
     """

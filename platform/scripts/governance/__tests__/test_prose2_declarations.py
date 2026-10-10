@@ -611,22 +611,22 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     assert [(t["table"], t.get("filter")) for t in e["produced_tables"]] == [("chart_vichara", None), ("chart_facts", {"column": "fact_subject", "equals": "daridra"})]
     assert e["cross_asset_writes"] == ["chart_facts.fact_value_text", "chart_facts.citation_human"]
     ev = e["evidence"]["prose_fields"]
-    for cite in ("ga_vichara_writer.py:676", "ga_vichara_writer.py:678", "ga_vichara_writer.py:371", "ga_vichara_writer.py:444", "ga_vichara_writer.py:526", "valence_doctrine.py:251",
-                 "ga_vichara_writer.py:1088", "ga_vichara_writer.py:1090", "ga_vichara_writer.py:1220", "ga_vichara_writer.py:1221", "ga_daridra_postpass.py:281", "ga_daridra_postpass.py:215",
-                 "ga_daridra_postpass.py:217", "ga_daridra_postpass.py:225", "ga_daridra_postpass.py:86", "ga_daridra_postpass.py:301", "ga_structural_writer.py:3103", "ga_structural_writer.py:3214",
-                 "ga_structural_writer.py:3215", "ga_structural_writer.py:3221"):
+    for cite in ("ga_vichara_writer.py:693", "ga_vichara_writer.py:695", "ga_vichara_writer.py:388", "ga_vichara_writer.py:461", "ga_vichara_writer.py:543", "valence_doctrine.py:251",
+                 "ga_vichara_writer.py:1105", "ga_vichara_writer.py:1107", "ga_vichara_writer.py:1237", "ga_vichara_writer.py:1238", "ga_daridra_postpass.py:281", "ga_daridra_postpass.py:215",
+                 "ga_daridra_postpass.py:217", "ga_daridra_postpass.py:225", "ga_daridra_postpass.py:86", "ga_daridra_postpass.py:301", "ga_structural_writer.py:3104", "ga_structural_writer.py:3215",
+                 "ga_structural_writer.py:3216", "ga_structural_writer.py:3222"):
         assert cite in ev, cite
     # the cited lines really hold what the evidence says they hold
     w = (SIDECAR / "ga_writers" / "ga_vichara_writer.py").read_text(encoding="utf-8").splitlines()
     v = (SIDECAR / "brahmagyan" / "valence_doctrine.py").read_text(encoding="utf-8").splitlines()
     pp = (SIDECAR / "ga_writers" / "ga_daridra_postpass.py").read_text(encoding="utf-8").splitlines()
     sw = (SIDECAR / "ga_writers" / "ga_structural_writer.py").read_text(encoding="utf-8").splitlines()
-    assert '"value_text": (' in w[675] and "ratification fails in" in w[677] and "verdict.citation" in w[370] and '"source_citation": citation' in w[443] and '"source_citation": citation' in w[525]
-    assert "citation = (" in v[250] and "value_text" in w[1087] and "source_citation" in w[1089]
-    assert "import emit_daridra_label_post_pass" in w[1219] and "emit_daridra_label_post_pass(conn" in w[1220] and "return inserted + daridra_written" in w[1221]
+    assert '"value_text": (' in w[692] and "ratification fails in" in w[694] and "verdict.citation" in w[387] and '"source_citation": citation' in w[460] and '"source_citation": citation' in w[542]
+    assert "citation = (" in v[250] and "value_text" in w[1104] and "source_citation" in w[1106]
+    assert "import emit_daridra_label_post_pass" in w[1236] and "emit_daridra_label_post_pass(conn" in w[1237] and "return inserted + daridra_written" in w[1238]
     assert "def emit_daridra_label_post_pass" in pp[280] and '"citation_human": (' in pp[214] and "does not serve as a finding" in pp[216] and "Daridra stands uncancelled" in pp[224]
     assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[85] and "insert_daridra_label_rows(conn, rows)" in pp[300]
-    assert "def _build_dosha_rows" in sw[3102] and "citation_human = (" in sw[3213] and "labels chart" in sw[3214] and "CANCELLED:" in sw[3220]
+    assert "def _build_dosha_rows" in sw[3103] and "citation_human = (" in sw[3214] and "labels chart" in sw[3215] and "CANCELLED:" in sw[3221]
     assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"], ["citation_human"], ["citation_human"]]
     got = ac.narr_fidelity_scan(e["prose_fields"], ev, _python_tests(), e["fidelity_tests"], None)
     assert got["v"] == PASS and "6 declared golden-value test(s) verified" in got["measured"] and "covers citation_human, source_citation, value_text" in got["measured"], got["measured"]
