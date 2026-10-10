@@ -202,3 +202,15 @@ def test_published_write_mutant_fails_compatibility_oracle(ctx, monkeypatch):
     monkeypatch.setattr(module, 'write_candidate', scope['write_candidate'])
     with pytest.raises(AssertionError):
         test_full_direct_build_repeated_readback_preserves_published_output(ctx)
+
+
+@pytest.mark.parametrize('mode', ['selected', 'conditioned', 'testimony', 'outside_coverage', 'selection_ancestry'])
+def test_sql_never_stores_unsupported_operational_contest(ctx, mode):
+    from tests.l3.ka_sangam.test_candidate_admission import unsupported
+    v = unsupported(mode)
+    v["opinions"] += (replace(v["opinions"][0], conclusion="adverse"),)
+    ctx.config["jury_fixture_inputs"] = [v]
+    writer().run(ctx)
+    row = ctx.db_conn.execute("SELECT witness_signature FROM kala_jury_candidate").fetchone()
+    assert row[0] == []
+    assert ctx.db_conn.execute("SELECT count(*) FROM kala_jury_candidate_contest").fetchone()[0] == 0

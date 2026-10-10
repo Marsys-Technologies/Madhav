@@ -7,8 +7,8 @@
   "inputs": {
     "anchor": "kala_core.assertion.AssertionEnvelope, stage=judge, role=selects; candidate identity and full source envelope",
     "upstream_refs": "nonempty pinned judge, negative_space, F1 and F2 references; fixture references do not admit live bindings",
-    "nodes_and_uses": "typed evidence nodes and evaluated activity/roles; source roots and selection ancestry, never recalculated sky or period values",
-    "opinions": "already evaluated, class-scoped typed conclusions with separate support; G-J only through complete MethodOutput",
+    "nodes_and_uses": "typed evidence nodes and evaluated activity/roles; every anchor used_for_selection root is a selection use even when absent from anchor source roots; never recalculated sky or period values",
+    "opinions": "already evaluated, class-scoped typed conclusions; operational contests, sequences and turning points require every root and group to have selection-safe, non-testimony corroboration on the same covered half-open interval; G-J only through complete MethodOutput",
     "groups": "all five declared schools, coverage, ancestry, source and review references; G-J overridden by complete-method admission; explicit corpus_admitted and kp_ingested gate G-T/G-K; G-A remains testimony",
     "jaimini": "k4-2a:jaimini_method_output:v1, or null with jaimini_output_missing",
     "measure": "explicit alpha and boolean exchangeability; pinned default 1023 non-identity shifts; separate pipeline null is unavailable without a selection producer",

@@ -16,7 +16,7 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from services.kala_core.assertion import AssertionEnvelope, Ref, Typed
-from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS, Interval
+from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS, Interval, intersect_intervals
 from .agreement import Agreement, agreement
 from .contests import Contest, Opinion, Sequence, _canonical, contests, sequences, turning_points
 from .evidence import GROUPS, Node, Use, Support, corroboration, evidence_graph
@@ -97,15 +97,9 @@ def joint_turning_points(values):
     """Shared core comparison across the explicitly supplied class roster."""
     opinions = []
     for value in values:
-        roster = _roster(value)
-        class_opinions = list(value.opinions)
-        roster['G-J'] = declarations(value.horizon)[1]
-        if value.jaimini is not None:
-            method = consume(value.jaimini)
-            roster['G-J'] = method.group
-            class_opinions.extend(method.opinions())
-        opinions.extend(o for o in class_opinions if all(roster[g].status == 'available'
-            and 'corroborates' in roster[g].roles for g in o.groups))
+        nodes, uses, roster, class_opinions = _class_evidence(value)
+        support = _admitted_support(value.horizon, nodes, uses, roster)
+        opinions.extend(_supported_opinions(class_opinions, support))
     return turning_points(opinions, min_classes=2)
 
 
@@ -127,9 +121,11 @@ class CandidateResult:
     support: tuple[Support, ...]
 
 
-def compute(value: ClassInput) -> CandidateResult:
+def _class_evidence(value):
+    # Explicit upstream selection roots need a selection use even when the
+    # anchor's own source roots omit them; otherwise the root graph loses them.
     roots = frozenset((*value.anchor.roots.contact_ids, *value.anchor.roots.record_ids,
-                       *value.anchor.roots.fact_ids))
+                       *value.anchor.roots.fact_ids, *value.anchor.used_for_selection))
     anchor_id = '__selected_judge__'
     if any(n.node_id == anchor_id for n in value.nodes):
         raise ValueError('reserved selection node identity')
@@ -146,16 +142,44 @@ def compute(value: ClassInput) -> CandidateResult:
         nodes += method_nodes
         uses += method_uses
         opinions.extend(method.opinions())
-    # Testimony and unadmitted schools retain declaration/coverage but cannot
-    # contribute operational contests or sequences.
-    opinions = _canonical(o for o in opinions if all(roster[g].status == 'available'
-        and 'corroborates' in roster[g].roles for g in o.groups))
-    measured = agreement(value.horizon, nodes, uses, roster.values(), alpha=value.alpha,
-        exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts)
+    return nodes, uses, roster, opinions
+
+
+def _admitted_support(horizon, nodes, uses, roster):
+    # Match agreement's roles/ancestry admission before using the same root
+    # algebra. Keep selectors and conditions so their exclusions cannot vanish.
     admitted_uses = tuple(replace(u, ancestry=u.ancestry | roster[u.group_id].ancestry,
         role='explains' if u.role == 'corroborates' and (roster[u.group_id].status != 'available'
             or 'corroborates' not in roster[u.group_id].roles) else u.role) for u in uses)
-    support = corroboration(nodes, admitted_uses)
+    support = {replace(s, interval=i) for s in corroboration(nodes, admitted_uses)
+        for i in intersect_intervals((s.interval,), roster[s.group_id].coverage, horizon)}
+    return tuple(sorted(support, key=lambda s: (s.group_id, s.interval, sorted(s.roots), sorted(s.ancestry))))
+
+
+def _supported_opinions(opinions, support):
+    """Retain a conclusion only where every declared root/group is supported."""
+    admitted = []
+    for opinion in _canonical(opinions):
+        matching = tuple(s for s in support if s.group_id in opinion.groups and s.roots & opinion.roots
+            and s.interval.start < opinion.interval.end and s.interval.end > opinion.interval.start)
+        boundaries = sorted({opinion.interval.start, opinion.interval.end,
+            *(max(s.interval.start, opinion.interval.start) for s in matching),
+            *(min(s.interval.end, opinion.interval.end) for s in matching)})
+        for start, end in zip(boundaries, boundaries[1:]):
+            by_group = {g: frozenset(r for s in matching if s.group_id == g
+                and s.interval.start <= start and s.interval.end >= end
+                for r in s.roots & opinion.roots) for g in opinion.groups}
+            if all(by_group.values()) and opinion.roots <= frozenset().union(*by_group.values()):
+                admitted.append(replace(opinion, interval=Interval(start, end)))
+    return _canonical(admitted)
+
+
+def compute(value: ClassInput) -> CandidateResult:
+    nodes, uses, roster, opinions = _class_evidence(value)
+    support = _admitted_support(value.horizon, nodes, uses, roster)
+    opinions = _supported_opinions(opinions, support)
+    measured = agreement(value.horizon, nodes, uses, roster.values(), alpha=value.alpha,
+        exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts)
     identity = json.dumps([value.event_class, value.horizon.start, value.horizon.end], separators=(',', ':'))
     return CandidateResult('jury:' + hashlib.sha256(identity.encode()).hexdigest(), measured,
                            contests(opinions), sequences(opinions), support)
