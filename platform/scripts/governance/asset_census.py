@@ -64,6 +64,12 @@ Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4
       --rollup failed (census still written, without it; the measured exit is named on stderr, never lost).
       6 bad --assets scope (empty / duplicate / miscased / unknown / wrong layer / retired id, or --out naming the
       full census file) — nothing measured, nothing written.
+
+SS N-430 (hygiene of the reads; verdict-neutral with the cap off):
+  read_timings   every layer head carries `read_timings`: each psql read's elapsed seconds, attributed to an asset and a read label (never a host, credential or value), as the slowest
+                 reads per asset plus per-asset totals and the overall maximum; `--read-timings-report CENSUS.json` prints them. Elapsed times are non-deterministic: nothing fingerprints,
+                 hashes or compares them.
+  Full semantics: the block comment above `_psql_run`.
 """
 
 from __future__ import annotations
@@ -72,6 +78,7 @@ import argparse
 import ast
 import bisect
 import collections
+import contextlib
 import copy
 import datetime as dt
 import functools
@@ -11701,6 +11708,96 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
     return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
 
 
+# ─────────────────────── SS N-430: per-read timing ───────────────────────
+# (1) READ TIMINGS (T1, verdict-neutral). Every psql read `_psql_run` makes is timed (monotonic seconds) and appended to an in-memory log:
+#     {asset, label, seconds, retries, outcome}. `asset` is the asset being measured (`measure()` sets it per asset; the stamp phase says `(run)`; none = `(layer)`), `label` is the
+#     criterion / probe name when the caller declared one (`read_label`) else the statement's first 60 characters with every literal (strings, dollar-quoted bodies, numbers) replaced by `?`.
+#     NEVER stored: a host, a credential, a value, the full statement or the error text. `outcome` is ok / error / timeout. `main()` drains the log into each layer head's `read_timings`
+#     key (see `read_timings_summary`). Elapsed times are NON-DETERMINISTIC by nature: they are a head key only, no fingerprint, hash, verdict or cell text reads them, and
+#     `read_timings_report` prints them so a person can set a cap from evidence.
+READ_TIMINGS_SLOWEST_PER_ASSET = 5
+READ_TIMINGS_REPORT_TOP = 10
+
+
+_READ_LOG: list[dict] = []
+_READ_CTX: dict = {"asset": None, "label": None}
+_LIT_DOLLAR = re.compile(r"\$(\w*)\$.*?\$\1\$", re.S)
+_LIT_STRING = re.compile(r"'(?:[^']|'')*'")
+_LIT_NUMBER = re.compile(r"\b\d+(?:\.\d+)?\b")
+
+
+def _statement_label(sql: str) -> str:
+    """The first 60 characters of a statement with its literals stripped (dollar-quoted bodies, string literals, an unterminated quote and its tail, numbers): a label, never a value."""
+    t = _LIT_DOLLAR.sub("$?$", str(sql))
+    t = _LIT_STRING.sub("?", t)
+    if "'" in t:
+        t = t.split("'", 1)[0] + "?"
+    t = _LIT_NUMBER.sub("?", t)
+    return " ".join(t.split())[:60]
+
+
+@contextlib.contextmanager
+def read_label(label: str, asset: str | None = None):
+    """Attribute the psql reads made inside the block to `label` (a criterion or probe name: a fixed string) and, when given, `asset`. Restores the previous attribution on exit."""
+    prev = dict(_READ_CTX)
+    _READ_CTX["label"] = label
+    if asset is not None:
+        _READ_CTX["asset"] = asset
+    try:
+        yield
+    finally:
+        _READ_CTX.update(prev)
+
+
+def set_read_asset(asset: str | None) -> None:
+    """The asset the following reads belong to (None: layer-wide / run-level)."""
+    _READ_CTX["asset"] = asset
+    _READ_CTX["label"] = None
+
+
+def _record_read(statement: str, seconds: float, retries: int, outcome: str) -> None:
+    _READ_LOG.append(dict(asset=_READ_CTX["asset"], label=_READ_CTX["label"] or _statement_label(statement), seconds=seconds, retries=retries, outcome=outcome))
+
+
+def drain_read_log() -> list[dict]:
+    """Every read recorded since the last drain (the log is emptied)."""
+    out = list(_READ_LOG)
+    _READ_LOG.clear()
+    return out
+
+
+def read_timings_summary(entries: list[dict], slowest: int = READ_TIMINGS_SLOWEST_PER_ASSET) -> dict:
+    """The `read_timings` head key: n_reads, total_seconds, the overall maximum (and which read it was), and per asset (sorted by asset id) its read count, total, maximum and its `slowest` reads.
+    Bounded: at most `slowest` reads per asset. NOT deterministic (elapsed times); read by no verdict, fingerprint or hash."""
+    by: dict[str, list[dict]] = {}
+    for e in entries:
+        by.setdefault(e.get("asset") or "(layer)", []).append(e)
+    per_asset = []
+    for a in sorted(by):
+        es = sorted(by[a], key=lambda e: (-e["seconds"], str(e["label"])))
+        per_asset.append(dict(asset=a, n_reads=len(es), total_seconds=round(sum(e["seconds"] for e in es), 3), max_seconds=round(es[0]["seconds"], 3),
+                              slowest=[dict(label=e["label"], seconds=round(e["seconds"], 3), retries=e["retries"], outcome=e["outcome"]) for e in es[:slowest]]))
+    worst = max(entries, key=lambda e: e["seconds"]) if entries else None
+    return dict(schema="read_timings/1", unit="seconds", slowest_per_asset=slowest, n_reads=len(entries), total_seconds=round(sum(e["seconds"] for e in entries), 3),
+                max_seconds=round(worst["seconds"], 3) if worst else 0.0,
+                max_read=dict(asset=worst.get("asset") or "(layer)", label=worst["label"]) if worst else None, per_asset=per_asset)
+
+
+def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
+    """A person-readable report of the slowest reads in a census (the loaded JSON, or a path to it): per layer the overall maximum, then the `top` slowest reads over all assets."""
+    if isinstance(census, (str, os.PathLike)):
+        census = json.loads(Path(census).read_text(encoding="utf-8"))
+    lines: list[str] = []
+    for layer in sorted(k for k, v in (census or {}).items() if isinstance(v, dict) and isinstance(v.get("read_timings"), dict)):
+        rt = census[layer]["read_timings"]
+        mr = rt.get("max_read") or {}
+        lines.append(f"{layer}: {rt.get('n_reads', 0)} read(s), {rt.get('total_seconds', 0)} s in total; slowest {rt.get('max_seconds', 0)} s ({mr.get('asset', '-')}: {mr.get('label', '-')})")
+        flat = [(r["seconds"], pa["asset"], r["label"], r.get("retries", 0), r.get("outcome", "?")) for pa in rt.get("per_asset", []) for r in pa.get("slowest", [])]
+        for sec, asset, label, retries, outcome in sorted(flat, key=lambda x: (-x[0], x[1], str(x[2])))[:max(0, int(top))]:
+            lines.append(f"  {sec:>9.3f} s  {asset}  {label}  [{outcome}{', retries ' + str(retries) if retries else ''}]")
+    return "\n".join(lines) if lines else "no read_timings in this census"
+
+
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
               cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
@@ -11708,9 +11805,10 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
     script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
     the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
-    variable interpolation)."""
+    variable interpolation). SS N-430: every run is timed (`_record_read`)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
+    named = cmds[label]                                         # the command a timeout message names
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
     script = None
     if via_stdin:
@@ -11720,22 +11818,31 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     else:
         for c in cmds:
             argv += ["-c", c]
+    t0, outcome = time.monotonic(), "error"
     try:
-        # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
-    except subprocess.TimeoutExpired as exc:
-        raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
-                           f"{' '.join(cmds[label].split())[:120]}") from exc
-    if p.returncode != 0:
-        err = p.stderr.decode("utf-8", errors="replace")
-        raise Unknown((err.strip().splitlines() or ["psql failed"])[0][:400])
-    if cap is not None and p.over:
-        raise ReadError(f"psql output exceeds the {cap}-byte cap; not read")
-    try:
-        out = p.stdout.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
-    return parse_psql_output(out, sep, width)
+        try:
+            # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
+            p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
+        except subprocess.TimeoutExpired as exc:
+            outcome = "timeout"
+            raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
+                               f"{' '.join(named.split())[:120]}") from exc
+        if p.returncode != 0:
+            err = p.stderr.decode("utf-8", errors="replace")
+            first = (err.strip().splitlines() or ["psql failed"])[0][:400]
+            outcome = "timeout" if _read_timeout_kind(first) else "error"
+            raise Unknown(first)
+        if cap is not None and p.over:
+            raise ReadError(f"psql output exceeds the {cap}-byte cap; not read")
+        try:
+            out = p.stdout.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
+        rows = parse_psql_output(out, sep, width)
+        outcome = "ok"
+        return rows
+    finally:
+        _record_read(named, time.monotonic() - t0, 0, outcome)
 
 
 def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
@@ -12059,7 +12166,8 @@ def _integrity_outcome(sql: str) -> dict:
         why, _stmt = _integrity_statement(sql)
         if why is not None:
             return done("unrunnable" if why.startswith("integrity SQL too large") else "refused", why)
-        rows = psql_read_only(_stmt)
+        with read_label("integrity_check_sql"):
+            rows = psql_read_only(_stmt)
     except Exception as exc:                    # Unknown / CheckTimeout / ReadError, and any runner surprise: degrade THIS check only
         msg = " ".join(str(exc).split())[:240]
         if isinstance(exc, Unknown) and _PERMISSION_DENIED.match(msg):
@@ -17919,7 +18027,8 @@ def _run_carriage_detector(aid: str) -> dict:
 def _layer_read(name: str, fn, *args):
     """F12 (A_REVIEW.md): name the layer-wide read that failed, so the UNKNOWN says which one."""
     try:
-        return fn(*args)
+        with read_label(name):                     # SS N-430: the layer-wide read's reads are timed under its name
+            return fn(*args)
     except Unknown as exc:
         raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
 
@@ -19254,6 +19363,7 @@ def measure(layer_key: str, assets=None) -> dict:
     (`live_counts` isolates per asset itself — F2; `duration_instrument_present` degrades to
     `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
+    set_read_asset(None)                                   # SS N-430: the layer-wide reads below are timed under no asset
     reg_all, population = _layer_read("registry", registry, layer_key)
     reg, assets_sel = reg_all, None                       # E1.9: `assets_sel` is the scope label (None: a full run)
     if assets is not None:
@@ -19382,6 +19492,7 @@ def measure(layer_key: str, assets=None) -> dict:
     assets = []
     set_read_scope(None)
     for aid, r in reg.items():
+        set_read_asset(aid)                                   # SS N-430: the reads that follow are timed under this asset
         set_read_scope(None)                                  # the measured-chart scope of the live data reads is per asset (set below, after the owned tables are known)
         _rscopes: dict = {}
         m: dict[str, dict] = {}
@@ -19661,7 +19772,8 @@ def measure(layer_key: str, assets=None) -> dict:
             # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
             # slow/failing query must degrade only its OWN criterion, never blind the other three.
             try:
-                dc = depth_census(tbl, cat["cols"].get(tbl, []))
+                with read_label("Complete.depth"):                       # SS N-430: read timings are labelled by criterion
+                    dc = depth_census(tbl, cat["cols"].get(tbl, []))
                 if dc.get("note") or not dc.get("rows"):
                     # R222 / N5 (A_REVIEW2 G2): an empty table (or one with no readable columns) has
                     # no column population to measure. It read PASS ("never populated: []" is
@@ -19695,7 +19807,8 @@ def measure(layer_key: str, assets=None) -> dict:
                     # against the naive form's >180s). An EXISTS/HAVING duplicate-group probe can
                     # stop at the first violation instead of counting the whole table when one
                     # exists, and never needs the second full DISTINCT pass either way.
-                    has_dup, figure = identity_duplicates(tbl, kd)
+                    with read_label("Vocab.identity"):
+                        has_dup, figure = identity_duplicates(tbl, kd)
                     m["Vocab.identity"] = dict(v=(FAIL if has_dup else PASS),
                                                measured=f"declared key ({kd}): {figure}")
                     if not has_dup:
@@ -19704,7 +19817,8 @@ def measure(layer_key: str, assets=None) -> dict:
                         # depth census when it ran; otherwise one EXISTS probe.
                         nrows = dc.get("rows")
                         if nrows is None:
-                            nrows = 1 if identity_has_rows(tbl) else 0
+                            with read_label("Vocab.identity"):
+                                nrows = 1 if identity_has_rows(tbl) else 0
                         if nrows == 0:
                             m["Vocab.identity"] = dict(v=NO_DET, measured=f"NO_DETECTOR — table empty: uniqueness "
                                                                           f"under ({kd}) is vacuous on 0 rows")
@@ -19713,7 +19827,8 @@ def measure(layer_key: str, assets=None) -> dict:
 
             try:
                 _hn, _hn_bad = vocab_alias_honest_null_sets(_sd, tbl, cat["cols"].get(tbl, []))
-                ac = None if _va_declared else (alias_census(tbl, cat["cols"].get(tbl, []), lift=_hn) if _hn else alias_census(tbl, cat["cols"].get(tbl, [])))
+                with read_label("Vocab.alias"):
+                    ac = None if _va_declared else (alias_census(tbl, cat["cols"].get(tbl, []), lift=_hn) if _hn else alias_census(tbl, cat["cols"].get(tbl, [])))
                 if ac and _hn_bad:
                     m["Vocab.alias"] = dict(v=NO_DET, declaration_disagreements=[dict(field="vocab_alias_honest_null", declared=", ".join(sorted(f"{d['table']}.{d['entity_class']}" for d in (_sd.get("vocab_alias_honest_null") or []) if isinstance(d, dict))), measured="; ".join(_hn_bad))],
                                             measured="NO_DETECTOR — the declared vocab_alias_honest_null is refused, so no empty alias set is lifted: " + "; ".join(_hn_bad))
@@ -19753,7 +19868,8 @@ def measure(layer_key: str, assets=None) -> dict:
                 col = cit[0]
                 try:
                     # C2(ii) (pin 24): a placeholder citation is not a source; ldgr_legacy_presence is the one reading (shared predicate with the declared ldgr_source check)
-                    m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
+                    with read_label("Ldgr.source_presence"):
+                        m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
                 except Unknown as exc:
                     m["Ldgr.source_presence"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
         elif tbl:
@@ -19761,7 +19877,8 @@ def measure(layer_key: str, assets=None) -> dict:
 
         # E6 S3: the declared forms (N/A by declaration, or measured against bg_ontology / the declared source column); {} for an undeclared asset
         # (the DECLARED table and, only when it exists in production with known columns, its columns: a table that is absent, or a view, is NO_DETECTOR, never a pass-through)
-        m.update(vocab_alias_declared_check(aid, _va, tbl or None, _target_columns_fact(tbl, cat)))
+        with read_label("Vocab.alias/Ldgr.source_presence (declared)"):
+            m.update(vocab_alias_declared_check(aid, _va, tbl or None, _target_columns_fact(tbl, cat)))
         # N-176: the VALUE reading of Vocab.alias (bounded, read-only samples of every text-capable / json column of the asset's owned tables). It fills an undeclared asset's absent record and OVERRIDES a declared
         # `no_alias_class` (advisory: the data decides); a declared measured alias class, the `synonyms` census and a documented-alias contradiction keep their own readings (`vocab_value_merge`).
         _own_v = {t_: (_target_columns_fact(t_, cat), (cat.get("types") or {}).get(t_) if cat.get("types") is not None else None) for t_ in dict.fromkeys(([tbl] if tbl else []) + list(ctables)) if t_ and t_ in cat["exists"]}
@@ -19837,8 +19954,9 @@ def measure(layer_key: str, assets=None) -> dict:
             try:
                 if prose_tests is None and (prose_decls.get(aid) or {}).get("prose_fields"):
                     prose_tests = python_tests()
-                m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
-                                        prose_vocab))
+                with read_label("Narr/Null (prose checks)"):
+                    m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
+                                            prose_vocab))
             except (Unknown, DeclarationsError) as exc:
                 for _c in NARR_CHECKS + NULL_CHECKS:
                     m[_c] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
@@ -19974,6 +20092,7 @@ def measure(layer_key: str, assets=None) -> dict:
                            count_sql_declared=bool((r["count_sql"] or "").strip()),
                            measurements=m))
 
+    set_read_asset(None)                                  # SS N-430: the reads after the per-asset loop are layer-wide again
     credit_sibling_cells(assets)                          # SS N-236: a VERIFIED writer_sibling rider is exercised / built / recorded by its primary's runs
     extra = sorted(set(regd) - known)
     never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
@@ -20831,7 +20950,12 @@ def main() -> int:
                     help="with --registry-check: exit 11 when a required criterion is uncovered (detector NONE and not declared "
                          "per-asset-pending); without it coverage is reported, not gated")
     ap.add_argument("--out", default=None, help="default: <control>/asset_census.json (scoped: asset_census_scoped.json)")
+    ap.add_argument("--read-timings-report", default=None, metavar="CENSUS_JSON",
+                    help="SS N-430: print the slowest psql reads recorded in a finished census file (its `read_timings` head key), then exit; reads no database")
     a = ap.parse_args()
+    if a.read_timings_report is not None:
+        print(read_timings_report(a.read_timings_report))
+        return 0
     if (a.check or a.require_covered) and not a.registry_check:
         ap.error("--check / --require-covered require --registry-check")
     if a.registry_check:
@@ -20840,6 +20964,8 @@ def main() -> int:
         if clash:
             ap.error(f"--registry-check is registry-only and cannot be combined with {', '.join(clash)}")
         return registry_check_main(a.out if a.out is not None else str(CTRL / "registry_coverage_report.json"), a.check, a.require_covered)
+    drain_read_log()                                # SS N-430: this run's read timings start empty
+    set_read_asset(None)
     if a.layer is None:
         a.layer = "L0"
     keys = list(LAYERS) if a.layer.lower() == "all" else [k.strip().upper() for k in a.layer.split(",")]
@@ -20873,14 +20999,17 @@ def main() -> int:
             print(f"asset_census: withholding refused — {exc} (nothing written)", file=sys.stderr)
             return EXIT_WITHHOLDING
 
+    set_read_asset("(run)")
     try:
         stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
     except EvalCopyRefused as exc:
         print(f"asset_census: evaluation copy refused: {exc}", file=sys.stderr)
         return EXIT_EVAL_COPY_REFUSED
+    set_read_asset(None)
     if (stamp.get("census_target") or {}).get("declared") == "production":
         print(f"asset_census: {PRODUCTION_RUN_WARNING}", file=sys.stderr)
     out, worst = {}, 0
+    layer_reads: dict[str, list[dict]] = {}
     for k in keys:
         try:
             c = measure(k) if by_layer is None else measure(k, assets=by_layer[k])
@@ -20929,6 +21058,7 @@ def main() -> int:
             n = by[crit]
             print(f"    FAIL {crit}: {len(n)} — {', '.join(n[:6])}{'…' if len(n) > 6 else ''}")
         worst = max(worst, 2 if fails else (3 if (parts or errored) else 0))
+        layer_reads[k] = drain_read_log()           # SS N-430: the reads measuring this layer (the stamp's and the scope check's go to the first)
         if a.emit_gaps:
             try:
                 g = emit_gaps_summary(c)
@@ -20960,6 +21090,10 @@ def main() -> int:
             rollup_error = f"{type(exc).__name__}: {exc}"
             print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup; measured exit "
                   f"{worst} overridden by 5)", file=sys.stderr)
+    if layer_reads:                  # SS N-430: `read_timings` in each layer head, written LAST: no verdict, rollup, fingerprint or ledger row reads it
+        layer_reads[list(layer_reads)[-1]] += drain_read_log()
+        for k, entries in layer_reads.items():
+            out[k]["read_timings"] = read_timings_summary(entries)
     if by_layer is not None:    # E1.9: the file header says it is partial, before any layer is read
         out = {"scope": dict(assets=sorted(x for k in keys for x in by_layer[k]), partial=True, layers=list(keys)), **out}
     text = json.dumps(out, indent=1, default=str) + "\n"
