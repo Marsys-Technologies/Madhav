@@ -77,7 +77,14 @@ def _planned_claim(row: tuple) -> dict:
 
 @register('ka_bhavishya_lekha')
 class KaBhavishyaLekhaWriter(WriterBase):
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
     def run(self, ctx) -> WriterResult:
+        if 'jury_reader_generation' in ctx.config:
+            from services.ka_sangam.jury.reader import preparation_result
+            return preparation_result(ctx, 'ka_bhavishya_lekha')
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
         today = date.today()

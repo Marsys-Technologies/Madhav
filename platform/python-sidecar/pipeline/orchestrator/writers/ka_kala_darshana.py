@@ -8,7 +8,14 @@ logger = logging.getLogger(__name__)
 
 @register('ka_kala_darshana')
 class KaKalaDarshanaWriter(WriterBase):
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
     def run(self, ctx) -> WriterResult:
+        if 'jury_reader_generation' in ctx.config:
+            from services.ka_sangam.jury.reader import preparation_result
+            return preparation_result(ctx, 'ka_kala_darshana')
         if 'kala_assertion_fixture' in ctx.config:
             from services.kala_core.assertion.slice import run_fixture_slice
             return WriterResult(asset_id='ka_kala_darshana', rows_inserted=run_fixture_slice(ctx),
