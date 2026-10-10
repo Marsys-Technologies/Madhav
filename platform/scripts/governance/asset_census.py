@@ -19138,7 +19138,7 @@ def logical_key_identity(tbl: str, decl: dict, cat: dict) -> dict:
         if not identity_has_rows(tbl):
             return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: the view holds no row in the measured chart's scope, so uniqueness is vacuous")
     except (Unknown, ValueError) as exc:
-        return dict(v=ERRORED, measured=f"check errored: {exc}")
+        return _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))        # SS N-430 (T3): a server-cancelled read reads NO_DETECTOR (merge fix-up: hygiene's guard test)
     import hashlib
     gb = [(f"{q}." if q else "") + c for q, c in parsed["group_by"]]
     return dict(v=PASS, measured=f"{head} (GROUP BY of exactly those columns, proven from pg_get_viewdef, evidence: {lk['evidence']}): 0 duplicate(s), no NULL key, rows present",

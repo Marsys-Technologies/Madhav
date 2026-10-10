@@ -171,7 +171,7 @@ def test_the_integrity_runner_keeps_its_own_budget_whatever_the_cap_is(monkeypat
     fake_on = FakePsql(monkeypatch, ac, [ok(b"none\n")])
     ac.psql_read_only("SELECT true", timeout=180)
     assert nonce(fake_on.commands()) == cmds_off and nonce(fake_on.calls[0]) == argv_off, "the integrity run's command line is identical with and without the cap"
-    assert "SET LOCAL statement_timeout = 162000" in cmds_off          # 90% of the 180 s client limit: unchanged
+    assert "SET LOCAL statement_timeout = 180000" in cmds_off          # N-431 (W8): the server statement_timeout of the integrity run is EXACTLY the budget it was given (180 s here); it was 90% of the client limit (162000) before W8 (merge fix-up)
     assert not any(c.startswith("SET statement_timeout") or c.startswith("SET lock_timeout") for c in cmds_off)
 
 
@@ -179,7 +179,7 @@ def test_the_integrity_runner_default_budget_is_not_capped_by_a_small_cap(monkey
     monkeypatch.setenv(ENV, "1")
     fake = FakePsql(monkeypatch, ac, [ok(b"none\n")])
     ac.psql_read_only("SELECT true")
-    assert f"SET LOCAL statement_timeout = {int(ac.INTEGRITY_TIMEOUT_SECONDS * 900)}" in fake.commands()
+    assert f"SET LOCAL statement_timeout = {ac.INTEGRITY_BUDGET_SECS * 1000}" in fake.commands()      # N-431 (W8): the default budget is INTEGRITY_BUDGET_SECS (600 s), decoupled from PSQL_TIMEOUT_SECONDS (merge fix-up)
 
 
 # ───────────────────────── REAL: one statement-timeout test on a disposable PostgreSQL ─────────────────────────
