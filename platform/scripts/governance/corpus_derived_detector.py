@@ -20,6 +20,11 @@ FETCH OPS (each request is a dict with `op`; the answer is parsed JSON-shaped da
   chunks   {table, id_column, columns, ids}             -> [ {column: value} ] for the listed ids (an id that does not exist is simply absent)
   distinct {table, column, limit}                       -> [distinct non-NULL values as text, ordered], at most `limit` + 1 of them
 
+PROSE BESIDE THE FORM (SS N-457, MODE 2). When the declaration entry also declares a non-empty `prose_fields` (bg_rules: predicate_jsonb.$.description), every declared prose COLUMN must be one of the columns this run
+COMPARES (every stored column of the table except `ignore_columns`, read from the live column list); otherwise stage `declaration` (a prose column the re-derivation does not cover cannot be grounded by it). The
+block then carries `prose_columns` (the declared columns; [] when prose_fields is undeclared, MODE 1) and `compared_columns`. A PASS here proves REPRODUCIBILITY of the stored prose only, never the absence of a
+stand-in word the parser itself writes; the census maps it to Narr.agree / Narr.checkable alone in that mode.
+
 STAGES. A NO_DETECTOR result names the stage that could not complete: declaration | pin | read | spawn | run | output | loaded_files.
 It NEVER reads PASS on a truncated, capped or partial read: every cap is checked against the FULL count first, and the number of rows received must equal it.
 
@@ -616,6 +621,17 @@ def manifest_runner(sandbox, manifest_rel: str = BG_RULES_PIN_MANIFEST):
     return run
 
 
+def prose_columns_of(entry):
+    """The distinct COLUMN names of the declaration entry's `prose_fields` (the part before `.$.`), [] when it declares none (MODE 1), None when it is not a list of non-blank strings. The very reading
+    asset_census.corpus_derived_prose_columns applies (pinned equal by a test); `entry` may also be the bare corpus_derived object (no prose_fields key)."""
+    pf = entry.get("prose_fields") if isinstance(entry, dict) else None
+    if pf is None:
+        return []
+    if not (isinstance(pf, list) and all(isinstance(f, str) and f.strip() for f in pf)):
+        return None
+    return list(dict.fromkeys(f.split(".", 1)[0] for f in pf))
+
+
 def _no(stage: str, detail: str, **block) -> dict:
     assert stage in STAGES, stage
     return dict(v=NO_DET, stage=stage, measured=f"NO_DETECTOR: corpus_derived stage '{stage}' could not complete: {detail}",
@@ -685,6 +701,14 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     if miss:
         raise _Stop("declaration", f"table {table} has no column {miss}")
     read_cols = [c for c in tcols if c not in set(ignore) or c == cite]
+    # ── MODE 2 (SS N-457): prose_fields declared BESIDE the form. Every declared prose column must be a column this run COMPARES, else the re-derivation cannot ground it ──
+    prose = prose_columns_of(entry)
+    if prose is None:
+        raise _Stop("declaration", "prose_fields beside corpus_derived must be a list of column / 'column.$.key' strings")
+    uncovered = [c for c in prose if c not in read_cols]
+    if uncovered:
+        raise _Stop("declaration", f"declared prose column(s) {uncovered} are not among the columns of {table} this check compares (a stored column not in ignore_columns {ignore}): "
+                                   "a prose column the re-derivation does not cover cannot be grounded by it")
     n = fetch(dict(op="count", table=table, filter=flt))
     if not (isinstance(n, int) and not isinstance(n, bool) and n >= 0):
         raise _Stop("read", f"unreadable row count of {table}: {n!r}")
@@ -807,7 +831,7 @@ def _detect(entry, fetch, runner, normaliser, repo_root, pin_check, cap, run_tim
     assurance = res.get("assurance") if isinstance(res.get("assurance"), str) and res.get("assurance") else ASSURANCE
     dc = cmp["difference_counts"]
     mism = sum(v for k, v in dc.items() if k != "blank_leaf")
-    block = dict(checked=True, verified=cmp["v"] == PASS, v=cmp["v"], table=table, key_columns=keys, cite_column=cite, ignore_columns=ignore, parser=pblock,
+    block = dict(checked=True, verified=cmp["v"] == PASS, v=cmp["v"], table=table, key_columns=keys, cite_column=cite, ignore_columns=ignore, compared_columns=list(read_cols), prose_columns=prose, parser=pblock,
                  pinned_files=[p["path"] for p in pins], loaded_repo_files=loaded_n,
                  stored_rows=len(stored), matched_rows=cmp["counts"]["matched"], mismatches=mism, chunks_run=len(want), cited_chunks=len(present),
                  uncited_sampled=len(sample), uncited_total=n_uncited, uncited_scan="full" if full_scan else "sample", uncited_yield=dc.get("uncited_chunk_yields_rule", 0), blank_leaves=cmp["counts"]["blank_leaves"],

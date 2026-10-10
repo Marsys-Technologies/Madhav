@@ -230,8 +230,8 @@ def test_sample_bounds_are_inclusive(fx):
 
 def test_the_form_is_exclusive_with_every_other_account_of_the_rows(fx):
     root, cd = fx
-    assert "prose_fields null" in ac.corpus_derived_problem(_entry(cd, prose_fields=["x"]))
-    assert ac.corpus_derived_problem(_entry(cd, prose_fields=[])) is not None
+    assert ac.corpus_derived_problem(_entry(cd, prose_fields=["x"])) is None           # SS N-457: a declared prose column BESIDE the form is allowed (the coverage rules are in test_n431_corpus_derived_prose_beside.py)
+    assert "prose_fields null" in ac.corpus_derived_problem(_entry(cd, prose_fields=[]))          # [] stays refused: it is the prose_none account
     for k in ("prose_none", "prose_coupling", "curated_corpus", "writer_constant_phrases", "no_table"):
         bad = ac.corpus_derived_problem(_entry(cd, **{k: {"x": 1}}))
         assert bad and k in bad and bad.startswith("corpus_derived")
