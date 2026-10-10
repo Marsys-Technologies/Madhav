@@ -37,6 +37,22 @@ def _fake_chart(sun_lon: float = 256.5, sun_sign: str = "Sagittarius", moon_nak:
     ]}
 
 
+def _install_fake_engine(monkeypatch, compute_chart) -> None:
+    """Stand-ins for pyjhora_adapter.{compute,version} so the route is tested without the engine."""
+    import types
+
+    pkg = types.ModuleType("pyjhora_adapter")
+    pkg.__path__ = []  # type: ignore[attr-defined]
+    comp = types.ModuleType("pyjhora_adapter.compute")
+    comp.compute_chart = compute_chart  # type: ignore[attr-defined]
+    ver = types.ModuleType("pyjhora_adapter.version")
+    ver.ENGINE_VERSION = "test-engine"  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "pyjhora_adapter", pkg)
+    monkeypatch.setitem(sys.modules, "pyjhora_adapter.compute", comp)
+    monkeypatch.setitem(sys.modules, "pyjhora_adapter.version", ver)
+    monkeypatch.setattr(pyhora, "ensure_swiss_backend", lambda *a, **k: None)
+
+
 @pytest.fixture()
 def captured(monkeypatch):
     """Replace the engine with a recorder; record the inputs the route feeds it."""
@@ -47,9 +63,7 @@ def captured(monkeypatch):
         seen["ayanamsha_id"] = ayanamsha_id
         return seen.get("chart") or _fake_chart()
 
-    import pyjhora_adapter.compute as compute
-    monkeypatch.setattr(compute, "compute_chart", fake_compute_chart)
-    monkeypatch.setattr(pyhora, "ensure_swiss_backend", lambda *a, **k: None)
+    _install_fake_engine(monkeypatch, fake_compute_chart)
     return seen
 
 
@@ -92,13 +106,10 @@ def test_smoke_fails_when_sun_missing(captured) -> None:
 
 
 def test_smoke_reports_engine_errors_honestly(monkeypatch) -> None:
-    import pyjhora_adapter.compute as compute
-
     def boom(**_kw):
         raise RuntimeError("engine down")
 
-    monkeypatch.setattr(compute, "compute_chart", boom)
-    monkeypatch.setattr(pyhora, "ensure_swiss_backend", lambda *a, **k: None)
+    _install_fake_engine(monkeypatch, boom)
     body = _app().get("/api/pyhora/smoke").json()
     assert body["status"] == "error" and "engine down" in body["error"]
 
