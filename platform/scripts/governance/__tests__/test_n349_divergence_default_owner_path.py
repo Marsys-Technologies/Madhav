@@ -291,6 +291,37 @@ def test_a_change_that_touches_anything_else_is_refused_and_rolled_back(db, monk
     assert _member(cl, name) == "f"
 
 
+TRIGGER_FN = ("CREATE FUNCTION public.n349_noop() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$")
+TRIGGER_DDL = "CREATE TRIGGER n349_trg BEFORE INSERT ON public.chart_facts FOR EACH ROW EXECUTE FUNCTION public.n349_noop()"
+CHART = "public.chart_facts"
+
+
+@pytest.mark.parametrize("category,extra,setup", [
+    ("constraints unchanged", "ALTER TABLE %s ADD CONSTRAINT n349_chk CHECK (note <> 'z')" % CHART, None),
+    ("constraints unchanged", "ALTER TABLE %s ADD CONSTRAINT n349_pk PRIMARY KEY (fact_id)" % CHART, None),
+    ("column types unchanged", "ALTER TABLE %s ALTER COLUMN note TYPE varchar(20)" % CHART, None),
+    ("column types unchanged", "ALTER TABLE %s ALTER COLUMN %s TYPE numeric" % (CHART, COL), None),
+    ("indexes unchanged", "CREATE INDEX n349_ix ON %s (fact_id)" % CHART, None),
+    ("row security and policies unchanged", "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" % CHART, None),
+    ("row security and policies unchanged", "ALTER TABLE %s FORCE ROW LEVEL SECURITY" % CHART, None),
+    ("row security and policies unchanged", "CREATE POLICY n349_pol ON %s USING (true)" % CHART, None),
+    ("comments unchanged", "COMMENT ON COLUMN %s.note IS 'a comment'" % CHART, None),
+    ("comments unchanged", "COMMENT ON COLUMN %s.%s IS 'a comment'" % (CHART, COL), None),
+    ("comments unchanged", "COMMENT ON TABLE %s IS 'a comment'" % CHART, None),
+    ("triggers unchanged", TRIGGER_DDL, [TRIGGER_FN]),
+    ("triggers unchanged", "ALTER TABLE %s DISABLE TRIGGER n349_trg" % CHART, [TRIGGER_FN, TRIGGER_DDL]),
+])
+def test_a_change_beyond_the_one_default_line_is_refused_and_rolled_back(db, monkeypatch, category, extra, setup):
+    """The default drop itself succeeds inside the transaction; the second (sabotage) statement changes something the 'exactly one line'
+    diff cannot see; the matching before/after snapshot check must refuse, and nothing may be committed."""
+    cl, name, connect, _ = db
+    for statement in setup or ():
+        cl.psql(statement, db=name)
+    monkeypatch.setattr(dd, "DROP_STATEMENTS", list(dd.DROP_STATEMENTS) + [extra])
+    _refused_and_unchanged(db, re.escape(category))
+    assert _default(cl, name) == "0.0"                                                   # the planned line was rolled back too
+
+
 def test_a_changed_acl_is_refused_and_rolled_back(db, monkeypatch):
     cl, name, connect, _ = db
     sabotaged = list(dd.DROP_STATEMENTS) + ["GRANT INSERT ON public.chart_facts TO n349_reader"]

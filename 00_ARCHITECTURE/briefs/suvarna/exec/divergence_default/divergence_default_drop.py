@@ -20,8 +20,11 @@ GUARDS (every one is a refusal, nothing is changed):
     `double precision` (format_type), so the guard says what it means and a `numeric`/`real` column or a view named chart_facts is refused;
   * the column exists, is NOT NULL = false (a NOT NULL column stops the job: SS N-347), and the table owner is data_plane_l1_owner;
   * the default is exactly `0.0`;  if it is ALREADY gone the run is an idempotent NO-OP (exit 0, nothing committed);  any other default refuses;
-  * after the statement the before/after diff of the table's column defaults and NOT NULL flags is EXACTLY the one planned line, the table ACL
-    is unchanged, and role membership is unchanged (a transient membership the administrator lacked is added and removed in the same transaction).
+  * after the statement the before/after diff of the table's column defaults and NOT NULL flags is EXACTLY the one planned line, and the
+    before/after snapshots are EQUAL for: the column types (atttypid/atttypmod of every column), the table's constraints
+    (pg_get_constraintdef), its indexes (pg_indexes.indexdef), row-level security (relrowsecurity, relforcerowsecurity and pg_policy), its
+    table and column comments (pg_description) and its triggers (pg_trigger); the table ACL is unchanged, and role membership is unchanged
+    (a transient membership the administrator lacked is added and removed in the same transaction). Any difference refuses and rolls back.
 
 MODES
   python3 divergence_default_drop.py --dry-run                         everything in ONE transaction, then ROLLBACK
@@ -75,6 +78,23 @@ LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
 WHERE n.nspname = 'public' AND c.relname = %s AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY a.attnum
 """
+# Everything else about the table that a DROP DEFAULT must not touch, as (category, detail) rows; the before/after sets must be EQUAL per category.
+EXTRAS_SQL = """
+WITH t AS (SELECT c.oid AS toid, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
+           FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = %s)
+SELECT 'column types', concat_ws(' ', a.attname, a.atttypid::text, a.atttypmod::text, format_type(a.atttypid, a.atttypmod))
+  FROM pg_attribute a JOIN t ON a.attrelid = t.toid WHERE a.attnum > 0 AND NOT a.attisdropped
+UNION ALL SELECT 'constraints', concat_ws(' ', k.conname, k.contype::text, pg_get_constraintdef(k.oid)) FROM pg_constraint k JOIN t ON k.conrelid = t.toid
+UNION ALL SELECT 'indexes', concat_ws(' ', i.indexname, i.indexdef) FROM pg_indexes i WHERE i.schemaname = 'public' AND i.tablename = %s
+UNION ALL SELECT 'row security and policies', concat_ws(' ', 'rls', t.rls::text, 'forced', t.forced::text) FROM t
+UNION ALL SELECT 'row security and policies', concat_ws(' ', 'policy', p.polname, p.polcmd::text, p.polpermissive::text, p.polroles::text,
+                                                          pg_get_expr(p.polqual, p.polrelid), pg_get_expr(p.polwithcheck, p.polrelid))
+  FROM pg_policy p JOIN t ON p.polrelid = t.toid
+UNION ALL SELECT 'comments', concat_ws(' ', 'sub', d.objsubid::text, d.description)
+  FROM pg_description d JOIN t ON d.objoid = t.toid AND d.classoid = 'pg_class'::regclass
+UNION ALL SELECT 'triggers', concat_ws(' ', g.tgname, g.tgenabled::text, g.tgisinternal::text) FROM pg_trigger g JOIN t ON g.tgrelid = t.toid
+"""
+EXTRA_CATEGORIES = ("column types", "constraints", "indexes", "row security and policies", "comments", "triggers")
 ACL_SQL = "SELECT COALESCE(c.relacl::text, '') FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = %s"
 MEMBER_SQL = ("SELECT r.rolname, m.rolname FROM pg_auth_members am JOIN pg_roles r ON r.oid = am.roleid "
               "JOIN pg_roles m ON m.oid = am.member ORDER BY 1, 2")
@@ -113,6 +133,15 @@ def column_state(cur) -> dict:
 def shape(cur) -> list:
     cur.execute(SHAPE_SQL, (TABLE,))
     return [[r[0], bool(r[1]), r[2]] for r in cur.fetchall()]
+
+
+def extras(cur) -> dict:
+    """The table's column types, constraints, indexes, row security + policies, comments and triggers, each as a sorted list of strings."""
+    cur.execute(EXTRAS_SQL, (TABLE, TABLE))
+    out = {c: [] for c in EXTRA_CATEGORIES}
+    for category, detail in cur.fetchall():
+        out[category].append(detail)
+    return {c: sorted(v) for c, v in out.items()}
 
 
 def acl_and_members(cur):
@@ -167,7 +196,7 @@ def run(conn, mode: str, expect_plan: str | None = None, rollback: bool = False,
             out("NO-OP: the default is already %s; nothing to do" % ("0.0" if rollback else "absent"))
             conn.rollback()
             return "noop"
-        before_shape, (before_acl, before_members) = shape(cur), acl_and_members(cur)
+        before_shape, before_extras, (before_acl, before_members) = shape(cur), extras(cur), acl_and_members(cur)
         cur.execute("SELECT session_user, quote_ident(session_user), pg_has_role(session_user, %s, 'MEMBER')", (OWNER,))
         _, quoted_user, was_member = cur.fetchone()
         if not was_member:
@@ -178,7 +207,7 @@ def run(conn, mode: str, expect_plan: str | None = None, rollback: bool = False,
         cur.execute("RESET ROLE")
         if not was_member:
             cur.execute("REVOKE %s FROM %s" % (OWNER, quoted_user))
-        after_shape, (after_acl, after_members) = shape(cur), acl_and_members(cur)
+        after_shape, after_extras, (after_acl, after_members) = shape(cur), extras(cur), acl_and_members(cur)
         changed = [a for a, b in zip(after_shape, before_shape) if a != b]
         diff = [[a[0], a[1], b[2], a[2]] for a, b in zip(after_shape, before_shape) if a != b]
         checks = {
@@ -187,6 +216,8 @@ def run(conn, mode: str, expect_plan: str | None = None, rollback: bool = False,
             "acl unchanged": after_acl == before_acl,
             "membership unchanged": after_members == before_members,
         }
+        for category in EXTRA_CATEGORIES:
+            checks["%s unchanged" % category] = after_extras[category] == before_extras[category]
         out("changed columns: %s" % [c[0] for c in changed])
         for name, ok in checks.items():
             out("%s: %s" % (name, ok))
