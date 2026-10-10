@@ -92,6 +92,7 @@ import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+import { buildKalaAyanamshaFrame, type KalaAyanamshaFrame } from '../../lib/kala_ayanamsha_frame.js'
 // F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
 // capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
 // forcing field_gochara_alignment to 'insufficient_data' unconditionally. The real logic
@@ -1560,6 +1561,8 @@ export interface KalaNowResult {
   tool: 'kala_now_get'
   chart_id: string
   as_of_date: string
+  /** SS N-342: which ayanamsha each side of the natal-vs-transit joins is read in (see lib/kala_ayanamsha_frame.ts). */
+  ayanamsha_frame: KalaAyanamshaFrame
   reading: ArgumentReading
   reading_prose: string
   question_frame: QuestionFrame | null
@@ -2111,6 +2114,7 @@ export async function computeKalaNow(
     tool: 'kala_now_get' as const,
     chart_id: chartId,
     as_of_date: asOfDate,
+    ayanamsha_frame: buildKalaAyanamshaFrame(ayanamshaId),
     ...envelope,
     density_contract: densityContract,
     reading_prose: composed.full_text,

@@ -160,7 +160,7 @@ For scores < 0.50: report each school's stance explicitly; do not synthesize as 
 | KP cusps / sub-lords | \`ganita_kp_cusps_get\` (dedicated serving face; defaults to \`ayanamsha_id='krishnamurti'\`) | \`ganita_chart_facts_get(category: "cusp_kp_lords")\` |
 | KP significators | \`ganita_chart_facts_get(category: "kp_house_significators")\` | \`ganita_chart_facts_get(category: "kp_planet_significations")\` |
 | Tajaka annual | \`ganita_tajaka_get\` | \`ganita_chart_facts_get\` on a \`tajik_*\` category |
-| Multi-school claim | \`multi_school_bundle\` (per-school evidence; \`cross_school_lookup\` PARKED, F-WP17-1) | — |
+| Multi-school claim | read each school through its own face above (\`ganita_kp_cusps_get\`, \`ganita_tajaka_get\`, \`query_chart_facts(category: "dasha_chara")\`) and compare explicitly; no merged multi-school tool exists (SS N-344) | — |
 
 ---
 

@@ -24,7 +24,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
-import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+import { resolveChartFactsAyanamsha, resolveAyanamshaArg } from '../lib/ayanamsha.js'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL, ayanamshaArgForKpReach, kpFrameIgnoredNote, kpFrameLabelFor } from '../lib/kp_frame.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -48,6 +49,53 @@ const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
 function normalizeAyanamsha(id?: string): string {
   return resolveChartFactsAyanamsha(id)
+}
+
+/**
+ * `phala_rectification_best` (best_lel_fit_score, confidence_*, win_margin, competing_candidates) is
+ * a CHART-LEVEL row built as a mean over all five ayanamshas (ph_rectification/engine.py), NOT a
+ * Lahiri-only value, even when the candidate list above it is filtered to the primary. Say so in
+ * the payload (SS N-343: derived tables are labelled "consensus over five ayanamshas"; the build-side
+ * fix is the Kala campaign's).
+ */
+function withRectificationBestLabel(data: unknown): unknown {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return data
+  const rec = data as Record<string, unknown>
+  // The platform handler stamps these too (same wording); the wrapper guarantees them even when an
+  // older platform build answers.
+  return {
+    ...rec,
+    best_candidate_basis: rec['best_candidate_basis'] ?? 'consensus over five ayanamshas',
+    best_candidate_basis_note: rec['best_candidate_basis_note'] ??
+      'best_lel_fit_score, confidence_low/high, win_margin and competing_candidates are chart-level ' +
+      'values pooled over all five ayanamshas, not the Lahiri-only reading; `candidates` follows ' +
+      'the requested ayanamsha_id (default lahiri_chitrapaksha).',
+  }
+}
+
+/**
+ * Stamp the KP-frame label on a KP payload (SS N-342 item 3). The label states the ayanamsha the
+ * chain was actually read in: the payload's own `ayanamsha_id` when the platform echoes one, else the
+ * KP-canonical Krishnamurti (the only frame the wrapper asks for). `ayanamshaNote` is set only when the
+ * caller asked for something other than Krishnamurti (SS N-368).
+ */
+function withKpFrameLabel(data: unknown, ayanamshaNote: string | null): unknown {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return data
+  const rec = data as Record<string, unknown>
+  const content = rec['content']
+  const target = content !== null && typeof content === 'object' && !Array.isArray(content)
+    ? (content as Record<string, unknown>)
+    : rec
+  const echoed = typeof target['ayanamsha_id'] === 'string' ? (target['ayanamsha_id'] as string) : undefined
+  const used = echoed ?? KP_FRAME_AYANAMSHA
+  const stamped = {
+    ...target,
+    kp_frame_label: kpFrameLabelFor(used),
+    kp_frame_ayanamsha_id: used,
+    // the platform handler's own note (explicit non-KP id / "all") wins; the wrapper's covers an unresolvable id
+    ...(target['ayanamsha_note'] === undefined && ayanamshaNote !== null ? { ayanamsha_note: ayanamshaNote } : {}),
+  }
+  return target === rec ? stamped : { ...rec, content: stamped }
 }
 
 async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
@@ -773,7 +821,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       if (!uri) return errorOutput('ganita_condition_get', `Unknown facet: ${resolvedFacet}`)
       try {
         const data = await callRegistryCapability(uri, {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+          chart_id,
+          // facet=karakas reads get_karakas, whose default page carries KP-frame rows: an OMITTED id is not
+          // sent (SS N-368), so the handler's own default applies and no false KP note is drawn.
+          ...ayanamshaArgForKpReach(ayanamsha_id, resolvedFacet === 'karakas', normalizeAyanamsha),
           limit: limit ?? 25000, offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope({ facet: resolvedFacet, ...( typeof data === 'object' && data ? data : { rows: data }) }, 'ganita_condition_get'))
@@ -801,32 +852,43 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every ' +
     'value is an already-stored L1 fact (chart_facts categories cusp_kp_lords, ' +
     'kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical ' +
-    "Krishnamurti ayanamsha; pass ayanamsha_id for any of the 5 stored ayanamshas. Pass " +
+    "Krishnamurti ayanamsha by doctrine (SS N-342: the KP cusps, sub-lords and significators are " +
+    'a FRAME, not the Lahiri primary reading) and the response is labelled "' + KP_FRAME_LABEL + '". ' +
+    'Pass ayanamsha_id only to inspect the KP chain in another stored ayanamsha (the label then ' +
+    'names the frame actually used). Pass ' +
     'include_graha_kp_lords=true to also get each graha’s own KP chain (graha_kp_lords). ' +
     'Each cusp carries its source fact_ids for grounding back-reference.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional()
-        .describe("Ayanamsha (default: 'krishnamurti', the KP-canonical one). Also: " +
-          'lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.'),
+        .describe("Ayanamsha (default: 'krishnamurti', the KP-canonical one; the response is labelled " +
+          `"${KP_FRAME_LABEL}"). Also: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical ` +
+          '(short aliases such as lahiri / kp accepted, any case). "all" is not meaningful for a single KP frame.'),
       include_graha_kp_lords: z.boolean().optional()
         .describe('If true, also return the per-graha KP star/sub/sub_sub/prana chain. Default false.'),
     },
     async ({ chart_id, ayanamsha_id, include_graha_kp_lords }) => {
       if (!chart_id) return errorOutput('ganita_kp_cusps_get', 'chart_id is required')
-      // KP defaults to Krishnamurti — do NOT route through normalizeAyanamsha (it defaults to
-      // lahiri and folds true_chitra→lahiri, both wrong for a KP surface). Pass through, with a
-      // minimal lahiri-alias convenience only.
-      const aya = !ayanamsha_id
-        ? undefined
-        : (ayanamsha_id === 'lahiri' || ayanamsha_id === 'LAHIRI' ? 'lahiri_chitrapaksha' : ayanamsha_id)
+      // ONE KP frame (SS N-368, no asymmetry with the platform handlers). The platform get_kp_cusps handler
+      // owns the rule (reads krishnamurti whatever id was passed, keeps the label, adds `ayanamsha_note`
+      // only for an EXPLICIT non-Krishnamurti id or "all"), so the wrapper just reports the caller's
+      // intent faithfully:
+      //   - id omitted or blank  -> NO ayanamsha_id is sent (never a pinned default: it would look like a
+      //     request to the handler and draw a false "does not apply" note);
+      //   - id passed            -> forwarded exactly as typed (the capability route normalises aliases and
+      //     turns "all" into the unfiltered scope; the handler decides the frame and the note);
+      //   - id the resolver cannot read (nonsense) -> the route would answer 400 before the KP handler runs,
+      //     so it is NOT forwarded: ignored like every other non-KP id (never an error) and disclosed here.
+      const rawId = typeof ayanamsha_id === 'string' && ayanamsha_id.trim() !== '' ? ayanamsha_id : undefined
+      const unreadable = rawId !== undefined && !resolveAyanamshaArg(rawId).ok
+      const ayanamshaNote = unreadable ? kpFrameIgnoredNote(String(rawId)) : null
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_kp_cusps', {
           chart_id,
-          ...(aya ? { ayanamsha_id: aya } : {}),
+          ...(rawId !== undefined && !unreadable ? { ayanamsha_id: rawId } : {}),
           ...(include_graha_kp_lords ? { include_graha_kp_lords: true } : {}),
         }, principal)
-        return dualOutput(envelope(data, 'ganita_kp_cusps_get'))
+        return dualOutput(envelope(withKpFrameLabel(data, ayanamshaNote), 'ganita_kp_cusps_get'))
       } catch (err) {
         return errorOutput('ganita_kp_cusps_get', String(err), { chart_id })
       }
@@ -1145,11 +1207,15 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Returns candidate birth times with plausibility scores, the rectification methodology applied ' +
     '(event-based Tattva Shodhana, Nadi-style rising sign confirmation, Shadbala consistency check), ' +
     'and which Life Event Log entries anchor each candidate time. ' +
-    'Use when birth time accuracy is in question before committing to chart interpretation.',
+    'Use when birth time accuracy is in question before committing to chart interpretation. ' +
+    "The candidate list is the primary 'lahiri_chitrapaksha' reading by default (ayanamsha_id 'all' = raw " +
+    'five-ayanamsha list); the chart-level best-offset values are labelled "consensus over five ayanamshas".',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe(
-        "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas."
+        "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored ids and short aliases " +
+        "(lahiri | kp | raman | surya_siddhanta | true_chitra) are accepted, any case. Pass \"all\" for the " +
+        'explicit raw multi-ayanamsha candidate list (5 ayanamshas x offsets).'
       ),
       top_k: z.number().int().min(1).max(50).optional().describe('Max candidates (default: 50, max: 50)'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
@@ -1157,16 +1223,17 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     async ({ chart_id, ayanamsha_id, top_k, offset }) => {
       if (!chart_id) return errorOutput('phala_rectification_get', 'chart_id is required')
       try {
-        // WP-1.3j serving-bug fix (F-L10-025): phala_rectification stores SHORT ayanamsha codes,
-        // NOT the L1 long form. Do NOT run normalizeAyanamsha() here (it maps everything to
-        // 'lahiri_chitrapaksha', which matched ZERO rows). Pass ayanamsha_id through as-is; the
-        // capability accepts the long form as an alias and omitting it returns all ayanamshas.
+        // SS N-342: omitted => the PRIMARY (Lahiri) candidate list, not the pooled five-ayanamsha
+        // list whose first row was `kp` at the earliest offset. phala_rectification stores SHORT
+        // codes (F-L10-025), but the capability maps the stored long id to its short code
+        // (AY_LONG_TO_SHORT) and the capability route turns the explicit "all" opt-out into the
+        // unfiltered query, so the stored id from the shared resolver is correct here.
         const data = await callRegistryCapability('marsys://tool/L4/query_rectification', {
           chart_id,
-          ...(ayanamsha_id ? { ayanamsha_id } : {}),
+          ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
           top_k: top_k ?? 50, offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'phala_rectification_get'))
+        return dualOutput(envelope(withRectificationBestLabel(data), 'phala_rectification_get'))
       } catch (err) {
         return errorOutput('phala_rectification_get', String(err), { chart_id })
       }
@@ -1178,13 +1245,14 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'ganita_transit_anchors_get',
     'Retrieve natal transit anchor data for a chart (L1 Gaṇita — ga_transit_anchors table). ' +
     'Returns the natal sign, house-from-Moon count, and absolute sidereal degree for each of the ' +
-    '9 grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu) across all 5 ayanamshas. ' +
-    '45 rows per chart. These anchors are the substrate for all Gochara (transit) computations: ' +
+    '9 grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu). Default: the 9 rows of the ' +
+    "primary ayanamsha 'lahiri_chitrapaksha'; pass ayanamsha_id 'all' for the explicit raw 45 rows " +
+    '(9 grahas x 5 ayanamshas, Lahiri first). These anchors are the substrate for all Gochara (transit) computations: ' +
     'sign-ingress triggers, degree-exact conjunctions, Vedha/obstruction rules, ' +
     'and Ashtakavarga bindu scoring per transit sign.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha filter (e.g. 'lahiri_chitrapaksha'). Omit for all 5."),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha'). Pass \"all\" for the explicit raw 45-row multi-ayanamsha list."),
       graha: z.string().optional().describe('Filter to one graha: sun/moon/mars/mercury/jupiter/venus/saturn/rahu/ketu.'),
       limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 50, max: 25000)'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
@@ -1193,7 +1261,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       if (!chart_id) return errorOutput('ganita_transit_anchors_get', 'chart_id is required')
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_transit_anchors', {
-          chart_id, ayanamsha_id: ayanamsha_id ? normalizeAyanamsha(ayanamsha_id) : undefined,
+          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
           graha, limit: limit ?? 50, offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope(data, 'ganita_transit_anchors_get'))
@@ -1281,10 +1349,9 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   // ── 12. ganita_planet_get (Elevation Campaign v2.1 STREAM α Lane-H Task 3) ───────────────
   // Fronts query_planet (registry URI marsys://tool/L1/query_planet) — the assembled
   // per-graha entity face (B.10: zero new computation, assembles rows from already-served L1
-  // capabilities). ayanamsha_id follows the same optional-only-normalize pattern as
-  // ganita_transit_anchors_get above (item 9): forcing a default here would change the
-  // capability's own documented omitted-means-unfiltered behavior across the 8 handlers it
-  // fans out to.
+  // capabilities). SS N-342: an omitted ayanamsha_id is the PRIMARY (Lahiri), pinned here for the
+  // whole fan-out (it used to mean unfiltered = five flat rows per leg, krishnamurti first);
+  // "all" is the explicit raw multi-ayanamsha opt-out.
   server.tool(
     'ganita_planet_get',
     'Canonical assembled-entity face for ONE graha (L1 Gaṇita): sign, house (D1), ' +
@@ -1300,7 +1367,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       planet: z.string().describe(
         'Graha name (English, Sanskrit, or 2-3 letter code), e.g. "Saturn", "shani", "SAT". Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha filter (e.g. 'lahiri_chitrapaksha'). Omit for unfiltered."),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha'). Pass \"all\" for the explicit raw five-ayanamsha rows per leg."),
     },
     async ({ chart_id, planet, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('ganita_planet_get', 'chart_id is required')
@@ -1308,7 +1375,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       try {
         const data = await callRegistryCapability('marsys://tool/L1/query_planet', {
           chart_id, planet,
-          ayanamsha_id: ayanamsha_id ? normalizeAyanamsha(ayanamsha_id) : undefined,
+          ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
         }, principal)
         return dualOutput(envelope(data, 'ganita_planet_get'))
       } catch (err) {

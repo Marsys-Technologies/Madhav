@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634",
-  "source_catalog_fingerprint": "sha256:20cc53bb8d3efbe95569400563800d39165d560c2fa99410129b5b0e46b57edf",
+  "content_hash": "sha256:761e072166688744b8f0a62cbf83455fad8e766fc06ea5908ed98a95c179965e",
+  "source_catalog_fingerprint": "sha256:6d4060fd4be5e1d37f93754229de5e42f3a77323c3c8c5bee5c8a7f7c4187835",
   "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -24731,7 +24731,7 @@
       "scu_id": "scu.catalog.query_rectification",
       "version": 1,
       "label": "Query Rectification",
-      "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id is an OPTIONAL filter — the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); OMIT it to return candidates across ALL ayanamshas. Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
+      "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id: the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); the stored long ids (e.g. lahiri_chitrapaksha) are accepted. The default is the PRIMARY reading 'lahiri_chitrapaksha' (Lahiri-only candidate list, labelled `candidates_basis`); pass \"all\" for the explicit raw candidates across all five ayanamshas. The chart-level best-offset values (best_lel_fit_score, confidence_*, win_margin, competing_candidates) are pooled over all five ayanamshas and are labelled `best_candidate_basis`: \"consensus over five ayanamshas\". Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
       "kind": "datum",
       "domains": [
         "evidence_quality"

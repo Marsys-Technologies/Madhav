@@ -60,6 +60,7 @@
 
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from './registry/constants'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from './kp_frame'
 // F-159 (PARIŚEṢA-V4): the existing cross-ayanamsha agreement primitive (EL-27/EL-56) — reused
 // verbatim, never re-derived, for the `chandra` frame's own sign-disagreement disclosure. See
 // `computeChandraFrameSensitivity` below.
@@ -261,6 +262,10 @@ export interface ResolvedSubLord {
   sub_lord: string
   sub_sub_lord: string | null
   fact_ids: string[]
+  /** The ayanamsha the KP chain was read in: always the KP frame (Krishnamurti), SS N-342. */
+  ayanamsha_id: string
+  /** `KP frame (Krishnamurti ayanamsha)`. */
+  frame_label: string
 }
 
 /** tajika paradigm — a sāham (sensitive point), by whole-sign house + sign + dispositor. */
@@ -619,7 +624,10 @@ async function fetchCuspKpLords(
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'cusp_kp_lords'
        AND fact_subject = $3 AND fact_key IN ('prana_lord', 'star_lord', 'sub_lord', 'sub_sub_lord')${factBuildFence(ctx, 4)}`,
-    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject]),
+    // SS N-342 item 3: the KP chain is a FRAME, read in the Krishnamurti ayanamsha whatever
+    // ayanamsha the rest of the resolution (Lahiri primary) runs in; `ctx.ayanamsha_id` is
+    // deliberately NOT used here.
+    withBuildParam(ctx, [ctx.chart_id, KP_FRAME_AYANAMSHA, factSubject]),
   )
   let prana_lord: string | null = null
   let star_lord: string | null = null
@@ -955,11 +963,13 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
         sub_lord,
         sub_sub_lord,
         fact_ids,
+        ayanamsha_id: KP_FRAME_AYANAMSHA,
+        frame_label: KP_FRAME_LABEL,
       }
       return {
         entities: [entity],
         chain: [
-          `kp cusp ${expr.cusp} significator chain: prāṇa-lord ${prana_lord ?? '?'} → star-lord ${star_lord ?? '?'} → ` +
+          `${KP_FRAME_LABEL}: kp cusp ${expr.cusp} significator chain: prāṇa-lord ${prana_lord ?? '?'} → star-lord ${star_lord ?? '?'} → ` +
             `sub-lord ${sub_lord} → sub-sub-lord ${sub_sub_lord ?? '?'}. kp doctrine reads the sub-lord as the ` +
             `final determinant.`,
         ],

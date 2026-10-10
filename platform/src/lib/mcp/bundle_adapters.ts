@@ -203,12 +203,20 @@ async function callPrimitive(
 
 interface BundleEntry {
   sub_tool: string
+  /** Reading frame of this evidence when it is not the Lahiri primary (KP: Krishnamurti ayanamsha). */
+  frame_label?: string
   errored: boolean
+  /** True for a slot whose capability does not exist (no upstream call was made). Not an error and
+   *  not an empty result: `errored` is false, `data` is absent, and `reason` says why. */
+  not_available?: true
+  /** Machine-readable cause of `not_available`. */
+  reason?: string
   /** Always present (F-30/F-74): HTTP status from the upstream primitives call.
    *  200 on success; real status (400/401/403/408/500/…) on failure so callers
    *  can distinguish auth failures from infra errors from validation errors.
-   *  0 = network-level failure (no HTTP response received). */
-  upstream_status: number
+   *  0 = network-level failure (no HTTP response received).
+   *  null = no upstream call was made (`not_available` slots). */
+  upstream_status: number | null
   error_class?: string
   attempted_params?: Record<string, unknown>
   data?: unknown
@@ -525,14 +533,60 @@ export interface MultiSchoolBundleParams {
   behavioral_overrides?: BehavioralOverridesPatch
 }
 
-function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
+/**
+ * KP school frame. LOCAL constants on purpose (they equal KP_FRAME_AYANAMSHA / KP_FRAME_LABEL of
+ * retrieval/kp_frame.ts; the two are deduplicated at the combined batch): KP is read on the Krishnamurti ayanamsha, not on
+ * the Lahiri primary, and the evidence says so.
+ */
+export const KP_SCHOOL_AYANAMSHA_ID = 'krishnamurti'
+export const KP_SCHOOL_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
+/**
+ * The STORED chart_facts category that holds the KP cusp chain (ga_nakshatra, emit_kp_lords): per cusp
+ * CUSP_01..CUSP_12 the fact_keys star_lord / sub_lord / sub_sub_lord / prana_lord = 12 subjects x 4
+ * keys = 48 rows per chart per ayanamsha, read as 12 pivoted rows (limit counts subjects). The former
+ * 'kp_cusp' was never a stored category (0 rows), so the KP evidence was always empty (SS N-362 c).
+ */
+export const KP_SCHOOL_FACT_CATEGORY = 'cusp_kp_lords'
+/**
+ * JAIMINI school evidence (SS N-365). The former 'strength_extra' was never a stored category (no writer,
+ * no source reference), so the jaimini entry was always empty. The STORED Jaimini placements that read
+ * unambiguously through `query_chart_facts` (default pivoted shape, one wide row per fact_subject) are
+ * written by ga_sensitive (ga_sensitive_writer.py `_build_karakamsa_rows` / `_build_arudha_rows`):
+ *   - karakamsa_position: subject KARAKAMSA (keys sign, longitude_d9_sidereal, atmakaraka_graha)
+ *   - arudha_pada: subjects ARUDHA_A1..A12 + ARUDHA_SU..SA (keys sign, longitude_sidereal, house_d1)
+ * = 20 subjects, so `limit: 30` (limit counts SUBJECTS) returns them all; the raw-row cap is
+ * (offset+limit)*20 = 600 >= 60 rows. Read at the Lahiri primary (no ayanamsha pin: the bridge/handler default).
+ * `karaka_chara_position` (the chara karakas) is deliberately NOT requested here: it stores TWO schools
+ * (parashari_rahu_excluded and kn_rao_rahu_included) under the SAME fact_subject names (ATMAKARAKA ...),
+ * so the pivoted shape would silently merge them (last write wins) and the raw-row shape cannot say which
+ * school a row belongs to. It needs a school-aware serving path first (reported, not fixed here).
+ */
+export const JAIMINI_SCHOOL_FACT_CATEGORIES = 'karakamsa_position,arudha_pada'
+/**
+ * TAJAKA school evidence (SS N-365). The former chart_facts category 'varshphal' was never stored (no writer
+ * emits it). The annual chart is stored by ga_tajaka (ga_tajaka_writer.py `_insert_rows`) in the table
+ * `l1_tajik_varsha_year_lords` and served by the registry capability get_tajik (MCP name ganita_tajaka_get).
+ * The primitives route's whitelist (MCP_TO_RETRIEVAL_TOOL) accepts it as `query_varshphal` (alias
+ * `query_varshaphala`); `ganita_tajaka_get` itself is a platform-mcp tool name, not a primitive. No year is
+ * passed: the handler's own default is CURRENT-YEAR-FIRST ordering of the varsha rows, and the Lahiri primary
+ * is applied on omission by the bridge (get_tajik declares ayanamsha_id).
+ */
+export const TAJAKA_SCHOOL_TOOL = 'query_varshphal'
+
+export function buildSchoolSpec(school: SchoolName): { toolName: string; params: Record<string, unknown> } | null {
   switch (school) {
     case 'parashara': return { toolName: 'query_signals', params: { limit: 20 } }
-    case 'jaimini': return { toolName: 'query_chart_facts', params: { category: 'strength_extra', limit: 20 } }
-    case 'kp': return { toolName: 'query_chart_facts', params: { category: 'kp_cusp', limit: 20 } }
-    case 'tajaka': return { toolName: 'query_chart_facts', params: { category: 'varshphal', limit: 20 } }
+    case 'jaimini': return { toolName: 'query_chart_facts', params: { category: JAIMINI_SCHOOL_FACT_CATEGORIES, limit: 30 } }
+    // KP is Krishnamurti BY DOCTRINE (SS N-342): pinned explicitly so the Lahiri-primary default
+    // (bridge/handler) never reads the KP chain from Lahiri facts.
+    case 'kp': return { toolName: 'query_chart_facts', params: { category: KP_SCHOOL_FACT_CATEGORY, ayanamsha_id: KP_SCHOOL_AYANAMSHA_ID, limit: 20 } }
+    case 'tajaka': return { toolName: TAJAKA_SCHOOL_TOOL, params: { limit: 20 } }
   }
 }
+
+/** The first slot of the multi-school bundle; retired by WP-1.7 (the primitive is no longer whitelisted). */
+export const CROSS_SCHOOL_LOOKUP_SLOT = 'cross_school_lookup'
+export const CROSS_SCHOOL_LOOKUP_RETIRED_REASON = 'capability_retired_wp_1_7'
 
 export async function executeMultiSchoolBundle(
   params: MultiSchoolBundleParams,
@@ -552,7 +606,8 @@ export async function executeMultiSchoolBundle(
   // Resolve active schools
   const allSchools: SchoolName[] = params.schools?.length ? params.schools : [...ALL_SCHOOLS]
 
-  // R4: minimal format = cross_school_lookup only (1 tool); standard/detailed = all schools
+  // R4: minimal format = at most 2 schools; standard/detailed = all schools (one slot stays reserved for
+  // cross_school_lookup so the school budget is unchanged now that the slot is not_available)
   const schoolsToRun: SchoolName[] = responseFormat === 'minimal'
     ? allSchools.slice(0, Math.min(2, maroSurface.max_tools - 1))  // reserve 1 slot for cross_school_lookup
     : allSchools.slice(0, Math.max(0, maroSurface.max_tools - 1))  // -1 for cross_school_lookup
@@ -565,27 +620,45 @@ export async function executeMultiSchoolBundle(
     chartId: params.chart_id ?? 'default',
   })
 
-  const tasks: Promise<BundleEntry>[] = [
-    runSubTool('cross_school_lookup', 'cross_school_lookup', { claim: params.claim, schools: schoolsToRun }, principal, onEvent),
-    ...schoolsToRun.map(school => {
-      const spec = buildSchoolSpec(school)
-      return spec
-        ? runSubTool(`${school}_evidence`, spec.toolName, spec.params, principal, onEvent)
-        : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, upstream_status: 0, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
-    }),
-  ]
+  // cross_school_lookup was removed from the primitives whitelist by WP-1.7 (no backing registry
+  // capability), so calling it answers HTTP 400. The slot is kept (same `sub_tool` name, first entry)
+  // but is an explicit NOT_AVAILABLE entry: no primitive call, no started/error event.
+  const crossSchoolEntry: BundleEntry = {
+    sub_tool: CROSS_SCHOOL_LOOKUP_SLOT,
+    errored: false,
+    not_available: true,
+    reason: CROSS_SCHOOL_LOOKUP_RETIRED_REASON,
+    upstream_status: null,
+    latency_ms: 0,
+  }
+
+  const tasks: Promise<BundleEntry>[] = schoolsToRun.map(school => {
+    const spec = buildSchoolSpec(school)
+    // chart_id is threaded like executeHolisticBundle does (CR-39/CR-14): query_chart_facts is a
+    // per_chart primitive, so without it the primitives route answers CHART_REQUIRED (400) and the
+    // school evidence errors instead of reading the chart. Omitted when the caller gave none.
+    return spec
+      ? runSubTool(`${school}_evidence`, spec.toolName, params.chart_id ? { ...spec.params, chart_id: params.chart_id } : spec.params, principal, onEvent)
+          .then((entry): BundleEntry => (school === 'kp' ? { ...entry, frame_label: KP_SCHOOL_FRAME_LABEL } : entry))
+      : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, upstream_status: 0, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
+  })
 
   const results = await Promise.allSettled(tasks)
-  const entries: BundleEntry[] = results.map((r, i) =>
+  const schoolEntries: BundleEntry[] = results.map((r, i) =>
     r.status === 'fulfilled'
       ? r.value
-      : { sub_tool: i === 0 ? 'cross_school_lookup' : `school_${i}`, errored: true, upstream_status: 0, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
+      : { sub_tool: `${schoolsToRun[i]}_evidence`, errored: true, upstream_status: 0, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
   )
+  const entries: BundleEntry[] = [crossSchoolEntry, ...schoolEntries]
 
+  // A not_available slot was never fired and did not fail: it is in neither list, and it is left out of
+  // the health denominator (it can neither lift nor dilute the errored ratio of the calls that ran).
   const sub_tools_fired: string[] = []
   const sub_tools_errored: string[] = []
+  const sub_tools_not_available: Array<{ sub_tool: string; reason: string }> = []
   for (const e of entries) {
-    if (!e.errored) sub_tools_fired.push(e.sub_tool)
+    if (e.not_available) sub_tools_not_available.push({ sub_tool: e.sub_tool, reason: e.reason ?? 'not_available' })
+    else if (!e.errored) sub_tools_fired.push(e.sub_tool)
     else sub_tools_errored.push(e.sub_tool)
   }
 
@@ -598,7 +671,7 @@ export async function executeMultiSchoolBundle(
     : undefined
 
   // MC-002: top-level health from errored/total ratio; `ok` derived from `status`.
-  const health = computeBundleHealth(sub_tools_errored.length, entries.length)
+  const health = computeBundleHealth(sub_tools_errored.length, entries.length - sub_tools_not_available.length)
 
   const envelope = {
     ok: health.ok,
@@ -607,6 +680,8 @@ export async function executeMultiSchoolBundle(
     served_from_cache: false,
     claim: params.claim,
     schools: schoolsToRun,
+    // Non-primary reading frames, named (KP stays on Krishnamurti by doctrine, SS N-342).
+    ...(schoolsToRun.includes('kp') ? { school_frames: { kp: KP_SCHOOL_FRAME_LABEL } } : {}),
     // R4 metadata
     response_format: responseFormat,
     model_family: modelFamily,
@@ -616,7 +691,7 @@ export async function executeMultiSchoolBundle(
     },
     behavioral_overrides_applied: effectiveOverrides,
     bundle_entries: entries,
-    provenance: { sub_tools_fired, sub_tools_errored },
+    provenance: { sub_tools_fired, sub_tools_errored, sub_tools_not_available },
     ...(detailedExtras ?? {}),
   }
 
