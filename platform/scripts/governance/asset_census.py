@@ -5774,7 +5774,7 @@ def source_estimate_rows(table: str):
 KEYED_READ_MIN_ROWS = 100_000          # a table is read keyed only when MORE rows than this are in scope (and the catalog estimate agrees); below it the older path runs unchanged
 KEYED_PARTITION_TARGET_ROWS = 20_000   # the leading key prefix is lengthened (up to KEYED_MAX_KEY_COLUMNS columns) until the largest partition has at most this many rows
 KEYED_MAX_PARTITIONS = 2_000           # more partitions than this is not a partitioning key (a per-row unique key): that index is skipped
-KEYED_MAX_KEY_COLUMNS = 3              # the longest leading prefix used as the partition key
+KEYED_MAX_KEY_COLUMNS = 4              # the longest leading prefix used as the partition key (chart_dashas: chart_id, ayanamsha_id, system_id, level_n)
 ASSET_READ_BUDGET_SECS = 3600          # the TIME budget of ALL keyed reads of ONE asset together (cumulative, by `_chunk_clock`): 6x the old per-column walk budget (PROSE_NONE_WALK_BUDGET_SECS, 600). The total work of a
 #                                        keyed read equals the whole-table read it replaces, so its wall-clock was not known when this was set: the budget object records how far a read got, and the cell text names it.
 KEYED_KEY_TYPES = frozenset(("smallint", "integer", "bigint", "text", "character varying", "uuid", "boolean", "date"))     # key columns whose text form round-trips exactly through `col = 'text'`
@@ -8317,19 +8317,22 @@ def unset_read_sql(table: str, col: str, filt=None) -> str:
     return f'SELECT EXISTS (SELECT 1 FROM "{table}"{where})::text'
 
 
-def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None) -> str:
+def templated_read_sql(table: str, col: str, rx_pairs, chart_id: str, filt=None, part=None) -> str:
     """ONE bounded statement (pure): up to FORMGAP_SAMPLE_LIMIT values of the column that match NONE of the declared templates (`rx_pairs` = prose_forms.compile_each: [(literal prefix, anchored pattern)], chart id already
     bound; a value matches when its prefix is the template's AND the pattern holds), and up to as many that, with the measured chart id removed, still carry a uuid-shaped token (another chart's id). Each value cut
-    to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT."""
+    to PROSE_NONE_SAMPLE_CHARS characters; both scans stop at their LIMIT. `part` (a KeyedPartition, the keyed exact read) confines both scans to ONE partition of the leading key and adds the partition's own row count
+    `n` to the answer (the caller checks it against the plan); without `part` the statement is exactly the whole-table one."""
     pfm = _prose_forms()
     cut, lim = PROSE_NONE_SAMPLE_CHARS, FORMGAP_SAMPLE_LIMIT
     v = f'"{col}"::text'
     ok = " OR ".join(f"(starts_with({v}, {_sql_lit(p)}) AND {v} ~ {_rx_lit(r)})" if p else f"({v} ~ {_rx_lit(r)})" for p, r in rx_pairs)
-    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f"NOT ({ok})")
-    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace({v}, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}')
+    pp = part.pred if part is not None else None
+    un = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f"NOT ({ok})", pp)
+    oc = _formgap_where(table, filt, f'"{col}" IS NOT NULL', f'replace({v}, {_sql_lit(chart_id)}, {_sql_lit("")}) ~ {_rx_lit(pfm.UUID_ANY_RE)}', pp)
+    n_part = f", 'n', (SELECT count(*) FROM \"{table}\"{_formgap_where(table, filt, pp)})" if part is not None else ""
     return ("SELECT jsonb_build_object("
             f"'unmatched', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{un} LIMIT {lim}) s), '[]'::jsonb), "
-            f"'other_chart', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{oc} LIMIT {lim}) s), '[]'::jsonb))::text")
+            f"'other_chart', coalesce((SELECT jsonb_agg(s.x) FROM (SELECT left(\"{col}\"::text, {cut}) AS x FROM \"{table}\"{oc} LIMIT {lim}) s), '[]'::jsonb){n_part})::text")
 
 
 def curated_read_sql(table: str, col: str, count: int, filt=None, scoped: bool = False) -> str:
@@ -8459,7 +8462,7 @@ def formgap_reads(aid: str, decl: dict, tables: dict, target, *, pn_eff=None, vf
             out["templated"][(t, c)] = dict(unread=f"refusing chart scope {chart_id}: the 362f9f17-... chart id is a dead phantom")
             continue
         filt = tables[t][2]
-        out["templated"][(t, c)] = _formgap_guard(lambda: _formgap_templated_answer(_formgap_json(templated_read_sql(t, c, rx, chart_id, filt), f"{t}.{c}"), f"{t}.{c}"))
+        out["templated"][(t, c)] = _formgap_guard(lambda: _formgap_templated_read(t, c, rx, chart_id, filt))
     for e in pn.get("closed_columns") or []:
         vals = e.get("values")
         if not (isinstance(vals, list) and (len(vals) > pfm.VALUES_BASE_CAP or e.get("values_from") is not None)):
@@ -8489,6 +8492,44 @@ def _formgap_list(got, what: str) -> list:
     if not isinstance(got, list):
         raise Unknown(f"{what}: malformed answer (not a list)")
     return got
+
+
+def _formgap_templated_read(t: str, c: str, rx, chart_id: str, filt) -> dict:
+    """The templated-column read of ONE column: the whole-table statement (every table that is not large, and every table with no usable partitioning key: today's behaviour, unchanged) or, for a table with MORE
+    than KEYED_READ_MIN_ROWS rows in scope, the KEYED exact read: the same statement once per partition of the table's leading index key. Same answer either way: {unmatched, other_chart}, or dict(unread=...) when
+    a partition (or the plan) could not be read. A violation found in ANY partition is the finding; a PASS needs every partition clean."""
+    try:
+        plan = keyed_plan(t, filt)
+    except KeyedReadIncomplete as exc:
+        return dict(unread=f"{' '.join(str(exc).split())}: no verdict was reached, so this is neither a PASS nor a FAIL")
+    if plan is None:
+        return _formgap_templated_answer(_formgap_json(templated_read_sql(t, c, rx, chart_id, filt), f"{t}.{c}"), f"{t}.{c}")
+    lim = FORMGAP_SAMPLE_LIMIT
+
+    def read_part(part):
+        got = _formgap_json(templated_read_sql(t, c, rx, chart_id, filt, part), f"{t}.{c}")
+        if isinstance(got, dict) and got.get("n") != part.n:
+            raise KeyedPartitionChanged(f"holds {got.get('n')} row(s), the plan counted {part.n}")
+        return _formgap_templated_answer(got, f"{t}.{c}")
+
+    def merged(out):
+        return ([x for _p, a in out.answers for x in a["unmatched"]][:lim], [x for _p, a in out.answers for x in a["other_chart"]][:lim])
+
+    def enough(_ans, out):                                                # both sample lists are full: the finding is as complete as the whole-table read's
+        um, oc = merged(out)
+        return len(um) >= lim and len(oc) >= lim
+    budget = asset_read_budget()
+    def why_unread(exc):                                                  # the per-partition reason is short (the verdict sentence is added once, below); only a timeout or a refused read is an unread
+        if _is_statement_timeout(exc):
+            return "timed out (cancelled by the database timeout)"
+        return "was refused to the census role (permission denied)" if _formgap_unread_reason(exc) else None
+    out = keyed_read(plan, read_part, what=f"{t}.{c} (templated pointer)", budget=budget, unread_reason=why_unread, stop_when=enough)
+    um, oc = merged(out)
+    if um or oc:
+        return dict(unmatched=um, other_chart=oc)                         # a violation is proven by the rows already read, whatever the other partitions did
+    if out.complete:
+        return dict(unmatched=[], other_chart=[])
+    return dict(unread=f"{out.coverage_text(budget)}: no verdict was reached, so this is neither a PASS nor a FAIL")
 
 
 def _formgap_templated_answer(got, what: str) -> dict:

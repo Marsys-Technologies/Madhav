@@ -51,23 +51,20 @@ class Clock:
 
 def spy_scalar(monkeypatch, rewrite=None, slow_marker=None, slow_secs=2):
     """Wrap the REAL `scalar` (so every statement still runs on the disposable cluster) and record each statement. `rewrite(sql, answer) -> answer` may alter an answer (to fake a plan whose counts do not add up);
-    a statement containing `slow_marker` is preceded by `SELECT pg_sleep(slow_secs)`, which a tiny PGOPTIONS statement_timeout cancels (a genuine server-side timeout, not a simulated one)."""
+    a statement containing `slow_marker` is preceded, in the same psql session, by `SET statement_timeout = 300; SELECT pg_sleep(slow_secs)`: the server itself cancels the sleep, so the caller sees the
+    genuine `canceling statement due to statement timeout` error (not a simulated one) and the rest of the statement never runs."""
     real = ac.scalar
     calls: list = []
 
     def fake(sql):
         calls.append(sql)
         if slow_marker is not None and slow_marker in sql:
-            return real(f"SELECT pg_sleep({slow_secs}); " + sql)
+            return real(f"SET statement_timeout = 300; SELECT pg_sleep({slow_secs}); " + sql)
         out = real(sql)
         return rewrite(sql, out) if rewrite else out
     monkeypatch.setattr(ac, "scalar", fake)
     fake.calls = calls
     return fake
-
-
-def tiny_timeout(monkeypatch, ms=700):
-    monkeypatch.setenv("PGOPTIONS", f"-c statement_timeout={ms}")
 
 
 def shrink(monkeypatch, min_rows=500, target=2000):

@@ -143,7 +143,6 @@ def test_every_partition_answered_is_complete_and_the_coverage_is_recorded(table
 
 
 def test_a_timed_out_partition_is_unread_never_complete_and_the_others_are_still_read(table, monkeypatch):
-    kf.tiny_timeout(monkeypatch)
     kf.spy_scalar(monkeypatch, slow_marker='"a" = \'2\'')
     plan = ac.keyed_plan(table)
     budget = ac.AssetReadBudget()
