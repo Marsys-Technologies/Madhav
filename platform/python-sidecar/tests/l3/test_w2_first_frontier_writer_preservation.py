@@ -238,49 +238,38 @@ def test_daily_writers_delete_only_after_complete_horizon(
     assert conn.mutations[-1][0] == "executemany"
 
 
-def _dasha_row(system: str, level: int):
-    row = {
-        "chart_id": "chart-1",
-        "system_id": system,
-        "lord_graha": "Sun",
-        "period_start": date(2026, 1, 1),
-        "period_end": date(2027, 1, 1),
-        "level_n": level,
-    }
-    if level == 2:
-        row["parent_lord_graha"] = "Sun"
-    return row
-
-
-def test_avadhi_requires_canonical_md_and_ad_coverage(monkeypatch):
-    systems = sorted(avadhi.ALL_DASHA_SYSTEMS)
-    md_rows = [_dasha_row(system, 1) for system in systems]
-    ad_rows = [_dasha_row(system, 2) for system in systems[:-1]]
-    conn = RecordingConnection([md_rows, ad_rows])
-
+def test_avadhi_preserves_published_rows_without_build_candidate():
+    conn = RecordingConnection()
     result = avadhi.KaAvdhiWriter().run(_ctx(conn))
 
-    assert "chara_karaka" in avadhi._DASHA_SYSTEMS
-    assert "chara" not in avadhi._DASHA_SYSTEMS
     assert result.asset_id == "ka_avadhi"
     assert result.rows_inserted == 0
-    assert "AD=" in result.notes
+    assert "published rows preserved" in result.notes
+    assert conn.calls == []
     assert conn.mutations == []
 
 
-def test_avadhi_deletes_only_after_complete_canonical_md_and_ad(monkeypatch):
-    systems = sorted(avadhi.ALL_DASHA_SYSTEMS)
-    md_rows = [_dasha_row(system, 1) for system in systems]
-    ad_rows = [_dasha_row(system, 2) for system in systems]
-    conn = RecordingConnection([md_rows, ad_rows, []])
-    monkeypatch.setattr(avadhi, "_table_exists", lambda *_: False)
+def test_avadhi_preserves_candidate_if_pinned_period_is_invalid():
+    pins = {
+        "f2": {"build_id": "f2-build", "ayanamsha_id": "lahiri",
+               "tier": "L1", "systems": ["vimshottari"]},
+        "natal": {"build_id": "natal-build", "ayanamsha_id": "lahiri", "tier": "L1"},
+        "node_model": "mean",
+    }
+    invalid = {"system_id": "vimshottari", "level_n": 1,
+               "dasha_row_id": "period-1", "start_iso": "2027-01-01T00:00:00Z",
+               "end_iso": "2026-01-01T00:00:00Z"}
+    conn = RecordingConnection([
+        [{"generation": "candidate-1", "state": "building", "conventions": pins}],
+        [], [invalid], [], [],
+    ])
+    ctx = _ctx(conn)
+    ctx.build_id = "candidate-build"
 
-    result = avadhi.KaAvdhiWriter().run(_ctx(conn))
+    with pytest.raises(avadhi.clocks.ClockUnavailable, match="non-positive F2 period"):
+        avadhi.KaAvdhiWriter().run(ctx)
 
-    assert result.asset_id == "ka_avadhi"
-    assert result.rows_inserted == len(md_rows) + len(ad_rows)
-    assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
-    assert conn.mutations[-1][0] == "executemany"
+    assert conn.mutations == []
 
 
 def test_computed_writers_preserve_partition_when_candidate_build_interrupts(monkeypatch):
