@@ -114,4 +114,44 @@ describe('executeMultiSchoolBundle', () => {
     )
     expect(result.served_from_cache).toBe(false)
   })
+
+  describe('KP evidence is read in the KP frame (SS N-342 / N-359)', () => {
+    const primitiveCalls = (tool: string): Array<Record<string, unknown>> =>
+      mockFetch.mock.calls
+        .filter(([url]) => String(url).endsWith(`/api/mcp/primitives/${tool}`))
+        .map(([, init]) => JSON.parse(String((init as { body: string }).body)) as Record<string, unknown>)
+
+    it('the KP query_chart_facts call is pinned to krishnamurti, the other schools carry no ayanamsha_id', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse())
+      await executeMultiSchoolBundle(
+        { claim: 'KP sub-lord of the 10th cusp signifies career', tier: 'acharya' },
+        MOCK_PRINCIPAL,
+      )
+      const calls = primitiveCalls('query_chart_facts')
+      const kp = calls.filter((c) => c['category'] === 'kp_cusp')
+      expect(kp).toHaveLength(1)
+      expect(kp[0]!['ayanamsha_id']).toBe('krishnamurti')
+      const others = calls.filter((c) => c['category'] !== 'kp_cusp')
+      expect(others.length).toBeGreaterThan(0)
+      for (const c of others) expect(c['ayanamsha_id']).toBeUndefined()
+    })
+
+    it('the KP entry and the envelope carry the KP frame label; a run without KP carries none', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse())
+      const withKp = await executeMultiSchoolBundle(
+        { claim: 'KP sub-lord of the 10th cusp signifies career', schools: ['parashara', 'kp'], tier: 'acharya' },
+        MOCK_PRINCIPAL,
+      )
+      const kpEntry = withKp.bundle_entries.find((e) => e.sub_tool === 'kp_evidence')!
+      expect(kpEntry.frame_label).toBe('KP frame (Krishnamurti ayanamsha)')
+      expect(withKp.bundle_entries.find((e) => e.sub_tool === 'parashara_evidence')!.frame_label).toBeUndefined()
+      expect(withKp.school_frames).toEqual({ kp: 'KP frame (Krishnamurti ayanamsha)' })
+
+      const withoutKp = await executeMultiSchoolBundle(
+        { claim: 'Saturn aspects the 7th lord', schools: ['parashara', 'jaimini'], tier: 'acharya' },
+        MOCK_PRINCIPAL,
+      )
+      expect(withoutKp.school_frames).toBeUndefined()
+    })
+  })
 })

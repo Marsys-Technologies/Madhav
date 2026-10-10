@@ -14,6 +14,7 @@
 
 import { computeCacheKey, cacheLookup, cacheStore } from './cache.js'
 import { computeBundleHealth, type BundleStatus } from './bundle_status.js'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../lib/kp_frame.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -77,6 +78,8 @@ export type MultiSchoolBundleEvent =
 
 export interface MultiSchoolBundleEntry {
   sub_tool: string
+  /** Reading frame of this evidence when it is not the Lahiri primary (KP: Krishnamurti ayanamsha). */
+  frame_label?: string
   errored: boolean
   error_class?: string
   attempted_params?: Record<string, unknown>
@@ -96,6 +99,8 @@ export interface MultiSchoolBundleEnvelope {
   served_from_cache: boolean
   claim: string
   schools: SchoolName[]
+  /** Non-primary reading frames, named (KP stays on Krishnamurti by doctrine, SS N-342). */
+  school_frames?: { kp: string }
   bundle_entries: MultiSchoolBundleEntry[]
   provenance: {
     sub_tools_fired: string[]
@@ -215,9 +220,11 @@ function buildSchoolParams(
         params: { category: 'strength_extra', limit: 20 },
       }
     case 'kp':
+      // KP is Krishnamurti BY DOCTRINE (SS N-342 / N-359): pinned explicitly so the Lahiri-primary
+      // default of query_chart_facts never reads the KP chain from Lahiri facts.
       return {
         toolName: 'query_chart_facts',
-        params: { category: 'kp_cusp', limit: 20 },
+        params: { category: 'kp_cusp', ayanamsha_id: KP_FRAME_AYANAMSHA, limit: 20 },
       }
     case 'tajaka':
       return {
@@ -324,7 +331,7 @@ export async function executeMultiSchoolBundle(
           schoolSpec.params,
           principal,
           onEvent
-        )
+        ).then((entry): MultiSchoolBundleEntry => (school === 'kp' ? { ...entry, frame_label: KP_FRAME_LABEL } : entry))
       )
     }
   }
@@ -380,6 +387,7 @@ export async function executeMultiSchoolBundle(
     served_from_cache: false,
     claim: params.claim,
     schools,
+    ...(schools.includes('kp') ? { school_frames: { kp: KP_FRAME_LABEL } } : {}),
     bundle_entries: entries,
     provenance: {
       sub_tools_fired,

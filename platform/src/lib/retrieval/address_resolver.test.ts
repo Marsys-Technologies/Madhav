@@ -607,6 +607,31 @@ describe('resolveAddress — paradigm-specific address types', () => {
     expect(result.chain.join(' ')).toContain('KP frame (Krishnamurti ayanamsha)')
   })
 
+  // SS N-359: the KP cusp-chain read never takes the caller's ayanamsha, whatever it is.
+  it.each([
+    ['no id (the Lahiri primary default)', undefined],
+    ['the Lahiri primary id', 'lahiri_chitrapaksha'],
+    ['"all"', 'all'],
+    ['the alias LAHIRI', 'LAHIRI'],
+    ['raman', 'raman'],
+    ['explicit krishnamurti', 'krishnamurti'],
+    ['a nonsense id', 'not_an_ayanamsha_xyz'],
+  ] as Array<[string, string | undefined]>)('sub_lord_of reads cusp_kp_lords at krishnamurti and says so: %s', async (_label, id) => {
+    const { query } = await import('@/lib/db/client')
+    const mockedQuery = vi.mocked(query)
+    mockedQuery.mockClear()
+    const result = await resolveAddress(NATIVE_CHART_ID, { type: 'sub_lord_of', cusp: 1 }, id === undefined ? {} : { ayanamsha_id: id })
+    const kpCalls = mockedQuery.mock.calls.filter((c) => String(c[0]).includes('cusp_kp_lords'))
+    expect(kpCalls).toHaveLength(1)
+    const kpParams = kpCalls[0]![1] as unknown[]
+    expect(kpParams[1]).toBe('krishnamurti')
+    for (const other of ['lahiri_chitrapaksha', 'LAHIRI', 'all', 'raman', 'not_an_ayanamsha_xyz']) expect(kpParams).not.toContain(other)
+    const s = result.entities[0] as ResolvedSubLord
+    expect(s.ayanamsha_id).toBe('krishnamurti')
+    expect(s.frame_label).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(result.chain.join(' ')).toContain('KP frame (Krishnamurti ayanamsha)')
+  })
+
   it("saham('ASHA') resolves the tajika sāham (paradigm defaults to 'tajika')", async () => {
     const result = await resolveAddress(NATIVE_CHART_ID, { type: 'saham', code: 'ASHA' }, { ayanamsha_id: AYANAMSHA })
     const s = result.entities[0] as ResolvedSaham
