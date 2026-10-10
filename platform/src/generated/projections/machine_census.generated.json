@@ -2274,7 +2274,7 @@
         "mcp_compact"
       ],
       "short_label": "Chart Facts Query",
-      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha).",
+      "one_line": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart; one ayanamsha per page, except that KP-frame categories are…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -2302,7 +2302,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 4,
+      "input_param_count": 5,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2707,7 +2707,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 17,
+      "input_param_count": 18,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2872,7 +2872,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 3,
+      "input_param_count": 4,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3103,7 +3103,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 9,
+      "input_param_count": 10,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3405,7 +3405,7 @@
         "mcp_full"
       ],
       "short_label": "Get Transit Anchors",
-      "one_line": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha.",
+      "one_line": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, per ayanamsha…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3636,7 +3636,7 @@
         "chart_id",
         "graha"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3785,7 +3785,7 @@
         "mcp_consult"
       ],
       "short_label": "Query Chart Gestalt",
-      "one_line": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per ayanamsha.",
+      "one_line": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row stored per ayanamsha (a default call serves the Lahiri primary's row).",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3846,7 +3846,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3952,7 +3952,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],

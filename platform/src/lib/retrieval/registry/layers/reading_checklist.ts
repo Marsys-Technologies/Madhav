@@ -25,6 +25,9 @@ import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 import { isVerifiedPassStatus, type VerificationPassStatus } from '@/lib/retrieval/envelope'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '@/lib/retrieval/kp_frame'
+import { CROSS_CHECK_HEADING } from '@/lib/retrieval/ayanamsha_cross_check'
+import { AYANAMSHA_SERVE_ORDER } from '../constants'
 import { resolvedBuildFenceIds, resolvedRowsBuildId, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -1146,6 +1149,9 @@ export interface NotablyAbsentYogasResult {
   ayanamsha_sensitive_candidates: string[]
   ayanamsha_unchecked: string[]
   ayanamsha_sensitivity_note: string | null
+  /** Lahiri-primary PR-3 (SS N-342): the ayanamsha sensitivity above is a LABELLED cross-check of the
+   *  other served ayanamshas against the one served; it is not the reading. Always this heading. */
+  ayanamsha_cross_check_label: typeof CROSS_CHECK_HEADING
   candidate_set_version: string
   eligibility_rule_version: string
   band_version: string
@@ -1173,6 +1179,7 @@ function baseResult(): Omit<NotablyAbsentYogasResult, 'state' | 'reason'> {
     ayanamsha_sensitive_candidates: [],
     ayanamsha_unchecked: [],
     ayanamsha_sensitivity_note: null,
+    ayanamsha_cross_check_label: CROSS_CHECK_HEADING,
     candidate_set_version: NEAR_MISS_CANDIDATE_SET_VERSION,
     eligibility_rule_version: NEAR_MISS_ELIGIBILITY_RULE_VERSION,
     band_version: NEAR_MISS_BAND_VERSION,
@@ -1376,6 +1383,10 @@ async function otherServedAyanamshas(chart_id: string, ayanamsha_id: string, fac
   for (const r of res.rows) {
     if (canonical.has(r.ayanamsha_id) && r.ayanamsha_id !== ayanamsha_id && !out.includes(r.ayanamsha_id)) out.push(r.ayanamsha_id)
   }
+  // Lahiri-primary PR-3: deterministic SERVE order (Lahiri first, then true_chitra, krishnamurti, raman,
+  // surya_siddhanta_classical), not the alphabetical order the SQL returns.
+  const rank = (id: string): number => { const i = (AYANAMSHA_SERVE_ORDER as readonly string[]).indexOf(id); return i === -1 ? 99 : i }
+  out.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0))
   return out.slice(0, NEAR_MISS_CANONICAL_AYANAMSHAS.length - 1)
 }
 
@@ -1439,6 +1450,10 @@ export interface KpCuspLink {
 }
 
 export interface KpCuspResult {
+  /** The KP chain is always read in the KP frame (SS N-342 item 3): 'krishnamurti'. */
+  ayanamsha_id: string
+  /** 'KP frame (Krishnamurti ayanamsha)': surfaced wherever the chain is served. */
+  frame_label: string
   cusps: KpCuspLink[]
   available: boolean
   fact_ids: string[]
@@ -1450,23 +1465,32 @@ export interface KpCuspResult {
  * getKpCuspsCapability (single-source, §19) rather than re-querying the four KP
  * fact categories — never a parallel KP resolver here. Returns only the requested
  * cusps, compacted to the chain + significators (the decisive KP fields).
+ *
+ * KP FRAME DOCTRINE (SS N-342 item 3 / N-356): the chain is read in the KRISHNAMURTI
+ * ayanamsha WHATEVER id the caller passes. Callers pass the reading's primary (Lahiri) id
+ * for the rest of the answer; that id must never reach the KP chain read. The parameter is
+ * kept for call-site compatibility and deliberately ignored.
  */
 export async function fetchKpCuspChain(
   chart_id: string,
-  ayanamsha_id: string,
+  _callerAyanamshaId: string | null | undefined,
   houses: number[],
   build_id?: BuildFence,
 ): Promise<KpCuspResult> {
+  void _callerAyanamshaId
   const out: KpCuspResult = {
+    ayanamsha_id: KP_FRAME_AYANAMSHA,
+    frame_label: KP_FRAME_LABEL,
     cusps: [], available: false, fact_ids: [],
-    note: 'KP cuspal sub-lord chain (Krishnamurti Paddhati): the cusp sub-lord is the ' +
+    note: `${KP_FRAME_LABEL}. ` +
+      'KP cuspal sub-lord chain (Krishnamurti Paddhati): the cusp sub-lord is the ' +
       'final arbiter of a bhāva\'s promise; its significators name the grahas that will ' +
       'deliver (or deny) the matter. Served for this domain\'s decisive cusps (MC-031).',
   }
   try {
     const { getKpCuspsCapability } = await import('./L1_ganita/get_kp_cusps')
     const res = await getKpCuspsCapability.handler(
-      { chart_id, ayanamsha_id, ...(build_id ? { build_id } : {}) },
+      { chart_id, ayanamsha_id: KP_FRAME_AYANAMSHA, ...(build_id ? { build_id } : {}) },
       undefined,
     )
     if (res.is_error) {

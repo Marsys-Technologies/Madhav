@@ -6,6 +6,8 @@ import {
   divisionalChart,
   getJourney1ChartData,
   journey1Frame,
+  journey1CrossCheckFrames,
+  journey1FrameLabel,
 } from "../journey1";
 beforeEach(() => {
   q.mockReset();
@@ -42,9 +44,23 @@ it("keeps missing lagna and failed source reads honestly empty", async () => {
   );
 });
 
-it("uses the chosen chart form frame's stored L1 key without falling back to a different computation", () => {
+it("always serves Lahiri (primary for every chart), even when the stored selection excludes it", () => {
   expect(journey1Frame("lahiri,true_chitra,kp")).toBe("lahiri_chitrapaksha");
-  expect(journey1Frame("kp,raman")).toBe("krishnamurti");
-  expect(journey1Frame("surya_siddhanta")).toBe("surya_siddhanta_classical");
-  expect(journey1Frame("raman")).toBe("raman");
+  expect(journey1Frame("kp,raman")).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame("surya_siddhanta")).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame("raman")).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame("true_chitra,krishnamurti")).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame(null)).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame("")).toBe("lahiri_chitrapaksha");
+  expect(journey1Frame("not_an_ayanamsha")).toBe("lahiri_chitrapaksha");
+});
+
+it("labels the primary frame and keeps the cross-check set as the other selected stored ids", () => {
+  expect(journey1FrameLabel(journey1Frame("kp"))).toBe("Lahiri · Chitrapaksha (primary)");
+  expect(journey1CrossCheckFrames("lahiri,true_chitra,kp")).toEqual(["true_chitra", "krishnamurti"]);
+  expect(journey1CrossCheckFrames("kp,raman")).toEqual(["krishnamurti", "raman"]);
+  expect(journey1CrossCheckFrames("surya_siddhanta")).toEqual(["surya_siddhanta_classical"]);
+  expect(journey1CrossCheckFrames("lahiri")).toEqual([]);
+  expect(journey1CrossCheckFrames(null)).toEqual([]);
+  expect(journey1CrossCheckFrames("junk,raman")).toEqual(["raman"]);
 });

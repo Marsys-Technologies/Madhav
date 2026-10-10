@@ -28,7 +28,7 @@ Every forward-looking claim MUST be logged via `log_prediction` before the respo
 
 ## Bundle Guidance
 
-Use `holistic_bundle` for cross-layer context. Use `multi_school_bundle` for multi-school comparison.
+Use `holistic_bundle` for cross-layer context. For multi-school comparison read each school through its own face (there is no merged multi-school tool).
 
 ---
 

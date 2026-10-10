@@ -8,6 +8,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const BB_CATEGORIES = [
   'bhava_bala_aspectual', 'bhava_bala_directional', 'bhava_bala_lord',
@@ -29,7 +30,7 @@ export const getBhavaBalaCapability: CapabilityDescriptor = {
     'Covers 10 bhava bala fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     house_number: { type: 'number', description: 'Filter to one bhava (1–12). Omit for all.' },
     categories:   { type: 'array',  description: 'Subset of bhava bala categories.', items: { type: 'string' } },
     offset: { type: 'number', default: 0 },
@@ -63,19 +64,19 @@ export const getBhavaBalaCapability: CapabilityDescriptor = {
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
       if (args.house_number) {
         sql += ` AND fact_key ILIKE $${params.length + 1}`
         params.push(`%H${args.house_number as number}%`)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
+      const rows = kp.label(result.rows ?? [])
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: rows.length },
         is_error: false,
       }
     } catch (err) {

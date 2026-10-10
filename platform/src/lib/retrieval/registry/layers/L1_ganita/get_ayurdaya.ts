@@ -14,6 +14,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import { annotateAyurdayaYearRows, deriveAyurdayaFigureDisclosure } from './ayurdaya_unreduced_base'
 const MAX_LIMIT = 200
 
@@ -34,14 +36,14 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     'occupants); the CHART/applicable_method row carries the ruling method + all three raw',
     'totals. harana_status is also promoted to a top-level field on this response whenever a',
     'total_years row is present on the page (honest disclosure — reductive haranas are not',
-    'yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit',
-    'for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band',
+    'yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omitted',
+    '= the Lahiri primary; "all" = the explicit raw rows of every ayanamsha) or method (fact_subject). NOT a death prediction — classical longevity-band',
     'computation only. Bounded with a disclosed total.',
   ].join(' '),
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     method:       { type: 'string', description: 'Filter by longevity method fact_subject (e.g. AMSAYU, PINDAYU, NISARGAYU). Omit for all.' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
@@ -72,7 +74,10 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const method       = args['method'] ? String(args['method']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
@@ -89,10 +94,10 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     // writer already computing and storing them (ga_ayurdaya_writer.py:239-241, 263-265).
     const sql = `
       SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
-             fact_value_jsonb, unit, ayanamsha_id, citation_ref, verification_pass_status
+             fact_value_jsonb, unit, ayanamsha_id, citation_ref, ${CITATION_HUMAN_SELECT}, verification_pass_status
       FROM chart_facts
       WHERE ${where}
-      ORDER BY ayanamsha_id, fact_subject, fact_key
+      ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
       LIMIT $${p}`
 
     try {
@@ -101,6 +106,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      const servedRows = normalizeNarrationRows(rowsRes.rows)
 
       // F-E3 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 4/6; §N.6 item 3): harana_status
       // is a real, correct incompleteness disclosure (reductive haranas not yet applied)
@@ -110,21 +116,22 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
       // row is on this page, absent otherwise (never fabricated for a page that doesn't
       // carry it).
       const haranaStatuses = new Set<string>()
-      for (const r of rowsRes.rows) {
+      for (const r of servedRows) {
         if (r['fact_key'] === 'total_years') {
           const jsonb = r['fact_value_jsonb'] as { harana_status?: string } | null
           if (jsonb?.harana_status) haranaStatuses.add(jsonb.harana_status)
         }
       }
-      const unreduced = deriveAyurdayaFigureDisclosure(rowsRes.rows, { assumeAyurdayaCategory: true }) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
+      const unreduced = deriveAyurdayaFigureDisclosure(servedRows, { assumeAyurdayaCategory: true }) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
       return {
         content: {
           chart_id,
           ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat, figure_counts: unreduced.figure_counts, judgment_flags: [unreduced.judgment_flag] } : {}),
-          rows: annotateAyurdayaYearRows(rowsRes.rows, unreduced),
-          count: rowsRes.rows.length,
+          rows: annotateAyurdayaYearRows(servedRows, unreduced),
+          count: servedRows.length,
           total_matching,
-          more_available: total_matching > rowsRes.rows.length,
+          more_available: total_matching > servedRows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, method, limit },
           ...(total_matching === 0
             ? { empty_reason: `No ayurdaya (longevity) facts for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${method ? ` for method '${method}'` : ''}.` }

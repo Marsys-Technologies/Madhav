@@ -17,7 +17,9 @@ from panchang_engine.swiss_backend import OutOfCorpusRangeError, ensure_swiss_ba
 from panchang_engine.swiss_state import serialized_swiss_state
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID, normalize_ayanamsha_id
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,20 @@ class BirthData(BaseModel):
     tz_offset_hours: float = Field(..., description="Timezone offset in hours (e.g. 5.5 for IST)")
     place_name: str = Field(default="", description="Place name (informational)")
     subject_label: str = Field(default="", description="Subject label (informational)")
-    ayanamsha_id: str = Field(default="lahiri", description="Ayanamsha: lahiri|raman|kp|true_citra")
+    ayanamsha_id: str = Field(
+        default=PRIMARY_AYANAMSHA_ID,
+        description=(
+            "Stored ayanamsha id (lahiri_chitrapaksha | true_chitra | krishnamurti | raman | "
+            "surya_siddhanta_classical); default lahiri_chitrapaksha (primary). Legacy short spellings "
+            "(lahiri, kp, true_citra, surya_siddhanta) are mapped to the stored id at this boundary; "
+            "anything else is a 422. ayanamsha_used echoes the stored id."
+        ),
+    )
+
+    @field_validator("ayanamsha_id", mode="before")
+    @classmethod
+    def _normalise_ayanamsha(cls, v):
+        return normalize_ayanamsha_id(v)  # ValueError -> pydantic 422
 
 
 class PyHoraResponse(BaseModel):
@@ -178,7 +193,7 @@ async def smoke_test() -> dict[str, Any]:
 
         inputs = dict(SMOKE_SYNTHETIC_INPUTS)
 
-        chart = compute_chart(inputs=inputs, ayanamsha_id="lahiri")
+        chart = compute_chart(inputs=inputs, ayanamsha_id=PRIMARY_AYANAMSHA_ID)
         grahas = chart.get("grahas", [])
 
         sun = next((g for g in grahas if g.get("name") == "Sun"), None)
@@ -239,6 +254,6 @@ def _shape_graha_sthana(grahas: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "degree_in_sign": g.get("degree_in_sign", round(float(lon) % 30, 4) if lon else 0.0),
             "is_retrograde": bool(g.get("is_retrograde", g.get("retrograde", False))),
             "speed_dps": g.get("speed_dps", g.get("speed", 0.0)),
-            "ayanamsha_id": g.get("ayanamsha_id", "lahiri"),
+            "ayanamsha_id": g.get("ayanamsha_id", PRIMARY_AYANAMSHA_ID),
         })
     return out
