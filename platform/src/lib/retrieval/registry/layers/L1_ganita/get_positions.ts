@@ -49,6 +49,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
   type ReferenceFrame, type ZodiacSign,
@@ -192,7 +193,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, categories]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1
           AND fact_category = ANY($2::text[])
@@ -240,7 +241,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
                LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      let rows = result.rows ?? []
+      let rows = normalizeNarrationRows(result.rows)
 
       let frameNote: string | undefined
       // F-159: populated only for frame:'chandra' — see resolveFrameReferenceSign's own doc.

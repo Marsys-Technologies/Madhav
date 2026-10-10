@@ -6,6 +6,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 // Exported so other capabilities (e.g. chart_facts_query's category-alias resolution, which
 // expands the bare umbrella term 'panchanga' to this family) can reuse it without duplication.
@@ -100,7 +101,7 @@ export const getPanchangaCapability: CapabilityDescriptor = {
 
       const sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE ${where}
         ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
@@ -110,7 +111,7 @@ export const getPanchangaCapability: CapabilityDescriptor = {
         query<Record<string, unknown>>(sql, [...whereParams, limit, offset]),
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, whereParams),
       ])
-      const rows = rowsRes.rows ?? []
+      const rows = normalizeNarrationRows(rowsRes.rows)
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
         content: {

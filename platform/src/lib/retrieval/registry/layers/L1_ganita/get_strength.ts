@@ -21,6 +21,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
@@ -187,14 +188,14 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const offsetParamIdx = whereParams.length + 2
       const sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         ${whereClause}
         ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
       `
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = normalizeNarrationRows(result.rows)
 
       // ŚODHANA T3 (MC-014): active-house-by-graha is now computed for EVERY frame
       // (previously only for frame !== 'lagna', since only the frame_context DISPLAY

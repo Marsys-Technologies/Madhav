@@ -29,6 +29,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
@@ -111,7 +112,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
-               verification_pass_status, citation_ref
+               verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -120,7 +121,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = normalizeNarrationRows(result.rows)
 
       // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────
       // Group the served rows by (category, subject, ayanamsha, fact_key); any group with >1

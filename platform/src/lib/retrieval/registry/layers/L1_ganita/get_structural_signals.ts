@@ -59,6 +59,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const STRUCTURAL_SIGNAL_CATEGORIES = [
   'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
@@ -142,7 +143,7 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -157,7 +158,7 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
         query<Record<string, unknown>>(sql, params),
         query<{ total: string }>(countSql, countParams),
       ])
-      const rows = result.rows ?? []
+      const rows = normalizeNarrationRows(result.rows)
       // `total` stays the PAGE length (existing callers read it); the real matching size is `total_matching`.
       const total_matching = Number(countResult.rows?.[0]?.total ?? rows.length)
 

@@ -15,6 +15,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import { annotateAyurdayaYearRows, deriveAyurdayaFigureDisclosure } from './ayurdaya_unreduced_base'
 const MAX_LIMIT = 200
 
@@ -93,7 +94,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     // writer already computing and storing them (ga_ayurdaya_writer.py:239-241, 263-265).
     const sql = `
       SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
-             fact_value_jsonb, unit, ayanamsha_id, citation_ref, verification_pass_status
+             fact_value_jsonb, unit, ayanamsha_id, citation_ref, ${CITATION_HUMAN_SELECT}, verification_pass_status
       FROM chart_facts
       WHERE ${where}
       ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
@@ -105,6 +106,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      normalizeNarrationRows(rowsRes.rows)
 
       // F-E3 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 4/6; §N.6 item 3): harana_status
       // is a real, correct incompleteness disclosure (reductive haranas not yet applied)

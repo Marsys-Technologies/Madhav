@@ -22,6 +22,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const NAKSHATRA_CATEGORIES = [
   'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
@@ -89,7 +90,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, formula_id,
                fact_value_num, fact_value_text, fact_value_jsonb, unit,
-               verification_pass_status, citation_ref
+               verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -103,7 +104,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = normalizeNarrationRows(result.rows)
 
       return {
         content: {

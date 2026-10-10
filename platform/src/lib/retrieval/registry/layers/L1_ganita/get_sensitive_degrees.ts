@@ -31,6 +31,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const MAX_LIMIT = 200
 
@@ -121,7 +122,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
 
     const sql = `
       SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
-             fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
+             fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
       FROM chart_facts
       WHERE ${where}
       ORDER BY ${ayanamshaServeOrderBy()}, fact_category, fact_subject, fact_key
@@ -137,6 +138,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
       // F-B14 / §N.6 item 1: tier breakdown for THIS page — never dropped, always disclosed.
       const tier_breakdown: Record<string, number> = {}
       let unverified_rows_in_page = 0
+      normalizeNarrationRows(rowsRes.rows)
       for (const r of rowsRes.rows) {
         const tier = String(r['verification_pass_status'] ?? 'unknown')
         tier_breakdown[tier] = (tier_breakdown[tier] ?? 0) + 1
