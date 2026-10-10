@@ -9891,7 +9891,7 @@
      {
       "column": "chunk_id",
       "why": "the chunk identifier, the primary key of classical_text_chunks, built from the text id, page and chunk index (_chunk_id)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:674"
      },
      {
       "table": "classical_texts",
@@ -9904,12 +9904,12 @@
      {
       "column": "content_en",
       "why": "the chunk text, cut by a character budget (CHUNK_MAX_CHARS, paragraph breaks preferred) from the hash-pinned source file (for the English texts an offline machine translation; for the two sa+hi texts the Hindi page text itself; bhrigu_nandi_nadi has chart-diagram label fragments stripped by _BNN_CHART_LABELS_RE; sarvartha_chintamani and nadi_navamsa_patel come from OCR / DjVu text); this column is DECLARED, NOT CHECKED: no engine form can read 10,651 free-text chunks, so a sentence written into it would not be caught",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:627"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:635"
      },
      {
       "column": "content_sa",
       "why": "for the two sa+hi texts (muhurta_chintamani, tajaka_neelakanthi) the same Devanagari Hindi page text as content_en (it is Hindi, not Sanskrit), no value for every other text; cut by the same character budget from the hash-pinned source; this column is DECLARED, NOT CHECKED: no engine form can read the free text, so a sentence written into it would not be caught",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:628"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:636"
      }
     ],
     "templated_columns": [
@@ -9928,7 +9928,7 @@
        }
       },
       "why": "verse_ref is the fixed f-string PG{page}:C{index} over two integers (_verse_ref)",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:623"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:631"
      },
      {
       "table": "classical_text_chunks",
@@ -9953,7 +9953,7 @@
        }
       },
       "why": "tradition_school is the fixed f-string {tradition}:{school} of the TEXTS registry entry of the chunk's text; both parts are closed sets of the 15 entries",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:632"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:640"
      },
      {
       "table": "classical_text_chunks",
@@ -9967,7 +9967,7 @@
        }
       },
       "why": "content_sha256 is the lower-case sha256 hex digest the writer computes from the text id and the chunk text (_sha256), so every value is 64 hexadecimal digits",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:630"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:638"
      },
      {
       "table": "classical_text_chunks",
@@ -9991,7 +9991,7 @@
       ],
       "placeholders": {},
       "why": "translator of a chunk is the source_edition line of the TEXTS registry entry (record['translator'] = text.get('source_edition')), NOT a translator name: the 15 edition lines of the committed seed are the only values the live column may hold, each an exact fixed string",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:631"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:639"
      }
     ]
    },
@@ -10001,7 +10001,7 @@
     "applies": "D1",
     "nature": "unverified_transcription",
     "why": "the chunk text is cut from hash-pinned source files by character budget (and has chart-diagram label fragments stripped for one text); no passage-level spec exists, so the extraction is not verified against a passage (N-156, SS ruling 2026-10-06); content_en is a machine translation (a known limitation, see known_findings.json)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:617",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:625",
     "per_witness_values": false
    },
    "prose_fields": [],
@@ -10013,7 +10013,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_text_chunks; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:221 reads `classical_text_chunks` (`FROM classical_text_chunks c WHERE c.content_en ILIKE ${queryParam}${textSourcePredicate}``). Dens.served=FAIL. classical_text_chunks is shared with bg_text_index; the served query reads the asset's table rows.",
-    "prose_fields": "stores extracted source text and identifiers; generates none. The writer registered in bg_texts.py (platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:666 INSERT INTO classical_text_chunks) binds chunks cut from hash-pinned source PDFs, the TEXTS registry metadata and a sha256, plus a Vertex embedding vector; no f-string, template or LLM composes a sentence"
+    "prose_fields": "stores extracted source text and identifiers; generates none. The writer registered in bg_texts.py (platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:674 INSERT INTO classical_text_chunks) binds chunks cut from hash-pinned source PDFs, the TEXTS registry metadata and a sha256, plus a Vertex embedding vector; no f-string, template or LLM composes a sentence"
    },
    "source": {
     "level": "row",
@@ -10065,7 +10065,7 @@
      "table": "classical_text_chunks",
      "column": "content_en",
      "why": "classical_text_chunks.content_en is declared transcription text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:627"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:635"
     }
    ]
   },
