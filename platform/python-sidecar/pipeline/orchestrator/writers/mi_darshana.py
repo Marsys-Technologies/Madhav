@@ -481,8 +481,8 @@ class MiDarshanaWriter(WriterBase):
                         (chart_id,),
                     )
                     aya_row = cur.fetchone()
-                    aya_count = int(aya_row["count"]) if aya_row else 0
-
+                    distinct_ayanamsha_row_count = int(aya_row["count"]) if aya_row else 0
+                # SS N-341 (B7, §N.8): this is a ROW COUNT (distinct ayanamsha_id values present in bodha_pratijna), not a robustness measurement; the verdict is pinned to CANONICAL_AYA. It used to be labelled "ayanamsha_robustness".
                 for pr in pratijna_rows:
                     event_class_id = pr["event_class_id"]
                     domain = pr.get("domain") or "unknown"
@@ -512,7 +512,7 @@ class MiDarshanaWriter(WriterBase):
                             "domain": domain,
                             "activation_state": "no_evidence",
                             "grade": None,
-                            "ayanamsha_robustness": aya_count,
+                            "distinct_ayanamsha_row_count": distinct_ayanamsha_row_count,
                             "canonical_ayanamsha_id": CANONICAL_AYA,
                             "ranked_evidence": [],
                             "contradictions": [],
@@ -654,7 +654,7 @@ class MiDarshanaWriter(WriterBase):
                         "domain": domain,
                         "activation_state": status,
                         "grade": grade,
-                        "ayanamsha_robustness": aya_count,
+                        "distinct_ayanamsha_row_count": distinct_ayanamsha_row_count,
                         "canonical_ayanamsha_id": CANONICAL_AYA,
                         "ranked_evidence": ranked_evidence,
                         "contradictions": domain_contras,
