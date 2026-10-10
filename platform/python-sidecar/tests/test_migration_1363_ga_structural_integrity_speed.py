@@ -1,4 +1,4 @@
-"""Migration 1362 (certification; held PR): ga_structural's registered integrity_check_sql, rewritten so chart_facts is read ONCE instead of
+"""Migration 1363 (certification; held PR): ga_structural's registered integrity_check_sql, rewritten so chart_facts is read ONCE instead of
 ~330 times, with IDENTICAL SEMANTICS. A weaker check is unacceptable: this module is the proof obligation.
 
 NEW = OLD (the live text: migration 904 as patched by 1221, then 1326; md5 fcd217e2..., 208,378 chars) with exactly two mechanical changes:
@@ -15,7 +15,7 @@ Four tiers:
   * AST (runs where `pglast` is installed; skipped, loudly, otherwise): the parse tree of NEW with the WITH dropped and gs_cf renamed back is
     IDENTICAL to OLD's; every one of the 330 chart_facts references has a fact_category pin among its own AND-ed quals, none is schema-qualified,
     and the union of the renamed references' pins is exactly the CTE's 67 categories; every top-level conjunct (256) of both texts parses alone.
-  * LIVE (needs PostgreSQL server binaries AND CI=true or MARSYS_PG_LIVE_1362=1; it NEVER starts a cluster on a developer machine by accident):
+  * LIVE (needs PostgreSQL server binaries AND CI=true or MARSYS_PG_LIVE_1363=1; it NEVER starts a cluster on a developer machine by accident):
     applies the REAL on-disk migration to a DISPOSABLE cluster this module creates with initdb in a temp dir. OLD-vs-NEW on empty tables, on a
     clean synthetic dataset (every conjunct alone and the whole text), with the 1326 mutants, with ONE injected violation per conjunct
     (256 conjuncts x 2 injection styles, generated programmatically from the conjunct list), and a seeded random fuzz; negative controls prove the
@@ -46,14 +46,14 @@ from pathlib import Path
 import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
-_M1362 = _REPO / "platform" / "migrations" / "1362_ga_structural_integrity_single_scan_speed.sql"
+_M1363 = _REPO / "platform" / "migrations" / "1363_ga_structural_integrity_single_scan_speed.sql"
 _FIXTURES = Path(__file__).resolve().parent / "fixtures"
 _PRE1326 = _FIXTURES / "ga_structural_1326" / "live_integrity_check_sql_pre1326_2026-10-07.sql"
 _SNAPSHOT = _FIXTURES / "pratijna_v4_snapshot" / "schema.sql"
 
 PRE1326_MD5 = "c56f9e12b2002269eb5f27a7abc42105"
 OLD_MD5, OLD_LEN = "fcd217e25127653ee28ad41c629946aa", 208378
-NEW_MD5, NEW_LEN = "1e01f51ae5dd3549647c58a74b357dde", 209602
+NEW_MD5, NEW_LEN = "f49616e257f9a85de4f0cebf09fe2603", 209602
 CANON = "482012f1-710e-4a25-994a-93821f5871aa"
 OTHER = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 
@@ -121,7 +121,7 @@ def _code(path: Path) -> str:
 # The pre-1326 fixture IS the live text read 2026-10-07 (byte for byte); + migration 1326's one replacement = the live OLD text.
 PRE1326_TEXT = _PRE1326.read_bytes().decode("utf-8")
 OLD_TEXT = PRE1326_TEXT.replace(_L1326_OLD_LINE, _L1326_NEW_BLOCK)
-SQL = _M1362.read_text(encoding="utf-8")
+SQL = _M1363.read_text(encoding="utf-8")
 NEW_TEXT = re.search(r"\$nt\$(.*?)\$nt\$", SQL, re.S).group(1)
 OLD_LINES = OLD_TEXT.split("\n")
 KEPT_NUMS = frozenset(n for n, _ in KEPT_LINES)
@@ -258,7 +258,7 @@ def test_static_old_text_is_also_what_migrations_904_1221_1326_build():
 
 def test_static_new_text_has_the_named_md5_and_length():
     assert _md5(NEW_TEXT) == NEW_MD5 and len(NEW_TEXT) == NEW_LEN
-    assert NEW_TEXT != OLD_TEXT and "$nt$" not in NEW_TEXT and "$m1362$" not in NEW_TEXT
+    assert NEW_TEXT != OLD_TEXT and "$nt$" not in NEW_TEXT and "$m1363$" not in NEW_TEXT
 
 
 def test_static_new_is_old_with_exactly_the_block_inserted_and_the_299_renames():
@@ -367,13 +367,13 @@ def test_static_no_arbitrary_choice_reads_a_renamed_reference():
 
 
 def test_static_migration_literals_equal_the_independently_spelled_ones():
-    code = _code(_M1362)
+    code = _code(_M1363)
     assert f"c_old_md5  constant text := '{OLD_MD5}'" in code and f"c_new_md5  constant text := '{NEW_MD5}'" in code
     assert SQL.count("$nt$") == 2
 
 
 def test_static_one_guarded_update_of_integrity_check_sql_only_lock_timeout_first():
-    code = _code(_M1362)
+    code = _code(_M1363)
     assert code.strip().startswith("SET LOCAL lock_timeout = '5s';")
     assert code.count("UPDATE asset_registry") == 1
     assert "SET integrity_check_sql = c_new_text" in code
@@ -387,7 +387,7 @@ def test_static_one_guarded_update_of_integrity_check_sql_only_lock_timeout_firs
 
 
 def test_static_the_notice_noop_and_the_idempotent_noop_come_before_the_update_and_the_raise_after_it():
-    code = _code(_M1362)
+    code = _code(_M1363)
     i_new, i_foreign = code.index("v_md5 = c_new_md5"), code.index("v_md5 IS DISTINCT FROM c_old_md5")
     i_upd, i_raise = code.index("UPDATE asset_registry"), code.index("RAISE EXCEPTION")
     assert i_new < i_upd and i_foreign < i_upd < i_raise
@@ -405,10 +405,10 @@ def test_static_header_states_finding_rewrite_equivalence_trigger_effect_verific
 
 def test_static_is_a_routine_migration_with_a_unique_number():
     mig = _REPO / "platform" / "migrations"
-    assert _M1362.name == "1362_ga_structural_integrity_single_scan_speed.sql"
-    assert sorted(p.name for p in mig.glob("1362_*.sql")) == [_M1362.name]
+    assert _M1363.name == "1363_ga_structural_integrity_single_scan_speed.sql"
+    assert sorted(p.name for p in mig.glob("1363_*.sql")) == [_M1363.name]
     ts = (_REPO / "platform" / "scripts" / "migrate.ts").read_text(encoding="utf-8")
-    assert _M1362.name not in ts, "a routine migration must not be on the protected list"
+    assert _M1363.name not in ts, "a routine migration must not be on the protected list"
 
 
 # -- AST tier (pglast; skipped where it is not installed) -------------------------------------------------------------------------
@@ -586,15 +586,15 @@ def _find_pg_bin() -> Path | None:
 
 @pytest.fixture(scope="module")
 def pg_cluster():
-    if os.environ.get("CI", "").lower() not in ("true", "1") and os.environ.get("MARSYS_PG_LIVE_1362") != "1":
-        pytest.skip("live tier runs in CI (CI=true) or with MARSYS_PG_LIVE_1362=1; it never starts a cluster by accident")
+    if os.environ.get("CI", "").lower() not in ("true", "1") and os.environ.get("MARSYS_PG_LIVE_1363") != "1":
+        pytest.skip("live tier runs in CI (CI=true) or with MARSYS_PG_LIVE_1363=1; it never starts a cluster by accident")
     psycopg = pytest.importorskip("psycopg")
     binp = _find_pg_bin()
     if binp is None:
         if os.environ.get("REQUIRE_PG_BINARIES") == "1":
             pytest.fail("no PostgreSQL server binaries and REQUIRE_PG_BINARIES=1")
         pytest.skip("no PostgreSQL server binaries (initdb/pg_ctl) found; set PG_BIN")
-    root = Path(tempfile.mkdtemp(prefix="m1362pg"))
+    root = Path(tempfile.mkdtemp(prefix="m1363pg"))
     data = root / "data"
     sockdir = Path(tempfile.mkdtemp(prefix="m62", dir="/tmp"))
     with socket.socket() as s:
@@ -731,7 +731,7 @@ def _apply(connect, notices: list[str] | None = None):
     if notices is not None:
         conn.add_notice_handler(lambda d: notices.append(d.message_primary))
     try:
-        conn.execute(_M1362.read_text(encoding="utf-8"))
+        conn.execute(_M1363.read_text(encoding="utf-8"))
         conn.commit()
     except Exception:
         conn.rollback()
@@ -959,7 +959,7 @@ def test_live_one_injected_violation_per_conjunct_old_and_new_agree(db, pg_clust
                 if style == 1:
                     _inject_garbage(c, cats, tag)
                 else:
-                    _random_rows(random.Random(1362_000 + k), c, cats, tag, (3, 6))
+                    _random_rows(random.Random(1363_000 + k), c, cats, tag, (3, 6))
                 _inject_other_tables(c, CONJ_OLD[k], tag)
                 t = _differential(c, psycopg, only=[k])
                 _clear_injections(c, tag)

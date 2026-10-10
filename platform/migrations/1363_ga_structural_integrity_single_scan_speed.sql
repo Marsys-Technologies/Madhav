@@ -1,6 +1,6 @@
--- 1362_ga_structural_integrity_single_scan_speed.sql
+-- 1363_ga_structural_integrity_single_scan_speed.sql
 --
--- Certification migration 1362 (HELD PR): ga_structural's registered integrity_check_sql, REWRITTEN FOR SPEED WITH IDENTICAL SEMANTICS.
+-- Certification migration 1363 (HELD PR): ga_structural's registered integrity_check_sql, REWRITTEN FOR SPEED WITH IDENTICAL SEMANTICS.
 -- ONE md5-guarded UPDATE of ONE column of ONE asset_registry row (asset_id 'ga_structural'); nothing else. Transaction ownership belongs to
 -- platform/scripts/migrate.ts (no BEGIN/COMMIT here). Data-only: no table, index or function is created or altered, so it runs as the routine
 -- role (amjis_app: no DDL, no CREATE on public). No index is added (see "WHY NO INDEX").
@@ -78,7 +78,7 @@
 -- next ga_structural build writes fresh receipts. No other asset is touched (the trigger is keyed on NEW.asset_id); the dependents of
 -- ga_structural read its ROWS, not its integrity text, and are not affected. A re-run updates 0 rows and does not fire the trigger.
 --
--- VERIFICATION BY PRODUCTION STRUCTURE (never trust a deploy log). After the deploy, as the read-only role, expect md5 1e01f51ae5dd3549647c58a74b357dde and
+-- VERIFICATION BY PRODUCTION STRUCTURE (never trust a deploy log). After the deploy, as the read-only role, expect md5 f49616e257f9a85de4f0cebf09fe2603 and
 -- length 209602:
 --   SELECT asset_id, md5(integrity_check_sql), length(integrity_check_sql) FROM asset_registry WHERE asset_id = 'ga_structural';
 -- then re-run the certification census cell for ga_structural: Build.completion should read PASS with the elapsed seconds in its text.
@@ -89,14 +89,14 @@
 --
 -- ROLLBACK (not executed by migrate.ts): UPDATE asset_registry SET integrity_check_sql = <the text of migration 1326 as patched: md5
 -- fcd217e25127653ee28ad41c629946aa, reconstructible by applying 904, then 1221 part 1, then 1326> WHERE asset_id = 'ga_structural' AND md5(integrity_check_sql) =
--- '1e01f51ae5dd3549647c58a74b357dde'; fires the same trigger.
+-- 'f49616e257f9a85de4f0cebf09fe2603'; fires the same trigger.
 
 SET LOCAL lock_timeout = '5s';
 
-DO $m1362$
+DO $m1363$
 DECLARE
   c_old_md5  constant text := 'fcd217e25127653ee28ad41c629946aa';
-  c_new_md5  constant text := '1e01f51ae5dd3549647c58a74b357dde';
+  c_new_md5  constant text := 'f49616e257f9a85de4f0cebf09fe2603';
   c_new_text constant text := $nt$
 
 -- ga_structural integrity contract (target: chart_facts, scoped to
@@ -139,7 +139,7 @@ DECLARE
 -- charts (1c826d5a-.../cb73cd3d-...), which carry pre-fix or hardcode-bug rows the canonical
 -- chart's own dispatch never touches. Every other conjunct remains table-wide (measured 0
 -- violations globally, not assumed).
--- Migration 1362 (speed, identical semantics): the 256 conjuncts below used to scan chart_facts once PER REFERENCE (330 references, each pinned
+-- Migration 1363 (speed, identical semantics): the 256 conjuncts below used to scan chart_facts once PER REFERENCE (330 references, each pinned
 -- only by fact_category; every chart_facts index leads with chart_id, so none of them serves a category-only predicate). gs_cf reads the rows
 -- those references can see ONCE (same table, only the 67 categories pinned by the 299 uncorrelated references, only the 13
 -- columns the text names) and each of them now reads that materialized copy. References inside a correlated sublink or a LATERAL item
@@ -3863,15 +3863,15 @@ BEGIN
   SELECT true, integrity_check_sql INTO v_found, v_live
     FROM asset_registry WHERE asset_id = 'ga_structural' FOR UPDATE;
   IF v_found IS NOT TRUE THEN
-    RAISE NOTICE '1362: no ga_structural registry row (empty registry); nothing to do';
+    RAISE NOTICE '1363: no ga_structural registry row (empty registry); nothing to do';
     RETURN;
   END IF;
   v_md5 := md5(v_live);
   IF v_md5 = c_new_md5 THEN
-    RAISE NOTICE '1362: ga_structural integrity_check_sql already carries the single-scan rewrite; nothing to do';
+    RAISE NOTICE '1363: ga_structural integrity_check_sql already carries the single-scan rewrite; nothing to do';
     RETURN;
   ELSIF v_md5 IS DISTINCT FROM c_old_md5 THEN
-    RAISE NOTICE '1362: ga_structural integrity_check_sql is not the text this migration was written against (md5 %); NO-OP, integrity_check_sql left as is', v_md5;
+    RAISE NOTICE '1363: ga_structural integrity_check_sql is not the text this migration was written against (md5 %); NO-OP, integrity_check_sql left as is', v_md5;
     RETURN;
   END IF;
 
@@ -3882,7 +3882,7 @@ BEGIN
 
   SELECT md5(integrity_check_sql) INTO v_md5 FROM asset_registry WHERE asset_id = 'ga_structural';
   IF v_md5 IS DISTINCT FROM c_new_md5 THEN
-    RAISE EXCEPTION '1362: ga_structural integrity_check_sql update did not take (md5 now %, expected %)', v_md5, c_new_md5;
+    RAISE EXCEPTION '1363: ga_structural integrity_check_sql update did not take (md5 now %, expected %)', v_md5, c_new_md5;
   END IF;
 END
-$m1362$;
+$m1363$;

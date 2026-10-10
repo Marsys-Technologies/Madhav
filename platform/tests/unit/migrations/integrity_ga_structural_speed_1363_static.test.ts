@@ -1,10 +1,10 @@
 /**
- * Certification migration 1362 — STATIC contract (ga_structural's integrity_check_sql, rewritten so chart_facts is read ONCE through one
+ * Certification migration 1363 — STATIC contract (ga_structural's integrity_check_sql, rewritten so chart_facts is read ONCE through one
  * leading `WITH gs_cf AS MATERIALIZED (...)` instead of ~330 times, with IDENTICAL semantics: NEW = OLD plus the inserted block plus the
  * rename chart_facts -> gs_cf at 299 uncorrelated references; the other 31 references stay on the base table).
  * The live proof (a disposable PostgreSQL cluster: OLD vs NEW on empty tables, a clean dataset, one injected violation per conjunct, a seeded
  * fuzz, negative controls, an EXPLAIN scan-node count, apply/guard/idempotency/serving effect) and the parse-tree identity proof are
- * python-sidecar/tests/test_migration_1362_ga_structural_integrity_speed.py. This file pins the text so a drive-by edit (a widened category
+ * python-sidecar/tests/test_migration_1363_ga_structural_integrity_speed.py. This file pins the text so a drive-by edit (a widened category
  * list, a renamed correlated reference, a dropped guard) is a deliberate, reviewed change.
  */
 import { describe, it, expect } from 'vitest'
@@ -14,7 +14,7 @@ import path from 'path'
 import { PROTECTED_PUBLIC_SCHEMA_MIGRATIONS } from '../../../scripts/migrate'
 
 const MIG = path.resolve(__dirname, '../../../migrations')
-const FILE = '1362_ga_structural_integrity_single_scan_speed.sql'
+const FILE = '1363_ga_structural_integrity_single_scan_speed.sql'
 const FIXTURE = path.resolve(
   __dirname,
   '../../../python-sidecar/tests/fixtures/ga_structural_1326/live_integrity_check_sql_pre1326_2026-10-07.sql',
@@ -26,7 +26,7 @@ const md5 = (s: string): string => crypto.createHash('md5').update(s, 'utf8').di
 
 const PRE1326_MD5 = 'c56f9e12b2002269eb5f27a7abc42105'
 const OLD_MD5 = 'fcd217e25127653ee28ad41c629946aa'
-const NEW_MD5 = '1e01f51ae5dd3549647c58a74b357dde'
+const NEW_MD5 = 'f49616e257f9a85de4f0cebf09fe2603'
 const OLD_LEN = 208378
 const NEW_LEN = 209602
 
@@ -77,7 +77,7 @@ const K = OLD.indexOf(ANCHOR)
 const BLOCK = NEW.slice(K, NEW.indexOf(ANCHOR))
 const BODY = NEW.slice(0, K) + NEW.slice(K + BLOCK.length)
 
-describe('migration 1362 — static contract', () => {
+describe('migration 1363 — static contract', () => {
   it('pins the live OLD text (pre-1326 fixture md5, then + migration 1326 = md5 and length of the text 1326 left)', () => {
     expect(md5(PRE)).toBe(PRE1326_MD5)
     expect(md5(OLD)).toBe(OLD_MD5)
@@ -88,7 +88,7 @@ describe('migration 1362 — static contract', () => {
     expect(md5(NEW)).toBe(NEW_MD5)
     expect(NEW).toHaveLength(NEW_LEN)
     expect(SQL.split('$nt$')).toHaveLength(3)
-    expect(NEW).not.toContain('$m1362$')
+    expect(NEW).not.toContain('$m1363$')
   })
 
   it('NEW is OLD with the one block inserted at the anchor and the rename applied: dropping the block and renaming back is OLD byte for byte', () => {
@@ -185,6 +185,6 @@ describe('migration 1362 — static contract', () => {
 
   it('is a ROUTINE migration (not protected) with a unique number', () => {
     expect(PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(FILE)).toBe(false)
-    expect(fs.readdirSync(MIG).filter(f => /^1362_/.test(f) && f !== FILE)).toEqual([])
+    expect(fs.readdirSync(MIG).filter(f => /^1363_/.test(f) && f !== FILE)).toEqual([])
   })
 })
