@@ -16,3 +16,4 @@
 1339_k2_1b_promise_graph_columns.sql
 1341_k1_2_avadhi_candidate_dossiers.sql
 1342_k2_2_f1_relationships.sql
+1350_kala_jury_candidate.sql
