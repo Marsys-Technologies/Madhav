@@ -7,9 +7,11 @@ ga_sensitive names it and writes a hard 0.0 itself: fixed separately in PR-H1). 
 data_plane_l1_owner (NOT amjis_app), so this is NOT a routine migration: it is an owner-path change (D6 in-process pattern, as
 exec/reader_grants/reader_grants.py), and SQL under platform/migrations must not carry it.
 
-WHAT. One statement, as the table's owner, under a lock timeout:
+WHAT. One statement, as the table's owner, in a transaction whose FIRST statement is a lock timeout (so the transient GRANT and the
+SET LOCAL ROLE that follow are bounded too):
 
     SET LOCAL lock_timeout = '5s';
+    (GRANT owner TO administrator, only if missing; SET LOCAL ROLE owner)
     ALTER TABLE public.chart_facts ALTER COLUMN cross_ayanamsha_divergence_arcsec DROP DEFAULT;
 
 Metadata only: no table rewrite, no backfill (each writer's next rebuild rewrites its own rows honestly; existing 0.0 values stay until then).
@@ -50,12 +52,11 @@ OLD_DEFAULT = "0.0"
 COLUMN_TYPE = "double precision"
 PROJECT = "madhav-astrology"
 
+LOCK_TIMEOUT_SQL = "SET LOCAL lock_timeout = '5s'"            # the FIRST statement of the transaction: it also bounds the GRANT and SET LOCAL ROLE
 DROP_STATEMENTS = [
-    "SET LOCAL lock_timeout = '5s'",
     "ALTER TABLE public.%s ALTER COLUMN %s DROP DEFAULT" % (TABLE, COLUMN),
 ]
 RESTORE_STATEMENTS = [
-    "SET LOCAL lock_timeout = '5s'",
     "ALTER TABLE public.%s ALTER COLUMN %s SET DEFAULT %s" % (TABLE, COLUMN, OLD_DEFAULT),
 ]
 
@@ -107,6 +108,8 @@ class Refused(Exception):
 def plan_text(rollback: bool = False) -> str:
     stmts = RESTORE_STATEMENTS if rollback else DROP_STATEMENTS
     lines = ["-- direction: %s" % ("ROLLBACK (restore the 0.0 default)" if rollback else "DROP DEFAULT"),
+             "-- first statement of the transaction, before the transient GRANT and SET LOCAL ROLE (so they too wait at most 5s for a lock):",
+             LOCK_TIMEOUT_SQL,
              "-- owner %s: transient membership for the administrator only if missing, removed before commit" % OWNER,
              "-- every statement below runs after SET LOCAL ROLE %s" % OWNER]
     return "\n".join(lines + stmts)
@@ -189,6 +192,7 @@ def run(conn, mode: str, expect_plan: str | None = None, rollback: bool = False,
     out("plan sha256: %s" % plan_hash(rollback))
     cur = conn.cursor()
     try:
+        cur.execute(LOCK_TIMEOUT_SQL)                                  # first, so the GRANT and SET LOCAL ROLE below are bounded too
         cur.execute("SET LOCAL search_path = pg_catalog, pg_temp")
         state = column_state(cur)
         verdict = preflight(state, rollback)

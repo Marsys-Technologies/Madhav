@@ -69,8 +69,8 @@ def db(disposable_pg):
     table()
     table.reset = reset
 
-    def connect(user="n349_admin"):
-        return psycopg.connect("postgresql://%s@%s:%d/%s" % (user, cl.host, cl.port, name))
+    def connect(user="n349_admin", **kw):
+        return psycopg.connect("postgresql://%s@%s:%d/%s" % (user, cl.host, cl.port, name), **kw)
 
     return cl, name, connect, table
 
@@ -88,6 +88,10 @@ def _default(cl, name):
 
 def _member(cl, name):
     return cl.psql("SELECT pg_has_role('n349_admin','data_plane_l1_owner','MEMBER')", db=name)
+
+
+def _server_version(cl, name):
+    return int(cl.psql("SHOW server_version_num", db=name))
 
 
 def _snapshot(cl, name):
@@ -331,15 +335,71 @@ def test_a_changed_acl_is_refused_and_rolled_back(db, monkeypatch):
     assert _default(cl, name) == "0.0"
 
 
-def test_the_statement_carries_a_lock_timeout_that_really_fires(db):
-    assert dd.DROP_STATEMENTS[0] == "SET LOCAL lock_timeout = '5s'" and dd.RESTORE_STATEMENTS[0] == "SET LOCAL lock_timeout = '5s'"
+GUARDED = "-c statement_timeout=30000"        # a missing lock_timeout must FAIL (QueryCanceled), never hang the suite
+
+
+def test_the_lock_timeout_is_the_first_statement_and_precedes_the_grant_and_the_role_switch(db):
+    assert dd.LOCK_TIMEOUT_SQL == "SET LOCAL lock_timeout = '5s'"
+    assert dd.DROP_STATEMENTS == ["ALTER TABLE public.%s ALTER COLUMN %s DROP DEFAULT" % (dd.TABLE, COL)]
+    for rollback in (False, True):
+        lines = dd.plan_text(rollback).splitlines()
+        stmts = [l for l in lines if not l.startswith("--")]
+        assert stmts[0] == dd.LOCK_TIMEOUT_SQL and len(stmts) == 2 and stmts[1].startswith("ALTER TABLE")      # the plan text shows it first
+        assert lines.index(dd.LOCK_TIMEOUT_SQL) < min(i for i, l in enumerate(lines) if "transient membership" in l)
+    cl, name, connect, _ = db
+
+    class Recorder:
+        def __init__(self, conn):
+            self._conn, self.sql = conn, []
+
+        def cursor(self):
+            cur, rec = self._conn.cursor(), self
+
+            class Cursor:
+                def execute(self, query, *args, **kw):
+                    rec.sql.append(str(query))
+                    return cur.execute(query, *args, **kw)
+
+                def __getattr__(self, attr):
+                    return getattr(cur, attr)
+            return Cursor()
+
+        def __getattr__(self, attr):
+            return getattr(self._conn, attr)
+
+    with connect() as conn:
+        rec = Recorder(conn)
+        dd.run(rec, "dry-run", out=lambda _: None)
+    first = lambda prefix: next(i for i, q in enumerate(rec.sql) if q.startswith(prefix))             # noqa: E731
+    assert rec.sql[0] == dd.LOCK_TIMEOUT_SQL                                                            # the very first statement of the transaction
+    assert first(dd.LOCK_TIMEOUT_SQL) < first("SET LOCAL ROLE") < first("ALTER TABLE")
+    if _server_version(cl, name) < 160000:                                                              # the transient-membership model (production is 15.18)
+        assert first(dd.LOCK_TIMEOUT_SQL) < first("GRANT") < first("SET LOCAL ROLE")
+
+
+def test_the_lock_timeout_really_fires_on_the_alter(db):
     cl, name, connect, _ = db
     with connect(cl.user) as holder:                                            # an open reader (the cluster user) holds ACCESS SHARE on the table
         holder.execute("SELECT 1 FROM public.chart_facts LIMIT 1")
         with pytest.raises(psycopg.errors.LockNotAvailable):
-            _run(connect, "apply", dd.plan_hash())
+            with connect(options=GUARDED) as conn:
+                dd.run(conn, "apply", dd.plan_hash(), out=lambda _: None)
         holder.rollback()
     assert _default(cl, name) == "0.0"
+
+
+def test_the_lock_timeout_also_bounds_the_transient_grant(db):
+    """With the timeout moved after the GRANT this test is QueryCanceled (the 30 s guard), not LockNotAvailable: the GRANT would wait unbounded."""
+    cl, name, connect, _ = db
+    with connect(cl.user) as holder:                                            # SHARE on pg_auth_members: readers pass, the GRANT (ROW EXCLUSIVE) waits
+        holder.execute("LOCK TABLE pg_catalog.pg_auth_members IN SHARE MODE")
+        try:
+            with pytest.raises(psycopg.errors.LockNotAvailable):
+                with connect(options=GUARDED) as conn:
+                    dd.run(conn, "apply", dd.plan_hash(), out=lambda _: None)
+        finally:
+            holder.rollback()
+    assert _default(cl, name) == "0.0" and _member(cl, name) == "f"
 
 
 # ───────────────────────── the inverse ─────────────────────────
