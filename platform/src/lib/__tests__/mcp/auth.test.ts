@@ -128,7 +128,7 @@ describe('validateMcpKey', () => {
     mockQuery
       .mockResolvedValueOnce({
         // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28)
-        rows: [{ key_id, key_hash, user_uid: 'uid_abc' }],
+        rows: [{ key_id, key_hash, user_uid: 'uid_abc', owner_status: 'active', owner_role: 'guest' }],
         rowCount: 1, command: '', oid: 0, fields: [],
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 1, command: '', oid: 0, fields: [] }) // last_used_at update
