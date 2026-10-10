@@ -113,9 +113,10 @@ class TestHappyPath:
         assert isinstance(r["elapsed_s"], float) and r["elapsed_s"] > 0
         assert set(r) == {"ok", "outputs", "loaded_repo_files", "elapsed_s"}
 
-    def test_empty_inputs_list_is_ok_and_still_reports_the_loaded_closure(self, tmp_path):
-        r = run(make_repo(tmp_path), inputs=[])
-        assert r["ok"] is True and r["outputs"] == [] and r["loaded_repo_files"] == sorted(CLOSURE)
+    def test_parser_returning_an_empty_list_for_an_input_is_still_ok(self, tmp_path):
+        """Only the zero-INPUT case fails (no_inputs); a parser may legitimately yield nothing for an input."""
+        r = run(make_repo(tmp_path, parser_with("return []")), inputs=[{"n": 1}, {"n": 2}])
+        assert r["ok"] is True and r["outputs"] == [[], []]
 
     def test_two_runs_are_byte_identical(self, tmp_path):
         src = parser_with(
@@ -447,6 +448,28 @@ class TestTimeout:
         assert r["ok"] is False and time.monotonic() - t0 < 10
 
 
+class TestNoInputs:
+    """SS N-431 R2 finding (3): zero inputs used to return ok True, a false-PASS route (nothing compared, nothing proved)."""
+
+    def test_empty_inputs_is_a_failure_with_the_fixed_code_at_stage_run(self, tmp_path):
+        r = run(make_repo(tmp_path), inputs=[])
+        assert r["ok"] is False and r["stage"] == "run" and r["error"].startswith("no_inputs")
+        assert "outputs" not in r and "loaded_repo_files" not in r
+
+    def test_nothing_is_spawned_for_zero_inputs(self, tmp_path, monkeypatch):
+        spy = PopenSpy(monkeypatch)
+        assert run(make_repo(tmp_path), inputs=[])["error"].startswith("no_inputs")
+        assert spy.started == []
+
+    def test_a_pin_problem_is_still_reported_first(self, tmp_path):
+        root = make_repo(tmp_path)
+        r = run(root, inputs=[], pinned=pins(root, CLOSURE)[:1])  # parser.py not pinned
+        assert r["stage"] == "pin" and r["error"].startswith("pin_missing")
+
+    def test_no_inputs_is_in_the_error_vocabulary(self):
+        assert "no_inputs" in ps.ERROR_CODES
+
+
 class TestFailureVocabulary:
     def test_parser_raising_on_input_3_reports_index_and_type_only(self, tmp_path):
         src = parser_with("if item['n'] == 3:\n    raise ValueError('secret /etc/passwd token=abc')\nreturn item")
@@ -514,7 +537,7 @@ class TestFailureVocabulary:
     def test_every_error_code_in_the_contract_exists(self):
         assert set(ps.ERROR_CODES) == {
             "pin_missing", "pin_mismatch", "unpinned_import", "spawn_failed", "timeout", "nonzero_exit",
-            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt",
+            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs",
         }
 
 

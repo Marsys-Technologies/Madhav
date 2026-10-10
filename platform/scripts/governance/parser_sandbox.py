@@ -28,7 +28,9 @@ dir on sys.path) plus -S (no site-packages: the stdlib is still importable; a pa
 environment is built from scratch by this module, so `-E` would add nothing (no PYTHON* variable but ours reaches the child).
 
 Failure vocabulary (fixed; the detail never echoes a host path or a secret, only repo-relative paths the caller supplied and exception TYPE names):
-  pin_missing, pin_mismatch, unpinned_import, spawn_failed, timeout, nonzero_exit, bad_output, output_too_large, parser_raised, network_attempt, write_attempt, spawn_attempt.
+  pin_missing, pin_mismatch, unpinned_import, spawn_failed, timeout, nonzero_exit, bad_output, output_too_large, parser_raised, network_attempt, write_attempt, spawn_attempt, no_inputs.
+  no_inputs (stage "run"): `inputs` is an empty list. A run that compared nothing proves nothing, so it is never ok (it would be a false PASS); nothing is spawned. This is the ONLY
+  empty case that fails: a parser that legitimately returns an empty list FOR AN INPUT is fine.
   parser_raised detail is "index=<i> type=<ExceptionType>"; index -1 means the parser module failed to import / the function was missing (before any input ran).
   bad_output covers a malformed result envelope and a result that is not canonical-JSON serialisable ("index=<i>").
   unpinned_import ALSO carries "unpinned_files": [sorted repo-relative paths, at most 50] (the only extra key any result has).
@@ -84,6 +86,7 @@ ERROR_CODES = (
     "network_attempt",
     "write_attempt",
     "spawn_attempt",
+    "no_inputs",
 )
 _GUARD_CODES = ("network_attempt", "write_attempt", "spawn_attempt")
 STAGES = ("pin", "spawn", "run", "output")
@@ -251,6 +254,9 @@ def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inpu
     bad = _check_pins(root, pins)  # NOTHING has been executed yet
     if bad is not None:
         return _fail(bad[0], bad[1], "pin")
+
+    if not inputs:
+        return _fail("no_inputs", "inputs is empty; a run over nothing proves nothing", "run")
 
     module_name = _module_name_for(file_rel, mr)
     file_abs = os.path.join(root, file_rel)
