@@ -175,6 +175,7 @@ REFUSALS = [
     ("parser extra arg kind unknown", lambda d: d["parser"]["extra_args"][0].update(kind="sql"), "kind must be one of"),
     ("parser extra arg twice", lambda d: d["parser"]["extra_args"].append(dict(d["parser"]["extra_args"][0])), "listed twice"),
     ("parser extra arg extra field", lambda d: d["parser"]["extra_args"][0].update(x=1), "exactly the fields"),
+    ("parser extra arg named like the reserved chunk key", lambda d: d["parser"]["extra_args"][0].update(name="chunk"), "reserved"),
     ("derived duplicate policy unknown", lambda d: d["derived"].update(duplicate_policy="last_wins"), "duplicate_policy"),
     ("derived keep_when key not a dropped key", lambda d: d["derived"].update(drop_keys=[]), "listed in derived.drop_keys"),
     ("derived keep_when malformed", lambda d: d["derived"].update(keep_when={"key": "_quality"}), "keep_when"),
@@ -229,8 +230,8 @@ def test_sample_bounds_are_inclusive(fx):
 
 def test_the_form_is_exclusive_with_every_other_account_of_the_rows(fx):
     root, cd = fx
-    assert "prose_fields null" in ac.corpus_derived_problem(_entry(cd, prose_fields=["x"]))
-    assert ac.corpus_derived_problem(_entry(cd, prose_fields=[])) is not None
+    assert ac.corpus_derived_problem(_entry(cd, prose_fields=["x"])) is None           # SS N-457: a declared prose column BESIDE the form is allowed (the coverage rules are in test_n431_corpus_derived_prose_beside.py)
+    assert "prose_fields null" in ac.corpus_derived_problem(_entry(cd, prose_fields=[]))          # [] stays refused: it is the prose_none account
     for k in ("prose_none", "prose_coupling", "curated_corpus", "writer_constant_phrases", "no_table"):
         bad = ac.corpus_derived_problem(_entry(cd, **{k: {"x": 1}}))
         assert bad and k in bad and bad.startswith("corpus_derived")
@@ -344,6 +345,52 @@ def test_a_keep_when_constant_must_be_a_single_numeric_module_literal(tmp_path):
     assert "keep_when constant LIVE" in problem(PARSER_SRC.replace("LIVE = 0.6", "LIVE = True"))
     assert "keep_when constant LIVE" in problem(PARSER_SRC.replace("LIVE = 0.6", "LIVE = 0.6\nLIVE = 0.7"))
     assert "keep_when constant LIVE" in problem(PARSER_SRC.replace("LIVE = 0.6", "LIVE = compute()"))
+
+
+ADAPTER_SRC = '''from __future__ import annotations
+
+from pkg.helper import h, LIVE
+
+
+def run_chunk(item):
+    return [{"rule_id": h(item["chunk"]["id"]), "_quality": 0.7}] if 0.7 >= LIVE else []
+'''
+
+
+def _adapter_repo(tmp_path, helper_extra="LIVE = 0.6\n", adapter_src=ADAPTER_SRC):
+    """A fixture repo whose PARSER FILE is a thin adapter: the keep_when constant lives in the module it imports (the layout of the real bg_rules adapter over l0_rules.py)."""
+    root = _fixture_repo(tmp_path)
+    (root / "mod" / "adapter.py").write_text(adapter_src, encoding="utf-8")
+    (root / "mod" / "pkg" / "helper.py").write_text("def h(x):\n    return str(x)\n\n\n" + helper_extra, encoding="utf-8")
+    cd = _cd(root, files=["mod/adapter.py", "mod/pkg/__init__.py", "mod/pkg/helper.py"])
+    cd["parser"].update(file="mod/adapter.py", function="run_chunk")
+    return root, cd
+
+
+def test_a_keep_when_constant_is_found_in_another_pinned_file_when_the_parser_file_is_an_adapter(tmp_path):
+    root, cd = _adapter_repo(tmp_path)
+    assert ac.corpus_derived_pin_problem(_entry(cd), root) is None
+    for i, extra in enumerate(("LIVE: float = 0.6\n", "LIVE = 0.6\nOTHER = 1\n")):
+        root, cd = _adapter_repo(tmp_path / f"v{i}", helper_extra=extra)
+        assert ac.corpus_derived_pin_problem(_entry(cd), root) is None, extra
+    for i, extra in enumerate(("", "LIVE = 'high'\n", "LIVE = True\n", "LIVE = 0.6\nLIVE = 0.7\n", "LIVE = compute()\n")):          # not defined | not numeric | a bool | twice | not a literal
+        root, cd = _adapter_repo(tmp_path / f"w{i}", helper_extra=extra)
+        bad = ac.corpus_derived_pin_problem(_entry(cd), root)
+        assert bad and "keep_when constant LIVE" in bad, (extra, bad)
+
+
+def test_a_keep_when_constant_in_two_pinned_files_is_ambiguous_and_the_parser_file_decides_when_it_assigns_the_name(tmp_path):
+    root, cd = _adapter_repo(tmp_path)
+    (root / "mod" / "pkg" / "__init__.py").write_text("LIVE = 0.9\n", encoding="utf-8")
+    cd["parser"]["pinned_files"] = ac.pin_files(root, ["mod/adapter.py", "mod/pkg/__init__.py", "mod/pkg/helper.py"])
+    bad = ac.corpus_derived_pin_problem(_entry(cd), root)
+    assert bad and "several pinned files" in bad and "ambiguous" in bad
+    (root / "mod" / "adapter.py").write_text(ADAPTER_SRC + "\nLIVE = 0.1\n", encoding="utf-8")                  # the parser file itself assigns it: it decides, once
+    cd["parser"]["pinned_files"] = ac.pin_files(root, ["mod/adapter.py", "mod/pkg/__init__.py", "mod/pkg/helper.py"])
+    assert ac.corpus_derived_pin_problem(_entry(cd), root) is None
+    (root / "mod" / "adapter.py").write_text(ADAPTER_SRC + "\nLIVE = compute()\n", encoding="utf-8")            # a bad assignment in the parser file is not rescued by a good one elsewhere
+    cd["parser"]["pinned_files"] = ac.pin_files(root, ["mod/adapter.py", "mod/pkg/__init__.py", "mod/pkg/helper.py"])
+    assert "keep_when constant LIVE" in ac.corpus_derived_pin_problem(_entry(cd), root)
 
 
 def test_an_imported_repo_local_file_that_is_not_pinned_refuses_naming_it(tmp_path):

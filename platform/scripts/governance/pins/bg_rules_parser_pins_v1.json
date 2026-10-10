@@ -1,0 +1,29 @@
+{
+  "pinned_files": [
+    {
+      "path": "platform/python-sidecar/brahmagyan/__init__.py",
+      "sha256": "5dd381b0f5142b48dcf4b2d348692be742d2ea3cece6490dca5d57f35a7cb318"
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
+      "sha256": "ae00b3153813283ee5d5fd224dce483c86855b2da63abf45e3b56908e82a02c0"
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/l0_rules.py",
+      "sha256": "4c8d0f902e2750befbc8da142663c1180989aa4826d6183757a0b76347990e53"
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/l0_semantic_release.py",
+      "sha256": "22143fe9cabbafef816a6845a6b06d79d3045440ec62642564b8fef084ed827f"
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json",
+      "sha256": "e65df004ed9b33c1551c4b6807f2b1cdb832d8dd6277b794a15810d61283db5c"
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/n431_rules_adapter.py",
+      "sha256": "b2d13df96efd501c7fb74c94d8fcac320b5c3640553887c213fe071267fae9b9"
+    }
+  ],
+  "runner_sha256": "7d1941788374496c5e86bef605a5caf830febf554f9a111e0c6ccb8f96e9d125"
+}

@@ -228,6 +228,14 @@ def test_every_registered_cause_has_an_emitting_site_in_the_source():
     assert _unemitted(ASSET_CENSUS_SRC, ac.NA_CAUSES) == set()
 
 
+def test_the_corpus_derived_cause_has_an_emitting_site_in_the_source():
+    """SS N-431: `corpus-derived` is not in NA_CAUSES on this branch (it is merged at REGISTRY_REVISION 28), but its emitting site must already be a
+    LITERAL `_na(..., "corpus-derived")` call, or the scan above fails the moment the cause is merged (a constant argument is invisible to it)."""
+    merged = {c: tuple(ac.NA_CAUSES.get(c, ())) + ks for c, ks in ac.CORPUS_DERIVED_NA_CAUSES.items()}
+    assert _unemitted(ASSET_CENSUS_SRC, merged) == set()
+    assert "corpus-derived" in _scanned_cause_slugs(ASSET_CENSUS_SRC)
+
+
 def test_the_scanner_finds_an_unused_registered_cause():
     """Mutants of the scanner's input: each must be reported (a scan that cannot fail proves nothing)."""
     assert _unemitted(ASSET_CENSUS_SRC, {**ac.NA_CAUSES, "Build.history": ac.NA_CAUSES["Build.history"] + ("ghost",)}) \
