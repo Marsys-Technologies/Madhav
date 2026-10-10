@@ -1053,7 +1053,13 @@ def _p21_extract(m: re.Match, full_text: str) -> dict | None:
         ant[0]["house"] = house
     if sign_num:
         ant[0]["sign"] = sign_num
-    loc_desc = f"house {house}" if house else (f"sign {m.group(3)}" if sign_num else "house or sign unresolved")
+    if house:
+        loc_desc = f"house {house}"
+    elif sign_num:
+        loc_desc = f"sign {m.group(3)}"
+    else:
+        # Unresolved location: say so explicitly, never a word that reads like a value.
+        loc_desc = "house or sign unresolved"
     return {
         "antecedent": ant,
         "predicate": {"type": "when_conditional", "description": f"when {_graha_label(planet)} in {loc_desc}"},
