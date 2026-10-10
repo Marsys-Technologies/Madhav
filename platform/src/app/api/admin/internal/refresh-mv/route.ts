@@ -14,6 +14,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { safeEqual } from '@/lib/security/safe_equal'
 
 const ALLOWED_VIEWS = new Set([
   'mv_tool_metrics_24h',
@@ -28,11 +29,12 @@ function validateAuth(request: Request): boolean {
   const cronSecret = process.env['MARSYS_CRON_SECRET']
   if (!cronSecret) return false
 
+  // SS N-373 item 5: timing-safe compare; an unset/empty secret already returned above.
   const customHeader = request.headers.get('X-Marsys-Cron-Secret')
-  if (customHeader === cronSecret) return true
+  if (safeEqual(customHeader, cronSecret)) return true
 
-  const authHeader = request.headers.get('Authorization') ?? ''
-  if (authHeader === `Bearer ${cronSecret}`) return true
+  const authHeader = request.headers.get('Authorization')
+  if (safeEqual(authHeader, `Bearer ${cronSecret}`)) return true
 
   return false
 }
