@@ -271,6 +271,7 @@ this is RELEASED or expired.*
 
 
 | 1362 | KĀLA-YANTRA / k2 / K-CERT-2 | `platform/migrations/1362_gochara_citation_resolution_dispatchable.sql` | CLAIMED — 2026-10-10 cycle475, conductor M20261010T092402-82ee. Guard next1350; all174 open-PR file lists inspected, claims through1361 (1360 grid retirement retained). Data-only citation has_writer/count_sql flip, branchwork only; merges in Suvarna certification window. No production application by k2. |
+| 1364 | SUVARṆA (Exec) / certification (one canonical nakshatra spelling) | `platform/migrations/1364_bo_nakshatra_semantic_integrity_accept_canonical_spelling.sql` | **CLAIMED — 2026-10-10 (SS N-471).** Main max 1340 on disk; 1357/1358/1360/1361 held, 1362 (#3426), 1363 (#3429) claimed; open-PR sweep found no 1364. Data-only md5-guarded UPDATE of asset_registry.integrity_check_sql for bo_nakshatra_semantic (migration 669's text) so the vocabulary conjunct accepts BOTH the canonical lexicon spellings (Mrigasira, Moola, Dhanishtha) and the legacy L1 ones during the merge-to-rebuild window; routine path, no DDL. HELD (no merge) in the certification window with the nakshatra-canonical component PR. |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
