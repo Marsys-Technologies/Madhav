@@ -1,0 +1,22 @@
+{
+ "_provenance": "read-only SELECT source_canonical_id, count(*) FROM brahma_remedy_corpus GROUP BY 1, production, 2026-10-03 (public reference data, no people-entered table)",
+ "counts": {
+  "BPHS": 193,
+  "Phaladeepika": 11,
+  "Tajaka": 3,
+  "bphs": 7,
+  "bphs_jaimini": 1,
+  "brihat_jataka": 3,
+  "brihat_samhita": 17,
+  "classical_tradition": 80,
+  "hora_sara": 6,
+  "jataka_parijata": 1,
+  "muhurta_chintamani": 5,
+  "nadi_navamsa_patel": 1,
+  "phaladeepika": 4,
+  "saravali": 1,
+  "sarvartha_chintamani": 1,
+  "uttara_kalamrita": 5,
+  "yavana_jataka": 2
+ }
+}
