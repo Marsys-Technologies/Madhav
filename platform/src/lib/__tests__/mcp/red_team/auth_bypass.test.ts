@@ -77,7 +77,7 @@ describe('RT-01 — Auth bypass: invalid key', () => {
     mockQuery
       .mockResolvedValueOnce({
         // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28)
-        rows: [{ key_id, key_hash, user_uid: 'uid_native' }],
+        rows: [{ key_id, key_hash, user_uid: 'uid_native', owner_status: 'active', owner_role: 'guest' }],
         rowCount: 1, command: '', oid: 0, fields: [],
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 1, command: '', oid: 0, fields: [] }) // last_used_at
@@ -131,7 +131,7 @@ describe('RT-02 — Revoked key: SQL WHERE clause enforces revoked_at IS NULL', 
     // Simulate non-revoked row returned by query (revoked_at IS NULL matches)
     mockQuery
       .mockResolvedValueOnce({
-        rows: [{ key_id, key_hash, user_uid: 'uid_active', audience_tier: 'client' }],
+        rows: [{ key_id, key_hash, user_uid: 'uid_active', audience_tier: 'client', owner_status: 'active', owner_role: 'guest' }],
         rowCount: 1, command: '', oid: 0, fields: [],
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 1, command: '', oid: 0, fields: [] })
