@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "3a9d61b90d6d56e90bd35e0d528e8b46df776a03d00cae97a8278840c7cb2508",
+  "content_sha256": "46238bc9bee48693340c05f5d751d6560027dd37e57594f9f330d96a84b43185",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21052,7 +21052,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-09T22:22:48.000Z",
+  "generated_at": "2026-10-10T00:18:30.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -22533,10 +22533,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "b54bc8557b9df079f8ad3e2277632a81536f6ecb375beaa4306a6336b7a2983e"
+        "sha256": "45e0db91d5d2509b2b3e77bd9e7dc753964cac24a02fff304a99089cd1ce7af1"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "976ec968a0bb52baf418aa35c16fecbc64f8ce20"
+  "source_revision": "37fbccffc4c8b3f1ec6cb45c6919d0173e27aeac"
 }
