@@ -2770,7 +2770,7 @@ _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
 DECL_FIDELITY_KEYS = ("fidelity_tests",)
 FIDELITY_TEST_FIELDS = ("test", "covers")
-MAX_FIDELITY_TESTS = 16
+MAX_FIDELITY_TESTS = 40        # 16 -> 40 (rev28 walk): bg_rules declares the 34 scan-verified golden tests of #3433 (one {test, covers} entry per test; the schema lists one test per entry)
 _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)?")
 
 
