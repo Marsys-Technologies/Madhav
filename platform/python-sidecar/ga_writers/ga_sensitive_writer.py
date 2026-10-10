@@ -102,13 +102,13 @@ _SIGN_LORDS: dict[str, str] = {
     "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
 }
 
-NAKSHATRAS = [
-    "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
-    "Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni",
-    "Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha",
-    "Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha",
-    "Purva Bhadrapada","Uttara Bhadrapada","Revati",
-]
+# The 27 names are the L0 lexicon's (`bg_nakshatra` name_en), derived and never re-spelled here.
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402  (late import: keeps pinned line numbers stable)
+NAKSHATRAS = list(CANONICAL_NAKSHATRA_NAMES)
+# (derived from the L0 lexicon so the table cannot drift; see brahmagyan/nakshatra_vocabulary.py)
+# Canonical spellings differ from the old L1 literals for no. 5 (Mrigasira), 19 (Moola), 23 (Dhanishtha).
+# The stored fact value changes spelling at the next rebuild; readers fold both (canonical_nakshatra).
+# One source for the 27 names: CLAUDE.md §N.5 / §N.7 item 3 (no wrapper-local shadow of a canonical value).
 
 # Populated from L0 before build; _load_l0_refs() overwrites from reference_nakshatras.
 # Fallback = correct Parashari vimshottari cycle so unit tests without a DB still work.
