@@ -1,0 +1,31 @@
+{
+  "contract_version": "k6-123:read-models:v1",
+  "authority": "KYD-140; ALGO 3.5/3.6/3.7; NR-KALA-R13(c); KYD-138",
+  "acceptance_scope": "fixture_only; source mappings, method admission, live qualification and K9-4b publication remain due",
+  "entry": "ctx.config.kala_read_model_fixture; absent means unchanged legacy writer dispatch",
+  "candidate_binding": "ctx.build_id + chart_id; kala_layer_candidate state=building and conventions.fixture=true; refuse legacy, every published/retained head, and non-fixture input",
+  "pins": "explicit aware as_of; upstream_refs names judge/F1/F2/jury/negative_space/LEL plus source locator, build_id, scenario_id, ayanamsha_id and qualification; one explicitly consistent scenario/convention per projection; primary_ayanamsha=lahiri_chitrapaksha is the serve-time policy, not a storage filter; all stored scenarios remain distinct",
+  "input": {
+    "mechanisms": "unique mechanism_id; participant_ids, constituent_lords and event_class; assertion_id and provenance; no inferred participant or signal identity",
+    "windows": "unique assertion_id; event_class, start/end aware half-open instants; participant_ids, contact_ids, record_ids, operator_role=scored|testimony, judge period_anchor (system,level,lord,period_id or explicit no_prerequisite), three separate valence fields, coverage, source locator and provenance; PD anchors must be testimony",
+    "contacts": "unique contact_id; occurrence_ordinal, start/end, participant_ids, coverage and source; shared identities remain shared; no fixed ladder length",
+    "periods": "unique period_id and source assertion_id; system, level, own lord, parent_id, start/end, scenario_id and ayanamsha_id, sigma_boundary, dossier, mechanism_conditions keyed by declared mechanism_id; each condition carries participant_conditions, commencement_condition, effective_state and coverage; no convergence dependency",
+    "negative_space": "one evaluated negative-space assertion per judge assertion; target_assertion_id, assertion_id, effective_state, coverage, source and provenance; missing row yields unavailable with negative_space_mapping_missing, never an active default",
+    "jury": "unique assertion_id; event_class and interval, D(W) nullable, witness_signature, segment_support, coverage and provenance; overlaps retained individually without scores or probability conversion",
+    "contexts": "unique assertion_id; event_class, start/end, kind=coverage_gap|clock_only|uncomputed_method; coverage, reason, source and provenance; visible without judge windows",
+    "forecaster": "optional typed assertions: event_class, interval, alignment_surprise with null_reason, coverage, source and provenance; explicit forecaster upstream pin required when present; preserve signed/zero values separately, never convert to composite or probability",
+    "lel": "event_id, period_id, role, used_for_selection, source and provenance; role=explains and used_for_selection=false only; selection/scoring/outcome use is excluded"
+  },
+  "outputs": {
+    "kala_activation_candidate": "chart/generation/mechanism/row_kind/source_id; interval keeps original judge start/end and period_anchor; scored=false for PD/testimony; constituent-lord concurrency with explicit F2 period IDs is annotation only; separate ordered contact ladder and contextual unsearched rows; references retain all joined assertion/contact/period identities",
+    "kala_darshana_candidate": "chart/generation/row_kind/source_id; judge rows with separate valence, occurrence evidence, jury D(W)/witness/segments, negative-space effective state, coverage, provenance and stored fixture qualification tier; contextual rows for gaps/clock/uncomputed methods; no numeric composite/quality/confidence column",
+    "kala_jivana_parva_candidate": "chart/generation/period_id; own lord, exact F2 boundaries/sigma/scenario/dossier; same-candidate judge/jury/negative-space assertions, role-gated LEL, mechanism event-class themes and condition-aware previous sibling chapter diff; no quality label or convergence count"
+  },
+  "storage": "three additive protected table migrations plus one additive detector correction (creation files already applied in the lane rehearsal and kept immutable); private candidate tables, foreign key to kala_layer_candidate, deterministic natural primary keys; scoped replace in caller transaction; no legacy table mutation; count_sql depth-0 chart_id=$1 selects that chart's latest build-bound candidate generation or legacy fallback; integrity_check_sql scopes the latest build and remains valid after completion, retaining the entire legacy detector in the ELSE branch",
+  "live_bindings": {
+    "state": "information_unavailable",
+    "reasons": ["judge_source_mapping_unadmitted", "f1_source_mapping_unadmitted", "f2_source_mapping_unadmitted", "jury_source_mapping_unadmitted", "negative_space_source_mapping_unadmitted", "lel_role_mapping_unadmitted"],
+    "admission_owner": "conductor with original k3; exact fields, identities, states, coverage and served locators required before live integration"
+  },
+  "implementation_plan": ["pin contract and fail-on-base consumer oracles", "validate fixture pins and source envelopes before mutation", "project typed fixture inputs through SQL into three private candidate partitions", "guard-numbered additive migrations and own real SQL tests", "regenerate writer digests/census, item precheck, push stacked PR and hand to review"]
+}
