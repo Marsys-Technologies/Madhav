@@ -908,8 +908,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           judgment_flags.push(judgmentFlag(
             'moon_frame_ayanamsha_sensitive',
             `the chandra (from-Moon) frame used for this bhāva's Sudarshana leg is itself ` +
-            `ayanamsha-sensitive: the Moon's sign agrees on only ${sensitivity.variation.ayanamsha_agreement} ` +
-            `across the 5 real ayanamshas (divergent: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
+            `ayanamsha-sensitive. Cross-check, not the reading: the Moon's sign agrees with the primary ` +
+            `(${sensitivity.variation.anchor_ayanamsha ?? 'modal reading'}) under only ${sensitivity.variation.ayanamsha_agreement} ` +
+            `of the 5 real ayanamshas (dissenting: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
             'A disclosure of frame instability, not a ruling on which ayanamsha is correct.',
             'info',
           ))
@@ -1608,7 +1609,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         judgment_flags.push(judgmentFlag(
           'kp_cusp_chain_unavailable',
           `no KP cuspal facts resolved for cusp(s) ${kpCusps.join('/')} ` +
-          '— the KP cuspal asset may not be built for this chart/ayanamsha.',
+          `— the KP cuspal asset may not be built for this chart in the ${kp.frame_label}.`,
         ))
       }
 
@@ -1724,7 +1725,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             : 'ganita_special_lagnas_get',
         },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
-        { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
+        { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `${kp.frame_label}: KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         {
           unit: 'yogi_avayogi',
           state: spec.signal_domain === 'wealth'
@@ -1919,6 +1920,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 candidate_statuses: notablyAbsent.candidate_statuses,
                 indeterminate: notablyAbsent.indeterminate,
                 ayanamsha_id,
+                // Lahiri-primary PR-3: these booleans compare the OTHER served ayanamshas with the one served.
+                ayanamsha_cross_check_label: notablyAbsent.ayanamsha_cross_check_label,
                 ayanamsha_sensitive: notablyAbsent.ayanamsha_sensitive,
                 ayanamsha_sensitive_by_candidate: notablyAbsent.ayanamsha_sensitive_by_candidate,
                 ayanamsha_sensitive_candidates: notablyAbsent.ayanamsha_sensitive_candidates,
@@ -1934,7 +1937,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             timing_hooks: timing,
             // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
             sensitive_degree_firings: sensitive.firings,
-            kp_cusp_chain: { cusps: kp.cusps, note: kp.note },
+            kp_cusp_chain: { frame_label: kp.frame_label, ayanamsha_id: kp.ayanamsha_id, cusps: kp.cusps, note: kp.note },
             gochara_sweep: {
               domain: spec.signal_domain,
               domain_covered: gochara.domain_covered,
