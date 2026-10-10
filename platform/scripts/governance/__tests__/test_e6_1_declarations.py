@@ -1758,11 +1758,7 @@ CITATION_DECISIONS = json.loads(r"""
     "chum = f\"{subject} {key}: {v"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1790,11 +1786,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{method.capitalize()} long"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": null,
   "labels": [
    "HARANA_NOTE",
@@ -1829,11 +1821,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{graha} lajjitadi avastha "
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1914,11 +1902,7 @@ CITATION_DECISIONS = json.loads(r"""
     "citation_human=f\"Sun's arc i"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1956,11 +1940,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{gname} Sripati bhāva-chal"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1993,11 +1973,7 @@ CITATION_DECISIONS = json.loads(r"""
     "citation_human=f\"Sade Sati {"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2025,11 +2001,7 @@ CITATION_DECISIONS = json.loads(r"""
     "\"citation_human\": citation,"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": null,
   "labels": []
  },
@@ -2056,11 +2028,7 @@ CITATION_DECISIONS = json.loads(r"""
     "return f\"{category}.{subject"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2093,11 +2061,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{graha_name} shadbala rati"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2136,11 +2100,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{g_name} effective dignity"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2343,6 +2303,62 @@ def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidenc
     if d["decision"] == "declare":
         assert _decl()[asset].get("evidence_kind") == "writer", asset
         assert "SS ruling 2026-10-01" in ev and ev.count("AST census of the writer's citation_human sites") == 1
+
+
+# ── SS N-344/N-345: a "served" citation must be a read something imports. `facts_store.ts` had NO importer (dead code) yet ten assets cited it as the served read of
+# citation_human, and this very test only checked that the cited LINE existed. The typed L1 readers select citation_ref, not citation_human, so the ten now declare
+# `served: null` and their evidence says the narration is written and graded but NOT served by a typed reader. LIMIT, stated: an importer is necessary, not sufficient
+# (a module imported only by other unreached modules still passes); this guard catches the dead-file class, not every unreachable one. ──
+
+_TS_SRC_ROOTS = ("platform/src", "platform-mcp/src")
+
+
+def _live_importers(path, repo_root, files=None):
+    """The non-test TS/TSX sources (other than `path` itself) that import its module by name: `from '..../<stem>'`, `import '..../<stem>'` or `import('..../<stem>')`."""
+    stem = pathlib.PurePosixPath(path).stem
+    pat = re.compile(r"(?:from|import)\s*\(?\s*['\"][^'\"]*/" + re.escape(stem) + r"['\"]")
+    if files is None:
+        files = [p for r in _TS_SRC_ROOTS for ext in ("*.ts", "*.tsx") for p in (repo_root / r).rglob(ext)]
+    out = []
+    for p in files:
+        rel = p.relative_to(repo_root).as_posix()
+        if rel == path or "__tests__" in p.parts or re.search(r"\.(test|spec)\.", p.name):
+            continue
+        if pat.search(p.read_text(encoding="utf-8", errors="replace")):
+            out.append(rel)
+    return out
+
+
+def test_the_importer_guard_finds_a_live_import_and_rejects_a_dead_file(tmp_path):
+    (tmp_path / "platform/src/lib").mkdir(parents=True)
+    (tmp_path / "platform/src/lib/dead.ts").write_text("export const x = 1\n", encoding="utf-8")
+    (tmp_path / "platform/src/lib/live.ts").write_text("export const y = 2\n", encoding="utf-8")
+    (tmp_path / "platform/src/lib/user.ts").write_text("import { y } from './live'\n", encoding="utf-8")
+    (tmp_path / "platform/src/lib/dead.test.ts").write_text("import { x } from './dead'\n", encoding="utf-8")        # a test importing it does not make it live
+    assert _live_importers("platform/src/lib/dead.ts", tmp_path) == []
+    assert _live_importers("platform/src/lib/live.ts", tmp_path) == ["platform/src/lib/user.ts"]
+
+
+@pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["served"] and d["served"][0].endswith((".ts", ".tsx"))))
+def test_a_cited_served_read_has_a_live_importer(asset):
+    path = CITATION_DECISIONS[asset]["served"][0]
+    assert _live_importers(path, HERE.parents[3]), f"{asset}: the served read {path} has no non-test importer (dead code cannot serve anything)"
+
+
+DEAD_FACTS_STORE_ASSETS = ("ga_nakshatra", "ga_ayurdaya", "ga_condition", "ga_panchanga", "ga_positions", "ga_sade_sati", "ga_sensitive_degree", "ga_sensitive", "ga_strength", "ga_structural")
+
+
+@pytest.mark.parametrize("asset", DEAD_FACTS_STORE_ASSETS)
+def test_the_citation_human_of_these_assets_is_not_claimed_served(asset):
+    assert CITATION_DECISIONS[asset]["served"] is None
+    ev = _decl()[asset]["evidence"]["prose_fields"] or ""
+    assert "facts_store" not in ev
+    if CITATION_DECISIONS[asset]["decision"] == "declare":
+        assert "NOT served by a typed reader" in ev and "written and graded but not served by a typed reader" in ev, asset
+
+
+def test_no_declaration_text_names_the_dead_fact_store_module():
+    assert "facts_store" not in (HERE.parent / "asset_declarations.json").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline"))
