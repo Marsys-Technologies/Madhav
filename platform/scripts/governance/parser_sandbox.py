@@ -38,6 +38,10 @@ What it does, in order
   5. The parent checks: no guard violation was recorded (even one the parser caught and swallowed; an unpinned import or read cannot be swallowed), and, as a second layer, EVERY
      repo file the child reports as loaded is in `pinned_files`. A parser that quietly imports an unpinned helper is unverifiable: ok False, "unpinned_import".
      The run stops at the FIRST refused file (it is never executed), so unpinned_files lists what was refused, not the whole closure; pin it and retry.
+     Layers, each with a test that fails when that layer alone is removed (TestEachGuardLayerIsolated): in the child, the import finder; the open_code hooks (_io.open_code,
+     io.open_code); the open hooks (builtins.open, io.open, _io.open); the FileIO hooks (io.FileIO, _io.FileIO); the descriptor hooks (os.open, posix.open); in the parent, the
+     honouring of recorded violations and this loaded-files check. They overlap on purpose (an unpinned `import` is refused by the finder AND by open_code); the second layer is
+     a detector after the fact, not a preventer, and it sees only modules left in sys.modules, not a data file that was read.
 
 Deviation from the brief, stated plainly: the interpreter flags are `-s -S -P -B`, NOT `-I`. `-I` implies `-E`, which makes the interpreter IGNORE PYTHONHASHSEED (measured: with
 `-I` two runs of hash('abc') differ even with PYTHONHASHSEED=0). Determinism needs the seed honoured, so the flags are the rest of what `-I` does (-s no user site, -P no cwd/script
