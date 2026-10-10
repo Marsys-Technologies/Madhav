@@ -270,6 +270,8 @@ this is RELEASED or expired.*
 | 1350 | KĀLA-YANTRA / k2 / K4-2a | `platform/migrations/1350_kala_jury_candidate.sql` | CLAIMED — 2026-10-09 23:13Z cycle411. Guard allocated1350; refreshed coordination and all166 open-PR file lists confirm free after1349. Additive candidate jury/assertion, half-open segment and contest tables with chart/generation/class keys; protected allowlist in same PR, stacked on K3-1 #3373. No production application authorized. |
 
 
+| 1362 | KĀLA-YANTRA / k2 / K-CERT-2 | `platform/migrations/1362_gochara_citation_resolution_dispatchable.sql` | CLAIMED — 2026-10-10 cycle475, conductor M20261010T092402-82ee. Guard next1350; all174 open-PR file lists inspected, claims through1361 (1360 grid retirement retained). Data-only citation has_writer/count_sql flip, branchwork only; merges in Suvarna certification window. No production application by k2. |
+
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
 - **UTKARṢA edits:** `ka_gochara_sweep`, `gochara_v3/*`, `gochara_grammar/*`, sweep
