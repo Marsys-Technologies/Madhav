@@ -30,6 +30,20 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _leave_no_brahmagyan_modules_behind():
+    """The real-parser tests import the repo's `brahmagyan` package from the sidecar root; left in sys.modules it shadows the package other test files
+    (test_n286_corpus REAL_WRITER) import from their own path in the same process. Snapshot the package's modules before each test and restore them after."""
+    def _mine(k):
+        return k == "brahmagyan" or k.startswith("brahmagyan.")
+    before = {k: v for k, v in sys.modules.items() if _mine(k)}
+    yield
+    for k in [k for k in sys.modules if _mine(k)]:
+        del sys.modules[k]
+    sys.modules.update(before)
+
 from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401
 
 cdd = ac._corpus_derived_mod()      # the very module object the engine loads (its Unread class is the one the real fetch raises)
