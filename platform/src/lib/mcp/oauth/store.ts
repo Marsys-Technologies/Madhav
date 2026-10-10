@@ -291,7 +291,13 @@ export async function issueTokens(uid: string, scopes: string[]): Promise<Issued
 }
 
 /**
- * Validate an access token. Returns the token record or null if expired/not found.
+ * Validate an access token. Returns the token record or null if expired/not found,
+ * or if the token OWNER's profile is not 'active' (disabled, pending or missing).
+ *
+ * The owner's status is read in the same query (LEFT JOIN on the profiles primary
+ * key) and enforced in code, so a disabled user's OAuth tokens stop working on the
+ * very next request. The token rows are left untouched: re-enabling the user
+ * restores them until they expire.
  */
 export async function validateAccessToken(token: string): Promise<TokenRecord | null> {
   const { rows } = await query<{
@@ -299,16 +305,19 @@ export async function validateAccessToken(token: string): Promise<TokenRecord | 
     scopes: string[]
     expires_at: string
     refresh_expires_at: string | null
+    owner_status: string | null
   }>(
-    `SELECT uid, scopes, expires_at, refresh_expires_at
-     FROM mcp_oauth_tokens
-     WHERE access_token_hash = $1
-       AND expires_at > NOW()`,
+    `SELECT t.uid, t.scopes, t.expires_at, t.refresh_expires_at, p.status AS owner_status
+     FROM mcp_oauth_tokens t
+     LEFT JOIN profiles p ON p.id = t.uid
+     WHERE t.access_token_hash = $1
+       AND t.expires_at > NOW()`,
     [sha256(token)]
   )
 
   const row = rows[0]
   if (!row) return null
+  if (row.owner_status !== 'active') return null
 
   return {
     uid: row.uid,
@@ -320,7 +329,8 @@ export async function validateAccessToken(token: string): Promise<TokenRecord | 
 
 /**
  * Exchange a refresh token for new access + refresh tokens (token rotation).
- * Old tokens are revoked.
+ * Old tokens are revoked. Refused (null, same as an unknown refresh token) when the
+ * token owner's profile is not 'active'; the old pair is then NOT deleted.
  */
 export async function refreshAccessToken(refreshToken: string): Promise<IssuedTokens | null> {
   const refreshHash = sha256(refreshToken)
@@ -331,16 +341,19 @@ export async function refreshAccessToken(refreshToken: string): Promise<IssuedTo
     uid: string
     scopes: string[]
     refresh_expires_at: string | null
+    owner_status: string | null
   }>(
-    `SELECT access_token_hash, uid, scopes, refresh_expires_at
-     FROM mcp_oauth_tokens
-     WHERE refresh_token_hash = $1
-       AND refresh_expires_at > NOW()`,
+    `SELECT t.access_token_hash, t.uid, t.scopes, t.refresh_expires_at, p.status AS owner_status
+     FROM mcp_oauth_tokens t
+     LEFT JOIN profiles p ON p.id = t.uid
+     WHERE t.refresh_token_hash = $1
+       AND t.refresh_expires_at > NOW()`,
     [refreshHash]
   )
 
   const row = rows[0]
   if (!row) return null
+  if (row.owner_status !== 'active') return null
 
   // Revoke old token pair (scoped DELETE).
   await query(

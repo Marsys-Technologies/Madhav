@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 /**
  * probe/ask.ts — standing, non-interactive access to the LIVE `/api/pariprashna`
  * route for a real authenticated turn, driven end-to-end (auth mint → POST →
