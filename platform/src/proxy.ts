@@ -98,6 +98,7 @@ import { configService } from '@/lib/config/index'
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 import { apiError } from '@/lib/errors'
 import { RATE_LIMIT_ERROR_CODE } from '@/lib/limits/spend_ceiling'
+import { safeNextPath } from '@/lib/auth/safe_next'
 import {
   evaluateSessionGate,
   observeForwardedForEntryCount,
@@ -223,10 +224,18 @@ function checkDoorRateLimit(request: NextRequest, verifiedSub?: string): NextRes
 
 /**
  * The refusal for an invalid session: 401 JSON for API paths, redirect to
- * /login for pages (unchanged). `infraFailClosed` (enforce mode only, when the
- * verifier itself is unavailable) returns a plain 401 for pages too: a
- * redirect to /login for a possibly-valid user would loop while the verifier
- * is down.
+ * /login for pages. `infraFailClosed` (enforce mode only, when the verifier
+ * itself is unavailable) returns a plain 401 for pages too: a redirect to
+ * /login for a possibly-valid user would loop while the verifier is down.
+ *
+ * SS N-383 (a): the page redirect carries `?next=<pathname>` ONLY when
+ * `safeNextPath(pathname)` accepts the pathname (today: `/share/...` and
+ * `/clients/...`), so the login page (which validates `next` with the same
+ * function) can return the visitor to the page they asked for. Every other
+ * page redirects to a plain `/login`, exactly as before. The pathname alone is
+ * used, never the query string or hash (safeNextPath refuses both anyway), and
+ * the value is only ever the validator's own return value, never raw input.
+ * The same redirect is used in all `SESSION_GATE_MODE`s.
  */
 function unauthorized(request: NextRequest, pathname: string, infraFailClosed = false): NextResponse {
   if (pathname.startsWith('/api/')) {
@@ -235,7 +244,10 @@ function unauthorized(request: NextRequest, pathname: string, infraFailClosed = 
   if (infraFailClosed) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
-  return NextResponse.redirect(new URL('/login', request.url))
+  const loginUrl = new URL('/login', request.url)
+  const next = safeNextPath(pathname)
+  if (next) loginUrl.searchParams.set('next', next)
+  return NextResponse.redirect(loginUrl)
 }
 
 export async function proxy(request: NextRequest) {

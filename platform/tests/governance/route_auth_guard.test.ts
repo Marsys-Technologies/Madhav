@@ -67,6 +67,13 @@ interface ListedRoute {
   stub?: { status?: number }
   /** Entry may be absent from the tree without failing the stale-entry ratchet. */
   optionalIfMissing?: boolean
+  /**
+   * Calls (in code: comments, strings and regex literals are blanked) the route
+   * source must still make for its reason to be true, e.g. the abuse controls of
+   * a public endpoint. §N.8: a reason that asserts "rate limited" needs a
+   * detector, otherwise it is prose.
+   */
+  mustCall?: string[]
 }
 
 interface PendingRoute {
@@ -116,13 +123,14 @@ export const ALLOWLIST: Record<string, ListedRoute> = {
     reason: '308 redirect alias to /api/chat/consult/resume; the target verifies the session',
     stub: { status: 308 },
   },
-  'chat/spike': {
+  'auth/resolve-username': {
     methods: ['POST'],
-    // Unauthenticated demo-fixture stream (audit LOW). Removed by #3391; once that
-    // lands this entry is simply deleted (optionalIfMissing keeps the order of the
-    // two PRs from mattering).
-    reason: 'unauthenticated demo-fixture stream; being deleted by #3391 (remove this entry with it)',
-    optionalIfMissing: true,
+    // Listed like auth/recover and access-requests above: a public, pre-login,
+    // matcher-excluded endpoint. The S1 fix did not add authentication (it cannot:
+    // the caller has no session yet); it added the abuse controls, which are
+    // asserted below by `mustCall` so the claim in the reason cannot silently rot.
+    reason: 'public by design: returns an email for username login; rate limited, uniform timing (S1)',
+    mustCall: ['limiter.check', 'getTrustedClientIp', 'padToUniformDuration'],
   },
 }
 
@@ -138,27 +146,9 @@ export const ALLOWLIST: Record<string, ListedRoute> = {
  * principal) -- owner decisions / S2 per the session-gate audit.
  */
 export const KNOWN_UNGUARDED_PENDING_FIX: Record<string, PendingRoute> = {
-  'icr/confirm': {
-    methods: ['POST'],
-    owner: 'S1',
-    reason: 'CRITICAL: rewrites MSR_v5_0.md and the disagreement register with no handler auth (audit 2.CRITICAL)',
-  },
-  'icr/patches': { methods: ['GET'], owner: 'S1', reason: 'HIGH: lists all conflict-patch YAML with no handler auth (audit 2.HIGH)' },
-  'admin/maintenance/trace-cleanup': {
-    methods: ['POST'],
-    owner: 'S1',
-    reason: 'MEDIUM: unauthenticated maintenance UPDATE; to be gated with the cron secret (audit 9b item 8)',
-  },
-  'admin/model-health': {
-    methods: ['GET'],
-    owner: 'S1',
-    reason: 'MEDIUM: ?refresh=true triggers live model pings with production keys (audit 9b item 3)',
-  },
-  'auth/resolve-username': {
-    methods: ['POST'],
-    owner: 'S1',
-    reason: 'HIGH: public username -> email lookup, account-existence oracle (audit 9b item 4)',
-  },
+  // Empty since S1 (icr/confirm, icr/patches, admin/maintenance/trace-cleanup,
+  // admin/model-health) landed guards and auth/resolve-username moved to ALLOWLIST
+  // (public by design, rate limited). Kept as the ratchet's home for future gaps.
 }
 
 /**
@@ -167,16 +157,21 @@ export const KNOWN_UNGUARDED_PENDING_FIX: Record<string, PendingRoute> = {
  * navigation). Same ratchet semantics as KNOWN_UNGUARDED_PENDING_FIX.
  */
 export const KNOWN_UNGUARDED_PAGES_PENDING_FIX: Record<string, { owner: string; reason: string }> = {
-  'cockpit/page.tsx': {
-    owner: 'S1',
-    reason: 'HIGH: global usage summary (ownerId:null) guarded only by cockpit/layout.tsx (audit section 6)',
-  },
-  'information/atlas/page.tsx': { owner: 'S1', reason: 'MEDIUM: asset_registry incl. count_sql guarded only by information/layout.tsx (audit section 6)' },
-  'panchang/page.tsx': { owner: 'S1', reason: 'LOW: sidecar panchanga fetch guarded only by panchang/layout.tsx (audit section 6)' },
-  'share/[slug]/page.tsx': {
-    owner: 'owner decision',
-    reason: 'MEDIUM: capability-URL share page; decide public (add to proxy public list) vs verified session (audit 9b item 6)',
-  },
+  // cockpit/page.tsx and information/atlas/page.tsx (S1: requireSuperAdminPage) and
+  // share/[slug]/page.tsx (S4: requireActiveUserPage) now guard themselves and were
+  // removed by the ratchet. panchang/page.tsx is still unguarded: S1 did not touch it.
+  'panchang/page.tsx': { owner: 'S1', reason: 'LOW: sidecar panchanga fetch guarded only by panchang/layout.tsx (audit section 6); S1 left it unguarded' },
+}
+
+/**
+ * Page-level guard helpers (defined once in lib/auth). Like WRAPPER_DEFINITIONS,
+ * they are trusted by name, so this test checks each still reaches real session
+ * verification; a helper turned into a no-op would otherwise keep every page that
+ * calls it "guarded".
+ */
+export const PAGE_GUARD_DEFINITIONS: Record<string, { file: string; mustReach: string[] }> = {
+  requireSuperAdminPage: { file: 'src/lib/auth/super-admin-page-guard.ts', mustReach: ['getServerUserWithProfile'] },
+  requireActiveUserPage: { file: 'src/lib/auth/active-user-page-guard.ts', mustReach: ['getServerUserWithProfile'] },
 }
 
 /**
@@ -386,8 +381,50 @@ describe('route auth guard: every handler is verified, allow-listed, or a ratche
   })
 })
 
+/** The names in `names` that the route source does not CALL in code (comments/strings blanked). */
+export function missingCalls(source: string, names: string[]): string[] {
+  const code = stripNonCode(source)
+  return names.filter((n) => !new RegExp(`(?:^|[^\\w$])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\(`).test(code))
+}
+
+describe('route auth guard: allow-list reasons that assert a control are backed by a detector', () => {
+  it('every mustCall control is still called by its allow-listed route', () => {
+    const bad: string[] = []
+    for (const [dir, entry] of Object.entries(ALLOWLIST)) {
+      if (!entry.mustCall) continue
+      const route = ROUTE_BY_DIR.get(dir)
+      if (!route) continue
+      const missing = missingCalls(route.source, entry.mustCall)
+      if (missing.length > 0) bad.push(`${dir}: allow-listed on the strength of ${JSON.stringify(entry.mustCall)} but no longer calls ${JSON.stringify(missing)}`)
+    }
+    expect(bad, `\n${bad.join('\n')}\n`).toEqual([])
+  })
+
+  it('at least one allow-list entry carries mustCall (the check is not vacuous)', () => {
+    expect(Object.values(ALLOWLIST).filter((e) => e.mustCall && e.mustCall.length > 0).length).toBeGreaterThan(0)
+  })
+
+  it('missingCalls reads FALSE when the control is absent, only in a comment, or only in a string', () => {
+    expect(missingCalls('export async function POST() { const r = limiter.check(k); await pad(); }', ['limiter.check', 'pad'])).toEqual([])
+    expect(missingCalls('export async function POST() { return Response.json({}) }', ['limiter.check'])).toEqual(['limiter.check'])
+    expect(missingCalls('// limiter.check(k)\nexport async function POST() { return 1 }', ['limiter.check'])).toEqual(['limiter.check'])
+    expect(missingCalls("export async function POST() { return 'limiter.check(k)' }", ['limiter.check'])).toEqual(['limiter.check'])
+    expect(missingCalls('export async function POST() { return notlimiter.check(k) }', ['limiter.check'])).toEqual(['limiter.check'])
+  })
+})
+
 describe('route auth guard: trusted wrapper helpers still really verify', () => {
   it.each(Object.entries(WRAPPER_DEFINITIONS))('%s is defined and still reaches its inner verification', (name, def) => {
+    const path = join(PLATFORM_ROOT, def.file)
+    expect(existsSync(path), `${def.file} missing`).toBe(true)
+    const reach = reachOfFunction(readFileSync(path, 'utf8'), name)
+    expect(reach, `${name} not found as a declaration in ${def.file}`).not.toBeNull()
+    for (const inner of def.mustReach) {
+      expect(reach, `${name} (${def.file}) no longer calls ${inner}`).toContain(inner)
+    }
+  })
+
+  it.each(Object.entries(PAGE_GUARD_DEFINITIONS))('page guard %s is defined and still reaches real session verification', (name, def) => {
     const path = join(PLATFORM_ROOT, def.file)
     expect(existsSync(path), `${def.file} missing`).toBe(true)
     const reach = reachOfFunction(readFileSync(path, 'utf8'), name)
@@ -415,7 +452,7 @@ describe('route auth guard: trusted wrapper helpers still really verify', () => 
 
 /** A server module that imports one of these (or calls fetch) loads data on the server. */
 const DATA_IMPORT_RE = /\bfrom\s+['"]@\/lib\/(?:db|metering|build)(?:\/[^'"]*)?['"]/
-const PAGE_GUARDS = [...RECOGNISED_VERIFICATION_CALLS, 'readAccountProfile', 'requireAdminPage']
+const PAGE_GUARDS = [...RECOGNISED_VERIFICATION_CALLS, 'readAccountProfile', 'requireAdminPage', ...Object.keys(PAGE_GUARD_DEFINITIONS)]
 
 export function pageLoadsDataWithoutOwnGuard(source: string): { loadsData: boolean; guarded: boolean } {
   if (/^\s*(?:['"]use client['"])/m.test(source.split('\n').slice(0, 5).join('\n'))) return { loadsData: false, guarded: true }
@@ -686,8 +723,12 @@ describe('detector proven on REAL code: neutering the recognised calls un-guards
     expect(flipped.every((v) => !v.guarded)).toBe(true)
   })
 
-  it('a real pending gap reads false and a real guarded sibling reads true (the lists are measuring something)', () => {
-    expect(HANDLERS.find((h) => h.dir === 'icr/confirm' && h.method === 'POST')?.guarded).toBe(false)
+  it('a real unguarded (allow-listed) handler reads false and real guarded handlers read true (the lists are measuring something)', () => {
+    // A real UNGUARDED handler (allow-listed public endpoint) reads false ...
+    expect(HANDLERS.find((h) => h.dir === 'auth/resolve-username' && h.method === 'POST')?.guarded).toBe(false)
+    expect(HANDLERS.find((h) => h.dir === 'auth/recover' && h.method === 'POST')?.guarded).toBe(false)
+    // ... and real handlers that S1 fixed (previously pending) and a long-guarded sibling read true.
+    expect(HANDLERS.find((h) => h.dir === 'icr/confirm' && h.method === 'POST')?.guarded).toBe(true)
     expect(HANDLERS.find((h) => h.dir === 'admin/users' && h.method === 'GET')?.guarded).toBe(true)
   })
 
@@ -695,6 +736,10 @@ describe('detector proven on REAL code: neutering the recognised calls un-guards
     expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\nexport default async function Page() { return db.query('x') }`)).toEqual({ loadsData: true, guarded: false })
     expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\n// getServerUser()\nexport default async function Page() { return db.query('x') }`)).toEqual({ loadsData: true, guarded: false })
     expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\nexport default async function Page() { await getServerUser(); return db.query('x') }`)).toEqual({ loadsData: true, guarded: true })
+    expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\nexport default async function Page() { await requireSuperAdminPage(); return db.query('x') }`)).toEqual({ loadsData: true, guarded: true })
+    expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\nexport default async function Page() { await requireActiveUserPage('/login'); return db.query('x') }`)).toEqual({ loadsData: true, guarded: true })
+    expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\n// await requireSuperAdminPage()\nexport default async function Page() { return db.query('x') }`)).toEqual({ loadsData: true, guarded: false })
+    expect(pageLoadsDataWithoutOwnGuard(`import { db } from '@/lib/db'\nimport { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'\nexport default async function Page() { return db.query('x') }`)).toEqual({ loadsData: true, guarded: false })
     expect(pageLoadsDataWithoutOwnGuard(`'use client'\nimport { db } from '@/lib/db'\nexport default function P() { return null }`)).toEqual({ loadsData: false, guarded: true })
     expect(pageLoadsDataWithoutOwnGuard(`export default async function Page() { const r = await fetch('http://sidecar/x'); return r.json() }`)).toEqual({ loadsData: true, guarded: false })
   })
