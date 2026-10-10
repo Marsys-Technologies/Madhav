@@ -589,6 +589,7 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
     'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
     'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
     'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
+  include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check for the current Vimshottari Mahadasha lord even when the page does not serve it: the other four ayanamshas as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
   as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
@@ -799,16 +800,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       ...ChartBase,
       status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional' | 'no_evidence'."),
       event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
+      include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check to each row: the same event class's status and varga dignity under the other four ayanamshas, as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, status, event_class_id, limit, offset } = params as Record<string, unknown>
+      const { chart_id, ayanamsha_id, status, event_class_id, include_cross_check, limit, offset } = params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_pratijna_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L2/query_pratijna', {
           chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           status, event_class_id,
+          ...(include_cross_check === true ? { include_cross_check: true } : {}),
           limit: (limit as number) ?? 50, offset: (offset as number) ?? 0,
         }, principal) as Record<string, unknown>
         // CL-11 guard: pass the real tool name explicitly — do NOT call bare dualOutput(data),
@@ -896,6 +899,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet: z.string().optional().describe(
         'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
         'had no planet param at all, so a caller had no way to narrow the payload.'),
+      include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check for every graha on the page: the sign and nakshatra under the other four ayanamshas as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       include_upagrahas: z.boolean().optional().describe(
         'CR-50: when true, also serves upagraha_position/aprakasha_position rows AFTER the 9 ' +
         'grahas + Lagna. Default false — the default page is grahas + Lagna only.'),

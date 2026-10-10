@@ -2740,7 +2740,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 17,
+      "input_param_count": 18,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3136,7 +3136,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 9,
+      "input_param_count": 10,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3879,7 +3879,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3985,7 +3985,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],

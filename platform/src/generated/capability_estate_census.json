@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "52435684f9c6edf95292ce05842b31d4243910cd08d62671642d7bc5ae76894c",
+  "content_sha256": "5184b3a94f7ba10ed07141b025283502cfea167851db38c5ce38c3dc8607fb83",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -4326,6 +4326,10 @@
             "description": "Projection facet. \"compact\" (default) — fact-card fields only (lord, sign, span, natal condition, citation); \"all\" — every chart_dashas column (verification metadata, jsonb sandhi/concurrent-lord detail); or a comma-separated column list for a custom projection.",
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` for the current Vimshottari Mahadasha lord (as of as_of_date/date_contains, else today) under the other four ayanamshas, even if this page does not itself carry that Mahadasha. A LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality of the lord only). Independently of this flag, a single-ayanamsha Vimshottari page that serves the current Mahadasha always carries the compact identity cross-check. Not applied under ayanamsha_id:\"all\" (the raw multi-row option).",
+            "type": "boolean"
+          },
           "level": {
             "description": "Dasha level facet — exact level. Accepts a number (1=Maha, 2=Antar, 3=Pratyantar, 4=Sookshma, 5=Prana) or the level name. When set, overrides the default level-cap (see all_levels).",
             "type": "string"
@@ -5085,6 +5089,11 @@
               "karakamsha"
             ],
             "type": "string"
+          },
+          "include_cross_check": {
+            "default": false,
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every graha on this page under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check (Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\" (that is the raw multi-row option).",
+            "type": "boolean"
           },
           "include_upagrahas": {
             "default": false,
@@ -6521,6 +6530,10 @@
             "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all.",
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false.",
+            "type": "boolean"
+          },
           "limit": {
             "description": "Max rows (default 50, max 50). Applies independently to both rows and discovery_families.",
             "type": "number"
@@ -6753,6 +6766,10 @@
           "event_class_id": {
             "description": "Filter by event_class_id. Omit for all.",
             "type": "string"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class's status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label.",
+            "type": "boolean"
           },
           "limit": {
             "description": "Max rows (default 50, max 50).",
@@ -21079,7 +21096,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "a782643b5ce50fd859e49981a30ec380444f08c8134bede5a3c701dd18549224"
+        "sha256": "4d45f16d1f2bf544d05f7b68f74b67b8d7a011efb3f4dae360df3b04b24f0697"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21604,7 +21621,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "3dac00978a65d742e98f6707fcebf31be7d54a25636f5cbd4249da58763e2e1e"
+            "sha256": "80e8b1bd4a27f5e45d7ced813695eaef05ce925cbe8996edc14190c7698d0db1"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21616,7 +21633,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
+            "sha256": "5c88536d4effe59021d6d7c5453cc42ca0acb9a7e439f05751e20b3596b29747"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21676,7 +21693,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "964ac75e6fbbba6b93a1da90fd15df9635f71ddcb6e0815c936e214b3dd0dcb2"
+        "sha256": "270c2999947f1c970202ae1ca7124c8c693d5691eb2d6d72da156e14dbc3c466"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22050,7 +22067,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "a2ec3b40da5e14fdd4952b73bb9ef7aa37be8574436044649b4528a1113c480e"
+            "sha256": "616a140fba89eb37a3ea21f88f2558888943eb67a0e8c181f7243c75b0a78214"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22098,7 +22115,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "1fdeaa3efc541d99ecf5fbde7a7c045d68ece6e6f741c59f85156f7c5a49af3f"
+            "sha256": "7a3f538b6f2b4db1eebdf6a3eb5df16e0e416f49ec085352fdcd414c4105a29d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -22194,7 +22211,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
-            "sha256": "2f38146b76efd971467729f25d31fd68a2a2925a56d9e396582e65fb66379cb9"
+            "sha256": "f89d17676a8232ac71fa78f37bbe2b4867a0e2fe5b291b44b1ffeb54c4b9b8c3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
@@ -22206,7 +22223,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
-            "sha256": "41ddd2cefd585fcc38d92ca9d696f0a3e7bb7f03beb73667868d8c5c97d2652b"
+            "sha256": "604531263388437f910a3d2cc15a70af5990dcb2697aba2f9fcaa9eaf07c6c87"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
@@ -22434,7 +22451,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "6a7c74b43322f5365bf6a148dc5fd9ed6d175caa3cc125a251a6cb0c0fa595b7"
+            "sha256": "2a9cb20e0276b77d4bc851c477e204d63566284c02d4436b0dc967a8d9ef3cde"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
@@ -22458,7 +22475,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "e083b865bd87c048c0609375b30cf581066576307b2649621bd41df236c8537a"
+            "sha256": "9a9465b92a40ff0e3583526215a427ed93c246951da35652c222177eecc3c20d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22526,7 +22543,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "c3eb3535848b27af4bfdc02e8cc39f01612daef5713c2a94c036c075bd04a243"
+        "sha256": "a944e9dda4705e6080aee5bb236788bb10ac1706e202e38c05b3c88dfc0856f8"
       },
       {
         "id": "service_effect_contracts",

@@ -665,10 +665,11 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       domain:   z.string().optional().describe('Filter by life domain (career, health, relationship, wealth, etc.).'),
       min_salience: z.number().min(0).max(1).optional().describe('Minimum salience score (0..1, default: 0).'),
+      include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: each discovery family carries ayanamsha_cross_check: whether the same motif is also found under the other four ayanamshas, as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       limit:    z.number().int().min(1).max(200).optional().describe('Max results (default: 30, max: 200).'),
       offset:   z.number().int().min(0).optional().describe('Pagination offset (default: 0).'),
     },
-    async ({ chart_id, domain, min_salience, limit, offset }) => {
+    async ({ chart_id, domain, min_salience, include_cross_check, limit, offset }) => {
       if (!chart_id) return errorOutput('bodha_discoveries_get', 'chart_id is required')
       if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
         return errorOutput('bodha_discoveries_get', 'AUTHZ_DENIED', { chart_id })
@@ -693,6 +694,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         const data = await callRegistryCapability('marsys://tool/L2/query_discoveries', {
           chart_id,
           ...(domain ? { domain } : {}),
+          ...(include_cross_check === true ? { include_cross_check: true } : {}),
           limit: limit ?? 30,
           offset: offset ?? 0,
         }, principal)

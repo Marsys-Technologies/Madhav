@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:ab862493aec2ef13ce017fb7a6ce95371d5b2a9f04fce7c3d258a359e49e5bfe",
-  "source_catalog_fingerprint": "sha256:82c9e2a800ba19d2ab6b761997c2f785f644cd353d726750fb8cd25402572f46",
+  "content_hash": "sha256:4d4b54364c6a4adab09be5b34472d22bf58405d8e9ea2bcf7e7c5b001069df02",
+  "source_catalog_fingerprint": "sha256:40102d05026a1decd7172e703b8141e3792409c585bffad37cbf77ee5c65a1d2",
   "semantic_review_fingerprint": "sha256:066e41f3b2d64c897554273a5f79368cfdfdc3def7da396be21cb0930226135f",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -6090,6 +6090,7 @@
             "date_contains": "string:optional",
             "date_from": "string:optional",
             "fields": "string:optional",
+            "include_cross_check": "boolean:optional",
             "level": "string:optional",
             "limit": "number:optional",
             "lord_graha": "string:optional",
@@ -8375,6 +8376,7 @@
         "categories",
         "chart_id",
         "frame",
+        "include_cross_check",
         "include_upagrahas",
         "limit",
         "offset",
@@ -8444,6 +8446,7 @@
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
+            "include_cross_check": "boolean:optional",
             "include_upagrahas": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional",
@@ -17187,7 +17190,7 @@
       "scu_id": "scu.catalog.query_discoveries",
       "version": 1,
       "label": "Query Discoveries",
-      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields. Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
+      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\"). Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
       "kind": "contradiction",
       "domains": [
         "evidence_quality"
@@ -17212,6 +17215,7 @@
         "chart_id",
         "discovery_class",
         "domain",
+        "include_cross_check",
         "limit",
         "offset"
       ],
@@ -17262,6 +17266,7 @@
             "chart_id": "string:required",
             "discovery_class": "string:optional",
             "domain": "string:optional",
+            "include_cross_check": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional"
           },
@@ -23593,6 +23598,7 @@
         "ayanamsha_id",
         "chart_id",
         "event_class_id",
+        "include_cross_check",
         "limit",
         "offset",
         "status"
@@ -23643,6 +23649,7 @@
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "event_class_id": "string:optional",
+            "include_cross_check": "boolean:optional",
             "limit": "number:optional",
             "offset": "number:optional",
             "status": "string:optional"

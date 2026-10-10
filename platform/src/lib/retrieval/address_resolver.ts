@@ -130,8 +130,10 @@ export type ReferenceFrame = 'lagna' | 'chandra' | 'surya' | 'arudha' | 'karakam
  */
 export interface AyanamshaFrameSensitivity {
   /**
-   * 'ayanamsha_sensitive'    — at least one real ayanamsha's Moon sign diverges from the modal
-   *                            reading (`variation.divergent_ayanamshas` names them).
+   * 'ayanamsha_sensitive'    — at least one real ayanamsha's Moon sign diverges from the ANCHOR
+   *                            reading, i.e. the ayanamsha the frame was read under (Lahiri unless
+   *                            another was requested; PR-3), in serve order
+   *                            (`variation.divergent_ayanamshas` names them).
    * 'stable_across_ayanamsha' — all 5 real ayanamshas were read and unanimously agree.
    * null                     — insufficient data to certify either claim (some real ayanamshas'
    *                            Moon-sign rows are missing and no disagreement was observed among
@@ -462,7 +464,12 @@ async function computeChandraFrameSensitivity(
         sign: r.fact_value_text,
         vargottama: null,
       }))
-    const variation = computeAyanamshaAgreement('MOON', reads, 'sign')
+    // Lahiri-primary PR-3: anchor the divergence on the ayanamsha the frame was actually read under
+    // (Lahiri unless the caller asked for another), in serve order — not on the modal reading.
+    const anchor = (REAL_AYANAMSHAS as readonly string[]).includes(ctx.ayanamsha_id)
+      ? (ctx.ayanamsha_id as RealAyanamsha)
+      : (DEFAULT_AYANAMSHA as RealAyanamsha)
+    const variation = computeAyanamshaAgreement('MOON', reads, 'sign', anchor)
     const frame_sensitivity_class: AyanamshaFrameSensitivity['frame_sensitivity_class'] =
       variation.divergent_ayanamshas.length > 0
         ? 'ayanamsha_sensitive'

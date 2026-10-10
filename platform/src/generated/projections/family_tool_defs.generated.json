@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-10T00:54:17.471Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\", merged with cap.family_overrides[family] per model family (types.ts FamilyOverrideSpec)",
   "families": [
@@ -2248,7 +2248,7 @@
       {
         "family": "anthropic",
         "name": "query_discoveries",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2267,6 +2267,10 @@
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -7009,7 +7013,7 @@
       {
         "family": "gemini",
         "name": "query_discoveries",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -7028,6 +7032,10 @@
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -11770,7 +11778,7 @@
       {
         "family": "openai",
         "name": "query_discoveries",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -11789,6 +11797,10 @@
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
@@ -16531,7 +16543,7 @@
       {
         "family": "deepseek",
         "name": "query_discoveries",
-        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
+        "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a bounded member_discovery_ids list and the best-ranked member's narrative fields. Lahiri is the primary reading: by default the families are Lahiri's. The other four ayanāṃśas appear only as a LABELLED cross-check (include_cross_check:true -> per-family `ayanamsha_cross_check`, \"Cross-check, not the reading\"); only under the raw ayanamsha_id:\"all\" option does a family carry the pooled `ayanamsha_agreement` (\"n/N ayanamshas agree\").",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -16550,6 +16562,10 @@
             "domain": {
               "type": "string",
               "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+            },
+            "include_cross_check": {
+              "type": "boolean",
+              "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false."
             },
             "limit": {
               "type": "number",
