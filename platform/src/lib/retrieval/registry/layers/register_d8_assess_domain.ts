@@ -1629,7 +1629,7 @@ const assessMarriageCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1702,7 +1702,7 @@ const assessCareerCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1775,7 +1775,7 @@ const assessHealthCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1848,7 +1848,7 @@ const assessWealthCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to use (default: 'LAHIRI').",
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
     },
     max_signals_per_lens: {
       type: 'number',
@@ -1926,7 +1926,7 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
     },
     dasha_period: {
       type: 'string',

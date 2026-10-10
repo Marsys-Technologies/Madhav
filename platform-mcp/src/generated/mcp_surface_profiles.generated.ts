@@ -142,7 +142,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -180,7 +180,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -218,7 +218,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -256,7 +256,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -2378,7 +2378,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha filter (default: 'LAHIRI')."
+              "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
             },
             "dasha_period": {
               "type": "string",
@@ -2676,7 +2676,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "phala_rectification_get",
-        "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id is an OPTIONAL filter — the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); OMIT it to return candidates across ALL ayanamshas. Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference).",
+        "description": "Returns birth-time rectification candidates from phala_rectification (ph_rectification). Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas). Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated. Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification. ayanamsha_id: the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra); the stored long ids (e.g. lahiri_chitrapaksha) are accepted. The default is the PRIMARY reading 'lahiri_chitrapaksha' (Lahiri-only candidate list, labelled `candidates_basis`); pass \"all\" for the explicit raw candidates across all five ayanamshas. The chart-level best-offset values (best_lel_fit_score, confidence_*, win_margin, competing_candidates) are pooled over all five ayanamshas and are labelled `best_candidate_basis`: \"consensus over five ayanamshas\". Bounded (LIMIT ≤50) with a disclosed total + offset pagination. emits_references: false (rectification is a meta-analysis, not a signal reference).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2686,7 +2686,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas."
+              "description": "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored id or short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Pass \"all\" for the explicit raw five-ayanamsha candidate list."
             },
             "top_k": {
               "type": "number",
@@ -3479,7 +3479,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -3517,7 +3517,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -3555,7 +3555,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",
@@ -3593,7 +3593,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha to use (default: 'LAHIRI')."
+              "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha')."
             },
             "max_signals_per_lens": {
               "type": "number",

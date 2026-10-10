@@ -33,6 +33,7 @@ import {
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
+import { ayanamshaArgForKpReach, categoryFilterReachesKpFrame, dashaSystemReachesKpFrame } from '../lib/kp_frame.js'
 // F-176 (PARISESA-V4): `kala_windows_get` and `kala_projections_get` are the raw L3
 // primitives `kala_ahead_get` (F-110) already wraps and gates against `pact_query` — but
 // `grep -n "promise\|pact"` over both underlying capability files returns zero hits, so an
@@ -515,7 +516,10 @@ function regAlias(
   // members of this alias family (bodha_domain_reading_get, bodha_remedies_get,
   // bodha_remedies_search, bodha_quality_get — spec §2c/§4). The remaining regAlias
   // registrations are RS-4-exempt factual lookups and leave this flag absent/false.
-  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean },
+  // `kpReach` (SS N-368): true when THIS call can reach a KP-frame read (e.g. a dasha `system` facet naming
+  // vimshottari_kp). For such a call an OMITTED ayanamsha_id is not sent, so the platform handler's own
+  // default applies and no false "does not apply" KP note is drawn; every other call keeps the Lahiri pin.
+  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean; kpReach?: (rest: Record<string, unknown>) => boolean },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -534,7 +538,8 @@ function regAlias(
           }
         }
         const data = await callRegistryCap(uri, {
-          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          chart_id,
+          ...ayanamshaArgForKpReach(ayanamsha_id as string | undefined, opts?.kpReach?.(resolvedRest) ?? false, resolveChartFactsAyanamsha),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
         let finalData = data
@@ -602,6 +607,11 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
   window_end:    z.string().optional().describe('ISO date — window facet upper bound (overlap). Echoed in facets_applied.window.'),
   lord_graha:    z.string().optional(),
   fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+}
+
+/** Dasha facet precedence is system > dasha_system > system_id (see DASHA_FACET_SCHEMA). */
+function dashaKpReach(rest: Record<string, unknown>): boolean {
+  return dashaSystemReachesKpFrame(rest['system'] ?? rest['dasha_system'] ?? rest['system_id'])
 }
 
 export function registerP1AliasTools(server: McpServer, principal: Principal): void {
@@ -1109,7 +1119,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'as_of_date=<today> — ayanamsha_id may be omitted; it already resolves to the gate\'s ' +
     'canonical single-row shape.',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   // get_temporal_windows → kala_windows_get
   // R-18 fix: the primitive (query_temporal_activation.ts) reads date_from/date_to/top_k, not
@@ -1617,7 +1627,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://tool/L1/chart_facts_query', {
           chart_id,
-          ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          // no category filter / a KP category: the page carries KP-frame rows, so an omitted id is not sent (SS N-368)
+          ...ayanamshaArgForKpReach(ayanamsha_id as string | undefined, categoryFilterReachesKpFrame(rest['category']), resolveChartFactsAyanamsha),
           ...rest,
         }, principal)
         return dualOutput(data, 'ganita_chart_facts_get')
@@ -1674,7 +1685,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet:      z.string().describe('Planet to query (Sun..Saturn/Rahu/Ketu).'),
       start_date:  z.string().describe('Start date YYYY-MM-DD.'),
       end_date:    z.string().describe('End date YYYY-MM-DD.'),
-      sign_number: z.number().int().min(1).max(12).optional().describe('Optional tropical sign filter (1=Aries..12=Pisces).'),
+      sign_number: z.number().int().min(1).max(12).optional().describe('Optional SIDEREAL (Lahiri) sign filter (1=Aries..12=Pisces).'),
     },
     async ({ planet, start_date, end_date, sign_number }) => {
       try {
@@ -2211,7 +2222,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id defaults server-side ' +
     'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape.',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   regAlias(server, 'query_dasha_periods',
     'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
@@ -2220,7 +2231,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'level<=3, window=now±5y. ayanamsha_id defaults server-side to "lahiri_chitrapaksha" when ' +
     'omitted — a bare call already returns the single-row current-dasha gate shape.',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   // CR-16 (D-2 V-3, ledger row 26): special-lagna access was birth-data-ONLY — a caller holding a
   // built chart_id had no path to that chart's STORED special-lagna facts and was forced to

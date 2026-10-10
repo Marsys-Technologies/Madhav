@@ -40,6 +40,7 @@
  * actually has is "no data" (§N.8: a signal with no detector behind it is null, not green).
  */
 
+import { kpFrameLabelFor } from './kp_frame.js'
 import { ordinalOrRaw } from './ordinal.js'
 
 /** The four classical KP significator limbs, strongest first. */
@@ -122,6 +123,10 @@ export interface KpSchoolVoice {
   /** KP is canonically read in the Krishnamurti ayanāṃśa; the PACT chain is read in the
    *  caller's. Both are reported — served as data, never silently reconciled (brief §W3K). */
   kp_ayanamsha_id: string
+  /** SS N-342: `KP frame (Krishnamurti ayanamsha)` — the label of the KP ladder's frame. The
+   *  running `vimshottari_kp` periods are read in `chain_ayanamsha_id` (the caller's, Lahiri by
+   *  default), so this label covers the ladder, not the dasha periods. */
+  kp_frame_label: string
   chain_ayanamsha_id: string
   ayanamsha_divergence: boolean
   /** One deterministic sentence stating KP's own verdict. Template-composed, no LLM. */
@@ -260,6 +265,7 @@ export function buildKpSchoolVoice(params: BuildKpSchoolVoiceParams): KpSchoolVo
     bhava,
     ladder,
     kp_ayanamsha_id: kpAyanamshaId,
+    kp_frame_label: kpFrameLabelFor(kpAyanamshaId),
     chain_ayanamsha_id: chainAyanamshaId,
     ayanamsha_divergence: kpAyanamshaId !== chainAyanamshaId,
   }

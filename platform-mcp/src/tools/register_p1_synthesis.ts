@@ -16,6 +16,7 @@ import { remoteAuthorize } from '../lib/authz.js'
 import { describeProxyFailure } from './registry_bridge.js'
 import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
+import { resolveChartFactsAyanamsha, AYANAMSHA_SERVE_ORDER, PRIMARY_AYANAMSHA } from '../lib/ayanamsha.js'
 import { labelInsightUnit, summarizeGeneration, UNVALIDATED_PREFIX_GRADE } from '../lib/l5_prefix_generation.js'
 // W3-L2 (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF §E W3 item 2 "d8/hollow-emitter migration"):
 // this file's local `envelope()` is the documented "hollow envelope" precedent (envelope.ts's
@@ -665,11 +666,15 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       domain:   z.string().optional().describe('Filter by life domain (career, health, relationship, wealth, etc.).'),
       min_salience: z.number().min(0).max(1).optional().describe('Minimum salience score (0..1, default: 0).'),
+      ayanamsha_id: z.string().optional().describe(
+        "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored ids and short aliases " +
+        'are accepted, any case. Pass "all" for the explicit raw multi-ayanamsha rows (the same finding ' +
+        'repeated once per ayanamsha; use discovery_families for the collapsed view).'),
       include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: each discovery family carries ayanamsha_cross_check: whether the same motif is also found under the other four ayanamshas, as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       limit:    z.number().int().min(1).max(200).optional().describe('Max results (default: 30, max: 200).'),
       offset:   z.number().int().min(0).optional().describe('Pagination offset (default: 0).'),
     },
-    async ({ chart_id, domain, min_salience, include_cross_check, limit, offset }) => {
+    async ({ chart_id, domain, min_salience, ayanamsha_id, include_cross_check, limit, offset }) => {
       if (!chart_id) return errorOutput('bodha_discoveries_get', 'chart_id is required')
       if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
         return errorOutput('bodha_discoveries_get', 'AUTHZ_DENIED', { chart_id })
@@ -691,8 +696,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         // salience score (schema drift), so filtering on it was already semantically wrong.
         // Applied here, best-effort, against `non_obviousness_score` (the field the schema
         // actually carries in that 0..1 range) over the returned page.
+        // SS N-342: omitted => the PRIMARY (Lahiri) discoveries; "all" => explicit raw opt-out.
         const data = await callRegistryCapability('marsys://tool/L2/query_discoveries', {
           chart_id,
+          ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id),
           ...(domain ? { domain } : {}),
           ...(include_cross_check === true ? { include_cross_check: true } : {}),
           limit: limit ?? 30,
@@ -838,7 +845,8 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
     'Draws from L5 Mīmāṃsā insight_units (verdict_object + calibrated_outlook + load_bearing + ' +
     'negative_knowledge) and L2 Bodha discoveries. Covers: domain verdicts (career/health/' +
     'relationship/wealth/creativity/dharma/moksha), load-bearing conclusions, negative knowledge, ' +
-    'tradition concordance overview, and calibration status. ' +
+    'tradition concordance overview, and calibration status. top_discoveries are the primary ' +
+    'lahiri_chitrapaksha reading, one row per discovery family (no duplicate across ayanamshas). ' +
     'depth=standard: key verdicts only (38 topics). depth=deep: + evidence chains. ' +
     'depth=complete: + tail divergence + all tradition stacks. ' +
     'System is in STRUCTURAL mode (L5 SEALED) — empirical scores accrue as outcome data records.',
@@ -880,17 +888,43 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         `, [chart_id, topK], principal)
 
         const discLimit = depth === 'complete' ? 20 : 5
+        // SS N-342: the brief's top discoveries are the PRIMARY (Lahiri) reading, one row per
+        // discovery FAMILY (discovery_class, discovery_subsystem, hypothesis_text) — the same
+        // finding is stored once per ayanamsha and once per matching signal instance, so an
+        // unfiltered top-N was N copies of one motif. The best-ranked member represents the
+        // family (ties broken by discovery_id: deterministic); the other ayanamshas that carry
+        // the same motif are listed under `family_ayanamsha_ids` as a LABELLED cross-check, never
+        // merged into the primary row.
         const discResult = await platformQuery(`
-          SELECT discovery_id, discovery_class, discovery_subsystem,
-                 affected_domains_array AS domains,
-                 hypothesis_text, depth_reading, why_an_acharya_misses_it,
-                 surface_reading,
-                 composite_discovery_rank AS salience_score
-          FROM bodha_discoveries
-          WHERE chart_id = $1
-          ORDER BY composite_discovery_rank DESC NULLS LAST
-          LIMIT $2
-        `, [chart_id, discLimit], principal)
+          SELECT p.discovery_id, p.ayanamsha_id, p.discovery_class, p.discovery_subsystem,
+                 p.affected_domains_array AS domains,
+                 p.hypothesis_text, p.depth_reading, p.why_an_acharya_misses_it,
+                 p.surface_reading,
+                 p.composite_discovery_rank AS salience_score,
+                 f.family_ayanamsha_ids
+          FROM (
+            SELECT DISTINCT ON (discovery_class, discovery_subsystem, hypothesis_text)
+                   discovery_id, ayanamsha_id, discovery_class, discovery_subsystem,
+                   affected_domains_array, hypothesis_text, depth_reading,
+                   why_an_acharya_misses_it, surface_reading, composite_discovery_rank
+            FROM bodha_discoveries
+            WHERE chart_id = $1 AND ayanamsha_id = $2
+            ORDER BY discovery_class, discovery_subsystem, hypothesis_text,
+                     composite_discovery_rank DESC NULLS LAST, discovery_id
+          ) p
+          LEFT JOIN (
+            SELECT discovery_class, discovery_subsystem, hypothesis_text,
+                   array_agg(DISTINCT ayanamsha_id ORDER BY ayanamsha_id) AS family_ayanamsha_ids
+            FROM bodha_discoveries
+            WHERE chart_id = $1
+            GROUP BY discovery_class, discovery_subsystem, hypothesis_text
+          ) f
+            ON COALESCE(f.discovery_class, '') = COALESCE(p.discovery_class, '')
+           AND COALESCE(f.discovery_subsystem, '') = COALESCE(p.discovery_subsystem, '')
+           AND COALESCE(f.hypothesis_text, '') = COALESCE(p.hypothesis_text, '')
+          ORDER BY p.composite_discovery_rank DESC NULLS LAST, p.discovery_id
+          LIMIT $3
+        `, [chart_id, PRIMARY_AYANAMSHA, discLimit], principal)
 
         const rows = insightResult.rows.map(r => labelInsightUnit(r as Record<string, unknown>)); const generation_disclosure = summarizeGeneration(rows, ['insight_unit']) // TI-l5-insight-prefix-label-001: same detector as L5 query_insights (mirror, parity-tested)
         const verdicts     = rows.filter(r => r['insight_type'] === 'verdict_object')
@@ -944,6 +978,11 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           calibration_strata: calibrated.slice(0, calLimit).map(trimInsightRow),
           negative_knowledge: negKnowledge.slice(0, negLimit).map(trimInsightRow),
           top_discoveries: discResult.rows,
+          top_discoveries_basis: {
+            ayanamsha_id: PRIMARY_AYANAMSHA,
+            collapse: 'one row per discovery family (discovery_class, discovery_subsystem, hypothesis_text), best-ranked member',
+            cross_check: 'family_ayanamsha_ids lists every stored ayanamsha carrying the same motif; it is a cross-check, not part of the primary reading',
+          },
         }
 
         return dualOutput(envelope(brief, 'synth_chart_brief_get', 'synthesis_maha_brief'))
@@ -961,7 +1000,9 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
     'prashna_undertaking_get',
     'Q4 undertaking recipe: prashna (horary) verdict × muhurta election scoring × fructification timing. ' +
     'Provide the prashna chart_id (cast at question moment) and domain. ' +
-    'Returns: horary verdict, best election windows, fructification anchor, composite undertaking score.',
+    'Returns: horary verdict (the primary lahiri_chitrapaksha reading; the other four stored ayanamshas\' ' +
+    'verdicts are returned separately and labelled under prashna_verdict_cross_check), best election ' +
+    'windows, fructification anchor, composite undertaking score.',
     {
       chart_id:       z.string().uuid().describe('Prashna chart UUID (cast at question moment, not natal chart).'),
       domain:         z.string().describe('Undertaking domain (career | financial | relationship | health | spiritual | transition).'),
@@ -1012,9 +1053,40 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
                  gj.lagna_rashi, gj.classical_citation
           FROM ga_prashna_judgment gj
           WHERE gj.chart_id = $1
-          ORDER BY gj.ayanamsha_id
-          LIMIT 5
+          ORDER BY gj.ayanamsha_id, gj.question_class
+          LIMIT 50
         `, [chart_id], principal)
+        // SS N-342: the verdict is the PRIMARY (Lahiri) one; the other ayanamshas' verdicts are
+        // returned under a separate, labelled key, each named, in serve order, never mixed into
+        // `prashna_verdict`. (The sidecar stores all five; it used to be sorted krishnamurti-first
+        // with no primary.)
+        const prashnaRows = prashnaResult.rows as Array<Record<string, unknown>>
+        const primaryPrashna = prashnaRows.filter(r => r['ayanamsha_id'] === PRIMARY_AYANAMSHA)
+        const serveRank = (id: unknown): number => {
+          const i = (AYANAMSHA_SERVE_ORDER as readonly string[]).indexOf(String(id))
+          return i === -1 ? AYANAMSHA_SERVE_ORDER.length : i
+        }
+        const otherAyanamshas = [...new Set(
+          prashnaRows.map(r => String(r['ayanamsha_id'])).filter(id => id !== PRIMARY_AYANAMSHA),
+        )].sort((a, b) => serveRank(a) - serveRank(b) || a.localeCompare(b))
+        const prashnaCrossCheck = otherAyanamshas.length === 0
+          ? {
+              status: 'not_available',
+              reason: 'single_ayanamsha_chart',
+              primary_id: PRIMARY_AYANAMSHA,
+              basis: 'Cross-check, not the reading.',
+              others: [],
+            }
+          : {
+              status: 'available',
+              primary_id: PRIMARY_AYANAMSHA,
+              basis: 'Cross-check, not the reading: the verdict each other stored ayanamsha produced for the same prashna chart. Shown separately and never merged into prashna_verdict.',
+              others: otherAyanamshas.map(id => ({
+                ayanamsha_id: id,
+                label: `Cross-check: ${id}`,
+                verdicts: prashnaRows.filter(r => r['ayanamsha_id'] === id),
+              })),
+            }
 
         // 2. Election windows (phala_muhurta for the requested domain's action class)
         const muhurtaResult = await platformQuery(`
@@ -1101,7 +1173,12 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           composite_undertaking_score_note: verdictStrength === null
             ? `Averaged over ${compositeInputs.length}/3 components — verdict_strength omitted: ${verdictStrengthFloorReason}`
             : null,
-          prashna_verdict: prashnaResult.rows,
+          prashna_verdict: primaryPrashna,
+          prashna_verdict_ayanamsha_id: PRIMARY_AYANAMSHA,
+          prashna_verdict_missing_primary: primaryPrashna.length === 0 && prashnaRows.length > 0
+            ? `no ${PRIMARY_AYANAMSHA} verdict row exists for this prashna chart; the other ayanamshas are listed in prashna_verdict_cross_check only`
+            : null,
+          prashna_verdict_cross_check: prashnaCrossCheck,
           election_windows: muhurtaResult.rows,
           fructification_anchors: anchorResult.rows,
           fructification_rules: ontologyResult.rows[0]?.['fructification_rules'] ?? null,

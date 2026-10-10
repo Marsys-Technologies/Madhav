@@ -93,6 +93,7 @@ import { runDossier, type DossierPage } from './dossier.js'
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
 import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+import { ayanamshaArgForKpReach, categoryFilterReachesKpFrame, dashaSystemReachesKpFrame } from '../lib/kp_frame.js'
 import { ordinalOrRaw } from '../lib/ordinal.js'
 export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
@@ -2330,7 +2331,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'UUID of the chart to read. Required — no default chart.'
       ),
       ayanamsha_id: z.string().optional().describe(
-        "Ayanamsha for signals (default: 'LAHIRI')"
+        "Ayanamsha for signals (default: 'lahiri_chitrapaksha')"
       ),
       top_k_signals: z.number().int().min(1).max(100).optional().describe(
         'Number of top MSR signals to return (default: 20)'
@@ -2488,7 +2489,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       domain: z.string().describe(
         'Life domain to drill: career, relationship, character, spirituality, wealth, health, or other domain name.'
       ),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       cursor: z.string().optional().describe('Pagination cursor (from previous response.next_cursor)'),
       max_lenses: z.number().int().min(1).max(12).optional().describe(
         'Max question lenses to return (default: 3 for token safety; pass 12 for full payload).'
@@ -2587,7 +2588,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Retrieves ranked MSR (Multi-Signal Repository) signals for a chart — the 573-signal corpus of astrological patterns derived from L1 Gaṇita facts. Each signal encodes a classical Jyotish observation (yoga, placement, aspect, nakshatra condition) with its constituent L1 fact_ids, a computed_salience score reflecting how prominently it operates in this chart, and the domain tags it activates. Use min_salience to focus on high-confidence signals (≥0.7 = strong; ≥0.5 = moderate). The signal layer is the analytical backbone: get_domain_reading and get_chart_orientation both synthesize from this corpus. Query directly when you need raw signal evidence for a specific claim. response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: populated verdict (signal counts + composite-ranking mode), grounding (signal_id/citation coverage in this page), ranking_basis (the actual composite-4D scoring basis when domain was specified), drill_pointers (get_chart_orientation for the entity-level digest, traverse_graph for causal context), judgment_flags, and chart_header.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       domain: z.string().optional().describe('Filter by domain (e.g. career, health)'),
       min_salience: z.number().min(0).max(1).optional().describe(
         'Minimum computed_salience threshold (0–1). Ranked by computed_salience DESC — NOT signature_tier.'
@@ -2790,7 +2791,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'get_positions',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       planet: z.string().optional().describe('Optional: filter by planet name (e.g. Sun, Moon, Mars)'),
       frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
         "R5 W2: re-bases house_d1 onto this reference sign (adds house_from_frame per row). Default: lagna."
@@ -2819,7 +2820,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Retrieves the dasha (planetary period) chain from L1 Gaṇita. Default system: VIMSHOTTARI — the 120-year Parashara sequence (Sun 6 yr, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17, Ketu 7, Venus 20), subdivided into antardasha and pratyantardasha. Other systems available: YOGINI, ASHTOTTARI, CHARA, NARAYANA, SHOOLA, KALACHAKRA. The running period lord colors all life events during its tenure: its natal placement, lordship, aspects received, and conjunctions determine what it delivers. Use this to identify which lords are active now and in the near future, then cross-reference with get_temporal_windows and get_signals to see which yogas those lords activate. Pass date_from=birth_date to exclude pre-birth rows (the dasha running at birth may have started before the birth date).',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       system_id: z.string().optional().describe(
         "Dasha system to retrieve (default: 'VIMSHOTTARI'). Options: VIMSHOTTARI | YOGINI | ASHTOTTARI | CHARA | NARAYANA | SHOOLA | KALACHAKRA."
       ),
@@ -2837,7 +2838,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           'marsys://tool/L1/get_dashas',
           {
             chart_id,
-            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            // vimshottari_kp / "all" / an unrecognised system is a KP-reaching page: an omitted id is not sent (SS N-368)
+            ...ayanamshaArgForKpReach(ayanamsha_id, dashaSystemReachesKpFrame(system_id), normalizeAyanamsha),
             dasha_system: system_id ?? 'VIMSHOTTARI',
             ...(date_from ? { date_from } : {}),
             limit: limit ?? 50,
@@ -2859,7 +2861,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Retrieves the L3 Kāla temporal activation layer for a date range — identifying which Jyotish periods (Vimshottari dasha, antardasha, pratyantardasha) are running, which MSR signals are activated by those period lords, and where convergence windows occur (multiple activation streams peaking simultaneously). In classical Jyotish, timing is the hardest discipline: a powerful yoga (structural combination) only gives its results when its constituent lords run their period. This tool applies that temporal gate — distinguishing signals that are structurally present from those that are temporally ripe. Returns orientation_context (B.11) alongside temporal data.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date YYYY-MM-DD'),
       date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date YYYY-MM-DD'),
       as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe(
@@ -2893,7 +2895,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'get_projections',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       domain: z.string().optional().describe('Domain to project (e.g. career, relationship)'),
       horizon_years: z.number().int().min(1).max(20).optional().describe('Projection horizon in years (default: 5)'),
       max_projections: z.number().int().min(1).max(200).optional().describe(
@@ -3373,7 +3375,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_marriage_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
@@ -3419,7 +3421,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_career_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
@@ -3465,7 +3467,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_health_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
@@ -3511,7 +3513,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_wealth_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
@@ -3560,7 +3562,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Bridges the L2 Bodha yoga-signal catalog and the L3 Kāla timing activation surface. Returns yoga signals (signal_type_class=yoga) active within the given dasha window, ranked by salience × dasha_alignment_score. Each result includes activation_start, activation_end, active_dasha_periods_jsonb, and constituent_fact_ids for drill-down. Use to answer "which yogas are ripening now?" chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       dasha_period: z.string().optional().describe(
         "Dasha-antardasha label to filter by (e.g. 'saturn-venus'). Case-insensitive substring match against active_dasha_periods_jsonb."
       ),
@@ -3611,7 +3613,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       seed_node: z.string().uuid().optional().describe('Source node UUID for paths mode.'),
       target_node: z.string().uuid().optional().describe('Target node UUID for paths mode.'),
       query_text: z.string().optional().describe('Semantic seed: finds top-3 similar nodes and runs BFS from them.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       about: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
         'R5 W2: address expression (e.g. "lord_of(bhava 10)") seeding neighbors mode — resolved via the shared address resolver.'
       ),
@@ -3718,7 +3720,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             // WP-1.3(f)/LCA-3: query_chart_facts-scoped resolver so all 6 stored ayanamshas
             // (incl. true_chitra) are reachable — the shared normalizeAyanamsha collapses
             // true_chitra -> lahiri, hiding a full dataset.
-            ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id),
+            // No category filter / a KP category: the page carries KP-frame rows, so an OMITTED id is not
+            // sent (SS N-368): the handler's own default applies and no false KP "does not apply" note is drawn.
+            ...ayanamshaArgForKpReach(ayanamsha_id, categoryFilterReachesKpFrame(category), resolveChartFactsAyanamsha),
             ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),
@@ -3785,7 +3789,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'Graha yuddha (planetary war): tara-graha pairs (Mars/Mercury/Jupiter/Venus/Saturn) within 1 degree orb in the same sign, and their winner per JL-027 Option A (Parasari northern-latitude rule — Venus always wins; else the more-northern ecliptic latitude wins), computed at serve time from already-computed ephemeris data joined against the chart\'s birth date. chart_facts.graha_yuddha itself remains floored (winner=NULL) at rest; this tool overlays the ratified, cited winner without writing back to chart data. Where the pair is not tara-graha-eligible or ephemeris data is unavailable for the birth date, the floor is returned unchanged — the retired uncited longitude-proxy method is never substituted. chart_id is required.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe('Filter by ayanamsha. Omit for all ayanamshas present.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Pass \"all\" for the explicit raw per-ayanamsha pair list."),
       budget_kb: BUDGET_KB_ZOD,
     },
     async ({ chart_id, ayanamsha_id, budget_kb }) => {
@@ -3795,7 +3799,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           'marsys://tool/L1/get_graha_yuddha',
           {
             chart_id,
-            ...(ayanamsha_id ? { ayanamsha_id: normalizeAyanamsha(ayanamsha_id) } : {}),
+            // SS N-342: omitted => the PRIMARY (Lahiri); "all" => the explicit raw opt-out.
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
           },
           chart_id, principal
         )
