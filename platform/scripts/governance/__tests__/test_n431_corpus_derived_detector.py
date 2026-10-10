@@ -327,12 +327,12 @@ def test_compare_an_undeclared_json_text_column_is_not_parsed():
 
 
 def test_compare_hand_edited_value_fails_naming_key_and_column_but_never_the_value():
-    secret = "HAND-EDITED-SENTENCE-9137"
-    r = cdd.compare_corpus_derived([rowx("r1", "c1", body=secret)], {"c1": [drow("r1", "c1")]}, DER)
+    hand_edit = "HAND-EDITED-SENTENCE-9137"
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", body=hand_edit)], {"c1": [drow("r1", "c1")]}, DER)
     assert r["v"] == FAIL
     d = r["first_differences"][0]
     assert d["kind"] == "differs" and d["key"] == {"rule_id": "r1"} and d["columns"] == ["body"] and d["chunk"] == "c1"
-    assert secret not in json.dumps(r) and secret not in r["measured"]
+    assert hand_edit not in json.dumps(r) and hand_edit not in r["measured"]
 
 
 def test_compare_names_every_differing_column_and_a_column_present_on_one_side_only():
