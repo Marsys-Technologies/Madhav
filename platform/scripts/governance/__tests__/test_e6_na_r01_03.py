@@ -53,7 +53,9 @@ N177_IDS = frozenset({"Ldgr.source_presence#measured:unsourced-declared"})      
 N211_IDS = frozenset({"Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"})       # SS N-211 (E2 / E3 ii): Dens.served N/A for a declared dens_not_served, CHECKED against the capability scan and the registry
 N235_IDS = frozenset(f"Carr.D{i}#measured:ratified_judgment" for i in (1, 2, 3))      # SS N-235 (2026-10-08): the ratified-judgment seeds read Carr.D1/D2/D3 N/A; declaration-keyed (nature ratified_judgment + ruling N-235) and checked
 N283_IDS = frozenset(f"Carr.D{i}#measured:no-table-no-prose" for i in (1, 2, 3))      # SS N-283: a table-less service probe stores no value; declaration-keyed (no_table), checked
-DECLARED_IDS = N283_IDS | N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
+N430_IDS = frozenset({"Idem.pattern#measured:passive-projection", "Build.count_integrity#measured:passive-projection-constant-count"})      # SS N-430 (views): a declared passive_projection, CHECKED against the writer scan and the live catalog
+N431_IDS = frozenset(f"{c}#measured:corpus-derived" for c in ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Null.schema_default", "Null.blank_rows"))      # SS N-431 (R1/R3, revision 28): a corpus_derived table, declaration-keyed and CHECKED by regeneration
+DECLARED_IDS = N431_IDS | N430_IDS | N283_IDS | N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -86,6 +88,12 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         if rid in N151_IDS | N150_IDS:
             assert ("N-151" if rid in N151_IDS else "N-150") in why, (rid, why)                                                 # the N-151 rules cite their own ruling
             continue
+        if rid in N430_IDS:
+            assert "N-430" in why, (rid, why)                                                                                    # SS N-430: cites its own ruling
+            continue
+        if rid in N431_IDS:
+            assert "N-431" in why, (rid, why)                                                                                    # SS N-431: cites its own ruling
+            continue
         if rid in N270_IDS:
             assert "N-270" in why, (rid, why)                                                                                    # SS N-270: cites its own ruling
             continue
@@ -98,15 +106,15 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
 
 def test_no_rule_beyond_the_ruling_is_declared():
     ids = set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS)]
-    assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS
+    assert not [i for i in ids if i.startswith(("Count.", "Complete.")) or (i.startswith("Idem.") and i not in N150_R5_IDS | N430_IDS)]
+    assert {i for i in ids if i.startswith("Null.")} == N150_R1_IDS | {i for i in N431_IDS if i.startswith("Null.")}
     assert {i for i in ids if i.startswith("Narr.") and "lint-not-applicable" in i} == N150_R2_IDS
     assert {i for i in ids if i.startswith(("Vocab.", "Ldgr."))} == S3_IDS | N151_IDS | N176_IDS | N177_IDS | N270_IDS   # S3: the declaration-keyed words (+ the two N-151 checked-declaration words), never a column pattern
     assert not [i for i in ids if i.endswith(("#columns_any", "#asset_kinds"))]        # A5: no applicability-pattern N/A is declared anywhere
     assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS | N156_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
     assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
-                                                                      "Build.dep_liveness#measured:no-declared-dependencies") and i not in N150_R5_IDS]
+                                                                      "Build.dep_liveness#measured:no-declared-dependencies") and i not in N150_R5_IDS | N430_IDS]
     assert not [i for i in ids if "user_data" in i or "write-nothing" in i or "rolling_horizon" in i or "no-carriage" in i]
 
 
