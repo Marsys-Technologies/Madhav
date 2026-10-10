@@ -30,15 +30,15 @@ SIGNS = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 
-NAKSHATRAS = (
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
-    "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-    "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
-    "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha",
-    "Shravana", "Dhanishta", "Shatabhisha",
-    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-)
+# The 27 nakshatra names are the L0 lexicon's (canonical_name_en, via brahmagyan.nakshatra_vocabulary)
+# and are never retyped here: index 0 = Ashwini ... 26 = Revati (Abhijit, the seed's 28th row, is
+# not among them). Nakshatra 5/19/23 are Mrigasira / Moola / Dhanishtha (this list used to say
+# Mrigashira / Dhanishta). The `nakshatra` leaves emitted by _sign_nak (ingress / conjunction /
+# aspect / station / eclipse rows) follow the lexicon, so downstream matchers see ONE spelling.
+# The import sits beside the list it replaces, so this module's line numbers (pinned by
+# asset_declarations.json) stay put.
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402
+NAKSHATRAS = CANONICAL_NAKSHATRA_NAMES  # tuple[str, ...], 27 names, order = nakshatra number - 1
 
 MEAN_MOTIONS: dict[str, float] = {
     "Sun": 0.9856,
