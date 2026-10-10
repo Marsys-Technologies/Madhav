@@ -21,7 +21,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const NAKSHATRA_CATEGORIES = [
@@ -96,7 +96,11 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       `
       // nakshatra_cross_ayanamsha is stored once under the ayanamsha_id='INVARIANT' sentinel
       // (ga_nakshatra); a bare `ayanamsha_id = $n` would drop it, so the filter keeps it.
-      const aya = resolveHandlerAyanamsha(args)
+      // KP branch (SS N-357): domain=kp is Krishnamurti Paddhati, which has one frame by doctrine.
+      // It is read at the Krishnamurti ayanamsha whatever id/scope the caller passed (Lahiri
+      // primary, "all", alias, nonsense); the non-KP domains keep the Lahiri default and "all".
+      const kpFrame = args.domain === 'kp' ? resolveKpFrameAyanamsha(args) : null
+      const aya = kpFrame ? kpFrame.aya : resolveHandlerAyanamsha(args)
       sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
       // Total order: after a ga_nakshatra rebuild each (graha_gandanta, subject, is_gandanta)
       // key has TWO rows (canonical + strict_0_48 variant, told apart only by formula_id), so
@@ -109,7 +113,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
-          ...ayanamshaScopeEcho(aya),
+          ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)),
           categories,
           rows,
           total: rows.length,

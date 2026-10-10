@@ -19,7 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const KARAKA_CATEGORIES = [
   'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada',
@@ -96,13 +96,18 @@ export const getKarakasCapability: CapabilityDescriptor = {
       if (args.system === 'jaimini') {
         categories = categories.filter(c => c.startsWith('karaka') || c.startsWith('jaimini') || ['swamsa_position', 'karakamsa_position', 'arudha_pada', 'karakatva_strength_per_significance'].includes(c))
       }
-      if (args.system === 'kp') {
+      // KP branch (SS N-357): Krishnamurti Paddhati has one frame by doctrine. system=kp is read at
+      // the Krishnamurti ayanamsha whatever id/scope the caller passed (Lahiri primary, "all",
+      // alias, nonsense); the non-KP branches keep the Lahiri default and the "all" opt-out.
+      const isKp = args.system === 'kp'
+      if (isKp) {
         categories = categories.filter(c => c.startsWith('kp'))
       }
 
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      const aya = resolveHandlerAyanamsha(args)
+      const kpFrame = isKp ? resolveKpFrameAyanamsha(args) : null
+      const aya = kpFrame ? kpFrame.aya : resolveHandlerAyanamsha(args)
       where += pushAyanamshaFilter(aya, filterParams)
       const pageSql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
@@ -118,7 +123,7 @@ export const getKarakasCapability: CapabilityDescriptor = {
       const countResult = await query<{ total: string }>(countSql, filterParams)
       return {
         content: {
-          chart_id: chartId, ...ayanamshaScopeEcho(aya), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
+          chart_id: chartId, ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)), categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
           // §N.6: density signaling is data, not narration — machine-readable pointer to the
           // real categories this tool can reach but does not include on the default page.
           opt_in_categories_available: KARAKA_OPT_IN_CATEGORIES,

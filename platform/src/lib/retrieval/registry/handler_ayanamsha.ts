@@ -32,6 +32,7 @@
  */
 import { AYANAMSHA_ALL, AYANAMSHA_SERVE_ORDER, INVARIANT_AYANAMSHA, PRIMARY_AYANAMSHA } from './constants'
 import { InvalidAyanamshaError, resolveAyanamshaArg } from '../chart_facts_helpers'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../kp_frame'
 
 export interface HandlerAyanamsha {
   /** Stored id to filter on, or `null` for the explicit `"all"` opt-out. */
@@ -57,6 +58,42 @@ export function resolveHandlerAyanamsha(args: Record<string, unknown>): HandlerA
     return { id: r.ayanamsha_id, all: false, source: 'omitted' }
   }
   return { id: r.ayanamsha_id, all: false, source: 'explicit' }
+}
+
+/** The KP-frame read of a generic reader's KP branch (see `resolveKpFrameAyanamsha`). */
+export interface KpFrameAyanamsha {
+  /** Always the Krishnamurti read: `{ id: 'krishnamurti', all: false }`. */
+  aya: HandlerAyanamsha
+  /** The fields every KP-branch response carries: `ayanamsha_id`, `frame_label`, and the note when relevant. */
+  echo: { ayanamsha_id: string; frame_label: string; ayanamsha_note?: string }
+}
+
+/**
+ * KP branch of a generic reader (SS N-357): Krishnamurti Paddhati has ONE frame by doctrine, the
+ * Krishnamurti ayanamsha, so a KP read (`get_karakas` system=kp, `get_nakshatra` domain=kp) is
+ * served at `krishnamurti` WHATEVER `ayanamsha_id` / `ayanamsha_scope` the caller passed: the
+ * Lahiri primary the bridge injects, an alias, "all", `ayanamsha_scope: 'all'`, another stored
+ * id, or an unrecognised id. The passed id is ignored exactly as `fetchKpCuspChain` ignores it
+ * (never validated, never an error). When the caller asked for something other than
+ * Krishnamurti, the response says the request was not applied (`ayanamsha_note`) rather than
+ * silently serving a different frame. Pure; non-KP branches never call this.
+ */
+export function resolveKpFrameAyanamsha(args: Record<string, unknown>): KpFrameAyanamsha {
+  const aya: HandlerAyanamsha = { id: KP_FRAME_AYANAMSHA, all: false, source: 'explicit' }
+  const r = resolveAyanamshaArg(args['ayanamsha_id'])
+  const scope = args['ayanamsha_scope']
+  const scopeAll = typeof scope === 'string' && scope.trim().toLowerCase() === AYANAMSHA_ALL
+  let requested: string | null = null
+  if (!r.ok) requested = String(r.received)
+  else if (r.source === 'all') requested = AYANAMSHA_ALL
+  else if (r.source === 'explicit' && r.ayanamsha_id !== KP_FRAME_AYANAMSHA) requested = String(args['ayanamsha_id'])
+  else if (r.source === 'omitted' && scopeAll) requested = AYANAMSHA_ALL
+  const echo: KpFrameAyanamsha['echo'] = { ayanamsha_id: KP_FRAME_AYANAMSHA, frame_label: KP_FRAME_LABEL }
+  if (requested !== null) {
+    echo.ayanamsha_note =
+      `KP has one frame by doctrine (Krishnamurti); the requested ayanamsha_id/scope '${requested}' does not apply here`
+  }
+  return { aya, echo }
 }
 
 export type HandlerAyanamshaAttempt =
