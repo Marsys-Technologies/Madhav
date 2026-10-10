@@ -138,8 +138,8 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
       // F-B14 / §N.6 item 1: tier breakdown for THIS page — never dropped, always disclosed.
       const tier_breakdown: Record<string, number> = {}
       let unverified_rows_in_page = 0
-      normalizeNarrationRows(rowsRes.rows)
-      for (const r of rowsRes.rows) {
+      const servedRows = normalizeNarrationRows(rowsRes.rows)
+      for (const r of servedRows) {
         const tier = String(r['verification_pass_status'] ?? 'unknown')
         tier_breakdown[tier] = (tier_breakdown[tier] ?? 0) + 1
         if (tier !== 'two_pass_verified') unverified_rows_in_page++
@@ -148,10 +148,10 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
-          count: rowsRes.rows.length,
+          rows: servedRows,
+          count: servedRows.length,
           total_matching,
-          more_available: total_matching > rowsRes.rows.length,
+          more_available: total_matching > servedRows.length,
           ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, subject, check_type, limit },
           tier_breakdown,
@@ -159,7 +159,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
           ...(unverified_rows_in_page > 0
             ? {
                 unverified_note:
-                  `${unverified_rows_in_page} of ${rowsRes.rows.length} row(s) in this page carry a ` +
+                  `${unverified_rows_in_page} of ${servedRows.length} row(s) in this page carry a ` +
                   "verification_pass_status other than two_pass_verified (single/pending_w3_verification) " +
                   '— genuine classical computations, not yet independently cross-verified. See each row\'s ' +
                   'own verification_pass_status field, not just this count.',

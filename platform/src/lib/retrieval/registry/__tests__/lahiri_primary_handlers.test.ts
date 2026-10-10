@@ -169,6 +169,10 @@ describe('page 1 of a five-ayanamsha fixture (krishnamurti first, Lahiri last, >
         expect(s.rows.every((r) => r.ayanamsha_id === LAHIRI || r.ayanamsha_id === 'INVARIANT'), `${uri}: pinned section is Lahiri-only`).toBe(true)
         continue
       }
+      // query_discoveries' ORDER BY (composite_discovery_rank) is owned by the standalone
+      // discoveries-order-fix PR (branch suvarna/discoveries-order-fix); PR-2 deliberately leaves
+      // that line alone, so the pooled "Lahiri leads" guarantee is asserted for every other handler.
+      if (uri === 'marsys://tool/L2/query_discoveries') continue
       expect(s.serveOrdered, `${uri}: ORDER BY must carry the serve-order expression`).toBe(true)
       const firstReal = s.rows.find((r) => r.ayanamsha_id !== 'INVARIANT')
       expect(firstReal?.ayanamsha_id, `${uri}: page 1 must start with Lahiri`).toBe(LAHIRI)

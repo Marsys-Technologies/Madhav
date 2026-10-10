@@ -30,7 +30,7 @@
  * read + render of already-computed L1 positions (B.10: formatting, not fabrication).
  */
 import type { CapabilityDescriptor } from '../../types'
-import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha } from '../../handler_ayanamsha'
 import { query } from '@/lib/db/client'
 import { ZODIAC_SIGNS, type ZodiacSign, grahaCodeOf } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'

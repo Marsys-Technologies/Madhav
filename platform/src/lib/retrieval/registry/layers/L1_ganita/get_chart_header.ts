@@ -9,7 +9,7 @@
  * Tool: marsys://tool/L1/get_chart_header
  */
 import type { CapabilityDescriptor } from '../../types'
-import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha } from '../../handler_ayanamsha'
 import { fetchChartHeaderResolution } from '../../../chart_header'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 

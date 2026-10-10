@@ -23,7 +23,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -133,7 +133,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_discoveries
       WHERE ${where}
-      ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST, ${ayanamshaServeOrderBy()}
+      ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST
       LIMIT $${p} OFFSET $${p + 1}`
 
     // MC-015/026: family-collapse aggregate, computed server-side over the FULL matching

@@ -23,16 +23,13 @@
 export const CITATION_HUMAN_SELECT = `NULLIF(BTRIM(citation_human), '') AS citation_human`
 
 /**
- * Normalise the narration on served rows in place: a missing, non-string, empty or
+ * Normalise the narration on served rows (returns NEW row objects; the DB layer's rows are not mutated): a missing, non-string, empty or
  * whitespace-only `citation_human` becomes `null`; a real string is trimmed and kept verbatim.
  * (The SQL already does this; the JS pass makes the contract hold for any row source.)
  */
-export function normalizeNarrationRows<T extends Record<string, unknown>>(rows: T[] | undefined): T[] {
-  const out = rows ?? []
-  for (const row of out) {
+export function normalizeNarrationRows<T extends Record<string, unknown>>(rows: readonly T[] | undefined): T[] {
+  return (rows ?? []).map((row) => {
     const v = (row as Record<string, unknown>)['citation_human']
-    ;(row as Record<string, unknown>)['citation_human'] =
-      typeof v === 'string' && v.trim() !== '' ? v.trim() : null
-  }
-  return out
+    return { ...row, citation_human: typeof v === 'string' && v.trim() !== '' ? v.trim() : null }
+  })
 }

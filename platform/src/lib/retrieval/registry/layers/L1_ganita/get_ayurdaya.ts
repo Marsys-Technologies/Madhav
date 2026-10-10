@@ -106,7 +106,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
-      normalizeNarrationRows(rowsRes.rows)
+      const servedRows = normalizeNarrationRows(rowsRes.rows)
 
       // F-E3 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 4/6; §N.6 item 3): harana_status
       // is a real, correct incompleteness disclosure (reductive haranas not yet applied)
@@ -116,21 +116,21 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
       // row is on this page, absent otherwise (never fabricated for a page that doesn't
       // carry it).
       const haranaStatuses = new Set<string>()
-      for (const r of rowsRes.rows) {
+      for (const r of servedRows) {
         if (r['fact_key'] === 'total_years') {
           const jsonb = r['fact_value_jsonb'] as { harana_status?: string } | null
           if (jsonb?.harana_status) haranaStatuses.add(jsonb.harana_status)
         }
       }
-      const unreduced = deriveAyurdayaFigureDisclosure(rowsRes.rows, { assumeAyurdayaCategory: true }) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
+      const unreduced = deriveAyurdayaFigureDisclosure(servedRows, { assumeAyurdayaCategory: true }) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
       return {
         content: {
           chart_id,
           ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat, figure_counts: unreduced.figure_counts, judgment_flags: [unreduced.judgment_flag] } : {}),
-          rows: annotateAyurdayaYearRows(rowsRes.rows, unreduced),
-          count: rowsRes.rows.length,
+          rows: annotateAyurdayaYearRows(servedRows, unreduced),
+          count: servedRows.length,
           total_matching,
-          more_available: total_matching > rowsRes.rows.length,
+          more_available: total_matching > servedRows.length,
           ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, method, limit },
           ...(total_matching === 0

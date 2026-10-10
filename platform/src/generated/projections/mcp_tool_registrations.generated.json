@@ -1506,6 +1506,10 @@
             "type": "string",
             "description": "Chart UUID"
           },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha (stored id or alias, default 'lahiri_chitrapaksha' = the primary reading). Pass 'all' for the raw rows of every ayanamsha."
+          },
           "offset": {
             "type": "number",
             "default": 0

@@ -15,7 +15,7 @@
  * F-93: `ayanamsha_id` now defaults server-side to `DEFAULT_AYANAMSHA` ('lahiri_chitrapaksha',
  * `../../constants`) the same way `system`/`level`/`window` already default — omitting it no
  * longer returns one row per ayanamsha. An explicit `ayanamsha_id` is still validated against
- * `STORED_DASHA_AYANAMSHAS` (`invalid_ayanamsha_id` on a bad value). Pass `ayanamsha_id` only
+ * the stored ayanamshas (`invalid_ayanamsha_id` on a bad value; PR-2: via the shared resolver, aliases normalise, "all" is the pooled opt-out). Pass `ayanamsha_id` only
  * when a non-canonical ayanamsha is actually wanted. Closes the gap flagged at R5 W1 (below,
  * historical) and the wrong-ayanamsha-reaches-the-model failure mode from DIAGNOSIS/F-93.
  */
@@ -29,7 +29,7 @@ import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
 import { INVARIANT_AYANAMSHA } from '../../constants'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { } from '../../constants'
 import { DASHA_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 import { resolveChartServedGeneration, servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
@@ -53,7 +53,6 @@ const KNOWN_SYSTEMS = [
 // chart_dashas stores only the five material ayanamshas. This is intentionally not
 // an alias map: public aliases are normalized at the MCP boundary, while this
 // primitive accepts only identifiers that can be persisted in this table.
-const STORED_DASHA_AYANAMSHAS = new Set<string>(REAL_AYANAMSHAS)
 
 // Case/spelling normalization for the `system` facet — accepts the actual system_id values,
 // common uppercase spellings, and the classical/alias names a caller might reach for.

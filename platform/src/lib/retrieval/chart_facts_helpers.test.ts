@@ -258,9 +258,11 @@ describe('shouldInjectPrimaryAyanamsha (KP frame, INVARIANT-bearing, INVARIANT c
     for (const uri of KP_FRAME_CAPABILITY_URIS) expect(shouldInjectPrimaryAyanamsha({ uri }, {})).toBe(false)
   })
 
-  it('INVARIANT-bearing capabilities (their default pages hold ayanamsha-independent rows) are not injected', () => {
-    for (const uri of INVARIANT_BEARING_CAPABILITY_URIS) expect(shouldInjectPrimaryAyanamsha({ uri }, {})).toBe(false)
-    expect(INVARIANT_BEARING_CAPABILITY_URIS.has('marsys://tool/L1/get_panchanga')).toBe(true)
+  it('PR-2: no capability is left on the INVARIANT-bearing "do not inject" list; the four former members are injected', () => {
+    expect([...INVARIANT_BEARING_CAPABILITY_URIS]).toEqual([])
+    for (const name of ['get_panchanga', 'get_nakshatra', 'get_strength', 'query_planet']) {
+      expect(shouldInjectPrimaryAyanamsha({ uri: `marsys://tool/L1/${name}` }, {})).toBe(true)
+    }
   })
 
   it.each([
