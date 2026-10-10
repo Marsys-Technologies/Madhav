@@ -288,6 +288,13 @@ def test_a_vocabulary_value_at_an_undeclared_path_is_named_and_the_column_is_not
     assert rep["undeclared_vocabulary"] == [{"path": "$.lord", "values": ["Mars"], "leaves": 3}]
 
 
+def test_a_declared_key_name_at_another_depth_is_a_different_path_and_stays_undeclared():
+    """`sign` is declared at the root only: a `sign` nested one level down (or inside an array) is NOT that path, so its rashi is undeclared vocabulary."""
+    for sig in (["meta", "sign"], ["sign", None], ["items", None, "sign"]):
+        rep = ac.vocab_json_kinds_report(clean_read([entry(sig, ["Aries"], hits=["Aries"])]), spec_of())
+        assert rep["ok"] is False and rep["undeclared_vocabulary"][0]["path"] == ac.vocab_json_sig_label(sig)
+
+
 def test_a_graha_code_at_an_undeclared_nested_path_is_named_with_its_array_steps():
     rd = clean_read([entry(["chain", None, "actor"], ["JUP"], hits=["JUP"])])
     rep = ac.vocab_json_kinds_report(rd, spec_of())
