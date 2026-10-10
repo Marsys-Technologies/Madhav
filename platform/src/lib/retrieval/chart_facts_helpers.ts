@@ -44,7 +44,7 @@ export const STORED_AYANAMSHA_IDS: readonly string[] = AYANAMSHA_SERVE_ORDER
  * Superset of every vocabulary already in the repo: MCP resolver, `lib/ayanamsha.ts`
  * (chart create/edit), sidecar `panchang_engine` (`true_chitra_paksha`), PyJHora adapter,
  * generated chat schema text (`LAHIRI`), and the aliases ratified in N-342.
- * `chitra`/`chitrapaksha` keep the pre-existing MCP meaning (True Chitrapaksha).
+ * `chitrapaksha` = LAHIRI (the standard name of Lahiri's ayanamsha; SS N-348); `chitra` keeps its pre-existing MCP meaning (True Chitrapaksha).
  */
 const AYANAMSHA_ALIAS_TABLE: Readonly<Record<string, string>> = {
   lahiri: 'lahiri_chitrapaksha',
@@ -55,7 +55,7 @@ const AYANAMSHA_ALIAS_TABLE: Readonly<Record<string, string>> = {
   true_chitra_paksha: 'true_chitra',
   true_chitrapaksha: 'true_chitra',
   chitra: 'true_chitra',
-  chitrapaksha: 'true_chitra',
+  chitrapaksha: 'lahiri_chitrapaksha', // Chitrapaksha is the standard name of Lahiri's ayanamsha (SS N-348); `chitra` keeps its older MCP meaning below
   kp: 'krishnamurti',
   krishnamurti: 'krishnamurti',
   krishnamurti_paddhati: 'krishnamurti',

@@ -78,6 +78,7 @@ describe('MCP normaliser golden table', () => {
     [undefined, LAHIRI], [null, LAHIRI], ['', LAHIRI], ['  ', LAHIRI],
     ['lahiri', LAHIRI], ['LAHIRI', LAHIRI], ['lahiri_chitrapaksha', LAHIRI],
     ['true_chitra', 'true_chitra'], ['true_citra', 'true_chitra'], ['true_chitra_paksha', 'true_chitra'], ['chitra', 'true_chitra'],
+    ['chitrapaksha', LAHIRI], ['Chitrapaksha', LAHIRI], ['true chitra', 'true_chitra'], ['true_chitrapaksha', 'true_chitra'],
     ['kp', 'krishnamurti'], ['KP', 'krishnamurti'], ['krishnamurti', 'krishnamurti'], ['krishnamurti_paddhati', 'krishnamurti'],
     ['raman', 'raman'],
     ['surya_siddhanta', 'surya_siddhanta_classical'], ['surya_siddhanta_classical', 'surya_siddhanta_classical'], ['ss', 'surya_siddhanta_classical'],
