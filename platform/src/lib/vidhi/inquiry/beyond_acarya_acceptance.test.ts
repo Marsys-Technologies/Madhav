@@ -170,6 +170,13 @@ const historicalV23 = {
   artifact_hash: 'sha256:edbd68c082fda664345decfba78a42bea90266ff9e6b0069df949c0452aa79eb',
 } as const
 
+// The ephemeris_cache_native_lifetime retirement successor of v23 (SS N-373, PR #3396, v24). Immutable since the Lahiri-primary combined batch (v25) superseded it.
+const historicalV24 = {
+  capability_content_hash: 'sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef',
+  report_hash: 'sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a',
+  artifact_hash: 'sha256:1f2aad07204f67eeabddde939d6bf28bb4d987335055ae6c138e53a75e7d43ac',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -269,7 +276,13 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // ephemeris_cache_native_lifetime retirement (v24, SS N-373): the capability (one reviewed SCU, one registry binding) is removed from the catalog,
     // which moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint
     // coincides with v23's and every metric assertion above is unchanged. Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a')
+    // Lahiri-primary combined batch (v25, SS N-339..N-404): the L1/L2 handlers' source-query availability probes mirror the primary-ayanamsha filter, serve-order ORDER BY and
+    // citation_human select item (PR-2); include_cross_check inputs and the compact identity_cross_check were added to get_positions, get_dashas, query_discoveries, query_pratijna,
+    // graha_portrait and chart_snapshot (PR-3); every ayanamsha_id input text now says omitted = the Lahiri primary and "all" = the explicit raw opt-out; the KP-reaching readers'
+    // text follows the one-frame KP rule; get_prashna_lagna no longer claims a kp_sub_lord for kp_249. That moved source_catalog_fingerprint, hence capability_content_hash and
+    // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's and every metric assertion above is unchanged.
+    // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
+    expect(report.report_hash).toBe('sha256:91986ee9ad20f225f2466cd4074230a9a9d58db9f830d45e9ce4fa6faa85ee94')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -848,9 +861,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v24 source-successor artifact to the current executable report without claiming live acceptance (ephemeris_cache_native_lifetime retirement, SS N-373)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v24 source-successor artifact immutable after the Lahiri-primary combined batch', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v24.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV24.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v24',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v23.json',
+        capability_content_hash: historicalV23.capability_content_hash,
+        report_hash: historicalV23.report_hash,
+      },
+      capability_content_hash: historicalV24.capability_content_hash,
+      report_hash: historicalV24.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v25 source-successor artifact to the current executable report without claiming live acceptance (Lahiri-primary combined batch, SS N-339..N-404)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v25.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -858,12 +892,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v24',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v23.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV23.capability_content_hash,
-        report_hash: historicalV23.report_hash,
+        capability_content_hash: historicalV24.capability_content_hash,
+        report_hash: historicalV24.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -906,9 +940,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // ephemeris_cache_native_lifetime retirement (SS N-373): one SCU and its binding leave the catalog;
-      // the snapshot is regenerated with its committed generated_at. Base: origin/main at ef4649e8fe0ed73abc62e502f9817f612d91b574 (#3387, v23).
-      evaluated_source_revision: 'ef4649e8fe0ed73abc62e502f9817f612d91b574',
+      // Lahiri-primary combined batch (SS N-339..N-404): the five held PRs plus the descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
+      // Base: origin/main at 43097ab0e5d9a6ddeda07c2224aeda91659e7fe7 (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
+      evaluated_source_revision: '43097ab0e5d9a6ddeda07c2224aeda91659e7fe7',
     })
   })
 })

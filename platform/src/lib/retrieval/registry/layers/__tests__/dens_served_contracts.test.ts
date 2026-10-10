@@ -660,9 +660,11 @@ describe('DENS-A: query_mechanisms (bo_yantra_mechanism) counts the verification
     expect(r.is_error).toBe(false)
     const [sql, params] = mockQuery.mock.calls.find(c => /FROM bodha_mechanisms d\s+WHERE/.test(String(c[0]))) as [string, unknown[]]
     expect(sql).toMatch(/SELECT d\.verification_pass_status, COUNT\(\*\)::text AS n\s+FROM bodha_mechanisms d/)
-    expect(sql).toMatch(/d\.valence = \$2/)
-    expect(sql).toMatch(/d\.build_id = \$3::uuid/)
-    expect(params).toEqual([CHART_ID, 'benefic', 'build-a'])
+    // PR-2: the tier query carries the same primary-ayanamsha filter as the page ($2, Lahiri).
+    expect(sql).toMatch(/d\.ayanamsha_id = \$2/)
+    expect(sql).toMatch(/d\.valence = \$3/)
+    expect(sql).toMatch(/d\.build_id = \$4::uuid/)
+    expect(params).toEqual([CHART_ID, 'lahiri_chitrapaksha', 'benefic', 'build-a'])
     const facets = (r.content as Record<string, unknown>)['facets'] as Record<string, unknown>
     expect(facets['by_verification_pass_status']).toEqual({ two_pass_verified: 2, unset: 1 })
   })

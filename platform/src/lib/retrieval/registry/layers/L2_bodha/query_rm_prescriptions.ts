@@ -8,6 +8,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -28,7 +29,7 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:        { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:    { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id:    { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     tradition:       { type: 'string', description: 'Filter by tradition. Omit for all.' },
     remedy_category: { type: 'string', description: 'Filter by remedy_category. Omit for all.' },
     target_graha:    { type: 'string', description: 'Filter by target_graha. Omit for all.' },
@@ -62,7 +63,14 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const tradition = args['tradition'] ? String(args['tradition']) : null
     const remedy_category = args['remedy_category'] ? String(args['remedy_category']) : null
     const target_graha = args['target_graha'] ? String(args['target_graha']) : null
@@ -71,12 +79,12 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)    { filters.push(`ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (tradition)       { filters.push(`tradition = $${p++}`);       params.push(tradition) }
     if (remedy_category) { filters.push(`remedy_category = $${p++}`); params.push(remedy_category) }
     if (target_graha)    { filters.push(`target_graha = $${p++}`);    params.push(target_graha) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT prescription_id, ayanamsha_id, target_graha, target_resonance_id,
@@ -90,7 +98,7 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_rm_remedy_prescriptions
       WHERE ${where}
-      ORDER BY resonance_match_score DESC NULLS LAST, classical_strength_rating DESC NULLS LAST
+      ORDER BY resonance_match_score DESC NULLS LAST, classical_strength_rating DESC NULLS LAST, ${ayanamshaServeOrderBy()}
       LIMIT $${p} OFFSET $${p + 1}`
 
     try {
@@ -102,6 +110,7 @@ export const queryRmPrescriptionsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,

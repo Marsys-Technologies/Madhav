@@ -120,6 +120,7 @@ from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 # savepoint) context.
 from services.gochara_intensity._dbutil import savepoint_scope
 from brahmagyan.graha_vocabulary import norm_graha
+from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID
 
 from .models import ConfigurationSentence, ResonanceTarget
 from . import citations as C
@@ -146,7 +147,7 @@ logger = logging.getLogger(__name__)
 # neither underlying table changes within a build's lifetime, and a
 # fresh process (new deploy/dispatch) starts with an empty cache.
 _AV_GATE_ROWS_CACHE: dict[Optional[str], list[dict]] = {}
-_SADE_SATI_ROWS_CACHE: dict[str, list[dict]] = {}
+_SADE_SATI_ROWS_CACHE: dict[tuple[str, str], list[dict]] = {}  # keyed (chart_id, ayanamsha_id)
 
 # Same PERF-TRIGGER-CACHE discipline (D-4b readiness pass, 2026-07-21): these
 # two `needs_conn=True` primitives are called once per (target, grid-day) by
@@ -1334,20 +1335,31 @@ def planetary_return(
 
 # ── #12 — Sāde-Satī phase ──────────────────────────────────────────────────
 
-def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
+def _fetch_sade_sati_rows(conn, chart_id: str, ayanamsha_id: str = PRIMARY_AYANAMSHA_ID) -> list[dict]:
+    """Sade-Sati cycle/phase rows for ONE ayanamsha (Lahiri-primary, N-339).
+
+    The ga_sade_sati writer stores a full cycle set per ayanamsha. Reading
+    all five and folding them into one dict keyed by (subject, fact_key) let
+    the LAST row of undefined order win, so the served interval could come
+    from any ayanamsha. The id is now pinned in the SQL and is part of the
+    cache key; the ORDER BY makes the row order total.
+    """
     if conn is None:
         return []
-    if chart_id in _SADE_SATI_ROWS_CACHE:
-        return _SADE_SATI_ROWS_CACHE[chart_id]
+    cache_key = (chart_id, ayanamsha_id)
+    if cache_key in _SADE_SATI_ROWS_CACHE:
+        return _SADE_SATI_ROWS_CACHE[cache_key]
     try:
         with savepoint_scope(conn, "sade_sati_rows"):
             cur = conn.execute(
                 """
                 SELECT fact_subject, fact_key, fact_value_text, fact_value_num, citation_human
                   FROM chart_facts
-                 WHERE chart_id = %s AND fact_category IN ('sade_sati_cycle', 'sade_sati_phase')
+                 WHERE chart_id = %s AND ayanamsha_id = %s
+                   AND fact_category IN ('sade_sati_cycle', 'sade_sati_phase')
+                 ORDER BY fact_subject, fact_key, fact_id
                 """,
-                [chart_id],
+                [chart_id, ayanamsha_id],
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
@@ -1357,7 +1369,7 @@ def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
         return []
     keys = ["fact_subject", "fact_key", "fact_value_text", "fact_value_num", "citation_human"]
     result = [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
-    _SADE_SATI_ROWS_CACHE[chart_id] = result
+    _SADE_SATI_ROWS_CACHE[cache_key] = result
     return result
 
 
@@ -1366,6 +1378,7 @@ def sade_sati_phase(
     target: ResonanceTarget,
     conn=None,
     fixture_phases: Optional[list[dict]] = None,
+    ayanamsha_id: str = PRIMARY_AYANAMSHA_ID,
 ) -> list[ConfigurationSentence]:
     """Sade Sati cycle/phase intervals -- REUSES ga_sade_sati_writer.py's
     already-computed `chart_facts` rows (fact_category in
@@ -1379,7 +1392,7 @@ def sade_sati_phase(
     keys phase_start_iso/phase_end_iso/phase_name/cycle_id) matching the shape
     of a grouped chart_facts read, when no DB connection is available.
     """
-    rows = _fetch_sade_sati_rows(conn, chart_id) if conn is not None else []
+    rows = _fetch_sade_sati_rows(conn, chart_id, ayanamsha_id) if conn is not None else []
     sentences: list[ConfigurationSentence] = []
 
     if rows:
