@@ -341,3 +341,125 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
     expect(() => composed([], [buildJob, redirected])).toThrow(/Verifier credential or identity is used outside/)
   })
 })
+
+
+// C53 (DECLARED_CONTROL_PLANE_EXCEPTION_20261003 follow-up): the Google-managed FIREBASE service
+// agent is on the canonical allow-list — exactly that role+member pair, project-number templated,
+// unconditional, project resource only. Anything looser still refuses.
+describe('C53: the Firebase management service agent is a canonical Google service-agent grant', () => {
+  const NUMBER = '938361928218'
+  const ADMIN = 'user:owner@example.com'
+  const FIREBASE_ROLE = 'roles/firebase.managementServiceAgent'
+  const FIREBASE_AGENT = `serviceAccount:service-${NUMBER}@gcp-sa-firebase.iam.gserviceaccount.com`
+  // the role's only SA_CONTROL_PERMISSIONS hit is resourcemanager.projects.setIamPolicy
+  // (DECLARED_CONTROL_PLANE_EXCEPTION_20261003, Stream B's role read)
+  const resolved = { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy'],
+                     'roles/firebasedatabase.serviceAgent': ['resourcemanager.projects.setIamPolicy'] }
+  const atProject = (bindings: any[], resource = `projects/${NUMBER}`) => [{ resource, policy: { bindings } }]
+
+  it('the exact project-level unconditional pair is accepted (project number and project id forms)', () => {
+    for (const resource of [`projects/${NUMBER}`, canonicalResource(`projects/${NUMBER}`, NUMBER)]) {
+      expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], resource),
+        resolved, ADMIN, NUMBER, '')).not.toThrow()
+    }
+  })
+  it('a DIFFERENT member with that role is refused', () => {
+    const other = `serviceAccount:service-111@gcp-sa-firebase.iam.gserviceaccount.com`
+    expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [other] }]),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('that member with a DIFFERENT role is refused', () => {
+    expect(() => assertVerifierInheritedControl(atProject([{ role: 'roles/firebasedatabase.serviceAgent', members: [FIREBASE_AGENT] }]),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('a CONDITIONAL binding of the exact pair is refused', () => {
+    const conditional = [{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT], condition: { title: 'c', expression: 'true' } }]
+    expect(() => assertVerifierInheritedControl(atProject(conditional),
+      resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('the exact pair on a FOLDER or ORG resource is refused (project resource only)', () => {
+    for (const resource of ['folders/1', 'organizations/1']) {
+      expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], resource),
+        resolved, ADMIN, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+    }
+  })
+})
+
+// C53 amendment (Codex on PR #3119): the Firebase exemption is for the VERIFIER-CONTROL gate ONLY. The matcher is shared with the builder gate
+// (assertEffectiveIsolation); the Firebase agent holds resourcemanager.projects.setIamPolicy, which none of the ten original agents does, so it is
+// "same class" as a Google management agent but not equivalent AUTHORITY — it must not be silently exempt where the builder's impersonation is judged.
+describe('C53 amendment: the Firebase exemption does not reach the builder gate; the original ten are untouched', () => {
+  const NUMBER = '938361928218'
+  const ADMIN = 'user:owner@example.com'
+  const FIREBASE_ROLE = 'roles/firebase.managementServiceAgent'
+  const FIREBASE_AGENT = `serviceAccount:service-${NUMBER}@gcp-sa-firebase.iam.gserviceaccount.com`
+  const IMPERSONATE = 'iam.serviceAccounts.getAccessToken'
+  const builderPolicy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: [DEPLOYER] }] }
+  const buildJob = { kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: {
+    spec: { template: { spec: { template: { spec: { serviceAccountName: BUILDER_SERVICE_ACCOUNT, containers: [{ env: [
+      { name: 'DATABASE_URL', valueFrom: { secretKeyRef: { name: BUILDER_SECRET, key: 'latest' } } }] }] } } } } } } }
+  const atProject = (bindings: any[], resource = `projects/${NUMBER}`) => [{ resource, policy: { bindings } }]
+  const verifierGate = (effective: any[], resolved: any) => assertVerifierInheritedControl(effective, resolved, ADMIN, NUMBER, '')
+  const builderGate = (effective: any[], resolved: any) => assertEffectiveIsolation(effective, builderPolicy, [buildJob], resolved, ADMIN, NUMBER)
+  const saved = process.env.DATA_PLANE_DEPLOY_PRINCIPAL
+  beforeEach(() => { process.env.DATA_PLANE_DEPLOY_PRINCIPAL = DEPLOYER })
+  afterEach(() => { if (saved === undefined) delete process.env.DATA_PLANE_DEPLOY_PRINCIPAL; else process.env.DATA_PLANE_DEPLOY_PRINCIPAL = saved })
+
+  it('cross-gate: a Firebase role that gains an impersonation permission is ACCEPTED by the verifier gate and REJECTED by the builder gate', () => {
+    const resolved = { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy', IMPERSONATE] }
+    const effective = atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }])
+    expect(() => verifierGate(effective, resolved)).not.toThrow()
+    expect(() => builderGate(effective, resolved)).toThrow(/builder service-account impersonation grant remains.*firebase\.managementServiceAgent/)
+    // and without the synthetic permission the builder gate has nothing to judge (today's real shape): no change in behaviour
+    expect(() => builderGate(effective, { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy'] })).not.toThrow()
+  })
+
+  // the ten original entries, byte for byte what the base allow-list carried
+  const TEN: Array<[string, string]> = [
+    ['roles/aiplatform.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com`],
+    ['roles/appengine.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-gae-service.iam.gserviceaccount.com`],
+    ['roles/cloudbuild.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-sa-cloudbuild.iam.gserviceaccount.com`],
+    ['roles/cloudscheduler.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-sa-cloudscheduler.iam.gserviceaccount.com`],
+    ['roles/cloudtasks.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-sa-cloudtasks.iam.gserviceaccount.com`],
+    ['roles/compute.instanceGroupManagerServiceAgent', `serviceAccount:${NUMBER}@cloudservices.gserviceaccount.com`],
+    ['roles/compute.serviceAgent', `serviceAccount:service-${NUMBER}@compute-system.iam.gserviceaccount.com`],
+    ['roles/container.serviceAgent', `serviceAccount:service-${NUMBER}@container-engine-robot.iam.gserviceaccount.com`],
+    ['roles/pubsub.serviceAgent', `serviceAccount:service-${NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com`],
+    ['roles/run.serviceAgent', `serviceAccount:service-${NUMBER}@serverless-robot-prod.iam.gserviceaccount.com`],
+  ]
+  it('the original ten stay exempt at BOTH gates, exactly as before, with an impersonation permission and the control permission', () => {
+    expect(TEN).toHaveLength(10)
+    for (const [role, member] of TEN) {
+      const resolved = { [role]: [IMPERSONATE, 'iam.serviceAccounts.setIamPolicy'] }
+      const effective = atProject([{ role, members: [member] }])
+      expect(() => verifierGate(effective, resolved), role).not.toThrow()
+      expect(() => builderGate(effective, resolved), role).not.toThrow()
+      // …and are still refused for any other member of that role, at both gates
+      const rogue = atProject([{ role, members: ['user:rogue@example.com'] }])
+      expect(() => verifierGate(rogue, resolved), role).toThrow(/remains outside the declared control-plane exceptions/)
+      expect(() => builderGate(rogue, resolved), role).toThrow(/builder service-account impersonation grant remains/)
+    }
+  })
+
+  it('the exact Firebase member on a FOREIGN project resource is refused (the exemption is THIS project only)', () => {
+    const resolved = { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy'] }
+    for (const resource of ['projects/other-project', 'projects/111111111111', 'projects/', 'projects/madhav-astrology/extra']) {
+      expect(() => verifierGate(atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], resource), resolved), resource)
+        .toThrow(/remains outside the declared control-plane exceptions/)
+    }
+  })
+
+  it('mixed members: the canonical Firebase agent does not carry a rogue member of the same binding, or of another binding of the same role', () => {
+    const resolved = { [FIREBASE_ROLE]: ['resourcemanager.projects.setIamPolicy'] }
+    const rogue = 'user:rogue@example.com'
+    const sameBinding = atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT, rogue] }])
+    const twoBindings = atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }, { role: FIREBASE_ROLE, members: [rogue] }])
+    for (const effective of [sameBinding, twoBindings]) {
+      let message = ''
+      try { verifierGate(effective, resolved) } catch (e) { message = (e as Error).message }
+      expect(message).toMatch(/remains outside the declared control-plane exceptions/)
+      expect(message).toContain(rogue)                          // the rogue member is named …
+      expect(message).not.toContain(FIREBASE_AGENT)             // … and the canonical agent is not reported as a violation
+    }
+  })
+})

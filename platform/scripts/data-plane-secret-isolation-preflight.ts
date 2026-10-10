@@ -96,12 +96,21 @@ function isDeclaredControlPlaneAdminGrant(
     && member === controlPlaneAdminPrincipal
 }
 
+/**
+ * C53 (Codex, PR #3119): the Firebase management service agent is exempt from the VERIFIER-CONTROL gate ONLY (`verifierControlOnly`). It is not
+ * "the same authority" as the ten agents below — it holds resourcemanager.projects.setIamPolicy — so the builder-impersonation gate
+ * (assertEffectiveIsolation) keeps the original ten and still rejects it; a role the Firebase agent is given there must be refused as before.
+ */
 function isCanonicalGoogleServiceAgentGrant(
   binding: IamBinding,
   member: string,
   projectNumber: string,
+  verifierControlOnly = false,
 ): boolean {
   if (!/^\d+$/.test(projectNumber) || binding.condition !== undefined) return false
+  if (verifierControlOnly && binding.role === 'roles/firebase.managementServiceAgent') {
+    return member === `serviceAccount:service-${projectNumber}@gcp-sa-firebase.iam.gserviceaccount.com`
+  }
   const expectedByRole: Record<string, string> = {
     'roles/aiplatform.serviceAgent': `serviceAccount:service-${projectNumber}@gcp-sa-aiplatform.iam.gserviceaccount.com`,
     'roles/appengine.serviceAgent': `serviceAccount:service-${projectNumber}@gcp-gae-service.iam.gserviceaccount.com`,
@@ -586,7 +595,7 @@ export function assertVerifierInheritedControl(
       for (const member of binding.members ?? []) {
         const isProject = resource === `projects/${project}`
         if (isProject && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)) continue
-        if (isProject && isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber)) continue
+        if (isProject && isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber, true)) continue
         if (binding.condition === undefined && exceptions.has(`${resource}|${binding.role}|${member}`)) continue
         violations.push(`${resource}:${binding.role}:${member}`)
       }
