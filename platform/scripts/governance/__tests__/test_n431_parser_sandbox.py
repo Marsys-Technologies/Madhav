@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
@@ -61,8 +62,16 @@ def make_repo(tmp_path: pathlib.Path, parser_src: str = PARSER, extra: dict | No
     return root
 
 
+def write_manifest(root: pathlib.Path, rels, name: str = "pins.json") -> str:
+    """The declaration step: hash the files NOW and write a pin manifest into the fake repo (what R1's pin_files + a committed declaration do in production)."""
+    entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in rels]
+    (root / name).write_text(json.dumps({"pinned_files": entries}), encoding="utf-8")
+    return name
+
+
 def pins(root: pathlib.Path, rels) -> list[dict]:
-    return [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in rels]
+    """Fixture pins, built the production way: from a manifest file the test wrote, read back through load_pin_manifest (never discovered at call time)."""
+    return ps.load_pin_manifest(str(root), write_manifest(root, rels))
 
 
 CLOSURE = ["lib/pkg/__init__.py", "lib/pkg/helper.py", "lib/pkg/parser.py"]
@@ -111,11 +120,12 @@ class TestHappyPath:
         assert r["outputs"] == [{"n": i * 2, "echo": {"n": i}} for i in (5, 1, 4, 2, 3)]
         assert r["loaded_repo_files"] == sorted(CLOSURE)
         assert isinstance(r["elapsed_s"], float) and r["elapsed_s"] > 0
-        assert set(r) == {"ok", "outputs", "loaded_repo_files", "elapsed_s"}
+        assert set(r) == {"ok", "outputs", "loaded_repo_files", "elapsed_s", "assurance"}
 
-    def test_empty_inputs_list_is_ok_and_still_reports_the_loaded_closure(self, tmp_path):
-        r = run(make_repo(tmp_path), inputs=[])
-        assert r["ok"] is True and r["outputs"] == [] and r["loaded_repo_files"] == sorted(CLOSURE)
+    def test_parser_returning_an_empty_list_for_an_input_is_still_ok(self, tmp_path):
+        """Only the zero-INPUT case fails (no_inputs); a parser may legitimately yield nothing for an input."""
+        r = run(make_repo(tmp_path, parser_with("return []")), inputs=[{"n": 1}, {"n": 2}])
+        assert r["ok"] is True and r["outputs"] == [[], []]
 
     def test_two_runs_are_byte_identical(self, tmp_path):
         src = parser_with(
@@ -228,27 +238,13 @@ class TestPinCheck:
 
     def test_symlink_that_escapes_the_repo_is_refused(self, tmp_path):
         root = make_repo(tmp_path)
+        pinned = pins(root, CLOSURE)  # declared while helper.py was a real in-repo file (load_pin_manifest itself refuses a pin that already escapes: see TestPinManifest)
         outside = tmp_path / "outside_helper.py"
         outside.write_text(HELPER, encoding="utf-8")
         (root / "lib/pkg/helper.py").unlink()
         (root / "lib/pkg/helper.py").symlink_to(outside)
-        r = run(root)
-        assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_missing")
-
-    def test_file_changed_while_the_child_ran_is_refused(self, tmp_path, monkeypatch):
-        root = make_repo(tmp_path, parser_with("time.sleep(1.0)\nreturn item"))
-        pinned = pins(root, CLOSURE)
-        real = subprocess.Popen
-
-        class Racing(real):
-            def __init__(self, *a, **k):
-                super().__init__(*a, **k)
-                (root / "lib/pkg/helper.py").write_text(HELPER + "\n# touched mid-run\n", encoding="utf-8")
-
-        monkeypatch.setattr(ps.subprocess, "Popen", Racing)
         r = run(root, pinned=pinned)
-        assert r["ok"] is False and r["stage"] == "pin"
-        assert r["error"].startswith("pin_mismatch: lib/pkg/helper.py") and "changed during the run" in r["error"]
+        assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_missing")
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -263,11 +259,13 @@ class TestUnpinnedImport:
         assert r["ok"] is False and r["stage"] == "run"
         assert r["error"] == "unpinned_import: lib/pkg/helper.py" and r["unpinned_files"] == ["lib/pkg/helper.py"]
 
-    def test_many_unpinned_files_are_all_listed_in_unpinned_files(self, tmp_path):
+    def test_the_first_refused_file_is_listed_and_nothing_after_it_runs(self, tmp_path):
+        """Changed with the TOCTOU fix (SS finding 1): an unpinned import is now refused BEFORE it executes, so the run stops at the first one (the package __init__ here) instead of
+        running on to discover the whole closure. unpinned_files lists what was refused; a caller pins it and retries."""
         root = make_repo(tmp_path)
         r = run(root, pinned=pins(root, ["lib/pkg/parser.py"]))
-        assert r["ok"] is False and r["unpinned_files"] == ["lib/pkg/__init__.py", "lib/pkg/helper.py"]
-        assert r["error"] == "unpinned_import: lib/pkg/__init__.py, lib/pkg/helper.py"
+        assert r["ok"] is False and r["unpinned_files"] == ["lib/pkg/__init__.py"]
+        assert r["error"] == "unpinned_import: lib/pkg/__init__.py"
 
     def test_unpinned_package_init_is_refused(self, tmp_path):
         root = make_repo(tmp_path)
@@ -301,6 +299,309 @@ class TestUnpinnedImport:
     def test_stdlib_modules_are_not_reported_as_repo_files(self, tmp_path):
         r = run(make_repo(tmp_path, "import json, re, uuid, hashlib\n" + parser_with("return item")))
         assert r["ok"] and r["loaded_repo_files"] == ["lib/pkg/__init__.py", "lib/pkg/parser.py"]  # no stdlib file, and helper.py (never imported) is absent
+
+
+class TestRanBytesAreHashedBytes:
+    """SS N-431 R2 finding (1), TOCTOU: the parent reads each pinned file ONCE, hashes THOSE bytes and sends them to the child, which serves every module and every pinned data
+    read from them. Whatever happens to the disk after the hash cannot change what runs."""
+
+    MARK = "def parse(item):\n    return {'n': 2 * item['n'], 'src': %r}\n"
+
+    def _mutate_after_check(self, monkeypatch, edits: dict):
+        calls = []
+
+        def hook():
+            calls.append(1)
+            for path, text in edits.items():
+                pathlib.Path(path).write_text(text, encoding="utf-8")
+
+        monkeypatch.setattr(ps, "_after_pin_check", hook)
+        return calls
+
+    def test_pinned_module_edited_on_disk_after_the_hash_still_runs_the_hashed_bytes(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path, self.MARK % "hashed")
+        pinned = pins(root, CLOSURE)
+        calls = self._mutate_after_check(monkeypatch, {str(root / "lib/pkg/parser.py"): self.MARK % "EVIL-on-disk"})
+        r = run(root, pinned=pinned)
+        assert calls == [1]
+        assert (root / "lib/pkg/parser.py").read_text().count("EVIL-on-disk") == 1  # the disk really did change after the check
+        assert r["ok"] is True, r
+        assert r["outputs"] == [{"n": 2, "src": "hashed"}]  # ...and the child ran the hashed source
+
+    def test_helper_and_package_init_edited_after_the_hash_are_not_what_runs(self, tmp_path, monkeypatch):
+        parser = "from pkg import FLAG\nfrom pkg.helper import double\n\ndef parse(item):\n    return {'flag': FLAG, 'n': double(item['n'])}\n"
+        root = make_repo(tmp_path, parser)
+        (root / "lib/pkg/__init__.py").write_text("FLAG = 'init-hashed'\n", encoding="utf-8")
+        pinned = pins(root, CLOSURE)
+        self._mutate_after_check(monkeypatch, {str(root / "lib/pkg/__init__.py"): "FLAG = 'init-EVIL'\n", str(root / "lib/pkg/helper.py"): "def double(n):\n    return -1\n"})
+        r = run(root, pinned=pinned)
+        assert r["ok"] is True and r["outputs"] == [{"flag": "init-hashed", "n": 2}]
+
+    def test_without_the_edit_hook_the_same_disk_state_is_a_pin_mismatch_before_anything_runs(self, tmp_path):
+        """Control: an edit made BEFORE the parent hashes is still caught by the pin check (the hash is the gate; serving from bytes is what closes the window after it)."""
+        root = make_repo(tmp_path, self.MARK % "hashed")
+        pinned = pins(root, CLOSURE)
+        (root / "lib/pkg/parser.py").write_text(self.MARK % "edited-before", encoding="utf-8")
+        assert run(root, pinned=pinned)["error"].startswith("pin_mismatch: lib/pkg/parser.py")
+
+    def test_pinned_file_loaded_by_location_is_also_served_from_bytes(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path, extra={"tools/standalone.py": "def parse(item):\n    return 'hashed'\n"})
+        pinned = pins(root, ["tools/standalone.py"])
+        self._mutate_after_check(monkeypatch, {str(root / "tools/standalone.py"): "def parse(item):\n    return 'EVIL'\n"})
+        r = ps.run_pinned_parser(str(root), "lib", pinned, "tools/standalone.py", "parse", [{"n": 1}])
+        assert r["ok"] is True and r["outputs"] == ["hashed"]
+
+    def test_the_engine_opens_each_pinned_file_exactly_once(self, tmp_path, monkeypatch):
+        """The hash and the bytes sent to the child must come from the same single read (a second read would reopen the window)."""
+        import collections
+
+        root = make_repo(tmp_path)
+        pinned = pins(root, CLOSURE)
+        opened = []
+        real = open
+
+        def counting(path, *a, **k):
+            opened.append(os.path.realpath(path))
+            return real(path, *a, **k)
+
+        monkeypatch.setattr(ps, "open", counting, raising=False)
+        assert run(root, pinned=pinned)["ok"] is True
+        wanted = {os.path.realpath(str(root / r)) for r in CLOSURE}
+        assert collections.Counter(p for p in opened if p in wanted) == {p: 1 for p in wanted}
+
+    def test_hook_is_a_noop_by_default(self):
+        assert ps._after_pin_check() is None
+
+    # ---- (c) data files ----
+
+    DATA_PARSER = (
+        "import json, pathlib\n"
+        "P = %r\n"
+        "TEXT = open(P).read()\n"
+        "RAW = open(P, 'rb').read()\n"
+        "LATIN = open(P, encoding='latin-1').read()\n"
+        "PATHLIB = pathlib.Path(P).read_text()\n"
+        "with open(P) as fh:\n    JSON = json.load(fh)\n"
+        "NAME = open(P).name\n\n"
+        "def parse(item):\n    return {'text': TEXT, 'raw': RAW.decode(), 'latin': LATIN, 'pathlib': PATHLIB, 'json': JSON, 'name': NAME, 'again': open(P).read()}\n"
+    )
+
+    def test_data_file_read_at_import_is_served_from_the_passed_bytes(self, tmp_path, monkeypatch):
+        data_path = tmp_path / "repo" / "data" / "table.json"
+        root = make_repo(tmp_path, self.DATA_PARSER % str(data_path), extra={"data/table.json": '{"k": "hashed"}'})
+        pinned = pins(root, CLOSURE + ["data/table.json"])
+        self._mutate_after_check(monkeypatch, {str(data_path): '{"k": "EVIL"}'})
+        r = run(root, pinned=pinned)
+        assert r["ok"] is True, r
+        out = r["outputs"][0]
+        assert out["json"] == {"k": "hashed"} and out["text"] == out["raw"] == out["latin"] == out["pathlib"] == out["again"] == '{"k": "hashed"}'
+        assert out["name"] == str(data_path)
+        assert "data/table.json" in r["loaded_repo_files"]
+        assert "EVIL" in data_path.read_text()  # disk changed, output did not
+
+    def test_text_mode_translates_newlines_and_binary_mode_does_not(self, tmp_path):
+        data_path = tmp_path / "repo" / "data" / "crlf.txt"
+        src = parser_with("return [open(%r).read(), open(%r, 'rb').read().decode()]" % (str(data_path), str(data_path)))
+        root = make_repo(tmp_path, src, extra={})
+        (root / "data").mkdir()
+        data_path.write_bytes(b"a\r\nb\r\n")
+        r = run(root, pinned=pins(root, CLOSURE + ["data/crlf.txt"]))
+        assert r["ok"] and r["outputs"] == [["a\nb\n", "a\r\nb\r\n"]]
+
+    def test_binary_mode_with_an_encoding_argument_is_the_same_valueerror_as_open(self, tmp_path):
+        data_path = tmp_path / "repo" / "data" / "t.txt"
+        root = make_repo(tmp_path, parser_with("return open(%r, 'rb', encoding='utf-8').read()" % str(data_path)), extra={"data/t.txt": "x"})
+        r = run(root, pinned=pins(root, CLOSURE + ["data/t.txt"]))
+        assert r["error"] == "parser_raised: index=0 type=ValueError"
+
+    def test_write_to_a_pinned_data_file_is_still_a_write_attempt(self, tmp_path):
+        data_path = tmp_path / "repo" / "data" / "t.txt"
+        root = make_repo(tmp_path, parser_with("open(%r, 'w').write('x')\nreturn 1" % str(data_path)), extra={"data/t.txt": "keep"})
+        r = run(root, pinned=pins(root, CLOSURE + ["data/t.txt"]))
+        assert r["error"].startswith("write_attempt")
+        assert data_path.read_text() == "keep"
+
+    # ---- (b) unpinned in-repo code and data is refused even though it exists on disk ----
+
+    def test_unpinned_module_that_exists_on_disk_is_refused_and_never_executed(self, tmp_path):
+        """If the unpinned module had run, os._exit(7) would have made this a nonzero_exit; unpinned_import proves it was refused before executing."""
+        src = parser_with("from pkg import rogue\nreturn rogue.X")
+        root = make_repo(tmp_path, src, extra={"lib/pkg/rogue.py": "import os\nos._exit(7)\nX = 1\n"})
+        assert (root / "lib/pkg/rogue.py").is_file()
+        r = run(root)
+        assert r["ok"] is False and r["stage"] == "run" and r["error"] == "unpinned_import: lib/pkg/rogue.py" and r["unpinned_files"] == ["lib/pkg/rogue.py"]
+
+    def test_unpinned_module_import_cannot_be_swallowed_by_the_parser(self, tmp_path):
+        src = parser_with("try:\n    from pkg import rogue\nexcept BaseException:\n    pass\nreturn 'carried on'")
+        root = make_repo(tmp_path, src, extra={"lib/pkg/rogue.py": "X = 1\n"})
+        r = run(root)
+        assert r["ok"] is False and r["error"] == "unpinned_import: lib/pkg/rogue.py"
+
+    def test_unpinned_module_at_module_import_time_is_refused(self, tmp_path):
+        root = make_repo(tmp_path, "from pkg import rogue\n" + parser_with("return 1"), extra={"lib/pkg/rogue.py": "X = 1\n"})
+        assert run(root)["error"] == "unpinned_import: lib/pkg/rogue.py"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "return open(P).read()",
+            "return open(P, 'rb').read()",
+            "import pathlib\nreturn pathlib.Path(P).read_text()",
+            "import pathlib\nreturn pathlib.Path(P).read_bytes()",
+            "import io\nreturn io.open_code(P).read()",
+            "import io\nreturn io.FileIO(P).read()",
+            "fd = os.open(P, os.O_RDONLY)\nreturn os.read(fd, 100)",
+            "import importlib.util\nspec = importlib.util.spec_from_file_location('m', P)\nm = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(m)\nreturn 1",
+            "import importlib.machinery\nreturn importlib.machinery.SourceFileLoader('m', P).get_data(P)",
+        ],
+    )
+    def test_every_way_of_reading_an_unpinned_repo_file_is_refused(self, tmp_path, body):
+        p = tmp_path / "repo" / "data" / "secret.py"
+        root = make_repo(tmp_path, parser_with("P = %r\n" % str(p) + body), extra={"data/secret.py": "VALUE = 1\n"})
+        r = run(root)
+        assert r["ok"] is False and r["error"] == "unpinned_import: data/secret.py", r
+
+    def test_a_pinned_file_reachable_only_by_os_open_fails_closed(self, tmp_path):
+        """A descriptor-level read cannot be served from bytes, so it is refused rather than allowed to hit the disk."""
+        p = tmp_path / "repo" / "data" / "t.txt"
+        root = make_repo(tmp_path, parser_with("fd = os.open(%r, os.O_RDONLY)\nreturn os.read(fd, 10)" % str(p)), extra={"data/t.txt": "x"})
+        r = run(root, pinned=pins(root, CLOSURE + ["data/t.txt"]))
+        assert r["ok"] is False and r["error"] == "unpinned_import: data/t.txt"
+
+    def test_reading_files_outside_the_repo_still_works(self, tmp_path):
+        outside = tmp_path / "outside.txt"
+        outside.write_text("visible", encoding="utf-8")
+        r = run(make_repo(tmp_path, parser_with("import pathlib\nreturn [open(%r).read(), pathlib.Path(%r).read_text(), open(%r, 'rb').read().decode()]" % ((str(outside),) * 3))))
+        assert r["ok"] and r["outputs"] == [["visible"] * 3]
+
+    def test_symlink_inside_the_repo_to_an_unpinned_file_is_refused(self, tmp_path):
+        p = tmp_path / "repo" / "data" / "link.txt"
+        root = make_repo(tmp_path, parser_with("return open(%r).read()" % str(p)), extra={"data/real.txt": "x"})
+        p.symlink_to(root / "data" / "real.txt")
+        r = run(root)
+        assert r["ok"] is False and r["error"].startswith("unpinned_import")
+
+    # ---- module-system behaviour that must survive the in-memory loader ----
+
+    def test_relative_import_package_attributes_and_dunder_file(self, tmp_path):
+        parser = "from . import helper\nfrom .helper import double\n\ndef parse(item):\n    return [__name__, __package__, __file__.rsplit('/', 3)[-3:], helper.__name__, double(2), __spec__.origin == __file__]\n"
+        root = make_repo(tmp_path, parser)
+        r = run(root)
+        assert r["ok"], r
+        assert r["outputs"] == [["pkg.parser", "pkg", ["lib", "pkg", "parser.py"], "pkg.helper", 4, True]]
+
+    def test_implicit_namespace_package_with_pinned_submodule_works(self, tmp_path):
+        root = make_repo(tmp_path, extra={"lib/ns/mod.py": "def parse(item):\n    return 'ns'\n"})
+        r = ps.run_pinned_parser(str(root), "lib", pins(root, ["lib/ns/mod.py"]), "lib/ns/mod.py", "parse", [{"n": 1}])
+        assert r["ok"] is True and r["outputs"] == ["ns"] and r["loaded_repo_files"] == ["lib/ns/mod.py"]
+
+    def test_module_root_is_the_repo_root(self, tmp_path):
+        root = make_repo(tmp_path, extra={"top.py": "def parse(item):\n    return 'top'\n"})
+        r = ps.run_pinned_parser(str(root), ".", pins(root, ["top.py"]), "top.py", "parse", [{"n": 1}])
+        assert r["ok"] is True and r["outputs"] == ["top"]
+
+    def test_a_pinned_file_with_a_syntax_error_is_parser_raised_not_a_crash(self, tmp_path):
+        r = run(make_repo(tmp_path, "def parse(item:\n"))
+        assert r["ok"] is False and r["error"] == "parser_raised: index=-1 type=SyntaxError"
+
+    def test_future_import_in_the_runner_does_not_leak_into_pinned_code(self, tmp_path):
+        """The runner uses `from __future__ import annotations`; compile(..., dont_inherit=True) keeps pinned code on the default semantics."""
+        r = run(make_repo(tmp_path, "def parse(item):\n    def f(x: int) -> int:\n        return x\n    return repr(f.__annotations__)\n"))
+        assert r["ok"] and "<class 'int'>" in r["outputs"][0]
+
+    def test_pinned_file_over_the_size_bound_is_refused_at_the_pin_stage(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        pinned = pins(root, CLOSURE)
+        monkeypatch.setattr(ps, "MAX_PINNED_FILE_BYTES", 10)
+        r = run(root, pinned=pinned)
+        assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_missing") and "too large" in r["error"]
+
+    def test_two_pinned_files_mapping_to_one_module_name_are_refused(self, tmp_path):
+        root = make_repo(tmp_path, extra={"lib/pkg.py": "X = 1\n"})
+        r = run(root, pinned=pins(root, CLOSURE + ["lib/pkg.py"]))
+        assert r["ok"] is False and r["stage"] == "spawn" and "two pinned files" in r["error"]
+
+
+class TestRunnerIsNotReReadFromDisk:
+    """SS N-431 R2 finding (1), part 2: the runner (the child's own code) is not pinned, so it must not be re-read from disk either. DESIGN CHOSEN: in-memory. The engine reads
+    its own source once at import (_RUNNER_SOURCE) and sends it to `python -c <bootstrap>` on stdin; the child never opens a file to obtain its code."""
+
+    def _load_copy(self, tmp_path):
+        import importlib.util
+
+        copy = tmp_path / "parser_sandbox_copy.py"
+        copy.write_text(pathlib.Path(ps.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("parser_sandbox_copy", str(copy))
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["parser_sandbox_copy"] = mod
+        spec.loader.exec_module(mod)
+        return mod, copy
+
+    def test_editing_the_runner_file_on_disk_between_the_pin_check_and_the_spawn_has_no_effect(self, tmp_path, monkeypatch):
+        mod, copy = self._load_copy(tmp_path)
+        try:
+            root = make_repo(tmp_path)
+            pinned = pins(root, CLOSURE)
+            seen = []
+
+            def hook():
+                seen.append(1)
+                copy.write_text("raise SystemExit('the runner was re-read from disk')\n", encoding="utf-8")
+
+            monkeypatch.setattr(mod, "_after_pin_check", hook)
+            r = mod.run_pinned_parser(str(root), "lib", pinned, "lib/pkg/parser.py", "parse", [{"n": 3}])
+            assert seen == [1] and "re-read" in copy.read_text()
+            assert r["ok"] is True, r
+            assert r["outputs"] == [{"n": 6, "echo": {"n": 3}}]
+        finally:
+            sys.modules.pop("parser_sandbox_copy", None)
+
+    def test_editing_the_runner_file_on_disk_while_the_child_runs_has_no_effect(self, tmp_path, monkeypatch):
+        mod, copy = self._load_copy(tmp_path)
+        try:
+            root = make_repo(tmp_path, parser_with("time.sleep(0.5)\nreturn item"))
+            pinned = pins(root, CLOSURE)
+            real = subprocess.Popen
+
+            class Racing(real):
+                def __init__(self, *a, **k):
+                    super().__init__(*a, **k)
+                    copy.write_text("raise SystemExit('edited during the run')\n", encoding="utf-8")
+
+            monkeypatch.setattr(mod.subprocess, "Popen", Racing)
+            r = mod.run_pinned_parser(str(root), "lib", pinned, "lib/pkg/parser.py", "parse", [{"n": 1}])
+            assert r["ok"] is True and r["outputs"] == [{"n": 1}]
+        finally:
+            sys.modules.pop("parser_sandbox_copy", None)
+
+    def test_the_child_command_line_names_no_file_of_ours(self, tmp_path, monkeypatch):
+        spy = PopenSpy(monkeypatch)
+        assert run(make_repo(tmp_path))["ok"]
+        argv = spy.started[0].args
+        assert argv[:5] == [sys.executable, "-s", "-S", "-P", "-B"] and argv[5] == "-c" and argv[6] == ps._CHILD_BOOTSTRAP and len(argv) == 7
+        assert not any(ps.__file__ in a for a in argv)
+        assert "open(" not in ps._CHILD_BOOTSTRAP and "__file__" not in ps._CHILD_BOOTSTRAP  # the bootstrap opens nothing
+
+    def test_runner_source_is_this_file_read_once_and_its_digest_is_published(self):
+        assert ps._RUNNER_SOURCE == pathlib.Path(ps.__file__).read_text(encoding="utf-8")
+        assert ps.RUNNER_SHA256 == hashlib.sha256(ps._RUNNER_SOURCE.encode("utf-8")).hexdigest()
+
+    def test_the_child_really_runs_the_in_memory_runner_not_the_file(self, tmp_path, monkeypatch):
+        """Swap the in-memory source for a runner whose envelope is recognisably different: that is what the child must execute."""
+        stub = (
+            "import os, json\n"
+            "def _child_main(cfg):\n"
+            "    os.write(1, json.dumps({'v': 1, 'status': 'ok', 'outputs': ['from-memory-stub'], 'loaded': [cfg['file_abs']], 'violations': []}).encode())\n"
+            "    os._exit(0)\n"
+        )
+        monkeypatch.setattr(ps, "_RUNNER_SOURCE", stub)
+        r = run(make_repo(tmp_path))
+        assert r["ok"] is True and r["outputs"] == ["from-memory-stub"]
+
+    def test_missing_runner_source_is_spawn_failed(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(ps, "_RUNNER_SOURCE", None)
+        r = run(make_repo(tmp_path))
+        assert r["ok"] is False and r["stage"] == "spawn" and r["error"].startswith("spawn_failed")
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -447,11 +748,220 @@ class TestTimeout:
         assert r["ok"] is False and time.monotonic() - t0 < 10
 
 
+class TestNoInputs:
+    """SS N-431 R2 finding (3): zero inputs used to return ok True, a false-PASS route (nothing compared, nothing proved)."""
+
+    def test_empty_inputs_is_a_failure_with_the_fixed_code_at_stage_run(self, tmp_path):
+        r = run(make_repo(tmp_path), inputs=[])
+        assert r["ok"] is False and r["stage"] == "run" and r["error"].startswith("no_inputs")
+        assert "outputs" not in r and "loaded_repo_files" not in r
+
+    def test_nothing_is_spawned_for_zero_inputs(self, tmp_path, monkeypatch):
+        spy = PopenSpy(monkeypatch)
+        assert run(make_repo(tmp_path), inputs=[])["error"].startswith("no_inputs")
+        assert spy.started == []
+
+    def test_a_pin_problem_is_still_reported_first(self, tmp_path):
+        root = make_repo(tmp_path)
+        r = run(root, inputs=[], pinned=pins(root, CLOSURE)[:1])  # parser.py not pinned
+        assert r["stage"] == "pin" and r["error"].startswith("pin_missing")
+
+    def test_no_inputs_is_in_the_error_vocabulary(self):
+        assert "no_inputs" in ps.ERROR_CODES
+
+
+class TestAssuranceLabel:
+    """SS N-431 R2 finding (2): the result channel lives in the parser's own process, so a hostile pinned parser could forge an ok envelope. Documented limit; the
+    census must be able to print the strength of the evidence on every pass, so EVERY result carries the label."""
+
+    def test_constant_value(self):
+        assert ps.ASSURANCE == "software-guarded, reviewed code only"
+
+    def test_ok_result_carries_it(self, tmp_path):
+        r = run(make_repo(tmp_path))
+        assert r["ok"] is True and r["assurance"] == ps.ASSURANCE
+
+    @pytest.mark.parametrize(
+        "case",
+        ["pin_mismatch", "pin_missing", "unpinned_import", "spawn_failed_args", "spawn_failed_exe", "timeout", "nonzero_exit", "bad_output", "output_too_large",
+         "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs"],
+    )
+    def test_every_failure_carries_it(self, tmp_path, monkeypatch, case):
+        kw: dict = {}
+        src = PARSER
+        pinned = None
+        inputs = None
+        if case == "pin_mismatch":
+            root = make_repo(tmp_path)
+            pinned = pins(root, CLOSURE)
+            (root / "lib/pkg/helper.py").write_text(HELPER + "# x\n", encoding="utf-8")
+            r = run(root, pinned=pinned)
+        else:
+            if case == "timeout":
+                src, kw = parser_with("time.sleep(20)\nreturn 1"), {"timeout_s": 1}
+            elif case == "nonzero_exit":
+                src = parser_with("os._exit(3)")
+            elif case == "bad_output":
+                src = parser_with("return {1, 2}")
+            elif case == "output_too_large":
+                src, kw = parser_with("return 'x' * 100000"), {"max_output_bytes": 1000}
+            elif case == "parser_raised":
+                src = parser_with("raise ValueError('x')")
+            elif case == "network_attempt":
+                src = parser_with("import socket\nsocket.socket()\nreturn 1")
+            elif case == "write_attempt":
+                src = parser_with("open(%r, 'w')\nreturn 1" % str(tmp_path / "w.txt"))
+            elif case == "spawn_attempt":
+                src = parser_with("os.system('echo')\nreturn 1")
+            elif case == "no_inputs":
+                inputs = []
+            elif case == "spawn_failed_args":
+                kw = {"timeout_s": 0}
+            elif case == "spawn_failed_exe":
+                monkeypatch.setattr(ps.sys, "executable", str(tmp_path / "no_such_python"))
+            root = make_repo(tmp_path, src)
+            if case == "pin_missing":
+                pinned = pins(root, CLOSURE)[:1]
+            elif case == "unpinned_import":
+                pinned = pins(root, ["lib/pkg/__init__.py", "lib/pkg/parser.py"])
+            r = run(root, pinned=pinned, inputs=inputs, **kw)
+        assert r["ok"] is False, r
+        assert r["error"].split(":")[0] == case.replace("_args", "").replace("_exe", ""), r
+        assert r["assurance"] == ps.ASSURANCE
+
+    def test_docstring_states_the_forgery_limit_and_the_permitted_use(self):
+        doc = ps.__doc__
+        assert "HOSTILE" in doc and "forge an ok envelope" in doc and "MALICIOUS pinned parser" in doc
+        assert "PERMITTED USE" in doc and "l0_rules" in doc
+
+
+class TestPinManifest:
+    """SS N-431 R2 finding (5): pins come from a COMMITTED manifest, validated, never discovered at run time."""
+
+    def _manifest(self, root, doc, name="m.json"):
+        (root / name).write_text(doc if isinstance(doc, str) else json.dumps(doc), encoding="utf-8")
+        return name
+
+    def test_valid_manifest_round_trips_and_feeds_the_runner(self, tmp_path):
+        root = make_repo(tmp_path)
+        entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest().upper()} for r in CLOSURE]
+        got = ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}))
+        assert got == [{"path": e["path"], "sha256": e["sha256"].lower()} for e in entries]  # digests come back lowercase
+        assert run(root, pinned=got)["ok"] is True
+
+    def test_manifest_in_a_subdirectory(self, tmp_path):
+        root = make_repo(tmp_path)
+        (root / "decl").mkdir()
+        entries = [{"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}]
+        assert ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}, "decl/m.json")) == entries
+
+    def _good(self, root):
+        return {"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            "not_json", "not_object", "missing_key", "extra_top_key", "pinned_files_not_list", "empty_list", "entry_not_object", "entry_extra_key", "entry_missing_sha",
+            "abs_path", "dotdot", "backslash", "unnormalised", "empty_path", "path_not_str", "short_digest", "nonhex_digest", "digest_not_str", "duplicate_path",
+            "duplicate_json_key", "missing_file", "directory", "too_many", "pinned_file_too_large",
+        ],
+    )
+    def test_malformed_manifests_are_refused(self, tmp_path, monkeypatch, case):
+        root = make_repo(tmp_path)
+        g = self._good(root)
+        docs = {
+            "not_json": "{nope",
+            "not_object": [g],
+            "missing_key": {"files": [g]},
+            "extra_top_key": {"pinned_files": [g], "note": "x"},
+            "pinned_files_not_list": {"pinned_files": g},
+            "empty_list": {"pinned_files": []},
+            "entry_not_object": {"pinned_files": ["lib/pkg/helper.py"]},
+            "entry_extra_key": {"pinned_files": [dict(g, extra=1)]},
+            "entry_missing_sha": {"pinned_files": [{"path": g["path"]}]},
+            "abs_path": {"pinned_files": [dict(g, path="/etc/hosts")]},
+            "dotdot": {"pinned_files": [dict(g, path="../repo/lib/pkg/helper.py")]},
+            "backslash": {"pinned_files": [dict(g, path="lib\\pkg\\helper.py")]},
+            "unnormalised": {"pinned_files": [dict(g, path="lib/./pkg/helper.py")]},
+            "empty_path": {"pinned_files": [dict(g, path="")]},
+            "path_not_str": {"pinned_files": [dict(g, path=7)]},
+            "short_digest": {"pinned_files": [dict(g, sha256="abc123")]},
+            "nonhex_digest": {"pinned_files": [dict(g, sha256="z" * 64)]},
+            "digest_not_str": {"pinned_files": [dict(g, sha256=12345)]},
+            "duplicate_path": {"pinned_files": [g, dict(g)]},
+            "duplicate_json_key": '{"pinned_files": [], "pinned_files": [%s]}' % json.dumps(g),
+            "missing_file": {"pinned_files": [dict(g, path="lib/pkg/gone.py")]},
+            "directory": {"pinned_files": [dict(g, path="lib/pkg")]},
+            "too_many": {"pinned_files": [dict(g, path="lib/pkg/helper.py")] * 1},
+        }
+        if case == "too_many":
+            monkeypatch.setattr(ps, "MAX_PINNED_FILES", 1)
+            docs["too_many"] = {"pinned_files": [g, dict(self._good(root), path="lib/pkg/parser.py")]}
+        if case == "pinned_file_too_large":
+            monkeypatch.setattr(ps, "MAX_PINNED_FILE_BYTES", 5)
+            docs[case] = {"pinned_files": [g]}
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, docs[case]))
+
+    def test_manifest_too_large(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        monkeypatch.setattr(ps, "MAX_MANIFEST_BYTES", 20)
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": [self._good(root)]}))
+
+    def test_manifest_path_must_be_a_file_inside_the_repo(self, tmp_path):
+        root = make_repo(tmp_path)
+        outside = tmp_path / "outside.json"
+        outside.write_text(json.dumps({"pinned_files": [self._good(root)]}), encoding="utf-8")
+        (root / "linked.json").symlink_to(outside)
+        for rel in ("nope.json", "../outside.json", "/etc/hosts", "linked.json", "lib", ""):
+            with pytest.raises(ps.PinManifestError):
+                ps.load_pin_manifest(str(root), rel)
+
+    def test_pinned_file_that_is_a_symlink_out_of_the_repo_is_refused(self, tmp_path):
+        root = make_repo(tmp_path)
+        outside = tmp_path / "outside_helper.py"
+        outside.write_text(HELPER, encoding="utf-8")
+        (root / "lib/pkg/linked.py").symlink_to(outside)
+        doc = {"pinned_files": [dict(self._good(root), path="lib/pkg/linked.py")]}
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, doc))
+
+    def test_bad_repo_root_type(self):
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(None, "m.json")
+
+    def test_loader_does_not_hash_so_a_wrong_digest_is_caught_by_the_run_not_the_loader(self, tmp_path):
+        root = make_repo(tmp_path)
+        doc = {"pinned_files": [dict(self._good(root), sha256="0" * 64)]}
+        got = ps.load_pin_manifest(str(root), self._manifest(root, doc))
+        assert got[0]["sha256"] == "0" * 64  # declaration is syntactically fine; the run refuses it (pin_mismatch)
+
+    def test_fixture_pins_in_these_tests_come_from_a_manifest_file(self, tmp_path):
+        root = make_repo(tmp_path)
+        got = pins(root, CLOSURE)
+        assert (root / "pins.json").is_file() and json.loads((root / "pins.json").read_text())["pinned_files"] == got
+
+
+class TestDefaultOutputCap:
+    """SS N-431 R2 finding (4): default cap lowered to 16 MB (macOS ignores RLIMIT_AS; the real bg_rules output is small)."""
+
+    def test_default_is_16_million(self):
+        import inspect
+
+        assert ps.DEFAULT_MAX_OUTPUT_BYTES == 16_000_000
+        assert inspect.signature(ps.run_pinned_parser).parameters["max_output_bytes"].default == 16_000_000
+
+    def test_default_cap_is_enforced(self, tmp_path):
+        r = run(make_repo(tmp_path, parser_with("return 'x' * 17_000_000")))
+        assert r["ok"] is False and r["stage"] == "output" and r["error"].startswith("output_too_large")
+
+
 class TestFailureVocabulary:
     def test_parser_raising_on_input_3_reports_index_and_type_only(self, tmp_path):
         src = parser_with("if item['n'] == 3:\n    raise ValueError('secret /etc/passwd token=abc')\nreturn item")
         r = run(make_repo(tmp_path, src), inputs=[{"n": i} for i in range(6)])
-        assert r == {"ok": False, "error": "parser_raised: index=3 type=ValueError", "stage": "run"}
+        assert r == {"ok": False, "error": "parser_raised: index=3 type=ValueError", "stage": "run", "assurance": ps.ASSURANCE}
         assert "secret" not in r["error"] and "/etc" not in r["error"]
 
     def test_exception_in_the_parser_at_import_time_has_index_minus_one(self, tmp_path):
@@ -514,7 +1024,7 @@ class TestFailureVocabulary:
     def test_every_error_code_in_the_contract_exists(self):
         assert set(ps.ERROR_CODES) == {
             "pin_missing", "pin_mismatch", "unpinned_import", "spawn_failed", "timeout", "nonzero_exit",
-            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt",
+            "bad_output", "output_too_large", "parser_raised", "network_attempt", "write_attempt", "spawn_attempt", "no_inputs",
         }
 
 
@@ -616,8 +1126,9 @@ REAL_CHUNKS = [
 ]
 
 
-def _close_over_real_parser(repo_root: pathlib.Path, inputs):
-    """Discover the real parser's repo-local import closure by running it and pinning what the sandbox reports as unpinned, until it is accepted. Returns (result, pinned)."""
+def _TEST_HELPER_discover_closure_by_running(repo_root: pathlib.Path, inputs):
+    """TEST HELPER ONLY, never production: discover the real parser's repo-local import closure by running it and pinning what the sandbox reports as unpinned, until it is
+    accepted. Production pins come from a committed declaration (load_pin_manifest); the sandbox itself never discovers pins. Returns (result, pinned)."""
     pinned: list[dict] = []
     for _ in range(60):
         r = ps.run_pinned_parser(str(repo_root), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
@@ -641,7 +1152,7 @@ class TestRealParser:
         return [{"chunk": c, "valid_text_ids": REAL_IDS} for c in REAL_CHUNKS]
 
     def test_real_parser_runs_offline_in_the_sandbox_and_is_reproducible(self, inputs):
-        r, pinned = _close_over_real_parser(REPO_ROOT, inputs)
+        r, pinned = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
         if not r["ok"] and r["error"].startswith("parser_raised: index=-1"):
             pytest.skip("the real parser cannot be imported offline in this environment: " + r["error"])
         assert r["ok"], r
@@ -659,7 +1170,7 @@ class TestRealParser:
 
     def test_real_parser_matches_the_parser_run_in_process(self, inputs):
         """The sandboxed rows equal the rows the same function yields in this process (same code, same answer), apart from the child's fixed hash seed."""
-        r, _ = _close_over_real_parser(REPO_ROOT, inputs)
+        r, _ = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
         if not r["ok"]:
             pytest.skip("real parser not runnable offline here: " + r["error"])
         sidecar = str(REPO_ROOT / SIDECAR)
