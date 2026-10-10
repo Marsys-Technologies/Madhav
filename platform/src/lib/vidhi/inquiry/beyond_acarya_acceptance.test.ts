@@ -170,32 +170,11 @@ const historicalV23 = {
   artifact_hash: 'sha256:edbd68c082fda664345decfba78a42bea90266ff9e6b0069df949c0452aa79eb',
 } as const
 
-// The ephemeris_cache_native_lifetime retirement successor of v23 (SS N-373, PR #3396, v24). Immutable since the Lahiri-primary PR-2 probe-mirror regeneration (v25) superseded it.
+// The ephemeris_cache_native_lifetime retirement successor of v23 (SS N-373, PR #3396, v24). Immutable since the Lahiri-primary combined batch (v25) superseded it.
 const historicalV24 = {
   capability_content_hash: 'sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef',
   report_hash: 'sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a',
   artifact_hash: 'sha256:1f2aad07204f67eeabddde939d6bf28bb4d987335055ae6c138e53a75e7d43ac',
-} as const
-
-// The Lahiri-primary PR-2 probe-mirror successor of v24 (renumbered from v23 in the combined batch). Immutable since the PR-3 cross-check inputs (v26) superseded it.
-const historicalV25 = {
-  capability_content_hash: 'sha256:ab862493aec2ef13ce017fb7a6ce95371d5b2a9f04fce7c3d258a359e49e5bfe',
-  report_hash: 'sha256:d41d83b79ad53947105630170b0fbed405d22aff9cef93f59c8a21006c97a41c',
-  artifact_hash: 'sha256:0cca44d31aa39a78f3c236f86073449511445b618c657a84da399928c7dcd9dc',
-} as const
-
-// The Lahiri-primary PR-3 cross-check-inputs successor of v25 (renumbered from v24). Immutable since the identity_cross_check follow-up (v27) superseded it.
-const historicalV26 = {
-  capability_content_hash: 'sha256:4d4b54364c6a4adab09be5b34472d22bf58405d8e9ea2bcf7e7c5b001069df02',
-  report_hash: 'sha256:0bbf72f7b0d89f9866073a77068c2760befdd690a56eff20c79ba911a1137564',
-  artifact_hash: 'sha256:1b83de71f0704f9adccfe88399389c825659c2f9d23350977af59e38d4b80408',
-} as const
-
-// The Lahiri-primary PR-3 identity_cross_check successor of v26 (renumbered from v25). Immutable since the compact-always-on follow-up and the combined batch (v28) superseded it.
-const historicalV27 = {
-  capability_content_hash: 'sha256:2a9d1df61e728ab68778e4dbf917b4524f20d14efa8b47f0f3086b78abc30165',
-  report_hash: 'sha256:4bccfef19618240058b9ac668b04490a54324d139aeadc961018a2d27b93c257',
-  artifact_hash: 'sha256:b36145c2118f2c2be093536fef32d1c43d83b0fc4c19c4c14313574ce70797d7',
 } as const
 
 function withoutScu(
@@ -297,19 +276,13 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // ephemeris_cache_native_lifetime retirement (v24, SS N-373): the capability (one reviewed SCU, one registry binding) is removed from the catalog,
     // which moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint
     // coincides with v23's and every metric assertion above is unchanged. Only this pinned hash was re-pinned.
-    // Lahiri primary PR-2 (v25, renumbered from v23; SS N-339/N-342/N-345): the source-query availability probes mirror the handlers' new primary-ayanamsha filter,
-    // serve-order ORDER BY and citation_human select item, and get_eclipse_flags gained an ayanamsha_id input; that moved source_catalog_fingerprint and
-    // semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint coincides with v24's; no SCU, edge,
-    // proof kind or availability disposition changed (the metric assertions above are unchanged).
-    // Lahiri primary PR-3 (v26, renumbered from v24; SS N-342): the labelled cross-check added an include_cross_check input to get_positions, get_dashas,
-    // query_discoveries and query_pratijna; that moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
-    // Lahiri primary PR-3 follow-up (v27, renumbered from v25; SS N-360): graha_portrait gained an include_cross_check input (the shared identity_cross_check block).
-    // Lahiri primary combined batch (v28, renumbered from v26; SS N-339..N-370): chart_snapshot gained include_cross_check (compact always-on identity block by default),
-    // the merged PR-2/PR-3 descriptors and probes are evaluated together on top of main's v24, and the descriptor text of every KP-reaching reader was corrected to the
-    // one-frame KP rule (get_kp_cusps, get_dashas system=vimshottari_kp, the KP categories of the caller-category readers, get_prashna_lagna's kp_sub_lord).
-    // That moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint
-    // coincides with v27's and every metric assertion above is unchanged. Only this pinned hash was re-pinned (once, for the whole batch).
-    expect(report.report_hash).toBe('sha256:d89f3bf323490af258ceef07f353e2528785e9873804e49a3b092f86176e2371')
+    // Lahiri-primary combined batch (v25, SS N-339..N-404): the L1/L2 handlers' source-query availability probes mirror the primary-ayanamsha filter, serve-order ORDER BY and
+    // citation_human select item (PR-2); include_cross_check inputs and the compact identity_cross_check were added to get_positions, get_dashas, query_discoveries, query_pratijna,
+    // graha_portrait and chart_snapshot (PR-3); every ayanamsha_id input text now says omitted = the Lahiri primary and "all" = the explicit raw opt-out; the KP-reaching readers'
+    // text follows the one-frame KP rule; get_prashna_lagna no longer claims a kp_sub_lord for kp_249. That moved source_catalog_fingerprint, hence capability_content_hash and
+    // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's and every metric assertion above is unchanged.
+    // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
+    expect(report.report_hash).toBe('sha256:91986ee9ad20f225f2466cd4074230a9a9d58db9f830d45e9ce4fa6faa85ee94')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -888,7 +861,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v24 source-successor artifact immutable after the Lahiri-primary PR-2 probe-mirror advance', () => {
+  it('keeps the v24 source-successor artifact immutable after the Lahiri-primary combined batch', () => {
     const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v24.json',
       import.meta.url,
@@ -909,72 +882,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v25 source-successor artifact immutable after the PR-3 cross-check-inputs advance', () => {
-    const artifactBytes = readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v25.json',
-      import.meta.url,
-    ))
-    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
-
-    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV25.artifact_hash)
-    expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
-      predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
-        capability_content_hash: historicalV24.capability_content_hash,
-        report_hash: historicalV24.report_hash,
-      },
-      capability_content_hash: historicalV25.capability_content_hash,
-      report_hash: historicalV25.report_hash,
-      verdict: 'ACCEPTED_SOURCE_LOCAL',
-    })
-  })
-
-  it('keeps the v26 source-successor artifact immutable after the identity_cross_check follow-up', () => {
-    const artifactBytes = readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v26.json',
-      import.meta.url,
-    ))
-    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
-
-    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV26.artifact_hash)
-    expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v26',
-      predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v25.json',
-        capability_content_hash: historicalV25.capability_content_hash,
-        report_hash: historicalV25.report_hash,
-      },
-      capability_content_hash: historicalV26.capability_content_hash,
-      report_hash: historicalV26.report_hash,
-      verdict: 'ACCEPTED_SOURCE_LOCAL',
-    })
-  })
-
-  it('keeps the v27 source-successor artifact immutable after the combined-batch (compact always-on) advance', () => {
-    const artifactBytes = readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v27.json',
-      import.meta.url,
-    ))
-    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
-
-    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV27.artifact_hash)
-    expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v27',
-      predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v26.json',
-        capability_content_hash: historicalV26.capability_content_hash,
-        report_hash: historicalV26.report_hash,
-      },
-      capability_content_hash: historicalV27.capability_content_hash,
-      report_hash: historicalV27.report_hash,
-      verdict: 'ACCEPTED_SOURCE_LOCAL',
-    })
-  })
-
-  it('pins the v28 source-successor artifact to the current executable report without claiming live acceptance (Lahiri-primary combined batch, SS N-339..N-370)', () => {
+  it('pins the v25 source-successor artifact to the current executable report without claiming live acceptance (Lahiri-primary combined batch, SS N-339..N-404)', () => {
     const artifact = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v28.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v25.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -982,12 +892,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v28',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v27.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV27.capability_content_hash,
-        report_hash: historicalV27.report_hash,
+        capability_content_hash: historicalV24.capability_content_hash,
+        report_hash: historicalV24.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -1030,9 +940,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Lahiri-primary combined batch (SS N-339..N-370): the five held PRs plus the KP descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
-      // Base: origin/main at 1ad2a678a3fd0f729e0123aca890f382314e0d9b (#3403, highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
-      evaluated_source_revision: '1ad2a678a3fd0f729e0123aca890f382314e0d9b',
+      // Lahiri-primary combined batch (SS N-339..N-404): the five held PRs plus the descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
+      // Base: origin/main at 4fbafb04fd0599e4b7d845c980e3913732bcee1b (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
+      evaluated_source_revision: '4fbafb04fd0599e4b7d845c980e3913732bcee1b',
     })
   })
 })

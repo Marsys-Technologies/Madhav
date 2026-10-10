@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "dc39b5740556522d330b1f7ceace05310593061fc5b4619a59bc9e4762eddbd4",
+  "content_sha256": "aa3a5a99c37a009a02b01a78570cb7d7ddf856bec2de73a66c5bbbd579b64e53",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3686,7 +3686,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4023,7 +4023,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4179,7 +4179,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4558,7 +4558,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "build_id": {
@@ -4669,7 +4669,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all ayanamshas present.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4832,7 +4832,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5134,7 +5134,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5253,7 +5253,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5544,7 +5544,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5628,7 +5628,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5685,7 +5685,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. lahiri_chitrapaksha). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5744,7 +5744,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5808,7 +5808,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5970,7 +5970,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "bhanga_active": {
@@ -6046,7 +6046,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for default.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6235,7 +6235,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6292,7 +6292,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6340,7 +6340,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6393,7 +6393,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6495,7 +6495,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6665,7 +6665,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chain_circuit_only": {
@@ -6736,7 +6736,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6851,7 +6851,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6992,7 +6992,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7043,7 +7043,7 @@
             "type": "string"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7098,7 +7098,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7145,7 +7145,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7192,7 +7192,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7252,7 +7252,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7435,7 +7435,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7588,7 +7588,7 @@
             "type": "object"
           },
           "ayanamsha_id": {
-            "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "build_id": {
@@ -21077,7 +21077,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "c1bc981a3c9e180d3c3ef0a7728d881a192e8947d21d6209600b88b63a798621"
+        "sha256": "b14434b71e36b8266e8049698081f53efef773cb8ceae847d30e5bd5c51678cf"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21606,7 +21606,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
-            "sha256": "ce0a85803edae6165f4d69b4abb6957569701f161a99e735d671c6514ee9958a"
+            "sha256": "3975d1eff9e2e914d972725a185aaeee3bdc083e40b833cb7fd4e24ec388eb84"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
@@ -21674,7 +21674,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "e0a200bc35f5c0d5e5cb693d27df92b8f2aa6b5420a16aee8bfd71d1f05d6a58"
+        "sha256": "b49dbe4eca7ac6de7b36a1348568e3fdcde5c33cb25c1ffa03cd429a174abd90"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21724,7 +21724,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
-            "sha256": "47b22307bba2f21b0f709a7dadf5e7d1af5d90d92c70f57111cd7b1a648822f9"
+            "sha256": "7cec7f8dd908036d675a9bc63b7d8d5d18c5bbceabcb96b10fba924a38580906"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -22004,7 +22004,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
-            "sha256": "f9c3eb428828ff9193f433fe04122af196304c1d2369424c50e6a55b73a43991"
+            "sha256": "38ee38bff6895a50f206bb9d16a9130735f9120a1ba38422d1309956dba4a8d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
@@ -22024,7 +22024,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
-            "sha256": "4c62adbad681445c798d164e3c07832778144902540587f02ac26e29fe1c4f11"
+            "sha256": "020ff0ede0dd8fb05b5ea1fa651a0ec07422362f7efd5ade18142373cdce4c86"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
@@ -22040,7 +22040,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
-            "sha256": "f5cd52b2ea0f08fe68601d4eab9837a091c025195fd1a090351d2b9bb94ece4d"
+            "sha256": "d080c5a268d1d2cbcc6574d96875014a49a02855f8e8d75a8639dff2e51a0ec2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
@@ -22064,7 +22064,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "0caeccb6ee6f3725b234b1f8e21e24b87d7c14b750fe30a5a818dc96d91ba43e"
+            "sha256": "883cc9a7aeb8fa42bbb5e36f6c1e4f118612581abc0506605ef2589af9876b71"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -22072,7 +22072,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "59e7e5e1624261814eea378a49a46c7593215f77f604d1806505d57cbcab7dd1"
+            "sha256": "cdb1750697e82c1514a32b3efc705289ab721bd52895344ce8a484b73dc9009d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
@@ -22084,7 +22084,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
-            "sha256": "e7d51945c6fbc30cd3557c82104877e97bbf62f667687a043580ee3875ea726d"
+            "sha256": "01f0400b093433cbffa2e45e0a75ae10a0fd4220909a75958b3d041dddf2dd5d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
@@ -22100,7 +22100,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
-            "sha256": "afdec5308cb19dc282b7ad546a2427b0c01f8d3b23740538be288a06ab66a4fa"
+            "sha256": "25d051dad42aeab67471d9dd2d1df3e42ddc67e4196fbf34412c0ca23d25dfab"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
@@ -22108,7 +22108,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
-            "sha256": "ed0ed640693b25281e6f83161e77536c6d1ca12dced20d0d7b2eb552a9ca0496"
+            "sha256": "2367ca14e481dae0827180015da8b90605d1c83bd2fac1c6cfb30e83e531f07b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
@@ -22124,23 +22124,23 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
-            "sha256": "0217d68a66a801a99d1cf895518dc84fc1d0826d1d93ccfda2e3b4870b486b1a"
+            "sha256": "d13e4ee448fcff8375432764be49c0ad4bfe123e1efe8c1341aa4b67c83f13d9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
-            "sha256": "744bceddd32dc08de5cda07fe4eb539f9f9a9c1c67553d62b0adefd4272254d3"
+            "sha256": "db86e9c34156ea441c03015b9c31ff7ac00047377de27a23600be2b03149ea77"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts",
-            "sha256": "af3046cf8bcc2949e8d0349193986bc21c6cdea4090e38d28b7d7a0274a048b0"
+            "sha256": "dd343ed042f4cb92e1b645e3e167bfc0b305d7d2c38eaf07522f87339e2f6237"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
-            "sha256": "70007950531b6074afabfdbb35d1fb961fa885e0b98f22ef9a64eed99d93fe83"
+            "sha256": "bce38f4611f29ad635eb94fd7866faa916f9ed8466f1359722b98c6b62dd6fc7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts",
-            "sha256": "4cb970fe87cc8d31777a790ec5c1daaa6751686f0cefc8b9a568a28fa24b70a3"
+            "sha256": "4515dbb49c3f59d549fde42133925285f6813432f898614a287acc38ff4e46b5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
@@ -22148,7 +22148,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "3875f19d06a616f159e5dc619ac92855c7c6cdabb6eed4711e712ce31fb13085"
+            "sha256": "f1387f4821cf3dbab109d55631b68565d8cf9c6a2f7ce04c53a696c0b5ffceae"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -22156,7 +22156,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "4ba699fd7d838e4049a81027582458b61f7e00fe423ee6fdb621a75ae23fa01e"
+            "sha256": "159627c98716ae71dfe856a1ddfa5ea380fc8d80330f44ae9ae76a1e8444b181"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -22172,19 +22172,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-            "sha256": "f106c95294ceac07df04a22b694ca15fcf50d07df73d03e8e1524027ff51d25a"
+            "sha256": "6ae4bd29510fe978381a93924a96984700ca1839f696b49de624ebc955830a33"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-            "sha256": "002753e0883a2ac4214baf7bb98e9555b5f2429acd6acd7983eedeefbfb84c28"
+            "sha256": "a74dd28c2e794b3cf21cbeb3340b954ac9d7008172df81d0a642ce3bd1ca5d3f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-            "sha256": "216c78d92ee8919fb4edab3cadaf107c4c05aeadf99c2669326f8b11dcc428ac"
+            "sha256": "f6fa2f21ee5a503ab7f4ba11a28bd961377b425e807a9544956bfc72a7c137b6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
-            "sha256": "2e7b34f7035f2a66b2beecb2bec2e642398a8e5c1366301c8668c1b2e6538eea"
+            "sha256": "eaf27d231f50f1969d007ba253c77d1236ccd73a848d7d8f7e70b7e2652aac12"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
@@ -22192,7 +22192,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
-            "sha256": "aee13efdfca464c4632662d3700b5b0350cc1af32c10200fd37200ace851e29c"
+            "sha256": "4941ccb305f19ddb6a8bbed897aa7ef277d1910e07c0557d010ef66a0441b757"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
@@ -22200,11 +22200,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "85b8344064ae219aece2381795af39dd8a2f6ceab7c851bad85125e173221494"
+            "sha256": "434ff8aed6de1355597cc96281fcd9a71e5c8f60611a499077629562ac509f5e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
-            "sha256": "604531263388437f910a3d2cc15a70af5990dcb2697aba2f9fcaa9eaf07c6c87"
+            "sha256": "4563a6d6889e7d2abbcf2704edcb643c57598def3ce32f45d17e264273c54b9f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
@@ -22212,7 +22212,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts",
-            "sha256": "cc3f20647d62788ed215f0bdce166fb83fcca58af027be7891cba87cce743049"
+            "sha256": "ba98a33b3a59d0550548902dab9fafb7f30b4c47d08ca6ab9096654efca483e7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
@@ -22220,27 +22220,27 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-            "sha256": "2a37b90862ca7e62caac69ff640c14e1a2a57fb4e2d8fc7aa4920bb23aaf3b48"
+            "sha256": "c3fcdf00c8929fa71e7d05ef546bb3236b5f9c4dc1b6170bcc58bed336e93fd3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts",
-            "sha256": "859abdb40a39ac06824b571f27071ee04d94dcf56c048f30c051473364e73a6d"
+            "sha256": "5c4d3f1e943c8698987ee88190c12dc02b2161db42eb916941de244d72ceaefd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts",
-            "sha256": "561c7985333382c3ca9adecf2caef5c1e17021cc4a12985418c2911363002783"
+            "sha256": "d1a25ac2431622d2cd6be58af751be8ec90640a17aca2a9f474497cf4594c1d2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts",
-            "sha256": "8bf1416119ab2bee2ca5040c0e32a91495b1fffcae2ae46281e5efd0c3947c74"
+            "sha256": "84a35e20c89d24793de70aef48830d926b69f043a3d5cef42eabde0fa85d21fb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts",
-            "sha256": "0812f4e020394095620dad779a1cb3b316aa0e0d76cc8752cb6dde9bb73163c8"
+            "sha256": "84f740557f55572fc352e0062cf9ce0e85c4853fe6553b7e322f0692657cd127"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts",
-            "sha256": "c52173d3e2d435145ba297b1d92e51120e0997bb6a1382cecf5fd195adc7a974"
+            "sha256": "4e4891a96d53d129148e13c67932842b2b1b2298d995836297148705366412b7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
@@ -22248,7 +22248,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
-            "sha256": "983d429e05bea30600e6a31216ef726ef06f9ac955627a7871694fe3b97c9532"
+            "sha256": "dfda2b81e2d014ef305a73c9970119739c46e723566bf7bc6083026282841f11"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
@@ -22260,7 +22260,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "1f0e40d87c59f1411b4bdfb6c29d91858ce28fed6ca8f696fcc5b25fd1219d78"
+            "sha256": "e488a71efb4b0985a0f406529cdd460ee21e7d4b6faf0ca4f31c06a2caa967b0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
@@ -22524,7 +22524,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "800e598a06d123562d241c1515f5f57ecf8564336ea96542bad95f66f9181a55"
+        "sha256": "f2615a524ff6dc87b0927c70bfa2bd58f5a9ec22b30d2a1b1c3e55756c608cb5"
       },
       {
         "id": "service_effect_contracts",

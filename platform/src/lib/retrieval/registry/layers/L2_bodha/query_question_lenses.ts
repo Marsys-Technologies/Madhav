@@ -13,7 +13,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -34,7 +34,7 @@ export const queryQuestionLensesCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:      { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:  { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id:  { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     question_type: { type: 'string', description: 'Filter by question_type. Omit for all.' },
     limit:         { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
     offset:        { type: 'number', description: 'Pagination offset (default 0).' },

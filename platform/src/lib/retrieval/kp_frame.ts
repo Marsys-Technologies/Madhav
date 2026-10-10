@@ -13,16 +13,3 @@ export const KP_FRAME_AYANAMSHA = 'krishnamurti'
 
 /** The label every KP-frame surface carries. */
 export const KP_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
-
-/**
- * Label for a KP-frame payload read at `ayanamshaId`. Krishnamurti (or an unstated id, which the
- * KP handler defaults to Krishnamurti) -> the canonical label. Any other explicit id -> an honest
- * label naming the frame actually used, so a non-doctrinal KP read is never mistaken for the
- * canonical one.
- */
-export function kpFrameLabelFor(ayanamshaId: string | null | undefined): string {
-  if (ayanamshaId === undefined || ayanamshaId === null || ayanamshaId === '' || ayanamshaId === KP_FRAME_AYANAMSHA) {
-    return KP_FRAME_LABEL
-  }
-  return `KP chain read at ${ayanamshaId} (explicit non-doctrinal frame; the ${KP_FRAME_LABEL} is the canonical one)`
-}

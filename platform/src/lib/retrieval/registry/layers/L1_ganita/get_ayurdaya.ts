@@ -14,7 +14,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import { annotateAyurdayaYearRows, deriveAyurdayaFigureDisclosure } from './ayurdaya_unreduced_base'
 const MAX_LIMIT = 200
@@ -36,14 +36,14 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     'occupants); the CHART/applicable_method row carries the ruling method + all three raw',
     'totals. harana_status is also promoted to a top-level field on this response whenever a',
     'total_years row is present on the page (honest disclosure — reductive haranas are not',
-    'yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit',
-    'for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band',
+    'yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omitted',
+    '= the Lahiri primary; "all" = the explicit raw rows of every ayanamsha) or method (fact_subject). NOT a death prediction — classical longevity-band',
     'computation only. Bounded with a disclosed total.',
   ].join(' '),
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     method:       { type: 'string', description: 'Filter by longevity method fact_subject (e.g. AMSAYU, PINDAYU, NISARGAYU). Omit for all.' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },

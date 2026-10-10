@@ -15,7 +15,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -39,7 +39,7 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     graha:        { type: 'string', description: 'Filter by graha. Omit for all.' },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 

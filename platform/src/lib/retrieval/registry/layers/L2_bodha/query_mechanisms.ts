@@ -48,7 +48,7 @@ import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
@@ -280,7 +280,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:      { type: 'string',  description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5." },
+    ayanamsha_id:      { type: 'string',  description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     mechanism_class:   { type: 'string',  description: 'Filter by a single mechanism_class. Omit for all.' },
     valence:           { type: 'string',  description: 'Filter by valence (benefic|malefic|mixed|neutral). Omit for all.' },
     chain_circuit_only:{ type: 'boolean', description: 'When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, dispositor_cycle, house_lordship_cycle). Default false.' },

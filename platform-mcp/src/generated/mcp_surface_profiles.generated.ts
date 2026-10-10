@@ -349,7 +349,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "discovery_class": {
               "type": "string",
@@ -534,7 +534,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "snapshot_type": {
               "type": "string",
@@ -605,7 +605,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "mechanism_class": {
               "type": "string",
@@ -659,7 +659,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "status": {
               "type": "string",
@@ -1055,7 +1055,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_ayurdaya_get",
-        "description": "Retrieve classical longevity (Āyurdāya) computations for a chart from chart_facts (fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu / Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years (fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu). Every row carries fact_value_jsonb with method-specific detail: total_years rows carry per_graha contributions, lagna_years, classification, and harana_status; the CHART/ maraka_grahas row carries the 2nd/7th-house maraka significators (signs, lords, occupants); the CHART/applicable_method row carries the ruling method + all three raw totals. harana_status is also promoted to a top-level field on this response whenever a total_years row is present on the page (honest disclosure — reductive haranas are not yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band computation only. Bounded with a disclosed total.",
+        "description": "Retrieve classical longevity (Āyurdāya) computations for a chart from chart_facts (fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu / Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years (fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu). Every row carries fact_value_jsonb with method-specific detail: total_years rows carry per_graha contributions, lagna_years, classification, and harana_status; the CHART/ maraka_grahas row carries the 2nd/7th-house maraka significators (signs, lords, occupants); the CHART/applicable_method row carries the ruling method + all three raw totals. harana_status is also promoted to a top-level field on this response whenever a total_years row is present on the page (honest disclosure — reductive haranas are not yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omitted = the Lahiri primary; \"all\" = the explicit raw rows of every ayanamsha) or method (fact_subject). NOT a death prediction — classical longevity-band computation only. Bounded with a disclosed total.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1065,7 +1065,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "method": {
               "type": "string",
@@ -1323,7 +1323,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "indication_tier": {
               "type": "string",
@@ -1361,7 +1361,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "offset": {
               "type": "number",
@@ -1403,7 +1403,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for default."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             }
           },
           "required": [
@@ -1569,7 +1569,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "subject": {
               "type": "string",
@@ -1738,7 +1738,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "include_varsha": {
               "type": "boolean",
@@ -1793,7 +1793,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_transit_anchors_get",
-        "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha. Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows per chart (9 grahas × 5 ayanamshas). natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1). Each row carries constituent_fact_ids (§N.5) resolving back to the source chart_facts rows (graha_position/graha_sign_attributes) it was derived from.",
+        "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, per ayanamsha (a default call serves the Lahiri primary; ayanamsha_id:\"all\" serves every stored ayanamsha). Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows stored per chart (9 grahas × 5 ayanamshas); a default call returns the 9 Lahiri rows. natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1). Each row carries constituent_fact_ids (§N.5) resolving back to the source chart_facts rows (graha_position/graha_sign_attributes) it was derived from.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1803,7 +1803,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. lahiri_chitrapaksha). Omit for all 5."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "graha": {
               "type": "string",
@@ -1853,7 +1853,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "indication_tier": {
               "type": "string",
@@ -1891,7 +1891,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "family": {
               "type": "string",
@@ -1967,7 +1967,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "bhanga_active": {
               "type": "boolean",
@@ -2017,7 +2017,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha. Omit for all ayanamshas present."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             }
           },
           "required": [
@@ -3652,7 +3652,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "discovery_class": {
               "type": "string",
@@ -4625,7 +4625,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+              "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
             },
             "discovery_class": {
               "type": "string",

@@ -50,7 +50,8 @@ export const getTajikCapability: CapabilityDescriptor = {
     'Covers 3 fact_categories + l1_tajik_varsha_year_lords table.',
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id:   { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    // Plain literal on purpose: platform-mcp codegen PILOT descriptor (registry_manifest.ts); equality with PRIMARY_AYANAMSHA_ID_INPUT_TEXT is pinned by __tests__/kp_descriptor_text.test.ts.
+    ayanamsha_id:   { type: 'string', description: 'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows.' },
     include_varsha: {
       type: 'boolean',
       description: 'Include l1_tajik_varsha_year_lords rows (default true)',

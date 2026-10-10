@@ -30,7 +30,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const MAX_LIMIT = 200
@@ -65,7 +65,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     subject:      { type: 'string', description: "Filter by fact_subject (e.g. a graha code like SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI). Omit for all." },
     check_type:   { type: 'string', description: 'Filter by fact_key (the specific sensitive-degree or Yogi-system check). Omit for all.' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },

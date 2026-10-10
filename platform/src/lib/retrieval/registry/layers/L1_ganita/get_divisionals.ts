@@ -19,7 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
@@ -46,7 +46,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     varga:        { type: 'string', description: 'Varga code (e.g. D9, D10, D12). Omit for all.' },
     graha:        { type: 'string', description: 'Graha abbreviation (e.g. SU, MO). Omit for all.' },
     offset: { type: 'number', default: 0 },

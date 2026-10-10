@@ -25,7 +25,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
 import { resolveChartFactsAyanamsha, resolveAyanamshaArg } from '../lib/ayanamsha.js'
-import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL, ayanamshaArgForKpReach, kpFrameIgnoredNote, kpFrameLabelFor } from '../lib/kp_frame.js'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL, ayanamshaArgForKpReach, kpFrameIgnoredNote } from '../lib/kp_frame.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -74,10 +74,10 @@ function withRectificationBestLabel(data: unknown): unknown {
 }
 
 /**
- * Stamp the KP-frame label on a KP payload (SS N-342 item 3). The label states the ayanamsha the
- * chain was actually read in: the payload's own `ayanamsha_id` when the platform echoes one, else the
- * KP-canonical Krishnamurti (the only frame the wrapper asks for). `ayanamshaNote` is set only when the
- * caller asked for something other than Krishnamurti (SS N-368).
+ * Stamp the KP-frame label on a KP payload (SS N-342 item 3). KP has ONE frame, so a payload read there carries the
+ * constant label "KP frame (Krishnamurti ayanamsha)"; `kp_frame_ayanamsha_id` echoes the payload's own `ayanamsha_id`
+ * when the platform echoes one, else the KP-canonical Krishnamurti (the only frame the platform reads).
+ * `ayanamshaNote` is set only when the caller asked for something other than Krishnamurti (SS N-368).
  */
 function withKpFrameLabel(data: unknown, ayanamshaNote: string | null): unknown {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return data
@@ -88,10 +88,15 @@ function withKpFrameLabel(data: unknown, ayanamshaNote: string | null): unknown 
     : rec
   const echoed = typeof target['ayanamsha_id'] === 'string' ? (target['ayanamsha_id'] as string) : undefined
   const used = echoed ?? KP_FRAME_AYANAMSHA
+  // The label is only stamped on a payload the platform read in the KP frame. A platform answer in another frame
+  // (not producible by the get_kp_cusps handler, which pins krishnamurti) is never relabelled as the KP frame:
+  // honest null label plus a warning naming the frame actually used (§N.7 item 6).
+  const inKpFrame = used === KP_FRAME_AYANAMSHA
   const stamped = {
     ...target,
-    kp_frame_label: kpFrameLabelFor(used),
+    kp_frame_label: inKpFrame ? KP_FRAME_LABEL : null,
     kp_frame_ayanamsha_id: used,
+    ...(inKpFrame ? {} : { kp_frame_warning: `the platform answered in '${used}', not the KP frame (${KP_FRAME_AYANAMSHA}); no KP-frame label applied` }),
     // the platform handler's own note (explicit non-KP id / "all") wins; the wrapper's covers an unresolvable id
     ...(target['ayanamsha_note'] === undefined && ayanamshaNote !== null ? { ayanamsha_note: ayanamshaNote } : {}),
   }

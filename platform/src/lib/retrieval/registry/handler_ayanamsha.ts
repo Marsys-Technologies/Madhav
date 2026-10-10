@@ -46,10 +46,16 @@ export const KP_FRAME_DESCRIPTOR_NOTE =
   'is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows ' +
   'from the requested or primary ayanamsha.'
 
-/** `ayanamsha_id` input text for a reader that can serve KP-frame categories (replaces the pre-primary "Omit for all"). */
-export const KP_AWARE_AYANAMSHA_ID_TEXT =
+/**
+ * `ayanamsha_id` input text for a reader that cannot serve KP-frame categories (Lahiri-primary: omitted = the primary reading,
+ * "all" = the explicit raw opt-out; replaces the pre-primary "Omit for all").
+ */
+export const PRIMARY_AYANAMSHA_ID_INPUT_TEXT =
   `Ayanamsha to read: a stored id or short alias, any case. Omitted = ${PRIMARY_AYANAMSHA} (the Lahiri primary reading); ` +
-  '"all" = the explicit raw multi-ayanamsha rows. ' + KP_FRAME_DESCRIPTOR_NOTE
+  '"all" = the explicit raw multi-ayanamsha rows.'
+
+/** `ayanamsha_id` input text for a reader that can serve KP-frame categories: the primary text plus the KP exception. */
+export const KP_AWARE_AYANAMSHA_ID_TEXT = PRIMARY_AYANAMSHA_ID_INPUT_TEXT + ' ' + KP_FRAME_DESCRIPTOR_NOTE
 
 export interface HandlerAyanamsha {
   /** Stored id to filter on, or `null` for the explicit `"all"` opt-out. */

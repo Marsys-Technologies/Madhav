@@ -135,9 +135,25 @@ describe('ganita_kp_cusps_get: one KP frame (SS N-368)', () => {
     expect(kpCalls()[0]).toMatchObject({ ayanamsha_id: 'raman', include_graha_kp_lords: true })
   })
 
+  it('doctrinal branches: an echoed krishnamurti and an absent echo both carry the canonical label and the krishnamurti id', async () => {
+    mockFetch.mockImplementation(async () => capabilityOk({ cusps: [], ayanamsha_id: 'krishnamurti' }))
+    const echoed = payloadOf(await getTool()({ chart_id: CHART }))
+    expect(echoed['kp_frame_label']).toBe(LABEL)
+    expect(echoed['kp_frame_ayanamsha_id']).toBe('krishnamurti')
+    expect(echoed).not.toHaveProperty('kp_frame_warning')
+    mockFetch.mockImplementation(async () => capabilityOk({ cusps: [] }))
+    const bare = payloadOf(await getTool()({ chart_id: CHART }))
+    expect(bare['kp_frame_label']).toBe(LABEL)
+    expect(bare['kp_frame_ayanamsha_id']).toBe('krishnamurti')
+    expect(bare).not.toHaveProperty('kp_frame_warning')
+  })
+
   it('an honest label: a platform that answered in another frame is not relabelled as the KP frame', async () => {
     mockFetch.mockImplementation(async () => capabilityOk({ cusps: [], ayanamsha_id: 'lahiri_chitrapaksha' }))
     const r = await getTool()({ chart_id: CHART })
-    expect(String(payloadOf(r)['kp_frame_label'])).toContain('KP chain read at lahiri_chitrapaksha')
+    const p = payloadOf(r)
+    expect(p['kp_frame_label']).toBeNull()
+    expect(p['kp_frame_ayanamsha_id']).toBe('lahiri_chitrapaksha')
+    expect(String(p['kp_frame_warning'])).toContain("answered in 'lahiri_chitrapaksha', not the KP frame")
   })
 })

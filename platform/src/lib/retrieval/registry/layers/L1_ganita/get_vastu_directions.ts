@@ -17,7 +17,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -43,7 +43,7 @@ export const getVastuDirectionsCapability: CapabilityDescriptor = {
     chart_id:        { type: 'string', description: 'Chart UUID. Required.', required: true },
     graha:           { type: 'string', description: 'Filter by graha. Omit for all.' },
     direction:       { type: 'string', description: 'Filter by direction (e.g. East, North). Omit for all.' },
-    ayanamsha_id:    { type: 'string', description: "Filter by ayanamsha. Omit for all." },
+    ayanamsha_id:    { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     indication_tier: { type: 'string', description: 'Filter by indication tier. Omit for all.' },
     limit:           { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },

@@ -1,14 +1,15 @@
 /**
- * lahiri_text_lint.test.ts — SS N-339 / N-342, PR-4: text lint for the LLM-visible ayanamsha text.
+ * lahiri_text_lint.test.ts: SS N-339 / N-342, PR-4 (ratchet closed in the combined Lahiri batch): text lint for the LLM-visible ayanamsha text.
  *
  * Fails when a generated chat-tool / MCP definition, or the hand-written MCP tool source, says
  *   - `'LAHIRI'` (upper case, not a stored id) as a default, or
  *   - "Omit for all" / "Omit for unfiltered" / "Omit for default" on an `ayanamsha_id` whose tool
  *     now defaults to Lahiri.
  *
- * KNOWN_DEFERRED_TO_PR2 lists the platform registry handlers (layers/**, PR-2's files) whose
- * ayanamsha_id description still says "Omit for all". The list is a ratchet: an entry that is
- * ALREADY clean fails the test ("remove it from the list"), so PR-2 shrinks it to empty.
+ * There is no allowlist: the former KNOWN_DEFERRED_TO_PR2 ratchet (46 registry handlers whose text still said
+ * "Omit for all") was emptied by the combined batch and deleted. The detector itself is exercised on reverted
+ * text below (`OMIT_RE` is not vacuous), and the platform-side counterpart reads the live registry descriptors
+ * (`platform/src/lib/retrieval/registry/__tests__/kp_descriptor_text.test.ts`).
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -19,28 +20,6 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const MCP_ROOT = join(HERE, '..')
 const REPO_ROOT = join(MCP_ROOT, '..')
 const PROJECTIONS = join(REPO_ROOT, 'platform/src/generated/projections')
-
-/**
- * Registry handlers (platform/src/lib/retrieval/registry/layers/**, PR-2's files) whose
- * `ayanamsha_id` input_schema description still says "Omit for all/unfiltered/default". The
- * generated chat / MCP / family projections copy that text from the handler descriptor, so the
- * fix is in the handler (PR-2 changes each handler's omitted-id default and its text together).
- * Keyed by the capability name (the last segment of the capability URI).
- *
- * Combined Lahiri batch: the 15 readers that can serve KP-frame categories (get_aspects, get_ashtakavarga, get_avasthas,
- * get_bhava_bala, get_dignity, get_dispositors, get_sensitive_points, get_positions, get_nakshatra, get_karakas,
- * get_structural, get_sade_sati, get_panchanga, get_strength, get_yoga_dosha) were rewritten with the shared
- * KP_AWARE_AYANAMSHA_ID_TEXT and left this list; the remaining entries are still open.
- */
-const KNOWN_DEFERRED_TO_PR2: ReadonlySet<string> = new Set([
-  'get_argala', 'get_ayurdaya', 'get_condition_composite', 'get_divisionals', 'get_graha_yuddha',
-  'get_medical_indications', 'get_prashna_lagna', 'get_sensitive_degrees', 'get_tajik',
-  'get_tara_chandra_bala', 'get_transit_anchors', 'get_vastu_directions', 'get_vichara', 'get_yoga_firings',
-  'query_cdlm_summary', 'query_cgm_motifs', 'query_cgm_paths', 'query_chart_gestalt', 'query_discoveries',
-  'query_mechanisms', 'query_planet', 'query_pratijna', 'query_question_lenses', 'query_rm_chart_summary',
-  'query_rm_dasha_windowed_prescriptions', 'query_rm_dosha_remedy_bundles', 'query_rm_pattern_remedies',
-  'query_rm_prescriptions', 'query_rm_resonances', 'query_triangulation', 'traverse_chart_graph',
-])
 
 const OMIT_RE = /omit for (all|unfiltered|default)/i
 const UPPER_DEFAULT_RE = /default:?\s*['"]LAHIRI['"]/
@@ -104,15 +83,26 @@ describe('generated chat-tool / MCP definitions', () => {
     expect(bad.map((b) => `${b.file}:${b.tool}`)).toEqual([])
   })
 
-  it('no "Omit for all/unfiltered/default" outside the PR-2 deferred handlers', () => {
-    const bad = all.filter((d) => OMIT_RE.test(d.description) && !KNOWN_DEFERRED_TO_PR2.has(d.tool))
+  it('no "Omit for all/unfiltered/default" on any ayanamsha_id description (no allowlist)', () => {
+    const bad = all.filter((d) => OMIT_RE.test(d.description))
     expect(bad.map((b) => `${b.file}:${b.tool}: ${b.description}`)).toEqual([])
   })
 
-  it('ratchet: every KNOWN_DEFERRED_TO_PR2 entry still violates (remove it once PR-2 fixes the handler text)', () => {
-    const stillBad = new Set(all.filter((d) => OMIT_RE.test(d.description)).map((d) => d.tool))
-    const stale = [...KNOWN_DEFERRED_TO_PR2].filter((t) => !stillBad.has(t))
-    expect(stale, 'these handlers are already clean: delete them from KNOWN_DEFERRED_TO_PR2').toEqual([])
+  it('the detector is not vacuous: it flags the pre-primary phrasings that were removed', () => {
+    for (const reverted of [
+      'Filter by ayanamsha. Omit for all.',
+      "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5.",
+      'Filter by ayanamsha. Omit for all ayanamshas present.',
+      'Ayanamsha filter. Omit for default.',
+      'Omit for unfiltered rows',
+    ]) {
+      expect(OMIT_RE.test(reverted), reverted).toBe(true)
+    }
+    for (const fixed of [
+      'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows.',
+    ]) {
+      expect(OMIT_RE.test(fixed)).toBe(false)
+    }
   })
 })
 

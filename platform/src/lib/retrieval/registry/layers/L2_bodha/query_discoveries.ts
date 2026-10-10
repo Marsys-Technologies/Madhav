@@ -23,7 +23,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 import { AYANAMSHA_SERVE_ORDER } from '../../constants'
 import {
@@ -75,7 +75,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:   { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all." },
+    ayanamsha_id:   { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     discovery_class:{ type: 'string', description: 'Filter by discovery_class. Omit for all.' },
     domain:         { type: 'string', description: 'Filter to discoveries whose affected_domains_array contains this domain (e.g. "wealth", "career", "relationship", "health", "character"). Omit for all.' },
     include_cross_check: { type: 'boolean', description: 'Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the reading"). Under a single-ayanamsha scope the old "n/N ayanamshas agree" string is no longer served (it read "1/1"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: "single_ayanamsha_chart" }`. Under ayanamsha_id:"all" the raw pooled `ayanamsha_agreement` is unchanged. Default false.' },

@@ -28,7 +28,8 @@ import { registerP1SynthesisTools } from '../src/tools/register_p1_synthesis.js'
 import { registerRegistryBridgeTools } from '../src/tools/registry_bridge.js'
 import { registerComputeNatalPositionsTool, registerQuerySpecialLagnasTool } from '../src/tools/retrieval/pyhora_natal.js'
 import { registerPrompts } from '../src/prompts/index.js'
-import { KP_FRAME_LABEL, kpFrameLabelFor } from '../src/lib/kp_frame.js'
+import * as kpFrameModule from '../src/lib/kp_frame.js'
+import { KP_FRAME_LABEL, KP_FRAME_AYANAMSHA } from '../src/lib/kp_frame.js'
 import { buildKalaAyanamshaFrame } from '../src/lib/kala_ayanamsha_frame.js'
 import { buildKpSchoolVoice } from '../src/lib/kp_school_voice.js'
 
@@ -175,10 +176,10 @@ describe('PR-4: KP surfaces stay on Krishnamurti and carry the KP frame label', 
     expect(JSON.stringify(bad)).toContain('ayanamsha_note')
   })
 
-  it('kpFrameLabelFor: krishnamurti / unstated -> canonical label; other ids -> honest label', () => {
-    expect(kpFrameLabelFor(undefined)).toBe(KP_FRAME_LABEL)
-    expect(kpFrameLabelFor('krishnamurti')).toBe(KP_FRAME_LABEL)
-    expect(kpFrameLabelFor(LAHIRI)).toContain(`KP chain read at ${LAHIRI}`)
+  it('the KP frame label is one constant (no per-id label builder): doctrinal frame = canonical label', () => {
+    expect(KP_FRAME_LABEL).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(kpFrameModule).not.toHaveProperty('kpFrameLabelFor')
+    expect(KP_FRAME_AYANAMSHA).toBe('krishnamurti')
   })
 
   it('the kala_explain KP school voice carries the KP frame label next to the divergence disclosure', () => {

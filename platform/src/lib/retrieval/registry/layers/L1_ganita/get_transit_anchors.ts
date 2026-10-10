@@ -10,7 +10,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { grahaCodeOf } from '@/lib/retrieval/graha_labels'
 
 // F-D25 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6; D-SERVICE ≤2 hops to L1): the writer
@@ -29,16 +29,16 @@ export const getTransitAnchorsCapability: CapabilityDescriptor = {
   name: 'get_transit_anchors',
   description:
     'Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, ' +
-    'and absolute sidereal degree for each of the 9 grahas, by ayanamsha. ' +
+    'and absolute sidereal degree for each of the 9 grahas, per ayanamsha (a default call serves the Lahiri primary; ayanamsha_id:"all" serves every stored ayanamsha). ' +
     'Used as the reference substrate for all Gochara (planetary transit) computations — ' +
     'sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. ' +
-    '45 rows per chart (9 grahas × 5 ayanamshas). ' +
+    '45 rows stored per chart (9 grahas × 5 ayanamshas); a default call returns the 9 Lahiri rows. ' +
     'natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1). ' +
     'Each row carries constituent_fact_ids (§N.5) resolving back to the source chart_facts ' +
     'rows (graha_position/graha_sign_attributes) it was derived from.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha (e.g. lahiri_chitrapaksha). Omit for all 5.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     graha:        { type: 'string', description: 'Filter to one graha (sun/moon/mars/mercury/jupiter/venus/saturn/rahu/ketu). Omit for all 9.' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 50 },

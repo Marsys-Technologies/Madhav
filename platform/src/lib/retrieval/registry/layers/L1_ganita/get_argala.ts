@@ -36,7 +36,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
@@ -75,7 +75,7 @@ export const getArgalaCapability: CapabilityDescriptor = {
     'is a disclosure, not an error signal). Covers: argala_natal_matrix, virodha_argala_natal_matrix.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     type:         { type: 'string', description: 'argala | virodha_argala. Omit for both.', enum: ['argala', 'virodha_argala'] },
     varga:        { type: 'string', description: 'Filter to one divisional chart (e.g. "D1", "D9"). Omit for all vargas (large).' },
     shape:        { type: 'string', description: 'resolved (default, adds argala_on_house) | matrix (raw, backward compat).', enum: ['resolved', 'matrix'] },

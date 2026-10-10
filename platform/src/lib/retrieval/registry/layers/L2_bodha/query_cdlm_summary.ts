@@ -26,7 +26,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -84,7 +84,7 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the Cross-Domain Linkage Matrix (CDLM) for a chart, across four depth tiers',
     '(the `tier` facet — default chart_summary, fully backward compatible):',
-    "'chart_summary' (default) — bodha_cdlm_chart_summary, one row per ayanamsha:",
+    "'chart_summary' (default) — bodha_cdlm_chart_summary, one row stored per ayanamsha (a default call serves the Lahiri primary's row):",
     'chart_typology_class, total_chart_linkage, contradiction_density, dominant_3_domains,',
     'weakest_3_domains, bridge_link_count, asymmetric_link_count, house_to_domain_strength,',
     'karaka_to_domain_strength.',
@@ -102,7 +102,7 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     tier: {
       type: 'string',
       description: [

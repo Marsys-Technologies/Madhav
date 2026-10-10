@@ -14,9 +14,9 @@ describe('KP frame constants', () => {
   it('are identical on both sides', () => {
     expect(mcp.KP_FRAME_AYANAMSHA).toBe(platform.KP_FRAME_AYANAMSHA)
     expect(mcp.KP_FRAME_LABEL).toBe(platform.KP_FRAME_LABEL)
-    for (const id of [undefined, null, '', 'krishnamurti', 'lahiri_chitrapaksha', 'raman', 'true_chitra']) {
-      expect(mcp.kpFrameLabelFor(id)).toBe(platform.kpFrameLabelFor(id))
-    }
+    // kpFrameLabelFor (with its unreachable non-doctrinal branch) was removed: the label is the one constant.
+    expect('kpFrameLabelFor' in platform).toBe(false)
+    expect('kpFrameLabelFor' in mcp).toBe(false)
   })
 
   it('the KP frame is the Krishnamurti ayanamsha, a stored id, and not the Lahiri primary', () => {

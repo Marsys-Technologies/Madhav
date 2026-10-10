@@ -40,7 +40,7 @@
  * actually has is "no data" (§N.8: a signal with no detector behind it is null, not green).
  */
 
-import { kpFrameLabelFor } from './kp_frame.js'
+import { KP_FRAME_LABEL } from './kp_frame.js'
 import { ordinalOrRaw } from './ordinal.js'
 
 /** The four classical KP significator limbs, strongest first. */
@@ -265,7 +265,7 @@ export function buildKpSchoolVoice(params: BuildKpSchoolVoiceParams): KpSchoolVo
     bhava,
     ladder,
     kp_ayanamsha_id: kpAyanamshaId,
-    kp_frame_label: kpFrameLabelFor(kpAyanamshaId),
+    kp_frame_label: KP_FRAME_LABEL,
     chain_ayanamsha_id: chainAyanamshaId,
     ayanamsha_divergence: kpAyanamshaId !== chainAyanamshaId,
   }

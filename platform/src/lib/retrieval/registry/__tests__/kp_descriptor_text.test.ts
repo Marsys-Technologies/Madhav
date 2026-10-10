@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { KP_FRAME_CATEGORIES } from '../kp_categories'
-import { KP_FRAME_DESCRIPTOR_NOTE, KP_AWARE_AYANAMSHA_ID_TEXT } from '../handler_ayanamsha'
+import { KP_FRAME_DESCRIPTOR_NOTE, KP_AWARE_AYANAMSHA_ID_TEXT, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../handler_ayanamsha'
 import { KP_FRAME_LABEL } from '../../kp_frame'
 import type { CapabilityDescriptor } from '../types'
 
@@ -35,6 +35,41 @@ const KP_REACHING_READERS = [
   'get_sensitive_points', 'get_positions', 'get_nakshatra', 'get_karakas', 'get_structural',
   'get_sade_sati', 'get_panchanga', 'get_strength', 'get_yoga_dosha',
 ] as const
+
+/** Handlers that cannot reach a KP-frame category (no caller category list): the plain primary-ayanamsha text. */
+const PRIMARY_TEXT_HANDLERS = [
+  'get_argala', 'get_ayurdaya', 'get_condition_composite', 'get_divisionals', 'get_graha_yuddha', 'get_medical_indications',
+  'get_prashna_lagna', 'get_sensitive_degrees', 'get_tajik', 'get_tara_chandra_bala', 'get_transit_anchors',
+  'get_vastu_directions', 'get_vichara', 'get_yoga_firings', 'query_planet', 'query_cdlm_summary', 'query_cgm_motifs',
+  'query_cgm_paths', 'query_chart_gestalt', 'query_discoveries', 'query_mechanisms', 'query_pratijna',
+  'query_question_lenses', 'query_rm_chart_summary', 'query_rm_dasha_windowed_prescriptions',
+  'query_rm_dosha_remedy_bundles', 'query_rm_pattern_remedies', 'query_rm_prescriptions', 'query_rm_resonances',
+  'query_triangulation', 'traverse_chart_graph',
+] as const
+
+describe('ayanamsha_id input text follows the Lahiri-primary rule on every capability', () => {
+  it('no registered capability says "Omit for all/unfiltered/default" about ayanamsha_id (live registry, no allowlist)', () => {
+    const bad = getCatalog()
+      .map((c) => ({ name: c.name, text: String(((c.input_schema as Record<string, { description?: string }> | undefined)?.['ayanamsha_id'])?.description ?? '') }))
+      .filter((x) => /omit for (all|unfiltered|default)/i.test(x.text))
+    expect(bad.map((b) => `${b.name}: ${b.text}`)).toEqual([])
+  })
+
+  it.each(PRIMARY_TEXT_HANDLERS)('%s: ayanamsha_id says omitted = Lahiri primary, "all" = explicit raw opt-out', (name) => {
+    expect(ayanamshaText(cap(name))).toBe(PRIMARY_AYANAMSHA_ID_INPUT_TEXT)
+  })
+
+  it('the KP-aware text is the primary text plus the KP exception, nothing else', () => {
+    expect(KP_AWARE_AYANAMSHA_ID_TEXT).toBe(PRIMARY_AYANAMSHA_ID_INPUT_TEXT + ' ' + KP_FRAME_DESCRIPTOR_NOTE)
+  })
+
+  it('descriptions no longer claim a default call returns every ayanamsha', () => {
+    expect(cap('get_transit_anchors').description).toMatch(/a default call returns the 9 Lahiri rows/)
+    expect(cap('get_ayurdaya').description).not.toMatch(/omit\s+for all 5/i)
+    expect(cap('query_cdlm_summary').description).toMatch(/a default call serves the Lahiri primary/)
+    expect(cap('query_chart_gestalt').description).toMatch(/a default call serves the Lahiri primary/)
+  })
+})
 
 describe('KP descriptor text follows the one-frame rule', () => {
   it('the shared note names exactly the KP-frame categories, the krishnamurti id and the frame label', () => {

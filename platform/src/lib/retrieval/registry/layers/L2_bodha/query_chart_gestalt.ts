@@ -11,7 +11,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 import { GESTALT_SCUS } from '../../knowledge/editorial'
 
@@ -25,8 +25,8 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
   semantic_capabilities: GESTALT_SCUS,
 
   description: [
-    'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per',
-    'ayanamsha. Fields: defining_threads, central_dynamics_ids, pivot_ids,',
+    'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row stored per',
+    'ayanamsha (a default call serves the Lahiri primary\'s row). Fields: defining_threads, central_dynamics_ids, pivot_ids,',
     'center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic),',
     'watch_list, central_question, outliers, contested_areas, zoom_spine. This is the',
     'orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded',
@@ -35,7 +35,7 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 

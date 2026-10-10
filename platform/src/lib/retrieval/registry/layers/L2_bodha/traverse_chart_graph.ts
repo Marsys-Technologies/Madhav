@@ -95,7 +95,7 @@ import {
   AddressResolutionError,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+      description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT,
     },
     snapshot_type: {
       type: 'string',

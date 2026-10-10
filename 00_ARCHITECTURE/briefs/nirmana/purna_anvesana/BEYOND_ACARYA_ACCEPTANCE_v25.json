@@ -1,7 +1,7 @@
 {
     "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v25",
     "campaign_id": "madhav-purna-anvesana",
-    "packet_id": "LAHIRI-PRIMARY-PR2-PROBE-MIRROR",
+    "packet_id": "LAHIRI-PRIMARY-COMBINED-BATCH",
     "predecessor": {
         "artifact": "BEYOND_ACARYA_ACCEPTANCE_v24.json",
         "acceptance_version": "beyond-acarya-source-acceptance-v2",
@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-10-02",
-    "evaluated_source_revision": "423f16bc35c7268a1c5e8b9e71141611b941746f",
+    "evaluated_source_revision": "4fbafb04fd0599e4b7d845c980e3913732bcee1b",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:02ed97c6e3eff8e4b161edecbee582d135be23bed85be34c56ffc4cbfe660bfb",
-        "capability_content_hash": "sha256:ab862493aec2ef13ce017fb7a6ce95371d5b2a9f04fce7c3d258a359e49e5bfe",
-        "source_catalog_fingerprint": "sha256:82c9e2a800ba19d2ab6b761997c2f785f644cd353d726750fb8cd25402572f46",
-        "semantic_review_fingerprint": "sha256:066e41f3b2d64c897554273a5f79368cfdfdc3def7da396be21cb0930226135f",
+        "snapshot_file_sha256": "sha256:3f17a688a0402ef26f1a6584bddeafbff2b4143f42d1c1e07ca8d319730a2f2a",
+        "capability_content_hash": "sha256:04c546ea08fc0624091eb397ee36b037c068ff7c53af47edb42f0711df9172cf",
+        "source_catalog_fingerprint": "sha256:a556c59d35cfb32393712228eae099cf2f2e0978440b4a076962ac80c81edf62",
+        "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
         "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
     },
-    "capability_content_hash": "sha256:ab862493aec2ef13ce017fb7a6ce95371d5b2a9f04fce7c3d258a359e49e5bfe",
-    "report_hash": "sha256:d41d83b79ad53947105630170b0fbed405d22aff9cef93f59c8a21006c97a41c",
+    "capability_content_hash": "sha256:04c546ea08fc0624091eb397ee36b037c068ff7c53af47edb42f0711df9172cf",
+    "report_hash": "sha256:91986ee9ad20f225f2466cd4074230a9a9d58db9f830d45e9ce4fa6faa85ee94",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "Lahiri-primary PR-2 (SS N-339/N-342/N-345): the L1/L2 handlers default to Lahiri, so the source-query availability probes in knowledge/source_query_availability.ts mirror the new primary-ayanamsha filter, serve-order ORDER BY and the citation_human select-list item, and get_eclipse_flags gained an ayanamsha_id input; that moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint coincides with v22's; no SCU, edge, proof kind or availability disposition changed. v22 stays immutable by hash. evaluated_source_revision is the stacked base (Lahiri primary PR-1 head) this change was committed on. Renumbered from v23 to v25 in the combined Lahiri-primary batch (five held PRs merged onto origin/main 1ad2a678a, whose highest acceptance artifact is v24); the capability_content_hash, report_hash and generated_snapshot values are the ones recorded at the PR head named by evaluated_source_revision, a pre-combination tree that is not itself on main (the predecessor pointer of v25 is re-pointed to main's v24). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+    "provenance_note": "Lahiri-primary combined batch (SS N-339..N-370, N-404; the five held PRs #3381 #3388 #3389 #3386 #3384 merged onto origin/main 4fbafb04f, whose highest acceptance artifact is v24): the L1/L2 handlers default to the Lahiri primary and their source-query availability probes mirror the primary-ayanamsha filter, serve-order ORDER BY and citation_human select item (PR-2); include_cross_check inputs and the compact always-on identity_cross_check were added to get_positions, get_dashas, query_discoveries, query_pratijna, graha_portrait and chart_snapshot (PR-3); every ayanamsha_id input text now says omitted = the Lahiri primary and \"all\" = the explicit raw opt-out (the 'Omit for all' wording is gone from all handlers), the descriptor text of every KP-reaching reader follows the one-frame KP rule (KP categories, get_kp_cusps and system=vimshottari_kp are read at krishnamurti; everything else at the requested or primary ayanamsha), and get_prashna_lagna no longer claims a kp_sub_lord for kp_249. These moved source_catalog_fingerprint, hence capability_content_hash and report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's; no SCU, edge, proof kind or availability disposition changed and every metric of v24 is unchanged (novel 13/13, omission 0/25, route 34/34, edges 9/9). v24 stays immutable by hash. This is ONE successor for the whole batch: the intermediate states of the PR stack are not recorded as artifacts. evaluated_source_revision is origin/main at 4fbafb04f, the base this batch was rehearsed on (re-evaluate at the real batch if main has moved). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
 }

@@ -22,7 +22,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -46,7 +46,7 @@ export const queryRmDashaWindowedPrescriptionsCapability: CapabilityDescriptor =
 
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:   { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id:   { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     dasha_system:   { type: 'string', description: 'Filter by dasha_system. Omit for all.' },
     dasha_lord:     { type: 'string', description: 'Filter by dasha_lord. Omit for all.' },
     active_on_date: { type: 'string', description: 'ISO date; return only windows active on this date. Omit for all.' },

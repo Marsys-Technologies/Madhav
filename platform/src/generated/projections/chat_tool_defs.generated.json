@@ -1625,7 +1625,7 @@
     },
     {
       "name": "query_cdlm_summary",
-      "description": "Retrieve the Cross-Domain Linkage Matrix (CDLM) for a chart, across four depth tiers (the `tier` facet — default chart_summary, fully backward compatible): 'chart_summary' (default) — bodha_cdlm_chart_summary, one row per ayanamsha: chart_typology_class, total_chart_linkage, contradiction_density, dominant_3_domains, weakest_3_domains, bridge_link_count, asymmetric_link_count, house_to_domain_strength, karaka_to_domain_strength. 'domain_rollups' — bodha_cdlm_domain_rollups, per-domain linkage rollup (optionally filter by `domain`): total_inbound_linkage, total_outbound_linkage, diagonal_density, signal_count_for_domain, top_3_linked_domains, contradiction_density. 'pattern_clusters' — bodha_cdlm_pattern_clusters, detected cross-domain patterns: pattern_marker_type, involved_domains, cluster_strength_total, classical_archetype_match, predicted_outcome_class. 'evolution_gradients' — bodha_cdlm_evolution_gradients, dynamic-dasha CDLM trend over time: evolution_class (steepening/weakening/stable/oscillating), gradient_score, peak/trough periods. All tiers share verification_pass_status + citation. Filters: ayanamsha_id (all tiers), domain (domain_rollups only). Bounded with a disclosed total.",
+      "description": "Retrieve the Cross-Domain Linkage Matrix (CDLM) for a chart, across four depth tiers (the `tier` facet — default chart_summary, fully backward compatible): 'chart_summary' (default) — bodha_cdlm_chart_summary, one row stored per ayanamsha (a default call serves the Lahiri primary's row): chart_typology_class, total_chart_linkage, contradiction_density, dominant_3_domains, weakest_3_domains, bridge_link_count, asymmetric_link_count, house_to_domain_strength, karaka_to_domain_strength. 'domain_rollups' — bodha_cdlm_domain_rollups, per-domain linkage rollup (optionally filter by `domain`): total_inbound_linkage, total_outbound_linkage, diagonal_density, signal_count_for_domain, top_3_linked_domains, contradiction_density. 'pattern_clusters' — bodha_cdlm_pattern_clusters, detected cross-domain patterns: pattern_marker_type, involved_domains, cluster_strength_total, classical_archetype_match, predicted_outcome_class. 'evolution_gradients' — bodha_cdlm_evolution_gradients, dynamic-dasha CDLM trend over time: evolution_class (steepening/weakening/stable/oscillating), gradient_score, peak/trough periods. All tiers share verification_pass_status + citation. Filters: ayanamsha_id (all tiers), domain (domain_rollups only). Bounded with a disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1635,7 +1635,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "tier": {
             "type": "string",
@@ -1685,7 +1685,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha. Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "motif_class": {
             "type": "string",
@@ -1724,7 +1724,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha. Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "path_type": {
             "type": "string",
@@ -1757,7 +1757,7 @@
     },
     {
       "name": "query_chart_gestalt",
-      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per ayanamsha. Fields: defining_threads, central_dynamics_ids, pivot_ids, center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic), watch_list, central_question, outliers, contested_areas, zoom_spine. This is the orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded with a disclosed total.",
+      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row stored per ayanamsha (a default call serves the Lahiri primary's row). Fields: defining_threads, central_dynamics_ids, pivot_ids, center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic), watch_list, central_question, outliers, contested_areas, zoom_spine. This is the orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded with a disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1767,7 +1767,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "limit": {
             "type": "number",
@@ -2016,7 +2016,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "discovery_class": {
             "type": "string",
@@ -2630,7 +2630,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "mechanism_class": {
             "type": "string",
@@ -2890,7 +2890,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha. Omit for default."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           }
         },
         "required": [
@@ -3077,7 +3077,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha. Omit for all."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "question_type": {
             "type": "string",
@@ -4191,7 +4191,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas."
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows."
           },
           "snapshot_type": {
             "type": "string",

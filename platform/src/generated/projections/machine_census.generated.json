@@ -3405,7 +3405,7 @@
         "mcp_full"
       ],
       "short_label": "Get Transit Anchors",
-      "one_line": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha.",
+      "one_line": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, per ayanamsha…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3785,7 +3785,7 @@
         "mcp_consult"
       ],
       "short_label": "Query Chart Gestalt",
-      "one_line": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per ayanamsha.",
+      "one_line": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row stored per ayanamsha (a default call serves the Lahiri primary's row).",
       "read_only": true,
       "destructive": false,
       "open_world": false,

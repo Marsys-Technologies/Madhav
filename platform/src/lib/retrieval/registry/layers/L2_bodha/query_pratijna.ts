@@ -25,7 +25,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { AYANAMSHA_SERVE_ORDER } from '../../constants'
 import {
   buildAyanamshaCrossCheck, CROSS_CHECK_KEY, CROSS_CHECK_HEADING, type AyanamshaCrossCheck, type CrossCheckInputRow,
@@ -123,7 +123,7 @@ export const queryPratijnaCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:   { type: 'string', description: "Filter by ayanamsha. Omit for all." },
+    ayanamsha_id:   { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     status:         { type: 'string', description: "Filter by status ('promised' | 'denied' | 'conditional' | 'no_evidence'). Omit for all." },
     event_class_id: { type: 'string', description: 'Filter by event_class_id. Omit for all.' },
     include_cross_check: { type: 'boolean', description: 'Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class\'s status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the reading"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: "single_ayanamsha_chart" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label.' },

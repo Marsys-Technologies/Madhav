@@ -35,7 +35,7 @@ import {
   componentFailures,
   isChartUuid,
 } from '../../generation/composite_fence'
-import { tryResolveHandlerAyanamsha, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { AYANAMSHA_ALL } from '../../constants'
 import { getPositionsCapability } from './get_positions'
 import { getDignityCapability } from './get_dignity'
@@ -116,7 +116,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID', required: true },
     planet: { type: 'string', description: 'Graha name (English, Sanskrit, or 2-3 letter code), e.g. "Saturn", "shani", "SAT".', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for default.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
   },
   required_inputs: ['chart_id', 'planet'],
   scope: 'per_chart',

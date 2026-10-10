@@ -5,7 +5,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_tara_chandra_bala',
@@ -23,7 +23,7 @@ export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
     'Covers 2 fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 200 },
   },

@@ -31,7 +31,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { YOGA_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
@@ -128,7 +128,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
     fired:             { type: 'boolean', description: 'Filter by fired status (default: true — only fired yogas). Pass false for non-firings, omit-as-null via all=true.' },
     all:               { type: 'boolean', description: 'If true, ignore the fired filter and return fired + non-fired rows.' },
-    ayanamsha_id:      { type: 'string',  description: "Filter by ayanamsha. Omit for all." },
+    ayanamsha_id:      { type: 'string',  description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     bhanga_active:     { type: 'boolean', description: 'Filter to firings with an active bhanga (cancellation) rule.' },
     is_partial:        { type: 'boolean', description: 'Filter to partially-formed yogas.' },
     yoga_canonical_id: { type: 'string',  description: 'Filter to a specific yoga by canonical id.' },

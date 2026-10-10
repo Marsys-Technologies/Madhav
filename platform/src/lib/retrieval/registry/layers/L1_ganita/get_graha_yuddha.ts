@@ -40,7 +40,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
 
 const OPTION_A_CITATION =
@@ -109,7 +109,7 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
   ].join(' '),
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all ayanamshas present.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
   },
   required_inputs: ['chart_id'],
   archetype: 'flat_fact',
