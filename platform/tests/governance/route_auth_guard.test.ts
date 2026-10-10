@@ -129,8 +129,8 @@ export const ALLOWLIST: Record<string, ListedRoute> = {
     // matcher-excluded endpoint. The S1 fix did not add authentication (it cannot:
     // the caller has no session yet); it added the abuse controls, which are
     // asserted below by `mustCall` so the claim in the reason cannot silently rot.
-    reason: 'public by design: returns an email for username login; rate limited, uniform timing (S1)',
-    mustCall: ['limiter.check', 'getTrustedClientIp', 'padToUniformDuration'],
+    reason: 'public by design: returns an email for username login; rate limited per IP and per requested username, uniform timing (S1, N-403)',
+    mustCall: ['ipLimiter.check', 'usernameLimiter.check', 'getTrustedClientIp', 'padToUniformDuration'],
   },
 }
 
@@ -157,10 +157,10 @@ export const KNOWN_UNGUARDED_PENDING_FIX: Record<string, PendingRoute> = {
  * navigation). Same ratchet semantics as KNOWN_UNGUARDED_PENDING_FIX.
  */
 export const KNOWN_UNGUARDED_PAGES_PENDING_FIX: Record<string, { owner: string; reason: string }> = {
-  // cockpit/page.tsx and information/atlas/page.tsx (S1: requireSuperAdminPage) and
-  // share/[slug]/page.tsx (S4: requireActiveUserPage) now guard themselves and were
-  // removed by the ratchet. panchang/page.tsx is still unguarded: S1 did not touch it.
-  'panchang/page.tsx': { owner: 'S1', reason: 'LOW: sidecar panchanga fetch guarded only by panchang/layout.tsx (audit section 6); S1 left it unguarded' },
+  // Empty since SS N-398: cockpit/page.tsx and information/atlas/page.tsx (S1:
+  // requireSuperAdminPage), share/[slug]/page.tsx (S4: requireActiveUserPage) and
+  // panchang/page.tsx (requireActiveUserPage) all guard themselves. Kept as the
+  // ratchet's home for future gaps.
 }
 
 /**

@@ -27,3 +27,11 @@ def _vocab_registered_alias_set_starts_empty():
     ac = sys.modules.get("asset_census")
     if ac is not None:
         ac._VOCAB_REGISTERED = None
+
+
+@pytest.fixture(autouse=True)
+def _census_runs_in_tests_are_disposable(monkeypatch):
+    """SS N-332: every census must DECLARE its target and a run that states none refuses. Every governance test runs against a fake or throw-away database, and calling that "production" would be a
+    false declaration (§N.8), so the shared default is the honest one: `disposable` (census_postprocess never certifies one). The tests of the target logic itself (test_n317_evaluation_copy.py)
+    clear or set the variable explicitly."""
+    monkeypatch.setenv("SUVARNA_CENSUS_TARGET", "disposable")
