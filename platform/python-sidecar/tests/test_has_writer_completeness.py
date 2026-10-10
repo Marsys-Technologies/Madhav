@@ -66,6 +66,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_transit_rules",
     "bg_vastu_directions",
     "bg_yogas",
+    # K-CERT-2: migration 1362 pairs registration with the registry flip.
+    "bg_gochara_citation_resolution",
     # ── L0 Brahmagyan — migrations 387-389 (BA-P3A) ──────────────────────────
     "bg_class_priors",
     "bg_ghatana",
@@ -527,7 +529,6 @@ _SEED_ONLY_ALLOWED = frozenset({
     # ── No writer (has_writer=false in DB) ────────────────────────────────────
     "lel_events",              # user-authored source data; has_writer=false
     "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11); RETIRED in the live registry by migration 1360 (SS N-430), seed row kept (the seed upsert preserves a RETIRED row)
-    "bg_gochara_citation_resolution",  # migration-565-owned static reference data; has_writer=false
     # ── Migration INSERT format not detected by line extractor ────────────────
     # These all have genuine migration INSERTs but use multi-row VALUES format
     # or complex SQL not caught by the single-line pattern.

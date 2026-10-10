@@ -239,9 +239,18 @@ def test_an_unrelated_or_resolved_register_call_is_not_a_mention(monkeypatch, tm
     assert ac.register_call_mentions("bg_x") == []
 
 
-def test_the_real_discovery_set_has_no_register_call_mention_of_the_four_declared_assets():
+def test_current_discovery_sees_the_citation_writer_and_keeps_the_other_historical_non_writers():
+    # K-CERT-2 adds a writer; the saved N-150 census/declarations stay historical.
     for a in NO_WRITER_L0:
-        assert ac.register_call_mentions(a) == [], a
+        expected = ["bg_gochara_citation_resolution.py"] if a == "bg_gochara_citation_resolution" else []
+        assert ac.register_call_mentions(a) == expected, a
+
+
+def test_the_citation_registration_defeats_a_stale_no_writer_release():
+    rec = ac._measure_contract("bg_gochara_citation_resolution", [], False, True)
+    assert rec["no_writer"]["register_mentions"] == ["bg_gochara_citation_resolution.py"]
+    assert _cell("Build.contract", rec)["v"] == NO_DET
+    assert not ac._na_released("Build.contract", rec)
 
 
 def test_a_mention_defeats_the_no_writer_release_end_to_end(monkeypatch, tmp_path):
