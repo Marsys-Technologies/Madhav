@@ -492,10 +492,6 @@ class PhNimittaWriter(WriterBase):
                 pass
             logger.debug("ph_nimitta: ka_yojaka confirmation-count lookup skipped: %s", exc)
 
-        robustness_by_signal = self._load_ayanamsha_robustness(
-            conn, chart_id, signal_meta, event_class_by_domain, pratijna_by_key,
-        )
-
         out: dict[str, dict] = {}
         for sid, sm in signal_meta.items():
             domain = sm.get('domain')
@@ -503,85 +499,12 @@ class PhNimittaWriter(WriterBase):
             event_class_id = event_class_by_domain.get(domain) if domain else None
             pratijna = pratijna_by_key.get((str(aya), str(event_class_id))) if event_class_id else None
             out[sid] = {
-                'ayanamsha_robustness': robustness_by_signal.get(sid),   # int 1..5 or None (never a default)
                 'event_class_id': event_class_id,
                 'base_rate_by_age': base_rate_by_class.get(str(event_class_id)) if event_class_id else None,
                 'pratijna_grade': float(pratijna['grade']) if pratijna and pratijna.get('grade') is not None else None,
                 'pratijna_status': pratijna['status'] if pratijna else None,
                 'multi_system_confirmation_count': confirmation_by_signal.get(sid, 0),
             }
-        return out
-
-    def _load_ayanamsha_robustness(self, conn, chart_id: str, signal_meta: dict[str, dict],
-                                   event_class_by_domain: dict[str, str],
-                                   pratijna_by_key: dict[tuple[str, str], dict]) -> dict[str, Optional[int]]:
-        """SS N-391 / N-394: MEASURED phala_anchors.ayanamsha_robustness per signal (int or None).
-
-        DEFINITION (the doctrine lives in services/ph_nimitta/engine.py
-        measure_ayanamsha_robustness; this loader only feeds it -- read both together).
-        For an anchor from MSR signal S (ayanamsha A, key T = (signal_type_id, varga_id)),
-        event class E (domain -> event class, the mapping this writer already uses) and own
-        pratijna status P = status of bodha_pratijna (chart, A, E):
-          * ayanamsha X SUPPORTS the anchor iff X has >= 1 bodha_msr_signals row for the chart
-            with the same key T AND bodha_pratijna (chart, X, E).status == P;
-          * robustness = number of supporting ayanamshas among the FIVE canonical ones
-            (own ayanamsha included; min 1 when its own row supports);
-          * X is BUILT iff the chart has >= 1 bodha_msr_signals row for X; if fewer than all five
-            canonical ayanamshas are built the value is None (the 0..5 scale cannot tell "not
-            built" from "disagrees").
-        Any failure (query error, canonical constant unavailable) leaves every value None,
-        never a default (SS N-341 / CLAUDE.md section N.8). ONE grouped query, in a SAVEPOINT.
-        """
-        if not signal_meta:
-            return {}
-        from services.ph_nimitta.engine import measure_ayanamsha_robustness
-        signal_ids = list(signal_meta.keys())
-        try:
-            from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS   # the repo's canonical five
-            canonical = list(CANONICAL_AYANAMSHAS)
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_nimitta_robustness")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    "SELECT ayanamsha_id, signal_type_id, varga_id, "
-                    "COALESCE(array_agg(signal_id::text) FILTER (WHERE signal_id = ANY(%s::uuid[])), '{}') "
-                    "AS anchor_signal_ids "
-                    "FROM bodha_msr_signals WHERE chart_id = %s "
-                    "GROUP BY ayanamsha_id, signal_type_id, varga_id",
-                    (signal_ids, chart_id),
-                )
-                rows = cur.fetchall()
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_nimitta_robustness")
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_robustness")
-            except Exception:
-                pass
-            logger.warning("ph_nimitta: ayanamsha_robustness not measured (query failed): %s", exc)
-            return {}
-
-        signals_by_aya: dict[str, set] = {}
-        key_by_signal: dict[str, tuple] = {}
-        for r in rows:
-            key = (r['signal_type_id'], r['varga_id'])
-            signals_by_aya.setdefault(str(r['ayanamsha_id']), set()).add(key)
-            for sid in (r['anchor_signal_ids'] or []):
-                key_by_signal[str(sid)] = key
-        status_by_aya_event = {k: v.get('status') for k, v in pratijna_by_key.items()}
-
-        out: dict[str, Optional[int]] = {}
-        for sid, sm in signal_meta.items():
-            domain = sm.get('domain')
-            aya = str(sm.get('ayanamsha_id'))
-            event_class_id = event_class_by_domain.get(domain) if domain else None
-            own = pratijna_by_key.get((aya, str(event_class_id))) if event_class_id else None
-            out[sid] = measure_ayanamsha_robustness(
-                aya, key_by_signal.get(sid), event_class_id,
-                own.get('status') if own else None,
-                signals_by_aya, status_by_aya_event, canonical,
-            )
         return out
 
     def _load_cgm_meta(self, conn, signal_ids: list[str]) -> dict:
@@ -834,13 +757,13 @@ class PhNimittaWriter(WriterBase):
             dasha_consensus_count=0,   # U1: pre-fetched per window in production; 0 for now
             school_consensus_jsonb=None,  # U4: fetched via separate service at serve-time
             # SS N-341 (PR-H2, §N.8 / §N.7 item 6): this used to be the constant 3 on EVERY
-            # anchor, which read as a measured cross-ayanamsha robustness and fed a 0.92
-            # modifier into every posterior. SS N-391 / N-394: it is now MEASURED per anchor by
-            # _load_ayanamsha_robustness (definition there and in
-            # engine.measure_ayanamsha_robustness): an int 1..5, or None (stored as NULL in the
-            # nullable smallint phala_anchors.ayanamsha_robustness) when it cannot be measured.
-            # compute_posterior() skips the term for None ('not_measured').
-            ayanamsha_robustness=post.get('ayanamsha_robustness'),   # measured int (1..5) or None; see _load_ayanamsha_robustness
+            # anchor ("real value comes from kala_convergence row" -- but kala_convergence has
+            # no such column and nothing here compares an anchor across ayanamsha rows), which
+            # read as a measured cross-ayanamsha robustness and fed a 0.92 modifier into every
+            # posterior. Nothing measures it, so it is None (stored as NULL in
+            # phala_anchors.ayanamsha_robustness, a nullable smallint); compute_posterior()
+            # skips the term and records ayanamsha_robustness_status='not_measured'.
+            ayanamsha_robustness=None,
             # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
             # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
             # ayanamsha_id); multi_system_confirmation_count is a real join from ka_yojaka's

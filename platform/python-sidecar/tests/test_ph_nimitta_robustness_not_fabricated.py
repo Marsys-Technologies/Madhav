@@ -8,8 +8,7 @@ robustness (kala_convergence carries no such column; the writer reads one ayanam
 signal). An unmeasured robustness is now None end to end:
 
   * NimittaContext.ayanamsha_robustness defaults to None (no module default constant),
-  * the writer's _build_ctx supplies None whenever no measurement is available (since SS N-391
-    the value is MEASURED when it can be: tests/test_ph_nimitta_measured_robustness.py),
+  * the writer's _build_ctx supplies None,
   * compute_posterior skips the robustness term and records
     ayanamsha_robustness_modifier=None; the served lift vector (as_dict) adds
     ayanamsha_robustness_status='not_measured',
@@ -96,7 +95,7 @@ class TestRowBuilderCarriesNoFabricatedRobustness:
         assert a.lift_vector['ayanamsha_robustness_modifier'] is None
         assert a.lift_vector['ayanamsha_robustness_status'] == 'not_measured'
 
-    def test_writer_build_ctx_supplies_none_without_a_measurement(self):
+    def test_writer_build_ctx_supplies_none(self):
         from pipeline.orchestrator.writers.ph_nimitta import PhNimittaWriter
         w = PhNimittaWriter()
         ctx = w._build_ctx({'signal_id': 'sig-1'}, {}, {}, {}, {})
