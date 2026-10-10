@@ -70,7 +70,7 @@ const WORST_CASE_OVERRIDES: Record<string, Record<string, unknown>> = {
   gochara_activation_get: { chart_id: CANONICAL_CHART_ID },
   gochara_election_avoidance_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '2026-08-01', end: '2029-12-31' }, limit: 200 },
   kala_windows_get: { chart_id: CANONICAL_CHART_ID, start_date: '2026-08-01', end_date: '2029-12-31', limit: 500 },
-  kala_bundle_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '1984-02-05', end: '2040-12-31' } },
+  kala_bundle_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '1980-01-01', end: '2040-12-31' } },
 }
 
 function paramsFor(toolName: string): Record<string, unknown> {

@@ -117,7 +117,7 @@ const OUT_DIR = join(__dirname, 'out')
 // Abhinandan Mohanty, the pre-existing operator-E2E synthetic test chart
 // (CLAUDE.md's L1 closure record: "operator E2E gated on Abhinandan Mohanty
 // 1c826d5a"). NEVER the real native's canonical chart
-// (482012f1-710e-4a25-994a-93821f5871aa, Abhisek Mohanty) unless a caller
+// (482012f1-710e-4a25-994a-93821f5871aa) unless a caller
 // passes --chart-id explicitly — that is the ONLY path by which this script
 // will ever touch the real native's chart.
 const SYNTHETIC_TEST_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
