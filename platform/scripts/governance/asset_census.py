@@ -64,11 +64,15 @@ Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4
       --rollup failed (census still written, without it; the measured exit is named on stderr, never lost).
       6 bad --assets scope (empty / duplicate / miscased / unknown / wrong layer / retired id, or --out naming the
       full census file) — nothing measured, nothing written.
+      14 SUVARNA_CENSUS_STATEMENT_CAP_SECS is set but is not a positive whole number of seconds — refused before any read.
 
 SS N-430 (hygiene of the reads; verdict-neutral with the cap off):
   read_timings   every layer head carries `read_timings`: each psql read's elapsed seconds, attributed to an asset and a read label (never a host, credential or value), as the slowest
                  reads per asset plus per-asset totals and the overall maximum; `--read-timings-report CENSUS.json` prints them. Elapsed times are non-deterministic: nothing fingerprints,
                  hashes or compares them.
+  statement cap  SUVARNA_CENSUS_STATEMENT_CAP_SECS (OFF by default: unset or empty = today's behaviour exactly). A positive integer N makes every census psql session start with
+                 `SET statement_timeout = N*1000` and `SET lock_timeout = 5000`. The integrity runner (a registry-stored integrity_check_sql) is EXEMPT and keeps its own budget. A malformed
+                 value exits 14 before any read. A read the cap (or the role's own limit) cancels reads NO_DETECTOR naming the timeout, never ERRORED and never PASS.
   Full semantics: the block comment above `_psql_run`.
 """
 
@@ -11708,15 +11712,51 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
     return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
 
 
-# ─────────────────────── SS N-430: per-read timing ───────────────────────
+# ─────────────────────── SS N-430: per-read timing, the optional statement cap ───────────────────────
 # (1) READ TIMINGS (T1, verdict-neutral). Every psql read `_psql_run` makes is timed (monotonic seconds) and appended to an in-memory log:
 #     {asset, label, seconds, retries, outcome}. `asset` is the asset being measured (`measure()` sets it per asset; the stamp phase says `(run)`; none = `(layer)`), `label` is the
 #     criterion / probe name when the caller declared one (`read_label`) else the statement's first 60 characters with every literal (strings, dollar-quoted bodies, numbers) replaced by `?`.
 #     NEVER stored: a host, a credential, a value, the full statement or the error text. `outcome` is ok / error / timeout. `main()` drains the log into each layer head's `read_timings`
 #     key (see `read_timings_summary`). Elapsed times are NON-DETERMINISTIC by nature: they are a head key only, no fingerprint, hash, verdict or cell text reads them, and
 #     `read_timings_report` prints them so a person can set a cap from evidence.
+# (2) STATEMENT CAP (T2), OFF BY DEFAULT. Environment variable SUVARNA_CENSUS_STATEMENT_CAP_SECS:
+#       unset or the empty string  -> exactly today's behaviour: no session command is added, `-q` is not forced, nothing changes;
+#       a positive integer (ASCII digits, no sign, no leading zero, 1..CENSUS_STATEMENT_CAP_MAX_SECONDS) -> EVERY census psql session starts with `SET statement_timeout = <n*1000>` and
+#       `SET lock_timeout = 5000` as its first `-c` commands (the same session as the statement; never PGOPTIONS, which a pooled connection refuses; `-q` is forced so their command tags
+#       stay out of the rows). A statement the server cancels reaches the existing paths as an `Unknown` carrying `canceling statement due to statement timeout` / `lock timeout`, which
+#       the cells read as NO_DETECTOR (see `_read_failure_cell`), never PASS and never ERRORED;
+#       anything else (`0`, `-5`, `+5`, `5.0`, `abc`, ` 5`, `007`, a value above the maximum) -> REFUSED LOUDLY, never ignored: `main()` exits 14 before any read, and `_psql_run` raises
+#       `CensusCapRefused` (a SystemExit, which the per-check `except Exception` guards cannot swallow) before it starts psql.
+#     The INTEGRITY RUNNER (`psql_read_only`, a registry-stored integrity_check_sql) is EXEMPT: it keeps its own budget (`SET LOCAL statement_timeout` = 90% of its client limit) whatever the cap is,
+#     because no certified part may lose its verdict to a cap (ga_fact_identity's integrity SQL alone takes ~74 s). The argv is a list: no shell string is ever built; the numbers are validated ints.
+CENSUS_STATEMENT_CAP_ENV = "SUVARNA_CENSUS_STATEMENT_CAP_SECS"
+CENSUS_STATEMENT_CAP_MAX_SECONDS = 86_400
+CENSUS_LOCK_TIMEOUT_SECONDS = 5
+EXIT_STATEMENT_CAP_REFUSED = 14
 READ_TIMINGS_SLOWEST_PER_ASSET = 5
 READ_TIMINGS_REPORT_TOP = 10
+
+
+class CensusCapRefused(SystemExit):
+    """SUVARNA_CENSUS_STATEMENT_CAP_SECS is set to something that is not a positive integer. A SystemExit on purpose: the per-check `except Exception` guards must not turn a bad
+    operator setting into an ERRORED cell and carry on reading; the message is the exit text."""
+
+
+def census_statement_cap_secs(environ=None) -> int | None:
+    """The statement cap in seconds, or None (unset / empty: no cap). Raises CensusCapRefused for any other value that is not a positive integer (see the block comment above)."""
+    raw = (os.environ if environ is None else environ).get(CENSUS_STATEMENT_CAP_ENV)
+    if raw is None or raw == "":
+        return None
+    if not re.fullmatch(r"[1-9][0-9]{0,5}", raw) or int(raw) > CENSUS_STATEMENT_CAP_MAX_SECONDS:
+        shown = raw if len(raw) <= 20 and raw.isprintable() else "(unprintable or too long)"
+        raise CensusCapRefused(f"asset_census: {CENSUS_STATEMENT_CAP_ENV}={shown!r} refused: the statement cap must be a positive whole number of seconds, "
+                               f"1..{CENSUS_STATEMENT_CAP_MAX_SECONDS} (digits only, no sign, no leading zero); unset it (or set it empty) for no cap. Nothing was read.")
+    return int(raw)
+
+
+def census_session_prelude(cap_secs: int) -> list[str]:
+    """The two session commands that precede every capped statement (milliseconds; `cap_secs` is a validated int)."""
+    return [f"SET statement_timeout = {int(cap_secs) * 1000}", f"SET lock_timeout = {CENSUS_LOCK_TIMEOUT_SECONDS * 1000}"]
 
 
 _READ_LOG: list[dict] = []
@@ -11799,16 +11839,22 @@ def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
 
 
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
-              cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
+              cap: int | None = None, via_stdin: bool = False, session_cap: bool = True) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
     read). Timeout, error and parse handling are shared by `psql` and `psql_read_only`. `label` is the index of the command named in a timeout
     message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
     script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
     the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
-    variable interpolation). SS N-430: every run is timed (`_record_read`)."""
+    variable interpolation). SS N-430: every run is timed (`_record_read`); `session_cap` False exempts the run from SUVARNA_CENSUS_STATEMENT_CAP_SECS (the integrity runner)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
-    named = cmds[label]                                         # the command a timeout message names
+    named = cmds[label]                                         # the command a timeout message names (a cap prelude is added in front of the list below)
+    cap_secs = census_statement_cap_secs()                   # refuses a malformed cap BEFORE psql is started (the exempt integrity run included: a bad setting is never ignored)
+    if not session_cap:
+        cap_secs = None                                      # EXEMPT: the integrity runner keeps its own budget
+    if cap_secs is not None:
+        cmds = census_session_prelude(cap_secs) + list(cmds)   # the timeouts ride in the SAME session, first; `-q` keeps their command tags out of the rows
+        quiet = True
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
     script = None
     if via_stdin:
@@ -11930,7 +11976,8 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     read_back = f"SELECT coalesce(current_setting('{guc}', true), 'none')"
     rows = _psql_run(["SET default_transaction_read_only = on", "BEGIN READ ONLY", f"SET LOCAL statement_timeout = {ms}", run_sql, read_back, "ROLLBACK"],
                      sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP,
-                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES)
+                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES,
+                     session_cap=False)                  # SS N-430: EXEMPT from SUVARNA_CENSUS_STATEMENT_CAP_SECS; the integrity run keeps its own budget (SET LOCAL statement_timeout above)
     return _integrity_first_value(rows)
 
 
@@ -20964,6 +21011,14 @@ def main() -> int:
         if clash:
             ap.error(f"--registry-check is registry-only and cannot be combined with {', '.join(clash)}")
         return registry_check_main(a.out if a.out is not None else str(CTRL / "registry_coverage_report.json"), a.check, a.require_covered)
+    try:
+        stmt_cap = census_statement_cap_secs()      # SS N-430: a malformed SUVARNA_CENSUS_STATEMENT_CAP_SECS refuses HERE, before any read (exit 14); unset/empty = no cap
+    except CensusCapRefused as exc:
+        print(str(exc.code), file=sys.stderr)
+        return EXIT_STATEMENT_CAP_REFUSED
+    if stmt_cap is not None:
+        print(f"asset_census: statement cap ACTIVE: every census psql session runs under statement_timeout {stmt_cap} s and lock_timeout {CENSUS_LOCK_TIMEOUT_SECONDS} s "
+              "(the integrity runner is exempt); a cancelled read reads NO_DETECTOR", file=sys.stderr)
     drain_read_log()                                # SS N-430: this run's read timings start empty
     set_read_asset(None)
     if a.layer is None:
@@ -21093,7 +21148,7 @@ def main() -> int:
     if layer_reads:                  # SS N-430: `read_timings` in each layer head, written LAST: no verdict, rollup, fingerprint or ledger row reads it
         layer_reads[list(layer_reads)[-1]] += drain_read_log()
         for k, entries in layer_reads.items():
-            out[k]["read_timings"] = read_timings_summary(entries)
+            out[k]["read_timings"] = dict(read_timings_summary(entries), statement_cap_secs=stmt_cap)
     if by_layer is not None:    # E1.9: the file header says it is partial, before any layer is read
         out = {"scope": dict(assets=sorted(x for k in keys for x in by_layer[k]), partial=True, layers=list(keys)), **out}
     text = json.dumps(out, indent=1, default=str) + "\n"
