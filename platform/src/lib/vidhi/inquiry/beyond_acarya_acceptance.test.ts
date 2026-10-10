@@ -282,7 +282,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // text follows the one-frame KP rule; get_prashna_lagna no longer claims a kp_sub_lord for kp_249. That moved source_catalog_fingerprint, hence capability_content_hash and
     // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's and every metric assertion above is unchanged.
     // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
-    expect(report.report_hash).toBe('sha256:91986ee9ad20f225f2466cd4074230a9a9d58db9f830d45e9ce4fa6faa85ee94')
+    expect(report.report_hash).toBe('sha256:fb722f208488bfb3d928938a6a4bb05bdd1669c7119b4ce1ec70c84fb13cf14d')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -941,8 +941,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
       // Lahiri-primary combined batch (SS N-339..N-404): the five held PRs plus the descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
-      // Base: origin/main at 43097ab0e5d9a6ddeda07c2224aeda91659e7fe7 (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
-      evaluated_source_revision: '43097ab0e5d9a6ddeda07c2224aeda91659e7fe7',
+      // Base: origin/main at 6a7a20d5958ba97eb39ec427f33c2b111f3c0c6a (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
+      evaluated_source_revision: '6a7a20d5958ba97eb39ec427f33c2b111f3c0c6a',
     })
   })
 })
