@@ -1,4 +1,4 @@
-# K2-2 F1 relationship contract v1.0
+# K2-2 F1 relationship contract v1.1
 
 Authority: KYD-131/KYD-132; ALGO 3.11, PLAN §8 resonance / §8.1 R1–R6.
 Migration class: NEEDS-PROTECTED-WINDOW (additive CREATE TABLE/INDEX in public).
@@ -55,7 +55,7 @@ Version-specific certification mapping (source mapping; production verdicts rema
 | vocab_alias | kala_core.clocks typed systems/lords | F2 period identity | sourced L1 fact/mechanism identity | L0 released graha_id, sign IDs; closed frame/role CHECKs |
 | prose | service payload, no table | inherited dossier note; K1-2 owns new model | no new narrated fields | no new narrated fields; citation/provenance is evidence |
 | null_convention | typed F2 unavailable states | K1-2 applicability / missing evidence | fact/effective state, missing target null | unavailable/unqualified edge with object_id NULL; no fabricated object |
-| produced_tables | none (service) | kala_avadhi (K1-2 ownership) | kala_activation_predicates | gochara_resonance_map legacy; kala_f1_target_object / kala_f1_relationship candidate |
+| output tables (dispatch-dependent; not an N-150 declaration) | none (service) | kala_avadhi (K1-2 ownership) | kala_activation_predicates | gochara_resonance_map legacy; kala_f1_target_object / kala_f1_relationship candidate |
 | density_tier_columns | no served row | inherited legacy tier gap | inherited legacy tier gap | no tier claimed for private F1; legacy coverage-only declaration retained |
 | writer digest | generated inventory entry | generated inventory entry | generated inventory entry | generated inventory includes F1 import closure |
 | disposition | F2 core lookup retained | F2/F1 read model (K1-2) | F1 graph (K2-1b) | F1 relationship projection; legacy writer retained to judge cutover |
@@ -73,3 +73,15 @@ limits. Carr.D2/D3 and service Earn.service_state have NO_DETECTOR in this regis
 engine detector changes are downstream dependencies. The packet mapping does not
 rewrite L0–L2 entries. The whole-file declaration hash changes; certificate
 freshness and any recertification remain the certifier's responsibility.
+
+Changelog v1.1 (cycle 401): remove the unsupported N-150 `produced_tables`
+union from the L3 declaration. Legacy and candidate dispatches are mutually
+exclusive: legacy reports map rows, F1 reports objects plus relationship edges
+only in its active candidate partition, while the N-150 detector sums all
+declared table rows across the chart. Candidate generations cannot be summed
+with retained published/legacy rows. The current census scan of the
+registration shim does not bind this delegated writer (empty written set).
+Output-table ownership remains mapped above and in the declaration evidence.
+Candidate Build.completion is unmeasured until a generation-scoped detector is
+available; this item does not change the certifier or claim a completion grade.
+The existing N-150 schema and produced-set guards remain unchanged.
