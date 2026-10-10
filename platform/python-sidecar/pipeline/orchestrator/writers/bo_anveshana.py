@@ -434,7 +434,7 @@ def _make_discovery(
             "ayanamsha_fragility_reason": AYANAMSHA_FRAGILITY_NOT_ASSESSED,
         }),
         "meaningfulness_basis": meaningfulness_basis,
-        "corroborating_methods_array": list(set(corroborating_methods)),
+        "corroborating_methods_array": sorted(set(corroborating_methods)),      # N-307 (Kāla #3368): list(set(...)) of strings follows the per-process hash seed and this array is digested
         "corroboration_count": corr_count,
         "surface_reading": surface,
         "depth_reading": depth,

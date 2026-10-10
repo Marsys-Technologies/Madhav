@@ -25,6 +25,17 @@ from pipeline.orchestrator.writers.bo_samskara import (
 from pipeline.orchestrator.writers import ContextSpec, SubStep
 
 
+@pytest.fixture(autouse=True)
+def _reset_shared_text_vectors():
+    """bo_samskara shares embedded vectors per build (input-text dedupe); these tests reuse one build_id
+    and the same texts, so each test starts from an empty dict to keep counting Vertex calls."""
+    mod._TEXT_VEC["build_id"] = None
+    mod._TEXT_VEC["vecs"] = {}
+    yield
+    mod._TEXT_VEC["build_id"] = None
+    mod._TEXT_VEC["vecs"] = {}
+
+
 class FakeAPIError(Exception):
     """Mimics google.genai.errors.APIError: carries an int ``code``."""
 
@@ -202,6 +213,8 @@ def test_writer_transient_then_success_equals_clean_run(monkeypatch):
     n = mod.EMBED_BATCH_SIZE + 7        # two batches
     clean_rows: list[dict] = []
     clean = _run(Recorder([]), n, monkeypatch, clean_rows)
+    mod._TEXT_VEC["build_id"] = None            # the clean run's vectors must not satisfy the retry run
+    mod._TEXT_VEC["vecs"] = {}
 
     rec = Recorder([None, FakeAPIError(429), FakeAPIError(502)])   # batch1 ok; batch2 fails twice
     retry_rows: list[dict] = []

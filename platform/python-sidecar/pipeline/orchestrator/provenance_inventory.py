@@ -17,6 +17,7 @@ from .writers import WRITER_REGISTRY, discover_all
 
 
 INVENTORY_VERSION = "nirmana-writer-digest-inventory/v1"
+HINT = "run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)"
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "src/generated/nirmana-writer-digests.json"
 
 
@@ -48,8 +49,8 @@ def main() -> int:
         actual = args.output.read_text(encoding="utf-8") if args.output.is_file() else ""
         if actual != expected:
             raise SystemExit(
-                f"writer digest inventory is stale: run python -m "
-                f"pipeline.orchestrator.provenance_inventory --output {args.output}"
+                f"writer digest inventory is stale: {HINT} "
+                f"(or, for this file alone: python -m pipeline.orchestrator.provenance_inventory --output {args.output})"
             )
         return 0
 

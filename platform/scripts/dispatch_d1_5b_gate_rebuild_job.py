@@ -5,7 +5,7 @@ that feed MSR + L3, so §8.2 trigger (a) applies... FULL L1->L5").
 
 Unlike dispatch_d1_5b_precascade_job.py (which only rebuilds assets already
 in a non-'lit' state), this script resets EVERY chart-scoped asset for
-Abhisek's chart (482012f1) back to 'dormant' -- L1 through L5 (ga_*, bo_*,
+The native's chart (482012f1) back to 'dormant' -- L1 through L5 (ga_*, bo_*,
 ka_*, mi_*, ph_*; brahmagyan/bg_* is chart-independent reference data and is
 left untouched) -- so the full closure rebuilds fresh against cycle-1+cycle-2's
 new writer code (B-1 chalit/cusps, B-2 bhava-bala/AV, B-5 shadbala-ratio/D2-hora,

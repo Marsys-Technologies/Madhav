@@ -30,6 +30,66 @@
  *
  * Gated on `PARIPRASHNA_LIMITS_ENABLED` (default false): when off, this file
  * behaves exactly as it did before G1-D.
+ *
+ * ── SS N-373 / PR-S3: durable session gate (`SESSION_GATE_MODE`) ────────────
+ * The shape check below (`isSessionValid`) is forgeable with no secret (audit
+ * `SESSION_GATE_AUDIT.md` §0). This file now ALSO verifies the cookie
+ * cryptographically (firebase-admin `verifySessionCookie(cookie, false)`: RS256
+ * signature + exp + aud + iss; handlers keep `checkRevoked=true` via
+ * `getServerUser`). All logic lives in `lib/security/session_gate.ts`.
+ *
+ *   SESSION_GATE_MODE   behaviour
+ *   ------------------  ------------------------------------------------------
+ *   off                 exactly the previous behaviour; no verification at all
+ *   shadow  (DEFAULT)   previous decision stands; the cookie is also verified
+ *                       and a failed verification (shape passed) logs
+ *                       `session_gate_would_reject` {path, reason, mode} and
+ *                       bumps a bounded counter. Never blocks. Infra errors
+ *                       fail OPEN. Unset or unrecognised values mean shadow.
+ *   enforce             shape AND cryptographic verification must pass, else
+ *                       the same 401 (API) / redirect to /login (page) as for
+ *                       an invalid session. Infra errors (firebase-admin init,
+ *                       key fetch, timeout) FAIL CLOSED with a 401 (pages get a
+ *                       plain 401, not a /login redirect, to avoid a redirect
+ *                       loop while verification is down). Never throws.
+ *
+ * Runtime evidence (checked in the installed package, next 16.2.4, not memory):
+ *   node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/
+ *   proxy.md:217-219 "## Runtime — Proxy defaults to using the Node.js runtime.
+ *   The `runtime` config option is not available in Proxy files. Setting the
+ *   `runtime` config option in Proxy will throw an error."
+ *   node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md:629
+ *   "The `edge` runtime is **NOT** supported in `proxy`. The `proxy` runtime is
+ *   `nodejs`, and it cannot be configured."
+ * So firebase-admin (Node-only) and node:crypto are importable here. This repo
+ * deploys `output: "standalone"` to Cloud Run (a Node server), the case proxy.md
+ * lists as supported. Next also says proxy state must not be assumed shared
+ * with handlers, so the verdict cache/counters are per-process by design.
+ *
+ * Rollout: (1) deploy with the default (shadow); (2) read the Cloud Run logs
+ * for `session_gate_would_reject` and `verify_error` for at least a day. Every
+ * would-reject must be explained (expected: forged/expired cookies only; a
+ * real user appearing means a config problem such as the wrong project's
+ * credentials, fix BEFORE enforcing); (3) the owner sets SESSION_GATE_MODE=
+ * enforce. Rollback: set SESSION_GATE_MODE=off (or shadow) as a Cloud Run env
+ * change with no rebuild, or redeploy the previous revision.
+ *
+ * XFF observation (SS N-375): in shadow and enforce, the proxy logs
+ * `{event:'xff_entry_count', host_class, count, path, mode}` for /api/* requests
+ * (count = number of X-Forwarded-For entries; host_class = public | run_app |
+ * other; never an address, the raw header or the host value; one line per
+ * host_class+count+path per minute). Read these after a day of traffic to pick
+ * MARSYS_TRUSTED_PROXY_HOPS. Set SESSION_GATE_PUBLIC_HOSTS (comma list) to pin
+ * which hostnames count as `public`; unset, any non-run.app DNS name does.
+ * LIMITATION: the matcher below excludes /api/auth/*, so the proxy never sees
+ * resolve-username or recover; the sample comes from the other /api/* routes
+ * behind the same front door and host.
+ *
+ * Rate-limit door: when cryptographic verification succeeded (shadow/enforce)
+ * the web-door bucket is keyed on the VERIFIED `sub`; otherwise the previous
+ * key is used. Known follow-ups NOT changed here: the client-supplied
+ * `x-mcp-key-id` (MCP door) and the leftmost X-Forwarded-For fallback remain
+ * spoofable, and the limiter itself is unchanged.
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -38,6 +98,12 @@ import { configService } from '@/lib/config/index'
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 import { apiError } from '@/lib/errors'
 import { RATE_LIMIT_ERROR_CODE } from '@/lib/limits/spend_ceiling'
+import { safeNextPath } from '@/lib/auth/safe_next'
+import {
+  evaluateSessionGate,
+  observeForwardedForEntryCount,
+  resolveSessionGateMode,
+} from '@/lib/security/session_gate'
 
 // Lightweight JWT payload parse — no crypto. Real verification happens in each
 // route handler via firebase-admin (Node.js runtime). Middleware only gates
@@ -101,8 +167,15 @@ function isDoorPath(pathname: string): boolean {
  *
  * Neither present: the forwarded client IP, and finally one shared `anon`
  * bucket — an unidentifiable caller gets no private allowance.
+ *
+ * `verifiedSub` (SS N-373): when the session gate cryptographically verified the
+ * cookie (shadow/enforce), that uid is trusted and wins, so a caller cannot
+ * rotate a forged `sub` (or a spoofed `x-mcp-key-id`) to get a fresh bucket or
+ * burn someone else's. Absent => exactly the previous keying.
  */
-function rateLimitCallerKey(request: NextRequest): string {
+function rateLimitCallerKey(request: NextRequest, verifiedSub?: string): string {
+  if (verifiedSub) return `proxy:web:uid:${verifiedSub}`
+
   const mcpKeyId = request.headers.get('x-mcp-key-id')
   if (mcpKeyId) return `proxy:mcp:key:${mcpKeyId}`
 
@@ -123,14 +196,14 @@ function rateLimitCallerKey(request: NextRequest): string {
  * `LIMIT_RATE_LIMIT_EXCEEDED` code and canonical error envelope the doors
  * themselves return, plus `Retry-After`. Never a thrown error, never a 500.
  */
-function checkDoorRateLimit(request: NextRequest): NextResponse | null {
+function checkDoorRateLimit(request: NextRequest, verifiedSub?: string): NextResponse | null {
   if (!configService.getFlag('PARIPRASHNA_LIMITS_ENABLED')) return null
   if (!isDoorPath(request.nextUrl.pathname)) return null
   // Only the request that actually starts a turn is metered. A GET (e.g. a
   // resume poll) costs nothing to serve and must not consume the allowance.
   if (request.method !== 'POST') return null
 
-  const rpm = checkRpm(rateLimitCallerKey(request), PROXY_RPM_LIMIT)
+  const rpm = checkRpm(rateLimitCallerKey(request, verifiedSub), PROXY_RPM_LIMIT)
   if (rpm.allowed) return null
 
   return NextResponse.json(
@@ -147,6 +220,34 @@ function checkDoorRateLimit(request: NextRequest): NextResponse | null {
         : undefined,
     },
   )
+}
+
+/**
+ * The refusal for an invalid session: 401 JSON for API paths, redirect to
+ * /login for pages. `infraFailClosed` (enforce mode only, when the verifier
+ * itself is unavailable) returns a plain 401 for pages too: a redirect to
+ * /login for a possibly-valid user would loop while the verifier is down.
+ *
+ * SS N-383 (a): the page redirect carries `?next=<pathname>` ONLY when
+ * `safeNextPath(pathname)` accepts the pathname (today: `/share/...` and
+ * `/clients/...`), so the login page (which validates `next` with the same
+ * function) can return the visitor to the page they asked for. Every other
+ * page redirects to a plain `/login`, exactly as before. The pathname alone is
+ * used, never the query string or hash (safeNextPath refuses both anyway), and
+ * the value is only ever the validator's own return value, never raw input.
+ * The same redirect is used in all `SESSION_GATE_MODE`s.
+ */
+function unauthorized(request: NextRequest, pathname: string, infraFailClosed = false): NextResponse {
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (infraFailClosed) {
+    return new NextResponse('Unauthorized', { status: 401 })
+  }
+  const loginUrl = new URL('/login', request.url)
+  const next = safeNextPath(pathname)
+  if (next) loginUrl.searchParams.set('next', next)
+  return NextResponse.redirect(loginUrl)
 }
 
 export async function proxy(request: NextRequest) {
@@ -167,21 +268,34 @@ export async function proxy(request: NextRequest) {
     // Do NOT remove that check — this allowlist entry depends on it.
     pathname.startsWith('/api/retrieval/')
 
+  const gateMode = resolveSessionGateMode()
+  // SS N-375: X-Forwarded-For ENTRY COUNT (a number, never an address) by host
+  // class, rate-capped, to choose MARSYS_TRUSTED_PROXY_HOPS from data. No-op in `off`.
+  if (pathname.startsWith('/api/')) {
+    observeForwardedForEntryCount(gateMode, pathname, request.headers.get('host'), request.headers.get('x-forwarded-for'))
+  }
+
+  let verifiedSub: string | undefined
   if (!isPublic) {
     const sessionCookie = request.cookies.get('__session')?.value
     if (!isSessionValid(sessionCookie)) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-      }
-      return NextResponse.redirect(new URL('/login', request.url))
+      return unauthorized(request, pathname)
     }
+
+    // SS N-373: cryptographic verification, only for a cookie that already
+    // passed the shape check. `off` does no work; `shadow` never denies.
+    const decision = await evaluateSessionGate(gateMode, sessionCookie as string, pathname)
+    if (decision.deny) {
+      return unauthorized(request, pathname, decision.denyReason === 'verify_error')
+    }
+    verifiedSub = decision.verifiedSub
   }
 
   // G1-D / NCD-8. Placed AFTER the session gate on purpose: an unauthenticated
   // caller must get 401/redirect, never a 429 that misreports why it was
   // refused. No-op unless PARIPRASHNA_LIMITS_ENABLED is on AND this is a POST
   // to one of the two doors.
-  const rateLimited = checkDoorRateLimit(request)
+  const rateLimited = checkDoorRateLimit(request, verifiedSub)
   if (rateLimited) return rateLimited
 
   return NextResponse.next({ request })
