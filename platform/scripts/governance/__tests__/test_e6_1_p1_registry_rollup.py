@@ -94,6 +94,8 @@ PINNED_FINGERPRINTS = {
     # against the engine's closed N/A rule list and changes no registry text
     # SS N-256: Vocab.alias gains the checked vocab_embedded_text exemption (criterion text only; the walk time budget and the Unknown-as-unread rule change no registry text); re-pinned once
     26: "e3b11162f186818e22e1a0b34d7f83ef7281e7863c332aaece6f57da32bc25bd",
+    # 27 (SS N-305, §N.8): Build.completion revision 7 - an unread latest-attempt log never leaves a PASS standing (the PASS is cut to PARTIAL naming the unread fact)
+    27: "a556dc49ba1e9ceff91087b35300f98fea61e78c2d333d9fd76056a75a5f4cf2",
 }
 
 

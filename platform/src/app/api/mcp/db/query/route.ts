@@ -153,20 +153,214 @@ const ALLOWED_TABLES = new Set([
 const FORBIDDEN_PATTERN =
   /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|COPY|EXECUTE|CALL|VACUUM|MERGE)\b|;|--/i
 
+// S9 item 8 (hardening, held). The checks below run on a COPY of the statement in which
+// single-quoted string literals and quoted identifiers have been stripped
+// (stripLiteralsAndQuotedIdentifiers); the ORIGINAL text is what gets executed, unchanged.
+// Stripping stops text inside a literal from being read as SQL structure (for example a literal
+// `', profiles AS ('` satisfying the CTE-name check, or a literal comma/FROM hiding a clause).
+//
+// This is defense in depth over a server-authored query surface. The real fixes still owed are
+// a read-only DB role for this route and live key validation.
+
+// Block comments (`FROM/**/profiles` defeats the \s+ in the table-ref scan) and dollar-quote tags
+// (a dollar-quoted body is an opaque string to the copy but SQL to the server). Checked on the
+// original text; a literal containing either is rejected too, which is the conservative side.
+const BLOCK_COMMENT_PATTERN = /\/\*|\*\//
+const DOLLAR_QUOTE_PATTERN = /\$[A-Za-z_]*\$/
+
+// `(TABLE profiles)` is a complete relation reference that the FROM/JOIN scan never sees;
+// LATERAL re-opens correlated FROM items; INTO makes SELECT ... INTO create a table.
+const TABLE_COMMAND_PATTERN = /\bTABLE\s+\w/i
+const LATERAL_PATTERN = /\bLATERAL\b/i
+const SELECT_INTO_PATTERN = /\bINTO\b/i
+
+// Functions that execute SQL passed as a string, read the server filesystem, or have
+// session/process side effects. The allowlist reasons about table references in the text; none
+// of these are visible to it, so they are denied by name (case-insensitive, word-boundary).
+// ts_stat is not on the originally specified list; it executes a query string the same way
+// query_to_xml does.
+const FORBIDDEN_FUNCTION_PATTERN =
+  /\b(?:query_to_xml\w*|table_to_xml\w*|cursor_to_xml|schema_to_xml\w*|database_to_xml\w*|dblink\w*|pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_\w*|set_config|pg_sleep\w*|current_setting|pg_terminate_backend|pg_cancel_backend|ts_stat)\b/i
+
 // Matches relation identifiers following FROM/JOIN (schema-unqualified; this DB
 // has no cross-schema tables in the whitelist so unqualified matching is
 // sufficient). A PostgreSQL table function such as `FROM UNNEST(...)` is not a
 // relation and must not be mistaken for an unallowlisted table.
 const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?\b(?!\s*\()/gi
 
-function isCteName(sql: string, name: string): boolean {
-  // Identifiers captured from FROM/JOIN may be CTE references. Limit the
-  // exception to a WITH declaration (including a later comma-separated CTE),
-  // rather than accepting arbitrary "name AS (...)" text in the query.
-  return new RegExp(
-    `\\b(?:WITH\\s+(?:RECURSIVE\\s+)?|,)\\s*"?${name}"?\\s+AS\\s*\\(`,
-    'i'
-  ).test(sql)
+// `FROM (` / `JOIN (` : either a subquery or a parenthesised joined table.
+const PAREN_FROM_ITEM_PATTERN = /\b(?:FROM|JOIN)\s*\(([\s(]*)([A-Za-z_]\w*)?/gi
+
+// A FROM item list ends at the first of these at paren depth 0 (or an unmatched `)`).
+const FROM_LIST_TERMINATORS = new Set([
+  'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'HAVING', 'UNION', 'INTERSECT', 'EXCEPT',
+  'OFFSET', 'FETCH', 'FOR', 'WINDOW',
+])
+
+// A quoted identifier that is a bare word is unwrapped so it is still matched against the
+// allowlist (`FROM "profiles"` must be seen as profiles); anything else becomes a neutral
+// placeholder. Words that would change clause structure if unwrapped also become the placeholder.
+const SIMPLE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
+const STRUCTURAL_WORDS = new Set([
+  'FROM', 'JOIN', 'WHERE', 'GROUP', 'ORDER', 'LIMIT', 'HAVING', 'UNION', 'INTERSECT', 'EXCEPT',
+  'OFFSET', 'FETCH', 'FOR', 'WINDOW', 'TABLE', 'LATERAL', 'SELECT', 'WITH', 'INTO', 'AS', 'ON',
+])
+
+function isWordChar(c: string | undefined): boolean {
+  return c !== undefined && /[A-Za-z0-9_$]/.test(c)
+}
+
+/**
+ * Returns a copy of `sql` with single-quoted string literals replaced by ` '' ` and quoted
+ * identifiers replaced by their bare name (or ` _q_ `), padded with spaces so adjacent keywords
+ * cannot fuse. Returns null (caller rejects) for an unterminated quote or for E'..' / U&'..'
+ * strings, whose backslash escapes would make this scan disagree with the server about where
+ * a literal ends.
+ */
+function stripLiteralsAndQuotedIdentifiers(sql: string): string | null {
+  let out = ''
+  let i = 0
+  while (i < sql.length) {
+    const ch = sql[i]
+    if (ch === "'") {
+      const prev = sql[i - 1]
+      if ((prev === 'E' || prev === 'e') && !isWordChar(sql[i - 2])) return null
+      if (prev === '&' && (sql[i - 2] === 'U' || sql[i - 2] === 'u') && !isWordChar(sql[i - 3])) return null
+      let j = i + 1
+      for (;;) {
+        if (j >= sql.length) return null
+        if (sql[j] === "'") {
+          if (sql[j + 1] === "'") {
+            j += 2
+            continue
+          }
+          break
+        }
+        j++
+      }
+      out += " '' "
+      i = j + 1
+      continue
+    }
+    if (ch === '"') {
+      let content = ''
+      let j = i + 1
+      for (;;) {
+        if (j >= sql.length) return null
+        if (sql[j] === '"') {
+          if (sql[j + 1] === '"') {
+            content += '"'
+            j += 2
+            continue
+          }
+          break
+        }
+        content += sql[j]
+        j++
+      }
+      const bare = SIMPLE_IDENTIFIER.test(content) && !STRUCTURAL_WORDS.has(content.toUpperCase())
+      out += bare ? ` ${content} ` : ' _q_ '
+      i = j + 1
+      continue
+    }
+    out += ch
+    i++
+  }
+  return out
+}
+
+/** Index of the `)` matching the `(` at `open`, or -1. */
+function matchingParenEnd(s: string, open: number): number {
+  let depth = 0
+  for (let k = open; k < s.length; k++) {
+    if (s[k] === '(') depth++
+    else if (s[k] === ')') {
+      depth--
+      if (depth === 0) return k
+    }
+  }
+  return -1
+}
+
+function parenDepthAt(s: string, idx: number): number {
+  let depth = 0
+  for (let k = 0; k < idx; k++) {
+    if (s[k] === '(') depth++
+    else if (s[k] === ')') depth--
+  }
+  return depth
+}
+
+/**
+ * True only if `name` is declared as a top-level WITH-list CTE whose body is fully CLOSED before
+ * `refIndex`. A non-recursive CTE cannot see itself or later siblings (a reference there is the
+ * real table), and a WITH nested inside a subquery is not in scope outside it, so neither counts.
+ */
+function isCteDeclaredBefore(s: string, name: string, refIndex: number): boolean {
+  const decl = new RegExp(
+    `(?:\\bWITH\\s+(?:RECURSIVE\\s+)?|,)\\s*"?${name}"?\\s+AS\\s*\\(`,
+    'gi'
+  )
+  let m: RegExpExecArray | null
+  while ((m = decl.exec(s)) !== null) {
+    if (parenDepthAt(s, m.index) !== 0) continue
+    const end = matchingParenEnd(s, m.index + m[0].length - 1)
+    if (end !== -1 && end < refIndex) return true
+  }
+  return false
+}
+
+/**
+ * Rejects a comma-join. For every FROM, scan forward at paren/bracket depth 0 to the end of the
+ * FROM item list; a top-level `,` there is an implicit cross join whose later tables the
+ * FROM/JOIN identifier scan never sees (`FROM allowed a, profiles p`). Commas inside parentheses
+ * (`FROM (SELECT a, b ...) x`, `FROM unnest(...) AS t(a, b)`) are depth > 0 and are fine.
+ */
+function hasTopLevelCommaInFromList(s: string): boolean {
+  const fromRe = /\bFROM\b/gi
+  let m: RegExpExecArray | null
+  while ((m = fromRe.exec(s)) !== null) {
+    // `a IS DISTINCT FROM b` is a comparison, not a FROM clause.
+    if (/\bDISTINCT\s+$/i.test(s.slice(0, m.index))) continue
+    let depth = 0
+    for (let k = m.index + m[0].length; k < s.length; k++) {
+      const c = s[k]
+      if (c === '(' || c === '[') {
+        depth++
+        continue
+      }
+      if (c === ')' || c === ']') {
+        if (depth === 0) break
+        depth--
+        continue
+      }
+      if (depth !== 0) continue
+      if (c === ',') return true
+      if (/[A-Za-z_]/.test(c) && !isWordChar(s[k - 1])) {
+        const word = /^[A-Za-z_]\w*/.exec(s.slice(k))![0]
+        if (FROM_LIST_TERMINATORS.has(word.toUpperCase())) break
+        k += word.length - 1
+      }
+    }
+  }
+  return false
+}
+
+function isNonSubqueryJoinedTable(s: string): boolean {
+  // `FROM (profiles p CROSS JOIN d)` is a legal parenthesised joined table whose first relation
+  // follows no FROM/JOIN keyword. Anything parenthesised that is not a subquery/VALUES and
+  // contains a JOIN is refused. (`EXTRACT(EPOCH FROM (a - b))` has no JOIN and is unaffected.)
+  PAREN_FROM_ITEM_PATTERN.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = PAREN_FROM_ITEM_PATTERN.exec(s)) !== null) {
+    const first = (m[2] ?? '').toUpperCase()
+    if (first === 'SELECT' || first === 'WITH' || first === 'VALUES') continue
+    const open = s.indexOf('(', m.index)
+    const end = matchingParenEnd(s, open)
+    const inner = s.slice(open, end === -1 ? s.length : end)
+    if (/\bJOIN\b/i.test(inner)) return true
+  }
+  return false
 }
 
 function validateSql(sql: string): { ok: true } | { ok: false; reason: string } {
@@ -177,25 +371,54 @@ function validateSql(sql: string): { ok: true } | { ok: false; reason: string } 
   if (FORBIDDEN_PATTERN.test(trimmed)) {
     return { ok: false, reason: 'Statement contains a forbidden keyword or separator.' }
   }
-  const referenced = new Set<string>()
+  if (BLOCK_COMMENT_PATTERN.test(trimmed)) {
+    return { ok: false, reason: 'Block comments are not permitted.' }
+  }
+  if (DOLLAR_QUOTE_PATTERN.test(trimmed)) {
+    return { ok: false, reason: 'Dollar-quoted strings are not permitted.' }
+  }
+  // Every structural check below reads the stripped copy; `sql` itself is what executes.
+  const scan = stripLiteralsAndQuotedIdentifiers(trimmed)
+  if (scan === null) {
+    return { ok: false, reason: 'Unterminated quote or escape-string syntax is not permitted.' }
+  }
+  if (TABLE_COMMAND_PATTERN.test(scan)) {
+    return { ok: false, reason: 'TABLE <name> is not permitted.' }
+  }
+  if (LATERAL_PATTERN.test(scan)) {
+    return { ok: false, reason: 'LATERAL is not permitted.' }
+  }
+  if (SELECT_INTO_PATTERN.test(scan)) {
+    return { ok: false, reason: 'SELECT ... INTO is not permitted.' }
+  }
+  if (FORBIDDEN_FUNCTION_PATTERN.test(scan)) {
+    return { ok: false, reason: 'Statement calls a function that is not permitted on this route.' }
+  }
+  if (hasTopLevelCommaInFromList(scan)) {
+    return { ok: false, reason: 'Comma-joins in a FROM clause are not permitted; use an explicit JOIN.' }
+  }
+  if (isNonSubqueryJoinedTable(scan)) {
+    return { ok: false, reason: 'Parenthesised joined tables in FROM/JOIN are not permitted.' }
+  }
+  const references: Array<{ name: string; index: number }> = []
   let m: RegExpExecArray | null
   TABLE_REF_PATTERN.lastIndex = 0
-  while ((m = TABLE_REF_PATTERN.exec(trimmed)) !== null) {
-    referenced.add(m[1].toLowerCase())
+  while ((m = TABLE_REF_PATTERN.exec(scan)) !== null) {
+    references.push({ name: m[1].toLowerCase(), index: m.index })
   }
-  if (referenced.size === 0) {
+  if (references.length === 0) {
     return { ok: false, reason: 'Could not identify any referenced table (FROM/JOIN clause required).' }
   }
   let hasAllowedBaseRelation = false
-  for (const t of referenced) {
-    // CTE names (declared in WITH ... AS (...)) are legitimate self-references
-    // that will not appear in ALLOWED_TABLES; only reject real table names.
-    if (ALLOWED_TABLES.has(t)) {
+  for (const ref of references) {
+    // CTE names (declared in WITH ... AS (...)) are legitimate references that will not appear
+    // in ALLOWED_TABLES; only reject real table names.
+    if (ALLOWED_TABLES.has(ref.name)) {
       hasAllowedBaseRelation = true
       continue
     }
-    if (!isCteName(trimmed, t)) {
-      return { ok: false, reason: `Table '${t}' is not in the read-only whitelist for this route.` }
+    if (!isCteDeclaredBefore(scan, ref.name, ref.index)) {
+      return { ok: false, reason: `Table '${ref.name}' is not in the read-only whitelist for this route.` }
     }
   }
   if (!hasAllowedBaseRelation) {

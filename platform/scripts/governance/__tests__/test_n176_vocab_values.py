@@ -394,7 +394,7 @@ def test_the_registry_carries_the_value_rule_its_revision_and_its_cause():
     assert e["revision"] == 8 and "N-176" in e["applicability"] and "VALUE-keyed" in e["applicability"] and "no-vocabulary-values" in e["applicability"]
     assert "no-vocabulary-values" in ac.NA_CAUSES[ALIAS] and "Vocab.alias#measured:no-vocabulary-values" in ac.NA_RULE_DECISIONS
     assert ac.CRITERION_REGISTRY["Vocab.identity"]["revision"] == 2                                   # untouched
-    assert ac.REGISTRY_REVISION == 26
+    assert ac.REGISTRY_REVISION >= 26                  # was `== 26`: a later revision (N-305: 27) must not fail a test about an earlier one's content
 
 
 def test_every_grade_branch_of_the_pure_record_is_reachable_and_na_needs_a_row_seen():

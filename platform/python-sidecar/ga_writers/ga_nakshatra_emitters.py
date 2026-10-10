@@ -14,6 +14,7 @@ import json
 from typing import Any
 
 from brahmagyan.graha_vocabulary import norm_graha
+from ga_writers._graha_text import canonical_graha_title
 from brahmagyan.gandanta import GANDANTA_STRICT_FORMULA_ID
 from ga_writers.ga_nakshatra_compute import (
     compute_kp_lords, compute_gandanta, compute_gandanta_strict, compute_tara,
@@ -53,6 +54,19 @@ def _row(chart_id: str, ayanamsha_id: str, build_id: str,
         # canonical row keeps exactly the shape it always had (formula_id NULL).
         row["formula_id"] = formula_id
     return row
+
+
+# fact_keys whose value is a GRAHA (the nakshatra lord / the pada lord). The L0 reference tables store
+# them as lowercase ids ('jupiter', 'ketu'); every other graha-valued column of chart_facts uses the
+# canonical Title-case name, so these two are emitted through the graha SSoT (to_title) too.
+_GRAHA_VALUED_KEYS = frozenset({"nakshatra_lord", "pada_lord"})
+
+
+def _graha_valued_text(fact_key: str, val: Any) -> str:
+    """str(val) for ordinary attributes; the canonical Title-case graha name for graha-valued keys."""
+    if fact_key in _GRAHA_VALUED_KEYS:
+        return canonical_graha_title(val)       # fail-closed: an unrecognised token is returned unchanged
+    return str(val)
 
 
 def emit_nakshatra_join(
@@ -105,7 +119,7 @@ def emit_nakshatra_join(
             val = nak_ref.get(db_col)
             if val is not None:
                 rows.append(_row(chart_id, ayanamsha_id, build_id, cat1, subj, fact_key,
-                                 value_text=str(val), source=source))
+                                 value_text=_graha_valued_text(fact_key, val), source=source))
 
         # Always emit nakshatra_id reference
         rows.append(_row(chart_id, ayanamsha_id, build_id, cat1, subj, "nakshatra_id_ref",
@@ -125,7 +139,7 @@ def emit_nakshatra_join(
                 val = pada_ref.get(db_col)
                 if val is not None:
                     rows.append(_row(chart_id, ayanamsha_id, build_id, cat2, subj, fact_key,
-                                     value_text=str(val), source=pada_src))
+                                     value_text=_graha_valued_text(fact_key, val), source=pada_src))
             rows.append(_row(chart_id, ayanamsha_id, build_id, cat2, subj, "pada_number_ref",
                              value_num=float(pada), source=pada_src))
 
