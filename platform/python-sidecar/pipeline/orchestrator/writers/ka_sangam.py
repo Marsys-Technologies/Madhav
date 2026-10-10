@@ -222,9 +222,8 @@ def _select_top_predicates_with_class_quota(
     return selected[:limit]
 
 
-@register('ka_sangam')
 @records_swiss_backend
-class KaSangamWriter(WriterBase):
+class _LegacyKaSangamWriter(WriterBase):
     """
     Convergence engine: Mode A (daśā-prior funnel) + Mode B (off-daśā sweep).
     Inserts into kala_convergence with full rigor-stratum columns.
@@ -1168,3 +1167,30 @@ class KaSangamWriter(WriterBase):
             house: _SIGN_LORDS[(lagna_num + house - 2) % 12 + 1]
             for house in range(1, 13)
         }
+
+
+@register('ka_sangam')
+class KaSangamWriter(_LegacyKaSangamWriter):
+    """Per-class candidate consumer; Modes A–D retain default compatibility."""
+
+    def plan_substeps(self, ctx) -> list[SubStep]:
+        if 'jury_fixture_inputs' not in ctx.config:
+            return super().plan_substeps(ctx)
+        from services.ka_sangam.jury import candidate
+        inputs = candidate.class_inputs(ctx.config['jury_fixture_inputs'])
+        generation = candidate.bind_candidate(ctx, lock=False)
+        for value in inputs.values():
+            candidate.validate_binding(ctx, value, generation)
+        self._jury_inputs = inputs
+        self._jury_turning_points = candidate.joint_turning_points(inputs.values())
+        return [SubStep(key='class:' + name) for name in sorted(inputs)]
+
+    def run_substep(self, ctx, step: SubStep) -> WriterResult:
+        if 'jury_fixture_inputs' not in ctx.config:
+            return super().run_substep(ctx, step)
+        from services.ka_sangam.jury import candidate
+        if not step.key.startswith('class:') or step.key[6:] not in self._jury_inputs:
+            raise ValueError('unplanned jury class substep')
+        count = candidate.write_candidate(ctx, self._jury_inputs[step.key[6:]],
+                                          joint_points=self._jury_turning_points)
+        return WriterResult('ka_sangam', count, notes='fixture consumer; live producer bindings unadmitted')
