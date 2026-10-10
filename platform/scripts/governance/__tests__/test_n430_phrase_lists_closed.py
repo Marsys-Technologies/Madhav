@@ -190,17 +190,22 @@ def _gestalt_scan():
     return d, pf, ws, units
 
 
-def test_the_real_gestalt_writer_is_covered_by_seven_list_declarations_with_a_declared_literal_max():
+def test_the_real_gestalt_writer_is_covered_by_eight_list_declarations_with_a_declared_literal_max():
+    # revision 28 (merge fix-up): with #3432's object-key wildcard the gestalt declares `domain_verdict_map_jsonb.$.*.verdict_note`, and the writer scan then reads the per-domain verdict_note literal
+    # too (bo_chart_gestalt.py:278): 7 shared pointer literals over the 8 `.$.note` entries + that 8th literal over the wildcard entry = 57 findings (it was 56 / 7 / 8 before the wildcard).
     d, pf, ws, units = _gestalt_scan()
     jl = [e for e in pf if ".$." in e]
-    lits = sorted({ast.literal_eval(p["text"].split("a literal: ", 1)[1]) for p in ws["problems"]}, key=len)
-    assert len(ws["problems"]) == len(jl) * len(lits) == 56 and len(lits) == 7 and len(jl) == 8                   # the engine's own reading, not typed
+    by_lit = {}
+    for p in ws["problems"]:
+        by_lit.setdefault(ast.literal_eval(p["text"].split("a literal: ", 1)[1]), set()).add(p["entry"])
+    lits = sorted(by_lit, key=len)
+    assert len(ws["problems"]) == sum(len(v) for v in by_lit.values()) == 57 and len(lits) == 8 and len(jl) == 9                   # the engine's own reading, not typed
     assert len(lits[-1]) > ac.WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT and len(lits[-1]) <= ac.WRITER_CONSTANT_PHRASES_LITERAL_CEILING
-    items = [dict(file="bo_chart_gestalt.py", entry=jl, form="constant_write", literal=x, why="the note leaf carries one fixed pointer sentence of the builder by design, not a stand-in for a missing value",
+    items = [dict(file="bo_chart_gestalt.py", entry=sorted(by_lit[x]), form="constant_write", literal=x, why="the note leaf carries one fixed pointer sentence of the builder by design, not a stand-in for a missing value",
                   evidence=EVID, **(dict(literal_max=ac.WRITER_CONSTANT_PHRASES_LITERAL_CEILING) if len(x) > 160 else {})) for x in lits]
     assert ac.writer_constant_phrases_problem(dict(writer_constant_phrases=items)) is None and len(items) <= ac.WRITER_CONSTANT_PHRASES_MAX
     chk = ac.constant_phrases_check(items, pf, ws, units)
-    assert chk["problems"] == [] and chk["left"] == [] and len(chk["flat"]) == 56 and set(chk["covered"].values()) == {1}
+    assert chk["problems"] == [] and chk["left"] == [] and len(chk["flat"]) == 57 and set(chk["covered"].values()) == {1}
     no_max = [{k: v for k, v in i.items() if k != "literal_max"} for i in items]
     assert ac.writer_constant_phrases_problem(dict(writer_constant_phrases=no_max))                                 # the 233-character sentence needs its declared maximum
 
@@ -209,7 +214,7 @@ def test_the_committed_declarations_are_untouched_by_the_new_keys():
     decls = ac.load_asset_declarations()
     for aid in ("bo_karanajala", "bo_anveshana"):
         assert all(not (set(x) & set(ac.WRITER_CONSTANT_PHRASES_OPTIONAL)) and isinstance(x["entry"], str) for x in decls[aid]["writer_constant_phrases"])
-    assert "writer_constant_phrases" not in decls[GEST]                                                              # nothing is declared for the real asset yet (the director walks the declarations)
+    assert len(decls[GEST]["writer_constant_phrases"]) == 8                                                          # SS N-431 declarations walk: declared (test_n431_gestalt_samvada_declared.py pins its content)
 
 
 # ───────────────────────── (c) the live closure ─────────────────────────

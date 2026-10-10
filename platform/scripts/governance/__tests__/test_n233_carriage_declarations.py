@@ -39,7 +39,6 @@ D3 = ["bg_kp_sublord_division", "bg_parihara_rules", "ga_nakshatra", "ga_sensiti
 TEN = D1 + D3
 JUDG = ["bg_class_priors", "bg_class_lifetime_counts", "bg_formula_constants", "bg_ghatana"]            # N-235 (b): ratified_judgment
 REFUSED = {
-    "bg_sarvatobhadra_grid": "not built (no rows): there is nothing to declare a carriage of",
     "bg_ephemeris_engine": "service probe owning no table: no carriage form exists for it",
     "bg_panchanga": "service probe owning no table: no carriage form exists for it",
 }

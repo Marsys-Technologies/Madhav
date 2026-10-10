@@ -63,10 +63,10 @@ def _entry(**over):
     return dict(kind="view", logical_key=copy.deepcopy(LK), **over)
 
 
-def test_a_sound_logical_key_is_accepted_and_nothing_else_is_declared_yet():
+def test_a_sound_logical_key_is_accepted_and_only_bo_samvada_declares_one():
     assert ac.logical_key_problem(_entry()) is None and ac.logical_key_problem({}) is None
     committed = ac.load_asset_declarations()
-    assert not [a for a, e in committed.items() if e.get("logical_key") or e.get("passive_projection")]              # the director walks the declarations; none exists today
+    assert [a for a, e in committed.items() if e.get("logical_key") or e.get("passive_projection")] == [SAMVADA]       # SS N-431 declarations walk: the view's registry identity declares both (test_n431_gestalt_samvada_declared.py)
 
 
 @pytest.mark.parametrize("mut", [

@@ -166,6 +166,7 @@ def test_the_real_bg_rules_declaration_with_its_prose_column_loads_through_the_g
     e["prose_fields"] = [PROSE]
     e["evidence"] = dict(e["evidence"], prose_fields="platform/python-sidecar/brahmagyan/l0_rules.py:1609")
     ac.validate_declarations(doc)
+    e.pop("fidelity_tests", None)                                                                         # the committed bg_rules declares golden tests that cover its real prose entry; this mutation replaces the entry
     e["prose_fields"] = ["created_at"]                                                                    # the real declaration ignores created_at
     with pytest.raises(ac.DeclarationsError, match=r"cannot be grounded"):
         ac.validate_declarations(doc)
