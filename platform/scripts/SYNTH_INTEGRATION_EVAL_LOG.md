@@ -1,3 +1,4 @@
+NOTE: 362f9f17-… is a dead phantom; canonical is 482012f1-710e-4a25-994a-93821f5871aa
 ---
 title: "MARSYS-JIS Synthesis Integration Eval Log"
 session_id: GANGA-P3-R4-S1
