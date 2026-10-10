@@ -4,7 +4,11 @@ Why: the census must PROVE a part is reproducible by re-running the committed pa
 executed repo code, so this module is the one place that does, under terms the director approved in principle: OUR OWN parser, pinned by sha256, run in an isolated
 child interpreter with no DB handle and no network, read-only inputs passed in.
 
-    run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=64_000_000) -> dict
+    run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=16_000_000) -> dict
+
+Pins come from a COMMITTED declaration, never from run-time discovery: `load_pin_manifest(repo_root, manifest_rel)` reads and validates a committed JSON manifest
+{"pinned_files": [{"path", "sha256"}]}; in production that declaration is corpus_derived.parser.pinned_files, built with R1's pin_files when the declaration is written. The
+tests build their fixture pins from a manifest the test writes; any closure-discovery helper lives in the tests only and is named as a test helper.
 
 Returns {"ok": True, "outputs": [...], "loaded_repo_files": [...], "elapsed_s": float, "assurance": ASSURANCE} or
 {"ok": False, "error": "<code>: <short detail>", "stage": "pin"|"spawn"|"run"|"output", "assurance": ASSURANCE}.
@@ -105,6 +109,15 @@ STAGES = ("pin", "spawn", "run", "output")
 # The label every result carries. It states the strength of the evidence honestly: software guards in the parser's own process, over reviewed code. See the docstring.
 ASSURANCE = "software-guarded, reviewed code only"
 
+# Default cap on the child's result size. It is deliberately modest: macOS ignores RLIMIT_AS, so the child's memory is bounded only by this parent-enforced output cap and the
+# wall-clock timeout, and the real bg_rules output (rule rows for a few thousand chunks) is far smaller than this. A caller with a genuinely larger need passes it explicitly.
+DEFAULT_MAX_OUTPUT_BYTES = 16_000_000
+
+# Bounds for a committed pin manifest and for the files it pins.
+MAX_MANIFEST_BYTES = 1 << 20
+MAX_PINNED_FILES = 512
+MAX_PINNED_FILE_BYTES = 8 << 20
+
 CHILD_FLAGS = ("-s", "-S", "-P", "-B")
 CHILD_ARG = "--child-v1"
 ENVELOPE_VERSION = 1
@@ -143,6 +156,82 @@ def _fail(code: str, detail: str, stage: str) -> dict:
     assert code in ERROR_CODES and stage in STAGES
     d = _clean(detail)
     return {"ok": False, "error": (code + ": " + d) if d else code, "stage": stage, "assurance": ASSURANCE}
+
+
+class PinManifestError(ValueError):
+    """A committed pin manifest is missing, malformed, or names something that is not a pinnable repo file. The message is short and path-free beyond repo-relative names."""
+
+
+def _no_dup_keys(pairs):
+    d = {}
+    for k, v in pairs:
+        if k in d:
+            raise PinManifestError("duplicate key in manifest JSON")
+        d[k] = v
+    return d
+
+
+def load_pin_manifest(repo_root, manifest_rel) -> list[dict]:
+    """Read a COMMITTED pin manifest {"pinned_files": [{"path", "sha256"}, ...]} and return its entries as [{"path","sha256"}], validated.
+
+    Pins are declarations made at review time (production: the committed declaration corpus_derived.parser.pinned_files, built with R1's pin_files when the declaration is written).
+    They are NEVER discovered at run time. Raises PinManifestError unless: the manifest is a regular file inside repo_root of at most MAX_MANIFEST_BYTES; its JSON has no duplicate
+    keys and is exactly {"pinned_files": [..]} with 1..MAX_PINNED_FILES entries; each entry is exactly {"path", "sha256"}; each path is a normalised repo-relative posix path
+    (no '..', no absolute, no backslash, no './'); each sha256 is 64 hex digits (returned lowercase); no path repeats; and each named file exists as a regular file whose real path
+    is inside repo_root and whose size is at most MAX_PINNED_FILE_BYTES. It does not hash anything (the run does, on the bytes it will execute)."""
+    try:
+        root = os.path.realpath(os.fspath(repo_root))
+    except TypeError:
+        raise PinManifestError("repo_root not a path") from None
+    mrel = _rel_ok(manifest_rel)
+    if mrel is None or mrel != manifest_rel:
+        raise PinManifestError("manifest path is not a normalised repo-relative path")
+    real = os.path.realpath(os.path.join(root, mrel))
+    if not _inside(real, root) or not os.path.isfile(real):
+        raise PinManifestError("manifest is not a file inside the repo: " + _clean(mrel))
+    try:
+        with open(real, "rb") as fh:
+            raw = fh.read(MAX_MANIFEST_BYTES + 1)
+    except OSError:
+        raise PinManifestError("manifest unreadable: " + _clean(mrel)) from None
+    if len(raw) > MAX_MANIFEST_BYTES:
+        raise PinManifestError("manifest larger than %d bytes" % MAX_MANIFEST_BYTES)
+    try:
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_dup_keys)
+    except PinManifestError:
+        raise
+    except (ValueError, UnicodeDecodeError):
+        raise PinManifestError("manifest is not valid JSON") from None
+    if not isinstance(doc, dict) or set(doc) != {"pinned_files"} or not isinstance(doc["pinned_files"], list):
+        raise PinManifestError('manifest must be exactly {"pinned_files": [...]}')
+    entries = doc["pinned_files"]
+    if not entries or len(entries) > MAX_PINNED_FILES:
+        raise PinManifestError("pinned_files must hold 1..%d entries" % MAX_PINNED_FILES)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for ent in entries:
+        if not isinstance(ent, dict) or set(ent) != {"path", "sha256"}:
+            raise PinManifestError('each entry must be exactly {"path", "sha256"}')
+        path, digest = ent["path"], ent["sha256"]
+        rel = _rel_ok(path)
+        if rel is None or rel != path:
+            raise PinManifestError("not a normalised repo-relative path: " + _clean(path))
+        if not isinstance(digest, str) or not _SHA256_RE.match(digest):
+            raise PinManifestError("sha256 is not 64 hex digits: " + _clean(rel))
+        if rel in seen:
+            raise PinManifestError("duplicate path: " + rel)
+        seen.add(rel)
+        target = os.path.realpath(os.path.join(root, rel))
+        if not _inside(target, root) or not os.path.isfile(target):
+            raise PinManifestError("pinned file missing or outside the repo: " + rel)
+        try:
+            size = os.path.getsize(target)
+        except OSError:
+            raise PinManifestError("pinned file unreadable: " + rel) from None
+        if size > MAX_PINNED_FILE_BYTES:
+            raise PinManifestError("pinned file larger than %d bytes: %s" % (MAX_PINNED_FILE_BYTES, rel))
+        out.append({"path": rel, "sha256": digest.lower()})
+    return out
 
 
 def _sha256_file(path: str) -> str:
@@ -216,7 +305,7 @@ def _child_env(home: str, tmp: str) -> dict[str, str]:
     return env
 
 
-def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=64_000_000) -> dict:
+def run_pinned_parser(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=DEFAULT_MAX_OUTPUT_BYTES) -> dict:
     """Run `function` from the pinned repo file `file` over `inputs` in a guarded child interpreter. See the module docstring for the contract."""
     t0 = time.perf_counter()
 

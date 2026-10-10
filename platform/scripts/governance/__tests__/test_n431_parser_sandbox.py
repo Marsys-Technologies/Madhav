@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
@@ -61,8 +62,16 @@ def make_repo(tmp_path: pathlib.Path, parser_src: str = PARSER, extra: dict | No
     return root
 
 
+def write_manifest(root: pathlib.Path, rels, name: str = "pins.json") -> str:
+    """The declaration step: hash the files NOW and write a pin manifest into the fake repo (what R1's pin_files + a committed declaration do in production)."""
+    entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in rels]
+    (root / name).write_text(json.dumps({"pinned_files": entries}), encoding="utf-8")
+    return name
+
+
 def pins(root: pathlib.Path, rels) -> list[dict]:
-    return [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest()} for r in rels]
+    """Fixture pins, built the production way: from a manifest file the test wrote, read back through load_pin_manifest (never discovered at call time)."""
+    return ps.load_pin_manifest(str(root), write_manifest(root, rels))
 
 
 CLOSURE = ["lib/pkg/__init__.py", "lib/pkg/helper.py", "lib/pkg/parser.py"]
@@ -229,11 +238,12 @@ class TestPinCheck:
 
     def test_symlink_that_escapes_the_repo_is_refused(self, tmp_path):
         root = make_repo(tmp_path)
+        pinned = pins(root, CLOSURE)  # declared while helper.py was a real in-repo file (load_pin_manifest itself refuses a pin that already escapes: see TestPinManifest)
         outside = tmp_path / "outside_helper.py"
         outside.write_text(HELPER, encoding="utf-8")
         (root / "lib/pkg/helper.py").unlink()
         (root / "lib/pkg/helper.py").symlink_to(outside)
-        r = run(root)
+        r = run(root, pinned=pinned)
         assert r["ok"] is False and r["stage"] == "pin" and r["error"].startswith("pin_missing")
 
     def test_file_changed_while_the_child_ran_is_refused(self, tmp_path, monkeypatch):
@@ -535,6 +545,128 @@ class TestAssuranceLabel:
         assert "PERMITTED USE" in doc and "l0_rules" in doc
 
 
+class TestPinManifest:
+    """SS N-431 R2 finding (5): pins come from a COMMITTED manifest, validated, never discovered at run time."""
+
+    def _manifest(self, root, doc, name="m.json"):
+        (root / name).write_text(doc if isinstance(doc, str) else json.dumps(doc), encoding="utf-8")
+        return name
+
+    def test_valid_manifest_round_trips_and_feeds_the_runner(self, tmp_path):
+        root = make_repo(tmp_path)
+        entries = [{"path": r, "sha256": hashlib.sha256((root / r).read_bytes()).hexdigest().upper()} for r in CLOSURE]
+        got = ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}))
+        assert got == [{"path": e["path"], "sha256": e["sha256"].lower()} for e in entries]  # digests come back lowercase
+        assert run(root, pinned=got)["ok"] is True
+
+    def test_manifest_in_a_subdirectory(self, tmp_path):
+        root = make_repo(tmp_path)
+        (root / "decl").mkdir()
+        entries = [{"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}]
+        assert ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": entries}, "decl/m.json")) == entries
+
+    def _good(self, root):
+        return {"path": "lib/pkg/helper.py", "sha256": hashlib.sha256((root / "lib/pkg/helper.py").read_bytes()).hexdigest()}
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            "not_json", "not_object", "missing_key", "extra_top_key", "pinned_files_not_list", "empty_list", "entry_not_object", "entry_extra_key", "entry_missing_sha",
+            "abs_path", "dotdot", "backslash", "unnormalised", "empty_path", "path_not_str", "short_digest", "nonhex_digest", "digest_not_str", "duplicate_path",
+            "duplicate_json_key", "missing_file", "directory", "too_many", "pinned_file_too_large",
+        ],
+    )
+    def test_malformed_manifests_are_refused(self, tmp_path, monkeypatch, case):
+        root = make_repo(tmp_path)
+        g = self._good(root)
+        docs = {
+            "not_json": "{nope",
+            "not_object": [g],
+            "missing_key": {"files": [g]},
+            "extra_top_key": {"pinned_files": [g], "note": "x"},
+            "pinned_files_not_list": {"pinned_files": g},
+            "empty_list": {"pinned_files": []},
+            "entry_not_object": {"pinned_files": ["lib/pkg/helper.py"]},
+            "entry_extra_key": {"pinned_files": [dict(g, extra=1)]},
+            "entry_missing_sha": {"pinned_files": [{"path": g["path"]}]},
+            "abs_path": {"pinned_files": [dict(g, path="/etc/hosts")]},
+            "dotdot": {"pinned_files": [dict(g, path="../repo/lib/pkg/helper.py")]},
+            "backslash": {"pinned_files": [dict(g, path="lib\\pkg\\helper.py")]},
+            "unnormalised": {"pinned_files": [dict(g, path="lib/./pkg/helper.py")]},
+            "empty_path": {"pinned_files": [dict(g, path="")]},
+            "path_not_str": {"pinned_files": [dict(g, path=7)]},
+            "short_digest": {"pinned_files": [dict(g, sha256="abc123")]},
+            "nonhex_digest": {"pinned_files": [dict(g, sha256="z" * 64)]},
+            "digest_not_str": {"pinned_files": [dict(g, sha256=12345)]},
+            "duplicate_path": {"pinned_files": [g, dict(g)]},
+            "duplicate_json_key": '{"pinned_files": [], "pinned_files": [%s]}' % json.dumps(g),
+            "missing_file": {"pinned_files": [dict(g, path="lib/pkg/gone.py")]},
+            "directory": {"pinned_files": [dict(g, path="lib/pkg")]},
+            "too_many": {"pinned_files": [dict(g, path="lib/pkg/helper.py")] * 1},
+        }
+        if case == "too_many":
+            monkeypatch.setattr(ps, "MAX_PINNED_FILES", 1)
+            docs["too_many"] = {"pinned_files": [g, dict(self._good(root), path="lib/pkg/parser.py")]}
+        if case == "pinned_file_too_large":
+            monkeypatch.setattr(ps, "MAX_PINNED_FILE_BYTES", 5)
+            docs[case] = {"pinned_files": [g]}
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, docs[case]))
+
+    def test_manifest_too_large(self, tmp_path, monkeypatch):
+        root = make_repo(tmp_path)
+        monkeypatch.setattr(ps, "MAX_MANIFEST_BYTES", 20)
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, {"pinned_files": [self._good(root)]}))
+
+    def test_manifest_path_must_be_a_file_inside_the_repo(self, tmp_path):
+        root = make_repo(tmp_path)
+        outside = tmp_path / "outside.json"
+        outside.write_text(json.dumps({"pinned_files": [self._good(root)]}), encoding="utf-8")
+        (root / "linked.json").symlink_to(outside)
+        for rel in ("nope.json", "../outside.json", "/etc/hosts", "linked.json", "lib", ""):
+            with pytest.raises(ps.PinManifestError):
+                ps.load_pin_manifest(str(root), rel)
+
+    def test_pinned_file_that_is_a_symlink_out_of_the_repo_is_refused(self, tmp_path):
+        root = make_repo(tmp_path)
+        outside = tmp_path / "outside_helper.py"
+        outside.write_text(HELPER, encoding="utf-8")
+        (root / "lib/pkg/linked.py").symlink_to(outside)
+        doc = {"pinned_files": [dict(self._good(root), path="lib/pkg/linked.py")]}
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(str(root), self._manifest(root, doc))
+
+    def test_bad_repo_root_type(self):
+        with pytest.raises(ps.PinManifestError):
+            ps.load_pin_manifest(None, "m.json")
+
+    def test_loader_does_not_hash_so_a_wrong_digest_is_caught_by_the_run_not_the_loader(self, tmp_path):
+        root = make_repo(tmp_path)
+        doc = {"pinned_files": [dict(self._good(root), sha256="0" * 64)]}
+        got = ps.load_pin_manifest(str(root), self._manifest(root, doc))
+        assert got[0]["sha256"] == "0" * 64  # declaration is syntactically fine; the run refuses it (pin_mismatch)
+
+    def test_fixture_pins_in_these_tests_come_from_a_manifest_file(self, tmp_path):
+        root = make_repo(tmp_path)
+        got = pins(root, CLOSURE)
+        assert (root / "pins.json").is_file() and json.loads((root / "pins.json").read_text())["pinned_files"] == got
+
+
+class TestDefaultOutputCap:
+    """SS N-431 R2 finding (4): default cap lowered to 16 MB (macOS ignores RLIMIT_AS; the real bg_rules output is small)."""
+
+    def test_default_is_16_million(self):
+        import inspect
+
+        assert ps.DEFAULT_MAX_OUTPUT_BYTES == 16_000_000
+        assert inspect.signature(ps.run_pinned_parser).parameters["max_output_bytes"].default == 16_000_000
+
+    def test_default_cap_is_enforced(self, tmp_path):
+        r = run(make_repo(tmp_path, parser_with("return 'x' * 17_000_000")))
+        assert r["ok"] is False and r["stage"] == "output" and r["error"].startswith("output_too_large")
+
+
 class TestFailureVocabulary:
     def test_parser_raising_on_input_3_reports_index_and_type_only(self, tmp_path):
         src = parser_with("if item['n'] == 3:\n    raise ValueError('secret /etc/passwd token=abc')\nreturn item")
@@ -704,8 +836,9 @@ REAL_CHUNKS = [
 ]
 
 
-def _close_over_real_parser(repo_root: pathlib.Path, inputs):
-    """Discover the real parser's repo-local import closure by running it and pinning what the sandbox reports as unpinned, until it is accepted. Returns (result, pinned)."""
+def _TEST_HELPER_discover_closure_by_running(repo_root: pathlib.Path, inputs):
+    """TEST HELPER ONLY, never production: discover the real parser's repo-local import closure by running it and pinning what the sandbox reports as unpinned, until it is
+    accepted. Production pins come from a committed declaration (load_pin_manifest); the sandbox itself never discovers pins. Returns (result, pinned)."""
     pinned: list[dict] = []
     for _ in range(60):
         r = ps.run_pinned_parser(str(repo_root), SIDECAR, pinned, ADAPTER_REL, "run_chunk", inputs, timeout_s=120)
@@ -729,7 +862,7 @@ class TestRealParser:
         return [{"chunk": c, "valid_text_ids": REAL_IDS} for c in REAL_CHUNKS]
 
     def test_real_parser_runs_offline_in_the_sandbox_and_is_reproducible(self, inputs):
-        r, pinned = _close_over_real_parser(REPO_ROOT, inputs)
+        r, pinned = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
         if not r["ok"] and r["error"].startswith("parser_raised: index=-1"):
             pytest.skip("the real parser cannot be imported offline in this environment: " + r["error"])
         assert r["ok"], r
@@ -747,7 +880,7 @@ class TestRealParser:
 
     def test_real_parser_matches_the_parser_run_in_process(self, inputs):
         """The sandboxed rows equal the rows the same function yields in this process (same code, same answer), apart from the child's fixed hash seed."""
-        r, _ = _close_over_real_parser(REPO_ROOT, inputs)
+        r, _ = _TEST_HELPER_discover_closure_by_running(REPO_ROOT, inputs)
         if not r["ok"]:
             pytest.skip("real parser not runnable offline here: " + r["error"])
         sidecar = str(REPO_ROOT / SIDECAR)
