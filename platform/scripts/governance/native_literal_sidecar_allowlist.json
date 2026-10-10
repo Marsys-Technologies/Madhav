@@ -239,12 +239,12 @@
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
-      "max_hits": 4,
+      "max_hits": 7,
       "kinds": [
         "BIRTHDATE",
         "COORD"
       ],
-      "reason": "L0 ephemeris seed/verify module: NATIVE_BIRTH_DATE/coordinate constants for the birth-date spot check; not served (the dead lifetime payload was deleted by PR-S6 item 4); L0 campaign"
+      "reason": "L0 ephemeris seed/verify module: NATIVE_BIRTH_DATE/coordinate constants plus the dead get_ephemeris_cache_native_lifetime (no callers) which still builds a payload with one person's name, birth date/time and place; its deletion changes the source digest of 5 L0 writers (bg_cohort, bg_ephemeris, bg_gochara_arcs, bg_muhurta_lattice, bg_sky_calendar) and so fails provenance_inventory --check until the generated digest file is regenerated; deferred to a follow-up with the owner's go-ahead"
     },
     {
       "file": "platform/python-sidecar/brahmagyan/mimamsa/lel_intake.py",
