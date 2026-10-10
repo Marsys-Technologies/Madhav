@@ -6,8 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildShareViewMessages } from '../shareView'
 
-const TOOL_IN = 'RAW_RETRIEVAL_INPUT_secret'
-const TOOL_OUT = 'RAW_RETRIEVAL_OUTPUT_secret'
+const TOOL_IN = 'RAW_RETRIEVAL_INPUT_marker'
+const TOOL_OUT = 'RAW_RETRIEVAL_OUTPUT_marker'
 
 function fixture() {
   return [
@@ -27,7 +27,7 @@ function fixture() {
         { type: 'step-start' },
         { type: 'tool-ganita_planet_get', toolCallId: 'call-1', state: 'output-available', input: { q: TOOL_IN }, output: { r: TOOL_OUT } },
         { type: 'dynamic-tool', toolName: 'x', toolCallId: 'call-2', state: 'output-available', input: TOOL_IN, output: TOOL_OUT },
-        { type: 'data-trace', data: { secret: 'DATA_PART_secret' } },
+        { type: 'data-trace', data: { payload: 'DATA_PART_marker' } },
         { type: 'source-url', sourceId: 's', url: 'https://example.invalid/src' },
         { type: 'reasoning', text: 'REASONING_visible_when_not_hidden' },
         { type: 'text', text: 'Saturn is exalted in Libra.', providerMetadata: { anthropic: { cacheControl: 'X' } } },
@@ -62,7 +62,7 @@ describe('buildShareViewMessages', () => {
     const s = JSON.stringify(buildShareViewMessages(fixture(), false, false))
     for (const banned of [
       'tool-', 'dynamic-tool', 'toolCallId', 'data-', 'metadata', 'providerMetadata', 'step-start', 'source-url', 'file',
-      TOOL_IN, TOOL_OUT, 'DATA_PART_secret', 'FILEPAYLOAD', 'MODEL_xyz', 'STYLE_xyz', 'QID_123', 'created_at',
+      TOOL_IN, TOOL_OUT, 'DATA_PART_marker', 'FILEPAYLOAD', 'MODEL_xyz', 'STYLE_xyz', 'QID_123', 'created_at',
       'super_admin', 'isAdmin', 'system', 'ADMIN_ROLE_MESSAGE_TEXT', 'SYSTEM_PROMPT_TEXT', '11111111-aaaa',
     ]) {
       expect(s, banned).not.toContain(banned)
