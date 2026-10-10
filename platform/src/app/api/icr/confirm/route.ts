@@ -3,6 +3,7 @@
  * Confirm, reject, or escalate a proposed conflict patch.
  *
  * Body: { patch_file: string, action: 'confirm' | 'reject' | 'escalate', reason?: string }
+ * Auth: super_admin only (401 unauthenticated, 403 otherwise) — all three actions.
  *
  * ICR-S5 (2026-05-21)
  */
@@ -11,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { atomicApply } from '@/lib/icr/atomic_apply';
+import { requireSuperAdmin } from '@/lib/auth/access-control';
 
 // ── Path helpers ──────────────────────────────────────────────────────────────
 // process.cwd() = platform/ in Next.js API routes.
@@ -141,6 +143,14 @@ async function handleEscalate(patchFile: string, reason?: string): Promise<NextR
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // SS N-373 (SESSION_GATE_AUDIT CRITICAL): this handler rewrites MSR_v5_0.md,
+  // moves/deletes conflict patches and appends to the DISAGREEMENT_REGISTER, and
+  // proxy.ts only checks the SHAPE of the session cookie. Verify a real
+  // super_admin session before reading the body or touching any file, for all
+  // three actions (confirm / reject / escalate).
+  const auth = await requireSuperAdmin();
+  if (auth instanceof NextResponse) return auth;
+
   let body: { patch_file?: unknown; action?: unknown; reason?: unknown };
   try {
     body = (await request.json()) as {

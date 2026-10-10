@@ -1,0 +1,105 @@
+{
+  "version": "K4-3/v1",
+  "registry_revision": 26,
+  "asset": "ka_sangam",
+  "scope": "K4 candidate fixture and attachment preparation; legacy output and production qualification remain separate",
+  "kind": "data",
+  "carriage": {
+    "nature": "derivation",
+    "served_surface": "legacy kala_convergence only; candidate reader requires an explicit generation",
+    "evidence": "platform/python-sidecar/services/ka_sangam/jury/reader.py:18"
+  },
+  "ldgr_source": {
+    "column": "roots",
+    "state": "fixture references and assertion ids; no classical sourcing certification"
+  },
+  "vocab_alias": null,
+  "prose_fields": null,
+  "null_convention": "Unattached readings preserve original signal mappings and named reasons; missing canonical identity has null_reason=canonical_event_identity_unavailable",
+  "produced_tables": [
+    "kala_jury_candidate",
+    "kala_jury_candidate_segment",
+    "kala_jury_candidate_contest"
+  ],
+  "density_tier_columns": null,
+  "semantic_fingerprint": {
+    "inputs": "Explicit fixture anchor/upstream_refs, school/ancestry roles and F1 event/predicate mappings",
+    "outputs": "D(W), typed operational conclusions and non-scoring canonical attachments",
+    "oracles": "tests/l3/ka_sangam/test_reading_attachments.py; tests/l3/kala_db/ka_sangam/test_jury_candidate_end_to_end.py"
+  },
+  "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_sangam",
+  "disposition": "legacy compatibility retained; private fixture path enriched; live reader bridge remains unadmitted",
+  "production_certification": null,
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 3,
+        "Build.completion": 6,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "Fixture writer dispatch only; production exercise, dependency liveness and completion unproved"
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 4
+      },
+      "expected_reading": "Candidate class replacement plus repeated SQL readback; no production verdict"
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "Real production attempt not measured"
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 2,
+        "Vocab.alias": 8
+      },
+      "expected_reading": "Typed event/claim identities; legacy table alias certification unproved"
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "Explicit fixture assertion ids and F1 predicate references; live source resolution unproved"
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "No producer-stored tier; no Dens PASS claimed"
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 7,
+        "Narr.checkable": 6,
+        "Narr.fidelity_test": 6,
+        "Narr.lint": 7
+      },
+      "expected_reading": "Closed attachment reasons and identities compose no prose; mixed legacy prose undeclared"
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 9,
+        "Null.blank_rows": 9
+      },
+      "expected_reading": "Explicit unavailable report and named unmatched reasons; whole-table live graders unmeasured"
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "Fixture links derive from supplied event identities; independent classical carriage unmeasured"
+    }
+  }
+}

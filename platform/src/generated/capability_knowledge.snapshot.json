@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634",
-  "source_catalog_fingerprint": "sha256:20cc53bb8d3efbe95569400563800d39165d560c2fa99410129b5b0e46b57edf",
-  "semantic_review_fingerprint": "sha256:f70ad82cbc426e3dace662f5b517a58ea11964134c2568852699a92bcf5fff4b",
+  "content_hash": "sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737",
+  "source_catalog_fingerprint": "sha256:2847bca917187ee3522573abef80296e138d29d4a40ac0b4f9b005198dd36d67",
+  "semantic_review_fingerprint": "sha256:8b5895accf778dccc39e8e1b3c5326fbee49a722e11006b509acc845ead709c5",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
     {
@@ -17185,7 +17185,7 @@
       "scu_id": "scu.catalog.query_discoveries",
       "version": 1,
       "label": "Query Discoveries",
-      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields. Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
+      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (higher = more salient; a score, non-obviousness × corroboration, not a 1..N rank), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank DESC (strongest first). Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the highest-scoring member's narrative fields. Evidence use: measure provenance, calibration, falsifiers, and evidence quality without overstating confidence.",
       "kind": "contradiction",
       "domains": [
         "evidence_quality"
@@ -17241,7 +17241,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-discoveries:v1",
               "capability_uri": "marsys://tool/L2/query_discoveries",
-              "contract_sha256": "sha256:3e9f4e5a24a8c8a9e718891341706815ec91d0397865950db4e3752cb187e63c",
+              "contract_sha256": "sha256:c6a6b64862229752101f1c2854874be275e207c841dcd5027143db0bf493a1e6",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181"
             }
