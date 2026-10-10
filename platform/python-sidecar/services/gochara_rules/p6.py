@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import unicodedata
 
+from brahmagyan.nakshatra_vocabulary import nakshatra_number
+
 from .ashtakavarga import NAKSHATRAS
 
 TARA_CLASSES = {
@@ -37,8 +39,8 @@ def _normalise_name(text: str) -> str:
 
 
 # Exact-match table: the normalised form of each of the 27 CANONICAL names in
-# ashtakavarga.NAKSHATRAS (Ashwini = 1 … Revati = 27). No alias, no fuzzy
-# matching, nothing from memory.
+# ashtakavarga.NAKSHATRAS (Ashwini = 1 … Revati = 27). The ONLY aliases are the three
+# legacy-L1 spellings (Mrigashira/Mula/Dhanishta), resolved by the vocabulary helper below.
 _NAKSHATRA_BY_KEY: dict[str, int] = {
     _normalise_name(name): index for index, name in enumerate(NAKSHATRAS, start=1)}
 assert len(_NAKSHATRA_BY_KEY) == 27, "canonical nakshatra names must normalise to 27 distinct keys"
@@ -53,11 +55,12 @@ def nakshatra_index(name: str) -> int:
     if not isinstance(name, str):
         raise TypeError(f"nakṣatra name must be a string, got {type(name).__name__}")
     key = _normalise_name(name)
-    try:
+    if key in _NAKSHATRA_BY_KEY:
         return _NAKSHATRA_BY_KEY[key]
-    except KeyError:
-        raise ValueError(f"unknown nakṣatra name {name!r} (normalised {key!r}): "
-                         "no canonical name matches") from None
+    if (number := nakshatra_number(name)) is not None:  # legacy-L1 spelling -> canonical number
+        return number
+    raise ValueError(f"unknown nakṣatra name {name!r} (normalised {key!r}): "
+                     "no canonical name matches")
 
 
 def tara(natal_star_index: int, transit_star_index: int) -> dict:
