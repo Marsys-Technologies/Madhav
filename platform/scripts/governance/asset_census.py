@@ -19297,7 +19297,7 @@ def corpus_derived_cells(aid: str, res: dict) -> dict:
         if reading is None:
             continue
         if v == PASS:
-            out[c] = _na(f"{CORPUS_DERIVED_NA_TEXT} [{blk.get('assurance')}]: {res['measured']}", CORPUS_DERIVED_CAUSE)
+            out[c] = _na(f"{CORPUS_DERIVED_NA_TEXT} [{blk.get('assurance')}]: {res['measured']}", "corpus-derived")      # the literal, not CORPUS_DERIVED_CAUSE: test_e6_a_na_causes scans `_na(...)` calls for literal cause slugs (a pinned test asserts the two are equal)
         elif v == FAIL:
             if reading == FAIL:
                 first = (blk.get("first_differences") or [])[:3]
