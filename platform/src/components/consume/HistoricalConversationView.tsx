@@ -40,7 +40,7 @@ function formatOffset(minutes: number): string {
 // Display labels for VALID_AYANAMSHAS. Kept here because this is a server
 // component and NewClientForm's AYANAMSHA_OPTIONS lives in a 'use client' module.
 const AYANAMSHA_LABELS: Record<string, string> = {
-  lahiri: 'Lahiri',
+  lahiri: 'Lahiri (primary)', // Lahiri-primary (N-339): Lahiri is the primary reading for every chart
   true_chitra: 'True Chitra',
   kp: 'KP',
   raman: 'Raman',

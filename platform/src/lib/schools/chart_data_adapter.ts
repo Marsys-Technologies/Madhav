@@ -16,6 +16,7 @@
  */
 import 'server-only'
 import { query } from '../db/client'
+import { PRIMARY_AYANAMSHA, normalizeAyanamshaId } from '../retrieval/chart_facts_helpers'
 import type {
   ChartData,
   PlanetPosition,
@@ -67,8 +68,16 @@ const _toTypesSign = (factSign: string): string => factSign.toLowerCase()
  */
 export async function buildChartData(
   chartId: string,
-  ayanamshaId: string = 'lahiri',
+  ayanamshaIdArg: string = PRIMARY_AYANAMSHA,
 ): Promise<ChartData> {
+  // Lahiri-primary (N-339): the default is the STORED id `lahiri_chitrapaksha` (the old
+  // short default 'lahiri' matched zero chart_facts rows). Any spelling is normalised by the
+  // PR-1 helper; an unknown id throws InvalidAyanamshaError, never a silent zero-row query.
+  // The school engines read ONE ayanamsha, so the raw-access "all" opt-out is not valid here.
+  const ayanamshaId = normalizeAyanamshaId(ayanamshaIdArg)
+  if (ayanamshaId === null) {
+    throw new Error('buildChartData reads one ayanamsha; "all" is not valid here')
+  }
   // 1. Planet positions from chart_facts
   const planetsResult = await query<{
     graha_name: string

@@ -401,3 +401,34 @@ describe('GET /api/charts/[id]/ayanamsha-status — response headers', () => {
     expect(res.headers.get('Cache-Control')).toBe('max-age=10')
   })
 })
+
+// ─── Tests: Lahiri-primary (N-339) — additive role fields ─────────────────────
+
+describe('GET /api/charts/[id]/ayanamsha-status — Lahiri primary, four cross-checks', () => {
+  type Item = {
+    ayanamsha_id: string
+    stored_ayanamsha_id: string
+    role: string
+    is_primary: boolean
+  }
+
+  it('marks Lahiri as the only primary and the other four as cross_check, with stored ids', async () => {
+    setupMocks({})
+    const items = (await (await GET(makeReq(), makeParams())).json()) as Item[]
+    expect(items.map((i) => i.ayanamsha_id)).toEqual(CANONICAL_ORDER) // order + short ids unchanged
+    expect(items.filter((i) => i.is_primary).map((i) => i.ayanamsha_id)).toEqual(['lahiri'])
+    expect(items[0]).toMatchObject({ role: 'primary', stored_ayanamsha_id: 'lahiri_chitrapaksha', is_primary: true })
+    expect(items.slice(1).every((i) => i.role === 'cross_check' && i.is_primary === false)).toBe(true)
+    expect(items.map((i) => i.stored_ayanamsha_id)).toEqual([
+      'lahiri_chitrapaksha', 'true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical',
+    ])
+  })
+
+  it('not_built items carry the role fields too', async () => {
+    setupMocks({ buildRowsByAyanamsha: { lahiri: null, kp: null } })
+    const items = (await (await GET(makeReq(), makeParams())).json()) as (Item & { status: string })[]
+    expect(items[0]).toMatchObject({ status: 'not_built', role: 'primary', stored_ayanamsha_id: 'lahiri_chitrapaksha' })
+    expect(items[2]).toMatchObject({ status: 'not_built', role: 'cross_check', stored_ayanamsha_id: 'krishnamurti' })
+  })
+})
+
