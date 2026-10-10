@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "84a7d027df9282a6ca062a1919a75c64ac3fdc9a58b9127dd425ed436e66f1cc",
+  "content_sha256": "74fbb136a89970c6fd77bdd7476e20762a04699cd1938ce74d3a90f74988a8f6",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -454,7 +454,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -507,7 +507,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -560,7 +560,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -613,7 +613,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -868,7 +868,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha filter (default: 'LAHIRI').",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "build_id": {
@@ -9378,7 +9378,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas.",
+            "description": "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored id or short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Pass \"all\" for the explicit raw five-ayanamsha candidate list.",
             "type": "string"
           },
           "chart_id": {
@@ -21079,7 +21079,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "6eca23e260b7ec1a6c967133714a8ce4e1e047d06aec7b29338731fa9b2b869e"
+        "sha256": "b6c38f7e2ca841e004d22eb7cbc6644381d7741f85216354c84892f507adcd64"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21504,7 +21504,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "f5f63f56d4cb98c32e9f9dc4603eb15c3f9f694694057adfd335b9ce16e86ce7"
+            "sha256": "ad3c30254d8a5c86ed64fd4a8dabdec0bcd601b715d77c1f33ee9d3c2ac05b6d"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -21516,11 +21516,11 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "f8043fcb726a866034871718e7c23df0f9c8f18e04d3009b9a0e3b317eaf6873"
+            "sha256": "827f12f4ef8a6103e187e2d81195dedf245114c27c112ea2e9bba584b7c61d07"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "67d507ae293483ab1933b915a28b22646ba2cfc6d0540e8991f1c8c1e0949f6e"
+            "sha256": "834cd69e8caa130cc95452f4b1e7b7fa6e5aad9c94cb2d88c0662e57342f090a"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -21556,7 +21556,7 @@
           },
           {
             "path": "platform-mcp/src/tools/l0_ephemeris.ts",
-            "sha256": "353b35b146d3a5fb0d674ab07a7dd24dfe24c006ae6b4e81224368049b6b718e"
+            "sha256": "737eae6dc33a4c5e08c5f3293aeada2c1f6d6f64fb213351939fd615adf39cd6"
           },
           {
             "path": "platform-mcp/src/tools/mechanism_retrodiction.ts",
@@ -21604,11 +21604,11 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "3dac00978a65d742e98f6707fcebf31be7d54a25636f5cbd4249da58763e2e1e"
+            "sha256": "1e744cd68fdee88a5d1d50598ec5a463f85a759d1ba9db60dd9adf2000ead4b1"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
-            "sha256": "02bee61649464ed7285e19a024930174140a09c65596620bb0555da5bde74e4b"
+            "sha256": "6dd3e6c63188249261f884e8f2c2a757e1356be888b3ec66e21dfd76ee53ef2a"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
@@ -21616,7 +21616,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
+            "sha256": "5ffce87b017325c5e692740f7ebf4cb90a98fa3288ee5d3a596ed5b863b4de86"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21640,7 +21640,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "99b8c196e8d1712cca75c56790b088daa60c957dae20f686f5d1d5845e34e26c"
+            "sha256": "13ce489486a50e98b18f4533eb52d0fa6727527fdee4d691f9e5f402e98f6b56"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21652,7 +21652,7 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/pyhora_natal.ts",
-            "sha256": "4d9eda143a9cd878564dee64a1f40f084c7a9550761b21bf096f189cf4b03cd1"
+            "sha256": "ae7415c75e0d2f089da5fbbabdeb4aa0a843c734c7fefb19de0db90ff14f2cf4"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
@@ -21676,7 +21676,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "964ac75e6fbbba6b93a1da90fd15df9635f71ddcb6e0815c936e214b3dd0dcb2"
+        "sha256": "013ffdaf070b75115daad2f0b86bbd0bef0f380b14d36ed92bc99100a470f51e"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22342,7 +22342,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
-            "sha256": "fd71e047e9a5654c9609d32b27539b5ea3f31e4547a24f2d1f37de26574827af"
+            "sha256": "31cab2e1aa0550d77c7afa56dc6d8aa18ecd98ea1a2541aa6527e7ff26be4e4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
@@ -22446,7 +22446,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "8eed667ce4020730d48358bcc4e67aa36091faa3e41ca176ca65c52fa40b2943"
+            "sha256": "5ceecd3b9b1e8b23e84dfc31e0b068b2b5344567f1f5f93dcd1a1a9c53d9ae92"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -22518,7 +22518,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "1bf66111e14a47248473a4acd089a206d6550e4c1b511ee25f3e7b1825c74ebd"
+        "sha256": "ac41ec41ad358555eb3bed66a50c5d9e693b3241fc9114a2f18896656383ea57"
       },
       {
         "id": "service_effect_contracts",

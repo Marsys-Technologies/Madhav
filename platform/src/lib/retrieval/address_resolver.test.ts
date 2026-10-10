@@ -591,6 +591,22 @@ describe('resolveAddress — paradigm-specific address types', () => {
     expect(result.paradigm).toBe('kp')
   })
 
+  it('sub_lord_of reads the KP chain at Krishnamurti, not the Lahiri primary, and carries the KP frame label (SS N-342)', async () => {
+    const { query } = await import('@/lib/db/client')
+    const mockedQuery = vi.mocked(query)
+    mockedQuery.mockClear()
+    const result = await resolveAddress(NATIVE_CHART_ID, { type: 'sub_lord_of', cusp: 1 }, { ayanamsha_id: AYANAMSHA })
+    const kpCalls = mockedQuery.mock.calls.filter((c) => String(c[0]).includes('cusp_kp_lords'))
+    expect(kpCalls.length).toBe(1)
+    const kpParams = kpCalls[0]![1] as unknown[]
+    expect(kpParams[1]).toBe('krishnamurti')
+    expect(kpParams).not.toContain(AYANAMSHA)
+    const s = result.entities[0] as ResolvedSubLord
+    expect(s.ayanamsha_id).toBe('krishnamurti')
+    expect(s.frame_label).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(result.chain.join(' ')).toContain('KP frame (Krishnamurti ayanamsha)')
+  })
+
   it("saham('ASHA') resolves the tajika sāham (paradigm defaults to 'tajika')", async () => {
     const result = await resolveAddress(NATIVE_CHART_ID, { type: 'saham', code: 'ASHA' }, { ayanamsha_id: AYANAMSHA })
     const s = result.entities[0] as ResolvedSaham

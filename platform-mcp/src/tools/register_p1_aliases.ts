@@ -1670,7 +1670,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet:      z.string().describe('Planet to query (Sun..Saturn/Rahu/Ketu).'),
       start_date:  z.string().describe('Start date YYYY-MM-DD.'),
       end_date:    z.string().describe('End date YYYY-MM-DD.'),
-      sign_number: z.number().int().min(1).max(12).optional().describe('Optional tropical sign filter (1=Aries..12=Pisces).'),
+      sign_number: z.number().int().min(1).max(12).optional().describe('Optional SIDEREAL (Lahiri) sign filter (1=Aries..12=Pisces).'),
     },
     async ({ planet, start_date, end_date, sign_number }) => {
       try {
