@@ -70,15 +70,15 @@ def test_read_label_nests_and_restores(monkeypatch):
 
 
 def test_the_statement_label_strips_every_literal_and_is_at_most_60_chars():
-    secret = "Abhisek-Secret-Value-1984"
-    stmts = [f"SELECT x FROM t WHERE name = '{secret}' AND n = 42 AND r = 3.14",
-             f"SELECT x FROM t WHERE name = 'it''s {secret}'",
-             f"SELECT $q${secret}$q$ FROM t",
-             f"SELECT x FROM t WHERE name = '{secret}",                 # an unterminated quote: its tail is dropped too
+    sentinel = "Sentinel-Secret-Value-0042"
+    stmts = [f"SELECT x FROM t WHERE name = '{sentinel}' AND n = 42 AND r = 3.14",
+             f"SELECT x FROM t WHERE name = 'it''s {sentinel}'",
+             f"SELECT $q${sentinel}$q$ FROM t",
+             f"SELECT x FROM t WHERE name = '{sentinel}",                 # an unterminated quote: its tail is dropped too
              "DO $n99d0$ BEGIN PERFORM 1; END $n99d0$"]
     for sql in stmts:
         lab = ac._statement_label(sql)
-        assert secret not in lab and len(lab) <= 60, (sql, lab)
+        assert sentinel not in lab and len(lab) <= 60, (sql, lab)
     assert ac._statement_label(stmts[0]) == "SELECT x FROM t WHERE name = ? AND n = ? AND r = ?"
     assert ac._statement_label("SELECT\n  a,\n\tb   FROM t") == "SELECT a, b FROM t"
     assert ac._statement_label("x" * 200) == "x" * 60
@@ -88,11 +88,11 @@ def test_no_host_credential_value_or_full_statement_is_stored(monkeypatch):
     monkeypatch.setenv("PGHOST", "db.internal.example")
     monkeypatch.setenv("PGPASSWORD", "hunter" + "2")
     FakePsql(monkeypatch, ac, [fail("psql: error: connection to server at db.internal.example failed: FATAL: password authentication failed for user bob")])
-    secret = "Abhisek-Secret-Value-1984"
+    sentinel = "Sentinel-Secret-Value-0042"
     with pytest.raises(ac.Unknown):
-        ac.psql(f"SELECT '{secret}', pg_sleep(12345), a_very_long_column_name_to_push_past_sixty_characters_of_text FROM some_table")
+        ac.psql(f"SELECT '{sentinel}', pg_sleep(12345), a_very_long_column_name_to_push_past_sixty_characters_of_text FROM some_table")
     blob = json.dumps(ac.drain_read_log())
-    for forbidden in (secret, "db.internal.example", "hunter", "bob", "12345", "some_table"):
+    for forbidden in (sentinel, "db.internal.example", "hunter", "bob", "12345", "some_table"):
         assert forbidden not in blob, (forbidden, blob)
 
 
