@@ -21045,7 +21045,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "cb69cd811be352a656878d520a1f20c70a1b75998f73ffa866281be4fe0493fe"
+        "sha256": "5dd6c132caadd380314c703d1792587e93e3527056a9d0b1f434ff31aed95bf6"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21884,7 +21884,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts",
-            "sha256": "76465d396afbf86b6c603a9c1152d9590e74f82a38392bac7b7dcdbd82aeb9b8"
+            "sha256": "b299fdcd4ec97b0993a2dc902f9f7c4c9dd730b0d7f26153941379c9ffcbea4f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
@@ -21932,7 +21932,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts",
-            "sha256": "ecc947ee624c62cc512cc30324852621ebed96f720df9b75fb13ff11a211f40d"
+            "sha256": "264dc48d529dbe3299abad35ebdf0ad530f2db931837513bbaed480e69b6018d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts",
@@ -22104,7 +22104,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
+            "sha256": "108eba8b7b5fe0425603453de53ec8a62c363605d43a65cd0995f5fdbb683c0b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -22148,7 +22148,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
-            "sha256": "7ac963e85d673e64539b030491f5fd71b9c427b073de02221f0311947323b7e1"
+            "sha256": "ac52e2f95b7ed2e0e11cea8bb4caaaca4c5d05614952cb46cb26cd64ea327f33"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
@@ -22480,7 +22480,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f5ffbd7f40cc0fb64ceb2363e66482010fdccc6df80e20c46883081aa8b2ca05"
+        "sha256": "a32158e8a81a3a61e155a03fe9f75363af65888db71b1197e53f54736691457d"
       },
       {
         "id": "service_effect_contracts",
@@ -22500,7 +22500,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "4aa518900bc072848c137e9df29cd4fdd89eceb497e80df56d405e3ad4fec607"
+        "sha256": "887e7523b9e1f69046b545bde9be06c1930184500e40d55249c3f33d9d032f5f"
       }
     ]
   },

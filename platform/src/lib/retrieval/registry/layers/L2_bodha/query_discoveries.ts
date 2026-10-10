@@ -219,6 +219,16 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
       // from "could not be assessed" — so an empty tail here is never silent.
       const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
 
+      // §N.6.1 / DENS-F: the row's corroboration layer is `corroboration_count` (how many independent methods agree on the discovery; selected on every row). The page's rows are
+      // counted by that value, so a caller cannot read the row count as "N corroborated discoveries": a count of 0 or 1 is a single-method finding, not a confirmed one. Rows are never dropped (B.10).
+      // A NULL count is reported under the key `unknown`, never folded into a tier it was not measured at.
+      const corroboration_tiers_in_page: Record<string, number> = {}
+      for (const r of rowsRes.rows as Array<Record<string, unknown>>) {
+        const c = r['corroboration_count']
+        const key = c === null || c === undefined ? 'unknown' : String(c)
+        corroboration_tiers_in_page[key] = (corroboration_tiers_in_page[key] ?? 0) + 1
+      }
+
       return {
         content: {
           chart_id,
@@ -232,6 +242,7 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
+          corroboration_tiers_in_page,
           // MC-015/026: family-collapsed view — prefer this over `rows` for a non-duplicated
           // read. See docstring + tool description for why `rows` alone over-represents.
           discovery_families,
