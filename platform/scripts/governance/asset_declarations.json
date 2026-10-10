@@ -12548,6 +12548,48 @@
       "derivation.$.factor_ledger[*].connections[*].reason"
      ]
     }
+   ],
+   "writer_constant_phrases": [
+    {
+     "file": "bo_pratijna_v4_engine.py",
+     "entry": "derivation.$.factor_ledger[*].detail",
+     "form": "constant_write",
+     "literal": "honest gap: yoga catalog/firings not exposed by the Chart Reader (§2.5 out of Lane B1/B2 scope) — always scored as no-match. See module docstring.",
+     "why": "the yoga factor's ledger detail: the writer states this fixed absence ('honest gap: yoga catalog/firings not exposed by the Chart Reader (§2.5 out of Lane B1/B2 scope) — always scored as no-match. See module docstring.') where the ledger has no computed value to state; it is an honest absence statement by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:972"
+    },
+    {
+     "file": "bo_pratijna.py",
+     "entry": "derivation.$.denials[*].reason",
+     "form": "constant_write",
+     "literal": "no KaryatvaMap registered for this event_class_id",
+     "why": "a denial's reason when the event class has no Karyatva map: the writer states this fixed absence ('no KaryatvaMap registered for this event_class_id') where the ledger has no computed value to state; it is an honest absence statement by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:378"
+    },
+    {
+     "file": "bo_pratijna_v4_engine.py",
+     "entry": "derivation.$.denials[*].reason",
+     "form": "constant_write",
+     "literal": "no D1 house data",
+     "why": "a denial's reason when the chart has no D1 house data: the writer states this fixed absence ('no D1 house data') where the ledger has no computed value to state; it is an honest absence statement by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:774"
+    },
+    {
+     "file": "bo_pratijna.py",
+     "entry": "derivation.$.factor_ledger[*].connections[*].reason",
+     "form": "constant_write",
+     "literal": "no KaryatvaMap registered for this event_class_id",
+     "why": "a connection's reason when the event class has no Karyatva map: the writer states this fixed absence ('no KaryatvaMap registered for this event_class_id') where the ledger has no computed value to state; it is an honest absence statement by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:378"
+    },
+    {
+     "file": "bo_pratijna_v4_engine.py",
+     "entry": "derivation.$.factor_ledger[*].connections[*].reason",
+     "form": "constant_write",
+     "literal": "no D1 house data",
+     "why": "a connection's reason when the chart has no D1 house data: the writer states this fixed absence ('no D1 house data') where the ledger has no computed value to state; it is an honest absence statement by design, not a stand-in for a missing value",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:774"
+    }
    ]
   },
   "bo_samskara": {
