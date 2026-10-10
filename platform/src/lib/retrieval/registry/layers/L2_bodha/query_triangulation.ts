@@ -19,6 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -64,18 +65,25 @@ export const queryTriangulationCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id  = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const questionClass = args['question_class'] ? String(args['question_class']) : null
     const tradition     = args['tradition'] ? String(args['tradition']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)  { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (questionClass) { filters.push(`question_class = $${p++}`); params.push(questionClass) }
     if (tradition)      { filters.push(`tradition = $${p++}`); params.push(tradition) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT triangulation_id, ayanamsha_id, question_class, tradition, verdict_inputs,
@@ -83,7 +91,7 @@ export const queryTriangulationCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_triangulation
       WHERE ${where}
-      ORDER BY question_class, tradition
+      ORDER BY question_class, tradition, ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -95,6 +103,7 @@ export const queryTriangulationCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,

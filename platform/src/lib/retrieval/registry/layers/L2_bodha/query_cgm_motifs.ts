@@ -10,6 +10,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -64,16 +65,23 @@ export const queryCgmMotifsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const motif_class  = args['motif_class'] ? String(args['motif_class']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (motif_class)  { filters.push(`motif_class = $${p++}`);  params.push(motif_class) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT motif_id, ayanamsha_id, snapshot_type, motif_name, motif_class,
@@ -81,7 +89,7 @@ export const queryCgmMotifsCapability: CapabilityDescriptor = {
              classical_citation_id, verification_pass_status, citation_ref, citation_human
       FROM bodha_cgm_motifs
       WHERE ${where}
-      ORDER BY motif_strength DESC NULLS LAST, motif_name
+      ORDER BY motif_strength DESC NULLS LAST, motif_name, ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -93,6 +101,7 @@ export const queryCgmMotifsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
