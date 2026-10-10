@@ -14,9 +14,9 @@ regenerated, not hand-maintained — see the generator's own header comment for 
 
 ## 0. Live catalog snapshot
 
-`getCatalog()` returned **186** live capabilities at generation time.
+`getCatalog()` returned **185** live capabilities at generation time.
 
-By resolved type: **tool**=180, **resource**=5, **prompt**=1.
+By resolved type: **tool**=180, **resource**=4, **prompt**=1.
 
 (6 of these resolve `type` via a `primitive_type` fallback — a real, pre-existing
 registry inconsistency this generator tolerates rather than papers over; see
@@ -51,7 +51,7 @@ first time.
 ## 2. (b) MCP tool-registration projection vs. the ~25 hand-written `server.tool` blocks
 
 Generated MCP projection (type=tool + `projection_tags` includes `mcp_full`):
-**178** tool registrations (+ 6 mcp-tagged
+**178** tool registrations (+ 5 mcp-tagged
 resources/prompts that would need `server.resource()`/`server.prompt()`, not
 `server.tool()` — listed separately, not folded in).
 
@@ -71,8 +71,8 @@ Real hand-written `server.tool(...)` blocks extracted from
 
 **Reachability cross-check** (does a registry capability have ANY route through the current
 hand-written 25, by literal `marsys://` URI reference in that tool's body — not by name):
-**24 / 186** catalog URIs are referenced somewhere in
-`registry_bridge.ts`; **162 / 186** are not referenced
+**24 / 185** catalog URIs are referenced somewhere in
+`registry_bridge.ts`; **161 / 185** are not referenced
 by literal URI anywhere in that file (they may still be reachable via a different bridge file,
 a resource loader, or not yet individually exposed on MCP at all — this scan is scoped to
 `registry_bridge.ts` only, per this lane's (b) sub-item; a full-surface reachability
@@ -91,7 +91,7 @@ gap; it does not propose collapsing the two (see §4, out of scope this lane).
 
 ## 3. (c) Machine census
 
-`machine_census.generated.json` — **186** entries, every field the registry
+`machine_census.generated.json` — **185** entries, every field the registry
 declares (uri/type/layer/name/scope/archetype/traversal_level/tool_role/data_source/
 mutation/emits_references/lel_capable/calibration_context_only/bearing_first/
 required_inputs/projection_tags/display/annotations + presence flags for
@@ -175,7 +175,7 @@ mock overrides exercising every merge path: `description_override`, `name_overri
 
 ## 7. (g) W5 Lane L4 — tool-search index (`tool_search_index.generated.json`)
 
-**187** entries — **186** live catalog capabilities plus
+**186** entries — **185** live catalog capabilities plus
 **1** reviewed MCP-native discovery entry, with no filtering. Each entry
 carries `uri`/`name`/`type`/`layer`/`scope`/`family` (the descriptor's own
 `archetype`)/`tool_role`/`short_label`/`one_line`/`description`/`keywords` (a deduped,
@@ -236,7 +236,7 @@ tagged capability's real public face by source-text scanning every registrar fil
 just `registry_bridge.ts`). This generation run: **81**
 total internal-name-mismatch corrections across the three profiles (full: 51,
 compact: 27, consult:
-3); 115
+3); 114
 tagged capabilities across the whole catalog have NO live server.tool() registration under any
 name and are honestly excluded (never emitted as an unresolvable allowlist entry) — see each
 profile's own `excluded_unresolved_registration` field for the per-profile list.

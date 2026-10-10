@@ -151,6 +151,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 })
   }
 
+  // HYGIENE (S9 item 9, held) — NOT authentication. Both principal headers must be present and
+  // non-empty for EVERY capability scope; before this, `scope: 'global'` capabilities were gated
+  // by the service token alone and the headers were only consulted inside the per_chart branch
+  // below. This is a presence check on caller-asserted headers: anyone who holds the service
+  // token can still send any value, so it proves nothing about WHO is calling. The real fix is
+  // OIDC-bound service requests (production env MCP_CALLER_OIDC_AUDIENCE and
+  // MCP_CALLER_OIDC_SERVICE_ACCOUNT; owner/ops list), after which the principal can be derived
+  // from a verified token instead of trusted from headers.
+  const principalUser = request.headers.get('x-mcp-user')?.trim()
+  const principalKeyId = request.headers.get('x-mcp-key-id')?.trim()
+  if (!principalUser || !principalKeyId) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'Missing principal headers (X-MCP-User, X-MCP-Key-Id)',
+        remediation: 'Every capability call must carry the resolved MCP principal in X-MCP-User and X-MCP-Key-Id.',
+      }),
+      { status: 401 }
+    )
+  }
+
   let body: { uri?: string; args?: Record<string, unknown> }
   try {
     body = await request.json()

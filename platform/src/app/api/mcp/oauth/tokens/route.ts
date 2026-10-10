@@ -14,6 +14,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { issueTokens, revokeTokensForUid } from '@/lib/mcp/oauth/store'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { isMcpOwnerActive } from '@/lib/mcp/auth'
 
 export async function POST(request: Request) {
   if (!validateServiceToken(request)) {
@@ -40,6 +41,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    // A disabled / pending / profile-less owner gets no new tokens (existing rows are
+    // untouched; validate and refresh refuse them too).
+    if (!(await isMcpOwnerActive(body.uid))) {
+      return NextResponse.json(
+        { error: 'invalid_grant', error_description: 'account is not active' },
+        { status: 403 }
+      )
+    }
     const tokens = await issueTokens(body.uid, body.scopes)
     return NextResponse.json(tokens, { status: 201 })
   } catch (err) {

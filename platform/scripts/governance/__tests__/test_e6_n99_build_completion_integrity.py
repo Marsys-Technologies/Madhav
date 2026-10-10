@@ -433,6 +433,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1326_ga_structural_integrity_node_composite_exclusion.sql",
                            "1335_bg_yogas_wfix_a_fallback_reseal.sql",
                            "1339_k2_1b_promise_graph_columns.sql",
+                           "1341_k1_2_avadhi_candidate_dossiers.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
@@ -469,7 +470,7 @@ def test_every_resolvable_literal_parses_when_wrapped_as_the_server_will_see_it(
 
 def test_registry_entry_states_the_semantics_and_bumps_the_revision():
     e = ac.CRITERION_REGISTRY["Build.completion"]
-    assert e["revision"] == 6 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set); 5: SS R-d (a writer-less service with no count_sql reads N/A by declaration); 6: N-178 (the latest started attempt)
+    assert e["revision"] == 7 and "integrity_check_sql" in e["applicability"] and "PARTIAL" in e["applicability"]      # E5.7: revision 4 (SS role reading and the declared produced-table set); 5: SS R-d (a writer-less service with no count_sql reads N/A by declaration); 6: N-178 (the latest started attempt); 7: N-305 (an unread latest-attempt log never leaves a PASS)
     assert "READ ONLY" in e["applicability"] and "first column of its first row" in e["applicability"]
     assert ac.REGISTRY_REVISION >= 25
 

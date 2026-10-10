@@ -1,3 +1,4 @@
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 /**
  * dd1_battery/live_turn.ts — drive ONE real turn against a live
  * `/api/pariprashna` target and return the full ordered wire transcript.

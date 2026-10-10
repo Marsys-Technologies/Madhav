@@ -14,6 +14,13 @@ import { dispatchPreparedRun } from '@/lib/build/runDispatch'
 import { JOB_DISPATCH_FAILED_PREFIX } from '@/lib/charts/readiness'
 import type { ChartInputSnapshot } from '@/lib/charts/types'
 import {
+  AYANAMSHA_EDIT_BLOCKED,
+  AYANAMSHA_EDIT_NEEDS_CONFIRMATION,
+  decideAyanamshaEdit,
+  type AyanamshaEditPolicy,
+} from '@/lib/charts/ayanamshaEditGuard'
+import { getAyanamshaEditPolicy } from '@/lib/charts/ayanamshaEditPolicy'
+import {
   classifyChartChanges,
   normalizeChartUpdate,
   normalizeStoredChart,
@@ -52,6 +59,8 @@ export type ChartUpdateErrorCode =
   | 'INVALID_BUILD_PLAN'
   | 'CLEAR_SPEC_MISSING'
   | 'RECOMPUTE_PREPARATION_FAILED'
+  | typeof AYANAMSHA_EDIT_BLOCKED
+  | typeof AYANAMSHA_EDIT_NEEDS_CONFIRMATION
 
 const STATUS: Record<ChartUpdateErrorCode, number> = {
   VALIDATION_FAILED: 422,
@@ -61,6 +70,8 @@ const STATUS: Record<ChartUpdateErrorCode, number> = {
   INVALID_BUILD_PLAN: 422,
   CLEAR_SPEC_MISSING: 422,
   RECOMPUTE_PREPARATION_FAILED: 500,
+  AYANAMSHA_EDIT_BLOCKED: 403,
+  AYANAMSHA_EDIT_NEEDS_CONFIRMATION: 409,
 }
 
 export class ChartUpdateError extends Error {
@@ -147,13 +158,15 @@ export async function updateChartAndMaybeRecompute(args: {
   chartId: string
   principalId: string
   input: unknown
+  /** Ayanamsha edit policy; defaults to `CHART_AYANAMSHA_EDIT_POLICY` (default `block_all`). Injectable for tests. */
+  ayanamshaPolicy?: AyanamshaEditPolicy
 }): Promise<ChartUpdateResult> {
   const { chartId, principalId } = args
   const normalized = normalizeChartUpdate(args.input)
   if (!normalized.ok) {
     throw new ChartUpdateError('VALIDATION_FAILED', 'Some chart details are invalid.', normalized.fields)
   }
-  const submitted = normalized.value
+  const ayanamshaPolicy = args.ayanamshaPolicy ?? getAyanamshaEditPolicy()
 
   const pool = await getPool()
   const client = await pool.connect()
@@ -161,6 +174,27 @@ export async function updateChartAndMaybeRecompute(args: {
   try {
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE')
     const stored = normalizeStoredChart(await lockChart(client, chartId))
+    // An omitted ayanamshas list means "unchanged": never an ayanamsha edit.
+    const submitted = normalized.value.ayanamshas_omitted
+      ? { ...normalized.value, ayanamshas: stored.ayanamshas }
+      : normalized.value
+
+    // Ayanamsha edit guard (SS N-319), before any mutation: a changed ayanamsha
+    // SET on this existing chart is refused as a whole (block_all), needs an
+    // explicit confirmation (warn), or runs as before (off). Every other edit,
+    // including birth-data recompute, is unaffected by the policy.
+    const classification = classifyChartChanges(stored, submitted)
+    const changedFields: ChartChangeField[] = classification.changedFields
+    const ayanamshasChanged = changedFields.includes('ayanamshas')
+    const verdict = decideAyanamshaEdit({
+      policy: ayanamshaPolicy,
+      ayanamshasChanged,
+      otherFieldsChanged: changedFields.some((field) => field !== 'ayanamshas'),
+      confirmDestructive: normalized.value.confirm_destructive,
+    })
+    if (verdict.action === 'refuse') {
+      throw new ChartUpdateError(verdict.code, verdict.message, { ayanamshas: verdict.message }, { policy: ayanamshaPolicy })
+    }
 
     const activeRunId = await findActiveRun(client, chartId)
     if (activeRunId) {
@@ -176,7 +210,6 @@ export async function updateChartAndMaybeRecompute(args: {
       throw new ChartUpdateError('VALIDATION_FAILED', 'Reselect the new birth place.', locationFields)
     }
 
-    const classification = classifyChartChanges(stored, submitted)
     if (classification.mode === 'noop') {
       await client.query('COMMIT')
       return { mode: 'noop', chartId, changedFields: [] }

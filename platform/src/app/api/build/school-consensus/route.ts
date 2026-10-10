@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
 
     // 4a: Insert per-school analysis runs (7 rows per domain)
     for (const schoolResult of result.schoolResults) {
+      // Not-available schools (no live signals) carry no score: nothing to persist.
+      if (schoolResult.domainScore === null) continue
       const w = DOMAIN_AUTHORITY_WEIGHTS[domain][schoolResult.school as SchoolName] ?? (1 / 7)
       const weighted = schoolResult.domainScore * w
       await query(
@@ -149,7 +151,7 @@ export async function POST(req: NextRequest) {
     convergenceRows++
 
     // 4c: Insert disagreements (E1 — classify + persist inter-school divergence)
-    const schoolScores = result.schoolResults.map(r => ({ school: r.school, score: r.domainScore, direction: r.direction }))
+    const schoolScores = result.schoolResults.filter(r => r.domainScore !== null).map(r => ({ school: r.school, score: r.domainScore, direction: r.direction }))
     const positiveSchools = schoolScores.filter(s => s.direction === 'positive').map(s => s.school)
     const negativeSchools = schoolScores.filter(s => s.direction !== 'positive').map(s => s.school)
     const hasDivergence = positiveSchools.length > 0 && negativeSchools.length > 0

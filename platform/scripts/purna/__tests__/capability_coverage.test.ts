@@ -14,10 +14,11 @@ describe('Purna capability coverage projection', () => {
     // R3 boundary (native strategic ruling packets 1-4): get_av_transit_gating and
     // synergy_pipeline each gained a genuine second, per-mode binding (kakshya_windows /
     // dry_run) — the coverage denominator is per-BINDING, so 186 -> 188 rows even though the
-    // SCU count (182) is unchanged.
-    expect(rows).toHaveLength(188)
-    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(188)
-    expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
+    // SCU count (182) is unchanged. SS N-373: ephemeris_cache_native_lifetime retired (one SCU, one
+    // binding) — 188 -> 187 rows, 182 -> 181 SCUs.
+    expect(rows).toHaveLength(187)
+    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(187)
+    expect(new Set(rows.map((row) => row.scu_id)).size).toBe(181)
     // synergy_pipeline is no longer missing: its executed mode is now contracted (derived,
     // 6 legs) and its dry_run mode is contracted (snapshot_resource, proof_kind 'plan') —
     // genuine per-mode proof typing closed the type-system gap the prior comment described.
@@ -33,7 +34,7 @@ describe('Purna capability coverage projection', () => {
     // kakshya_windows binding specifically (its sav_bav_gating default binding remains
     // separately, statically proven and counted under "authored" above).
     expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(2)
-    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(183)
+    expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(182)
     expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(3)
   })
 

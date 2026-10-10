@@ -1,37 +1,34 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
   buildCapabilityEstateCensus,
   canonicalJson,
-  readCommittedCapabilityEstateCensusProvenance,
+  censusContentSha256,
   renderCapabilityEstateCensus,
 } from '../generate_capability_estate_census'
 
 describe('capability estate census', () => {
   it('keeps runtime, public-route, producer, and reviewed-output denominators distinct', async () => {
-    const census = await buildCapabilityEstateCensus({
-      generatedAt: '2026-09-13T00:00:00.000Z',
-    })
+    const census = await buildCapabilityEstateCensus()
 
     expect(census.denominators.runtime_descriptors).toMatchObject({
-      total: 186,
+      total: 185,
       tools: 180,
-      resources: 5,
+      resources: 4,
       prompts: 1,
     })
     expect(census.denominators.planner_addressable_descriptors).toMatchObject({
-      total: 183,
+      total: 182,
       excluded: 3,
     })
     expect(census.denominators.public_registrar_resolution).toMatchObject({
       verified: 71,
       resolved_including_ambiguous: 71,
       unresolved: 0,
-      not_exposed: 115,
+      not_exposed: 114,
       ambiguous: 0,
       name_only_unverified: 0,
     })
@@ -155,16 +152,16 @@ describe('capability estate census', () => {
       expect(blocked?.known_gaps.join(' ')).not.toHaveLength(0)
     }
 
-    expect(census.details.descriptor_route_contracts).toHaveLength(186)
+    expect(census.details.descriptor_route_contracts).toHaveLength(185)
     expect(census.denominators.descriptor_route_contracts).toMatchObject({
-      denominator: 186,
+      denominator: 185,
       non_exhaustible_paginated: 95,
       exhaustible_paginated: 5,
-      descriptor_content_untyped: 181,
+      descriptor_content_untyped: 180,
       full_profile_allowlist_enforced: true,
     })
     expect(Object.values(census.denominators.descriptor_route_contracts.by_public_route_disposition)
-      .reduce((sum, value) => sum + value, 0)).toBe(186)
+      .reduce((sum, value) => sum + value, 0)).toBe(185)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.internal_route_evidence.length > 0)).toBe(true)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.full_profile_enforcement === 'enforced')).toBe(true)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.public_route_evidence.length > 0)).toBe(true)
@@ -183,19 +180,17 @@ describe('capability estate census', () => {
         { tool_name: 'ref_entities_list', route_kind: 'exact_uri_binding' },
       ]))
     expect(census.details.descriptor_route_contracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed'))
-      .toHaveLength(115)
+      .toHaveLength(114)
   })
 
-  it('is deterministic and binds its SHA-256 to canonical content and source hashes', async () => {
-    const options = { generatedAt: '2026-09-13T00:00:00.000Z' }
-    const first = await buildCapabilityEstateCensus(options)
-    const second = await buildCapabilityEstateCensus(options)
+  it('is deterministic and its printed SHA-256 binds canonical content and source hashes', async () => {
+    const first = await buildCapabilityEstateCensus()
+    const second = await buildCapabilityEstateCensus()
     expect(second).toEqual(first)
 
-    const { content_sha256, ...hashMaterial } = first
-    const expectedHash = createHash('sha256').update(canonicalJson(hashMaterial)).digest('hex')
-    expect(content_sha256).toBe(expectedHash)
-    expect(content_sha256).toMatch(/^[a-f0-9]{64}$/)
+    const expectedHash = createHash('sha256').update(canonicalJson(first)).digest('hex')
+    expect(censusContentSha256(first)).toBe(expectedHash)
+    expect(censusContentSha256(first)).toMatch(/^[a-f0-9]{64}$/)
     expect(first.provenance.sources.length).toBeGreaterThanOrEqual(6)
     for (const source of first.provenance.sources) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/)
@@ -204,74 +199,37 @@ describe('capability estate census', () => {
     expect(renderCapabilityEstateCensus(first)).toMatch(/\n$/)
   }, 15_000)
 
-  // DECISION (E6.1 follow-up, item 5): `source_revision` is INFORMATIONAL display provenance and is deliberately NOT verified by `codegen:capability-estate-census:check`.
-  // `:check` reads `generated_at` / `source_revision` back from the committed artifact and re-renders with them, so it detects drift in every semantic field (denominators, details,
-  // the per-source SHA-256 fingerprints, content_sha256) but can never compare the revision with git. Verifying it would only manufacture false FAILs: GitHub's merge-group and squash
-  // commits attribute every changed path to a new queue SHA (see readCommittedCapabilityEstateCensusProvenance). "Which source was this built from" is answered by
-  // provenance.sources[].sha256, which `:check` does verify. The generator's own doc comment says "non-authoritative display provenance"; this test pins that status, so a change
-  // that starts verifying (or starts depending on) the stamp has to change the pin on purpose. (The generator file itself is a hashed source of the committed artifact, so this
-  // decision is recorded here rather than in a generator comment, which would force an artifact regeneration.)
-  it('treats source_revision as informational display provenance: no semantic field depends on it and nothing verifies it against git', async () => {
-    const generatedAt = '2026-09-13T00:00:00.000Z'
-    const a = await buildCapabilityEstateCensus({ generatedAt, sourceRevision: 'a'.repeat(40) })
-    const b = await buildCapabilityEstateCensus({ generatedAt, sourceRevision: 'b'.repeat(40) })
-    expect(a.source_revision).not.toBe(b.source_revision)
-    // everything the census MEASURES is identical whatever revision is stamped; only the stamp (and the hash that covers the whole rendered base) moves
-    const { source_revision: _ra, content_sha256: _ca, ...semanticA } = a
-    const { source_revision: _rb, content_sha256: _cb, ...semanticB } = b
-    expect(semanticB).toEqual(semanticA)
-    expect(b.content_sha256).not.toBe(a.content_sha256)
-
-    // :check reads the committed value back, so it passes for ANY well-formed committed revision: it cannot be a verification of the SHA
-    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
-    try {
-      const generatedDir = join(repoRoot, 'platform', 'src', 'generated')
-      mkdirSync(generatedDir, { recursive: true })
-      for (const sha of ['c'.repeat(40), '0'.repeat(40)]) {
-        writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({ generated_at: generatedAt, source_revision: sha }))
-        expect(readCommittedCapabilityEstateCensusProvenance(repoRoot).sourceRevision).toBe(sha)
-      }
-      // the only gate on the field is its shape: a malformed value is the deterministic fail-closed fallback, not a mismatch against git
-      writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({ generated_at: generatedAt, source_revision: 'HEAD' }))
-      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot).sourceRevision).toBe('unavailable')
-    } finally {
-      rmSync(repoRoot, { recursive: true, force: true })
+  // DECISION (N-301, supersedes E6.1 follow-up item 5): the artifact stores NO generation timestamp, NO source revision and NO whole-file hash. A hand refresh used to rewrite
+  // those three lines, so any two PRs that both refreshed the census collided on them even when the rest merged cleanly. Freshness is still proven: `:check` re-renders the whole
+  // artifact and compares it byte for byte, and `provenance.sources[].sha256` names which source each part was built from. The hash is printed (censusContentSha256), never stored.
+  it('stores no timestamp, source revision or whole-file hash, in the build output or in the committed artifact', async () => {
+    const census = await buildCapabilityEstateCensus()
+    const keys = Object.keys(census)
+    for (const retired of ['generated_at', 'source_revision', 'content_sha256']) {
+      expect(keys).not.toContain(retired)
     }
-
-    // and the generator never asks git: no process spawn, no rev-parse (a future change that starts verifying the stamp must change this pin and the header comment)
-    const source = readFileSync(join(__dirname, '..', 'generate_capability_estate_census.ts'), 'utf8')
-    expect(source).not.toMatch(/child_process|execSync|spawnSync|execFileSync|rev-parse|git\s+(?:log|show|rev)/)
-    expect(source).toMatch(/non-authoritative display provenance/)                          // the generator's own words for it
+    const committed = JSON.parse(readFileSync(join(__dirname, '..', '..', 'src', 'generated', 'capability_estate_census.json'), 'utf8')) as Record<string, unknown>
+    for (const retired of ['generated_at', 'source_revision', 'content_sha256']) {
+      expect(Object.keys(committed)).not.toContain(retired)
+    }
+    // the committed artifact is exactly what the generator renders now: a stale or hand-edited file cannot pass
+    expect(readFileSync(join(__dirname, '..', '..', 'src', 'generated', 'capability_estate_census.json'), 'utf8')).toBe(renderCapabilityEstateCensus(census))
   }, 30_000)
 
-  it('pins reviewed provenance across synthetic merge-group and squash commits', () => {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
-    try {
-      const generatedDir = join(repoRoot, 'platform', 'src', 'generated')
-      mkdirSync(generatedDir, { recursive: true })
-      writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({
-        generated_at: '2026-09-15T15:40:14.000Z',
-        source_revision: '77c4aa43b673cf730ea4adfc4389e777ce24045a',
-      }))
-
-      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot)).toEqual({
-        generatedAt: '2026-09-15T15:40:14.000Z',
-        sourceRevision: '77c4aa43b673cf730ea4adfc4389e777ce24045a',
-      })
-    } finally {
-      rmSync(repoRoot, { recursive: true, force: true })
-    }
+  it('refuses the retired provenance flags and never asks git', () => {
+    const source = readFileSync(join(__dirname, '..', 'generate_capability_estate_census.ts'), 'utf8')
+    expect(source).toMatch(/--generated-at and --source-revision were retired/)
+    // refused in the '=' form AND the space form (`--generated-at 2026-...`), for both flags
+    expect(source).toMatch(/arg === '--generated-at' \|\| arg\.startsWith\('--generated-at='\)/)
+    expect(source).toMatch(/arg === '--source-revision' \|\| arg\.startsWith\('--source-revision='\)/)
+    expect(source).not.toMatch(/child_process|execSync|spawnSync|execFileSync|rev-parse|git\s+(?:log|show|rev)/)
   })
 
-  it('uses deterministic fail-closed provenance when the reviewed artifact is absent', () => {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
-    try {
-      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot)).toEqual({
-        generatedAt: '1970-01-01T00:00:00.000Z',
-        sourceRevision: 'unavailable',
-      })
-    } finally {
-      rmSync(repoRoot, { recursive: true, force: true })
-    }
+  it('changes the rendered artifact when any hashed source differs (the gate is not a constant)', async () => {
+    const census = await buildCapabilityEstateCensus()
+    const tampered = structuredClone(census)
+    tampered.provenance.sources[0].sha256 = tampered.provenance.sources[0].sha256.replace(/^./, (c) => (c === '0' ? '1' : '0'))
+    expect(renderCapabilityEstateCensus(tampered)).not.toBe(renderCapabilityEstateCensus(census))
+    expect(censusContentSha256(tampered)).not.toBe(censusContentSha256(census))
   })
 })
