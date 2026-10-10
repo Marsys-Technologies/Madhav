@@ -4,17 +4,33 @@ chart_facts.cross_ayanamsha_divergence_arcsec (00_ARCHITECTURE/briefs/suvarna/ex
 Real SQL on the DISPOSABLE PostgreSQL (never production): a fresh database per test, a table owned by a `data_plane_l1_owner` role, and an
 administrator that is NOT a superuser and NOT a member of the owner (so the transient GRANT / SET LOCAL ROLE / REVOKE path is the one exercised,
 as with the Cloud SQL `postgres` role). Each guard has a test that fails if the guard is removed.
+
+PRODUCTION IS POSTGRESQL 15.18, where a CREATEROLE role may GRANT any role and need not be a member of it. From PostgreSQL 16 a CREATEROLE role
+may GRANT a role only with the ADMIN option on it, and a role holding the ADMIN option IS a member (pg_has_role MEMBER is true), so the
+package's "administrator was not a member, GRANT transiently" branch cannot be reached there. This file is therefore honest on both:
+  * server_version_num < 160000 (production-faithful): the administrator holds no membership and the transient GRANT / SET LOCAL ROLE /
+    REVOKE path is exercised by every test;
+  * server_version_num >= 160000: the administrator is given `GRANT data_plane_l1_owner ... WITH INHERIT FALSE, SET TRUE` (the minimal
+    grant that lets SET LOCAL ROLE work; the package then takes its "already a member" branch), every test whose claim does not depend on the
+    transient membership still runs, and exactly the tests that do are SKIPPED with a visible reason (see `needs_transient_membership`).
+CI: the Governance Tool Tests shards install psycopg, and with CI set a missing psycopg fails the module instead of skipping it.
 """
 from __future__ import annotations
 
 import importlib.util
 import itertools
+import os
 import pathlib
 import re
+import subprocess
+import sys
 
 import pytest
 
-psycopg = pytest.importorskip("psycopg")
+if os.environ.get("CI"):
+    import psycopg      # noqa: E402  CI must RUN this file: a missing driver is a collection FAILURE here, never a silent skip
+else:
+    psycopg = pytest.importorskip("psycopg")
 
 from _disposable_pg import disposable_pg  # noqa: F401,E402  (the fixture must be importable here)
 
@@ -51,6 +67,9 @@ def db(disposable_pg):
     """A fresh database with the roles and a chart_facts table; returns (cluster, dbname, make_conn)."""
     cl = disposable_pg
     cl.psql(ROLES_SQL)
+    cl.psql("REVOKE data_plane_l1_owner FROM n349_admin CASCADE")                      # roles are cluster-wide: start every test from "not a member"
+    if int(cl.psql("SHOW server_version_num")) >= 160000:
+        cl.psql("GRANT data_plane_l1_owner TO n349_admin WITH INHERIT FALSE, SET TRUE")   # PG16+ model, see the module docstring
     name = "n349_%d" % next(_counter)
     cl.psql("CREATE DATABASE %s" % name)
     cl.psql("GRANT ALL ON SCHEMA public TO PUBLIC", db=name)
@@ -90,6 +109,20 @@ def _member(cl, name):
     return cl.psql("SELECT pg_has_role('n349_admin','data_plane_l1_owner','MEMBER')", db=name)
 
 
+TRANSIENT_SKIP_REASON = ("production is PostgreSQL 15.18; the transient-membership path cannot be modelled on 16+ "
+                         "(a CREATEROLE role needs the ADMIN option to GRANT, which makes it a member)")
+
+
+@pytest.fixture
+def needs_transient_membership(db):
+    """The administrator is NOT a member of the owner role, so the package's transient GRANT / REVOKE branch runs (PostgreSQL < 16 only)."""
+    cl, name, _, _ = db
+    if _server_version(cl, name) >= 160000:
+        pytest.skip(TRANSIENT_SKIP_REASON)
+    assert _member(cl, name) == "f"
+    return db
+
+
 def _server_version(cl, name):
     return int(cl.psql("SHOW server_version_num", db=name))
 
@@ -120,18 +153,18 @@ def _run(connect, mode, expect=None, rollback=False):
 
 # ───────────────────────── the change itself ─────────────────────────
 
-def test_dry_run_changes_nothing_and_leaves_no_membership(db):
+def test_dry_run_changes_nothing_and_adds_no_membership(db):
     cl, name, connect, _ = db
-    before = _state(cl, name)
+    before, member_before = _state(cl, name), _member(cl, name)
     outcome, text = _run(connect, "dry-run")
     assert outcome == "dry_run" and "ROLLED BACK" in text
     assert _state(cl, name) == before and _default(cl, name) == "0.0"
-    assert _member(cl, name) == "f"
+    assert _member(cl, name) == member_before                                       # "f" on PostgreSQL < 16 (the transient GRANT is gone)
 
 
 def test_apply_drops_exactly_the_one_default_and_nothing_else(db):
     cl, name, connect, _ = db
-    before = _state(cl, name)
+    before, member_before = _state(cl, name), _member(cl, name)
     acl_before = cl.psql("SELECT relacl::text FROM pg_class WHERE relname='chart_facts'", db=name)
     outcome, text = _run(connect, "apply", dd.plan_hash())
     assert outcome == "applied" and "COMMITTED" in text
@@ -142,7 +175,7 @@ def test_apply_drops_exactly_the_one_default_and_nothing_else(db):
     assert "note|f|'x'::text" in after                                           # the other defaults are untouched
     assert cl.psql("SELECT relacl::text FROM pg_class WHERE relname='chart_facts'", db=name) == acl_before
     assert cl.psql("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE relname='chart_facts'", db=name) == "data_plane_l1_owner"
-    assert _member(cl, name) == "f"                                                # the transient membership is gone
+    assert _member(cl, name) == member_before                                      # the transient membership is gone ("f" on PostgreSQL < 16)
 
 
 def test_the_effect_new_rows_are_null_and_existing_zero_rows_stay_without_a_backfill(db):
@@ -162,6 +195,37 @@ def test_a_second_run_is_an_idempotent_no_op_not_an_error(db):
     assert outcome == "noop" and "NO-OP" in text
     assert _default(cl, name) == "<none>"
     assert _run(connect, "dry-run")[0] == "noop"
+
+
+def test_the_transient_membership_is_granted_and_revoked_inside_the_one_transaction(needs_transient_membership):
+    cl, name, connect, _ = needs_transient_membership
+
+    class Seen:
+        def __init__(self, conn):
+            self._conn, self.sql = conn, []
+
+        def cursor(self):
+            cur, seen = self._conn.cursor(), self
+
+            class Cursor:
+                def execute(self, query, *args, **kw):
+                    seen.sql.append(str(query))
+                    return cur.execute(query, *args, **kw)
+
+                def __getattr__(self, attr):
+                    return getattr(cur, attr)
+            return Cursor()
+
+        def __getattr__(self, attr):
+            return getattr(self._conn, attr)
+
+    assert _member(cl, name) == "f"
+    with connect() as conn:
+        seen = Seen(conn)
+        assert dd.run(seen, "apply", dd.plan_hash(), out=lambda _: None) == "applied"
+    order = [next(i for i, q in enumerate(seen.sql) if q.startswith(prefix)) for prefix in ("GRANT data_plane_l1_owner", "SET LOCAL ROLE", "ALTER TABLE", "RESET ROLE", "REVOKE data_plane_l1_owner")]
+    assert order == sorted(order)
+    assert _member(cl, name) == "f" and _default(cl, name) == "<none>"
 
 
 def test_a_member_administrator_keeps_its_membership(db):
@@ -298,12 +362,13 @@ def test_a_partitioned_partition_or_inherited_table_is_refused_and_nothing_chang
 
 def test_a_change_that_touches_anything_else_is_refused_and_rolled_back(db, monkeypatch):
     cl, name, connect, _ = db
+    member_before = _member(cl, name)
     sabotaged = list(dd.DROP_STATEMENTS) + ["ALTER TABLE public.chart_facts ALTER COLUMN note DROP DEFAULT"]
     monkeypatch.setattr(dd, "DROP_STATEMENTS", sabotaged)
     with pytest.raises(dd.Refused, match="diff exactly the one planned line"):
         _run(connect, "apply", dd.plan_hash())
     assert _default(cl, name) == "0.0" and "note|f|'x'::text" in _state(cl, name)         # nothing was committed
-    assert _member(cl, name) == "f"
+    assert _member(cl, name) == member_before
 
 
 TRIGGER_FN = ("CREATE FUNCTION public.n349_noop() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$")
@@ -399,9 +464,9 @@ def test_the_lock_timeout_really_fires_on_the_alter(db):
     assert _default(cl, name) == "0.0"
 
 
-def test_the_lock_timeout_also_bounds_the_transient_grant(db):
+def test_the_lock_timeout_also_bounds_the_transient_grant(needs_transient_membership):
     """With the timeout moved after the GRANT this test is QueryCanceled (the 30 s guard), not LockNotAvailable: the GRANT would wait unbounded."""
-    cl, name, connect, _ = db
+    cl, name, connect, _ = needs_transient_membership
     with connect(cl.user) as holder:                                            # SHARE on pg_auth_members: readers pass, the GRANT (ROW EXCLUSIVE) waits
         holder.execute("LOCK TABLE pg_catalog.pg_auth_members IN SHARE MODE")
         try:
@@ -437,6 +502,26 @@ def test_main_refuses_a_wrong_hash_before_connecting_and_never_prints_a_secret(m
     assert dd.main(["--dry-run"]) == 1
     out = capsys.readouterr().out
     assert "hunter2" not in out and "10.0.0.1" not in out and "failed: RuntimeError" in out
+
+
+def test_with_ci_set_a_missing_psycopg_fails_the_module_instead_of_skipping(tmp_path):
+    """CI installs psycopg, so a missing driver there must be loud. A stub `psycopg` that raises ImportError stands in for "not installed"."""
+    stub = tmp_path / "stub"
+    stub.mkdir()
+    (stub / "psycopg.py").write_text("raise ImportError('psycopg blocked by the test')\n", encoding="utf-8")
+
+    def collect(ci):
+        env = {k: v for k, v in os.environ.items() if k != "CI"}
+        env["PYTHONPATH"] = os.pathsep.join([str(stub)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+        if ci:
+            env["CI"] = "true"
+        return subprocess.run([sys.executable, "-m", "pytest", str(pathlib.Path(__file__).resolve()), "-q", "-p", "no:cacheprovider", "-rs", "--no-header"],
+                              capture_output=True, text=True, env=env, cwd=str(HERE), timeout=120)
+
+    in_ci, local = collect(True), collect(False)
+    assert in_ci.returncode != 0 and "psycopg blocked by the test" in in_ci.stdout + in_ci.stderr, in_ci.stdout[-600:]
+    assert "skipped" not in in_ci.stdout.splitlines()[-1]
+    assert local.returncode in (0, 5) and "1 skipped" in local.stdout       # 5 = "no tests ran": every test was skipped and "could not import 'psycopg'" in local.stdout, local.stdout[-600:]
 
 
 def test_the_package_parses_under_the_python_311_grammar():
