@@ -586,13 +586,20 @@ def _find_pg_bin() -> Path | None:
 
 @pytest.fixture(scope="module")
 def pg_cluster():
-    if os.environ.get("CI", "").lower() not in ("true", "1") and os.environ.get("MARSYS_PG_LIVE_1363") != "1":
+    in_ci = os.environ.get("CI", "").lower() in ("true", "1")
+    if not in_ci and os.environ.get("MARSYS_PG_LIVE_1363") != "1":
         pytest.skip("live tier runs in CI (CI=true) or with MARSYS_PG_LIVE_1363=1; it never starts a cluster by accident")
-    psycopg = pytest.importorskip("psycopg")
+    # In CI the live tier is the proof of equivalence: a missing driver or missing server binaries is a FAILURE, never a silent skip.
+    try:
+        import psycopg
+    except ImportError:
+        if in_ci:
+            pytest.fail("CI=true but psycopg is not importable: the live tier of migration 1363 cannot run (it must not skip in CI)")
+        pytest.skip("psycopg not installed")
     binp = _find_pg_bin()
     if binp is None:
-        if os.environ.get("REQUIRE_PG_BINARIES") == "1":
-            pytest.fail("no PostgreSQL server binaries and REQUIRE_PG_BINARIES=1")
+        if in_ci or os.environ.get("REQUIRE_PG_BINARIES") == "1":
+            pytest.fail("no PostgreSQL server binaries (initdb/pg_ctl) found and the live tier must run here (CI=true or REQUIRE_PG_BINARIES=1); set PG_BIN")
         pytest.skip("no PostgreSQL server binaries (initdb/pg_ctl) found; set PG_BIN")
     root = Path(tempfile.mkdtemp(prefix="m1363pg"))
     data = root / "data"
