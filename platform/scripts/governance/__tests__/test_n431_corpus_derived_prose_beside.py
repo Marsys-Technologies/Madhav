@@ -422,7 +422,7 @@ def test_the_data_constants_keep_the_shape_the_revision_28_generator_reads():
         assert ("NEVER releases it" in tail) == (crit not in BESIDE)
     for crit, text in ac.CORPUS_DERIVED_NA_RULE_DECISIONS.items():
         assert text.startswith("SS N-431") and "SS N-457" in text
-    assert ac.CRITERION_REGISTRY["Narr.agree"]["applicability"].count("N-457") == 0                          # the registry text itself is untouched: the director merges the tails at the one revision bump
+    assert all(tail in ac.CRITERION_REGISTRY[crit]["applicability"] and ac.CRITERION_REGISTRY[crit]["applicability"].count("N-457") == 1 for crit, tail in ac.CORPUS_DERIVED_APPLICABILITY_ADDITIONS.items())     # the ONE revision-28 bump merged every tail into the registry text (rev28_registry_edits.json)
 
 
 def test_the_emitting_literal_slug_survives_for_the_na_cause_scan():
