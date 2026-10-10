@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-10T00:54:17.471Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
@@ -2302,7 +2302,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 4,
+      "input_param_count": 5,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2707,7 +2707,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 17,
+      "input_param_count": 18,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3103,7 +3103,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 9,
+      "input_param_count": 10,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3636,7 +3636,7 @@
         "chart_id",
         "graha"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3846,7 +3846,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3952,7 +3952,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 6,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],

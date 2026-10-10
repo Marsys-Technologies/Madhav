@@ -54,7 +54,9 @@ import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
+import { CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchPositionsCrossCheck } from '../../../ayanamsha_cross_check_reads'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -144,6 +146,15 @@ export const getPositionsCapability: CapabilityDescriptor = {
         'ayanamshas.',
       enum: FRAME_VALUES,
       default: 'lagna',
+    },
+    include_cross_check: {
+      type: 'boolean',
+      description: 'Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every ' +
+        'graha on this page under the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the ' +
+        'reading"; categorical equality only, degrees shown never compared). Default false. Independently of ' +
+        'this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check ' +
+        '(Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:"all" (that is the raw multi-row option).',
+      default: false,
     },
     offset: { type: 'number', description: 'Pagination offset (default 0)', default: 0 },
     limit:  { type: 'number', description: 'Rows per page (default 200, max 1000)', default: 200 },
@@ -310,9 +321,27 @@ export const getPositionsCapability: CapabilityDescriptor = {
         }
       }
 
+      // Lahiri-primary PR-3 (SS N-342): the labelled cross-check. The primary answer above is final and
+      // is never reordered or merged with it. Always-on, compact, for the identity facts this page serves
+      // (Lagna sign, Moon sign, Moon nakshatra); the full per-graha form is opt-in via include_cross_check.
+      // Not applied under the raw "all" option (the caller already has every ayanamsha's rows).
+      let crossCheck: Awaited<ReturnType<typeof fetchPositionsCrossCheck>> | undefined
+      if (aya.id !== null && (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(aya.id)) {
+        const subjects = [...new Set(rows
+          .filter(r => r.fact_category === 'graha_position' && typeof r.fact_subject === 'string')
+          .map(r => r.fact_subject as string))]
+        const identitySubjects = subjects.filter(s => s === 'LAGNA' || s === 'MOON')
+        if (args.include_cross_check === true && subjects.length > 0) {
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects, identityOnly: false, mode: 'full', buildIds })
+        } else if (identitySubjects.length > 0) {
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects: identitySubjects, identityOnly: true, mode: 'compact', buildIds })
+        }
+      }
+
       return {
         content: {
           chart_id: chartId, ...kp.echo(rows), categories, frame, planet: planet ?? null, rows, total: rows.length,
+          ...(crossCheck ? { [CROSS_CHECK_KEY]: crossCheck } : {}),
           include_upagrahas: includeUpagrahas,
           // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
           // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.

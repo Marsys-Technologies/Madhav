@@ -26,6 +26,8 @@ import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolve
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 import { isVerifiedPassStatus, type VerificationPassStatus } from '@/lib/retrieval/envelope'
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '@/lib/retrieval/kp_frame'
+import { CROSS_CHECK_HEADING } from '@/lib/retrieval/ayanamsha_cross_check'
+import { AYANAMSHA_SERVE_ORDER } from '../constants'
 import { resolvedBuildFenceIds, resolvedRowsBuildId, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -1147,6 +1149,9 @@ export interface NotablyAbsentYogasResult {
   ayanamsha_sensitive_candidates: string[]
   ayanamsha_unchecked: string[]
   ayanamsha_sensitivity_note: string | null
+  /** Lahiri-primary PR-3 (SS N-342): the ayanamsha sensitivity above is a LABELLED cross-check of the
+   *  other served ayanamshas against the one served; it is not the reading. Always this heading. */
+  ayanamsha_cross_check_label: typeof CROSS_CHECK_HEADING
   candidate_set_version: string
   eligibility_rule_version: string
   band_version: string
@@ -1174,6 +1179,7 @@ function baseResult(): Omit<NotablyAbsentYogasResult, 'state' | 'reason'> {
     ayanamsha_sensitive_candidates: [],
     ayanamsha_unchecked: [],
     ayanamsha_sensitivity_note: null,
+    ayanamsha_cross_check_label: CROSS_CHECK_HEADING,
     candidate_set_version: NEAR_MISS_CANDIDATE_SET_VERSION,
     eligibility_rule_version: NEAR_MISS_ELIGIBILITY_RULE_VERSION,
     band_version: NEAR_MISS_BAND_VERSION,
@@ -1377,6 +1383,10 @@ async function otherServedAyanamshas(chart_id: string, ayanamsha_id: string, fac
   for (const r of res.rows) {
     if (canonical.has(r.ayanamsha_id) && r.ayanamsha_id !== ayanamsha_id && !out.includes(r.ayanamsha_id)) out.push(r.ayanamsha_id)
   }
+  // Lahiri-primary PR-3: deterministic SERVE order (Lahiri first, then true_chitra, krishnamurti, raman,
+  // surya_siddhanta_classical), not the alphabetical order the SQL returns.
+  const rank = (id: string): number => { const i = (AYANAMSHA_SERVE_ORDER as readonly string[]).indexOf(id); return i === -1 ? 99 : i }
+  out.sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0))
   return out.slice(0, NEAR_MISS_CANONICAL_AYANAMSHAS.length - 1)
 }
 

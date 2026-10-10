@@ -26,6 +26,23 @@ const describeIf = INTEGRATION ? describe : describe.skip
 
 const today = new Date().toISOString().slice(0, 10)
 
+/**
+ * Lahiri-primary PR-3 (SS N-342): the current Mahadasha lord is an identity fact and is always
+ * cross-checked, compact, beside the primary answer (`ayanamsha_cross_check`). The <=1KB gate is a gate on
+ * the PRIMARY current-dasha answer, so it is measured WITHOUT that secondary section (which the response
+ * budget sheds first); the section has its own, separate ceiling. Live-DB only (INTEGRATION=true): not run
+ * in CI. If the primary-only number ever needs re-pinning, measure it against a live chart first.
+ */
+const CROSS_CHECK_KEY = 'ayanamsha_cross_check'
+const CROSS_CHECK_MAX_BYTES = 800
+function primaryBytes(content: Record<string, unknown>): number {
+  const { [CROSS_CHECK_KEY]: crossCheck, ...primary } = content
+  if (crossCheck !== undefined) {
+    expect(Buffer.byteLength(JSON.stringify(crossCheck), 'utf8')).toBeLessThanOrEqual(CROSS_CHECK_MAX_BYTES)
+  }
+  return Buffer.byteLength(JSON.stringify(primary), 'utf8')
+}
+
 describeIf('get_dashas (marsys://tool/L1/get_dashas) — current-dasha gate, live DB', () => {
   for (const chartId of BOTH_CHARTS) {
     it(`[${chartId}] COMPLETE facet set (system=vimshottari, level=1, as_of_date=${today}, ayanamsha_id=lahiri_chitrapaksha) is ONE row, <=1KB`, async () => {
@@ -46,7 +63,7 @@ describeIf('get_dashas (marsys://tool/L1/get_dashas) — current-dasha gate, liv
       expect(rows[0]['ayanamsha_id']).toBe('lahiri_chitrapaksha')
       expect(rows[0]['level_n']).toBe(1)
 
-      const bytes = Buffer.byteLength(JSON.stringify(content), 'utf8')
+      const bytes = primaryBytes(content)
       expect(bytes, `current-dasha payload was ${bytes} bytes`).toBeLessThanOrEqual(1024)
     })
 
@@ -67,7 +84,7 @@ describeIf('get_dashas (marsys://tool/L1/get_dashas) — current-dasha gate, liv
       expect(rows.length).toBe(1)
       expect(rows[0]['ayanamsha_id']).toBe('lahiri_chitrapaksha')
 
-      const bytes = Buffer.byteLength(JSON.stringify(content), 'utf8')
+      const bytes = primaryBytes(content)
       expect(bytes, `defaulted payload was ${bytes} bytes`).toBeLessThanOrEqual(1024)
     })
   }

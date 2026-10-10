@@ -908,8 +908,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           judgment_flags.push(judgmentFlag(
             'moon_frame_ayanamsha_sensitive',
             `the chandra (from-Moon) frame used for this bhāva's Sudarshana leg is itself ` +
-            `ayanamsha-sensitive: the Moon's sign agrees on only ${sensitivity.variation.ayanamsha_agreement} ` +
-            `across the 5 real ayanamshas (divergent: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
+            `ayanamsha-sensitive. Cross-check, not the reading: the Moon's sign agrees with the primary ` +
+            `(${sensitivity.variation.anchor_ayanamsha ?? 'modal reading'}) under only ${sensitivity.variation.ayanamsha_agreement} ` +
+            `of the 5 real ayanamshas (dissenting: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
             'A disclosure of frame instability, not a ruling on which ayanamsha is correct.',
             'info',
           ))
@@ -1919,6 +1920,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 candidate_statuses: notablyAbsent.candidate_statuses,
                 indeterminate: notablyAbsent.indeterminate,
                 ayanamsha_id,
+                // Lahiri-primary PR-3: these booleans compare the OTHER served ayanamshas with the one served.
+                ayanamsha_cross_check_label: notablyAbsent.ayanamsha_cross_check_label,
                 ayanamsha_sensitive: notablyAbsent.ayanamsha_sensitive,
                 ayanamsha_sensitive_by_candidate: notablyAbsent.ayanamsha_sensitive_by_candidate,
                 ayanamsha_sensitive_candidates: notablyAbsent.ayanamsha_sensitive_candidates,
