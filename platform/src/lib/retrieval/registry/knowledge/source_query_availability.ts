@@ -2761,7 +2761,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM bodha_discoveries
              WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
                AND (NULL::text IS NULL OR discovery_class = NULL::text)
-             ORDER BY composite_discovery_rank ASC NULLS LAST, non_obviousness_score DESC NULLS LAST
+             ORDER BY composite_discovery_rank DESC NULLS LAST, non_obviousness_score DESC NULLS LAST, discovery_id ASC
              LIMIT 0 OFFSET 0
           ), family_page AS (
             SELECT discovery_class, discovery_subsystem, hypothesis_text, COUNT(*) AS member_count,
@@ -2770,7 +2770,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
              WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
                AND (NULL::text IS NULL OR discovery_class = NULL::text)
              GROUP BY discovery_class, discovery_subsystem, hypothesis_text
-             ORDER BY MIN(composite_discovery_rank) ASC NULLS LAST LIMIT 0 OFFSET 0
+             ORDER BY MAX(composite_discovery_rank) DESC NULLS LAST,
+                      discovery_class ASC NULLS LAST, discovery_subsystem ASC NULLS LAST, hypothesis_text ASC NULLS LAST
+             LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_discoveries
              WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
