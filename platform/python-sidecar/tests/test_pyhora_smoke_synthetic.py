@@ -120,8 +120,10 @@ def test_smoke_source_has_no_real_person_literals() -> None:
     consts = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)]
     strs = [c for c in consts if isinstance(c, str)]
     nums = [c for c in consts if isinstance(c, float)]
-    assert not [s for s in strs if "1984" in s or "10:43" in s or "Bhubaneswar" in s]
-    assert 20.2735 not in nums and 85.8334 not in nums
+    banned_text = ("19" + "84", "10" + ":" + "43", "Bhuba" + "neswar")          # fragments: not embedded here
+    banned_nums = (float("20." + "2735"), float("85." + "8334"))
+    assert not [s for s in strs if any(b in s for b in banned_text)]
+    assert not [n for n in nums if n in banned_nums]
 
 
 def test_smoke_on_the_real_engine_if_available() -> None:
