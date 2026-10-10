@@ -6480,18 +6480,19 @@ _chunk_clock = time.monotonic      # the wall clock of the adaptive size (a modu
 _TID_RE = re.compile(r"\([0-9]{1,10},[0-9]{1,5}\)")
 
 
-def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict, filt=None, after=None, rows: int = PROSE_NONE_CHUNK_ROWS) -> str:
+def prose_none_existence_chunk_sql(table: str, col: str, kind: str, entry: dict, filt=None, after=None, rows: int = PROSE_NONE_CHUNK_ROWS, extra=None) -> str:
     """ONE bounded statement (pure): the next `rows` rows of `table` in physical `ctid` order after the cursor `after` (None = from the start; '(page,offset)' otherwise: keyset, never OFFSET), the
     number of rows the chunk holds, the last ctid of the chunk and up to PROSE_NONE_SAMPLE_LIMIT offending values (each cut to PROSE_NONE_SAMPLE_CHARS characters) among them, as one jsonb object:
     {rows, last, sample}. The rows are tested by `_prose_none_cond`, the SAME predicate the exact count and the single-statement existence read use, so the verdict cannot differ. `after` is matched against
-    the tid shape and never interpolated otherwise."""
+    the tid shape and never interpolated otherwise. `extra` (the keyed exact read: the measured-chart scope AND one partition predicate, built by the engine) confines the chunk to one partition of the leading
+    key; without it the statement is exactly the whole-table one."""
     if after is not None and not (isinstance(after, str) and _TID_RE.fullmatch(after)):
         raise ValueError(f"the chunk cursor must be a ctid '(page,offset)' or None, not {after!r}")
     c = f'"{col}"'
     cond = _prose_none_cond(c, kind, entry)
     if cond is None:
         return "SELECT NULL::text"
-    parts = ([_slice_pred(filt)] if filt else []) + ([f"ctid > '{after}'::tid"] if after else [])
+    parts = ([_slice_pred(filt)] if filt else []) + ([f"({extra})"] if extra else []) + ([f"ctid > '{after}'::tid"] if after else [])
     where = (" WHERE " + " AND ".join(parts)) if parts else ""
     sp = _scope_pred(table)
     sp_and = " AND (" + sp + ")" if sp else ""
@@ -6539,6 +6540,51 @@ def _prose_none_fetch_existence_chunked(table: str, col: str, kind: str, entry: 
         after, rows = got["last"], next_chunk_rows(rows, secs)
 
 
+def _prose_none_fetch_existence_keyed(plan: KeyedPlan, table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
+    """The KEYED existence read of a json closure: the chunked walk of `_prose_none_fetch_existence_chunked` run inside each partition of the table's leading index key, under the per-ASSET time budget
+    (the whole-table walk of ga_dashas.concurrent_system_lords_jsonb spent 604 s of a 600 s per-column budget and did not reach the end). The verdict rule is the walk's own: a violating row anywhere ends it red,
+    and a closure is shown CLOSED only when EVERY partition's walk reached its end AND counted exactly the rows the plan counted for it. Anything less (a partition that timed out or failed, a partition that
+    changed under the walk, the asset budget running out) raises KeyedReadIncomplete carrying the coverage: the caller reads that as an unread column, never a closure."""
+    budget = asset_read_budget()
+    sp = _scope_pred(table)
+    step = dict(rows=PROSE_NONE_CHUNK_ROWS)                          # the adaptive chunk size carries over from one partition to the next
+
+    def walk_partition(part):
+        extra = f"({sp}) AND {part.pred}" if sp else part.pred
+        t0, after, seen, chunks = _chunk_clock(), None, 0, 0
+        while True:
+            c0 = _chunk_clock()
+            blob = scalar(prose_none_existence_chunk_sql(table, col, kind, entry, filt, after, step["rows"], extra))
+            secs = _chunk_clock() - c0
+            try:
+                got = json.loads(blob or "null")
+            except json.JSONDecodeError as exc:
+                raise Unknown(f"prose_none_fetch_existence: unparseable read of {table}.{col}: {exc}") from exc
+            if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and not isinstance(got.get("rows"), bool) and isinstance(got.get("sample"), list)):
+                raise Unknown(f"prose_none_fetch_existence: malformed answer for {table}.{col}: {blob!r}")
+            if got["sample"]:
+                return dict(violating=True, sample=[str(x) for x in got["sample"]])
+            seen += got["rows"]
+            if got["rows"] < step["rows"]:
+                if seen != part.n:
+                    raise KeyedPartitionChanged(f"holds {seen} row(s), the plan counted {part.n}")
+                return dict(violating=False, sample=[])
+            if not (isinstance(got.get("last"), str) and _TID_RE.fullmatch(got["last"])) or got["last"] == after:
+                raise Unknown(f"the chunk cursor of {table}.{col} did not advance: {blob!r}")
+            chunks += 1
+            if budget.over(_chunk_clock() - t0):          # as the whole walk: checked only after a chunk that found no violating row and did not reach the end
+                raise Unknown(f"the asset read budget ran out inside the partition after {chunks} chunk(s)")
+            after, step["rows"] = got["last"], next_chunk_rows(step["rows"], secs)
+
+    out = keyed_read(plan, walk_partition, what=f"{table}.{col} (json closure walk)", budget=budget, unread_reason=lambda exc: "timed out (cancelled by the database timeout)" if _is_statement_timeout(exc) else (str(exc) or "failed"), stop_when=lambda ans, _o: ans["violating"])
+    for _p, ans in out.answers:
+        if ans["violating"]:
+            return dict(violating=True, sample=ans["sample"], exact=False)
+    if out.complete:
+        return dict(violating=False, sample=[], exact=False)
+    raise KeyedReadIncomplete(out.coverage_text(budget))
+
+
 def prose_none_fetch_existence(table: str, col: str, kind: str, entry: dict, filt=None) -> dict:
     """{violating, sample, exact: False}: the existence read of `prose_none_existence_sql` (a json closure: the same verdict read chunk by chunk, see `_prose_none_fetch_existence_chunked`).
     Raises Unknown on a failed (or timed-out) read."""
@@ -6582,8 +6628,12 @@ def prose_none_read_outside(table: str, col: str, kind: str, entry: dict, filt=N
             except (TypeError, ValueError) as exc:
                 raise Unknown(f"prose_none_fetch_outside: unparseable count for {table}.{col}: {n!r}") from exc
     try:
-        return dict(prose_none_fetch_existence(table, col, kind, entry, filt), why_cheap=why, exact_timed_out=timed_out)
+        plan = keyed_plan(table, filt, est=est) if kind == "json" and _prose_none_cond(f'"{col}"', kind, entry) is not None else None      # the keyed exact read: only a json closure of a table with MORE than KEYED_READ_MIN_ROWS rows in scope
+        found = _prose_none_fetch_existence_keyed(plan, table, col, kind, entry, filt) if plan is not None else prose_none_fetch_existence(table, col, kind, entry, filt)
+        return dict(found, why_cheap=why, exact_timed_out=timed_out)
     except Unknown as err:
+        if isinstance(err, KeyedReadIncomplete):
+            raise                                                    # an unread column with its coverage text (prose_none_fetch_outside grades it): not a statement timeout, never a closure
         if not _is_statement_timeout(err):
             raise
         return dict(unread=f"the existence read (first violating row, bounded sample, no counting) also exceeded the statement timeout ({' '.join(str(err).split())[:160]}): "
@@ -6611,7 +6661,7 @@ def prose_none_fetch_outside(tables: dict, target: str, pn: dict, udts=None) -> 
             got = prose_none_read_outside(t, e["column"], kind, e, filt, est=est_of[t], exact_timed_out=t in slow)
         except Unknown as err:
             # SS N-256: ANY Unknown from the closure read path is an UNREAD column (NO_DETECTOR naming it), never an ERRORED cell and never a closure
-            why = " ".join(str(err).split())[:200]
+            why = " ".join(str(err).split())[:(700 if isinstance(err, KeyedReadIncomplete) else 200)]          # the coverage text of a keyed read is longer and must survive whole
             got = dict(unread=("unread: " + (why if isinstance(err, ProseNoneBudget) else f"the closure read of {t}.{e['column']} failed ({why})")
                                + ": no closure verdict was reached, so this is neither a PASS nor a FAIL"), why_cheap=None, exact_timed_out=False)
         if isinstance(got, dict) and got.get("exact_timed_out"):
