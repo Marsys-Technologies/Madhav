@@ -4970,7 +4970,9 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
                 if t in scopes and w is None:                               # a shared table whose asset rows are not named would be read across every asset's rows: refused, never lifted
                     jr = dict(unread="the table is shared and the asset's own rows are not named by its count_sql or produced-table filter, so the column would be read across every asset's rows")
                 else:
-                    jr = memo(("jsonkinds", t, c, w, tuple(sp["tokens"] for sp in jk_spec)), lambda: vocab_fetch_json_kinds(t, c, w, [sp["tokens"] for sp in jk_spec]))
+                    kreq = [dict(tokens=ksp["tokens"], names=ksp["names"]) for ksp in (getattr(jk_spec, "key_specs", None) or [])]      # extension (iii): the declared vocab_keys travel with the read
+                    jr = memo(("jsonkinds", t, c, w, tuple(sp["tokens"] for sp in jk_spec), tuple((kq["tokens"], tuple(kq["names"] or ())) for kq in kreq)),
+                              lambda: vocab_fetch_json_kinds(t, c, w, [sp["tokens"] for sp in jk_spec], keys=kreq) if kreq else vocab_fetch_json_kinds(t, c, w, [sp["tokens"] for sp in jk_spec]))
                 if jr.get("unread"):
                     jk_note = jr["unread"]
                 else:
@@ -7756,6 +7758,26 @@ VOCAB_JSON_GROUPS_APPLICABILITY_ADDITIONS = {
                     "member must be a canonical (or registered) spelling of the group's class and family, else the cell reads FAIL naming the member path and the value; a member path that matches no leaf is reported as 'declared but "
                     "unread' and keeps the cell at PARTIAL, so a group never claims a path nothing read; no group declared, no change"),
 }
+# EXTENSION (iii), SS N-458 (`vocab_keys`, keys whose leaves are not strings): an optional list in a column entry that explains the KEYS directly under one path prefix (exact prefix, exact depth), in one of two forms:
+#   {prefix, key_class, key_family, why, evidence}   the keys ARE vocabulary terms of that class and family (graha codes as keys of a tally): every actual key is graded like a path value (a key outside the class /
+#                                                    family is a violation: FAIL) and counted in the column's census; no key under the prefix = `declared but unread`;
+#   {prefix, structural_keys, why, evidence}         an explicit closed list of class-word / house-synonym keys that are STRUCTURE (`house`, `signs`): each name must be a string constant of a cited producer .py file,
+#                                                    and none may be a canonical vocabulary term (that is a key_class case); only the listed names at that prefix and depth leave `key_hits`.
+# A key anywhere else (another prefix, another depth, an unlisted name) stays a hit. No vocab_keys, no change.
+VOCAB_JSON_KINDS_OPTIONAL_FIELDS = ("vocab_keys",)
+VOCAB_JSON_KEYS_MAX = 8
+VOCAB_JSON_KEYS_MAX_STRUCTURAL = 32
+VOCAB_JSON_KEYS_MAX_DISTINCT = 64            # distinct keys read under ONE prefix; more = unread (the keys of a tally are few)
+VOCAB_JSON_KEYS_TERMS_FIELDS = ("prefix", "key_class", "key_family", "why", "evidence")
+VOCAB_JSON_KEYS_STRUCT_FIELDS = ("prefix", "structural_keys", "why", "evidence")
+VOCAB_JSON_KEYS_PREFIX_RE = re.compile(r"\$|" + _LEAF_PATH_RE.pattern)
+VOCAB_JSON_KEYS_APPLICABILITY_ADDITIONS = {
+    "Vocab.alias": ("; SS N-431/N-458 (opt-in): a `vocab_json_kinds` column entry may carry `vocab_keys`, which explains the json KEYS directly under one path prefix (exact prefix, exact depth) that name a term or a class word "
+                    "and so were `key_hits` that no path declaration can reach (graha codes as keys on number leaves, `house` / `signs` as keys on non-string leaves): either `key_class` + `key_family`, where every actual key "
+                    "under the prefix must be a canonical (or registered) spelling of that class and family (the keys' spelling is censused, a key outside it reads FAIL naming the prefix and the key, and a prefix holding no key "
+                    "is 'declared but unread' and keeps the cell at PARTIAL), or `structural_keys`, an explicit closed list (at most 32 names, each a string constant of a cited producer file, none a canonical vocabulary term) "
+                    "of keys that are structure and not vocabulary; only keys so explained leave `key_hits`, a key at any other prefix, depth or name remains a finding; no vocab_keys, no change"),
+}
 
 
 def vocab_json_path_tokens(path: str) -> tuple:
@@ -7786,6 +7808,86 @@ def vocab_json_sig_label(sig) -> str:
     return "$" + "".join("[*]" if s is None else "." + str(s) for s in sig)
 
 
+_PY_CONST_CACHE: dict = {}
+
+
+def _vocab_py_string_constants(ev) -> tuple[set | None, str | None]:
+    """(the string constants of the cited Python producer file(s), problem). `ev` = an evidence pointer or a list of pointers: each must be a repo-relative .py file (the engine parses it with ast: a name is checked
+    VERBATIM against the producer source, never against a typed copy). Cached per file state."""
+    out: set = set()
+    for x in (ev if isinstance(ev, list) else [ev]):
+        rel = re.sub(r":[0-9]+$", "", x) if isinstance(x, str) else ""
+        if not rel.endswith(".py"):
+            return None, f"{x!r} is not a repo-relative Python file (:line): the names are checked verbatim in the producer source"
+        try:
+            path = ROOT / rel
+            st = path.stat()
+            key = (str(path), st.st_mtime_ns, st.st_size)
+            if key not in _PY_CONST_CACHE:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                _PY_CONST_CACHE[key] = frozenset(n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str))
+            out |= _PY_CONST_CACHE[key]
+        except (OSError, SyntaxError, ValueError):
+            return None, f"{x!r} could not be read and parsed as Python"
+    return out, None
+
+
+def vocab_json_prefix_tokens(prefix: str) -> tuple:
+    """`$` -> (), `$.tally` -> ('tally',), `$.by.*.t` -> ('by', '*', 't'). Pure; `prefix` must match VOCAB_JSON_KEYS_PREFIX_RE."""
+    return () if prefix == "$" else vocab_json_path_tokens(prefix)
+
+
+def _vocab_json_keys_problem(lab: str, ks) -> str | None:
+    """The problem with a column entry's `vocab_keys` list, or None."""
+    if not (isinstance(ks, list) and 1 <= len(ks) <= VOCAB_JSON_KEYS_MAX):
+        return f"{lab}.vocab_keys must be a list of 1 to {VOCAB_JSON_KEYS_MAX} objects"
+    seen: list = []
+    for i, k in enumerate(ks):
+        kl = f"{lab}.vocab_keys[{i}]"
+        if not isinstance(k, dict):
+            return f"{kl} must be an object"
+        struct = "structural_keys" in k
+        fields = VOCAB_JSON_KEYS_STRUCT_FIELDS if struct else VOCAB_JSON_KEYS_TERMS_FIELDS
+        if set(k) != set(fields):
+            return f"{kl} has exactly the fields {list(VOCAB_JSON_KEYS_TERMS_FIELDS)} (the keys are terms) or {list(VOCAB_JSON_KEYS_STRUCT_FIELDS)} (the keys are structure)"
+        if not (isinstance(k["prefix"], str) and VOCAB_JSON_KEYS_PREFIX_RE.fullmatch(k["prefix"])):
+            return f"{kl}.prefix {k['prefix']!r} must be '$' or '$.key(.key)*' (the json-leaf path syntax): the object whose KEYS are explained"
+        toks = vocab_json_prefix_tokens(k["prefix"])
+        for q in seen:
+            if q[0] == toks:
+                return f"{kl}.prefix {k['prefix']} is declared twice"
+            if _vocab_json_tokens_overlap(toks, q[0]):
+                return f"{kl}.prefix {k['prefix']} overlaps {q[1]} (a `*` step could match the same object, which would be explained twice)"
+        seen.append((toks, k["prefix"]))
+        bad = _formgap_text_ok(k["why"], f"{kl}.why")
+        if bad:
+            return bad
+        bad = _vocab_json_group_evidence_problem(k["evidence"])
+        if bad:
+            return f"{kl}.evidence {bad}"
+        if not struct:
+            if k["key_class"] not in VOCAB_CLASSES:
+                return f"{kl}.key_class must be one of {list(VOCAB_CLASSES)}"
+            if k["key_family"] not in VOCAB_JSON_KINDS_FAMILIES:
+                return f"{kl}.key_family must be one of {list(VOCAB_JSON_KINDS_FAMILIES)}"
+            continue
+        names = k["structural_keys"]
+        if not (isinstance(names, list) and 1 <= len(names) <= VOCAB_JSON_KEYS_MAX_STRUCTURAL and all(isinstance(x, str) for x in names)):
+            return f"{kl}.structural_keys must be a list of 1 to {VOCAB_JSON_KEYS_MAX_STRUCTURAL} strings"
+        if len(set(names)) != len(names):
+            return f"{kl}.structural_keys lists a name twice"
+        for x in names:
+            if not (x.strip() and len(x) <= VOCAB_VALUE_CHARS and x == x.strip() and not any(unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp") for ch in x)):
+                return f"{kl}.structural_keys name {x!r} must be a non-blank key of at most {VOCAB_VALUE_CHARS} characters without control or invisible characters"
+        consts, bad = _vocab_py_string_constants(k["evidence"])
+        if bad:
+            return f"{kl}.evidence {bad}"
+        lost = [x for x in names if x not in consts]
+        if lost:
+            return f"{kl}.structural_keys {lost[:4]} is not a string constant of the cited producer file(s): a structural name must be written there verbatim"
+    return None
+
+
 def _vocab_json_group_evidence_problem(ev) -> str | None:
     """A group's evidence: one evidence pointer, or a list of 1 to VOCAB_JSON_KINDS_GROUP_EVIDENCE_MAX pointers (the members are written in different producer files); every one a real file:line (never `unverified:`)."""
     items = ev if isinstance(ev, list) else [ev]
@@ -7807,13 +7909,17 @@ def vocab_json_kinds_problem(entry) -> str | None:
     seen = set()
     for i, d in enumerate(vt):
         lab = f"vocab_json_kinds[{i}]"
-        if not (isinstance(d, dict) and set(d) == set(VOCAB_JSON_KINDS_FIELDS)):
-            return f"{lab} has exactly the fields {list(VOCAB_JSON_KINDS_FIELDS)}"
+        if not (isinstance(d, dict) and set(VOCAB_JSON_KINDS_FIELDS) <= set(d) <= set(VOCAB_JSON_KINDS_FIELDS) | set(VOCAB_JSON_KINDS_OPTIONAL_FIELDS)):
+            return f"{lab} has exactly the fields {list(VOCAB_JSON_KINDS_FIELDS)} (and optionally {list(VOCAB_JSON_KINDS_OPTIONAL_FIELDS)})"
         if not all(isinstance(d[k], str) and _DECL_IDENT.fullmatch(d[k]) for k in ("table", "column")):
             return f"{lab}.table and .column must be identifiers"
         if (d["table"], d["column"]) in seen:
             return f"{lab} is listed twice"
         seen.add((d["table"], d["column"]))
+        if "vocab_keys" in d:
+            bad = _vocab_json_keys_problem(lab, d["vocab_keys"])
+            if bad:
+                return bad
         ps = d["paths"]
         if not (isinstance(ps, list) and 1 <= len(ps) <= VOCAB_JSON_KINDS_MAX_PATHS):
             return f"{lab}.paths must be a list of 1 to {VOCAB_JSON_KINDS_MAX_PATHS} entries (a single path object, or a group of paths of one class / family: a group is one entry)"
@@ -7886,6 +7992,11 @@ def validate_vocab_json_kinds_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("vocab_json_kinds") else f"{where}.vocab_json_kinds: {bad}")
 
 
+class _JkSpec(list):
+    """The declared paths of one column (a plain list of path specs, so every caller keeps working) that also carries `key_specs`: the column's declared `vocab_keys` (extension (iii))."""
+    key_specs: list = []
+
+
 def vocab_json_kind_sets(entry, own: dict) -> tuple[dict, list]:
     """({(table, column) lower-cased: [{path, tokens, class, family}]} of a SOUND declaration, the problems). With any problem NOTHING is credited. `own` = {table: (columns, types, ...)} of the asset's owned tables that exist."""
     vt = entry.get("vocab_json_kinds") if isinstance(entry, dict) else None
@@ -7917,6 +8028,9 @@ def vocab_json_kind_sets(entry, own: dict) -> tuple[dict, list]:
         for j, p in enumerate(d["paths"]):
             members = p["paths"] if "paths" in p else [p["path"]]
             flat += [dict(path=mp, tokens=vocab_json_path_tokens(mp), **{"class": p["class"]}, family=p["family"], group=(j if "paths" in p else None)) for mp in members]
+        flat = _JkSpec(flat)
+        flat.key_specs = [dict(prefix=k["prefix"], tokens=vocab_json_prefix_tokens(k["prefix"]), mode=("structural" if "structural_keys" in k else "terms"), names=(list(k["structural_keys"]) if "structural_keys" in k else None),
+                               **{"class": k.get("key_class"), "family": k.get("key_family")}) for k in d.get("vocab_keys", [])]
         sets[(t.lower(), c.lower())] = flat
     return ({}, problems) if problems else (sets, [])
 
@@ -7936,18 +8050,34 @@ def _vocab_json_decl_sql(tokens: tuple) -> str:
     return "(" + " AND ".join(parts) + ")"
 
 
-def vocab_json_kinds_sql(table: str, col: str, where: str | None = None, declared=None) -> str:
+def _vocab_keys_cond_sql(k: dict) -> str:
+    """SQL (pure): the node's key path `p` is a KEY directly under the declared prefix (exact prefix tokens, exactly one key deeper, the last step a string key), for a structural item only if the key is one of its listed
+    names. `k` = {tokens, names | None}. Names are quoted literals (`_vocab_lit`), never spliced raw."""
+    cond = _vocab_json_decl_sql(tuple(k["tokens"]) + ("*",))
+    names = k.get("names")
+    return f"({cond} AND ((p -> -1) #>> '{{}}') = ANY({_vocab_arr(names)}))" if names else cond
+
+
+def vocab_json_kinds_sql(table: str, col: str, where: str | None = None, declared=None, keys=None) -> str:
     """ONE read-only statement (pure): the string leaves of EVERY json(b) document of the asset's rows (`where`) grouped by their concrete key path. One line of jsonb text {rows, nsigs, paths: [{p, n, nd, vals,
     nh, hits}], key_hits}: `p` the key path (a json array of keys, null for an array element), `n` the leaf count, `nd` the distinct values, `vals` up to VOCAB_JSON_KINDS_MAX_DISTINCT + 1 of them (cut to
     VOCAB_VALUE_CHARS), `nh` the distinct values that look like vocabulary (a whole term, a spelling, a short alias, a registered alias, a term inside longer text: the SQL twin of the classifier, over-inclusive on
     purpose, every one is re-graded in Python) and `hits` up to VOCAB_JSON_KINDS_HIT_CAP + 1 of them. At most VOCAB_JSON_KINDS_MAX_SIGS + 1 key paths are returned (ordered): more = truncated. `key_hits` = up to 5
     distinct json keys, anywhere in the column, that name a term or a class word, EXCEPT the key that ends a DECLARED path at a string leaf (`declared` = the declared token tuples): that key IS the declaration
     (`$.sign`, `$.graha`: the class words are the very keys the declarer names, and the leaf under them is graded path by path), so it is not a stray key. A key of the same name at any other depth or under
-    any other path, or holding an object / array, is still a hit. Without `declared` every matching key is a hit."""
+    any other path, or holding an object / array, is still a hit. Without `declared` every matching key is a hit. `keys` (extension (iii), the declared `vocab_keys`: [{tokens, names | None}]) additionally explains,
+    whatever the leaf type, the keys DIRECTLY under each prefix (exact tokens, one key deeper; for a structural item only its listed names), and adds `key_sets`: per item {keys: up to VOCAB_JSON_KEYS_MAX_DISTINCT + 1
+    distinct such keys, ordered} for Python to grade. Without `keys` the statement is the one it was."""
     c, t = f'"{col}"', f'"{table}"'
     w = f" AND ({where})" if where else ""
     own = " OR ".join(_vocab_json_decl_sql(tk) for tk in (declared or ()))
-    skip = f" AND NOT (jsonb_typeof(v) = 'string' AND ({own}))" if own else ""
+    skips = ([f"jsonb_typeof(v) = 'string' AND ({own})"] if own else []) + [f"({_vocab_keys_cond_sql(k)})" for k in (keys or ())]
+    skip = f" AND NOT ({' OR '.join(skips)})" if skips else ""
+    key_sets = ""
+    if keys:
+        ents = ", ".join(f"jsonb_build_object('keys', (SELECT coalesce(jsonb_agg(q.x ORDER BY q.x), '[]'::jsonb) FROM (SELECT DISTINCT left((p -> -1) #>> '{{}}', {VOCAB_VALUE_CHARS}) AS x FROM w "
+                         f"WHERE {_vocab_keys_cond_sql(k)} ORDER BY 1 LIMIT {VOCAB_JSON_KEYS_MAX_DISTINCT + 1}) q))" for k in keys)
+        key_sets = f", 'key_sets', jsonb_build_array({ents})"
     pred = f"coalesce(({_vocab_pred_on('d.s')} OR lower(d.s) = ANY(((SELECT reg FROM lex)::text[]))), false)"
     walk = ("w(p, v) AS (SELECT '[]'::jsonb, r.a FROM r UNION ALL SELECT w.p || x.seg, x.val FROM w, LATERAL ("
             "SELECT jsonb_build_array(e.key) AS seg, e.value AS val FROM jsonb_each(CASE WHEN jsonb_typeof(w.v) = 'object' THEN w.v ELSE '{}'::jsonb END) AS e "
@@ -7965,13 +8095,13 @@ def vocab_json_kinds_sql(table: str, col: str, where: str | None = None, declare
             f"ks AS (SELECT DISTINCT left((p -> -1) #>> '{{}}', {VOCAB_VALUE_CHARS}) AS v FROM w WHERE jsonb_typeof(p -> -1) = 'string'{skip}) "
             f"SELECT jsonb_build_object('rows', (SELECT count(*) FROM r), 'nsigs', (SELECT count(*) FROM pp), "
             f"'paths', (SELECT coalesce(jsonb_agg(q.o ORDER BY q.p::text), '[]'::jsonb) FROM (SELECT p, o FROM pp ORDER BY p::text LIMIT {VOCAB_JSON_KINDS_MAX_SIGS + 1}) q), "
-            f"'key_hits', (SELECT coalesce(jsonb_agg(k.v ORDER BY k.v), '[]'::jsonb) FROM (SELECT v FROM ks WHERE v IS NOT NULL AND {_vocab_p_key('v')} ORDER BY v LIMIT 5) k))::text")
+            f"'key_hits', (SELECT coalesce(jsonb_agg(k.v ORDER BY k.v), '[]'::jsonb) FROM (SELECT v FROM ks WHERE v IS NOT NULL AND {_vocab_p_key('v')} ORDER BY v LIMIT 5) k){key_sets})::text")
 
 
-def vocab_fetch_json_kinds(table: str, col: str, where: str | None = None, declared=None) -> dict:
+def vocab_fetch_json_kinds(table: str, col: str, where: str | None = None, declared=None, keys=None) -> dict:
     """The answer of `vocab_json_kinds_sql`, or {unread: cause} for a failed or timed-out read, a malformed answer, more key paths than VOCAB_JSON_KINDS_MAX_SIGS: the declared column is then never lifted."""
     try:
-        got = json.loads(scalar(vocab_json_kinds_sql(table, col, where, declared)) or "null")
+        got = json.loads(scalar(vocab_json_kinds_sql(table, col, where, declared, keys)) or "null")
         if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and isinstance(got.get("nsigs"), int) and isinstance(got.get("paths"), list) and isinstance(got.get("key_hits", []), list)):
             raise Unknown("malformed json-kinds answer")
         for e in got["paths"]:
@@ -7982,6 +8112,10 @@ def vocab_fetch_json_kinds(table: str, col: str, where: str | None = None, decla
         if got["nsigs"] > VOCAB_JSON_KINDS_MAX_SIGS or len(got["paths"]) > VOCAB_JSON_KINDS_MAX_SIGS:
             return dict(unread=f"more than {VOCAB_JSON_KINDS_MAX_SIGS} distinct key paths hold string leaves: the column is not a closed record and cannot be read whole")
         got["key_hits"] = [k for k in got.get("key_hits", []) if isinstance(k, str)]
+        if keys:                                                    # extension (iii): one well-formed answer per declared item, or the read is unread (never a clean pass by omission)
+            ksets = got.get("key_sets")
+            if not (isinstance(ksets, list) and len(ksets) == len(keys) and all(isinstance(e, dict) and isinstance(e.get("keys"), list) and all(isinstance(x, str) for x in e["keys"]) for e in ksets)):
+                raise Unknown("malformed json-kinds answer for the declared vocab_keys (key_sets)")
         return got
     except (Unknown, ValueError, OSError) as exc:
         return dict(unread=("the json-kinds read exceeded the statement timeout: " if _is_statement_timeout(exc) else "the json-kinds read failed: ") + " ".join(str(exc).split())[:160])
@@ -8079,9 +8213,38 @@ def vocab_json_kinds_report(read: dict, spec: list) -> dict:
         if miss:
             group_unread.append(dict(group=gl, **{"class": first["class"]}, family=first["family"], declared=len(st["members"]), read=len(st["read"]), paths=miss))
             unclosed.append(f"{gl} ({first['class']}/{first['family']}): declared but unread: {', '.join(miss)} (a group is accepted only when every one of its {len(st['members'])} paths was read and graded)")
+    key_decls = {}
+    key_specs = list(getattr(spec, "key_specs", None) or [])
+    ksets = read.get("key_sets")
+    for i, ksp in enumerate(key_specs):                                  # extension (iii): the declared vocab_keys are graded against the keys the read found directly under each prefix
+        pre = ksp["prefix"]
+        got = ksets[i].get("keys") if isinstance(ksets, list) and len(ksets) == len(key_specs) and isinstance(ksets[i], dict) else None
+        if not isinstance(got, list):
+            unread.append(f"vocab_keys {pre!r}: the read carries no key list for this declared item, so the keys under it were not read")
+            continue
+        if len(got) > VOCAB_JSON_KEYS_MAX_DISTINCT:
+            unread.append(f"vocab_keys {pre!r}: more than {VOCAB_JSON_KEYS_MAX_DISTINCT} distinct keys under the prefix, so they cannot be read whole")
+            continue
+        if ksp["mode"] == "terms":
+            bad, ok = vocab_path_kind_violations(got, ksp["class"], ksp["family"])
+            viol += [f"the KEYS under {pre} (declared key class {ksp['class']}/{ksp['family']}) hold {b}" for b in bad]
+            verified_any = verified_any or bool(ok)
+            all_values.update(ok)                                      # a verified key joins the column census; a key outside the class is a violation, not a value
+            if not got:
+                unclosed.append(f"vocab_keys {pre!r}: declared but unread: no key under it in the scope (a key_class declaration claims keys that nothing read)")
+            key_decls[pre] = dict(mode="terms", **{"class": ksp["class"]}, family=ksp["family"], keys=sorted(got), verified=ok[:12])
+            continue
+        for n in ksp["names"]:                                           # a canonical vocabulary spelling is never "structure": its spelling is censused through key_class
+            r_ = vocab_classify(n)
+            if r_ is not None and r_["kind"] == "canonical":
+                viol.append(f"structural_keys under {pre} names {n!r}, a canonical {'/'.join(r_['classes'])} vocabulary term, which is not structure (a declaration defect): declare it with key_class so its spelling is censused")
+        seen = [n for n in ksp["names"] if n in got]
+        if not seen:
+            unclosed.append(f"vocab_keys {pre!r}: declared but unread: none of its {len(ksp['names'])} structural names is a key under the prefix in the scope")
+        key_decls[pre] = dict(mode="structural", names=list(ksp["names"]), seen=seen, unseen=[n for n in ksp["names"] if n not in got])
     return dict(ok=not viol and not unread and not undeclared and not unclosed and verified_any, violations=viol[:12], n_violations=len(viol), unread=unread, undeclared_vocabulary=undeclared,
                 undeclared_non_vocabulary=dict(sorted(non_vocab.items())), paths=paths_rec, declared_never_seen=never, values=sorted(all_values), emb=sorted(emb),
-                key_hits=[k for k in read.get("key_hits", []) if isinstance(k, str)], rows=read.get("rows", 0), groups=groups, group_unread=group_unread, unclosed=unclosed)
+                key_hits=[k for k in read.get("key_hits", []) if isinstance(k, str)], rows=read.get("rows", 0), groups=groups, group_unread=group_unread, unclosed=unclosed, key_decls=key_decls)
 
 
 def vocab_json_kinds_label(c: dict) -> str:
@@ -8095,8 +8258,11 @@ def vocab_json_kinds_label(c: dict) -> str:
     kinds = ", ".join(x for x in (kinds, gtxt) if x)
     nv = jk.get("undeclared_non_vocabulary") or {}
     shown = ", ".join(f"{p} ({n})" for p, n in list(nv.items())[:VOCAB_JSON_KINDS_TEXT_LIST]) + (" (+" + str(len(nv) - VOCAB_JSON_KINDS_TEXT_LIST) + " more path(s))" if len(nv) > VOCAB_JSON_KINDS_TEXT_LIST else "")
+    kd = jk.get("key_decls") or {}
+    ktxt = "; ".join((f"KEYS under {pre} are {v['class']}/{v['family']} terms, each key graded ({', '.join(v['verified'][:8])})" if v["mode"] == "terms"
+                      else f"structural keys at {pre} ({', '.join(v['seen'][:8])}) named and not vocabulary") for pre, v in kd.items())
     return ("; JSON-KINDS, one kind per path, verified over the whole column: " + kinds + "; " + str(sum(nv.values())) + " leaf/leaves at " + str(len(nv)) + " undeclared path(s) hold no vocabulary, not graded"
-            + ((": " + shown) if nv else ""))
+            + ((": " + shown) if nv else "") + (("; vocab_keys: " + ktxt) if ktxt else ""))
 
 
 # ───────────────────────────── vocab_point_codes (SS N-297/N-305): a chart-point subject code that collides with a graha abbreviation ─────────────────────────────
