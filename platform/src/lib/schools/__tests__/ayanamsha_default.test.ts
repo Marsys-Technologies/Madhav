@@ -91,7 +91,8 @@ describe('chart_data_adapter.buildChartData default', () => {
     await real.buildChartData(CHART).catch(() => undefined)
     const firstParams = queryMock.mock.calls[0]![1] as unknown[]
     expect(firstParams).toEqual([CHART, 'lahiri_chitrapaksha'])
-    for (const c of queryMock.mock.calls) expect((c[1] as unknown[])[1]).toBe('lahiri_chitrapaksha')
+    // every read is the Lahiri primary EXCEPT the KP sub-lord read, which is the KP frame (SS N-342 / N-359)
+    for (const c of queryMock.mock.calls.filter((q) => !/kp_sub_lord/.test(String(q[0])))) expect((c[1] as unknown[])[1]).toBe('lahiri_chitrapaksha')
 
     queryMock.mockClear()
     await real.buildChartData(CHART, 'kp').catch(() => undefined)
@@ -101,5 +102,51 @@ describe('chart_data_adapter.buildChartData default', () => {
     await expect(real.buildChartData(CHART, 'nonsense')).rejects.toThrow(/Unknown ayanamsha_id/)
     await expect(real.buildChartData(CHART, 'all')).rejects.toThrow(/one ayanamsha/)
     expect(queryMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('chart_data_adapter.buildChartData: the KP sub-lord read is pinned to the KP frame (SS N-359)', () => {
+  const KP_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
+  const kpCalls = () => queryMock.mock.calls.filter((c) => /kp_sub_lord/.test(String(c[0])))
+
+  it.each([
+    ['no id', undefined],
+    ['the Lahiri primary id', 'lahiri_chitrapaksha'],
+    ['the alias lahiri', 'lahiri'],
+    ['the alias LAHIRI', 'LAHIRI'],
+    ['raman', 'raman'],
+    ['true_chitra', 'true_chitra'],
+    ['explicit krishnamurti', 'krishnamurti'],
+  ] as Array<[string, string | undefined]>)('%s: the cusp/graha KP read binds krishnamurti, never the requested frame', async (_label, id) => {
+    const real = await vi.importActual<typeof import('@/lib/schools/chart_data_adapter')>('@/lib/schools/chart_data_adapter')
+    queryMock.mockReset()
+    queryMock.mockImplementation(async (sql: string) =>
+      /kp_sub_lord/.test(sql) ? { rows: [{ bhava_or_planet: 'Ascendant', sub_lord: 'Saturn' }] } : { rows: [] })
+    const chart = await (id === undefined ? real.buildChartData(CHART) : real.buildChartData(CHART, id))
+    expect(kpCalls()).toHaveLength(1)
+    expect(kpCalls()[0]![1]).toEqual([CHART, 'krishnamurti'])
+    expect(chart.kpSubLords).toEqual({ ascendant: 'saturn' })
+    expect(chart.kpSubLordsFrame).toBe(KP_FRAME_LABEL)
+    // the rest of the ChartData is still read at the requested/primary ayanamsha
+    const others = queryMock.mock.calls.filter((c) => !/kp_sub_lord/.test(String(c[0])))
+    const want = id === undefined || /^lahiri/i.test(id) ? 'lahiri_chitrapaksha' : id.toLowerCase()
+    for (const c of others) expect((c[1] as unknown[])[1]).toBe(want)
+  })
+
+  it('"all" and a nonsense id are refused before any query (no KP read is made at all)', async () => {
+    const real = await vi.importActual<typeof import('@/lib/schools/chart_data_adapter')>('@/lib/schools/chart_data_adapter')
+    queryMock.mockReset()
+    await expect(real.buildChartData(CHART, 'all')).rejects.toThrow()
+    await expect(real.buildChartData(CHART, 'not_an_ayanamsha_xyz')).rejects.toThrow()
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('no KP rows: no kpSubLords and no frame label', async () => {
+    const real = await vi.importActual<typeof import('@/lib/schools/chart_data_adapter')>('@/lib/schools/chart_data_adapter')
+    queryMock.mockReset()
+    queryMock.mockResolvedValue({ rows: [] })
+    const chart = await real.buildChartData(CHART)
+    expect(chart.kpSubLords).toBeUndefined()
+    expect(chart.kpSubLordsFrame).toBeUndefined()
   })
 })

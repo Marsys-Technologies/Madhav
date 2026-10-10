@@ -17,6 +17,7 @@
 import 'server-only'
 import { query } from '../db/client'
 import { PRIMARY_AYANAMSHA, normalizeAyanamshaId } from '../retrieval/chart_facts_helpers'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../retrieval/kp_frame'
 import type {
   ChartData,
   PlanetPosition,
@@ -224,7 +225,9 @@ export async function buildChartData(
     }
   }
 
-  // 6. KP sub-lords from chart_facts
+  // 6. KP sub-lords from chart_facts. KP has ONE frame by doctrine (SS N-342 / N-359): this read
+  //    is pinned to the Krishnamurti ayanamsha whatever ayanamsha the rest of the ChartData is
+  //    built in (the Lahiri primary), and the result says so (`kpSubLordsFrame`).
   const kpResult = await query<{
     bhava_or_planet: string
     sub_lord: string
@@ -234,7 +237,7 @@ export async function buildChartData(
      WHERE chart_id = $1
        AND ayanamsha_id = $2
        AND fact_type = 'kp_sub_lord'`,
-    [chartId, ayanamshaId],
+    [chartId, KP_FRAME_AYANAMSHA],
   )
 
   const kpSubLords: Record<string, string> = {}
@@ -255,6 +258,7 @@ export async function buildChartData(
     yoginiDasha,
     charaPadas: Object.keys(charaPadas).length > 0 ? charaPadas : undefined,
     kpSubLords: Object.keys(kpSubLords).length > 0 ? kpSubLords : undefined,
+    kpSubLordsFrame: Object.keys(kpSubLords).length > 0 ? KP_FRAME_LABEL : undefined,
     pendingFlags: [],   // Tājika + BNN flags resolved via Task B; adapter clears them
   }
 }
