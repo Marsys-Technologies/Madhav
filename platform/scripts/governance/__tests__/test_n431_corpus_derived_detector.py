@@ -1228,6 +1228,13 @@ def test_the_real_declaration_the_real_parser_and_the_real_sandbox_reproduce_a_s
     assert b["stored_rows"] == len(stored) == b["matched_rows"] and b["uncited_sampled"] >= 1 and b["extra_args"] == ["valid_text_ids"] and b["keep_when_threshold"] is None
     assert set(b["loaded_repo_files"]) <= set(b["pinned_files"]) and REAL_ADAPTER in b["loaded_repo_files"] and REAL_FILES[0] in b["loaded_repo_files"] and b["parser"]["function"] == "run_chunk"
     assert ac.corpus_derived_na_problem("Narr.agree", ac._na("x", ac.CORPUS_DERIVED_CAUSE) | {"corpus_derived": b}) is None
+    assert b["assurance"] == parser_sandbox.ASSURANCE and b["assurance_from_runner"] is True and f"[assurance: {parser_sandbox.ASSURANCE}]" in res["measured"]       # the label is the REAL sandbox's own
+
+
+def test_the_detectors_fallback_assurance_label_is_the_sandboxs_label_and_a_failed_real_run_carries_one_too(real_repo):
+    assert cdd.ASSURANCE == parser_sandbox.ASSURANCE
+    r = parser_sandbox.run_pinned_parser(str(real_repo), REAL_MODULE_ROOT, [], REAL_ADAPTER, "run_chunk", [])
+    assert r["ok"] is False and r["assurance"] == parser_sandbox.ASSURANCE
 
 
 @pytest.mark.parametrize("mutate,kind", [
