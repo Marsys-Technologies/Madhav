@@ -65,9 +65,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
-)
+# SS N-384 (PR-S6): no module-level default chart. chart_id is a required field on every request here.
 
 ASSET_ID = "phala.outlook"
 ASSET_VERSION = "1.0"

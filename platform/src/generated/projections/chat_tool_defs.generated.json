@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T08:03:09.174Z",
+  "generated_at": "2026-10-10T03:42:06.416Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\"",
   "total": 107,
@@ -1378,6 +1378,10 @@
           "as_of": {
             "type": "string",
             "description": "YYYY-MM-DD; omission retains the legacy today default."
+          },
+          "at": {
+            "type": "string",
+            "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
           }
         },
         "required": [
