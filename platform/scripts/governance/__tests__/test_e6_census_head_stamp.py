@@ -23,9 +23,17 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import asset_census as ac  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_evaluation_copy_marker(monkeypatch):
+    """SS N-327: census_stamp now LOOKS for the evaluation-copy marker. These tests fake the database wholesale (every query gets an arbitrary answer), so the lookup is answered 'no marker' here;
+    test_n317_evaluation_copy.py covers the lookup itself (fakes and a real PostgreSQL)."""
+    monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(checked=True, marker_present=False))
+    monkeypatch.setenv("SUVARNA_CENSUS_TARGET", "disposable")       # SS N-332: a census must state its target; these tests fake the database, which is what "disposable" says (calling it production would be a false declaration)
 import test_e1_9_assets_scope as e19  # noqa: E402
 
-STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version", "db_identity"}   # db_identity: E1.7
+STAMP_KEYS = {"registry_revision", "registry_fingerprint", "tool_commit", "tool_dirty", "declarations_sha256", "declarations_version", "db_identity", "eval_copy_probe", "census_target"}   # db_identity: E1.7; eval_copy_probe: SS N-327 (evaluation_copy appears only when a run declares itself a copy)
 
 
 @pytest.fixture(autouse=True)

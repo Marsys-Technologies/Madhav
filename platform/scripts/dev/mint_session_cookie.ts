@@ -1,3 +1,4 @@
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 // Mint an authenticated __session cookie for a super-admin UID.
 //
 // Two-step flow:

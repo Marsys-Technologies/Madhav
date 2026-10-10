@@ -71,7 +71,9 @@ export const queryDashaDossierCapability: CapabilityDescriptor = {
     const active_on  = args['active_on'] ? String(args['active_on']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ['chart_id = $1']
+    // K1-2: candidate rows coexist with the unchanged served legacy dossier.
+    // Publication/cutover is K9-4b; this compatibility route must not leak candidates.
+    const filters: string[] = ['chart_id = $1', "generation = 'legacy'"]
     const params: unknown[] = [chart_id]
     let p = 2
     if (system_id)          { filters.push(`system_id = $${p++}`);     params.push(system_id) }

@@ -278,3 +278,54 @@ describe('validateLocationChange — birthplace edits are computation-safe', () 
     })
   })
 })
+
+describe('ayanamsha spelling and omission (SS N-319)', () => {
+  it('folds long and legacy stored spellings to the short ids, deduplicated and ordered', () => {
+    const row = (ayanamsa: string | null) => normalizeStoredChart({ ...STORED_ROW, ayanamsa }).ayanamshas
+    expect(row('lahiri_chitrapaksha')).toEqual(['lahiri'])
+    expect(row('krishnamurti, lahiri_chitrapaksha,lahiri')).toEqual(['kp', 'lahiri'])
+    expect(row('surya_siddhanta_classical,raman,true_citra')).toEqual(['raman', 'surya_siddhanta', 'true_chitra'])
+  })
+
+  it('keeps True Chitra distinct from Lahiri', () => {
+    expect(normalizeStoredChart({ ...STORED_ROW, ayanamsa: 'true_chitra' }).ayanamshas).toEqual(['true_chitra'])
+  })
+
+  it('keeps an id it does not recognise (never silently dropped)', () => {
+    expect(normalizeStoredChart({ ...STORED_ROW, ayanamsa: 'lahiri,fagan_bradley' }).ayanamshas).toEqual(['fagan_bradley', 'lahiri'])
+  })
+
+  it('a long-form stored list and the equivalent short list in another order classify as no-op', () => {
+    const longStored = normalizeStoredChart({ ...STORED_ROW, ayanamsa: 'krishnamurti,lahiri_chitrapaksha' })
+    expect(classifyChartChanges(longStored, ok({ ...VALID, ayanamshas: ['lahiri', 'kp'] }))).toEqual({ mode: 'noop', changedFields: [] })
+    expect(classifyChartChanges(longStored, ok({ ...VALID, ayanamshas: ['kp', 'lahiri'] }))).toEqual({ mode: 'noop', changedFields: [] })
+  })
+
+  it('a genuinely different set is still an ayanamshas change', () => {
+    const longStored = normalizeStoredChart({ ...STORED_ROW, ayanamsa: 'lahiri_chitrapaksha' })
+    expect(classifyChartChanges(longStored, ok({ ...VALID, ayanamshas: ['lahiri', 'raman'] }))).toEqual({
+      mode: 'recompute',
+      changedFields: ['ayanamshas'],
+    })
+  })
+
+  it('accepts a request without ayanamshas and flags it as omitted', () => {
+    const { ayanamshas: _omit, ...rest } = VALID
+    void _omit
+    const v = ok(rest)
+    expect(v.ayanamshas_omitted).toBe(true)
+    expect(v.ayanamshas).toEqual([])
+    expect(ok(VALID).ayanamshas_omitted).toBe(false)
+  })
+
+  it('still rejects an empty ayanamshas list when one is sent', () => {
+    expect(Object.keys(fieldsOf({ ...VALID, ayanamshas: [] }))).toContain('ayanamshas')
+  })
+
+  it('reads confirm_destructive as a strict boolean, false by default', () => {
+    expect(ok(VALID).confirm_destructive).toBe(false)
+    expect(ok({ ...VALID, confirm_destructive: true }).confirm_destructive).toBe(true)
+    expect(ok({ ...VALID, confirm_destructive: false }).confirm_destructive).toBe(false)
+    expect(Object.keys(fieldsOf({ ...VALID, confirm_destructive: 'yes' }))).toContain('confirm_destructive')
+  })
+})

@@ -1,0 +1,19 @@
+{
+  "contract_version": "k3-negative-space/1.0.0",
+  "authority": "KYD-134; ALGO 3.4; NR-KALA-R13(b)",
+  "acceptance_scope": "planted consumer fixtures only; no live source or trigger doctrine admission",
+  "input_type": "services.ka_vighnakara.model.Finding",
+  "axes": ["exposure", "knowledge", "rule_conclusion", "defeat_state", "measurement"],
+  "required_references": ["assertion_id", "chart_id", "generation", "event_class_id", "interval", "roots", "source"],
+  "vedha_fixture": {"states": ["active", "inactive", "unqualified"], "scope": "Moon", "coverage": ["complete", "incomplete", "absent"], "release": "active interval end; unknown if no licensed end"},
+  "protection_fixture": {"target": "one assertion_id", "evidence": "nonempty fact_ids, source locator, scoped interval", "effect": "defeats/excepts/partly_defeats/contests only that conclusion"},
+  "live_bindings": {
+    "judge_vedha": {"state": "unbound", "reason": "judge_vedha_source_mapping_unadmitted", "source_candidates": ["ka_gochara_relationship_record", "kala_gochara_coverage"], "field_state_coverage_locator_map": null},
+    "F1": {"state": "unbound", "reason": "f1_protection_source_mapping_unadmitted", "source_candidate": "kala_activation_predicates", "field_state_coverage_locator_map": null},
+    "F2": {"state": "unbound", "reason": "f2_applicability_source_mapping_unadmitted", "source_candidate": "chart_dashas", "field_state_coverage_locator_map": null},
+    "trigger_mechanisms": {"state": "unbound", "reason": "trigger_survivor_roster_and_doctrine_unadmitted", "survivors": null, "required_per_survivor": ["mechanism_id", "source", "fields", "states", "coverage", "locator", "doctrine_admission"]}
+  },
+  "storage": {"table": "kala_obstruction", "partition": ["chart_id", "generation"], "fixture_marker": "kala_layer_candidate.conventions.fixture=true", "legacy_slots": "severity=mild, severity_score=0, override_score=0, obstruction_type=malefic_transit are inert NOT NULL compatibility slots, never semantic weights"},
+  "live_integration": "disabled pending conductor source mappings; missing binding is information_unavailable with named reason",
+  "legacy": "legacy writer and compose_with_ka_sangam remain callable; no published or retained partition replacement"
+}
