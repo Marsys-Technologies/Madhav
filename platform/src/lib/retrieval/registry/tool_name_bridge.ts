@@ -13,6 +13,9 @@
  * Design contract:
  *   - chart_id is NEVER defaulted here; callers must supply it explicitly.
  *   - audience_tier is STRIPPED — registry capabilities are universal-access.
+ *   - ayanamsha_id (only for capabilities whose schema declares it) is normalised at this
+ *     boundary: omitted -> Lahiri (SS N-339/N-342), aliases -> stored id, "all" -> unfiltered
+ *     opt-out, unknown -> error listing the stored ids. See ../chart_facts_helpers.ts.
  *   - If a tool name has no URI mapping, getToolByName returns undefined
  *     (same behaviour as the old getTool() for unknown names).
  */
@@ -22,6 +25,7 @@ import type { CapabilityDescriptor, CapabilityUri } from './types'
 import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
 import crypto from 'crypto'
 import { resolveGeneratedToolUri } from './generated_web_tool_bridge'
+import { applyAyanamshaContractForCapability } from '../chart_facts_helpers'
 
 /**
  * W5 L1 (CR-118 fast-fail fix): a `toolName` that is ALREADY a registry URI
@@ -354,9 +358,18 @@ export function getToolByName(toolName: string): {
       const chartId = typeof plan['chart_id'] === 'string' ? plan['chart_id'] : undefined
 
       // Build handler args: merge params with chart_id context (no audience_tier)
-      const args: Record<string, unknown> = {
+      let args: Record<string, unknown> = {
         ...(params ?? {}),
       }
+
+      // SS N-339 / N-342 — Lahiri is the PRIMARY reading on EVERY web path. Applied here, the
+      // single dispatch point for chat, pariprashna, inquiry, /api/mcp/primitives and bundles,
+      // and ONLY for capabilities whose schema declares `ayanamsha_id`: omitted -> Lahiri,
+      // short/any-case ids -> the stored long id, `"all"` -> explicit unfiltered opt-out, an
+      // unknown id -> a thrown error listing the stored ids (never a silent zero-row query).
+      // KP-frame capabilities and INVARIANT-bearing capabilities/categories keep their own default
+      // (no injection on omission; see constants.ts KP_FRAME_/INVARIANT_BEARING_*).
+      args = applyAyanamshaContractForCapability(cap, args)
 
       // For per_chart capabilities, chart_id is required
       if (cap.scope === 'per_chart' && chartId) {
