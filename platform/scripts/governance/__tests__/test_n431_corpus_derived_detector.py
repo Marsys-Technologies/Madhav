@@ -505,6 +505,24 @@ def test_the_runner_gets_one_dict_per_chunk_with_the_extra_args_by_name_cited_ch
     assert all(i["valid_text_ids"] == ["T1"] for i in items)
 
 
+def test_the_item_layout_is_nested_and_r1s_validator_reserves_the_chunk_key_the_detector_uses(world):
+    """R1's declaration text and validator and the detector agree on ONE layout: {"chunk": {chunk row}, <extra arg name>: [...]} (nested, not flat)."""
+    d = normaliser(entry_for(world))
+    items = cdd.build_inputs(d, mk_chunks()[:2], {"valid_text_ids": ["T1"]})
+    assert ac.CORPUS_DERIVED_ITEM_CHUNK_KEY == cdd.ITEM_CHUNK_KEY == "chunk"
+    assert all(set(i) == {ac.CORPUS_DERIVED_ITEM_CHUNK_KEY, "valid_text_ids"} and isinstance(i["chunk"], dict) and i["valid_text_ids"] == ["T1"] for i in items)
+    assert all("content_en" in i["chunk"] and "content_en" not in i for i in items)                          # a chunk column is never a top-level key of the item
+    with pytest.raises(ValueError, match="cannot be named 'chunk'"):                                           # defence in depth: an argument named like the chunk key would overwrite the chunk
+        cdd.build_inputs(d, mk_chunks()[:1], {"chunk": ["x"]})
+    cd = copy.deepcopy(d)
+    cd["parser"]["extra_args"][0]["name"] = "chunk"
+    res, _ = run_detect(world, entry=dict(prose_fields=None, corpus_derived=cd))
+    assert res["v"] == NO_DET and res["stage"] == "declaration" and "cannot be named 'chunk'" in res["measured"]
+    src = (HERE.parent / "asset_census.py").read_text(encoding="utf-8")
+    block = src[src.index("CORPUS_DERIVED_INPUT_SHAPES = "):src.index("CORPUS_DERIVED_ARG_KINDS = ")]
+    assert '{"chunk": {' in block and "nested" in block and "flat" not in block.replace("not flat", "")        # the declaration text says nested
+
+
 def test_the_stored_slice_is_read_through_the_declared_filter_and_other_rows_are_not_judged(world):
     st = simulate_writer(world, mk_chunks())
     other = dict(st[0], rule_id="foreign-1", extracted_by="some_other_writer", body="not ours")

@@ -67,6 +67,7 @@ BG_RULES_ADAPTER = "platform/python-sidecar/brahmagyan/n431_rules_adapter.py"
 ALLOWED_PARSERS = (dict(module_root=BG_RULES_MODULE_ROOT, file=BG_RULES_ADAPTER, function="run_chunk",
                         must_pin=("platform/python-sidecar/brahmagyan/l0_rules.py", "platform/python-sidecar/brahmagyan/__init__.py", "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
                                   "platform/python-sidecar/brahmagyan/l0_semantic_release.py", "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json", BG_RULES_ADAPTER)),)
+ITEM_CHUNK_KEY = "chunk"                                       # the key of the chunk row in the one dict each parser call receives; R1's validator reserves the same name (asset_census.CORPUS_DERIVED_ITEM_CHUNK_KEY, pinned by a test)
 RUN_TIMEOUT_S = 300                # the sandbox run; the default 120 s is thin for a few thousand chunks through 27 patterns
 MAX_FIRST_DIFFERENCES = 5          # the bounded sample of differences reported by the pure comparison (key and column NAMES only, never values)
 DIFF_ORDER = ("differs", "extra_stored", "missing_stored", "uncited_chunk_yields_rule", "cited_chunk_absent", "stored_row_cites_no_chunk", "stored_duplicate_key", "derived_key_collision", "blank_leaf")
@@ -498,7 +499,9 @@ def build_inputs(decl_norm: dict, chunk_rows, extras: dict) -> list:
     shape = (decl_norm.get("parser") or {}).get("input_shape") or "chunk_row_dict"
     if shape != "chunk_row_dict":
         raise ValueError(f"unsupported parser.input_shape {shape!r}")
-    return [dict({"chunk": dict(r)}, **{k: list(v) for k, v in extras.items()}) for r in chunk_rows]
+    if ITEM_CHUNK_KEY in extras:
+        raise ValueError(f"an extra argument cannot be named {ITEM_CHUNK_KEY!r}: that key holds the chunk row")
+    return [dict({ITEM_CHUNK_KEY: dict(r)}, **{k: list(v) for k, v in extras.items()}) for r in chunk_rows]
 
 
 def pins_summary(decl_norm: dict) -> list:
@@ -534,34 +537,46 @@ def verify_pins(repo_root, pins) -> tuple[str | None, dict]:
     return None, texts
 
 
-def module_constant(source: str, name: str):
-    """The value of the single numeric literal assigned to module-level `name` in `source` (AST; nothing is run). ValueError if there is not exactly one such literal."""
-    tree = ast.parse(source)
+def _assigned_values(tree, name: str) -> list:
     hits = []
     for n in tree.body:
         if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets):
             hits.append(n.value)
         elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name and n.value is not None:
             hits.append(n.value)
-    if len(hits) != 1 or not (isinstance(hits[0], ast.Constant) and isinstance(hits[0].value, (int, float)) and not isinstance(hits[0].value, bool)):
+    return hits
+
+
+def _numeric_literal(v) -> bool:
+    return isinstance(v, ast.Constant) and isinstance(v.value, (int, float)) and not isinstance(v.value, bool)
+
+
+def module_constant(source: str, name: str):
+    """The value of the single numeric literal assigned to module-level `name` in `source` (AST; nothing is run). ValueError if there is not exactly one such literal."""
+    hits = _assigned_values(ast.parse(source), name)
+    if len(hits) != 1 or not _numeric_literal(hits[0]):
         raise ValueError(f"{name} is not a single numeric literal at module level")
     return hits[0].value
 
 
 def _find_constant(texts: dict, parser_file: str, name: str):
-    """The numeric literal `name`: in the parser file when it defines it, else in exactly one other pinned python file (the parser file may be a thin pinned ADAPTER over the module that holds the
-    constant). Raises _Stop(pin) when no pinned file, or more than one, defines it as a single numeric literal."""
+    """The numeric literal `name`: in the parser file when it assigns the name (a bad assignment there is refused, never rescued by another file), else in exactly one other pinned python file (the
+    parser file may be a thin pinned ADAPTER over the module that holds the constant). The same rule as R1's pin check. Raises _Stop(pin) when no pinned file, or more than one, defines it as a
+    single numeric literal."""
     order = [parser_file] + [p for p in texts if p != parser_file and p.endswith(".py")]
     found = []
     for p in order:
         try:
-            found.append((p, module_constant(texts[p], name)))
-        except (ValueError, SyntaxError):
+            tree = ast.parse(texts[p])
+        except (SyntaxError, ValueError):
             continue
-        if p == parser_file:
+        hits = _assigned_values(tree, name)
+        if len(hits) == 1 and _numeric_literal(hits[0]):
+            found.append((p, hits[0].value))
+        if p == parser_file and hits:
             break
     if len(found) != 1:
-        raise _Stop("pin", f"keep_when constant {name} is {'defined in several pinned files' if found else 'not a single numeric literal in the parser file or any other pinned python file'}")
+        raise _Stop("pin", f"keep_when constant {name} is {'defined in several pinned files' if found else 'not a single numeric literal in the parser file or, when the parser file does not assign it, any other pinned python file'}")
     return found[0][1]
 
 

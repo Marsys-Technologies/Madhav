@@ -6744,7 +6744,9 @@ CORPUS_DERIVED_SOURCE_FIELDS = ("table", "id_column", "text_columns", "extra_col
 CORPUS_DERIVED_PARSER_FIELDS = ("module_root", "file", "function", "pinned_files", "input_shape", "extra_args")
 CORPUS_DERIVED_DERIVED_FIELDS = ("drop_keys", "keep_when", "null_unless_in", "json_columns", "numeric_columns", "duplicate_policy")
 CORPUS_DERIVED_SCOPE_FIELDS = ("stored", "uncited_chunks")
-CORPUS_DERIVED_INPUT_SHAPES = ("chunk_row_dict",)             # the parser is called with ONE dict {id_column, *text_columns, *extra_columns: value} (+ the declared extra_args by name)
+CORPUS_DERIVED_INPUT_SHAPES = ("chunk_row_dict",)             # the function is called with ONE dict per chunk: {"chunk": {id_column, *text_columns, *extra_columns: value}, <each declared extra_args name>: [sorted distinct values]}
+                                                              # (nested, not flat: a pinned ADAPTER maps it onto the parser's real signature, and a chunk column can never collide with an argument name)
+CORPUS_DERIVED_ITEM_CHUNK_KEY = "chunk"                       # the key that holds the chunk row in that dict: RESERVED, no extra argument may be named so (the detector's build_inputs uses the same key; pinned by a test)
 CORPUS_DERIVED_ARG_KINDS = ("distinct_values",)               # an extra argument = the SET of DISTINCT values of table.column (bg_rules: valid_text_ids)
 CORPUS_DERIVED_DUPLICATE_POLICIES = ("first_wins", "refuse")  # two chunks yielding the same key: the stored row is the first in source order_by (ON CONFLICT DO NOTHING) | a duplicate is a mismatch
 CORPUS_DERIVED_IGNORABLE = ("created_at", "updated_at", "computed_at")     # CLOSED: write-time timestamps only. A value column is never ignorable
@@ -6887,6 +6889,8 @@ def _cd_parser(p):
             return f"{lab}.kind must be one of {list(CORPUS_DERIVED_ARG_KINDS)}", None
         if not all(isinstance(a[f], str) and _DECL_IDENT.fullmatch(a[f]) for f in ("name", "table", "column")):
             return f"{lab}: name, table and column must be identifiers", None
+        if a["name"] == CORPUS_DERIVED_ITEM_CHUNK_KEY:
+            return f"{lab}: the name {CORPUS_DERIVED_ITEM_CHUNK_KEY!r} is reserved (it holds the chunk row in the dict the parser function is called with)", None
         if a["name"] in names:
             return f"{lab}: argument {a['name']} is listed twice", None
         names.add(a["name"])
@@ -7175,7 +7179,7 @@ def corpus_derived_import_closure(repo_root, module_root: str, file: str) -> lis
 def corpus_derived_pin_problem(decl, repo_root=None) -> str | None:
     """None when every pin of the declaration holds against the tree at `repo_root` (default: this checkout), else the problem text, always naming the file. Checks, in order: the declaration is sound
     (`normalise_corpus_derived`); every pinned file exists and its CURRENT sha256 equals the declared one (a changed parser, or any file it loads, REFUSES the declaration: the cells read NO_DETECTOR with this
-    message); `parser.function` is defined exactly once at module level of the parser file (AST); a `keep_when` constant is a single numeric module-level literal in the parser file; and every repo-local python
+    message); `parser.function` is defined exactly once at module level of the parser file (AST); a `keep_when` constant is a single numeric module-level literal in the parser file (or, when that file does not assign it, in exactly one other pinned python file: the parser file may be a thin adapter); and every repo-local python
     file the parser imports (`corpus_derived_import_closure`) is pinned. Pure: reads files only."""
     try:
         cd = normalise_corpus_derived(decl)
@@ -7203,14 +7207,23 @@ def corpus_derived_pin_problem(decl, repo_root=None) -> str | None:
         return f"corpus_derived parser function {par['function']} is defined {len(defs)} times at module level in {par['file']}: which one runs is ambiguous"
     kw = cd["derived"]["keep_when"]
     if kw is not None:
-        hits = []
-        for n in tree.body:
-            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == kw["at_least_constant"] for t in n.targets):
-                hits.append(n.value)
-            elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == kw["at_least_constant"] and n.value is not None:
-                hits.append(n.value)
-        if len(hits) != 1 or not (isinstance(hits[0], ast.Constant) and isinstance(hits[0].value, (int, float)) and not isinstance(hits[0].value, bool)):
-            return f"corpus_derived keep_when constant {kw['at_least_constant']} is not a single numeric literal assigned at module level in {par['file']}"
+        name, found = kw["at_least_constant"], []
+        for path in [par["file"]] + [d["path"] for d in par["pinned_files"] if d["path"] != par["file"] and d["path"].endswith(".py")]:        # the parser file first; when it is a thin pinned ADAPTER the constant lives in a module it imports
+            try:
+                tree_p = tree if path == par["file"] else ast.parse(_cd_resolve(root, path)[0].read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeDecodeError, ValueError):
+                continue                                                  # an unparseable pinned file defines nothing; the import closure below refuses an unreadable import
+            hits = [n.value for n in tree_p.body
+                    if (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets))
+                    or (isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name and n.value is not None)]
+            if len(hits) == 1 and isinstance(hits[0], ast.Constant) and isinstance(hits[0].value, (int, float)) and not isinstance(hits[0].value, bool):
+                found.append(path)
+            if path == par["file"] and hits:
+                break                                                     # the parser file assigns the name: it decides (a bad assignment there is refused, never rescued by another file)
+        if len(found) != 1:
+            return (f"corpus_derived keep_when constant {name} is "
+                    + (f"defined as a numeric literal in several pinned files {found[:3]}: which one the writer reads is ambiguous" if found
+                       else f"not a single numeric literal assigned at module level in {par['file']} or, when the parser file does not assign it, any other pinned python file"))
     try:
         closure = corpus_derived_import_closure(root, par["module_root"], par["file"])
     except ValueError as exc:
