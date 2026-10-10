@@ -7875,7 +7875,7 @@ def _build_nakshatra_relationship_rows(
         return []
 
     from collections import defaultdict
-
+    from brahmagyan.nakshatra_vocabulary import nakshatra_number as _nakshatra_number  # tolerant reader (folds Mrigashira/Mula/Dhanishta)
     # graha → nakshatra name + graha_position fact_id
     graha_nak_name: dict[str, str] = {}
     graha_nak_fid: dict[str, str] = {}
@@ -7894,7 +7894,7 @@ def _build_nakshatra_relationship_rows(
 
     moon_subj = PLANET_TO_SUBJECT.get("Moon", "MOON")
     moon_nak = graha_nak_name.get(moon_subj, "")
-    moon_nak_idx = NAKSHATRA_NAMES_27.index(moon_nak) if moon_nak in NAKSHATRA_NAMES_27 else -1
+    moon_nak_idx = (_nakshatra_number(moon_nak) or 0) - 1  # -1 = not one of the 27; a Moon in 5/19/23 resolves under any spelling
     moon_nak_fid = graha_nak_fid.get(moon_subj, "")
     TARA_NAMES = ["janma", "sampat", "vipat", "kshema", "pratyak", "sadhaka", "naidhana", "mitra", "atimitra"]
 
@@ -7923,10 +7923,10 @@ def _build_nakshatra_relationship_rows(
                     ))
 
     for graha_subj, nak in graha_nak_name.items():
-        nak_idx = NAKSHATRA_NAMES_27.index(nak) if nak in NAKSHATRA_NAMES_27 else -1
+        nak_idx = (_nakshatra_number(nak) or 0) - 1  # -1 = not one of the 27
         # canonical Title-case graha name (idempotent on an already-Title L1 value; normalises a legacy
         # lowercase id read from graha_nakshatra_join so the value never differs in case from its peers)
-        nak_lord = _graha_to_title(graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(nak, "")))
+        nak_lord = _graha_to_title(graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(NAKSHATRA_NAMES_27[nak_idx] if nak_idx >= 0 else "", "")))
         graha_nak_fact_id = graha_nak_fid.get(graha_subj, "")
         lord_fact_id = graha_lord_fid.get(graha_subj, "")
 
