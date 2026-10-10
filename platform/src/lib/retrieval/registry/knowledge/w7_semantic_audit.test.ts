@@ -43,7 +43,7 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
     ]))
     let sourceRefsChecked = 0
 
-    expect(snapshot.scus).toHaveLength(181)
+    expect(snapshot.scus).toHaveLength(195)
     for (const scu of snapshot.scus) {
       expect(scu.editorial).toBe(true)
       expect(scu.description.trim().length).toBeGreaterThan(0)
@@ -75,7 +75,8 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
     // authored precedent) so each could carry a genuine second, per-mode binding — 355 -> 353.
     // SS N-373: the retired ephemeris_cache_native_lifetime SCU was a descriptor_metadata_review one
     // (2 editorial_sources entries) — 353 -> 351.
-    expect(sourceRefsChecked).toBe(351)
+    // N-428: fourteen authored K7-1a units each add one source reference.
+    expect(sourceRefsChecked).toBe(365)
   })
 
   it('preserves the declared four-item historical manual sample in every layer', () => {
