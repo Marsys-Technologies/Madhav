@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import itertools
 import pathlib
+import re
 
 import pytest
 
@@ -36,6 +37,15 @@ END $$;
 """
 
 
+DROP_ANY_SQL = """
+DO $$ DECLARE k text; BEGIN
+  SELECT relkind::text INTO k FROM pg_class WHERE oid = to_regclass('public.chart_facts');
+  IF k = 'v' THEN DROP VIEW public.chart_facts; ELSIF k IS NOT NULL THEN DROP TABLE public.chart_facts CASCADE; END IF;
+END $$;
+"""
+COLS = "fact_id text NOT NULL, note text DEFAULT 'x', %s double precision DEFAULT 0.0" % COL
+
+
 @pytest.fixture
 def db(disposable_pg):
     """A fresh database with the roles and a chart_facts table; returns (cluster, dbname, make_conn)."""
@@ -45,13 +55,19 @@ def db(disposable_pg):
     cl.psql("CREATE DATABASE %s" % name)
     cl.psql("GRANT ALL ON SCHEMA public TO PUBLIC", db=name)
 
+    def reset():
+        """Drop whatever is named public.chart_facts (a table, a view, a partitioned table) and the helper tables."""
+        cl.psql(DROP_ANY_SQL, db=name)
+        cl.psql("DROP TABLE IF EXISTS public.cf_parent, public.chart_facts_child, public.cf_src CASCADE", db=name)
+
     def table(owner="data_plane_l1_owner", column_sql="%s double precision DEFAULT 0.0" % COL):
-        cl.psql("DROP TABLE IF EXISTS public.chart_facts", db=name)
+        reset()
         cl.psql("CREATE TABLE public.chart_facts (fact_id text NOT NULL, note text DEFAULT 'x', %s)" % column_sql, db=name)
         cl.psql("ALTER TABLE public.chart_facts OWNER TO %s" % owner, db=name)
         cl.psql("GRANT SELECT ON public.chart_facts TO n349_reader", db=name)
 
     table()
+    table.reset = reset
 
     def connect(user="n349_admin"):
         return psycopg.connect("postgresql://%s@%s:%d/%s" % (user, cl.host, cl.port, name))
@@ -72,6 +88,23 @@ def _default(cl, name):
 
 def _member(cl, name):
     return cl.psql("SELECT pg_has_role('n349_admin','data_plane_l1_owner','MEMBER')", db=name)
+
+
+def _snapshot(cl, name):
+    """Everything about public.chart_facts that a refused or rolled-back run must leave exactly as it was."""
+    q = ("WITH t AS (SELECT to_regclass('public.chart_facts') AS toid) "
+         "SELECT concat_ws('|', 'rel', c.relkind::text, c.relispartition, c.relrowsecurity, c.relforcerowsecurity, c.relacl::text, pg_get_userbyid(c.relowner)) "
+         "FROM pg_class c, t WHERE c.oid = t.toid "
+         "UNION ALL SELECT concat_ws('|', 'col', a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull, pg_get_expr(d.adbin, d.adrelid)) "
+         "FROM pg_attribute a JOIN t ON a.attrelid = t.toid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attnum > 0 AND NOT a.attisdropped "
+         "UNION ALL SELECT concat_ws('|', 'con', conname, pg_get_constraintdef(oid)) FROM pg_constraint, t WHERE conrelid = t.toid "
+         "UNION ALL SELECT concat_ws('|', 'idx', indexdef) FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'chart_facts' "
+         "UNION ALL SELECT concat_ws('|', 'pol', polname) FROM pg_policy, t WHERE polrelid = t.toid "
+         "UNION ALL SELECT concat_ws('|', 'cmt', objsubid, description) FROM pg_description, t WHERE objoid = t.toid AND classoid = 'pg_class'::regclass "
+         "UNION ALL SELECT concat_ws('|', 'trg', tgname) FROM pg_trigger, t WHERE tgrelid = t.toid "
+         "UNION ALL SELECT concat_ws('|', 'mem', pg_has_role('n349_admin','data_plane_l1_owner','MEMBER')) "
+         "ORDER BY 1")
+    return cl.psql(q, db=name)
 
 
 def _run(connect, mode, expect=None, rollback=False):
@@ -175,6 +208,77 @@ def test_a_missing_column_is_refused(db):
     table(column_sql="other_col double precision DEFAULT 0.0")
     with pytest.raises(dd.Refused, match="does not exist"):
         _run(connect, "apply", dd.plan_hash())
+
+
+def _refused_and_unchanged(db, match, rollback=False):
+    cl, name, connect, _ = db
+    before = _snapshot(cl, name)
+    with pytest.raises(dd.Refused, match=match):
+        _run(connect, "apply", dd.plan_hash(rollback), rollback=rollback)
+    assert _snapshot(cl, name) == before                                                 # nothing changed, no membership left behind
+
+
+@pytest.mark.parametrize("column_sql,shown,default", [
+    ("%s numeric DEFAULT 0.0", "numeric", "0.0"),
+    ("%s numeric(10,3) DEFAULT 0.0", "numeric(10,3)", "0.0"),
+    ("%s real DEFAULT 0.0", "real", "0.0"),
+    ("%s text DEFAULT '0.0'", "text", "'0.0'::text"),
+])
+def test_a_column_of_another_type_is_refused_even_with_the_default_0_0(db, column_sql, shown, default):
+    cl, name, connect, table = db
+    table(column_sql=column_sql % COL)
+    assert _default(cl, name) == default
+    _refused_and_unchanged(db, re.escape("the column type is %r, not double precision" % shown))
+    _refused_and_unchanged(db, re.escape("the column type is %r, not double precision" % shown), rollback=True)
+    assert _default(cl, name) == default
+
+
+@pytest.mark.parametrize("with_default", [True, False], ids=["view-with-default", "view-without-default"])
+def test_a_view_named_chart_facts_is_refused_not_applied_and_not_a_no_op(db, with_default):
+    cl, name, connect, table = db
+    table.reset()
+    cl.psql("CREATE TABLE public.cf_src (%s)" % COLS, db=name)
+    cl.psql("CREATE VIEW public.chart_facts AS SELECT * FROM public.cf_src", db=name)
+    cl.psql("ALTER VIEW public.chart_facts OWNER TO data_plane_l1_owner", db=name)
+    if with_default:
+        cl.psql("ALTER VIEW public.chart_facts ALTER COLUMN %s SET DEFAULT 0.0" % COL, db=name)
+        assert _default(cl, name) == "0.0"
+    _refused_and_unchanged(db, "not an ordinary table .*relkind = 'v'")
+    _refused_and_unchanged(db, "not an ordinary table .*relkind = 'v'", rollback=True)
+    _refused_and_unchanged(db, "not an ordinary table", rollback=False)
+    assert _default(cl, name) == ("0.0" if with_default else "<none>")
+
+
+def _structure(cl, name, kind):
+    cl.psql(DROP_ANY_SQL, db=name)
+    cl.psql("DROP TABLE IF EXISTS public.cf_parent, public.chart_facts_child, public.cf_src CASCADE", db=name)
+    if kind == "partitioned":
+        cl.psql("CREATE TABLE public.chart_facts (%s) PARTITION BY LIST (fact_id)" % COLS, db=name)
+    elif kind == "partition":
+        cl.psql("CREATE TABLE public.cf_parent (%s) PARTITION BY LIST (fact_id)" % COLS, db=name)
+        cl.psql("CREATE TABLE public.chart_facts PARTITION OF public.cf_parent DEFAULT", db=name)
+    elif kind == "inheritance_child":
+        cl.psql("CREATE TABLE public.cf_parent (%s)" % COLS, db=name)
+        cl.psql("CREATE TABLE public.chart_facts () INHERITS (public.cf_parent)", db=name)
+    elif kind == "inheritance_parent":
+        cl.psql("CREATE TABLE public.chart_facts (%s)" % COLS, db=name)
+        cl.psql("CREATE TABLE public.chart_facts_child () INHERITS (public.chart_facts)", db=name)
+    cl.psql("ALTER TABLE public.chart_facts OWNER TO data_plane_l1_owner", db=name)
+
+
+@pytest.mark.parametrize("kind,match", [
+    ("partitioned", "relkind = 'p'"),
+    ("partition", "is a partition"),
+    ("inheritance_child", r"table inheritance \(0 child\(ren\), 1 parent\(s\)\)"),
+    ("inheritance_parent", r"table inheritance \(1 child\(ren\), 0 parent\(s\)\)"),
+])
+def test_a_partitioned_partition_or_inherited_table_is_refused_and_nothing_changes(db, kind, match):
+    cl, name, connect, _ = db
+    _structure(cl, name, kind)
+    assert _default(cl, name) == "0.0"
+    _refused_and_unchanged(db, match)
+    _refused_and_unchanged(db, match, rollback=True)
+    assert _default(cl, name) == "0.0"
 
 
 def test_a_change_that_touches_anything_else_is_refused_and_rolled_back(db, monkeypatch):

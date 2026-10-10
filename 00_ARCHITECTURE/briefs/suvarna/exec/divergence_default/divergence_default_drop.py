@@ -15,6 +15,9 @@ WHAT. One statement, as the table's owner, under a lock timeout:
 Metadata only: no table rewrite, no backfill (each writer's next rebuild rewrites its own rows honestly; existing 0.0 values stay until then).
 
 GUARDS (every one is a refusal, nothing is changed):
+  * public.chart_facts is an ORDINARY TABLE (pg_class.relkind = 'r'; not a view, not a partitioned table), not a partition (relispartition false)
+    and takes part in no table inheritance (no pg_inherits parent, no child: a DROP DEFAULT would reach the children), and the column is
+    `double precision` (format_type), so the guard says what it means and a `numeric`/`real` column or a view named chart_facts is refused;
   * the column exists, is NOT NULL = false (a NOT NULL column stops the job: SS N-347), and the table owner is data_plane_l1_owner;
   * the default is exactly `0.0`;  if it is ALREADY gone the run is an idempotent NO-OP (exit 0, nothing committed);  any other default refuses;
   * after the statement the before/after diff of the table's column defaults and NOT NULL flags is EXACTLY the one planned line, the table ACL
@@ -41,6 +44,7 @@ OWNER = "data_plane_l1_owner"
 TABLE = "chart_facts"
 COLUMN = "cross_ayanamsha_divergence_arcsec"
 OLD_DEFAULT = "0.0"
+COLUMN_TYPE = "double precision"
 PROJECT = "madhav-astrology"
 
 DROP_STATEMENTS = [
@@ -53,7 +57,9 @@ RESTORE_STATEMENTS = [
 ]
 
 COLUMN_SQL = """
-SELECT a.attnotnull, pg_get_expr(d.adbin, d.adrelid), pg_get_userbyid(c.relowner)
+SELECT a.attnotnull, pg_get_expr(d.adbin, d.adrelid), pg_get_userbyid(c.relowner), c.relkind::text, c.relispartition,
+       format_type(a.atttypid, a.atttypmod),
+       (SELECT count(*) FROM pg_inherits i WHERE i.inhparent = c.oid), (SELECT count(*) FROM pg_inherits i WHERE i.inhrelid = c.oid)
 FROM pg_attribute a
 JOIN pg_class c ON c.oid = a.attrelid
 JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -100,7 +106,8 @@ def column_state(cur) -> dict:
     row = cur.fetchone()
     if row is None:
         raise Refused("public.%s.%s does not exist" % (TABLE, COLUMN))
-    return {"notnull": bool(row[0]), "default": row[1], "owner": row[2]}
+    return {"notnull": bool(row[0]), "default": row[1], "owner": row[2], "relkind": row[3], "is_partition": bool(row[4]),
+            "type": row[5], "children": int(row[6]), "parents": int(row[7])}
 
 
 def shape(cur) -> list:
@@ -116,7 +123,18 @@ def acl_and_members(cur):
 
 
 def preflight(state: dict, rollback: bool) -> str:
-    """'go', or 'noop' when the table is already in the wanted state; raises Refused otherwise."""
+    """'go', or 'noop' when the table is already in the wanted state; raises Refused otherwise. The structural pins come first, so a
+    view, a partitioned table, a partition, an inheritance parent or child, or a column of another type is refused even when its default
+    happens to read 0.0 (or is absent: a view without a default is a refusal, never a no-op)."""
+    if state["relkind"] != "r":
+        raise Refused("public.%s is not an ordinary table (pg_class.relkind = %r, wanted 'r'): this package does not apply" % (TABLE, state["relkind"]))
+    if state["is_partition"]:
+        raise Refused("public.%s is a partition (relispartition): this package does not apply" % TABLE)
+    if state["children"] or state["parents"]:
+        raise Refused("public.%s takes part in table inheritance (%d child(ren), %d parent(s)): DROP DEFAULT would reach the children, so this package does not apply"
+                      % (TABLE, state["children"], state["parents"]))
+    if state["type"] != COLUMN_TYPE:
+        raise Refused("the column type is %r, not %s: this package does not apply" % (state["type"], COLUMN_TYPE))
     if state["owner"] != OWNER:
         raise Refused("the table owner is %r, not %s: this package does not apply" % (state["owner"], OWNER))
     if state["notnull"]:
