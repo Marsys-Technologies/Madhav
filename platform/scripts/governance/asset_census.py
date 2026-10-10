@@ -7778,6 +7778,21 @@ VOCAB_JSON_KEYS_APPLICABILITY_ADDITIONS = {
                     "is 'declared but unread' and keeps the cell at PARTIAL), or `structural_keys`, an explicit closed list (at most 32 names, each a string constant of a cited producer file, none a canonical vocabulary term) "
                     "of keys that are structure and not vocabulary; only keys so explained leave `key_hits`, a key at any other prefix, depth or name remains a finding; no vocab_keys, no change"),
 }
+# EXTENSION (ii), SS N-458 (mixed kinds, term-embedding identifiers): a SINGLE path entry may carry, instead of `class` + `family`, `kinds` (2 to 6 distinct {class, family}: a value must be a canonical member of
+# EXACTLY ONE declared class, in that class's declared family; the same lexicon, classifier and family rules as the single-kind path, and as `vocab_multi_kind` for flat columns), and/or `identifiers`
+# {values (1 to 64), why, evidence}: a CLOSED set of identifier values the producer can write (`true_chitra`, `parashari_rahu_excluded`), each checked VERBATIM as a string constant of the cited producer .py file
+# (and again when the declaration is resolved at measure time). A value in the set is an identifier, not spelled vocabulary: the terms embedded in it are not findings; a value OUTSIDE the set is a violation (FAIL), so
+# the exemption hides nothing else, and a value that is itself a whole vocabulary term is graded, never exempted. An identifier-only path holding more distinct values than a closed set can hold is a violation too.
+# No kinds or identifiers, no change. The read is unchanged (the declared path's distinct values were always returned).
+VOCAB_JSON_KINDS_MAX_KINDS = VOCAB_MULTI_KIND_MAX_KINDS
+VOCAB_JSON_IDENTIFIERS_MAX = 64
+VOCAB_JSON_IDENTIFIERS_FIELDS = ("values", "why", "evidence")
+VOCAB_JSON_IDENTIFIERS_APPLICABILITY_ADDITIONS = {
+    "Vocab.alias": ("; SS N-431/N-458 (opt-in): a single `vocab_json_kinds` path may instead declare `kinds` (2 to 6 distinct class + family pairs: every value at the path must be a canonical or registered spelling of exactly one "
+                    "declared class, in that class's declared family, else the cell reads FAIL naming the path, the value and the declared kinds) and/or `identifiers`, a closed identifier set of at most 64 values the producer can write "
+                    "(each checked verbatim as a string constant of the cited producer file, at declaration and again at measure time): a value in the set is an identifier and the vocabulary terms embedded in it are not findings, "
+                    "a value outside the set reads FAIL (so the exemption hides nothing else), and a value that is itself a whole vocabulary term is graded, never exempted; no kinds or identifiers declared, no change"),
+}
 
 
 def vocab_json_path_tokens(path: str) -> tuple:
@@ -7888,6 +7903,62 @@ def _vocab_json_keys_problem(lab: str, ks) -> str | None:
     return None
 
 
+def _vocab_json_single_problem(pl: str, pd) -> str | None:
+    """The problem with a SINGLE path entry, or None: `path` and exactly one of `class` + `family` / `kinds` (2 to 6 distinct class + family pairs), and/or a closed `identifiers` set (at least one of the three)."""
+    shape = (f"{pl} has exactly the fields {list(VOCAB_JSON_KINDS_PATH_FIELDS)} (or `kinds` instead of class + family, and/or `identifiers`: a path declares a kind, kinds or a closed identifier set)")
+    if not (isinstance(pd, dict) and "path" in pd and set(pd) <= {"path", "class", "family", "kinds", "identifiers"}):
+        return shape
+    cf = ("class" in pd) + ("family" in pd)
+    if cf == 1 or (cf == 2 and "kinds" in pd) or not (cf or "kinds" in pd or "identifiers" in pd):
+        return shape
+    if cf:
+        if pd["class"] not in VOCAB_CLASSES:
+            return f"{pl}.class must be one of {list(VOCAB_CLASSES)}"
+        if pd["family"] not in VOCAB_JSON_KINDS_FAMILIES:
+            return f"{pl}.family must be one of {list(VOCAB_JSON_KINDS_FAMILIES)}"
+    if "kinds" in pd:
+        ks = pd["kinds"]
+        if not (isinstance(ks, list) and 2 <= len(ks) <= VOCAB_JSON_KINDS_MAX_KINDS):
+            return f"{pl}.kinds must be a list of 2 to {VOCAB_JSON_KINDS_MAX_KINDS} objects (a path of one kind declares class + family)"
+        classes = []
+        for q, kd in enumerate(ks):
+            if not (isinstance(kd, dict) and set(kd) == set(VOCAB_MULTI_KIND_KIND_FIELDS)):
+                return f"{pl}.kinds[{q}] has exactly the fields {list(VOCAB_MULTI_KIND_KIND_FIELDS)}"
+            if kd["class"] not in VOCAB_CLASSES:
+                return f"{pl}.kinds[{q}].class must be one of {list(VOCAB_CLASSES)}"
+            if kd["family"] not in VOCAB_JSON_KINDS_FAMILIES:
+                return f"{pl}.kinds[{q}].family must be one of {list(VOCAB_JSON_KINDS_FAMILIES)}"
+            classes.append(kd["class"])
+        if len(set(classes)) != len(classes):
+            return f"{pl}.kinds names a class twice"
+    if "identifiers" in pd:
+        idn = pd["identifiers"]
+        il = f"{pl}.identifiers"
+        if not (isinstance(idn, dict) and set(idn) == set(VOCAB_JSON_IDENTIFIERS_FIELDS)):
+            return f"{il} has exactly the fields {list(VOCAB_JSON_IDENTIFIERS_FIELDS)}"
+        vals = idn["values"]
+        if not (isinstance(vals, list) and 1 <= len(vals) <= VOCAB_JSON_IDENTIFIERS_MAX and all(isinstance(x, str) for x in vals)):
+            return f"{il}.values must be a list of 1 to {VOCAB_JSON_IDENTIFIERS_MAX} strings"
+        if len(set(vals)) != len(vals):
+            return f"{il}.values lists a value twice"
+        for x in vals:
+            if not (x.strip() and x == x.strip() and len(x) <= VOCAB_VALUE_CHARS and not any(unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp") for ch in x)):
+                return f"{il}.values value {x!r} must be a non-blank identifier of at most {VOCAB_VALUE_CHARS} characters, without padding, control or invisible characters"
+        bad = _formgap_text_ok(idn["why"], f"{il}.why")
+        if bad:
+            return bad
+        bad = _vocab_json_group_evidence_problem(idn["evidence"])
+        if bad:
+            return f"{il}.evidence {bad}"
+        consts, bad = _vocab_py_string_constants(idn["evidence"])
+        if bad:
+            return f"{il}.evidence {bad}"
+        lost = [x for x in vals if x not in consts]
+        if lost:
+            return f"{il}.values {lost[:4]} is not written verbatim as a string constant in the cited producer file(s): a closed identifier set is checked against the producer source"
+    return None
+
+
 def _vocab_json_group_evidence_problem(ev) -> str | None:
     """A group's evidence: one evidence pointer, or a list of 1 to VOCAB_JSON_KINDS_GROUP_EVIDENCE_MAX pointers (the members are written in different producer files); every one a real file:line (never `unverified:`)."""
     items = ev if isinstance(ev, list) else [ev]
@@ -7965,12 +8036,9 @@ def vocab_json_kinds_problem(entry) -> str | None:
                         return bad
                 total += len(gp)
                 continue
-            if not (isinstance(pd, dict) and set(pd) == set(VOCAB_JSON_KINDS_PATH_FIELDS)):
-                return f"{pl} has exactly the fields {list(VOCAB_JSON_KINDS_PATH_FIELDS)}"
-            if pd["class"] not in VOCAB_CLASSES:
-                return f"{pl}.class must be one of {list(VOCAB_CLASSES)}"
-            if pd["family"] not in VOCAB_JSON_KINDS_FAMILIES:
-                return f"{pl}.family must be one of {list(VOCAB_JSON_KINDS_FAMILIES)}"
+            bad = _vocab_json_single_problem(pl, pd)
+            if bad:
+                return bad
             bad = _take(pl, pd["path"])
             if bad:
                 return bad
@@ -8026,8 +8094,12 @@ def vocab_json_kind_sets(entry, own: dict) -> tuple[dict, list]:
             continue
         flat = []
         for j, p in enumerate(d["paths"]):
-            members = p["paths"] if "paths" in p else [p["path"]]
-            flat += [dict(path=mp, tokens=vocab_json_path_tokens(mp), **{"class": p["class"]}, family=p["family"], group=(j if "paths" in p else None)) for mp in members]
+            if "paths" in p:                                              # a group: one class / family, no identifiers
+                flat += [dict(path=mp, tokens=vocab_json_path_tokens(mp), **{"class": p["class"]}, family=p["family"], kinds=[(p["class"], p["family"])], identifiers=None, group=j) for mp in p["paths"]]
+                continue
+            kinds = [(k["class"], k["family"]) for k in p["kinds"]] if "kinds" in p else ([(p["class"], p["family"])] if "class" in p else [])
+            flat.append(dict(path=p["path"], tokens=vocab_json_path_tokens(p["path"]), **{"class": p.get("class")}, family=p.get("family"), kinds=kinds,
+                             identifiers=(list(p["identifiers"]["values"]) if "identifiers" in p else None), group=None))
         flat = _JkSpec(flat)
         flat.key_specs = [dict(prefix=k["prefix"], tokens=vocab_json_prefix_tokens(k["prefix"]), mode=("structural" if "structural_keys" in k else "terms"), names=(list(k["structural_keys"]) if "structural_keys" in k else None),
                                **{"class": k.get("key_class"), "family": k.get("key_family")}) for k in d.get("vocab_keys", [])]
@@ -8148,6 +8220,60 @@ def vocab_path_kind_violations(values, cls: str, fam: str) -> tuple[list, list]:
     return bad, ok
 
 
+def vocab_kinds_label(kinds) -> str:
+    """`graha/code|bhava/registered_code` for a path's declared (class, family) pairs. Pure."""
+    return "|".join(f"{c}/{f}" for c, f in kinds)
+
+
+def vocab_path_grade(values, s: dict, overflow: int = 0) -> tuple[list, list, list]:
+    """(violations, verified terms, verified identifiers) of the distinct values found at ONE declared path (pure). A path declares `kinds` (one pair, or a union of pairs) and/or a closed `identifiers` set.
+    An identifier in the set that is no whole vocabulary term is an identifier: not graded, never an embedded-term finding; a value outside the set (and outside the kinds) is a violation; a whole vocabulary term is
+    always graded by its kinds, even if the set lists it. `overflow` = the distinct values the read could not return for an identifier-only path (> the cap): more values than a closed set holds is a violation."""
+    kinds = list(s.get("kinds") or ([(s["class"], s["family"])] if s.get("class") else []))
+    ids = list(s.get("identifiers") or [])
+    idset = set(ids)
+    bad: list = []
+    if ids and not kinds and overflow > len(idset):
+        bad.append(f"{overflow} distinct values (the read returned the first {len(set(values))}), but a closed identifier set holds only {len(idset)} identifier(s): some value is outside it")
+    ok, ok_ids = [], []
+    tail = f" (and not one of the {len(idset)} declared identifier(s))" if ids and kinds else ""
+    for v in sorted({x for x in values if isinstance(x, str)}):
+        r = vocab_classify(v)
+        if v in idset and r is None:
+            ok_ids.append(v)
+            continue
+        if not kinds:
+            if r is None:
+                bad.append(f"{v!r}: outside the closed identifier set of {len(idset)} identifier(s) declared for this path")
+            else:
+                bad.append(f"{v!r}: a {'/'.join(r['classes'])} vocabulary term at a path that declares only a closed identifier set of {len(idset)} identifier(s): a whole term is graded, never exempted")
+            continue
+        if len(kinds) == 1:
+            b, o = vocab_path_kind_violations([v], kinds[0][0], kinds[0][1])
+            bad += [x + tail for x in b]
+            ok += o
+            continue
+        lab = vocab_kinds_label(kinds)
+        if r is None:
+            bad.append(f"{v!r}: not a term of any declared kind ({lab}){tail}")
+            continue
+        if r["kind"] == "alias":
+            bad.append(f"{v!r}: a non-canonical spelling of a {'/'.join(r['classes'])} term{tail}")
+            continue
+        fam = dict(kinds)
+        declared = [c for c in r["classes"] if c in fam]
+        if not declared:
+            bad.append(f"{v!r}: a {'/'.join(r['classes'])} term, which is none of the declared kinds ({lab}){tail}")
+            continue
+        if len(declared) > 1:
+            bad.append(f"{v!r}: canonical in more than one declared kind ({'/'.join(declared)}): not exactly one{tail}")
+            continue
+        b, o = vocab_path_kind_violations([v], declared[0], fam[declared[0]])
+        bad += b
+        ok += o
+    return bad, ok, ok_ids
+
+
 def vocab_json_kinds_report(read: dict, spec: list) -> dict:
     """The verdict of a vocab_json_kinds declaration over a WHOLE-column read (pure). `read` = the answer of `vocab_fetch_json_kinds`, `spec` = the declared paths ({path, tokens, class, family}).
     {ok, violations (a declared path holding a value outside its kind: FAIL), unread (the read was truncated: NO_DETECTOR), undeclared_vocabulary ([{path, values}]: vocabulary at an undeclared path: the column is
@@ -8164,10 +8290,13 @@ def vocab_json_kinds_report(read: dict, spec: list) -> dict:
             unread.append(f"{label}: matches more than one declared path ({', '.join(s['path'] for s in hits_)}): ambiguous")
             continue
         if hits_:
+            idonly = bool(hits_[0].get("identifiers")) and not hits_[0].get("kinds")          # a closed identifier set: more distinct values than the set can hold is itself the answer (a violation), not an unread
             if e["nd"] > VOCAB_JSON_KINDS_MAX_DISTINCT or len(e["vals"]) > VOCAB_JSON_KINDS_MAX_DISTINCT:
-                unread.append(f"{label}: more than {VOCAB_JSON_KINDS_MAX_DISTINCT} distinct values at a declared path, so it cannot be read whole")
-                continue
-            per_decl[hits_[0]["path"]]["values"].update(e["vals"])
+                if not idonly:
+                    unread.append(f"{label}: more than {VOCAB_JSON_KINDS_MAX_DISTINCT} distinct values at a declared path, so it cannot be read whole")
+                    continue
+                per_decl[hits_[0]["path"]]["overflow"] = per_decl[hits_[0]["path"]].get("overflow", 0) + e["nd"]
+            per_decl[hits_[0]["path"]]["values"].update(e["vals"][:VOCAB_JSON_KINDS_MAX_DISTINCT])
             per_decl[hits_[0]["path"]]["leaves"] += e["n"]
             continue
         if e["nh"]:                                              # vocabulary-looking leaves at an undeclared path: graded in Python, the SQL predicate is over-inclusive
@@ -8189,9 +8318,11 @@ def vocab_json_kinds_report(read: dict, spec: list) -> dict:
         d = per_decl[s["path"]]
         g = s.get("group")
         gl = glabel.get(g)
-        bad, ok = vocab_path_kind_violations(d["values"], s["class"], s["family"])
-        viol += [f"{s['path']} (declared {s['class']}/{s['family']}{', in ' + gl if gl else ''}) holds {b}" for b in bad]
-        verified_any = verified_any or bool(ok)
+        bad, ok, ok_ids = vocab_path_grade(d["values"], s, d.get("overflow", 0))
+        kl = vocab_kinds_label(s.get("kinds") or ([(s["class"], s["family"])] if s.get("class") else []))
+        dl = " + ".join(x for x in (kl, f"closed identifier set of {len(s['identifiers'])}" if s.get("identifiers") else "") if x)
+        viol += [f"{s['path']} (declared {dl}{', in ' + gl if gl else ''}) holds {b}" for b in bad]
+        verified_any = verified_any or bool(ok) or bool(ok_ids)
         if not d["values"]:
             never.append(s["path"])
         if g is not None:                                                # the per-class CLOSURE of a group: every member path is read and graded; a member nothing read is reported, never passed
@@ -8202,7 +8333,9 @@ def vocab_json_kinds_report(read: dict, spec: list) -> dict:
             st["leaves"] += d["leaves"]
             st["values"].update(d["values"])
             st["ok"].update(ok)
-        paths_rec[s["path"]] = {"class": s["class"], "family": s["family"], "leaves": d["leaves"], "distinct": len(d["values"]), "verified": ok[:12], **({"group": gl} if gl else {})}
+        paths_rec[s["path"]] = {"class": s["class"], "family": s["family"], "leaves": d["leaves"], "distinct": len(d["values"]), "verified": ok[:12], **({"group": gl} if gl else {}),
+                                **({"kinds": [{"class": c_, "family": f_} for c_, f_ in s["kinds"]]} if s.get("kinds") and len(s["kinds"]) > 1 else {}),
+                                **({"identifiers_declared": len(s["identifiers"]), "identifiers_verified": ok_ids} if s.get("identifiers") else {})}
         all_values.update(v for v in d["values"] if vocab_classify(v) is not None)
     groups, group_unread, unclosed = {}, [], []
     for g in gids:
@@ -8253,7 +8386,11 @@ def vocab_json_kinds_label(c: dict) -> str:
     jk = c.get("json_kinds") or {}
     if not jk.get("ok"):
         return ""
-    kinds = ", ".join(f"{p}={v['class']}/{v['family']}" for p, v in jk["paths"].items() if v["verified"] and not v.get("group"))
+    def _pl(p, v):
+        k_ = vocab_kinds_label([(x["class"], x["family"]) for x in v["kinds"]]) if v.get("kinds") else (f"{v['class']}/{v['family']}" if v.get("class") else "")
+        i_ = f"closed identifier set ({v['identifiers_declared']} identifier(s) declared, {len(v['identifiers_verified'])} seen)" if v.get("identifiers_declared") else ""
+        return f"{p}={' or '.join(x for x in (k_, i_) if x)}"
+    kinds = ", ".join(_pl(p, v) for p, v in jk["paths"].items() if (v["verified"] or v.get("identifiers_verified")) and not v.get("group"))
     gtxt = ", ".join(f"{g} {v['class']}/{v['family']} ({v['declared']} path(s), each read and graded)" for g, v in (jk.get("groups") or {}).items())
     kinds = ", ".join(x for x in (kinds, gtxt) if x)
     nv = jk.get("undeclared_non_vocabulary") or {}
