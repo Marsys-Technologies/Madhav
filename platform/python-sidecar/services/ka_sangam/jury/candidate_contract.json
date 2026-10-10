@@ -1,0 +1,25 @@
+{
+  "contract_version": "k4-2aw:class_input:v1",
+  "scope": "PLAN section 9 fixture preparation only; live source mappings and independent method qualification remain due",
+  "entry": "ctx.config.jury_fixture_inputs",
+  "candidate_binding": "ctx.build_id, chart_id, state=building, conventions.fixture=true; current published head is refused",
+  "grain": "chart x generation x class; exactly one canonical jury assertion per supplied class horizon",
+  "inputs": {
+    "anchor": "kala_core.assertion.AssertionEnvelope, stage=judge, role=selects; candidate identity and full source envelope",
+    "upstream_refs": "nonempty pinned judge, negative_space, F1 and F2 references; fixture references do not admit live bindings",
+    "nodes_and_uses": "typed evidence nodes and evaluated activity/roles; source roots and selection ancestry, never recalculated sky or period values",
+    "opinions": "already evaluated, class-scoped typed conclusions with separate support; G-J only through complete MethodOutput",
+    "groups": "all five declared schools, coverage, ancestry, source and review references; G-J overridden by complete-method admission; explicit corpus_admitted and kp_ingested gate G-T/G-K; G-A remains testimony",
+    "jaimini": "k4-2a:jaimini_method_output:v1, or null with jaimini_output_missing",
+    "measure": "explicit alpha and boolean exchangeability; pinned default 1023 non-identity shifts; separate pipeline null is unavailable without a selection producer",
+    "time_axis": "aware UTC Unix seconds; one declared class horizon"
+  },
+  "outputs": {
+    "kala_jury_candidate": "selection-safe evidence graph, group declarations, D(W), conditional null and explicit missing pipeline-null reason",
+    "kala_jury_candidate_segment": "half-open boundaries, group support vectors and allowed source roots",
+    "kala_jury_candidate_contest": "opposing typed conclusions kept as separate sides",
+    "provenance": "full input envelope, pinned upstream references, fixture acceptance scope, canonical sequences and joint turning points from the declared class roster"
+  },
+  "compatibility": "default Modes A-D and published readers unchanged; plan is read-only; substep replaces only its own candidate class, child tables first, inside the caller transaction",
+  "not_proven": "live judge/F1/F2/negative-space mappings, complete production G-J producer, production output qualification, deployment and publication"
+}
