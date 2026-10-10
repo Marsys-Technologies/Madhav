@@ -24,14 +24,16 @@
  * agreement with kp_cuspal_significators is asserted at assembly time — a divergence is
  * surfaced as a `chain_divergence` flag on the affected cusp rather than silently picked.
  *
- * KP-canonical ayanamsha is Krishnamurti; that is the default here (school_conventions.ts
- * §3 — "KP uses Krishnamurti ayanamsha"). All 5 stored ayanamshas are queryable via
- * `ayanamsha_id`. Chart-scoped (principle #14): chart_id is the entitlement key.
+ * KP-canonical ayanamsha is Krishnamurti (school_conventions.ts §3 — "KP uses Krishnamurti
+ * ayanamsha"), and since SS N-362 (b) it is the ONLY frame this tool reads: a passed `ayanamsha_id`
+ * / `ayanamsha_scope` that is not Krishnamurti is ignored and disclosed in `ayanamsha_note`, like every
+ * other KP read. Chart-scoped (principle #14): chart_id is the entitlement key.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
-import { kpFrameLabelFor } from '../../../kp_frame'
+import { KP_FRAME_LABEL } from '../../../kp_frame'
+import { resolveKpFrameAyanamsha } from '../../handler_ayanamsha'
 
 const KP_CATEGORIES = [
   'cusp_kp_lords',
@@ -43,7 +45,9 @@ const KP_CATEGORIES = [
 const GRAHA_KP_CATEGORY = 'graha_kp_lords'
 
 // KP-canonical ayanamsha (K.S. Krishnamurti). Not the system-wide Lahiri default —
-// a KP tool must default to the KP ayanamsha to be doctrinally correct.
+// a KP tool must read the KP ayanamsha to be doctrinally correct. SS N-362 (b): it is not just the
+// default, it is the ONLY frame — a passed non-KP id is ignored and disclosed (`ayanamsha_note`), exactly
+// like every other KP read (resolveKpFrameAyanamsha).
 const DEFAULT_AYANAMSHA = 'krishnamurti'
 
 // Deterministic sidereal-longitude → rashi label. This is a pure formatting lookup
@@ -132,7 +136,10 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     const build_ids = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
+    // SS N-362 (b): one KP frame. Whatever ayanamsha_id / ayanamsha_scope was passed (the Lahiri primary,
+    // an alias, "all", another stored id, nonsense) is not applied; the response says so when it differs.
+    const kpFrame = resolveKpFrameAyanamsha(args)
+    const ayanamsha_id = kpFrame.aya.id ?? DEFAULT_AYANAMSHA
     const includeGraha = args['include_graha_kp_lords'] === true || args['include_graha_kp_lords'] === 'true'
 
     const categories: string[] = [...KP_CATEGORIES]
@@ -158,9 +165,10 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
             chart_id,
             build_id,
             ayanamsha_id,
-            // SS N-342/N-359: the frame the (empty) KP read was made in; honest when it is not Krishnamurti.
-            kp_frame_label: kpFrameLabelFor(ayanamsha_id),
+            // SS N-342/N-359/N-362: the KP frame the (empty) read was made in.
+            kp_frame_label: KP_FRAME_LABEL,
             kp_frame_ayanamsha_id: ayanamsha_id,
+            ...(kpFrame.echo.ayanamsha_note ? { ayanamsha_note: kpFrame.echo.ayanamsha_note } : {}),
             cusps: [],
             ruling_planets: [],
             count: 0,
@@ -276,10 +284,11 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
         chart_id,
         build_id,
         ayanamsha_id,
-        // SS N-342/N-359: every KP payload says which frame it was read in ("KP frame (Krishnamurti
-        // ayanamsha)" by default; an explicit other id is named honestly, never passed off as canonical).
-        kp_frame_label: kpFrameLabelFor(ayanamsha_id),
+        // SS N-342/N-359/N-362: every KP payload says which frame it was read in ("KP frame (Krishnamurti
+        // ayanamsha)", always), and says so when the caller asked for another frame.
+        kp_frame_label: KP_FRAME_LABEL,
         kp_frame_ayanamsha_id: ayanamsha_id,
+        ...(kpFrame.echo.ayanamsha_note ? { ayanamsha_note: kpFrame.echo.ayanamsha_note } : {}),
         cusps,
         ruling_planets: rulingPlanets,
         count: cusps.length,

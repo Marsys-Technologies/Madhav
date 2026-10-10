@@ -28,6 +28,7 @@ import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
+import { resolveKpFrameAyanamsha } from '../../handler_ayanamsha'
 import { INVARIANT_AYANAMSHA } from '../../constants'
 import { CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
 import { fetchIdentityCrossCheck } from '../../../ayanamsha_cross_check_reads'
@@ -77,6 +78,16 @@ function normalizeSystem(input: string): string | null {
   const lower = SYSTEM_ALIAS[input.toLowerCase()]
   return lower ?? null
 }
+
+// ── SS N-362 (a): KP dasha chain joins the KP frame — helper (BEGIN) ──
+// system=vimshottari_kp is the Moon's KP sub-period chain: KP content, so it is read at krishnamurti
+// whatever ayanamsha_id/scope was passed (same rule as get_karakas system=kp). Same system precedence
+// and alias vocabulary as the `system` facet below.
+function requestsKpDashaSystem(args: Record<string, unknown>): boolean {
+  const input = args.system ?? args.dasha_system ?? args.system_id
+  return typeof input === 'string' && input.toLowerCase() !== 'all' && normalizeSystem(input) === 'vimshottari_kp'
+}
+// ── SS N-362 (a): helper (END) ──
 
 // Level-name facet: chart_dashas.level_n runs 1..5 (Maha/Antar/Pratyantar/Sookshma/Prana).
 const LEVEL_NAME_TO_N: Record<string, number> = {
@@ -468,9 +479,12 @@ export const getDashasCapability: CapabilityDescriptor = {
       // normalised; ayanamsha_id:"all" (or ayanamsha_scope:"all", which the bridge sets) is the
       // explicit pooled opt-out; an unknown id (or the INVARIANT sentinel, which is not a
       // chart ayanamsha) stays an `invalid_ayanamsha_id` error listing the stored ids.
+      // SS N-362 (a) (BEGIN): the KP dasha system is read in the KP frame, the passed id is never validated.
+      const kpDashaFrame = requestsKpDashaSystem(args) ? resolveKpFrameAyanamsha(args) : null
+      // SS N-362 (a) (END)
       let aya: ReturnType<typeof resolveHandlerAyanamsha>
       try {
-        aya = resolveHandlerAyanamsha(args)
+        aya = kpDashaFrame ? kpDashaFrame.aya : resolveHandlerAyanamsha(args)
         if (aya.id === INVARIANT_AYANAMSHA) throw new InvalidAyanamshaError(INVARIANT_AYANAMSHA)
       } catch (e) {
         if (!(e instanceof InvalidAyanamshaError)) throw e
@@ -1037,6 +1051,7 @@ export const getDashasCapability: CapabilityDescriptor = {
           chart_id: chartId,
           ...ayanamshaScopeEcho(aya),
           ...(crossCheck ? { [CROSS_CHECK_KEY]: crossCheck } : {}),
+          ...(kpDashaFrame ? kpDashaFrame.echo : {}), // SS N-362 (a): frame_label (+ ayanamsha_note when another frame was asked for)
           source_table: 'chart_dashas',
           build_id: activeBuildId,
           levels_available: levelsAvailable,
