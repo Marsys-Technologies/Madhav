@@ -14,7 +14,10 @@ const PORT = readPositiveInteger(process.env.MARSYS_AI_CLI_BRIDGE_PORT ?? '8787'
 const HOST = process.env.MARSYS_AI_CLI_BRIDGE_HOST ?? '127.0.0.1'
 const TOKEN_FILE = process.env.MARSYS_AI_CLI_BRIDGE_TOKEN_FILE
 const HOME = homedir()
-const MAX_BODY_BYTES = 300 * 1024
+// Synthesis prompts carry the whole evidence bundle (the app admits up to
+// 2M chars of evidence), so stdin must fit ~3 MB; the body adds JSON overhead.
+const MAX_STDIN_BYTES = 3 * 1024 * 1024
+const MAX_BODY_BYTES = MAX_STDIN_BYTES + 512 * 1024
 const MAX_STDOUT_BYTES = 1024 * 1024
 const MAX_STDERR_BYTES = 64 * 1024
 const TIMEOUT_MS = 120_000
@@ -360,7 +363,7 @@ async function runKimiAcp(executable, cwd, promptText, modelId) {
 }
 
 async function runCommand(cliId, executable, args, input, cwd, failureCode = 'AI_CLI_UNREACHABLE') {
-  if (Buffer.byteLength(input) > 256 * 1024) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
+  if (Buffer.byteLength(input) > MAX_STDIN_BYTES) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
   const child = spawn(executable, args, { shell: false, detached: true, cwd, env: safeEnvironment(),
     stdio: ['pipe', 'pipe', 'pipe'] })
   if (!child.pid) throw bridgeError('AI_CLI_UNREACHABLE')
@@ -452,7 +455,7 @@ function validatePayload(raw) {
         : ['operation', 'cliId']
   if (Object.keys(raw).some(key => !allowed.includes(key))) throw bridgeError('AI_EXECUTION_FAILED')
   if ((operation === 'probe' || operation === 'probe_model' || operation === 'execute') && (typeof raw.stdin !== 'string'
-    || Buffer.byteLength(raw.stdin) > 256 * 1024)) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
+    || Buffer.byteLength(raw.stdin) > MAX_STDIN_BYTES)) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
   if ((operation === 'execute' || operation === 'probe_model') && raw.modelId !== null
     && (typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
   if (operation === 'probe_model' && (!['codex', 'claude_code'].includes(cliId)
