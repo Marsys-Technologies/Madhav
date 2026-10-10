@@ -11,6 +11,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 20
 
@@ -23,15 +24,17 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the computed Prashna-Lagna (horary ascendant) for a prashna chart from',
     'ga_prashna_lagna. Per-method row: lagna_method (e.g. tajik_moment_lagna, kp_249),',
-    'lagna_rashi, lagna_degree, kp_sub_lord (for kp_249), is_primary flag,',
-    'classical_citation. chart_id here references prashna_charts (the horary-question',
+    'lagna_rashi, lagna_degree, is_primary flag, classical_citation, and a kp_sub_lord',
+    'column that is ALWAYS NULL today: ga_prashna never computes a KP sub-lord, and a kp_249',
+    'row carries the ordinary ascendant (rashi/degree), not a KP-number lagna, so no KP sub-lord',
+    'reading is served from this tool. chart_id here references prashna_charts (the horary-question',
     'chart), not the natal chart. Filters: ayanamsha_id, lagna_method, primary_only.',
     'Bounded to 20 rows with a disclosed total.',
   ].join(' '),
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Prashna chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     lagna_method: { type: 'string', description: 'Filter by lagna_method. Omit for all.' },
     primary_only: { type: 'boolean', description: 'Return only the is_primary=true row(s).' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
@@ -62,7 +65,10 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const lagna_method = args['lagna_method'] ? String(args['lagna_method']) : null
     const primary_only = args['primary_only'] === true
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
@@ -80,7 +86,7 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
              is_primary, classical_citation
       FROM ga_prashna_lagna
       WHERE ${where}
-      ORDER BY ayanamsha_id, lagna_method
+      ORDER BY ${ayanamshaServeOrderBy()}, lagna_method
       LIMIT $${p}`
 
     try {
@@ -96,6 +102,7 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { ayanamsha_id, lagna_method, primary_only, limit },
           ...(rowsRes.rows.length === 0
             ? { empty_reason: `No prashna-lagna rows matched for this prashna chart_id (ayanamsha_id=${ayanamsha_id ?? 'any'}, lagna_method=${lagna_method ?? 'any'}).` }

@@ -49,6 +49,7 @@ import { traceEmitter } from '@/lib/trace/emitter'
 import { buildTraceSummary } from '@/lib/mcp/trace_summary'
 import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { InvalidAyanamshaError } from '@/lib/retrieval/chart_facts_helpers'
 
 export const maxDuration = 60
 
@@ -258,6 +259,20 @@ export async function POST(request: Request, { params }: RouteParams) {
     const rawResult = await tool.retrieve(queryPlan as unknown as Record<string, unknown>, toolParams)
     toolResult = rawResult
   } catch (err) {
+    // A bad ayanamsha_id is bad USER input (SS N-342: unknown id = error listing the stored
+    // ids): HTTP 400 validation, never a 500 orchestrator_error. Same shape as
+    // /api/retrieval/capability. Caught by class (the PR-1 helper's error), not by message.
+    if (err instanceof InvalidAyanamshaError) {
+      return NextResponse.json(
+        buildErrorEnvelope({
+          trace_id: queryId,
+          error_class: 'validation',
+          message: err.message,
+          remediation: `Use one of: ${err.stored_ids.join(', ')} (or omit ayanamsha_id for the primary, "all" for raw multi-ayanamsha rows).`,
+        }),
+        { status: 400 }
+      )
+    }
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[mcp:primitives] tool.execute failed for ${retrievalToolName}`, msg)
     return NextResponse.json(

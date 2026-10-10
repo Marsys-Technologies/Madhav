@@ -131,8 +131,10 @@ export default async function CommandCenterPage({
       <section className="mb-8" data-testid="ayanamsha-registry-block">
         <h2 className="bt-heading mb-3">Ayanamsha registry</h2>
         <p className="bt-body text-muted-foreground mb-2">
-          Read-only display of the three ayanamsha roles. The canonical role
-          cannot be disabled (guard enforced at write time).
+          Read-only display of the ayanamsha roles. Lahiri (lahiri_chitrapaksha) is
+          canonical and PRIMARY for every chart; the other four stored ayanamshas
+          are a labelled cross-check, never mixed into the primary reading. The
+          canonical role cannot be disabled (guard enforced at write time).
         </p>
         <table className="w-full border-collapse text-sm">
           <thead>

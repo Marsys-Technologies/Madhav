@@ -26,7 +26,8 @@ describe('getConditionCompositeCapability', () => {
     const sql = mockQuery.mock.calls[0][0] as string
     expect(sql).toContain('FROM ga_condition_composite')
     expect(sql).toContain('chart_id = $1')
-    expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 50])
+    // PR-2: omitted ayanamsha_id = the primary reading (Lahiri), bound as $2
+    expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 'lahiri_chitrapaksha', 50])
   })
 
   it('graha + ayanamsha_id filters are param-bound', async () => {
@@ -38,7 +39,7 @@ describe('getConditionCompositeCapability', () => {
     const params = mockQuery.mock.calls[0][1] as unknown[]
     expect(sql).toContain('graha = $2')
     expect(sql).toContain('ayanamsha_id = $3')
-    expect(params).toEqual([CHART_ID, 'Mars', 'lahiri', 50])
+    expect(params).toEqual([CHART_ID, 'Mars', 'lahiri_chitrapaksha', 50])
   })
 
   it('empty result carries an honest empty_reason', async () => {
