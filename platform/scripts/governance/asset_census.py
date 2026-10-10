@@ -5000,7 +5000,10 @@ def vocab_scopes(tables, r: dict, own: dict, shared, decl, chart_id: str) -> dic
             out[t] = dict(where=" OR ".join(f'("{f["column"]}"::text = {_vocab_lit(f["equals"])})' for f in flts),
                           label=f"the asset's declared produced rows ({len(flts)} filter{'s' if len(flts) != 1 else ''}, ORed): " + "; ".join(f'{f["column"]} = {f["equals"]!r}' for f in flts))
             continue
-        tail = _count_scope_tail((r or {}).get("count_sql") or "", t)
+        tail, refused = _count_scope_resolve((r or {}).get("count_sql") or "", t)
+        if refused:                                          # N-431: an ownership-join count_sql in a shape the resolver does not recognise: the table is NOT read (never read whole)
+            out[t] = dict(where=None, label="shared table, " + refused, block=refused)
+            continue
         if tail is None:
             out[t] = dict(where=None, label="shared table, the asset's rows are not named by its count_sql: read whole (every asset's rows in it)")
             continue
@@ -5048,8 +5051,11 @@ def read_scopes(tables, r: dict, cols_of: dict, shared, decl, chart_id: str) -> 
             # the columns could not be READ: whether the table carries a chart_id column is unknown, so the read cannot be scoped and must not be made (NO_DETECTOR with this cause), never "no chart column: whole table"
             out[t] = dict(where=None, label="columns not read: whether the table is chart-scoped is unknown", block="the table's columns could not be read, so it is unknown whether it carries a chart_id column and the read cannot be scoped to the measured chart: not read (NO_DETECTOR), never judged on every chart's rows")
             continue
+        tail, refused = _count_scope_resolve((r or {}).get("count_sql") or "", t)
+        if refused:                                          # N-431: the ownership-join count_sql is in a shape the resolver does not recognise: not read (NO_DETECTOR with this cause), never unscoped
+            out[t] = dict(where=None, label=refused, block=refused)
+            continue
         if "chart_id" in cols:
-            tail = _count_scope_tail((r or {}).get("count_sql") or "", t)
             if tail is not None and not _tail_mentions_chart(tail):
                 labels.append("whole table (global: the registry count_sql carries no $1 and no chart_id reference)")
             else:
@@ -9630,6 +9636,194 @@ def _count_scope_tail(count_sql: str, table: str):
         if mt.group(1).lower() == (table or "").lower():
             tails.append(" " + tl if tl else "")
     return tails[0] if len(tails) == 1 else None
+
+
+# ───────────── N-431: the OWNERSHIP-JOIN count form (ga_structural, migration 410) ─────────────
+# ga_structural has no single target table: its registry count_sql counts the rows of `chart_facts` whose fact_category the ownership table `fact_category_ownership` gives to the asset (a JOIN, never a flat
+# `fact_category IN (...)` list: a flat list is the hand-kept allow-list that drifted twice before migration 410). `_count_scope_tail` cannot read a JOIN, so the asset's reads of chart_facts were unscoped. The
+# resolver below reads that form from its PARSED structure and BUILDS the read tail itself (the registry text is never pasted into a read): the chart pin plus the ownership restriction, as a subselect over the
+# ownership table. Recognised: (J) `FROM chart_facts [a] [INNER] JOIN fact_category_ownership [b] ON b.fact_category = a.fact_category [AND b.owning_asset_id = '<id>'] WHERE a.chart_id = $1 [AND b.owning_asset_id =
+# '<id>']` (the two tables in either order), (I) `FROM chart_facts [a] WHERE chart_id = $1 AND fact_category IN (SELECT fact_category FROM fact_category_ownership [b] WHERE owning_asset_id = '<id>')`, (E) the
+# same with `EXISTS (SELECT 1 FROM fact_category_ownership [b] WHERE b.fact_category = a.fact_category AND b.owning_asset_id = '<id>')`. Exactly one chart pin, exactly one ownership link, exactly one owning-asset
+# literal ([A-Za-z0-9_]+), no other predicate. ANY other count_sql that reads the ownership table (another join type, a comma join, a third table, an extra predicate, a missing chart pin or asset restriction, an
+# OR, a sum, another fact table) is REFUSED with a named cause: the table's read is blocked (NO_DETECTOR), never made unscoped. A count_sql that does not read the ownership table never reaches this code: the
+# flat / single-table / sum resolver `_count_scope_tail` answers it, unchanged.
+OWNERSHIP_TABLE = "fact_category_ownership"
+OWNERSHIP_FACT_TABLE = "chart_facts"
+OWNERSHIP_REFUSED = "ownership-join-shape-not-recognised"
+_OWN_ID = r"[A-Za-z_][A-Za-z0-9_]*"
+_OWN_NOT_KW = r"(?!(?:inner|join|on|where|left|right|full|cross|natural|and|or)\b)"
+_OWN_READS = re.compile(r"(?:\bfrom|\bjoin|,)\s*(?:public\.)?fact_category_ownership\b", re.I)
+
+
+class _OwnRefused(Exception):
+    """The count_sql reads the ownership table in a shape the resolver does not recognise (the message is the reason)."""
+
+
+def _own_tref(k: int) -> str:
+    return rf"(?:public\.)?(?P<n{k}>{_OWN_ID})(?:\s+(?:as\s+)?(?P<a{k}>{_OWN_NOT_KW}{_OWN_ID}))?"
+
+
+def _own_split_kw(s: str, kw: str) -> list:
+    """`s` split at the depth-0 whole-word occurrences of the keyword `kw` (parentheses and single-quoted literals respected). Unbalanced text is refused."""
+    out, cur, depth, q, i, n, k = [], 0, 0, False, 0, len(s), len(kw)
+    word = lambda j: j < 0 or j >= n or not (s[j].isalnum() or s[j] == "_")      # noqa: E731
+    while i < n:
+        ch = s[i]
+        if q:
+            if ch == "'":
+                if i + 1 < n and s[i + 1] == "'":
+                    i += 1
+                else:
+                    q = False
+        elif ch == "'":
+            q = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and s[i:i + k].lower() == kw and word(i - 1) and word(i + k):
+            out.append(s[cur:i])
+            cur = i + k
+            i += k - 1
+        i += 1
+    if depth != 0 or q:
+        raise _OwnRefused("unbalanced parentheses or quotes")
+    out.append(s[cur:])
+    return out
+
+
+def _own_unwrap(c: str) -> str:
+    """`c` without the pairs of parentheses that wrap the WHOLE conjunct."""
+    c = c.strip()
+    while c.startswith("(") and c.endswith(")"):
+        depth, close, q = 0, -1, False
+        for j, ch in enumerate(c):
+            if ch == "'":
+                q = not q
+            elif not q:
+                depth += ch == "("
+                depth -= ch == ")"
+                if depth == 0:
+                    close = j
+                    break
+        if close != len(c) - 1:
+            break
+        c = c[1:-1].strip()
+    return c
+
+
+def _own_asset(w: str, quals: set) -> str:
+    """The owning-asset literal of `<q>.owning_asset_id = '<id>'` (or the reversed form); `q`, when given, must be a qualifier of the ownership table."""
+    m = re.fullmatch(rf"(?:(?P<q>{_OWN_ID})\.)?owning_asset_id\s*=\s*'(?P<lit>[A-Za-z0-9_]+)'", w, re.I) or \
+        re.fullmatch(rf"'(?P<lit>[A-Za-z0-9_]+)'\s*=\s*(?:(?P<q>{_OWN_ID})\.)?owning_asset_id", w, re.I)
+    if not m:
+        raise _OwnRefused("an owning_asset_id predicate that is not `owning_asset_id = '<identifier>'`")
+    if m.group("q") and m.group("q").lower() not in quals:
+        raise _OwnRefused("an owning_asset_id predicate qualified by a name that is not the ownership table")
+    return m.group("lit")
+
+
+def _own_parse(q: str) -> dict:
+    """The owning asset of an ownership-join count_sql, from its structure (`q`: comments removed, whitespace collapsed). Raises `_OwnRefused` (with the reason) for every other shape."""
+    m = re.fullmatch(r"select\s+count\(\s*(?:\*|1)\s*\)(?:\s+as\s+\w+)?\s+from\s+(?P<rest>.+?)\s*;?\s*", q, re.I | re.S)
+    if not m:
+        raise _OwnRefused("not a plain `SELECT count(*) FROM ...` over one query block")
+    parts = _own_split_kw(m.group("rest"), "where")
+    if len(parts) > 2:
+        raise _OwnRefused("more than one WHERE at the top level")
+    from_part, where_part = parts[0].strip(), (parts[1].strip() if len(parts) == 2 else None)
+    joined = re.fullmatch(_own_tref(1) + r"\s+(?:inner\s+)?join\s+" + _own_tref(2) + r"\s+on\s+(?P<on>.+)", from_part, re.I | re.S)
+    single = None if joined else re.fullmatch(_own_tref(1), from_part, re.I)
+    if not (joined or single):
+        raise _OwnRefused("the FROM clause is not one table or one [INNER] JOIN ... ON of two tables")
+    refs = [(joined or single).group(f"n{k}") for k in ((1, 2) if joined else (1,))]
+    als = [(joined or single).group(f"a{k}") for k in ((1, 2) if joined else (1,))]
+    quals = [(a or n).lower() for n, a in zip(refs, als)]
+    own_ix = [i for i, n in enumerate(refs) if n.lower() == OWNERSHIP_TABLE]
+    if joined:
+        if len(own_ix) != 1:
+            raise _OwnRefused("a JOIN that does not join chart_facts to the ownership table exactly once")
+        fq, oq = quals[1 - own_ix[0]], quals[own_ix[0]]
+        fact = refs[1 - own_ix[0]]
+    else:
+        if own_ix:
+            raise _OwnRefused("the ownership table is the counted table")
+        fq, oq, fact = quals[0], None, refs[0]
+    if fact.lower() != OWNERSHIP_FACT_TABLE:
+        raise _OwnRefused(f"the counted table is {fact}, not {OWNERSHIP_FACT_TABLE}")
+    if oq is not None and oq == fq:
+        raise _OwnRefused("both tables carry the same qualifier")
+    conj = (_own_split_kw(joined.group("on"), "and") if joined else []) + (_own_split_kw(where_part, "and") if where_part else [])
+    pins, assets, links = 0, [], []
+    for raw in conj:
+        c = _own_unwrap(" ".join(raw.split()))
+        mp = re.fullmatch(rf"(?:(?P<q>{_OWN_ID})\.)?chart_id\s*=\s*\$1(?:::uuid)?", c, re.I)
+        me = re.fullmatch(rf"(?P<q1>{_OWN_ID})\.fact_category\s*=\s*(?P<q2>{_OWN_ID})\.fact_category", c, re.I)
+        mi = re.fullmatch(rf"(?:(?P<q>{_OWN_ID})\.)?fact_category\s+in\s*\(\s*select\s+(?:(?P<iq>{_OWN_ID})\.)?fact_category\s+from\s+(?:public\.)?{OWNERSHIP_TABLE}"
+                          rf"(?:\s+(?:as\s+)?(?P<ia>{_OWN_NOT_KW}{_OWN_ID}))?\s+where\s+(?P<w>.+?)\s*\)", c, re.I)
+        mx = re.fullmatch(rf"exists\s*\(\s*select\s+(?:1|\*)\s+from\s+(?:public\.)?{OWNERSHIP_TABLE}(?:\s+(?:as\s+)?(?P<ia>{_OWN_NOT_KW}{_OWN_ID}))?\s+where\s+(?P<w>.+?)\s*\)", c, re.I)
+        if mp:
+            if mp.group("q") and mp.group("q").lower() != fq:
+                raise _OwnRefused("the chart pin is qualified by a name that is not the counted table")
+            pins += 1
+        elif me:
+            if not joined or {me.group("q1").lower(), me.group("q2").lower()} != {fq, oq}:
+                raise _OwnRefused("a fact_category equality that does not link the two joined tables")
+            links.append("join")
+        elif mi:
+            ioq = (mi.group("ia") or OWNERSHIP_TABLE).lower()
+            if joined or (mi.group("q") and mi.group("q").lower() != fq) or (mi.group("iq") and mi.group("iq").lower() != ioq):
+                raise _OwnRefused("an IN subselect that is not `fact_category IN (SELECT fact_category FROM fact_category_ownership WHERE owning_asset_id = '<id>')` on the counted table")
+            assets.append(_own_asset(_own_unwrap(" ".join(mi.group("w").split())), {ioq}))
+            links.append("in")
+        elif mx:
+            ioq = (mx.group("ia") or OWNERSHIP_TABLE).lower()
+            inner = [_own_unwrap(" ".join(x.split())) for x in _own_split_kw(mx.group("w"), "and")]
+            eqs = [re.fullmatch(rf"(?P<q1>{_OWN_ID})\.fact_category\s*=\s*(?P<q2>{_OWN_ID})\.fact_category", x, re.I) for x in inner]
+            if joined or len(inner) != 2 or sum(1 for e in eqs if e) != 1 or ioq == fq:
+                raise _OwnRefused("an EXISTS subselect that is not correlated on fact_category and restricted by one owning_asset_id")
+            e = next(e for e in eqs if e)
+            if {e.group("q1").lower(), e.group("q2").lower()} != {fq, ioq}:
+                raise _OwnRefused("an EXISTS correlation that does not link the counted table to the subselect's ownership table")
+            assets.append(_own_asset(next(x for x, ee in zip(inner, eqs) if not ee), {ioq}))
+            links.append("exists")
+        elif re.search(r"owning_asset_id", c, re.I) and not re.search(r"\bselect\b", c, re.I):
+            assets.append(_own_asset(c, {oq} if oq else set()))
+            if not joined:
+                raise _OwnRefused("an owning_asset_id predicate with no ownership table in the FROM clause")
+        else:
+            raise _OwnRefused("a predicate that is none of: the chart pin, the fact_category link to the ownership table, the owning_asset_id restriction")
+    if pins != 1:
+        raise _OwnRefused(f"the count carries {pins} chart pin(s) (`chart_id = $1`), not exactly one")
+    if len(links) != 1:
+        raise _OwnRefused(f"the count carries {len(links)} fact_category link(s) to the ownership table, not exactly one")
+    if len(assets) != 1:
+        raise _OwnRefused(f"the count carries {len(assets)} owning_asset_id restriction(s), not exactly one")
+    return dict(asset=assets[0])
+
+
+def _count_scope_resolve(count_sql: str, table: str):
+    """(tail, refusal) for the rows of `table` a registry count_sql counts. A count_sql that does not read the ownership table: `(_count_scope_tail(count_sql, table), None)`, byte for byte the flat /
+    single-table / sum answer. A count_sql that does: the tail BUILT from the parsed ownership-join structure for `chart_facts` (` WHERE chart_id = $1 AND fact_category IN (SELECT fco.fact_category FROM
+    fact_category_ownership fco WHERE fco.owning_asset_id = '<id>')`: the `$1` is bound by the caller like every other tail); `(None, None)` for the ownership table itself (a reference table: no row scope) and for
+    a table the count does not count; `(None, <named cause>)` for a shape this resolver does not recognise (the caller must NOT read the table unscoped)."""
+    q0 = re.sub(r"--[^\n]*", "", count_sql or "")
+    if not _OWN_READS.search(q0):
+        return _count_scope_tail(count_sql, table), None
+    tl = (table or "").strip('"').lower()
+    if tl == OWNERSHIP_TABLE:
+        return None, None
+    try:
+        got = _own_parse(" ".join(q0.split()))
+    except _OwnRefused as exc:
+        if tl == OWNERSHIP_FACT_TABLE or tl in _count_tables(count_sql):
+            return None, (f"NO_DETECTOR - {OWNERSHIP_REFUSED}: the registry count_sql reads {OWNERSHIP_TABLE} in a shape the scope resolver does not recognise ({exc}), so the asset's own rows of {table} "
+                          "cannot be named and the table is not read unscoped")
+        return None, None
+    if tl != OWNERSHIP_FACT_TABLE:
+        return None, None
+    return f" WHERE chart_id = $1 AND fact_category IN (SELECT fco.fact_category FROM {OWNERSHIP_TABLE} fco WHERE fco.owning_asset_id = '{got['asset']}')", None
 
 
 def _chart_pinned(tail: str) -> bool:
@@ -17878,7 +18072,9 @@ def _layer_read(name: str, fn, *args):
 def _table_scope(t, r, own, shared):
     """(where-tail, scope label) the rows of the owned table `t` are counted under, from the asset's registry count_sql; None when the rows cannot be scoped to this
     asset (a shared table whose count_sql is not a plain count of it)."""
-    tail = _count_scope_tail(r["count_sql"], t)
+    tail, refused = _count_scope_resolve(r["count_sql"], t)
+    if refused:                                              # N-431: an ownership-join shape the resolver does not recognise: the rows cannot be scoped (unknown), never counted unscoped
+        return None
     if tail is not None:
         # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
         # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
