@@ -1,13 +1,17 @@
 """test_n431_corpus_derived_detector.py: the REPRODUCIBILITY detector of the `corpus_derived` declaration form (SS N-431, bg_rules).
 
-The detector re-runs a committed, sha256-pinned deterministic parser (in R2's sandbox) over the source chunks the stored rows cite and compares its output with the stored rows; a bounded sample
-of chunks nobody cites must yield no rule. R1 (the declaration schema, `normalise_corpus_derived`) and R2 (`parser_sandbox.run_pinned_parser`) are NOT merged here, so every test injects small LOCAL
-FAKES of the same signatures: an in-memory `fetch` (the detector's data-reading layer), an in-process runner that loads a fake parser module from tmp_path and verifies its sha256 pin, and a
-normaliser. Everything is offline and starts no database, EXCEPT the tests named `test_REAL_SQL_*` (a minimal smoke of the real SQL on a disposable PostgreSQL: they are skipped by
-`-k "not REAL_SQL"`, which is how the local run goes, SS N-436: they run in the CI shard that has PostgreSQL).
+The detector re-runs a committed, sha256-pinned deterministic parser (in R2's sandbox) over the source chunks the stored rows cite, applies the declared post-processing (drop ephemeral keys, keep
+rows at or above the parser's threshold constant, null a foreign key absent from its reference table, first writer wins) and compares the result with the stored rows; a bounded sample of chunks nobody
+cites must yield no rule. The declaration form is R1's (`normalise_corpus_derived`, `corpus_derived_pin_problem`, `corpus_derived_na_problem`), the sandbox is R2's (`run_pinned_parser`, whose
+parser is called with ONE input dict). Here the sandbox is a local FAKE of the same signature (an in-process runner that verifies the sha256 pin and loads a fake parser from tmp_path), the data reads are
+an in-memory `fetch`, and the normaliser / pin check are fakes except where a test says it uses R1's real ones.
 
-Part 1 value normalisation and citation. Part 2 the pure comparison. Part 3 the SQL builders. Part 4 the detector with fakes: clean, every mutation of the data, every cap, every runner stage.
-Part 5 the real fetch (psql monkeypatched). Part 6 the wiring into the six cells (via the engine's own `_measure_prose`). Part 7 the rollup guards. Part 8 opt-in. Part 9 REAL SQL smoke."""
+Everything is offline and starts no database, EXCEPT the tests named `test_REAL_SQL_*` (a minimal smoke of the real SQL on a disposable PostgreSQL). Per SS N-436 they are NOT run locally
+(`-k "not REAL_SQL"`); they run in the CI shard that has PostgreSQL.
+
+Part 1 value normalisation, citation, post-processing. Part 2 the pure comparison. Part 3 the SQL builders. Part 4 the detector with fakes: clean, every mutation of the data, every cap, every
+runner stage, the pins. Part 5 the real fetch (psql monkeypatched). Part 6 the wiring into the cells (the engine's own `_measure_prose`). Part 7 the rollup guards. Part 8 opt-in. Part 9 the REAL
+bg_rules declaration and parser end to end (offline). Part 10 REAL SQL smoke."""
 from __future__ import annotations
 
 import copy
@@ -30,27 +34,36 @@ from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401
 
 PASS, FAIL, NO_DET, NA = "PASS", "FAIL", "NO_DETECTOR", "N/A"
 CELLS = list(ac.NARR_CHECKS + ac.NULL_CHECKS)
+FIVE = ["Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Null.schema_default", "Null.blank_rows"]
 AID = "bg_rules_fixture"
 
-# ───────────────────────────── the fake parser, pinned by hash ─────────────────────────────
+# ───────────────────────────── the fake parser (one input dict per chunk), pinned by hash ─────────────────────────────
 PARSER_SRC = '''
 import json
 
+QUALITY_THRESHOLD_LIVE = 0.6
 
-def extract(chunk):
-    text = chunk.get("content_en") or ""
+
+def extract(item):
+    text = item.get("content_en") or ""
+    valid = set(item.get("valid_text_ids") or [])
     out = []
-    for n, w in enumerate(x for x in text.split() if x.startswith("RULE:")):
-        rid = "%s#%d" % (chunk["id"], n) if "__GLOBAL__" not in text else "g-" + w
+    for n, w in enumerate(x for x in text.split() if x.startswith("RULE:") or x.startswith("WEAK:")):
+        q = 1.0 if w.startswith("RULE:") else 0.5
+        if item["text_id"] not in valid:
+            q -= 0.2
+        body = w[5:]
+        rid = "%s#%d" % (item["id"], n) if "__GLOBAL__" not in text else "g-" + body
         out.append({
-            "rule_id": rid, "text_id": chunk["text_id"], "verse_ref": chunk["verse_ref"], "body": w[5:],
-            "prediction_jsonb": json.dumps({"result": w[5:], "domain": "d"}), "confidence": 0.8, "transit_marker": False,
-            "extraction_pass_log": json.dumps([{"chunk_id": chunk["id"], "match_text": w}]), "created_by": "fake", "_quality": 1.0,
+            "rule_id": rid, "text_id": item["text_id"], "verse_ref": item["verse_ref"], "body": body,
+            "prediction_jsonb": json.dumps({"result": body, "domain": "d"}), "confidence": q, "transit_marker": False,
+            "extraction_pass_log": json.dumps([{"chunk_id": item["id"], "match_text": w}]), "extracted_by": "fake_v2",
+            "yoga_canonical_id": ("Y9" if "YOGA9" in text else "Y1" if "YOGA1" in text else None), "_quality": q,
         })
     return out
 '''
-TABLE_COLS = ["rule_id", "text_id", "verse_ref", "body", "prediction_jsonb", "confidence", "transit_marker", "extraction_pass_log", "created_by", "created_at"]
-CHUNK_TEXT = {"c01": "RULE:a RULE:b", "c02": "RULE:c", "c04": "RULE:d"}      # the cited chunks; c03 and c05..c12 are uncited and empty
+TABLE_COLS = ["rule_id", "text_id", "verse_ref", "body", "prediction_jsonb", "confidence", "transit_marker", "extraction_pass_log", "extracted_by", "yoga_canonical_id", "created_at"]
+CHUNK_TEXT = {"c01": "RULE:a RULE:b", "c02": "RULE:c YOGA1", "c04": "RULE:d WEAK:w YOGA9"}      # the cited chunks; c03 and c05..c12 are uncited and empty
 CHUNK_IDS = [f"c{i:02d}" for i in range(1, 13)]
 
 
@@ -58,17 +71,10 @@ def sha(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
-def mk_chunks(extra=None):
+def mk_chunks(extra=None, verse_start=None):
     txt = dict(CHUNK_TEXT, **(extra or {}))
-    return [dict(id=c, text_id="T1", verse_ref=f"v{c}", content_en=txt.get(c, "")) for c in CHUNK_IDS]
-
-
-def derive(parser_fn, chunks, only):
-    out = []
-    for ch in chunks:
-        if ch["id"] in only:
-            out.extend(parser_fn(ch))
-    return out
+    vs = verse_start or {}
+    return [dict(id=c, text_id="T1", chapter=1, verse_start=vs.get(c, i), verse_ref=f"v{c}", content_en=txt.get(c, "")) for i, c in enumerate(CHUNK_IDS, 1)]
 
 
 def load_parser(path):
@@ -83,75 +89,110 @@ def world(tmp_path):
     (tmp_path / "parser").mkdir()
     f = tmp_path / "parser" / "l0_fake.py"
     f.write_text(PARSER_SRC, encoding="utf-8")
-    return dict(root=tmp_path, file=f, sha=sha(PARSER_SRC), fn=load_parser(f))
+    d = tmp_path / "parser" / "data.json"
+    d.write_text('{"k": 1}', encoding="utf-8")
+    return dict(root=tmp_path, file=f, data=d, sha=sha(PARSER_SRC), data_sha=sha('{"k": 1}'), fn=load_parser(f))
 
 
-def stored_from(world, chunks=None, cited=("c01", "c02", "c04")):
-    """The stored table as the real writer would have left it: the parser output of the cited chunks, as to_jsonb returns it (parsed json columns, created_at present)."""
-    rows = []
-    for r in derive(world["fn"], chunks or mk_chunks(), set(cited)):
-        s = {k: v for k, v in r.items() if k != "_quality"}
-        s["prediction_jsonb"] = json.loads(s["prediction_jsonb"])
-        s["extraction_pass_log"] = json.loads(s["extraction_pass_log"])
-        s["created_at"] = "2026-10-01T00:00:00+00:00"
-        rows.append(s)
+def simulate_writer(world, chunks, valid_ids=("T1",), yoga_ids=("Y1",), only=None):
+    """The stored table as the real writer leaves it: chunks in (text_id, chapter, verse_start, id) order, the parser output, quality >= the threshold, the ephemeral key dropped, a foreign key
+    absent from its reference table nulled, ON CONFLICT DO NOTHING (first wins); read back as to_jsonb returns it (parsed json columns)."""
+    rows, seen = [], set()
+    for ch in sorted(chunks, key=lambda c: (c["text_id"], c["chapter"], c["verse_start"], c["id"])):
+        if only is not None and ch["id"] not in only:
+            continue
+        for r in world["fn"](dict(ch, valid_text_ids=sorted(valid_ids))):
+            if r["_quality"] < 0.6:
+                continue
+            s = {k: v for k, v in r.items() if k != "_quality"}
+            if s["yoga_canonical_id"] and s["yoga_canonical_id"] not in yoga_ids:
+                s["yoga_canonical_id"] = None
+            if s["rule_id"] in seen:
+                continue
+            seen.add(s["rule_id"])
+            s["prediction_jsonb"] = json.loads(s["prediction_jsonb"])
+            s["extraction_pass_log"] = json.loads(s["extraction_pass_log"])
+            s["created_at"] = "2026-10-01T00:00:00+00:00"
+            rows.append(s)
     return rows
 
 
-def entry_for(world, sample=4, **over):
-    cd = dict(table="rules", key_columns=["rule_id"], cite_column="extraction_pass_log",
-              source=dict(table="chunks", id_column="id", text_columns=["content_en"], extra_columns=["text_id", "verse_ref"]),
-              parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract", pinned_files=[dict(path="parser/l0_fake.py", sha256=world["sha"])], input_shape="chunk"),
-              ignore_columns=["created_at", "_quality"], scope=dict(stored="all", uncited_chunks=dict(sample=sample)), why="w", evidence="e")
+def decl_for(world, sample=4, **over):
+    """A fully NORMALISED declaration (what R1's normaliser returns), for the fake parser."""
+    cd = dict(table="rules", key_columns=["rule_id"], cite_column="extraction_pass_log", cite_path=[0, "chunk_id"],
+              source=dict(table="chunks", id_column="id", text_columns=["content_en"], extra_columns=["text_id", "verse_ref"], order_by=["text_id", "chapter", "verse_start"]),
+              parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract",
+                          pinned_files=[dict(path="parser/l0_fake.py", sha256=world["sha"]), dict(path="parser/data.json", sha256=world["data_sha"])], input_shape="chunk_row_dict",
+                          extra_args=[dict(name="valid_text_ids", kind="distinct_values", table="chunks", column="text_id")]),
+              derived=dict(drop_keys=["_quality"], keep_when=dict(key="_quality", at_least_constant="QUALITY_THRESHOLD_LIVE"),
+                           null_unless_in=[dict(column="yoga_canonical_id", table="yoga_catalog", ref_column="canonical_id")],
+                           json_columns=["prediction_jsonb", "extraction_pass_log"], numeric_columns=["confidence"], duplicate_policy="first_wins"),
+              ignore_columns=["created_at"], scope=dict(stored=dict(column="extracted_by", equals="fake_v2"), uncited_chunks=dict(sample=sample)), why="w", evidence="e")
     cd.update(over)
-    return {"prose_fields": None, "corpus_derived": cd}
+    return cd
+
+
+def entry_for(world, **kw):
+    return {"prose_fields": None, "corpus_derived": decl_for(world, **kw)}
+
+
+def normaliser(e):
+    return copy.deepcopy(e["corpus_derived"])
 
 
 class FakeDB:
-    """An in-memory `fetch` (the detector's data-reading layer). `rows_hook` lets a test truncate or change what a page returns."""
-    def __init__(self, stored, chunks, columns=TABLE_COLS):
-        self.tables = {"rules": stored, "chunks": chunks}
-        self.cols = {"rules": list(columns), "chunks": ["id", "text_id", "verse_ref", "content_en"]}
-        self.calls = []
-        self.rows_hook = None
-        self.count_hook = None
-        self.unread_on = None
+    """An in-memory `fetch` (the detector's data-reading layer). Hooks let a test truncate or change what an op returns."""
+    def __init__(self, stored, chunks, yoga=("Y1", "Y2")):
+        self.tables = {"rules": stored, "chunks": chunks, "yoga_catalog": [dict(canonical_id=y) for y in yoga]}
+        self.cols = {"rules": list(TABLE_COLS), "chunks": ["id", "text_id", "chapter", "verse_start", "verse_ref", "content_en"], "yoga_catalog": ["canonical_id"]}
+        self.calls, self.reqs = [], []
+        self.rows_hook = self.count_hook = self.unread_on = None
+
+    def _rows(self, req):
+        rows = self.tables[req["table"]]
+        f = req.get("filter")
+        return [r for r in rows if r.get(f["column"]) == f["equals"]] if f else list(rows)
 
     def __call__(self, req):
         self.calls.append(req["op"])
+        self.reqs.append(req)
         if self.unread_on == req["op"]:
             raise cdd.Unread(f"statement timeout during {req['op']}")
         t = req["table"]
         if req["op"] == "columns":
             return list(self.cols.get(t, []))
         if req["op"] == "count":
-            n = len(self.tables[t])
+            n = len(self._rows(req))
             return self.count_hook(t, n) if self.count_hook else n
         if req["op"] == "rows":
-            rows = sorted(self.tables[t], key=lambda r: tuple(str(r[c]) for c in req["order_by"]))
+            rows = sorted(self._rows(req), key=lambda r: tuple(str(r[c]) for c in req["order_by"]))
             page = [{c: r[c] for c in req["columns"] if c in r} for r in rows[req["offset"]:req["offset"] + req["limit"]]]
             return self.rows_hook(page, req) if self.rows_hook else page
         if req["op"] == "ids":
-            return sorted(str(r[req["id_column"]]) for r in self.tables[t])
+            oc = req.get("order_by") or []
+            return [str(r[req["id_column"]]) for r in sorted(self.tables[t], key=lambda r: tuple(str(r[c]) if c not in ("chapter", "verse_start") else r[c] for c in oc) + (str(r[req["id_column"]]),))]
         if req["op"] == "chunks":
             want = set(req["ids"])
             return [{c: r[c] for c in [req["id_column"]] + list(req["columns"])} for r in sorted(self.tables[t], key=lambda r: r["id"]) if r["id"] in want]
+        if req["op"] == "distinct":
+            vals = sorted({str(r[req["column"]]) for r in self.tables[t] if r.get(req["column"]) is not None})
+            return vals[:req["limit"] + 1]
         raise AssertionError(req)
 
 
 def make_runner(world, calls=None, fail=None, loaded=None, drop_outputs=False, outputs=None):
-    """The FAKE of parser_sandbox.run_pinned_parser: verifies the sha256 pin, loads the pinned file in-process and runs the function over the inputs."""
+    """The FAKE of parser_sandbox.run_pinned_parser: verifies the sha256 pins, loads the pinned file in-process and calls function(item) with ONE input dict per chunk."""
     def run(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=64_000_000):
         if calls is not None:
-            calls.append(dict(repo_root=repo_root, module_root=module_root, pinned=pinned_files, file=file, function=function, n=len(inputs), timeout_s=timeout_s))
+            calls.append(dict(repo_root=repo_root, module_root=module_root, pinned=pinned_files, file=file, function=function, inputs=inputs, timeout_s=timeout_s))
         if fail:
             if fail == "raise":
                 raise RuntimeError("boom")
             return {"ok": False, "error": f"{fail}: injected", "stage": fail}
-        p = pathlib.Path(repo_root) / file
-        if sha(p.read_text(encoding="utf-8")) != {x["path"]: x["sha256"] for x in pinned_files}[file]:
-            return {"ok": False, "error": "pin: sha256 mismatch", "stage": "pin"}
-        fn = load_parser(p)
+        for p in pinned_files:
+            if sha((pathlib.Path(repo_root) / p["path"]).read_text(encoding="utf-8")) != p["sha256"]:
+                return {"ok": False, "error": f"pin_mismatch: {p['path']}", "stage": "pin"}
+        fn = load_parser(pathlib.Path(repo_root) / file)
         outs = [fn(dict(i)) for i in inputs]
         if drop_outputs:
             outs = outs[:-1]
@@ -159,19 +200,15 @@ def make_runner(world, calls=None, fail=None, loaded=None, drop_outputs=False, o
     return run
 
 
-def block_normaliser(e):
-    """A fake of R1's normaliser that wants the corpus_derived BLOCK; the production adapter tries the entry first and the block on a KeyError."""
-    return copy.deepcopy(e)["corpus_derived"] if "corpus_derived" in e else e
-
-
-def run_detect(world, entry=None, stored=None, chunks=None, db=None, runner=None, normaliser=block_normaliser, **kw):
+def run_detect(world, entry=None, stored=None, chunks=None, db=None, runner=None, pin_check=None, **kw):
     chunks = chunks if chunks is not None else mk_chunks()
-    db = db or FakeDB(stored if stored is not None else stored_from(world, chunks), chunks)
-    runner = runner or make_runner(world)
-    return cdd.detect_corpus_derived(entry or entry_for(world), fetch=db, runner=runner, normaliser=normaliser, repo_root=str(world["root"]), **kw), db
+    if db is None:
+        st = stored if stored is not None else simulate_writer(world, chunks)
+        db = FakeDB(st, chunks)
+    return cdd.detect_corpus_derived(entry or entry_for(world), fetch=db, runner=runner or make_runner(world), normaliser=normaliser, repo_root=str(world["root"]), pin_check=pin_check, **kw), db
 
 
-# ═════════════════════════════ Part 1: normalisation and citation ═════════════════════════════
+# ═════════════════════════════ Part 1: normalisation, citation, post-processing ═════════════════════════════
 
 @pytest.mark.parametrize("a,b,eq", [
     (None, None, True), (None, "", False), (None, 0, False), ("", [], False),
@@ -179,37 +216,81 @@ def run_detect(world, entry=None, stored=None, chunks=None, db=None, runner=None
     (True, 1, False), (False, 0, False), (True, True, True),
     ([1, 2], (1, 2), True), ([1, 2], [2, 1], False), ([1], [1, 1], False), ([], [], True),
     ({"a": 1, "b": [1.0]}, {"b": [1], "a": 1}, True), ({"a": 1}, {"a": 1, "b": None}, False), ({"a": 1}, {"a": 2}, False),
-    ('{"a": 1, "b": [1]}', {"b": [1], "a": 1.0}, True), ('[1, 2]', [1, 2], True), ('[1, 2]', [1, 3], False), ("not json", [1], False), ('{"a": 1}', {"a": 2}, False),
-    ("[1]", "[1.0]", False),                                   # two TEXT values are compared as text, never parsed
     ("abc", "ABC", False), ("abc", "abc", True),
     ("A1B2C3D4-0000-4000-8000-000000000001", "a1b2c3d4-0000-4000-8000-000000000001", True),           # canonical UUIDs only
+    ("[1, 2]", [1, 2], False), ('{"a": 1}', {"a": 1}, False), ("0.8", 0.8, False),                    # plain columns: no JSON-text and no numeric-text reading
     (float("nan"), float("nan"), True), (float("inf"), 1, False),
 ])
-def test_values_equal_normalisation(a, b, eq):
+def test_values_equal_plain_normalisation(a, b, eq):
     assert cdd.values_equal(a, b) is eq
     assert cdd.values_equal(b, a) is eq
 
 
-@pytest.mark.parametrize("value,ids,bad", [
-    ('[{"pattern": "P1", "match_text": "x", "chunk_id": "c01"}]', ["c01"], False),
-    ([{"chunk_id": "c01"}, {"chunk_id": "c02"}, {"chunk_id": "c01"}], ["c01", "c02"], False),
-    ({"chunk_id": "c07"}, ["c07"], False), ("c09", ["c09"], False), (["c1", "c2"], ["c1", "c2"], False),
-    (None, [], False), ("", [], False), ("[]", [], False), ([{"other": "x"}], [], False),
-    ([{"chunk_id": "a'b"}], [], True), ([{"chunk_id": "x; DROP"}], [], True), ("a b", [], True),
-    ([{"chunk_id": ["c1", "c2"]}], ["c1", "c2"], False), ([{"chunk_id": 5}], ["5"], False), ([{"chunk_id": {"x": 1}}], [], True),
+@pytest.mark.parametrize("a,b,eq", [
+    ('{"a": 1, "b": [1]}', {"b": [1], "a": 1.0}, True), ('[1, 2]', [1, 2], True), ('[1, 2]', [1, 3], False), ("not json", [1], False), ('{"a": 1}', {"a": 2}, False),
+    ('{"a": 1}', '{ "a" : 1 }', True), ('{"a": 1.0}', '{"a": 1}', True), ('"x"', "x", True), ("x", "x", True), (None, None, True), (None, "null", False),
 ])
-def test_cited_ids(value, ids, bad):
-    assert cdd.cited_ids(value) == (ids, bad)
+def test_values_equal_json_kind_parses_text_on_either_side(a, b, eq):
+    assert cdd.values_equal(a, b, "json") is eq
+    assert cdd.values_equal(b, a, "json") is eq
 
 
-def test_cited_ids_honours_the_declared_cite_key():
-    assert cdd.cited_ids([{"src": "z1"}], "src") == (["z1"], False)
-    assert cdd.cited_ids([{"chunk_id": "z1"}], "src") == ([], False)
+@pytest.mark.parametrize("a,b,eq", [("0.8", 0.8, True), (Decimal("0.800"), "0.8", True), ("0.9", 0.8, False), ("abc", "abc", True), ("abc", 1, False), (None, None, True), (None, "0", False)])
+def test_values_equal_numeric_kind_reads_numeric_text(a, b, eq):
+    assert cdd.values_equal(a, b, "numeric") is eq
+
+
+@pytest.mark.parametrize("row,path,expect", [
+    ({"c": [{"chunk_id": "c01"}]}, [0, "chunk_id"], ("c01", None)),
+    ({"c": '[{"pattern": "P1", "chunk_id": "c01"}]'}, [0, "chunk_id"], ("c01", None)),
+    ({"c": [{"chunk_id": "c01"}]}, [1, "chunk_id"], (None, "none")), ({"c": [{"other": 1}]}, [0, "chunk_id"], (None, "none")), ({"c": []}, [0, "chunk_id"], (None, "none")),
+    ({"c": None}, [0, "chunk_id"], (None, "none")), ({"c": ""}, None, (None, "none")), ({"c": "c09"}, None, ("c09", None)), ({"c": 7}, None, ("7", None)),
+    ({"c": [{"chunk_id": "a'b"}]}, [0, "chunk_id"], (None, "malformed")), ({"c": [{"chunk_id": {"x": 1}}]}, [0, "chunk_id"], (None, "malformed")), ({"c": "a b"}, None, (None, "malformed")),
+    ({"c": True}, None, (None, "malformed")), ({"c": "x; DROP"}, None, (None, "malformed")), ({}, [0], (None, "none")),
+])
+def test_cite_id_of(row, path, expect):
+    assert cdd.cite_id_of(row, "c", path) == expect
+
+
+def test_count_blank_leaves_walks_json_columns_and_ignores_null():
+    assert cdd.count_blank_leaves({"a": "x", "b": None, "c": 0, "d": False}) == 0
+    assert cdd.count_blank_leaves({"a": "", "b": "  \n", "c": "ok"}) == 2
+    assert cdd.count_blank_leaves({"j": '{"a": "", "b": ["x", " "]}'}, ("j",)) == 2
+    assert cdd.count_blank_leaves({"j": '{"a": ""}'}) == 0                                    # a text column is not parsed unless declared json
+    assert cdd.count_blank_leaves({"j": {"a": [{"b": ""}]}}) == 1
+
+
+DER = dict(key_columns=["rule_id"], cite_column="extraction_pass_log", cite_path=[0, "chunk_id"], ignore_columns=["created_at"],
+           derived=dict(drop_keys=["_quality"], keep_when=dict(key="_quality", at_least_constant="Q"), null_unless_in=[dict(column="fk", table="ref", ref_column="id")],
+                        json_columns=["extraction_pass_log"], numeric_columns=["confidence"], duplicate_policy="first_wins"))
+
+
+def test_derive_rows_keeps_at_or_above_the_threshold_drops_keys_and_nulls_unknown_foreign_keys():
+    raw = [dict(rule_id="a", _quality=0.6, fk="Y1"), dict(rule_id="b", _quality=0.59, fk="Y1"), dict(rule_id="c", _quality=1, fk="ZZ"), dict(rule_id="d", _quality=0.9, fk=None), dict(rule_id="e", _quality=0.9, fk="")]
+    got = cdd.derive_rows(raw, DER, {("ref", "id"): {"Y1"}}, 0.6)
+    assert [r["rule_id"] for r in got] == ["a", "c", "d", "e"] and all("_quality" not in r for r in got)
+    assert [r["fk"] for r in got] == ["Y1", None, None, ""]                                    # the writer nulls a TRUTHY unknown value only
+    assert cdd.derive_rows(raw, DER, {("ref", "id"): set()}, 0.6)[0]["fk"] is None
+    assert raw[0]["_quality"] == 0.6                                                           # the input is not mutated
+
+
+def test_derive_rows_without_a_derived_block_is_the_identity_and_refuses_malformed_rows():
+    assert cdd.derive_rows([dict(a=1)], dict(key_columns=["a"])) == [dict(a=1)]
+    for bad in ([dict(rule_id="a")], [dict(rule_id="a", _quality="x")], [dict(rule_id="a", _quality=True)], ["x"]):
+        with pytest.raises(ValueError):
+            cdd.derive_rows(bad, DER, {}, 0.6)
+    with pytest.raises(ValueError):
+        cdd.derive_rows([dict(rule_id="a", _quality=1)], DER, {}, None) if False else cdd.derive_rows([dict(rule_id="a")], DER, {}, 0.6)
+
+
+def test_module_constant_reads_a_single_numeric_literal_by_ast():
+    assert cdd.module_constant("X = 1\nQ: float = 0.6\n", "Q") == 0.6
+    for src in ("Q = 0.6\nQ = 0.7\n", "Q = 'x'\n", "Q = 1 + 1\n", "other = 1\n", "Q = True\n"):
+        with pytest.raises(ValueError):
+            cdd.module_constant(src, "Q")
 
 
 # ═════════════════════════════ Part 2: the pure comparison ═════════════════════════════
-D = dict(key_columns=["rule_id"], cite_column="extraction_pass_log", ignore_columns=["created_at", "_quality"])
-
 
 def rowx(rid, chunk, body="x", **kw):
     s = dict(rule_id=rid, body=body, confidence=0.8, extraction_pass_log=[{"chunk_id": chunk}], created_at="t1")
@@ -218,20 +299,26 @@ def rowx(rid, chunk, body="x", **kw):
 
 
 def drow(rid, chunk, body="x", **kw):
-    d = dict(rule_id=rid, body=body, confidence=0.8, extraction_pass_log=json.dumps([{"chunk_id": chunk}]), created_at="t2", _quality=1.0)
+    d = dict(rule_id=rid, body=body, confidence=0.8, extraction_pass_log=json.dumps([{"chunk_id": chunk}]), created_at="t2")
     d.update(kw)
     return d
 
 
-def test_compare_clean_pass_ignores_ignored_columns_and_normalises_json_text():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r2", "c2")], {"c1": [drow("r1", "c1")], "c2": [drow("r2", "c2")], "c3": []}, D)
-    assert r["v"] == PASS and r["first_differences"] == [] and r["counts"]["matched"] == 2 and r["counts"]["uncited_chunks_run"] == 1
-    assert r["difference_counts"] == {}
+def test_compare_clean_pass_ignores_ignored_columns_and_reads_declared_json_columns():
+    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r2", "c2")], {"c1": [drow("r1", "c1")], "c2": [drow("r2", "c2")], "c3": []}, DER)
+    assert r["v"] == PASS and r["first_differences"] == [] and r["counts"]["matched"] == 2 and r["counts"]["uncited_chunks_run"] == 1 and r["difference_counts"] == {}
+
+
+def test_compare_an_undeclared_json_text_column_is_not_parsed():
+    d = copy.deepcopy(DER)
+    d["derived"]["json_columns"] = []
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1")]}, d)
+    assert r["v"] == FAIL and r["first_differences"][0]["columns"] == ["extraction_pass_log"]
 
 
 def test_compare_hand_edited_value_fails_naming_key_and_column_but_never_the_value():
     secret = "HAND-EDITED-SENTENCE-9137"
-    r = cdd.compare_corpus_derived([rowx("r1", "c1", body=secret)], {"c1": [drow("r1", "c1")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", body=secret)], {"c1": [drow("r1", "c1")]}, DER)
     assert r["v"] == FAIL
     d = r["first_differences"][0]
     assert d["kind"] == "differs" and d["key"] == {"rule_id": "r1"} and d["columns"] == ["body"] and d["chunk"] == "c1"
@@ -239,92 +326,115 @@ def test_compare_hand_edited_value_fails_naming_key_and_column_but_never_the_val
 
 
 def test_compare_names_every_differing_column_and_a_column_present_on_one_side_only():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1", body="y", confidence=0.9, stored_only="s")], {"c1": [drow("r1", "c1", derived_only="d")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", body="y", confidence=0.9, stored_only="s")], {"c1": [drow("r1", "c1", derived_only="d")]}, DER)
     assert r["v"] == FAIL and r["first_differences"][0]["columns"] == ["body", "confidence", "derived_only", "stored_only"]
 
 
+def test_compare_numeric_column_is_decimal_equal_and_a_changed_number_differs():
+    assert cdd.compare_corpus_derived([rowx("r1", "c1", confidence=Decimal("0.800"))], {"c1": [drow("r1", "c1", confidence=0.8)]}, DER)["v"] == PASS
+    assert cdd.compare_corpus_derived([rowx("r1", "c1", confidence=Decimal("0.801"))], {"c1": [drow("r1", "c1", confidence=0.8)]}, DER)["v"] == FAIL
+
+
 def test_compare_deleted_stored_row_is_missing_stored():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1"), drow("r2", "c1")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1"), drow("r2", "c1")]}, DER)
     assert r["v"] == FAIL and r["difference_counts"] == {"missing_stored": 1} and r["first_differences"][0]["key"] == {"rule_id": "r2"}
 
 
 def test_compare_extra_stored_row_has_no_derived_counterpart():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r9", "c1")], {"c1": [drow("r1", "c1")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r9", "c1")], {"c1": [drow("r1", "c1")]}, DER)
     assert r["v"] == FAIL and r["difference_counts"] == {"extra_stored": 1} and r["first_differences"][0]["key"] == {"rule_id": "r9"}
-
-
-def test_compare_stored_row_citing_a_chunk_that_yields_nothing_or_was_not_run_is_extra():
-    assert cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": []}, D)["difference_counts"] == {"extra_stored": 1}
-    assert cdd.compare_corpus_derived([rowx("r1", "c1")], {"c2": []}, D)["difference_counts"] == {"extra_stored": 1}
+    assert cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": []}, DER)["difference_counts"] == {"extra_stored": 1}
+    assert cdd.compare_corpus_derived([rowx("r1", "c1")], {"c2": []}, DER)["difference_counts"] == {"extra_stored": 1}
 
 
 def test_compare_uncited_chunk_that_yields_a_rule_fails():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1")], "c7": [drow("r7", "c7")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1")], "c7": [drow("r7", "c7")]}, DER)
     assert r["v"] == FAIL and r["difference_counts"] == {"uncited_chunk_yields_rule": 1}
     assert r["first_differences"][0]["chunk"] == "c7" and r["first_differences"][0]["key"] == {"rule_id": "r7"}
 
 
 def test_compare_cited_chunk_absent_from_the_source_fails():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": None}, D)
-    assert r["v"] == FAIL and r["difference_counts"] == {"cited_chunk_absent": 1}
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": None}, DER)
+    assert r["v"] == FAIL and r["difference_counts"].get("cited_chunk_absent") == 1
 
 
 def test_compare_stored_row_that_cites_nothing_or_a_malformed_id_fails():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1", extraction_pass_log=None)], {"c1": []}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", extraction_pass_log=None)], {"c1": []}, DER)
     assert r["v"] == FAIL and r["difference_counts"].get("stored_row_cites_no_chunk") == 1
-    r = cdd.compare_corpus_derived([rowx("r1", "x'y")], {}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "x'y")], {}, DER)
     assert r["v"] == FAIL and "stored_row_cites_no_chunk" in r["difference_counts"]
 
 
 def test_compare_duplicate_stored_key_fails():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r1", "c1", body="z")], {"c1": [drow("r1", "c1")]}, D)
+    r = cdd.compare_corpus_derived([rowx("r1", "c1"), rowx("r1", "c1", body="z")], {"c1": [drow("r1", "c1")]}, DER)
     assert r["v"] == FAIL and r["difference_counts"].get("stored_duplicate_key") == 1
 
 
-def test_compare_cross_chunk_key_collision_is_shadowed_not_a_difference_when_the_stored_row_is_confirmed():
-    # the same key derived from c1 and c2; the table keeps the first writer (c1): c2's copy is shadowed
-    stored = [rowx("g", "c1")]
-    r = cdd.compare_corpus_derived(stored, {"c1": [drow("g", "c1")], "c2": [drow("g", "c2", extraction_pass_log=json.dumps([{"chunk_id": "c2"}]))]}, D)
-    assert r["v"] == PASS and r["counts"]["shadowed"] == 1
-    # ... but not when the chunk the stored row cites no longer derives it (the row would be an extra, and is reported as one)
-    r = cdd.compare_corpus_derived(stored, {"c1": [], "c2": [drow("g", "c2")]}, D)
-    assert r["v"] == FAIL and r["difference_counts"] == {"extra_stored": 1}
+def test_compare_first_writer_wins_in_the_writer_chunk_order():
+    # the key g is derived from c2 and c1; the writer visits c2 first (chunk_order), so the stored row cites c2
+    g1, g2 = drow("g", "c1"), drow("g", "c2")
+    ok = cdd.compare_corpus_derived([rowx("g", "c2")], {"c1": [g1], "c2": [g2]}, DER, chunk_order=["c2", "c1"])
+    assert ok["v"] == PASS and ok["counts"]["shadowed"] == 1
+    bad = cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [g1], "c2": [g2]}, DER, chunk_order=["c2", "c1"])           # the later writer's version is stored: first-wins violated
+    assert bad["v"] == FAIL and bad["first_differences"][0]["kind"] == "differs" and bad["first_differences"][0]["columns"] == ["extraction_pass_log"]
+    assert cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [g1], "c2": [g2]}, DER, chunk_order=["c1", "c2"])["v"] == PASS
+    assert cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [g1], "c2": [g2]}, DER)["v"] == PASS                          # default order: by id
 
 
-def test_compare_derived_key_collision_inside_a_chunk_with_different_content_fails():
-    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1"), drow("r1", "c1", body="other")]}, D)
+def test_compare_a_shadowed_key_in_an_uncited_chunk_is_not_a_yield_but_a_winning_uncited_chunk_is():
+    g1, g9 = drow("g", "c1"), drow("g", "c9")
+    assert cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [g1], "c9": [g9]}, DER, chunk_order=["c1", "c9"])["v"] == PASS
+    r = cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [g1], "c9": [g9]}, DER, chunk_order=["c9", "c1"])
+    assert r["v"] == FAIL and r["first_differences"][0]["kind"] == "differs"                                                  # the uncited chunk would have written it first
+
+
+def test_compare_duplicate_policy_refuse_makes_a_second_chunk_yielding_the_key_a_difference():
+    d = copy.deepcopy(DER)
+    d["derived"]["duplicate_policy"] = "refuse"
+    r = cdd.compare_corpus_derived([rowx("g", "c1")], {"c1": [drow("g", "c1")], "c2": [drow("g", "c2")]}, d)
     assert r["v"] == FAIL and r["difference_counts"].get("derived_key_collision") == 1
 
 
+def test_compare_derived_key_collision_inside_a_chunk_with_different_content_fails_identical_is_shadowed():
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1"), drow("r1", "c1", body="other")]}, DER)
+    assert r["v"] == FAIL and r["difference_counts"].get("derived_key_collision") == 1
+    r = cdd.compare_corpus_derived([rowx("r1", "c1")], {"c1": [drow("r1", "c1"), drow("r1", "c1")]}, DER)
+    assert r["v"] == PASS and r["counts"]["shadowed"] == 1
+
+
+def test_compare_a_blank_string_in_a_derived_row_is_a_blank_leaf_difference():
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", body="")], {"c1": [drow("r1", "c1", body="")]}, DER)
+    assert r["v"] == FAIL and r["difference_counts"] == {"blank_leaf": 1} and r["counts"]["blank_leaves"] == 1 and r["first_differences"][0]["columns"] == ["body"]
+    r = cdd.compare_corpus_derived([rowx("r1", "c1", extraction_pass_log=[{"chunk_id": "c1", "m": " "}])], {"c1": [drow("r1", "c1", extraction_pass_log=json.dumps([{"chunk_id": "c1", "m": " "}]))]}, DER)
+    assert r["v"] == FAIL and r["counts"]["blank_leaves"] == 1                                    # inside a declared json column
+
+
 def test_compare_composite_key_and_key_alignment_do_not_depend_on_order():
-    d2 = dict(D, key_columns=["a", "b"])
+    d2 = dict(DER, key_columns=["a", "b"])
+    cp = json.dumps([{"chunk_id": "c1"}])
     s = [dict(a=1, b="x", extraction_pass_log=[{"chunk_id": "c1"}], v=1), dict(a=1, b="y", extraction_pass_log=[{"chunk_id": "c1"}], v=2)]
-    dv = [dict(a=1, b="y", extraction_pass_log=json.dumps([{"chunk_id": "c1"}]), v=2), dict(a=1.0, b="x", extraction_pass_log=json.dumps([{"chunk_id": "c1"}]), v=1)]
+    dv = [dict(a=1, b="y", extraction_pass_log=cp, v=2), dict(a=1.0, b="x", extraction_pass_log=cp, v=1)]
     assert cdd.compare_corpus_derived(s, {"c1": dv}, d2)["v"] == PASS
 
 
 def test_compare_reports_at_most_five_differences_in_a_deterministic_order_with_total_counts():
     stored = [rowx(f"r{i}", "c1", body="edited") for i in range(9)]
-    r = cdd.compare_corpus_derived(stored, {"c1": [drow(f"r{i}", "c1") for i in range(9)]}, D)
+    r = cdd.compare_corpus_derived(stored, {"c1": [drow(f"r{i}", "c1") for i in range(9)]}, DER)
     assert r["v"] == FAIL and len(r["first_differences"]) == 5 and r["difference_counts"] == {"differs": 9}
     assert [d["key"]["rule_id"] for d in r["first_differences"]] == ["r0", "r1", "r2", "r3", "r4"]
-    assert r == cdd.compare_corpus_derived(stored, {"c1": [drow(f"r{i}", "c1") for i in reversed(range(9))]}, D)
+    assert r == cdd.compare_corpus_derived(stored, {"c1": [drow(f"r{i}", "c1") for i in reversed(range(9))]}, DER)
 
 
 def test_compare_no_stored_row_is_vacuous_no_detector_never_pass():
-    r = cdd.compare_corpus_derived([], {"c1": []}, D)
-    assert r["v"] == NO_DET
+    assert cdd.compare_corpus_derived([], {"c1": []}, DER)["v"] == NO_DET
 
 
 @pytest.mark.parametrize("stored,derived", [
-    ([{"body": "x"}], {"c1": []}),                                       # a stored row without its key column
-    ([rowx("r1", "c1")], {"c1": "not a list"}),
-    ([rowx("r1", "c1")], {"c1": [{"body": "x"}]}),                       # a derived row without its key column
-    ([rowx("r1", "c1")], {"c1": ["x"]}),
+    ([{"body": "x"}], {"c1": []}), ([rowx("r1", "c1")], {"c1": "not a list"}), ([rowx("r1", "c1")], {"c1": [{"body": "x"}]}), ([rowx("r1", "c1")], {"c1": ["x"]}),
 ])
 def test_compare_malformed_inputs_raise_value_error(stored, derived):
     with pytest.raises(ValueError):
-        cdd.compare_corpus_derived(stored, derived, D)
+        cdd.compare_corpus_derived(stored, derived, DER)
 
 
 def test_sample_uncited_is_deterministic_ordered_every_kth_and_bounded():
@@ -338,130 +448,180 @@ def test_sample_uncited_is_deterministic_ordered_every_kth_and_bounded():
 
 # ═════════════════════════════ Part 3: the SQL builders ═════════════════════════════
 
-def test_sql_builders_are_total_ordered_quoted_and_refuse_injection():
+def test_sql_builders_are_total_ordered_quoted_sliced_and_refuse_injection():
     assert 'ORDER BY "rule_id" LIMIT 500 OFFSET 1000' in cdd.rows_sql("sutravali_rules", ["rule_id", "body"], ["rule_id"], 500, 1000)
     assert 'ORDER BY t."rule_id"' in cdd.rows_sql("sutravali_rules", ["rule_id"], ["rule_id"], 5, 0)
-    assert 'WHERE (chart_id = 1)' in cdd.rows_sql("t", ["a"], ["a"], 1, 0, "chart_id = 1")
+    f = cdd.filter_sql(dict(column="extracted_by", equals="python_regex_v2"))
+    assert f == '"extracted_by"::text = \'python_regex_v2\'' and "WHERE (" + f + ")" in cdd.rows_sql("t", ["a"], ["a"], 1, 0, f) and "WHERE (" + f + ")" in cdd.count_sql("t", None, f)
+    assert cdd.sql_literal("o'k") == "'o''k'" and cdd.filter_sql(None) is None and cdd.count_sql("t") == 'SELECT to_jsonb(count(*))::text FROM "t"'
     s = cdd.chunks_sql("classical_text_chunks", "id", ["content_en", "text_id"], ["u-1", "u-2"])
     assert "IN ('u-1','u-2')" in s and "jsonb_build_object('id', s.\"id\"::text,'content_en', s.\"content_en\",'text_id', s.\"text_id\")" in s
-    assert "ORDER BY x.i" in cdd.ids_sql("classical_text_chunks", "id")
-    assert "to_regclass('\"t\"')" in cdd.columns_sql("t") and cdd.count_sql("t") == 'SELECT count(*)::text FROM "t"'
+    assert "ORDER BY x.o0, x.o1, x.i" in cdd.ids_sql("classical_text_chunks", "id", ["text_id", "chapter"]) and "ORDER BY x.i" in cdd.ids_sql("classical_text_chunks", "id")
+    d = cdd.distinct_sql("classical_text_chunks", "text_id", 100)
+    assert 'DISTINCT "text_id"::text AS v' in d and 'WHERE ("text_id" IS NOT NULL)' in d and "ORDER BY 1 LIMIT 101" in d
+    assert "to_regclass('\"t\"')" in cdd.columns_sql("t")
     for bad in ('t"; DROP TABLE x;--', "a b", "1x", ""):
         with pytest.raises(ValueError):
             cdd.ident(bad)
     for bad in ("u'; DROP", "a b", "", "x" * 200):
         with pytest.raises(ValueError):
             cdd.chunks_sql("c", "id", [], [bad])
+    for bad in ("", "a\\b", "a\nb", None, 5):
+        with pytest.raises(ValueError):
+            cdd.sql_literal(bad)
 
 
 # ═════════════════════════════ Part 4: the detector with fakes ═════════════════════════════
 
-def test_clean_case_passes_with_the_full_block(world):
+def test_clean_case_passes_with_the_full_block_in_the_shape_r1_requires(world):
     calls = []
     res, db = run_detect(world, runner=make_runner(world, calls))
     assert res["v"] == PASS and res["stage"] is None, res["measured"]
     b = res["block"]
-    assert b["checked"] and b["verified"] and b["v"] == PASS and b["rows_rederived"] == 4 and b["cited_chunks"] == 3 and b["differences"] == 0 and b["first_differences"] == []
-    assert b["uncited_sampled"] == 4 and b["uncited_total"] == 9 and b["table"] == "rules" and b["ignore_columns"] == ["created_at", "_quality"]
-    assert b["parser"]["pinned_files"] == [dict(path="parser/l0_fake.py", sha256=world["sha"])] and b["parser"]["function"] == "extract"
-    assert ac.corpus_derived_block_problem(b) is None
-    assert len(calls) == 1 and calls[0]["n"] == 7 and calls[0]["file"] == "parser/l0_fake.py" and calls[0]["repo_root"] == str(world["root"]) and calls[0]["timeout_s"] == cdd.RUN_TIMEOUT_S
-    assert "created_at" not in json.dumps([c for c in db.calls])                                   # (only op names are recorded)
+    assert b["checked"] and b["verified"] and b["v"] == PASS and b["table"] == "rules" and b["stored_rows"] == 5 == b["matched_rows"] and b["mismatches"] == 0 and b["uncited_yield"] == 0
+    assert b["blank_leaves"] == 0 and b["cited_chunks"] == 3 and b["uncited_sampled"] == 4 and b["uncited_total"] == 9 and b["chunks_run"] == 7 and b["first_differences"] == []
+    assert b["parser"] == dict(file="parser/l0_fake.py", function="extract", sha256=world["sha"]) and b["pinned_files"] == ["parser/l0_fake.py", "parser/data.json"] and b["loaded_repo_files"] == ["parser/l0_fake.py"]
+    assert b["ignore_columns"] == ["created_at"] and b["keep_when_threshold"] == 0.6 and b["extra_args"] == ["valid_text_ids"]
+    assert ac.corpus_derived_na_problem("Narr.agree", ac._na("x", ac.CORPUS_DERIVED_CAUSE) | {"corpus_derived": b}) is None             # R1's own guard accepts the block
+    assert len(calls) == 1 and len(calls[0]["inputs"]) == 7 and calls[0]["file"] == "parser/l0_fake.py" and calls[0]["repo_root"] == str(world["root"]) and calls[0]["timeout_s"] == cdd.RUN_TIMEOUT_S
+    assert calls[0]["pinned"] == [dict(path="parser/l0_fake.py", sha256=world["sha"]), dict(path="parser/data.json", sha256=world["data_sha"])]
 
 
-def test_the_ignored_column_is_not_even_read(world):
-    seen = []
-    db = FakeDB(stored_from(world), mk_chunks())
-    orig = db.__call__
-
-    def spy(req):
-        if req["op"] == "rows":
-            seen.append(list(req["columns"]))
-        return orig(req)
-    res, _ = run_detect(world, db=spy and db)
-    db2 = FakeDB(stored_from(world), mk_chunks())
-    cdd.detect_corpus_derived(entry_for(world), fetch=lambda r: (seen.append(list(r["columns"])) if r["op"] == "rows" else None) or db2(r), runner=make_runner(world), normaliser=block_normaliser, repo_root=str(world["root"]))
-    assert seen and all("created_at" not in c and "extraction_pass_log" in c and "rule_id" in c for c in seen)
+def test_the_runner_gets_one_dict_per_chunk_with_the_extra_args_by_name_cited_chunks_first(world):
+    calls = []
+    run_detect(world, runner=make_runner(world, calls))
+    items = calls[0]["inputs"]
+    assert [i["id"] for i in items] == ["c01", "c02", "c04", "c03", "c06", "c08", "c10"]                    # cited (id order), then the uncited sample (id order)
+    assert set(items[0]) == {"id", "content_en", "text_id", "verse_ref", "valid_text_ids"} and items[0]["valid_text_ids"] == ["T1"]
+    assert all(i["valid_text_ids"] == ["T1"] for i in items)
 
 
-def test_the_cite_column_is_read_and_compared_even_if_it_is_declared_ignored(world):
-    e = entry_for(world, ignore_columns=["created_at", "_quality", "extraction_pass_log"])
-    seen = []
-    db = FakeDB(stored_from(world), mk_chunks())
-    res = cdd.detect_corpus_derived(e, fetch=lambda r: (seen.append(list(r["columns"])) if r["op"] == "rows" else None) or db(r), runner=make_runner(world), normaliser=block_normaliser, repo_root=str(world["root"]))
-    assert res["v"] == PASS and all("extraction_pass_log" in c for c in seen)
+def test_the_stored_slice_is_read_through_the_declared_filter_and_other_rows_are_not_judged(world):
+    st = simulate_writer(world, mk_chunks())
+    other = dict(st[0], rule_id="foreign-1", extracted_by="some_other_writer", body="not ours")
+    res, db = run_detect(world, stored=st + [other])
+    assert res["v"] == PASS and res["block"]["stored_rows"] == 5
+    assert all(r.get("filter") == dict(column="extracted_by", equals="fake_v2") for r in db.reqs if r["table"] == "rules" and r["op"] in ("count", "rows"))
+    assert all(r.get("filter") is None for r in db.reqs if r["table"] == "chunks" and r["op"] == "count")
 
 
-@pytest.mark.parametrize("col,new", [("body", "HAND-EDITED"), ("confidence", 0.95), ("transit_marker", True), ("prediction_jsonb", {"result": "zz", "domain": "d"}), ("text_id", "T9"), ("created_by", "human")])
+def test_the_whole_table_is_read_when_the_scope_is_all(world):
+    st = simulate_writer(world, mk_chunks())
+    res, db = run_detect(world, entry=entry_for(world, scope=dict(stored="all", uncited_chunks=dict(sample=4))), stored=st + [dict(st[0], rule_id="foreign-1", extracted_by="x")])
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["key"] == {"rule_id": "foreign-1"}
+
+
+def test_weak_rows_below_the_threshold_are_not_stored_and_a_stored_weak_row_fails(world):
+    chunks = mk_chunks()
+    st = simulate_writer(world, chunks)
+    assert not any(r["body"] == "w" for r in st)
+    res, _ = run_detect(world, stored=st)
+    assert res["v"] == PASS
+    weak = dict(st[0], rule_id="c04#1", body="w")
+    res, _ = run_detect(world, stored=st + [weak])
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "extra_stored" and res["block"]["first_differences"][0]["key"] == {"rule_id": "c04#1"}
+
+
+def test_foreign_key_nulling_is_reproduced_and_an_unnulled_stored_value_differs(world):
+    st = simulate_writer(world, mk_chunks())
+    assert [r["yoga_canonical_id"] for r in st if r["rule_id"] in ("c02#0", "c04#0")] == ["Y1", None]           # Y9 is not in the reference table
+    assert run_detect(world, stored=st)[0]["v"] == PASS
+    bad = copy.deepcopy(st)
+    [r.update(yoga_canonical_id="Y9") for r in bad if r["rule_id"] == "c04#0"]
+    res, _ = run_detect(world, stored=bad)
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["columns"] == ["yoga_canonical_id"]
+
+
+def test_the_ignored_timestamp_is_not_read_and_the_cite_and_key_columns_always_are(world):
+    st = simulate_writer(world, mk_chunks())
+    res, db = run_detect(world, stored=st)
+    rows_reqs = [r for r in db.reqs if r["op"] == "rows"]
+    assert rows_reqs and all("created_at" not in r["columns"] and "extraction_pass_log" in r["columns"] and "rule_id" in r["columns"] for r in rows_reqs)
+    st[0]["created_at"] = "1999-01-01"
+    assert run_detect(world, stored=st)[0]["v"] == PASS                                                         # an edit of the ignored timestamp is not an edit of the claim
+
+
+@pytest.mark.parametrize("col,new", [("body", "HAND-EDITED"), ("confidence", 0.95), ("transit_marker", True), ("prediction_jsonb", {"result": "zz", "domain": "d"}), ("text_id", "T9"),
+                                     ("extracted_by", "fake_v2"), ("verse_ref", "v99"), ("yoga_canonical_id", "Y2")])
 def test_hand_edited_stored_row_fails_naming_key_and_column(world, col, new):
-    st = stored_from(world)
+    st = simulate_writer(world, mk_chunks())
+    old = st[1][col]
     st[1][col] = new
+    if old == new:
+        pytest.skip("no change")
     res, _ = run_detect(world, stored=st)
     assert res["v"] == FAIL
     d = res["block"]["first_differences"][0]
     assert d["kind"] == "differs" and d["key"] == {"rule_id": st[1]["rule_id"]} and d["columns"] == [col]
-    assert "HAND-EDITED" not in json.dumps(res) and res["block"]["verified"] is False
-    assert ac.corpus_derived_block_problem(res["block"]) is not None
+    assert "HAND-EDITED" not in json.dumps(res) and res["block"]["verified"] is False and res["block"]["mismatches"] == 1
+    assert ac.corpus_derived_na_problem("Narr.agree", ac._na("x", ac.CORPUS_DERIVED_CAUSE) | {"corpus_derived": res["block"]}) is not None
 
 
-def test_edit_of_an_ignored_column_is_not_detected_by_design(world):
-    st = stored_from(world)
-    st[0]["created_at"] = "1999-01-01"
-    assert run_detect(world, stored=st)[0]["v"] == PASS
+def test_a_stored_row_whose_cite_points_at_another_chunk_fails(world):
+    st = simulate_writer(world, mk_chunks())
+    st[0]["extraction_pass_log"] = [{"pattern": "x", "match_text": "RULE:a", "chunk_id": "c02"}]
+    res, _ = run_detect(world, stored=st)
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["columns"] == ["extraction_pass_log"] or res["v"] == FAIL
 
 
 def test_deleted_stored_row_fails(world):
-    st = stored_from(world)
+    st = simulate_writer(world, mk_chunks())
     gone = st.pop(2)
     res, _ = run_detect(world, stored=st)
     assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "missing_stored" and res["block"]["first_differences"][0]["key"] == {"rule_id": gone["rule_id"]}
 
 
 def test_extra_stored_row_fails(world):
-    st = stored_from(world)
+    st = simulate_writer(world, mk_chunks())
     st.append(dict(st[0], rule_id="c01#99", body="invented"))
     res, _ = run_detect(world, stored=st)
     assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "extra_stored" and res["block"]["first_differences"][0]["key"] == {"rule_id": "c01#99"}
+    st[-1]["extraction_pass_log"] = [{"chunk_id": "c05"}]
+    assert run_detect(world, stored=st)[0]["v"] == FAIL
 
 
-def test_extra_stored_row_citing_an_unrelated_chunk_that_yields_nothing_fails(world):
-    st = stored_from(world)
-    st.append(dict(st[0], rule_id="c05#0", extraction_pass_log=[{"chunk_id": "c05"}]))
-    res, _ = run_detect(world, stored=st)
-    assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "extra_stored"
-
-
-def test_uncited_chunk_that_yields_a_rule_fails(world):
+def test_uncited_chunk_that_yields_a_rule_fails_and_a_blank_one_does_not(world):
     chunks = mk_chunks({"c06": "RULE:z"})                    # c06 is in the id-ordered sample of the nine uncited chunks
-    db = FakeDB(stored_from(world, mk_chunks()), chunks)
-    res, _ = run_detect(world, chunks=chunks, db=db)
-    assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "uncited_chunk_yields_rule" and res["block"]["first_differences"][0]["chunk"] == "c06"
+    res, _ = run_detect(world, chunks=chunks, stored=simulate_writer(world, mk_chunks()))
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == "uncited_chunk_yields_rule" and res["block"]["first_differences"][0]["chunk"] == "c06" and res["block"]["uncited_yield"] == 1
+    chunks = mk_chunks({"c06": "WEAK:z"})                    # below the threshold: the parser yields it, the writer does not store it: not a yield
+    assert run_detect(world, chunks=chunks, stored=simulate_writer(world, mk_chunks()))[0]["v"] == PASS
 
 
 def test_a_chunk_outside_the_sample_is_not_read_so_the_sample_size_is_the_boundary(world):
     chunks = mk_chunks({"c05": "RULE:z"})                    # c05 is uncited but not in the sample of 4 (c03, c06, c08, c10)
-    db = FakeDB(stored_from(world, mk_chunks()), chunks)
-    assert run_detect(world, chunks=chunks, db=db)[0]["v"] == PASS
-    res, _ = run_detect(world, entry=entry_for(world, sample=100), chunks=chunks, db=db)
+    st = simulate_writer(world, mk_chunks())
+    assert run_detect(world, chunks=chunks, stored=st)[0]["v"] == PASS
+    res, _ = run_detect(world, entry=entry_for(world, sample=100), chunks=chunks, stored=st)
     assert res["v"] == FAIL and res["block"]["first_differences"][0]["chunk"] == "c05"
 
 
-def test_stored_row_citing_a_chunk_that_is_not_in_the_source_fails(world):
-    st = stored_from(world)
+def test_a_stored_cite_that_does_not_resolve_is_no_detector_read(world):
+    st = simulate_writer(world, mk_chunks())
     st.append(dict(st[0], rule_id="zz#0", extraction_pass_log=[{"chunk_id": "nope"}]))
     res, _ = run_detect(world, stored=st)
-    assert res["v"] == FAIL and "cited_chunk_absent" in res["block"]["first_differences"][0]["kind"]
+    assert res["v"] == NO_DET and res["stage"] == "read" and "do not resolve" in res["measured"]
 
 
-def test_cross_chunk_key_collision_first_writer_wins_is_shadowed(world):
-    chunks = mk_chunks({"c01": "__GLOBAL__ RULE:a", "c02": "__GLOBAL__ RULE:a"})       # the same rule_id g-RULE:a from both
-    st = stored_from(world, chunks, cited=("c01",))                                       # the table kept the first writer (c01) only
+def test_a_stored_row_without_a_cite_fails(world):
+    st = simulate_writer(world, mk_chunks())
+    st[0]["extraction_pass_log"] = []
+    res, _ = run_detect(world, stored=st)
+    assert res["v"] == FAIL and "stored_row_cites_no_chunk" in res["block"]["difference_counts"]
+
+
+def test_cross_chunk_key_collision_first_writer_by_source_order_wins(world):
+    chunks = mk_chunks({"c01": "__GLOBAL__ RULE:a", "c02": "__GLOBAL__ RULE:a"})       # the same rule_id g-a from both
+    st = simulate_writer(world, chunks)                                                  # the writer visits c01 first (verse_start order): c01 wins
+    assert [r["extraction_pass_log"][0]["chunk_id"] for r in st if r["rule_id"] == "g-a"] == ["c01"]
     res, _ = run_detect(world, stored=st, chunks=chunks)
-    assert res["v"] == FAIL                                                              # c02 is UNCITED here: its rule is stored under c01, hence shadowed...
-    # (c02 is cited by nobody: shadowed derivation of a stored key is not a difference, but c02's text also carries no other rule; the verdict must be PASS)
-    st2 = stored_from(world, chunks, cited=("c01", "c04"))
-    res2, _ = run_detect(world, entry=entry_for(world, sample=100), stored=st2, chunks=chunks)
-    assert res2["v"] == PASS and res2["block"]["shadowed"] >= 1, res2["measured"]
+    assert res["v"] == PASS and res["block"]["shadowed"] >= 1, res["measured"]
+    chunks2 = mk_chunks({"c01": "__GLOBAL__ RULE:a", "c02": "__GLOBAL__ RULE:a"}, verse_start={"c01": 9})        # now the writer visits c02 first
+    st2 = simulate_writer(world, chunks2)
+    assert [r["extraction_pass_log"][0]["chunk_id"] for r in st2 if r["rule_id"] == "g-a"] == ["c02"]
+    assert run_detect(world, stored=st2, chunks=chunks2)[0]["v"] == PASS
+    res, _ = run_detect(world, stored=st, chunks=chunks2)                                 # the table says c01, the source order says c02: first-wins is violated
+    assert res["v"] == FAIL
 
 
 def test_stored_with_no_rows_is_no_detector(world):
@@ -473,7 +633,7 @@ def test_stored_with_no_rows_is_no_detector(world):
 
 def test_row_cap_hit_is_no_detector_read(world):
     res, db = run_detect(world, caps=dict(stored_rows=3))
-    assert res["v"] == NO_DET and res["stage"] == "read" and "read cap" in res["measured"] and "rows" not in db.calls[3:]
+    assert res["v"] == NO_DET and res["stage"] == "read" and "read cap" in res["measured"] and "rows" not in db.calls
 
 
 def test_byte_cap_hit_is_no_detector_read(world):
@@ -481,46 +641,40 @@ def test_byte_cap_hit_is_no_detector_read(world):
     assert res["v"] == NO_DET and res["stage"] == "read" and "byte cap" in res["measured"]
 
 
-def test_chunk_byte_cap_and_chunk_count_cap_and_id_cap_are_no_detector(world):
-    for caps in (dict(chunk_bytes=10), dict(chunks=2), dict(source_ids=5)):
+def test_chunk_byte_cap_chunk_count_cap_id_cap_and_distinct_cap_are_no_detector(world):
+    for caps in (dict(chunk_bytes=10), dict(chunks=2), dict(source_ids=5), dict(distinct=0)):
         res, _ = run_detect(world, caps=caps)
         assert res["v"] == NO_DET and res["stage"] == "read" and "not read" in res["measured"], (caps, res["measured"])
 
 
 def test_a_truncated_page_stream_is_no_detector(world):
-    db = FakeDB(stored_from(world), mk_chunks())
-    db.rows_hook = lambda page, req: page[:1] if req["offset"] == 0 else page          # only 1 of the 4 rows arrives on page one (page size 500: the loop ends after it)
+    db = FakeDB(simulate_writer(world, mk_chunks()), mk_chunks())
+    db.rows_hook = lambda page, req: page[:1] if req["offset"] == 0 else page
     res, _ = run_detect(world, db=db)
     assert res["v"] == NO_DET and res["stage"] == "read"
-
-
-def test_an_empty_page_before_the_count_is_reached_is_no_detector(world):
-    db = FakeDB(stored_from(world), mk_chunks())
     db.rows_hook = lambda page, req: []
     assert run_detect(world, db=db)[0]["v"] == NO_DET
 
 
 def test_the_row_count_changing_during_the_read_is_no_detector(world):
-    db = FakeDB(stored_from(world), mk_chunks())
-    seq = iter([4, 5])
+    db = FakeDB(simulate_writer(world, mk_chunks()), mk_chunks())
+    seq = iter([5, 6])
     db.count_hook = lambda t, n: next(seq) if t == "rules" else n
     res, _ = run_detect(world, db=db)
     assert res["v"] == NO_DET and res["stage"] == "read"
 
 
 def test_a_short_id_list_and_a_lost_chunk_are_no_detector(world):
-    db = FakeDB(stored_from(world), mk_chunks())
-    orig = db.__call__
-    db2 = lambda r: orig(r)[:-1] if r["op"] == "ids" else orig(r)         # noqa: E731
-    res, _ = run_detect(world, db=db2)
+    db = FakeDB(simulate_writer(world, mk_chunks()), mk_chunks())
+    res, _ = run_detect(world, db=lambda r: db(r)[:-1] if r["op"] == "ids" else db(r))
     assert res["v"] == NO_DET and res["stage"] == "read"
-    res, _ = run_detect(world, db=lambda r: orig(r)[1:] if r["op"] == "chunks" else orig(r))
+    res, _ = run_detect(world, db=lambda r: db(r)[1:] if r["op"] == "chunks" else db(r))
     assert res["v"] == NO_DET and res["stage"] == "read"
 
 
-@pytest.mark.parametrize("op", ["columns", "count", "rows", "ids", "chunks"])
+@pytest.mark.parametrize("op", ["columns", "count", "rows", "ids", "chunks", "distinct"])
 def test_an_unread_statement_is_no_detector_read_never_pass(world, op):
-    db = FakeDB(stored_from(world), mk_chunks())
+    db = FakeDB(simulate_writer(world, mk_chunks()), mk_chunks())
     db.unread_on = op
     res, _ = run_detect(world, db=db)
     assert res["v"] == NO_DET and res["stage"] == "read" and "statement timeout" in res["measured"]
@@ -539,58 +693,80 @@ def test_runner_exception_is_no_detector_spawn(world):
     assert res["v"] == NO_DET and res["stage"] == "spawn" and "boom" in res["measured"]
 
 
-def test_runner_failure_with_an_unknown_stage_is_no_detector_run(world):
-    res, _ = run_detect(world, runner=lambda *a, **k: {"ok": False, "error": "weird", "stage": "???"})
-    assert res["v"] == NO_DET and res["stage"] == "run"
+def test_runner_failure_with_an_unknown_stage_or_no_answer_is_no_detector_run(world):
+    for r in (lambda *a, **k: {"ok": False, "error": "weird", "stage": "???"}, lambda *a, **k: None, lambda *a, **k: {"ok": "yes"}):
+        res, _ = run_detect(world, runner=r)
+        assert res["v"] == NO_DET and res["stage"] == "run"
 
 
-def test_a_pinned_file_that_changed_on_disk_is_refused_by_the_runner_pin(world):
-    world["file"].write_text(PARSER_SRC + "\n# edited after the pin\n", encoding="utf-8")
-    res, _ = run_detect(world)
-    assert res["v"] == NO_DET and res["stage"] == "pin"
-
-
-def test_loaded_repo_files_must_be_a_subset_of_the_pinned_files(world):
+def test_loaded_repo_files_must_be_a_subset_of_the_pins_and_include_the_parser_file(world):
     res, _ = run_detect(world, runner=make_runner(world, loaded=["parser/l0_fake.py", "parser/other.py"]))
     assert res["v"] == NO_DET and res["stage"] == "loaded_files" and "other.py" in res["measured"]
-    res, _ = run_detect(world, runner=make_runner(world, loaded=[]))
-    assert res["v"] == PASS                                                              # a subset (even empty) is fine
-    res, _ = run_detect(world, runner=make_runner(world, loaded=[str(world["root"]) + "/parser/l0_fake.py", "./parser/l0_fake.py"]))
-    assert res["v"] == PASS                                                              # absolute and ./ spellings of a pinned file
+    res, _ = run_detect(world, runner=make_runner(world, loaded=["parser/data.json"]))
+    assert res["v"] == NO_DET and res["stage"] == "loaded_files" and "parser file" in res["measured"]
+    res, _ = run_detect(world, runner=make_runner(world, loaded=[str(world["root"]) + "/parser/l0_fake.py", "./parser/data.json"]))
+    assert res["v"] == PASS and res["block"]["loaded_repo_files"] == ["parser/data.json", "parser/l0_fake.py"]
     res, _ = run_detect(world, runner=lambda *a, **k: {"ok": True, "outputs": [], "elapsed_s": 0})
     assert res["v"] == NO_DET and res["stage"] == "loaded_files"
 
 
 def test_wrong_number_or_shape_of_outputs_is_no_detector_output(world):
     assert run_detect(world, runner=make_runner(world, drop_outputs=True))[0]["stage"] == "output"
-    assert run_detect(world, runner=make_runner(world, outputs=[[]] * 7 + [[]]))[0]["stage"] == "output"
+    assert run_detect(world, runner=make_runner(world, outputs=[[]] * 8))[0]["stage"] == "output"
     assert run_detect(world, runner=make_runner(world, outputs=["x"] * 7))[0]["stage"] == "output"
     assert run_detect(world, runner=make_runner(world, outputs=[[{"no_key": 1}]] * 7))[0]["stage"] == "output"
-    assert run_detect(world, runner=lambda *a, **k: None)[0]["stage"] == "run"
+    assert run_detect(world, runner=make_runner(world, outputs=[[{"rule_id": "a"}]] * 7))[0]["stage"] == "output"     # keep_when key missing
 
 
-def test_the_runner_receives_the_declared_pins_and_a_chunk_dict_per_input(world):
-    seen = {}
+# ── the pins ──
 
-    def run(repo_root, module_root, pinned_files, file, function, inputs, **kw):
-        seen.update(inputs=inputs, pinned=pinned_files, module_root=module_root, kw=kw)
-        return make_runner(world)(repo_root, module_root, pinned_files, file, function, inputs, **kw)
-    assert run_detect(world, runner=run)[0]["v"] == PASS
-    assert seen["module_root"] == "parser" and seen["pinned"] == [dict(path="parser/l0_fake.py", sha256=world["sha"])]
-    assert [i["id"] for i in seen["inputs"]] == ["c01", "c02", "c04", "c03", "c06", "c08", "c10"]           # cited (id order), then the uncited sample (id order)
-    assert set(seen["inputs"][0]) == {"id", "content_en", "text_id", "verse_ref"}
+def test_a_pin_check_problem_is_no_detector_pin_before_anything_is_read_or_run(world):
+    calls = []
+    res, db = run_detect(world, pin_check=lambda e: "corpus_derived pinned file x changed", runner=make_runner(world, calls))
+    assert res["v"] == NO_DET and res["stage"] == "pin" and "changed" in res["measured"] and db.calls == [] and calls == []
+
+
+def test_a_pinned_file_or_data_file_that_changed_on_disk_is_refused_by_the_detectors_own_rehash(world):
+    world["data"].write_text('{"k": 2}', encoding="utf-8")
+    calls = []
+    res, db = run_detect(world, runner=make_runner(world, calls))
+    assert res["v"] == NO_DET and res["stage"] == "pin" and "data.json" in res["measured"] and calls == [] and db.calls == []
+    world["data"].write_text('{"k": 1}', encoding="utf-8")
+    world["file"].write_text(PARSER_SRC + "\n# edited after the pin\n", encoding="utf-8")
+    res, _ = run_detect(world)
+    assert res["v"] == NO_DET and res["stage"] == "pin" and "l0_fake.py" in res["measured"]
+
+
+def test_a_missing_pinned_file_or_one_outside_the_repo_is_no_detector_pin(world):
+    world["data"].unlink()
+    assert run_detect(world)[0]["stage"] == "pin"
+    e = entry_for(world)
+    e["corpus_derived"]["parser"]["pinned_files"].append(dict(path="../outside.py", sha256="0" * 64))
+    assert run_detect(world, entry=e)[0]["stage"] == "pin"
+
+
+def test_a_keep_when_constant_that_is_not_a_literal_is_no_detector_pin(world):
+    src = PARSER_SRC.replace("QUALITY_THRESHOLD_LIVE = 0.6", "QUALITY_THRESHOLD_LIVE = 0.5 + 0.1")
+    world["file"].write_text(src, encoding="utf-8")
+    e = entry_for(world)
+    e["corpus_derived"]["parser"]["pinned_files"][0]["sha256"] = sha(src)
+    res, _ = run_detect(world, entry=e)
+    assert res["v"] == NO_DET and res["stage"] == "pin" and "keep_when constant" in res["measured"]
 
 
 # ── the declaration ──
 
 def test_declaration_problems_are_no_detector_declaration(world):
     cases = [
-        entry_for(world, sample=0), entry_for(world, sample=None), entry_for(world, ignore_columns=["rule_id"]), entry_for(world, key_columns=[]), entry_for(world, key_columns=["nope"]),
-        entry_for(world, table="nope"), entry_for(world, cite_column="nope"), entry_for(world, table='t"; DROP'),
+        entry_for(world, scope=dict(stored="all", uncited_chunks=dict(sample=0))), entry_for(world, scope=dict(stored="all")), entry_for(world, ignore_columns=["rule_id"]),
+        entry_for(world, ignore_columns=["extraction_pass_log"]), entry_for(world, key_columns=[]), entry_for(world, key_columns=["nope"]), entry_for(world, table="nope"),
+        entry_for(world, cite_column="nope"), entry_for(world, table='t"; DROP'), entry_for(world, scope=dict(stored=dict(column="nope", equals="x"), uncited_chunks=dict(sample=3))),
+        entry_for(world, scope=dict(stored=dict(column="extracted_by", equals="a\\b"), uncited_chunks=dict(sample=3))),
         entry_for(world, parser=dict(module_root="parser", file="parser/other.py", function="extract", pinned_files=[dict(path="parser/l0_fake.py", sha256=world["sha"])])),
-        entry_for(world, parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract", pinned_files=[], input_shape="chunk")),
+        entry_for(world, parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract", pinned_files=[])),
         entry_for(world, parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract", pinned_files=[dict(path="parser/l0_fake.py", sha256=world["sha"])], input_shape="weird")),
-        entry_for(world, scope=dict(stored="sample", uncited_chunks=dict(sample=3))),
+        entry_for(world, parser=dict(module_root="parser", file="parser/l0_fake.py", function="extract", pinned_files=[dict(path="parser/l0_fake.py", sha256=world["sha"])],
+                                     extra_args=[dict(name="v", kind="subquery", table="chunks", column="text_id")])),
     ]
     for e in cases:
         res, _ = run_detect(world, entry=e)
@@ -600,16 +776,8 @@ def test_declaration_problems_are_no_detector_declaration(world):
 def test_normaliser_refusal_is_no_detector_declaration(world):
     def refuse(e):
         raise ValueError("unknown key")
-    res, _ = run_detect(world, normaliser=refuse)
+    res = cdd.detect_corpus_derived(entry_for(world), fetch=FakeDB([], []), runner=make_runner(world), normaliser=refuse, repo_root=str(world["root"]))
     assert res["v"] == NO_DET and res["stage"] == "declaration" and "unknown key" in res["measured"]
-
-
-def test_production_normaliser_adapter_tries_the_entry_then_the_block():
-    e = {"corpus_derived": {"k": 1}}
-    assert ac.corpus_derived_normalise(e, lambda x: dict(x["corpus_derived"])) == {"k": 1}          # wants the entry
-    assert ac.corpus_derived_normalise(e, lambda x: dict(x, seen=1) if "k" in x else (_ for _ in ()).throw(KeyError("k"))) == {"k": 1, "seen": 1}     # wants the block
-    with pytest.raises(KeyError):
-        ac.corpus_derived_normalise({}, lambda x: x["nope"])
 
 
 # ═════════════════════════════ Part 5: the real fetch (psql monkeypatched) ═════════════════════════════
@@ -624,18 +792,22 @@ def _fake_psql(monkeypatch, answers, log):
     monkeypatch.setattr(ac, "_psql_run", run)
 
 
-def test_real_fetch_builds_capped_timed_chart_agnostic_reads(monkeypatch):
+def test_real_fetch_builds_capped_timed_chart_agnostic_sliced_reads(monkeypatch):
     log = []
-    _fake_psql(monkeypatch, ['["a","b"]', "3002", '[{"rule_id":"r1","confidence":0.8}]', '["c1","c2"]', '[{"id":"c1","content_en":"x"}]'], log)
+    _fake_psql(monkeypatch, ['["a","b"]', "3002", '[{"rule_id":"r1","confidence":0.8}]', '["c1","c2"]', '[{"id":"c1","content_en":"x"}]', '["bphs","jaimini"]'], log)
+    flt = dict(column="extracted_by", equals="python_regex_v2")
     assert ac.corpus_derived_fetch(dict(op="columns", table="sutravali_rules")) == ["a", "b"]
-    assert ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules")) == 3002
-    rows = ac.corpus_derived_fetch(dict(op="rows", table="sutravali_rules", columns=["rule_id", "confidence"], order_by=["rule_id"], limit=500, offset=0))
+    assert ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules", filter=flt)) == 3002
+    rows = ac.corpus_derived_fetch(dict(op="rows", table="sutravali_rules", columns=["rule_id", "confidence"], order_by=["rule_id"], limit=500, offset=0, filter=flt))
     assert rows == [{"rule_id": "r1", "confidence": Decimal("0.8")}]
-    assert ac.corpus_derived_fetch(dict(op="ids", table="classical_text_chunks", id_column="id")) == ["c1", "c2"]
+    assert ac.corpus_derived_fetch(dict(op="ids", table="classical_text_chunks", id_column="id", order_by=["text_id", "chapter", "verse_start"])) == ["c1", "c2"]
     assert ac.corpus_derived_fetch(dict(op="chunks", table="classical_text_chunks", id_column="id", columns=["content_en"], ids=["c1"])) == [{"id": "c1", "content_en": "x"}]
+    assert ac.corpus_derived_fetch(dict(op="distinct", table="classical_text_chunks", column="text_id", limit=100)) == ["bphs", "jaimini"]
     assert all(c["cap"] == ac.CORPUS_DERIVED_STATEMENT_CAP and c["limit"] == ac.CORPUS_DERIVED_READ_TIMEOUT_S for c in log)
     assert not any("chart_id" in c["sql"] for c in log)                                              # L0 global tables: no chart predicate
     assert all(c["sql"].lstrip().upper().startswith("SELECT") for c in log)                          # read-only statements
+    assert "\"extracted_by\"::text = 'python_regex_v2'" in log[1]["sql"] and "\"extracted_by\"::text = 'python_regex_v2'" in log[2]["sql"]
+    assert "ORDER BY x.o0, x.o1, x.o2, x.i" in log[3]["sql"]
 
 
 def test_real_fetch_applies_the_engine_read_scope_when_the_table_is_scoped(monkeypatch):
@@ -643,12 +815,12 @@ def test_real_fetch_applies_the_engine_read_scope_when_the_table_is_scoped(monke
     _fake_psql(monkeypatch, ["5", "[]"], log)
     ac.set_read_scope({"sutravali_rules": dict(where="chart_id = 'x'", label="chart")})
     try:
-        ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules"))
-        ac.corpus_derived_fetch(dict(op="rows", table="sutravali_rules", columns=["a"], order_by=["a"], limit=1, offset=0))
+        ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules", filter=None))
+        ac.corpus_derived_fetch(dict(op="rows", table="sutravali_rules", columns=["a"], order_by=["a"], limit=1, offset=0, filter=None))
         assert all("(chart_id = 'x')" in c["sql"] for c in log)
         ac.set_read_scope({"sutravali_rules": dict(where="chart_id = 'x'", label="chart", block="NO ROWS in scope")})
         with pytest.raises(cdd.Unread, match="NO ROWS"):
-            ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules"))
+            ac.corpus_derived_fetch(dict(op="count", table="sutravali_rules", filter=None))
     finally:
         ac.set_read_scope(None)
 
@@ -662,12 +834,8 @@ def test_real_fetch_applies_the_engine_read_scope_when_the_table_is_scoped(monke
 ])
 def test_real_fetch_maps_timeouts_caps_and_permission_to_unread_and_lets_other_failures_error(monkeypatch, exc, unread):
     _fake_psql(monkeypatch, [exc], [])
-    if unread:
-        with pytest.raises(cdd.Unread):
-            ac.corpus_derived_fetch(dict(op="count", table="t"))
-    else:
-        with pytest.raises(ac.Unknown):
-            ac.corpus_derived_fetch(dict(op="count", table="t"))
+    with pytest.raises(cdd.Unread if unread else ac.Unknown):
+        ac.corpus_derived_fetch(dict(op="count", table="t", filter=None))
 
 
 def test_real_fetch_unparseable_and_unknown_ops(monkeypatch):
@@ -676,49 +844,65 @@ def test_real_fetch_unparseable_and_unknown_ops(monkeypatch):
         ac.corpus_derived_fetch(dict(op="ids", table="t", id_column="id"))
     with pytest.raises(ValueError):
         ac.corpus_derived_fetch(dict(op="drop", table="t"))
+    with pytest.raises(ValueError):
+        ac.corpus_derived_fetch(dict(op="count", table="t", filter=dict(column="c", equals="a\\b")))
 
 
 def test_detector_over_the_real_fetch_with_a_timed_out_read_is_no_detector(world, monkeypatch):
-    _fake_psql(monkeypatch, [["a"], ac.CheckTimeout("client-side timeout after 120s")], [])
     monkeypatch.setattr(ac, "_psql_run", lambda *a, **k: (_ for _ in ()).throw(ac.CheckTimeout("client-side timeout after 120s (psql killed): x")))
-    res = cdd.detect_corpus_derived(entry_for(world), fetch=ac.corpus_derived_fetch, runner=make_runner(world), normaliser=block_normaliser, repo_root=str(world["root"]))
+    res = cdd.detect_corpus_derived(entry_for(world), fetch=ac.corpus_derived_fetch, runner=make_runner(world), normaliser=normaliser, repo_root=str(world["root"]))
     assert res["v"] == NO_DET and res["stage"] == "read"
 
 
-# ═════════════════════════════ Part 6: the wiring into the six cells ═════════════════════════════
+# ═════════════════════════════ Part 6: the wiring into the cells (R1's mapping) ═════════════════════════════
 
 CAT = dict(exists=set(), cols={}, types=None, defaults=None, udts=None, keys=None)
+NARR_LINT_BEFORE = "NO_DETECTOR — prose_fields is undeclared"
 
 
-def measure_prose(world, monkeypatch, entry=None, runner=None, fetch=None, stored=None, chunks=None):
+def measure_prose(world, monkeypatch, entry=None, runner=None, fetch=None, stored=None, chunks=None, pin_check=None):
     chunks = chunks if chunks is not None else mk_chunks()
-    db = fetch or FakeDB(stored if stored is not None else stored_from(world, chunks), chunks)
+    db = fetch or FakeDB(stored if stored is not None else simulate_writer(world, chunks), chunks)
     monkeypatch.setattr(ac, "_cd_default_fetch", lambda: db)
     monkeypatch.setattr(ac, "_cd_default_runner", lambda: runner or make_runner(world))
-    monkeypatch.setattr(ac, "_cd_default_normaliser", lambda: block_normaliser)
+    monkeypatch.setattr(ac, "_cd_default_normaliser", lambda: normaliser)
+    monkeypatch.setattr(ac, "_cd_default_pin_check", lambda: pin_check or (lambda e: None))
     monkeypatch.setattr(ac, "ROOT", world["root"])
     return ac._measure_prose(AID, entry or entry_for(world), dict(target_table="rules"), None, CAT, [], set(), (), set())
 
 
-def test_pass_maps_narr_to_na_with_the_new_cause_and_null_to_pass(world, monkeypatch):
+def test_pass_maps_five_cells_to_na_with_the_new_cause_and_leaves_narr_lint_alone(world, monkeypatch):
     got = measure_prose(world, monkeypatch)
     assert sorted(got) == sorted(CELLS)
-    for c in ac.NARR_CHECKS:
-        assert got[c]["v"] == NA and got[c]["cause"] == ac.CORPUS_DERIVED_NA_CAUSE == "corpus-derived-reproduced" and ac.CORPUS_DERIVED_NA_TEXT in got[c]["measured"]
-        assert ac.corpus_derived_na_problem(c, got[c]) is None
-    for c in ac.NULL_CHECKS:
-        assert got[c]["v"] == PASS and "reproducib" in got[c]["measured"] and "4 stored row" in got[c]["measured"] and "3 cited chunk" in got[c]["measured"]
-    assert all(got[c]["corpus_derived"]["verified"] is True for c in CELLS)
-    assert ac.CORPUS_DERIVED_CELL_MAP.keys() == set(CELLS) and all(set(m) == {"PASS", "FAIL", "NO_DETECTOR"} for m in ac.CORPUS_DERIVED_CELL_MAP.values())
+    for c in FIVE:
+        assert got[c]["v"] == NA and got[c]["cause"] == ac.CORPUS_DERIVED_CAUSE == "corpus-derived" and ac.CORPUS_DERIVED_NA_TEXT in got[c]["measured"] and "5 stored row" in got[c]["measured"]
+        assert ac.corpus_derived_na_problem(c, got[c]) is None and got[c]["corpus_derived"]["verified"] is True
+    assert got["Narr.lint"]["v"] == NO_DET and NARR_LINT_BEFORE in got["Narr.lint"]["measured"] and "corpus_derived" not in got["Narr.lint"]
+    assert set(ac.CORPUS_DERIVED_CELL_MAP) == set(CELLS) and all(set(m) == {"PASS", "FAIL", "NO_DETECTOR"} for m in ac.CORPUS_DERIVED_CELL_MAP.values())
+    assert [c for c, m in ac.CORPUS_DERIVED_CELL_MAP.items() if m["PASS"] == "N/A"] == FIVE
 
 
-def test_fail_maps_every_cell_to_fail_with_the_first_differences(world, monkeypatch):
-    st = stored_from(world)
+def test_the_release_set_equals_the_criteria_r1s_na_guard_covers(world, monkeypatch):
+    assert set(FIVE) == set(ac.CORPUS_DERIVED_NA_CRITERIA) and "Narr.lint" not in ac.CORPUS_DERIVED_NA_CRITERIA
+
+
+def test_fail_maps_narr_agree_to_fail_naming_key_and_column_and_the_other_five_to_no_detector(world, monkeypatch):
+    st = simulate_writer(world, mk_chunks())
     st[0]["body"] = "HAND-EDITED"
     got = measure_prose(world, monkeypatch, stored=st)
-    for c in CELLS:
-        assert got[c]["v"] == FAIL and "differs" in got[c]["measured"] and "body" in got[c]["measured"] and "HAND-EDITED" not in got[c]["measured"]
-        assert got[c]["corpus_derived"]["first_differences"][0]["columns"] == ["body"]
+    assert got["Narr.agree"]["v"] == FAIL and "differs" in got["Narr.agree"]["measured"] and "body" in got["Narr.agree"]["measured"] and st[0]["rule_id"] in got["Narr.agree"]["measured"]
+    assert "HAND-EDITED" not in json.dumps(got)
+    assert got["Narr.agree"]["corpus_derived"]["first_differences"][0]["columns"] == ["body"]
+    for c in CELLS[1:]:
+        assert got[c]["v"] == NO_DET and "unproven" in got[c]["measured"]
+
+
+def test_fail_names_at_most_three_differences(world, monkeypatch):
+    st = simulate_writer(world, mk_chunks())
+    for r in st:
+        r["body"] = "edited"
+    got = measure_prose(world, monkeypatch, stored=st)
+    assert got["Narr.agree"]["v"] == FAIL and got["Narr.agree"]["measured"].count("differs key=") == 3
 
 
 @pytest.mark.parametrize("stage", ["pin", "spawn", "run", "output"])
@@ -728,10 +912,11 @@ def test_no_detector_maps_every_cell_to_no_detector_naming_the_stage(world, monk
         assert got[c]["v"] == NO_DET and f"stage '{stage}'" in got[c]["measured"]
 
 
-def test_a_read_cap_is_no_detector_on_every_cell_not_a_partial_pass(world, monkeypatch):
-    db = FakeDB(stored_from(world), mk_chunks())
-    orig = db.__call__
-    got = measure_prose(world, monkeypatch, fetch=lambda r: (_ for _ in ()).throw(cdd.Unread("statement timeout")) if r["op"] == "rows" else orig(r))
+def test_a_pin_problem_or_a_read_cap_is_no_detector_on_all_six_never_a_partial_pass(world, monkeypatch):
+    got = measure_prose(world, monkeypatch, pin_check=lambda e: "corpus_derived pinned file x changed")
+    assert all(got[c]["v"] == NO_DET and "stage 'pin'" in got[c]["measured"] for c in CELLS)
+    db = FakeDB(simulate_writer(world, mk_chunks()), mk_chunks())
+    got = measure_prose(world, monkeypatch, fetch=lambda r: (_ for _ in ()).throw(cdd.Unread("statement timeout")) if r["op"] == "rows" else db(r))
     assert all(got[c]["v"] == NO_DET and "stage 'read'" in got[c]["measured"] for c in CELLS)
 
 
@@ -755,26 +940,21 @@ def test_the_detector_runs_once_per_asset_per_run_through_the_engine_memo(world,
 def test_the_memoised_result_is_a_copy(world, monkeypatch):
     monkeypatch.setattr(ac, "_MEMO", {})
     a = measure_prose(world, monkeypatch)
-    a["Null.blank_rows"]["corpus_derived"]["differences"] = 99
-    assert measure_prose(world, monkeypatch)["Null.blank_rows"]["corpus_derived"]["differences"] == 0
+    a["Narr.agree"]["corpus_derived"]["mismatches"] = 99
+    assert measure_prose(world, monkeypatch)["Narr.agree"]["corpus_derived"]["mismatches"] == 0
 
 
 # ═════════════════════════════ Part 7: the rollup guards ═════════════════════════════
 
 @pytest.fixture()
 def registered(monkeypatch):
-    """What the director's single registry revision will add (NOT applied in the repo): the cause and the four rules."""
-    causes = dict(ac.NA_CAUSES)
-    rules = dict(ac.NA_RULE_DECISIONS)
-    for c in ac.NARR_CHECKS:
-        causes[c] = tuple(causes[c]) + ("corpus-derived-reproduced",)
-        rules[f"{c}#measured:corpus-derived-reproduced"] = "SS N-431 (test stand-in for the proposed decision text)"
+    """What the director's single registry revision will add (R1's data constants; NOT applied in the repo)."""
+    causes, rules = dict(ac.NA_CAUSES), dict(ac.NA_RULE_DECISIONS)
+    for c, add in ac.CORPUS_DERIVED_NA_CAUSES.items():
+        causes[c] = tuple(causes[c]) + tuple(add)
+    rules.update(ac.CORPUS_DERIVED_NA_RULE_DECISIONS)
     monkeypatch.setattr(ac, "NA_CAUSES", causes)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", rules)
-
-
-def _cells(world, monkeypatch, **kw):
-    return measure_prose(world, monkeypatch, **kw)
 
 
 def _roll(cells, facts=None):
@@ -783,81 +963,61 @@ def _roll(cells, facts=None):
 
 
 def test_the_registry_is_untouched_until_the_director_bumps_it():
-    assert "corpus-derived-reproduced" not in sum((list(v) for v in ac.NA_CAUSES.values()), [])
+    assert "corpus-derived" not in sum((list(v) for v in ac.NA_CAUSES.values()), [])
     assert not any("corpus-derived" in k for k in ac.NA_RULE_DECISIONS)
 
 
-def test_before_registration_the_narr_na_is_never_honoured(world, monkeypatch):
-    narr, _ = _roll(_cells(world, monkeypatch))
-    assert narr["v"] == NO_DET and "not a registered cause" in json.dumps(narr)
+def test_before_registration_the_na_is_never_honoured(world, monkeypatch):
+    narr, null = _roll(measure_prose(world, monkeypatch))
+    assert narr["v"] == NO_DET and null["v"] == NO_DET and "not a registered cause" in json.dumps(narr)
 
 
-def test_after_registration_narr_is_na_and_null_lifts_to_pass(world, monkeypatch, registered):
-    narr, null = _roll(_cells(world, monkeypatch))
-    assert narr["v"] == NA and all(c["rule_id"] == f"{c['criterion']}#measured:corpus-derived-reproduced" for c in narr["checks"])
-    assert null["v"] == PASS and all(c.get("null_corpus_derived_verified") for c in null["checks"])
+def test_after_registration_the_five_cells_release_and_narr_lint_keeps_the_gate_open(world, monkeypatch, registered):
+    cells = measure_prose(world, monkeypatch)
+    narr, null = _roll(cells)
+    checks = {c["criterion"]: c for c in narr["checks"]}
+    assert all(checks[c]["v"] == NA and checks[c]["rule_id"] == f"{c}#measured:corpus-derived" for c in FIVE[:3]) and checks["Narr.lint"]["v"] == NO_DET and narr["v"] == NO_DET
+    assert null["v"] == NA and all(c["v"] == NA and c["rule_id"].endswith("#measured:corpus-derived") for c in null["checks"])         # Null reads N/A, never PASS
+    cells["Narr.lint"] = ac._na("lint scan agrees", "lint-not-applicable") | {"lint_none": dict(applied=[], files=["x.py"], why="w", evidence="e")}
+    cells["Narr.lint"] = dict(cells["Narr.lint"], v=NO_DET)
+    assert _roll(cells)[0]["v"] == NO_DET
 
 
-def test_without_the_verified_block_nothing_is_released_or_lifted(world, monkeypatch, registered):
-    cells = _cells(world, monkeypatch)
+def test_without_the_verified_block_nothing_is_released(world, monkeypatch, registered):
+    cells = measure_prose(world, monkeypatch)
     bare = {c: {k: v for k, v in r.items() if k != "corpus_derived"} for c, r in cells.items()}
     narr, null = _roll(bare)
-    assert narr["v"] == NO_DET and all("verified reproducibility block" in c["reason"] for c in narr["checks"])
-    assert null["v"] == PARTIAL if False else null["v"] == "PARTIAL"                          # the Null cap stays: PARTIAL, never PASS
+    assert narr["v"] == NO_DET and null["v"] == NO_DET and all("no verified block" in c["reason"] for c in null["checks"])
 
 
 @pytest.mark.parametrize("mutate", [
-    lambda b: b.update(verified=False), lambda b: b.update(v=FAIL), lambda b: b.update(differences=1), lambda b: b.update(first_differences=[{"kind": "x"}]),
-    lambda b: b.update(rows_rederived=0), lambda b: b.update(cited_chunks=0), lambda b: b.update(uncited_sampled=0), lambda b: b["parser"].update(pinned_files=[]),
-    lambda b: b["parser"]["pinned_files"][0].update(sha256="xyz"), lambda b: b.update(table=""), lambda b: b.pop("checked"),
+    lambda b: b.update(verified=False), lambda b: b.update(mismatches=1), lambda b: b.update(matched_rows=b["stored_rows"] - 1), lambda b: b.update(stored_rows=0, matched_rows=0),
+    lambda b: b.update(uncited_yield=1), lambda b: b.update(blank_leaves=1), lambda b: b.update(chunks_run=0), lambda b: b["parser"].update(sha256="xyz"),
+    lambda b: b.update(loaded_repo_files=["somewhere/else.py"]), lambda b: b.update(loaded_repo_files=[]), lambda b: b.pop("pinned_files"),
 ])
 def test_a_forged_or_incomplete_block_releases_nothing(world, monkeypatch, registered, mutate):
-    cells = copy.deepcopy(_cells(world, monkeypatch))
-    for c in CELLS:
+    cells = copy.deepcopy(measure_prose(world, monkeypatch))
+    for c in FIVE:
         mutate(cells[c]["corpus_derived"])
     narr, null = _roll(cells)
-    assert narr["v"] == NO_DET and null["v"] != PASS
-
-
-def test_the_two_null_records_must_agree_on_table_and_parser(world, monkeypatch, registered):
-    cells = copy.deepcopy(_cells(world, monkeypatch))
-    cells["Null.blank_rows"]["corpus_derived"]["table"] = "other"
-    assert _roll(cells)[1]["v"] != PASS
-    cells = copy.deepcopy(_cells(world, monkeypatch))
-    cells["Null.blank_rows"]["corpus_derived"]["parser"]["pinned_files"][0]["sha256"] = "0" * 64
-    assert _roll(cells)[1]["v"] != PASS
-
-
-def test_a_basis_or_inconclusive_flag_blocks_the_lift(world, monkeypatch, registered):
-    cells = copy.deepcopy(_cells(world, monkeypatch))
-    cells["Null.schema_default"]["inconclusive"] = True
-    assert _roll(cells)[1]["v"] != PASS
-    cells = copy.deepcopy(_cells(world, monkeypatch))
-    cells["Null.schema_default"]["basis"] = "declaration"
-    assert _roll(cells)[1]["v"] != PASS
+    assert narr["v"] == NO_DET and null["v"] == NO_DET
 
 
 def test_a_coupled_narr_na_keeps_its_carr_d1_rule(world, monkeypatch, registered):
-    cells = _cells(world, monkeypatch)
+    cells = measure_prose(world, monkeypatch)
     facts = {"declared_prose_coupling": {"to": ac.PROSE_COUPLING_TO, "columns": ["body"], "covered": {"body": "effect"}}}
     narr, _ = _roll(cells, facts)
-    assert narr["v"] == NO_DET and all("rests on Carr.D1 PASS (coupled)" in c["reason"] for c in narr["checks"])
+    assert narr["v"] == NO_DET and all("rests on Carr.D1 PASS (coupled)" in c["reason"] for c in narr["checks"] if c["criterion"] in FIVE)
     narr, _ = _roll(cells, {"declared_prose_coupling_missing": True})
     assert narr["v"] == NO_DET
 
 
 def test_the_gap_ledger_release_rule_follows_the_same_guard(world, monkeypatch, registered):
-    cells = _cells(world, monkeypatch)
-    assert ac._na_released("Narr.agree", cells["Narr.agree"]) is True
-    forged = {k: v for k, v in cells["Narr.agree"].items() if k != "corpus_derived"}
-    assert ac._na_released("Narr.agree", forged) is False
-
-
-def test_other_causes_and_criteria_are_untouched_by_the_guards():
-    assert ac.corpus_derived_na_problem("Narr.agree", ac._na("x", "no-prose")) is None
-    assert ac.corpus_derived_na_problem("Carr.D1", ac._na("x", "corpus-derived-reproduced")) is None
-    assert ac.corpus_derived_na_problem("Narr.agree", dict(v=PASS)) is None
-    assert ac.corpus_derived_null_earned("Narr.agree", dict(v=PASS), {}) is False
+    cells = measure_prose(world, monkeypatch)
+    for c in FIVE:
+        assert ac._na_released(c, cells[c]) is True
+        assert ac._na_released(c, {k: v for k, v in cells[c].items() if k != "corpus_derived"}) is False
+    assert ac._na_released("Narr.lint", cells["Narr.lint"]) is False
 
 
 # ═════════════════════════════ Part 8: opt-in ═════════════════════════════
@@ -865,7 +1025,7 @@ def test_other_causes_and_criteria_are_untouched_by_the_guards():
 def test_an_asset_without_corpus_derived_measures_exactly_as_before(monkeypatch):
     def boom(*a, **k):
         raise AssertionError("the corpus_derived detector must not be reached")
-    for n in ("corpus_derived_detect", "_cd_default_fetch", "_cd_default_runner", "_cd_default_normaliser"):
+    for n in ("corpus_derived_detect", "_cd_default_fetch", "_cd_default_runner", "_cd_default_normaliser", "_cd_default_pin_check"):
         monkeypatch.setattr(ac, n, boom)
     for decl in ({"prose_fields": None}, {"prose_fields": []}, None, {}):
         got = ac._measure_prose("x", decl, dict(target_table="t"), None, CAT, [], set(), (), set())
@@ -873,42 +1033,157 @@ def test_an_asset_without_corpus_derived_measures_exactly_as_before(monkeypatch)
         assert {c: got[c]["v"] for c in CELLS} == {c: want[c]["v"] for c in CELLS}
 
 
-def test_corpus_derived_beside_declared_prose_fields_does_not_override_them(world, monkeypatch):
-    monkeypatch.setattr(ac, "corpus_derived_detect", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run")))
+def test_corpus_derived_beside_declared_prose_fields_does_not_override_them(world):
     e = entry_for(world)
     e["prose_fields"] = []
-    assert ac.corpus_derived_applies(e) is False
-    assert ac.corpus_derived_applies({"prose_fields": None}) is False and ac.corpus_derived_applies(None) is False
+    assert ac.corpus_derived_applies(e) is False and ac.corpus_derived_applies({"prose_fields": None}) is False and ac.corpus_derived_applies(None) is False
+    assert ac.corpus_derived_applies(entry_for(world)) is True
 
 
-def test_the_unavailable_collaborators_read_no_detector_not_pass(world, monkeypatch):
-    monkeypatch.setattr(ac, "_cd_default_fetch", lambda: FakeDB(stored_from(world), mk_chunks()))
-    monkeypatch.setattr(ac, "ROOT", world["root"])
-    monkeypatch.delitem(ac.__dict__, "normalise_corpus_derived", raising=False)
-    got = ac._measure_prose(AID, entry_for(world), dict(target_table="rules"), None, CAT, [], set(), (), set())
-    assert all(got[c]["v"] == NO_DET and "stage 'declaration'" in got[c]["measured"] for c in CELLS)
-
-
-def test_the_detector_module_is_pure_and_python_311_parseable():
+def test_the_detector_module_is_python_311_parseable_and_imports_nothing_that_reaches_outside():
     import ast
     src = (HERE.parent / "corpus_derived_detector.py").read_text(encoding="utf-8")
     tree = ast.parse(src, feature_version=(3, 11))
     imported = {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)} | {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
-    assert not (imported & {"asset_census", "subprocess", "os", "socket", "psycopg2", "parser_sandbox"}), imported
+    assert not (imported & {"asset_census", "subprocess", "os", "socket", "psycopg2", "parser_sandbox", "importlib", "sys", "shutil"}), imported
 
 
-# ═════════════════════════════ Part 9: REAL SQL smoke (CI shard with PostgreSQL; NOT run locally, SS N-436) ═════════════════════════════
+# ═════════════════════════════ Part 9: the REAL bg_rules declaration and parser, end to end (offline) ═════════════════════════════
+
+REAL_MODULE_ROOT = "platform/python-sidecar"
+REAL_PARSER = "platform/python-sidecar/brahmagyan/l0_rules.py"
+REAL_FILES = [REAL_PARSER, "platform/python-sidecar/brahmagyan/__init__.py", "platform/python-sidecar/brahmagyan/graha_vocabulary.py",
+              "platform/python-sidecar/brahmagyan/l0_semantic_release.py", "platform/python-sidecar/brahmagyan/l0_semantic_release_v1.json"]
+REAL_CHUNKS = [
+    ("00000000-0000-4000-8000-000000000001", "bphs", 1, 1, "1.1", "The Sun in the tenth house gives fame and wealth to the native. Saturn in the seventh house bestows delay in marriage."),
+    ("00000000-0000-4000-8000-000000000002", "bphs", 1, 2, "1.2", "The king sat in his court and the sage spoke of many things at length without rule."),
+    ("00000000-0000-4000-8000-000000000003", "bphs", 2, 1, "2.1", "Jupiter in the fifth house gives sons and good fortune to the native."),
+    ("00000000-0000-4000-8000-000000000004", "saravali", 1, 1, "1.1", "Mars in the first house gives courage and vigour to the native."),
+    ("00000000-0000-4000-8000-000000000005", "saravali", 1, 2, "1.2", "Venus in the seventh house gives happiness in marriage."),
+] + [(f"00000000-0000-4000-8000-0000000001{i:02d}", "bphs", 9, i, f"9.{i}", "Narrative text without any rule at all.") for i in range(1, 21)]
+
+
+def _real_decl(sample=10):
+    return dict(
+        table="sutravali_rules", key_columns=["rule_id"], cite_column="extraction_pass_log", cite_path=[0, "chunk_id"],
+        source=dict(table="classical_text_chunks", id_column="id", text_columns=["content_en"], extra_columns=["text_id", "verse_ref"], order_by=["text_id", "chapter", "verse_start"]),
+        parser=dict(module_root=REAL_MODULE_ROOT, file=REAL_PARSER, function="extract_rules_from_chunk", pinned_files=ac.pin_files(ac.ROOT, REAL_FILES), input_shape="chunk_row_dict",
+                    extra_args=[dict(name="valid_text_ids", kind="distinct_values", table="classical_text_chunks", column="text_id")]),
+        derived=dict(drop_keys=["_quality"], keep_when=dict(key="_quality", at_least_constant="QUALITY_THRESHOLD_LIVE"),
+                     null_unless_in=[dict(column="yoga_canonical_id", table="brahma_yoga_catalog", ref_column="canonical_id"),
+                                     dict(column="dasha_system_id", table="brahma_dasha_systems", ref_column="canonical_id")],
+                     json_columns=["antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "extraction_pass_log"], numeric_columns=["confidence", "quality_score"], duplicate_policy="first_wins"),
+        ignore_columns=["created_at"], scope=dict(stored=dict(column="extracted_by", equals="python_regex_v2"), uncited_chunks=dict(sample=sample)),
+        why="every sutravali_rules row of extracted_by python_regex_v2 is the output of the pinned regex parser over the classical_text_chunks row its extraction_pass_log cites (verbatim slices, templated descriptions, uuid5 ids)",
+        evidence=REAL_PARSER + ":1609")
+
+
+def _real_runner():
+    """An in-process stand-in for the sandbox that calls the REAL parser. The real function takes (chunk, valid_text_ids) while the sandbox contract calls function(item) with ONE dict: this adapter is
+    exactly the mismatch the director must close (a pinned one-dict wrapper in the parser file, or a sandbox convention)."""
+    sys.path.insert(0, str(ac.ROOT / REAL_MODULE_ROOT))
+    try:
+        from brahmagyan import l0_rules
+    finally:
+        sys.path.pop(0)
+
+    def run(repo_root, module_root, pinned_files, file, function, inputs, *, timeout_s=120, max_output_bytes=64_000_000):
+        outs = []
+        for item in inputs:
+            chunk = {k: v for k, v in item.items() if k != "valid_text_ids"}
+            outs.append(json.loads(json.dumps(list(l0_rules.extract_rules_from_chunk(chunk, set(item["valid_text_ids"]))))))
+        return {"ok": True, "outputs": outs, "loaded_repo_files": [REAL_PARSER], "elapsed_s": 0.0}
+    return run, l0_rules
+
+
+def _real_world():
+    run, l0 = _real_runner()
+    chunks = [dict(id=i, text_id=t, chapter=c, verse_start=v, verse_ref=r, content_en=x) for i, t, c, v, r, x in REAL_CHUNKS]
+    valid = sorted({c["text_id"] for c in chunks})
+    stored, seen = [], set()
+    for ch in sorted(chunks, key=lambda c: (c["text_id"], c["chapter"], c["verse_start"], c["id"])):       # seed_rules, simulated: quality >= LIVE, FK nulling (empty reference tables), ON CONFLICT DO NOTHING
+        for r in l0.extract_rules_from_chunk({k: ch[k] for k in ("id", "text_id", "verse_ref", "content_en")}, set(valid)):
+            q = r.pop("_quality")
+            if q < l0.QUALITY_THRESHOLD_LIVE or r["rule_id"] in seen:
+                continue
+            seen.add(r["rule_id"])
+            r["yoga_canonical_id"] = r["dasha_system_id"] = None
+            for k in ("antecedent_jsonb", "predicate_jsonb", "prediction_jsonb", "extraction_pass_log"):
+                r[k] = json.loads(r[k])
+            r["created_at"] = "2026-10-01T00:00:00+00:00"
+            stored.append(r)
+    db = FakeDB(stored, chunks)
+    db.tables["brahma_yoga_catalog"] = []
+    db.tables["brahma_dasha_systems"] = []
+    db.cols.update(sutravali_rules=list(stored[0]), classical_text_chunks=db.cols["chunks"], brahma_yoga_catalog=["canonical_id"], brahma_dasha_systems=["canonical_id"])
+    db.tables.update(sutravali_rules=db.tables.pop("rules"), classical_text_chunks=db.tables.pop("chunks"))
+    return db, run, stored
+
+
+def _real_detect(db, run, decl=None):
+    return cdd.detect_corpus_derived({"prose_fields": None, "corpus_derived": decl or _real_decl()}, fetch=db, runner=run, normaliser=ac.normalise_corpus_derived, pin_check=ac.corpus_derived_pin_problem, repo_root=str(ac.ROOT))
+
+
+def test_the_real_declaration_and_the_real_parser_reproduce_a_simulated_seed_rules_table():
+    db, run, stored = _real_world()
+    assert len(stored) >= 4
+    res = _real_detect(db, run)
+    assert res["v"] == PASS, res["measured"]
+    b = res["block"]
+    assert b["stored_rows"] == len(stored) == b["matched_rows"] and b["uncited_sampled"] >= 1 and b["extra_args"] == ["valid_text_ids"] and b["keep_when_threshold"] == 0.6
+    assert b["pinned_files"] == REAL_FILES and b["loaded_repo_files"] == [REAL_PARSER] and b["parser"]["function"] == "extract_rules_from_chunk"
+    assert ac.corpus_derived_na_problem("Narr.agree", ac._na("x", ac.CORPUS_DERIVED_CAUSE) | {"corpus_derived": b}) is None
+
+
+@pytest.mark.parametrize("mutate,kind", [
+    (lambda st: st[0].update(confidence=0.5), "differs"),
+    (lambda st: st[1].update(verse_ref="9.9"), "differs"),
+    (lambda st: st[1]["predicate_jsonb"].update(description="HAND-EDITED description"), "differs"),
+    (lambda st: st.pop(), "missing_stored"),
+    (lambda st: st.append(dict(st[0], rule_id="00000000-0000-5000-8000-0000000000aa")), "extra_stored"),
+])
+def test_the_real_pipeline_sees_every_mutation_of_the_stored_rows(mutate, kind):
+    db, run, stored = _real_world()
+    mutate(db.tables["sutravali_rules"])
+    res = _real_detect(db, run)
+    assert res["v"] == FAIL and res["block"]["first_differences"][0]["kind"] == kind and "HAND-EDITED" not in json.dumps(res)
+
+
+def test_the_real_pipeline_sees_an_uncited_chunk_that_yields_and_a_changed_pin():
+    db, run, stored = _real_world()
+    uncited = [c for c in db.tables["classical_text_chunks"] if c["content_en"].startswith("Narrative")][0]
+    uncited["content_en"] = "Mars in the tenth house gives power and fame to the native."
+    res = _real_detect(db, run, _real_decl(sample=1000))
+    assert res["v"] == FAIL and res["block"]["uncited_yield"] >= 1
+    bad = _real_decl()
+    bad["parser"]["pinned_files"][1]["sha256"] = "0" * 64
+    res = _real_detect(*_real_world()[:2], decl=bad)
+    assert res["v"] == NO_DET and res["stage"] == "pin"
+
+
+def test_the_one_dict_sandbox_convention_does_not_match_the_real_function_signature_today():
+    """DOCUMENTS THE OPEN INTEGRATION ITEM: R2's runner calls function(item) with one input; extract_rules_from_chunk takes (chunk, valid_text_ids)."""
+    import ast as _ast
+    tree = _ast.parse((ac.ROOT / REAL_PARSER).read_text(encoding="utf-8"))
+    fn = [n for n in tree.body if isinstance(n, _ast.FunctionDef) and n.name == "extract_rules_from_chunk"][0]
+    required = [a.arg for a in fn.args.args[:len(fn.args.args) - len(fn.args.defaults)]]
+    assert required == ["chunk", "valid_text_ids"]
+
+
+# ═════════════════════════════ Part 10: REAL SQL smoke (CI shard with PostgreSQL; NOT run locally, SS N-436) ═════════════════════════════
 
 @pytest.fixture()
 def pgdb(monkeypatch, disposable_pg):
     import _formgap_support as fs
     point_psql_at(disposable_pg, monkeypatch)
-    fs.drop_tables(disposable_pg, "rules", "chunks")
-    fs.psql(disposable_pg, "CREATE TABLE chunks (id uuid PRIMARY KEY, text_id text, verse_ref text, content_en text)")
+    fs.drop_tables(disposable_pg, "rules", "chunks", "yoga_catalog")
+    fs.psql(disposable_pg, "CREATE TABLE chunks (id uuid PRIMARY KEY, text_id text, chapter int, verse_start int, verse_ref text, content_en text)")
+    fs.psql(disposable_pg, "CREATE TABLE yoga_catalog (canonical_id text)")
+    fs.psql(disposable_pg, "INSERT INTO yoga_catalog VALUES ('Y1'), ('Y2')")
     fs.psql(disposable_pg, "CREATE TABLE rules (rule_id text PRIMARY KEY, text_id text, verse_ref text, body text, prediction_jsonb jsonb, confidence numeric, transit_marker boolean, "
-                           "extraction_pass_log jsonb, created_by text, created_at timestamptz DEFAULT now())")
+                           "extraction_pass_log jsonb, extracted_by text, yoga_canonical_id text, created_at timestamptz DEFAULT now())")
     yield disposable_pg, fs
-    fs.drop_tables(disposable_pg, "rules", "chunks")
+    fs.drop_tables(disposable_pg, "rules", "chunks", "yoga_catalog")
 
 
 def _uuid(i):
@@ -918,21 +1193,22 @@ def _uuid(i):
 def _load_pg(pg, fs, world):
     chunks = [dict(c, id=_uuid(int(c["id"][1:]))) for c in mk_chunks()]
     for c in chunks:
-        fs.psql(pg, f"INSERT INTO chunks VALUES ('{c['id']}', '{c['text_id']}', '{c['verse_ref']}', '{c['content_en']}')")
-    for r in derive(world["fn"], chunks, {_uuid(1), _uuid(2), _uuid(4)}):
-        fs.psql(pg, "INSERT INTO rules (rule_id, text_id, verse_ref, body, prediction_jsonb, confidence, transit_marker, extraction_pass_log, created_by) VALUES "
-                    f"('{r['rule_id']}', '{r['text_id']}', '{r['verse_ref']}', '{r['body']}', '{r['prediction_jsonb']}', {r['confidence']}, {str(r['transit_marker']).lower()}, "
-                    f"'{r['extraction_pass_log']}', '{r['created_by']}')")
+        fs.psql(pg, f"INSERT INTO chunks VALUES ('{c['id']}', '{c['text_id']}', {c['chapter']}, {c['verse_start']}, '{c['verse_ref']}', '{c['content_en']}')")
+    for r in simulate_writer(world, chunks):
+        fs.psql(pg, "INSERT INTO rules (rule_id, text_id, verse_ref, body, prediction_jsonb, confidence, transit_marker, extraction_pass_log, extracted_by, yoga_canonical_id) VALUES "
+                    f"('{r['rule_id']}', '{r['text_id']}', '{r['verse_ref']}', '{r['body']}', '{json.dumps(r['prediction_jsonb'])}', {r['confidence']}, {str(r['transit_marker']).lower()}, "
+                    f"'{json.dumps(r['extraction_pass_log'])}', '{r['extracted_by']}', {'NULL' if r['yoga_canonical_id'] is None else repr(r['yoga_canonical_id'])})")
+    fs.psql(pg, "INSERT INTO rules (rule_id, text_id, verse_ref, body, extracted_by, extraction_pass_log) VALUES ('foreign', 'T1', 'v', 'not ours', 'other_writer', '[]')")
     return chunks
 
 
 def test_REAL_SQL_smoke_the_real_reads_reproduce_a_clean_table_and_see_a_hand_edit(pgdb, world):
     pg, fs = pgdb
     _load_pg(pg, fs, world)
-    kw = dict(fetch=ac.corpus_derived_fetch, runner=make_runner(world), normaliser=block_normaliser, repo_root=str(world["root"]))
+    kw = dict(fetch=ac.corpus_derived_fetch, runner=make_runner(world), normaliser=normaliser, repo_root=str(world["root"]))
     res = cdd.detect_corpus_derived(entry_for(world), **kw)
     assert res["v"] == PASS, res["measured"]
-    assert res["block"]["rows_rederived"] == 4 and res["block"]["cited_chunks"] == 3
+    assert res["block"]["stored_rows"] == 5 and res["block"]["cited_chunks"] == 3
     fs.psql(pg, "UPDATE rules SET body = 'HAND-EDITED' WHERE rule_id LIKE '%#1'")
     res = cdd.detect_corpus_derived(entry_for(world), **kw)
     assert res["v"] == FAIL and res["block"]["first_differences"][0]["columns"] == ["body"] and "HAND-EDITED" not in json.dumps(res)
@@ -940,15 +1216,18 @@ def test_REAL_SQL_smoke_the_real_reads_reproduce_a_clean_table_and_see_a_hand_ed
     assert cdd.detect_corpus_derived(entry_for(world), **kw)["v"] == FAIL
 
 
-def test_REAL_SQL_smoke_columns_ids_chunks_and_the_read_only_statements(pgdb, world):
+def test_REAL_SQL_smoke_columns_ids_chunks_distinct_and_the_slice(pgdb, world):
     pg, fs = pgdb
     _load_pg(pg, fs, world)
     assert ac.corpus_derived_fetch(dict(op="columns", table="rules"))[:2] == ["rule_id", "text_id"]
     assert ac.corpus_derived_fetch(dict(op="columns", table="nope")) == []
-    assert ac.corpus_derived_fetch(dict(op="count", table="chunks")) == 12
-    ids = ac.corpus_derived_fetch(dict(op="ids", table="chunks", id_column="id"))
+    assert ac.corpus_derived_fetch(dict(op="count", table="chunks", filter=None)) == 12
+    assert ac.corpus_derived_fetch(dict(op="count", table="rules", filter=dict(column="extracted_by", equals="fake_v2"))) == 5
+    assert ac.corpus_derived_fetch(dict(op="count", table="rules", filter=None)) == 6
+    ids = ac.corpus_derived_fetch(dict(op="ids", table="chunks", id_column="id", order_by=["text_id", "chapter", "verse_start"]))
     assert ids == sorted(ids) and len(ids) == 12
     got = ac.corpus_derived_fetch(dict(op="chunks", table="chunks", id_column="id", columns=["content_en"], ids=[_uuid(1), _uuid(99)]))
     assert got == [dict(id=_uuid(1), content_en="RULE:a RULE:b")]
-    rows = ac.corpus_derived_fetch(dict(op="rows", table="rules", columns=["rule_id", "confidence", "prediction_jsonb"], order_by=["rule_id"], limit=2, offset=1))
-    assert len(rows) == 2 and isinstance(rows[0]["prediction_jsonb"], dict) and rows[0]["confidence"] == Decimal("0.8")
+    rows = ac.corpus_derived_fetch(dict(op="rows", table="rules", columns=["rule_id", "confidence", "prediction_jsonb"], order_by=["rule_id"], limit=2, offset=1, filter=dict(column="extracted_by", equals="fake_v2")))
+    assert len(rows) == 2 and isinstance(rows[0]["prediction_jsonb"], dict) and rows[0]["confidence"] == Decimal("1.0")
+    assert ac.corpus_derived_fetch(dict(op="distinct", table="chunks", column="text_id", limit=10)) == ["T1"]
