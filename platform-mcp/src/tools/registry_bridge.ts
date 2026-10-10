@@ -3752,9 +3752,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
       vargas: z.array(z.string()).optional().describe('Additional varga codes to assemble (e.g. ["D2","D10","D11"]), additive to D1 (and D9 if include_navamsa is set) — served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.'),
+      include_cross_check: z.boolean().optional().describe('Lahiri-primary SS N-361: when true, the always-on identity_cross_check (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false.'),
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, include_cross_check, budget_kb }) => {
       if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -3764,6 +3765,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
             ...(include_navamsa != null ? { include_navamsa } : {}),
             ...(vargas && vargas.length > 0 ? { vargas } : {}),
+            ...(include_cross_check === true ? { include_cross_check: true } : {}),
           },
           chart_id, principal
         )

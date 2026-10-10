@@ -13,7 +13,15 @@
  * LIMIT-reduces (every matching row is returned and aggregated deterministically in JS), and is
  * non-blocking: a failure becomes `{ not_available: true, reason: 'cross_check_read_failed' }`, never a
  * thrown error and never an invented agreement. Longitudes are read only so they can be SHOWN beside a
- * sign / nakshatra; they are never compared.
+ * sign / nakshatra (full mode only); they are never compared.
+ *
+ * NO UNFENCED FALLBACK (SS N-361, CLAUDE.md §N.7/§N.8): every read here is fenced to the chart's SERVED
+ * GENERATION (chart_facts: the served build set; chart_dashas: the served ga_dashas build). When the fence
+ * cannot be resolved the fact is `served_generation_unresolved` (not_available) and the table is NOT queried:
+ * never an unfenced read, never a possibly joined "A / B" Mahadasha lord from rows of two builds.
+ *
+ * MODE (SS N-361, "always-on means COMPACT"): every function takes a REQUIRED `mode`. `compact` is what the
+ * always-on call sites pass; `full` is passed when the caller asked for `include_cross_check:true`.
  */
 import { query } from '@/lib/db/client'
 import { resolveChartServedGeneration, resolvedRowsBuildId } from './registry/generation/served_generation'
@@ -27,18 +35,25 @@ import {
   type AyanamshaCrossCheck,
   type CrossCheckFactSpec,
   type CrossCheckInputRow,
+  type CrossCheckMode,
   type CrossCheckScope,
+  type CrossCheckUnavailableFactSpec,
   type IdentityFactKey,
 } from './ayanamsha_cross_check'
+
+/** The one reason an unfenced read is refused. */
+export const SERVED_GENERATION_UNRESOLVED = 'served_generation_unresolved' as const
 
 export interface IdentityCrossCheckOptions {
   /** Which identity facts this surface serves (and so cross-checks). */
   readonly facts: readonly IdentityFactKey[]
+  /** `compact` (always-on, summary only) or `full` (include_cross_check:true). REQUIRED: no silent default. */
+  readonly mode: CrossCheckMode
   /** The as-of date for `maha_lord` (YYYY-MM-DD). Default: today (UTC date, as get_dashas does). */
   readonly asOfDate?: string
-  /** Served-generation fence for the chart_facts reads (null/undefined = unfenced, as the surface itself reads). */
+  /** Served-generation fence for the chart_facts reads. null/undefined/empty = UNRESOLVED: the position facts are not_available, never read unfenced. */
   readonly positionBuildIds?: readonly string[] | null
-  /** The ga_dashas build that produced the served dasha rows. */
+  /** The served ga_dashas build. null/undefined = UNRESOLVED: the Mahadasha lord is not_available, never read unfenced. */
   readonly dashaBuildId?: string | null
   readonly scope?: CrossCheckScope
   /** Extra fact specs appended after the identity ones (e.g. Antardasha lord). */
@@ -115,59 +130,64 @@ export async function fetchIdentityCrossCheck(
 ): Promise<AyanamshaCrossCheck> {
   const facts = opts.facts
   try {
-    const wantsPositions = facts.some((f) => f === 'lagna_sign' || f === 'moon_sign' || f === 'moon_nakshatra')
-    const wantsDasha = facts.includes('maha_lord')
+    const wantsPositionsRaw = facts.some((f) => f === 'lagna_sign' || f === 'moon_sign' || f === 'moon_nakshatra')
+    const wantsDashaRaw = facts.includes('maha_lord')
     const ayas = [...AYANAMSHA_SERVE_ORDER] as string[]
 
+    // The fence is checked BEFORE any SQL is built: an unresolved fence is never turned into an unfenced read.
+    const positionBuildIds = opts.positionBuildIds && opts.positionBuildIds.length > 0 ? [...opts.positionBuildIds] : null
+    const dashaBuildId = opts.dashaBuildId ? opts.dashaBuildId : null
+    const wantsPositions = wantsPositionsRaw && positionBuildIds !== null
+    const wantsDasha = wantsDashaRaw && dashaBuildId !== null
+    const unavailableKeys = new Set<IdentityFactKey>()
+    if (wantsPositionsRaw && positionBuildIds === null) {
+      for (const f of facts) if (f !== 'maha_lord') unavailableKeys.add(f)
+    }
+    if (wantsDashaRaw && dashaBuildId === null) unavailableKeys.add('maha_lord')
+    const readableFacts = facts.filter((f) => !unavailableKeys.has(f))
+    const unavailableFacts: CrossCheckUnavailableFactSpec[] = identityFactSpecs(facts)
+      .filter((spec) => unavailableKeys.has(spec.key as IdentityFactKey))
+      .map((spec) => ({ ...spec, reason: SERVED_GENERATION_UNRESOLVED }))
+
     const positionP: Promise<PositionReadRow[]> = wantsPositions
-      ? (() => {
-          const params: unknown[] = [chartId, ayas]
-          let fence = ''
-          if (opts.positionBuildIds && opts.positionBuildIds.length > 0) {
-            params.push([...opts.positionBuildIds])
-            fence = ` AND build_id = ANY($${params.length}::uuid[])`
-          }
-          return query<PositionReadRow>(
-            `SELECT ayanamsha_id, fact_subject, fact_key, fact_value_text, fact_value_num
-               FROM chart_facts
-              WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[]) AND fact_category = 'graha_position'
-                AND ((fact_subject = 'LAGNA' AND fact_key IN ('sign', 'longitude_sidereal'))
-                  OR (fact_subject = 'MOON'  AND fact_key IN ('sign', 'nakshatra', 'longitude_sidereal')))${fence}
-              ORDER BY ayanamsha_id, fact_subject, fact_key, fact_id`,
-            params,
-          ).then((r) => r.rows)
-        })()
+      ? query<PositionReadRow>(
+          `SELECT ayanamsha_id, fact_subject, fact_key, fact_value_text, fact_value_num
+             FROM chart_facts
+            WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[]) AND fact_category = 'graha_position'
+              AND ((fact_subject = 'LAGNA' AND fact_key IN ('sign', 'longitude_sidereal'))
+                OR (fact_subject = 'MOON'  AND fact_key IN ('sign', 'nakshatra', 'longitude_sidereal')))
+              AND build_id = ANY($3::uuid[])
+            ORDER BY ayanamsha_id, fact_subject, fact_key, fact_id`,
+          [chartId, ayas, positionBuildIds],
+        ).then((r) => r.rows)
       : Promise.resolve([])
 
     const dashaP: Promise<DashaReadRow[]> = wantsDasha
       ? (() => {
           const asOf = opts.asOfDate ?? new Date().toISOString().slice(0, 10)
-          const params: unknown[] = [chartId, ayas, asOf]
-          let fence = ''
-          if (opts.dashaBuildId) {
-            params.push(opts.dashaBuildId)
-            fence = ` AND build_id = $${params.length}::uuid`
-          }
           return query<DashaReadRow>(
             `SELECT ayanamsha_id, lord_graha
                FROM chart_dashas
               WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[]) AND system_id = 'vimshottari'
-                AND level_n = 1 AND start_date <= $3::date AND end_date >= $3::date${fence}
+                AND level_n = 1 AND start_date <= $3::date AND end_date >= $3::date
+                AND build_id = $4::uuid
               ORDER BY ayanamsha_id, start_date, lord_graha`,
-            params,
+            [chartId, ayas, asOf, dashaBuildId],
           ).then((r) => r.rows)
         })()
       : Promise.resolve([])
 
     const [positionRows, dashaRows] = await Promise.all([positionP, dashaP])
     const rows: CrossCheckInputRow[] = [
-      ...positionRowsToCrossCheckRows(positionRows, facts),
+      ...positionRowsToCrossCheckRows(positionRows, readableFacts),
       ...dashaRowsToCrossCheckRows(dashaRows),
       ...(opts.extraRows ?? []),
     ]
     return buildAyanamshaCrossCheck(rows, primaryId, {
-      facts: [...identityFactSpecs(facts), ...(opts.extraFacts ?? [])],
+      facts: [...identityFactSpecs(readableFacts), ...(opts.extraFacts ?? [])],
       scope: opts.scope ?? 'identity_facts',
+      mode: opts.mode,
+      unavailableFacts,
     })
   } catch (err) {
     console.error('[ayanamsha_cross_check] identity cross-check read failed (non-fatal; the primary answer is unaffected):', err)
@@ -179,11 +199,16 @@ export async function fetchIdentityCrossCheck(
  * The ONE shared identity block (SS N-360) for the surfaces that do not themselves serve a positions or dashas
  * page (chart_snapshot, and dossier through it): all four identity facts, through the same
  * `fetchIdentityCrossCheck` -> `buildAyanamshaCrossCheck` path as get_positions / get_dashas. The chart_facts
- * reads are fenced to the chart's served generation and the Mahadasha read to the served ga_dashas build when
- * the generation resolves; when it does not, the reads are unfenced exactly as get_positions' default page is.
+ * reads are fenced to the chart's served generation and the Mahadasha read to the served ga_dashas build.
+ * SS N-361: when the served generation cannot be resolved (it throws, resolves to no build, or has no resolved
+ * ga_dashas build) the affected facts are `served_generation_unresolved` and NOTHING is read unfenced.
  * Never throws.
  */
-export async function fetchChartIdentityCrossCheck(chartId: string, primaryId: string): Promise<AyanamshaCrossCheck> {
+export async function fetchChartIdentityCrossCheck(
+  chartId: string,
+  primaryId: string,
+  opts: { mode: CrossCheckMode },
+): Promise<AyanamshaCrossCheck> {
   let positionBuildIds: readonly string[] | null = null
   let dashaBuildId: string | null = null
   try {
@@ -191,10 +216,10 @@ export async function fetchChartIdentityCrossCheck(chartId: string, primaryId: s
     if (generation.served_build_ids.length > 0) positionBuildIds = generation.served_build_ids
     dashaBuildId = resolvedRowsBuildId(generation, 'ga_dashas')
   } catch (err) {
-    console.error('[ayanamsha_cross_check] served-generation resolution failed for the identity block (reads unfenced):', err)
+    console.error('[ayanamsha_cross_check] served-generation resolution failed for the identity block (nothing is read unfenced):', err)
   }
   return fetchIdentityCrossCheck(chartId, primaryId, {
-    facts: ALL_IDENTITY_FACT_KEYS, positionBuildIds, dashaBuildId, scope: 'identity_facts',
+    facts: ALL_IDENTITY_FACT_KEYS, positionBuildIds, dashaBuildId, scope: 'identity_facts', mode: opts.mode,
   })
 }
 
@@ -239,23 +264,36 @@ export function positionPageRowsToCrossCheckRows(rows: readonly PositionReadRow[
 }
 
 /**
- * The cross-check for the graha_position subjects on a served positions page. `identityOnly` (the always-on
- * compact form) compares only Lagna sign / Moon sign / Moon nakshatra; otherwise (`include_cross_check:true`)
- * every served graha's sign and nakshatra. Never throws.
+ * The cross-check for the graha_position subjects on a served positions page. `identityOnly` compares only
+ * Lagna sign / Moon sign / Moon nakshatra; otherwise every served graha's sign and nakshatra. `mode` is
+ * REQUIRED: the always-on calls pass `compact`, `include_cross_check:true` passes `full`.
+ *
+ * SS N-361 fence: the read is ALWAYS fenced to the served generation. `buildIds` is the fence the caller
+ * already holds (get_positions' explicit build_id, graha_portrait's composite fence); when it holds none, the
+ * served generation is resolved here. If it cannot be resolved the answer is
+ * `{ not_available, reason: 'served_generation_unresolved' }` and chart_facts is NOT queried. Never throws.
  */
 export async function fetchPositionsCrossCheck(
   chartId: string,
   primaryId: string,
-  opts: { subjects: readonly string[]; identityOnly: boolean; buildIds?: readonly string[] | null; scope?: CrossCheckScope },
+  opts: { subjects: readonly string[]; identityOnly: boolean; mode: CrossCheckMode; buildIds?: readonly string[] | null; scope?: CrossCheckScope },
 ): Promise<AyanamshaCrossCheck> {
   try {
     const subjects = [...new Set(opts.subjects)].sort()
-    const params: unknown[] = [chartId, [...AYANAMSHA_SERVE_ORDER], subjects]
-    let fence = ''
-    if (opts.buildIds && opts.buildIds.length > 0) {
-      params.push([...opts.buildIds])
-      fence = ` AND build_id = ANY($${params.length}::uuid[])`
+    let buildIds: readonly string[] | null = opts.buildIds && opts.buildIds.length > 0 ? opts.buildIds : null
+    if (buildIds === null) {
+      try {
+        const generation = await resolveChartServedGeneration(chartId, null)
+        if (generation.served_build_ids.length > 0) buildIds = generation.served_build_ids
+      } catch (err) {
+        console.error('[ayanamsha_cross_check] served-generation resolution failed for the positions cross-check (nothing is read unfenced):', err)
+      }
     }
+    if (buildIds === null) {
+      return { not_available: true, reason: SERVED_GENERATION_UNRESOLVED, heading: CROSS_CHECK_HEADING, primary_id: primaryId }
+    }
+    const params: unknown[] = [chartId, [...AYANAMSHA_SERVE_ORDER], subjects, [...buildIds]]
+    const fence = ' AND build_id = ANY($4::uuid[])'
     const res = await query<PositionReadRow>(
       `SELECT ayanamsha_id, fact_subject, fact_key, fact_value_text, fact_value_num
          FROM chart_facts
@@ -278,6 +316,7 @@ export async function fetchPositionsCrossCheck(
     return buildAyanamshaCrossCheck(positionPageRowsToCrossCheckRows(res.rows), primaryId, {
       facts: specs,
       scope: opts.scope ?? (opts.identityOnly ? 'identity_facts' : 'requested_facts'),
+      mode: opts.mode,
     })
   } catch (err) {
     console.error('[ayanamsha_cross_check] positions cross-check read failed (non-fatal; the primary answer is unaffected):', err)

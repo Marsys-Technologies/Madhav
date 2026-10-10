@@ -4,7 +4,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildAyanamshaCrossCheck, identityFactSpecs, isCrossCheckUnavailable, CROSS_CHECK_KEY, IDENTITY_CROSS_CHECK_KEY, CROSS_CHECK_HEADING,
-  CROSS_CHECK_AGREE_ALL_LINE, type CrossCheckInputRow, type AyanamshaCrossCheckAvailable,
+  CROSS_CHECK_AGREE_ALL_LINE, type CrossCheckInputRow, type AyanamshaCrossCheckFull, type AyanamshaCrossCheckCompact,
+  type AyanamshaCrossCheckUnavailable,
 } from '../ayanamsha_cross_check'
 import { AYANAMSHA_SERVE_ORDER, PRIMARY_AYANAMSHA } from '../registry/constants'
 import * as budget from '../../../../../platform-mcp/src/lib/response_budget'
@@ -27,7 +28,11 @@ function rows(ayas: readonly string[], override: Record<string, Record<string, s
   }
   return out
 }
-const ok = (c: ReturnType<typeof buildAyanamshaCrossCheck>): AyanamshaCrossCheckAvailable => {
+const ok = (c: AyanamshaCrossCheckFull | AyanamshaCrossCheckUnavailable): AyanamshaCrossCheckFull => {
+  if (isCrossCheckUnavailable(c)) throw new Error('unexpected not_available: ' + c.reason)
+  return c
+}
+const okCompact = (c: AyanamshaCrossCheckCompact | AyanamshaCrossCheckUnavailable): AyanamshaCrossCheckCompact => {
   if (isCrossCheckUnavailable(c)) throw new Error('unexpected not_available: ' + c.reason)
   return c
 }
@@ -159,5 +164,73 @@ describe('buildAyanamshaCrossCheck', () => {
   it('the response-budget key in platform-mcp is the same key (parity)', () => {
     expect([...budget.CROSS_CHECK_FIELDS]).toEqual([CROSS_CHECK_KEY, IDENTITY_CROSS_CHECK_KEY])
     expect(mcpIdentity.IDENTITY_CROSS_CHECK_KEY).toBe(IDENTITY_CROSS_CHECK_KEY)
+  })
+})
+
+describe('buildAyanamshaCrossCheck: compact vs full mode (SS N-361)', () => {
+  const compact = (r: CrossCheckInputRow[], primary = PRIMARY_AYANAMSHA, extra = {}) =>
+    okCompact(buildAyanamshaCrossCheck(r, primary, { facts: FACTS, mode: 'compact', ...extra }))
+
+  it('compact all-agree is summary only: no per-ayanamsha entries, no degrees, no values, no density', () => {
+    const c = compact(rows(AYANAMSHA_SERVE_ORDER, {}, true))
+    expect(c).toEqual({
+      heading: CROSS_CHECK_HEADING, primary_id: PRIMARY_AYANAMSHA, scope: 'identity_facts', mode: 'compact',
+      agreement: 'all_agree', summary: CROSS_CHECK_AGREE_ALL_LINE,
+    })
+    expect(JSON.stringify(c)).not.toMatch(/degrees|raman|krishnamurti/)
+  })
+
+  it('compact dissent lists ONLY the dissenting ayanamshas with their values, no degrees, no agreeing ayanamsha', () => {
+    const c = compact(rows(AYANAMSHA_SERVE_ORDER, { raman: { moon_sign: 'Pisces' }, true_chitra: { maha_lord: 'Mercury' } }, true))
+    expect(c.agreement).toBe('dissent')
+    expect(c.others!.map((o) => o.ayanamsha_id)).toEqual(['true_chitra', 'raman'])
+    expect(c.others![1]).toEqual({
+      ayanamsha_id: 'raman', label: 'Raman', status: 'dissents',
+      dissenting: [{ fact_key: 'moon_sign', fact_label: 'Moon sign', value: 'Pisces', primary_value: 'Aquarius' }],
+    })
+    expect(JSON.stringify(c)).not.toMatch(/degrees|krishnamurti|surya_siddhanta/)
+  })
+
+  it('compact and full give the SAME agreement and summary on every case (one builder, two renderings)', () => {
+    const cases: CrossCheckInputRow[][] = [
+      rows(AYANAMSHA_SERVE_ORDER),
+      rows(AYANAMSHA_SERVE_ORDER, { raman: { moon_sign: 'Pisces' } }),
+      rows(AYANAMSHA_SERVE_ORDER, { krishnamurti: { moon_sign: null } }),
+      rows(['lahiri_chitrapaksha', 'true_chitra', 'krishnamurti']),
+    ]
+    for (const r of cases) {
+      const full = ok(buildAyanamshaCrossCheck(r, PRIMARY_AYANAMSHA, { facts: FACTS, mode: 'full' }))
+      const c = compact(r)
+      expect([c.agreement, c.summary]).toEqual([full.agreement, full.summary])
+    }
+  })
+
+  it('compact: single-ayanamsha chart is still not_available / single_ayanamsha_chart', () => {
+    const c = buildAyanamshaCrossCheck(rows([PRIMARY_AYANAMSHA]), PRIMARY_AYANAMSHA, { facts: FACTS, mode: 'compact' })
+    expect(c).toMatchObject({ not_available: true, reason: 'single_ayanamsha_chart' })
+  })
+
+  it('the builder default mode is full (the opt-in surfaces keep their current form)', () => {
+    const c = ok(buildAyanamshaCrossCheck(rows(AYANAMSHA_SERVE_ORDER), PRIMARY_AYANAMSHA, { facts: FACTS }))
+    expect(c.others).toHaveLength(4)
+    expect('mode' in c).toBe(false)
+  })
+
+  it('an unavailable fact is named, excluded from the comparison, and never read as agreement (both modes)', () => {
+    const maha = { ...FACTS.find((f) => f.key === 'maha_lord')!, reason: 'served_generation_unresolved' as const }
+    const three = FACTS.filter((f) => f.key !== 'maha_lord')
+    for (const mode of ['compact', 'full'] as const) {
+      const c = buildAyanamshaCrossCheck(rows(AYANAMSHA_SERVE_ORDER), PRIMARY_AYANAMSHA, { facts: three, mode, unavailableFacts: [maha] })
+      if (isCrossCheckUnavailable(c)) throw new Error('unexpected')
+      expect(c.agreement).toBe('incomplete')
+      expect(c.summary).toBe('Agrees across all five ayanamshas on Lagna sign, Moon sign, Moon nakshatra; not cross-checked: current Mahadasha lord (served_generation_unresolved)')
+      expect(c.facts_not_available).toEqual({ maha_lord: { not_available: true, reason: 'served_generation_unresolved' } })
+    }
+  })
+
+  it('every fact unavailable -> the whole block is not_available / served_generation_unresolved', () => {
+    const all = FACTS.map((f) => ({ ...f, reason: 'served_generation_unresolved' as const }))
+    expect(buildAyanamshaCrossCheck([], PRIMARY_AYANAMSHA, { facts: [], unavailableFacts: all, mode: 'compact' }))
+      .toMatchObject({ not_available: true, reason: 'served_generation_unresolved' })
   })
 })

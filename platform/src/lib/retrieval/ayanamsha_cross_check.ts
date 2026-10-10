@@ -5,7 +5,17 @@
  * (true_chitra, krishnamurti, raman, surya_siddhanta_classical) appear ONLY as a LABELLED cross-check:
  * never merged into the primary answer, never reordered ahead of it, each one NAMED.
  *
- * Response key: `ayanamsha_cross_check`. Shape (see `AyanamshaCrossCheck`):
+ * TWO MODES of the SAME builder (SS N-361, "always-on means COMPACT"):
+ *
+ *   compact  every ALWAYS-ON identity cross-check (the `identity_cross_check` block and the identity-fact
+ *            `ayanamsha_cross_check` on get_positions / get_dashas). SUMMARY ONLY: when all agree it is
+ *            { heading, primary_id, scope, mode:'compact', agreement:'all_agree', summary:'Agrees across all
+ *            five ayanamshas' } with NO per-ayanamsha entries and NO degrees; on dissent it adds ONLY the
+ *            dissenting ayanamshas, each with the values it dissents on (`others` lists the dissenters only).
+ *   full     the opt-in detail (`include_cross_check:true`, and the opt-in surfaces query_discoveries /
+ *            query_pratijna): `primary`, all four others each NAMED, degrees shown, `density`.
+ *
+ * Response key: `ayanamsha_cross_check`. FULL shape (see `AyanamshaCrossCheck`):
  *
  *   { heading: 'Cross-check, not the reading', primary_id, scope, basis,
  *     agreement: 'all_agree' | 'agree_among_stored' | 'dissent' | 'incomplete',
@@ -16,7 +26,11 @@
  *
  * or, when no honest comparison exists, `{ not_available: true, reason }` with reason
  * `single_ayanamsha_chart` (fewer than two ayanamshas stored: NEVER "1/1 agree") or
- * `primary_ayanamsha_not_stored` / `no_comparable_facts`.
+ * `primary_ayanamsha_not_stored` / `no_comparable_facts`, or `served_generation_unresolved` (SS N-361: the
+ * served generation that fences the read could not be resolved; the read is NEVER made unfenced). When only
+ * SOME compared facts are unresolved (e.g. the Mahadasha lord on the identity block) the others are still
+ * compared and `facts_not_available: { <fact_key>: { not_available: true, reason } }` names the unresolved
+ * ones; the agreement is then at best `incomplete` (a fact nobody read is never an agreement).
  *
  * Rules (CLAUDE.md §N.7 / §N.8, "an honest null beats an invented judgment"):
  *   - "Same answer" means CATEGORICAL equality only (a sign, a nakshatra, a dasha lord). Degrees are SHOWN
@@ -116,14 +130,34 @@ export interface CrossCheckOther {
   readonly dissenting?: readonly CrossCheckDissent[]
 }
 
-export interface AyanamshaCrossCheckAvailable {
+/** Compact (always-on) or full (opt-in) detail of the SAME envelope. */
+export type CrossCheckMode = 'compact' | 'full'
+
+/** A compared fact that could not be read honestly (its fence is unresolved): an entry, never an invented value. */
+export interface CrossCheckFactUnavailable {
+  readonly not_available: true
+  readonly reason: CrossCheckUnavailableReason
+}
+
+/** Declares a fact the caller could not read honestly; it is excluded from the comparison and named in the envelope. */
+export interface CrossCheckUnavailableFactSpec extends CrossCheckFactSpec {
+  readonly reason: CrossCheckUnavailableReason
+}
+
+interface AyanamshaCrossCheckBase {
   readonly heading: typeof CROSS_CHECK_HEADING
   readonly primary_id: string
   readonly scope: CrossCheckScope
-  readonly basis: string
   readonly agreement: CrossCheckAgreement
-  /** The compact single line. */
+  /** The single line: "Agrees across all five ayanamshas", or the named dissent. */
   readonly summary: string
+  /** Facts that were not compared because their fence could not be resolved (absent when every fact was read). */
+  readonly facts_not_available?: Readonly<Record<string, CrossCheckFactUnavailable>>
+}
+
+export interface AyanamshaCrossCheckFull extends AyanamshaCrossCheckBase {
+  readonly mode?: 'full'
+  readonly basis: string
   readonly primary: {
     readonly ayanamsha_id: string
     readonly label: string
@@ -138,8 +172,25 @@ export interface AyanamshaCrossCheckAvailable {
   }
 }
 
+/** One dissenting ayanamsha in the compact form: its name and the values it dissents on, no degrees. */
+export interface CrossCheckCompactDissenter {
+  readonly ayanamsha_id: string
+  readonly label: string
+  readonly status: 'dissents'
+  readonly dissenting: readonly CrossCheckDissent[]
+}
+
+export interface AyanamshaCrossCheckCompact extends AyanamshaCrossCheckBase {
+  readonly mode: 'compact'
+  /** ONLY the dissenting ayanamshas (absent when none dissents); never the agreeing ones, never degrees. */
+  readonly others?: readonly CrossCheckCompactDissenter[]
+}
+
+export type AyanamshaCrossCheckAvailable = AyanamshaCrossCheckFull | AyanamshaCrossCheckCompact
+
 export type CrossCheckUnavailableReason =
   | 'single_ayanamsha_chart'
+  | 'served_generation_unresolved'
   | 'primary_ayanamsha_not_stored'
   | 'no_comparable_facts'
   | 'cross_check_read_failed'
@@ -163,6 +214,17 @@ export interface BuildCrossCheckOptions {
    * compared fact (e.g. a discovery motif absent under that ayanamsha).
    */
   readonly storedAyanamshas?: readonly string[]
+  /**
+   * `compact` = summary only (the always-on identity cross-checks); `full` = the per-ayanamsha detail
+   * (opt-in). The builder's own default is `full` (the opt-in surfaces); every always-on call site passes
+   * `compact` explicitly through `fetchIdentityCrossCheck` / `fetchPositionsCrossCheck`, which REQUIRE a mode.
+   */
+  readonly mode?: CrossCheckMode
+  /**
+   * Facts the caller could not read honestly because their fence is unresolved (CLAUDE.md §N.7). They are not
+   * compared; they are named under `facts_not_available`, and the agreement is at best `incomplete`.
+   */
+  readonly unavailableFacts?: readonly CrossCheckUnavailableFactSpec[]
 }
 
 /** Display labels (fixed, serve-order vocabulary). A switch, not a map: this is a label, not an alias table. */
@@ -201,11 +263,32 @@ const FIVE_WORDS: Readonly<Record<number, string>> = { 2: 'two', 3: 'three', 4: 
 export function buildAyanamshaCrossCheck(
   rows: readonly CrossCheckInputRow[],
   primaryId: string,
+  options: BuildCrossCheckOptions & { readonly mode?: 'full' },
+): AyanamshaCrossCheckFull | AyanamshaCrossCheckUnavailable
+export function buildAyanamshaCrossCheck(
+  rows: readonly CrossCheckInputRow[],
+  primaryId: string,
+  options: BuildCrossCheckOptions & { readonly mode: 'compact' },
+): AyanamshaCrossCheckCompact | AyanamshaCrossCheckUnavailable
+export function buildAyanamshaCrossCheck(
+  rows: readonly CrossCheckInputRow[],
+  primaryId: string,
+  options: BuildCrossCheckOptions,
+): AyanamshaCrossCheck
+export function buildAyanamshaCrossCheck(
+  rows: readonly CrossCheckInputRow[],
+  primaryId: string,
   options: BuildCrossCheckOptions,
 ): AyanamshaCrossCheck {
   const facts = options.facts
   const scope: CrossCheckScope = options.scope ?? 'identity_facts'
-  if (facts.length === 0) return unavailable('no_comparable_facts', primaryId)
+  const mode: CrossCheckMode = options.mode ?? 'full'
+  const unavailableFacts = options.unavailableFacts ?? []
+  if (facts.length === 0) {
+    return unavailableFacts.length > 0
+      ? unavailable(unavailableFacts[0]!.reason, primaryId)
+      : unavailable('no_comparable_facts', primaryId)
+  }
 
   const factKeys = new Set(facts.map((f) => f.key))
   const relevant = rows.filter((r) => SERVE_ORDER.includes(r.ayanamsha_id) && factKeys.has(r.fact_key))
@@ -304,12 +387,47 @@ export function buildAyanamshaCrossCheck(
     summary = `Cannot confirm agreement: a compared value is unread for ${who}`
   }
 
+  // Facts whose fence could not be resolved were NOT compared: the agreement is never read as complete, and the
+  // line says so (a fact nobody read is never an agreement, §N.7 / §N.8).
+  let finalAgreement: CrossCheckAgreement = agreement
+  let factsNotAvailable: Record<string, CrossCheckFactUnavailable> | undefined
+  if (unavailableFacts.length > 0) {
+    factsNotAvailable = {}
+    for (const f of unavailableFacts) factsNotAvailable[f.key] = { not_available: true, reason: f.reason }
+    const note = `not cross-checked: ${unavailableFacts.map((f) => `${f.label} (${f.reason})`).join(', ')}`
+    if (agreement === 'all_agree') {
+      summary = `${CROSS_CHECK_AGREE_ALL_LINE} on ${facts.map((f) => f.label).join(', ')}; ${note}`
+    } else {
+      summary = `${summary}; ${note}`
+    }
+    if (agreement !== 'dissent') finalAgreement = 'incomplete'
+  }
+
+  if (mode === 'compact') {
+    return {
+      heading: CROSS_CHECK_HEADING,
+      primary_id: primaryId,
+      scope,
+      mode: 'compact',
+      agreement: finalAgreement,
+      summary,
+      ...(dissenters.length > 0
+        ? {
+            others: dissenters.map((o) => ({
+              ayanamsha_id: o.ayanamsha_id, label: o.label, status: 'dissents' as const, dissenting: o.dissenting!,
+            })),
+          }
+        : {}),
+      ...(factsNotAvailable ? { facts_not_available: factsNotAvailable } : {}),
+    }
+  }
+
   return {
     heading: CROSS_CHECK_HEADING,
     primary_id: primaryId,
     scope,
     basis: CROSS_CHECK_BASIS,
-    agreement,
+    agreement: finalAgreement,
     summary,
     primary: { ayanamsha_id: primaryId, label: crossCheckAyanamshaLabel(primaryId), values: primaryValues },
     others,
@@ -318,6 +436,7 @@ export function buildAyanamshaCrossCheck(
       compared_facts: facts.length,
       dissenting_ayanamshas: dissenters.length,
     },
+    ...(factsNotAvailable ? { facts_not_available: factsNotAvailable } : {}),
   }
 }
 

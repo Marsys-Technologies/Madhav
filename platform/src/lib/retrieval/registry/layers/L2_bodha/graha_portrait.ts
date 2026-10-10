@@ -290,6 +290,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
       && (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(ayanamsha_id)) {
       identityCrossCheck = await fetchPositionsCrossCheck(chart_id, ayanamsha_id, {
         subjects: [grahaCode], identityOnly: false, buildIds: fence.build_ids,
+        mode: args['include_cross_check'] === true ? 'full' : 'compact',
         scope: isMoon ? 'identity_facts' : 'requested_facts',
       })
     }

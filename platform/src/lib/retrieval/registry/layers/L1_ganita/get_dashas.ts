@@ -1025,6 +1025,8 @@ export const getDashasCapability: CapabilityDescriptor = {
         if (pageServesCurrentMaha || args.include_cross_check === true) {
           crossCheck = await fetchIdentityCrossCheck(chartId, aya.id, {
             facts: ['maha_lord'], asOfDate: asOf, dashaBuildId: activeBuildId,
+            // SS N-361: always-on = COMPACT (summary only); the per-ayanamsha detail only on include_cross_check:true.
+            mode: args.include_cross_check === true ? 'full' : 'compact',
             scope: pageServesCurrentMaha && args.include_cross_check !== true ? 'identity_facts' : 'requested_facts',
           })
         }

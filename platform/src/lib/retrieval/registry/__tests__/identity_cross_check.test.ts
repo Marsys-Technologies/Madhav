@@ -3,8 +3,11 @@
  * SS N-360 — the ONE shared `identity_cross_check` block (Lagna sign, Moon sign, Moon nakshatra, current
  * Mahadasha lord), built by the same builder as `ayanamsha_cross_check`:
  *
- *   chart_snapshot   always on, compact (all four facts)
- *   graha_portrait   the MOON always (Moon sign + nakshatra); any other graha only with include_cross_check:true
+ *   chart_snapshot   always on, COMPACT (all four facts; SS N-361: one line, dissenters only); FULL with include_cross_check:true
+ *   graha_portrait   the MOON always, compact (Moon sign + nakshatra); any other graha only with include_cross_check:true (full)
+ *
+ * SS N-361: no unfenced fallback: when the served generation (or the served ga_dashas build) cannot be resolved the
+ * affected entry is { not_available: true, reason: 'served_generation_unresolved' } and the table is not queried.
  *   get_chart_header NO cross-check key (it rides on every envelope)
  *
  * No database: `query` is a router over a five-ayanamsha fixture (helpers/identity_cross_check_fixtures.ts).
@@ -40,6 +43,7 @@ import { getChartSnapshotCapability } from '../layers/L1_ganita/get_chart_snapsh
 import { getChartHeaderCapability } from '../layers/L1_ganita/get_chart_header'
 import { grahaPortraitCapability } from '../layers/L2_bodha/graha_portrait'
 import { IDENTITY_CROSS_CHECK_KEY, CROSS_CHECK_KEY } from '../../ayanamsha_cross_check'
+import { fetchIdentityCrossCheck } from '../../ayanamsha_cross_check_reads'
 import {
   CHART, LAHIRI, KEY, OTHERS_IN_ORDER, POSITION_BUILD, DASHA_BUILD, SERVED_GENERATION, installIdentityDb,
 } from './helpers/identity_cross_check_fixtures'
@@ -73,34 +77,51 @@ describe('chart_snapshot: identity_cross_check always on, compact', () => {
   const snap = async (args: Record<string, unknown> = {}) =>
     getChartSnapshotCapability.handler({ chart_id: CHART, ...args }, undefined)
 
-  it('agree case: ONE line; degrees differ across ayanamshas but signs agree -> "Agrees across all five ayanamshas"', async () => {
+  it('agree case (compact): ONE line, no per-ayanamsha entries, no degrees, no values', async () => {
     installIdentityDb(queryMock)
     const res = await snap()
     expect(res.is_error).toBe(false)
     const x = (res.content as Cc)[KEY]
-    expect(x.heading).toBe('Cross-check, not the reading')
-    expect(x.scope).toBe('identity_facts')
-    expect(x.primary_id).toBe(LAHIRI)
+    expect(x).toEqual({
+      heading: 'Cross-check, not the reading', primary_id: LAHIRI, scope: 'identity_facts', mode: 'compact',
+      agreement: 'all_agree', summary: 'Agrees across all five ayanamshas',
+    })
+    expect(JSON.stringify(x)).not.toMatch(/degrees|true_chitra|krishnamurti|raman|surya_siddhanta|Venus|Aquarius/)
+  })
+
+  it('full mode (include_cross_check:true): all four others each named, degrees shown (differ per ayanamsha, signs agree)', async () => {
+    installIdentityDb(queryMock)
+    const x = ((await snap({ include_cross_check: true })).content as Cc)[KEY]
     expect(x.agreement).toBe('all_agree')
     expect(x.summary).toBe('Agrees across all five ayanamshas')
     expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
     expect(Object.keys(x.primary.values)).toEqual(['lagna_sign', 'moon_sign', 'moon_nakshatra', 'maha_lord'])
     expect(x.primary.values.maha_lord.value).toBe('Venus')
-    // degrees are SHOWN and differ per ayanamsha; they are never compared
     const degs = new Set([x.primary.values.moon_sign.degrees, ...x.others.map((o: Cc) => o.values.moon_sign.degrees)])
     expect(degs.size).toBe(5)
   })
 
-  it('dissent case: the dissenting ayanamsha is NAMED with its value', async () => {
+  it('dissent case (compact): ONLY the dissenting ayanamshas are named, with their values; the agreeing ones are not listed', async () => {
     installIdentityDb(queryMock, { override: { raman: { 'MOON.sign': 'Pisces', 'MOON.nakshatra': 'Uttara Bhadrapada' }, krishnamurti: { maha_lord: 'Mercury' } } })
     const x = ((await snap()).content as Cc)[KEY]
     expect(x.agreement).toBe('dissent')
+    expect(x.mode).toBe('compact')
     expect(x.summary).toBe(
       'Dissent: Krishnamurti: current Mahadasha lord Mercury (primary Venus); '
       + 'Raman: Moon sign Pisces (primary Aquarius), Moon nakshatra Uttara Bhadrapada (primary Purva Bhadrapada)')
-    expect(x.others.filter((o: Cc) => o.status === 'dissents').map((o: Cc) => o.ayanamsha_id)).toEqual(['krishnamurti', 'raman'])
-    // the primary answer is not touched by the dissent
-    expect(x.primary.values.moon_sign.value).toBe('Aquarius')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(['krishnamurti', 'raman'])
+    expect(x.others.every((o: Cc) => o.status === 'dissents' && !('values' in o))).toBe(true)
+    expect(x.primary).toBeUndefined()
+    expect(JSON.stringify(x)).not.toMatch(/degrees|true_chitra|surya_siddhanta/)
+  })
+
+  it('dissent case (full): all four others named, the dissenters flagged, degrees shown', async () => {
+    installIdentityDb(queryMock, { override: { raman: { 'MOON.sign': 'Pisces' } } })
+    const x = ((await snap({ include_cross_check: true })).content as Cc)[KEY]
+    expect(x.summary).toBe('Dissent: Raman: Moon sign Pisces (primary Aquarius)')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
+    expect(x.others.filter((o: Cc) => o.status === 'dissents').map((o: Cc) => o.ayanamsha_id)).toEqual(['raman'])
+    expect(x.primary.values.moon_sign.degrees).toBeTypeOf('number')
   })
 
   it('single-ayanamsha chart: not_available / single_ayanamsha_chart, never "1/1"', async () => {
@@ -136,18 +157,74 @@ describe('chart_snapshot: identity_cross_check always on, compact', () => {
     expect(pos.params[1]).toHaveLength(5)
   })
 
-  it('an unresolved served generation reads unfenced exactly as get_positions does, and still never throws', async () => {
+  const unfencedReads = (calls: Array<{ sql: string }>) =>
+    calls.filter((c) => c.sql.includes("fact_subject = 'LAGNA'") || c.sql.includes('FROM chart_dashas'))
+
+  it('SS N-361: served generation UNRESOLVED (throws): not_available/served_generation_unresolved, and NO unfenced read of chart_facts or chart_dashas', async () => {
     mockResolve.mockRejectedValue(new Error('no receipts'))
     const calls = installIdentityDb(queryMock)
+    const res = await snap()
+    expect(res.is_error).toBe(false)
+    const x = (res.content as Cc)[KEY]
+    expect(x).toMatchObject({ not_available: true, reason: 'served_generation_unresolved', heading: 'Cross-check, not the reading' })
+    expect(JSON.stringify(x)).not.toMatch(/agree|Venus| \/ /i)
+    expect(unfencedReads(calls)).toEqual([])
+    expect((res.content as Cc)['snapshot_text']).toContain('Lagna Ari')
+  })
+
+  it('SS N-361: served generation resolves to NO build: same refusal, nothing read', async () => {
+    mockResolve.mockResolvedValue({ ...SERVED_GENERATION, served_build_ids: [], assets: {} })
+    const calls = installIdentityDb(queryMock)
     const x = ((await snap()).content as Cc)[KEY]
-    expect(x.summary).toBe('Agrees across all five ayanamshas')
-    expect(calls.find((c) => c.sql.includes("fact_subject = 'LAGNA'"))!.params).toHaveLength(2)
+    expect(x).toMatchObject({ not_available: true, reason: 'served_generation_unresolved' })
+    expect(unfencedReads(calls)).toEqual([])
+  })
+
+  it('SS N-361: positions fenced but the served ga_dashas build is unresolved: the Mahadasha entry is not_available, the other three are still compared, chart_dashas is NOT read', async () => {
+    mockResolve.mockResolvedValue({ ...SERVED_GENERATION, assets: { ga_dashas: { asset_id: 'ga_dashas', state: 'unresolved', rows_build_id: null, receipt_build_id: null } } })
+    const calls = installIdentityDb(queryMock, { override: { raman: { 'MOON.sign': 'Pisces' } } })
+    const x = ((await snap()).content as Cc)[KEY]
+    expect(x.facts_not_available).toEqual({ maha_lord: { not_available: true, reason: 'served_generation_unresolved' } })
+    expect(x.agreement).toBe('dissent')
+    expect(x.summary).toBe('Dissent: Raman: Moon sign Pisces (primary Aquarius); not cross-checked: current Mahadasha lord (served_generation_unresolved)')
+    expect(calls.some((c) => c.sql.includes('FROM chart_dashas'))).toBe(false)
+    expect(calls.some((c) => c.sql.includes("fact_subject = 'LAGNA'"))).toBe(true)
+    // agree among the three read facts: never the all-agree line, because one fact was not cross-checked
+    installIdentityDb(queryMock)
+    const y = ((await snap()).content as Cc)[KEY]
+    expect(y.agreement).toBe('incomplete')
+    expect(y.summary).toBe('Agrees across all five ayanamshas on Lagna sign, Moon sign, Moon nakshatra; not cross-checked: current Mahadasha lord (served_generation_unresolved)')
+    expect(y.facts_not_available.maha_lord).toEqual({ not_available: true, reason: 'served_generation_unresolved' })
+  })
+
+  it('SS N-361: fetchIdentityCrossCheck with no dasha fence (the get_dashas path) never queries chart_dashas, and never joins a lord', async () => {
+    const calls = installIdentityDb(queryMock)
+    for (const dashaBuildId of [null, undefined, '']) {
+      const x = await fetchIdentityCrossCheck(CHART, LAHIRI, { facts: ['maha_lord'], mode: 'compact', dashaBuildId })
+      expect(x).toMatchObject({ not_available: true, reason: 'served_generation_unresolved' })
+      expect(JSON.stringify(x)).not.toContain(' / ')
+    }
+    expect(calls).toEqual([])
+  })
+
+  it('SS N-361: fetchIdentityCrossCheck with no position fence (null / empty) never queries chart_facts', async () => {
+    const calls = installIdentityDb(queryMock)
+    for (const positionBuildIds of [null, undefined, []]) {
+      const x = await fetchIdentityCrossCheck(CHART, LAHIRI, { facts: ['lagna_sign', 'moon_sign', 'moon_nakshatra'], mode: 'full', positionBuildIds })
+      expect(x).toMatchObject({ not_available: true, reason: 'served_generation_unresolved' })
+    }
+    expect(calls).toEqual([])
   })
 
   it('the rest of the response is identical to the pre-change output (default, and with D9 + extra vargas)', async () => {
     installIdentityDb(queryMock)
     expect(withoutKey((await snap()).content)).toEqual(golden.chart_snapshot_default.content)
     expect(withoutKey((await snap({ include_navamsa: true, vargas: ['D10'] })).content)).toEqual(golden.chart_snapshot_navamsa_vargas.content)
+  })
+
+  it('declares the optional include_cross_check boolean input (full detail opt-in)', () => {
+    expect((getChartSnapshotCapability.input_schema as Cc)['include_cross_check']).toMatchObject({ type: 'boolean' })
+    expect(getChartSnapshotCapability.required_inputs).toEqual(['chart_id'])
   })
 
   it('the 2KB snapshot cap still measures the grid alone', async () => {
@@ -167,12 +244,20 @@ describe('graha_portrait: the Moon always, another graha only on request', () =>
     installPortraitLeaves({ positions, dignity, strength, avasthas, yogaDosha, dashas, signals, traverse })
   })
 
-  it('Moon, agree case: always on, Moon sign + Moon nakshatra only, one line', async () => {
+  it('Moon, agree case: always on, compact: ONE line, no per-ayanamsha entries, no degrees', async () => {
     installIdentityDb(queryMock)
     const { content, is_error } = await portrait('Moon')
     expect(is_error).toBe(false)
     const x = content[KEY]
-    expect(x.scope).toBe('identity_facts')
+    expect(x).toEqual({
+      heading: 'Cross-check, not the reading', primary_id: LAHIRI, scope: 'identity_facts', mode: 'compact',
+      agreement: 'all_agree', summary: 'Agrees across all five ayanamshas',
+    })
+  })
+
+  it('Moon with include_cross_check:true = FULL mode: Moon sign + nakshatra, all four others named, degrees shown', async () => {
+    installIdentityDb(queryMock)
+    const x = (await portrait('Moon', { include_cross_check: true })).content[KEY]
     expect(x.summary).toBe('Agrees across all five ayanamshas')
     expect(Object.keys(x.primary.values)).toEqual(['moon_sign', 'moon_nakshatra'])
     expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
@@ -180,11 +265,13 @@ describe('graha_portrait: the Moon always, another graha only on request', () =>
     expect(degs.size).toBe(5)
   })
 
-  it('Moon, dissent case: the dissenting ayanamsha is named with its value', async () => {
+  it('Moon, dissent case: only the dissenting ayanamsha is named with its value (compact)', async () => {
     installIdentityDb(queryMock, { override: { raman: { 'MOON.sign': 'Pisces', 'MOON.nakshatra': 'Uttara Bhadrapada' } } })
     const x = (await portrait('Moon')).content[KEY]
     expect(x.agreement).toBe('dissent')
     expect(x.summary).toBe('Dissent: Raman: Moon sign Pisces (primary Aquarius), Moon nakshatra Uttara Bhadrapada (primary Purva Bhadrapada)')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(['raman'])
+    expect(JSON.stringify(x)).not.toMatch(/degrees/)
   })
 
   it('Moon, single-ayanamsha chart: not_available / single_ayanamsha_chart, never "1/1"', async () => {
@@ -208,13 +295,17 @@ describe('graha_portrait: the Moon always, another graha only on request', () =>
     expect(Object.keys(x.primary.values)).toEqual(['sat_sign', 'sat_nakshatra'])
     expect(x.agreement).toBe('dissent')
     expect(x.summary).toBe('Dissent: True Chitrapaksha: Saturn sign Virgo (primary Libra)')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
   })
 
-  it('include_cross_check:true on the Moon changes nothing (already on)', async () => {
+  it('include_cross_check:true on the Moon only widens the detail: same agreement and summary, full mode', async () => {
     installIdentityDb(queryMock)
     const a = (await portrait('Moon')).content[KEY]
     const b = (await portrait('Moon', { include_cross_check: true })).content[KEY]
-    expect(b).toEqual(a)
+    expect(b.summary).toBe(a.summary)
+    expect(b.agreement).toBe(a.agreement)
+    expect(a.mode).toBe('compact')
+    expect(b.mode).toBeUndefined()
   })
 
   it('reads are fenced to the served generation build set, and the position leg is unchanged', async () => {
@@ -321,7 +412,9 @@ describe('dossier: page 1 carries the block the platform builds (agree / dissent
     const out = attachIdentityCrossCheckToPage(page1(), block) as Cc
     expect(out[KEY].summary).toBe('Agrees across all five ayanamshas')
     expect(out[KEY].heading).toBe('Cross-check, not the reading')
-    expect(Object.keys(out[KEY].primary.values)).toEqual(['lagna_sign', 'moon_sign', 'moon_nakshatra', 'maha_lord'])
+    expect(out[KEY].mode).toBe('compact')
+    expect(out[KEY].others).toBeUndefined()
+    expect(out[KEY].primary).toBeUndefined()
     expect(out.page_units).toEqual([{ serving_tool: 'x' }])
   })
 

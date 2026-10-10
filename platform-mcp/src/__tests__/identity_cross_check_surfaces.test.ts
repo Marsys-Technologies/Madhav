@@ -41,22 +41,19 @@ const PRINCIPAL: Principal = { user_uid: 'test-user', key_id: 'test-key', role: 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const LAHIRI = 'lahiri_chitrapaksha'
 
-// The three shapes the platform builder emits (agree / dissent / single-ayanamsha); copied from its output.
+// The shapes the platform builder emits in COMPACT mode (SS N-361: the always-on form), copied from its output:
+// agree = one line; dissent = the dissenting ayanamshas only; single-ayanamsha and unresolved-generation = not_available.
 const AGREE = {
-  heading: 'Cross-check, not the reading', primary_id: LAHIRI, scope: 'identity_facts',
-  basis: 'categorical equality only; degrees shown, never compared', agreement: 'all_agree',
-  summary: 'Agrees across all five ayanamshas',
-  primary: { ayanamsha_id: LAHIRI, label: 'Lahiri', values: { moon_sign: { value: 'Aquarius', degrees: 11.5 } } },
-  others: [{ ayanamsha_id: 'true_chitra', label: 'True Chitrapaksha', status: 'agrees' }],
-  density: { stored_ayanamshas: 5, compared_facts: 4, dissenting_ayanamshas: 0 },
+  heading: 'Cross-check, not the reading', primary_id: LAHIRI, scope: 'identity_facts', mode: 'compact',
+  agreement: 'all_agree', summary: 'Agrees across all five ayanamshas',
 }
 const DISSENT = {
   ...AGREE, agreement: 'dissent',
   summary: 'Dissent: Raman: Moon sign Pisces (primary Aquarius)',
   others: [{ ayanamsha_id: 'raman', label: 'Raman', status: 'dissents', dissenting: [{ fact_key: 'moon_sign', fact_label: 'Moon sign', value: 'Pisces', primary_value: 'Aquarius' }] }],
-  density: { stored_ayanamshas: 5, compared_facts: 4, dissenting_ayanamshas: 1 },
 }
 const SINGLE = { not_available: true, reason: 'single_ayanamsha_chart', heading: 'Cross-check, not the reading', primary_id: LAHIRI }
+const UNRESOLVED = { not_available: true, reason: 'served_generation_unresolved', heading: 'Cross-check, not the reading', primary_id: LAHIRI }
 
 function stubFetch(payloads: Record<string, unknown>, captured: Array<{ uri: string; args: Record<string, unknown> }> = []) {
   vi.stubGlobal('fetch', vi.fn(async (_url: string, opts: { body: string }) => {
@@ -107,7 +104,7 @@ describe('graha_portrait: include_cross_check and the platform block through the
   })
 
   it.each([['v3'], ['legacy']] as const)('%s envelope: the Moon block (agree / dissent / single) passes through content untouched', async (format) => {
-    for (const block of [AGREE, DISSENT, SINGLE]) {
+    for (const block of [AGREE, DISSENT, SINGLE, UNRESOLVED]) {
       const { server, handlers } = makeCapturingServer()
       stubFetch({ 'marsys://tool/L2/graha_portrait': portraitPayload({ [IDENTITY_CROSS_CHECK_KEY]: block }) })
       const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
@@ -151,7 +148,7 @@ describe('chart_snapshot: the platform block passes through the MCP tool untouch
     grids: { D1: [] }, additional_vargas: [], unresolved_vargas: [], ...extra,
   })
 
-  it.each([['agree', AGREE], ['dissent', DISSENT], ['single', SINGLE]] as const)('%s case', async (_n, block) => {
+  it.each([['agree', AGREE], ['dissent', DISSENT], ['single', SINGLE], ['unresolved', UNRESOLVED]] as const)('%s case', async (_n, block) => {
     const { server, handlers } = makeCapturingServer()
     stubFetch({ 'marsys://tool/L1/chart_snapshot': snapshot({ [IDENTITY_CROSS_CHECK_KEY]: block }) })
     const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
@@ -160,6 +157,24 @@ describe('chart_snapshot: the platform block passes through the MCP tool untouch
     const env = res.structuredContent!.object as { content: Record<string, unknown> }
     expect(env.content[IDENTITY_CROSS_CHECK_KEY]).toEqual(block)
     expect(env.content['snapshot_text']).toBe('D1 — Lagna Ari')
+  })
+
+  it('declares an optional boolean include_cross_check and threads it (only when true) to the capability (full mode)', async () => {
+    const { server, handlers, schemas } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({ 'marsys://tool/L1/chart_snapshot': snapshot({ [IDENTITY_CROSS_CHECK_KEY]: AGREE }) }, captured)
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const schema = schemas.get('chart_snapshot') as Record<string, { isOptional: () => boolean; safeParse: (v: unknown) => { success: boolean } }>
+    expect(schema['include_cross_check']!.isOptional()).toBe(true)
+    expect(schema['include_cross_check']!.safeParse('yes').success).toBe(false)
+    await handlers.get('chart_snapshot')!({ chart_id: CHART, include_cross_check: true })
+    await handlers.get('chart_snapshot')!({ chart_id: CHART })
+    await handlers.get('chart_snapshot')!({ chart_id: CHART, include_cross_check: false })
+    const calls = captured.filter(c => c.uri === 'marsys://tool/L1/chart_snapshot')
+    expect(calls[0]!.args['include_cross_check']).toBe(true)
+    expect('include_cross_check' in calls[1]!.args).toBe(false)
+    expect('include_cross_check' in calls[2]!.args).toBe(false)
   })
 
   it('under a tight budget the block goes first and the grid survives', async () => {
@@ -184,7 +199,7 @@ describe('dossier: page 1 carries the identity block, fetched through the proxie
   }
   const page = (r: ToolResult) => r.structuredContent!.object as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 
-  it.each([['agree', AGREE], ['dissent', DISSENT], ['single', SINGLE]] as const)('%s case: the block rides on page 1, the rest of the page is exactly runDossier\'s', async (_n, block) => {
+  it.each([['agree', AGREE], ['dissent', DISSENT], ['single', SINGLE], ['unresolved', UNRESOLVED]] as const)('%s case: the block rides on page 1, the rest of the page is exactly runDossier\'s', async (_n, block) => {
     const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
     stubFetch({ 'marsys://tool/L1/chart_snapshot': { chart_id: CHART, [IDENTITY_CROSS_CHECK_KEY]: block } }, captured)
     const { call, runDossier } = await dossier()

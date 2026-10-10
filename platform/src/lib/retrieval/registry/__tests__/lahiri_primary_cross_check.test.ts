@@ -11,8 +11,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }))
+const { queryMock, mockResolve } = vi.hoisted(() => ({ queryMock: vi.fn(), mockResolve: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: queryMock }))
+// SS N-361: the cross-check reads are ALWAYS fenced to the served generation (never unfenced).
+vi.mock('../generation/served_generation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../generation/served_generation')>()
+  return { ...actual, resolveChartServedGeneration: (...a: unknown[]) => mockResolve(...a) }
+})
 vi.mock('@/lib/retrieval/tail/build_tail_watch', () => ({
   buildTailWatch: async () => ({ tail_watch: [], tail_watch_empty_reason: 'fixture', tail_watch_components: [] }),
 }))
@@ -23,6 +28,11 @@ import { queryDiscoveriesCapability } from '../layers/L2_bodha/query_discoveries
 import { queryPratijnaCapability } from '../layers/L2_bodha/query_pratijna'
 import { AYANAMSHA_SERVE_ORDER } from '../constants'
 
+const POSITION_BUILD = '11111111-1111-4111-8111-111111111111'
+const SERVED_GENERATION = {
+  chart_id: 'x', source: 'per_asset_receipts', generation_hash: 'hash-test',
+  assets: {}, served_build_ids: [POSITION_BUILD], withheld_builds: [],
+}
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const LAHIRI = 'lahiri_chitrapaksha'
 const KEY = 'ayanamsha_cross_check'
@@ -73,7 +83,7 @@ function positionsDb(opts: { stored?: readonly string[]; override?: PosOverride;
 }
 
 describe('get_positions: identity facts are always cross-checked, compact', () => {
-  beforeEach(() => { queryMock.mockReset() })
+  beforeEach(() => { queryMock.mockReset(); mockResolve.mockReset(); mockResolve.mockResolvedValue(SERVED_GENERATION) })
 
   it('default (omitted) = Lahiri page + the compact identity cross-check; degrees differ across ayanamshas but signs agree -> "Agrees across all five ayanamshas"', async () => {
     positionsDb()
@@ -87,12 +97,46 @@ describe('get_positions: identity facts are always cross-checked, compact', () =
     expect(x.primary_id).toBe(LAHIRI)
     expect(x.agreement).toBe('all_agree')
     expect(x.summary).toBe('Agrees across all five ayanamshas')
+    // SS N-361: always-on = COMPACT: ONE line, no per-ayanamsha entries, no degrees, no values
+    expect(x.mode).toBe('compact')
+    expect(x.others).toBeUndefined()
+    expect(x.primary).toBeUndefined()
+    expect(JSON.stringify(x)).not.toMatch(/degrees|true_chitra|krishnamurti|raman|surya_siddhanta/)
+  })
+
+  it('include_cross_check:true = FULL mode: all four others each named, degrees shown (differ across ayanamshas, signs agree)', async () => {
+    positionsDb()
+    const x = cc((await getPositionsCapability.handler({ chart_id: CHART, include_cross_check: true }, undefined)).content)
+    expect(x.mode).toBeUndefined()
+    expect(x.summary).toBe('Agrees across all five ayanamshas')
     expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
-    // only the identity facts, never the Sun
-    expect(Object.keys(x.primary.values)).toEqual(['lagna_sign', 'moon_sign', 'moon_nakshatra'])
-    // degrees shown, different per ayanamsha, never compared
     const degs = new Set([x.primary.values.moon_sign.degrees, ...x.others.map((o: Cc) => o.values.moon_sign.degrees)])
     expect(degs.size).toBe(5)
+  })
+
+  it('the cross-check read is fenced to the served generation, resolved here when the caller passed no build_id', async () => {
+    const calls = positionsDb()
+    await getPositionsCapability.handler({ chart_id: CHART }, undefined)
+    const read = calls.find((c) => c.sql.includes('fact_subject = ANY($3::text[])'))!
+    expect(read.sql).toContain('build_id = ANY($4::uuid[])')
+    expect(read.params[3]).toEqual([POSITION_BUILD])
+  })
+
+  it('served generation UNRESOLVED (throws or no build): the block is not_available/served_generation_unresolved and chart_facts is NOT read unfenced', async () => {
+    for (const setup of [
+      () => mockResolve.mockRejectedValue(new Error('no receipts')),
+      () => mockResolve.mockResolvedValue({ ...SERVED_GENERATION, served_build_ids: [] }),
+    ]) {
+      mockResolve.mockReset(); setup()
+      const calls = positionsDb()
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const res = await getPositionsCapability.handler({ chart_id: CHART }, undefined)
+      spy.mockRestore()
+      expect(res.is_error).toBe(false)
+      expect(cc(res.content)).toMatchObject({ not_available: true, reason: 'served_generation_unresolved', heading: 'Cross-check, not the reading' })
+      expect(calls.some((c) => c.sql.includes('fact_subject = ANY($3::text[])'))).toBe(false)
+      expect((res.content as Record<string, any>).rows.length).toBeGreaterThan(0)
+    }
   })
 
   it('the primary answer (rows) is identical with and without the cross-check; page 1 is Lahiri only', async () => {
@@ -109,7 +153,16 @@ describe('get_positions: identity facts are always cross-checked, compact', () =
     const x = cc((await getPositionsCapability.handler({ chart_id: CHART }, undefined)).content)
     expect(x.agreement).toBe('dissent')
     expect(x.summary).toBe('Dissent: Raman: Moon sign Pisces (primary Aquarius), Moon nakshatra Uttara Bhadrapada (primary Purva Bhadrapada)')
-    expect(x.others.filter((o: Cc) => o.status === 'dissents').map((o: Cc) => o.ayanamsha_id)).toEqual(['raman'])
+    // compact: ONLY the dissenting ayanamsha is listed (with its values), the four agreeing ones are not, no degrees
+    expect(x.mode).toBe('compact')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(['raman'])
+    expect(x.others[0].dissenting.map((d: Cc) => [d.fact_key, d.value, d.primary_value])).toEqual([
+      ['moon_sign', 'Pisces', 'Aquarius'], ['moon_nakshatra', 'Uttara Bhadrapada', 'Purva Bhadrapada']])
+    expect(JSON.stringify(x)).not.toMatch(/degrees|true_chitra|krishnamurti|surya_siddhanta/)
+    // full: all four others named, the dissenter flagged
+    const full = cc((await getPositionsCapability.handler({ chart_id: CHART, include_cross_check: true }, undefined)).content)
+    expect(full.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
+    expect(full.others.filter((o: Cc) => o.status === 'dissents').map((o: Cc) => o.ayanamsha_id)).toEqual(['raman'])
   })
 
   it('single-ayanamsha chart -> not_available/single_ayanamsha_chart, never "1/1"', async () => {
@@ -150,7 +203,9 @@ describe('get_positions: identity facts are always cross-checked, compact', () =
     positionsDb()
     const x = cc((await getPositionsCapability.handler({ chart_id: CHART, ayanamsha_id: 'raman' }, undefined)).content)
     expect(x.primary_id).toBe('raman')
-    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual([LAHIRI, 'true_chitra', 'krishnamurti', 'surya_siddhanta_classical'])
+    expect(x.summary).toBe('Agrees across all five ayanamshas')
+    const full = cc((await getPositionsCapability.handler({ chart_id: CHART, ayanamsha_id: 'raman', include_cross_check: true }, undefined)).content)
+    expect(full.others.map((o: Cc) => o.ayanamsha_id)).toEqual([LAHIRI, 'true_chitra', 'krishnamurti', 'surya_siddhanta_classical'])
   })
 
   it('a failed cross-check read never fails the primary answer', async () => {
@@ -202,7 +257,7 @@ const dashaArgs = { chart_id: CHART, limit: 2, window_start: '2000-01-01', windo
 
 describe('get_dashas: the current Mahadasha lord is always cross-checked, compact', () => {
   beforeEach(() => {
-    queryMock.mockReset()
+    queryMock.mockReset(); mockResolve.mockReset(); mockResolve.mockResolvedValue(SERVED_GENERATION)
     process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = 'inquiry-v1'
     process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = Buffer.alloc(32, 7).toString('base64url')
   })
@@ -220,8 +275,10 @@ describe('get_dashas: the current Mahadasha lord is always cross-checked, compac
     expect(content.rows.every((r: Cc) => r.ayanamsha_id === LAHIRI)).toBe(true)
     const x = cc(content)
     expect(x).toMatchObject({ scope: 'identity_facts', agreement: 'all_agree', summary: 'Agrees across all five ayanamshas', primary_id: LAHIRI })
-    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
-    expect(Object.keys(x.primary.values)).toEqual(['maha_lord'])
+    // SS N-361: compact = the one line only (no per-ayanamsha entries)
+    expect(x.mode).toBe('compact')
+    expect(x.others).toBeUndefined()
+    expect(x.primary).toBeUndefined()
     const xc = calls.find((c) => c.sql.includes('level_n = 1 AND start_date <= $3::date'))!
     expect(xc.params).toContain('build-a')
   })
@@ -229,7 +286,15 @@ describe('get_dashas: the current Mahadasha lord is always cross-checked, compac
   it('the compact agree form stays small (it rides on the <=1KB current-dasha answer)', async () => {
     dashasDb()
     const x = cc((await getDashasCapability.handler({ ...dashaArgs }, undefined)).content)
-    expect(Buffer.byteLength(JSON.stringify(x), 'utf8')).toBeLessThan(800)
+    expect(Buffer.byteLength(JSON.stringify(x), 'utf8')).toBeLessThan(300)
+  })
+
+  it('include_cross_check:true = FULL mode: the four others each named', async () => {
+    dashasDb()
+    const x = cc((await getDashasCapability.handler({ ...dashaArgs, include_cross_check: true }, undefined)).content)
+    expect(x.scope).toBe('requested_facts')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(OTHERS_IN_ORDER)
+    expect(Object.keys(x.primary.values)).toEqual(['maha_lord'])
   })
 
   it('a dissenting ayanamsha is named with its lord', async () => {
@@ -237,6 +302,8 @@ describe('get_dashas: the current Mahadasha lord is always cross-checked, compac
     const x = cc((await getDashasCapability.handler({ ...dashaArgs }, undefined)).content)
     expect(x.agreement).toBe('dissent')
     expect(x.summary).toBe('Dissent: Krishnamurti: current Mahadasha lord Saturn (primary Venus)')
+    expect(x.mode).toBe('compact')
+    expect(x.others.map((o: Cc) => o.ayanamsha_id)).toEqual(['krishnamurti'])
   })
 
   it('single-ayanamsha chart -> not_available/single_ayanamsha_chart', async () => {

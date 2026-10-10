@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:2a9d1df61e728ab68778e4dbf917b4524f20d14efa8b47f0f3086b78abc30165",
-  "source_catalog_fingerprint": "sha256:42faae8fe04cf45ea2cdf27aa582ac656d7ce7db03f908de68fe3e456e953d9a",
+  "content_hash": "sha256:5af2caae336db507d0d8c1a073407bf99841e1b2a1bf1db4d71a2f34b8c5c01c",
+  "source_catalog_fingerprint": "sha256:42adfe0258173baa2dccac9a726df4a43168d2c687bcef085299e453a3ac709d",
   "semantic_review_fingerprint": "sha256:066e41f3b2d64c897554273a5f79368cfdfdc3def7da396be21cb0930226135f",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -2884,6 +2884,7 @@
       "inputs": [
         "ayanamsha_id",
         "chart_id",
+        "include_cross_check",
         "include_navamsa",
         "vargas"
       ],
@@ -2930,6 +2931,7 @@
           "input_contract": {
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
+            "include_cross_check": "boolean:optional",
             "include_navamsa": "boolean:optional",
             "vargas": "array:optional"
           },

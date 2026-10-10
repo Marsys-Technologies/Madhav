@@ -332,9 +332,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
           .map(r => r.fact_subject as string))]
         const identitySubjects = subjects.filter(s => s === 'LAGNA' || s === 'MOON')
         if (args.include_cross_check === true && subjects.length > 0) {
-          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects, identityOnly: false, buildIds })
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects, identityOnly: false, mode: 'full', buildIds })
         } else if (identitySubjects.length > 0) {
-          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects: identitySubjects, identityOnly: true, buildIds })
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects: identitySubjects, identityOnly: true, mode: 'compact', buildIds })
         }
       }
 
