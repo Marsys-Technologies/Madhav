@@ -1,0 +1,325 @@
+{
+  "schema_version": "1.0",
+  "$comment": "Allowlist for assert_no_native_literal_sidecar.py (SS N-384, PR-S6). One entry per file that may still carry a native-data literal in python-sidecar routers/services/brahmagyan, with the exact hit count (a ratchet: it can only shrink; a stale or over-generous entry fails the guard) and the reason it stays. Add a file here only with the owner's agreement; the default answer for new code is: read the requested chart's own data.",
+  "entries": [
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/bo22.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-7.py",
+      "max_hits": 1,
+      "kinds": [
+        "NAME"
+      ],
+      "reason": "SQL filter on msr_signals.native_id; the MSR is the native's own signal register by design; L2 campaign/owner decision (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_domain_links.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_graph.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_resonance.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/bodha/l2_signals_scaffold.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
+      "max_hits": 6,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD",
+        "NAME"
+      ],
+      "reason": "KNOWN LEAK, FIX DEFERRED: live GET /brahmagyan/ephemeris/native_lifetime_meta returns one person's name, birth date/time and coordinates; its only consumer is the TS resource ephemeris_cache_native_lifetime.ts (passes the JSON through), so the fix is a coordinated route + resource retirement touching generated surfaces; follow-up PR, found while doing PR-S6 item 4"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/gate.py",
+      "max_hits": 5,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "CHART_DEFAULT",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_dashas.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_divisionals.py",
+      "max_hits": 4,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_engine_check.py",
+      "max_hits": 4,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_panchanga_birth.py",
+      "max_hits": 5,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD",
+        "NAME"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_positions.py",
+      "max_hits": 4,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_sensitive_points.py",
+      "max_hits": 5,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_strength.py",
+      "max_hits": 4,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME",
+        "COORD"
+      ],
+      "reason": "L1 Ganita legacy computation/check module (NATIVE_BIRTH_IST-style anchor constants, gate and self-check inputs); not a served route; owned by the L1 campaign (CLAUDE.md section E), outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/convergence.py",
+      "max_hits": 5,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/l3_convergence.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/l3_obstruction.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/l3_snapshot.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/l3_timeline.py",
+      "max_hits": 5,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/obstruction.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/kala/timeline.py",
+      "max_hits": 3,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (L3 Kala module: CLI/gate defaults and birth anchors)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/l0_almanac.py",
+      "max_hits": 3,
+      "kinds": [
+        "BIRTHDATE",
+        "COORD"
+      ],
+      "reason": "L0 almanac legacy constants for a birth-date acceptance check; not a served request default; L0 campaign (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
+      "max_hits": 4,
+      "kinds": [
+        "BIRTHDATE",
+        "COORD"
+      ],
+      "reason": "L0 ephemeris seed/verify module: NATIVE_BIRTH_DATE/coordinate constants for the birth-date spot check; not served (the dead lifetime payload was deleted by PR-S6 item 4); L0 campaign"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/mimamsa/lel_intake.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE",
+        "BIRTHTIME"
+      ],
+      "reason": "PR-S6 item 5: the native's seed life-event corpus (LEL_CORPUS); read-only investigation done, NO change pending the owner's decision (people-entered LEL data, N-46); read only by the operator seed CLI, the l5 intake wrappers and tests"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/phala/l4_anchors.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "native-specific anchor-catalogue guard (non-native charts get an empty answer); its router is not mounted in main.py; owner decision on the catalogue"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "live muhurta scorer keeps a native-specific signal-activation branch (chart_id == NATIVE_CHART_ID); removing it changes scores for that chart, so it needs the owner's decision (outside PR-S6)"
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/phala/rectification.py",
+      "max_hits": 3,
+      "kinds": [
+        "BIRTHDATE",
+        "CHART_DEFAULT"
+      ],
+      "reason": "L4 phala.rectification writer/CLI (python -m ... seed/query/gate): the native's event table, birth dates and a CLI default chart; a writer, outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/services/gochara_grammar/resonance_map.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (service/writer self-test or fixture chart)"
+    },
+    {
+      "file": "platform/python-sidecar/services/ka_dasha_kala/writer.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (service/writer self-test or fixture chart)"
+    },
+    {
+      "file": "platform/python-sidecar/services/ka_muhurta_seva/writer.py",
+      "max_hits": 2,
+      "kinds": [
+        "BIRTHDATE"
+      ],
+      "reason": "KALA-OWNED (kala*/ka_*/gochara* files): outside PR-S6 by campaign boundary; to be cleared by the Kala campaign (service/writer self-test or fixture chart)"
+    },
+    {
+      "file": "platform/python-sidecar/services/ph_rectification/engine.py",
+      "max_hits": 3,
+      "kinds": [
+        "BIRTHDATE",
+        "COORD"
+      ],
+      "reason": "ph_rectification engine: embedded recorded-birth anchor and training set for the native; chart-gated (JL-017 refuses other charts); a build writer, outside PR-S6"
+    },
+    {
+      "file": "platform/python-sidecar/services/w2g_validations/runner.py",
+      "max_hits": 1,
+      "kinds": [
+        "CHART_DEFAULT"
+      ],
+      "reason": "W2G validation runner (operator tool): fixed Tier-1 validation chart list; not a request default"
+    }
+  ]
+}
