@@ -24,6 +24,7 @@ import { createHash } from 'crypto'
 import { getMcpSurfaceSpec } from '@/lib/retrieval/maro'
 import type { ModelFamily } from '@/lib/retrieval/maro'
 import { computeBundleHealth } from './bundle_status'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '@/lib/retrieval/kp_frame'
 
 // ── Response format type ──────────────────────────────────────────────────────
 
@@ -534,12 +535,12 @@ export interface MultiSchoolBundleParams {
 }
 
 /**
- * KP school frame. LOCAL constants on purpose (they equal KP_FRAME_AYANAMSHA / KP_FRAME_LABEL of
- * retrieval/kp_frame.ts; the two are deduplicated at the combined batch): KP is read on the Krishnamurti ayanamsha, not on
- * the Lahiri primary, and the evidence says so.
+ * KP school frame: KP is read on the Krishnamurti ayanamsha, not on the Lahiri primary, and the evidence says so.
+ * One source: these are the KP_FRAME_AYANAMSHA / KP_FRAME_LABEL of retrieval/kp_frame.ts (the local copies the PR
+ * stack carried were deduplicated in the combined Lahiri batch); the names stay exported for the existing callers.
  */
-export const KP_SCHOOL_AYANAMSHA_ID = 'krishnamurti'
-export const KP_SCHOOL_FRAME_LABEL = 'KP frame (Krishnamurti ayanamsha)'
+export const KP_SCHOOL_AYANAMSHA_ID = KP_FRAME_AYANAMSHA
+export const KP_SCHOOL_FRAME_LABEL = KP_FRAME_LABEL
 /**
  * The STORED chart_facts category that holds the KP cusp chain (ga_nakshatra, emit_kp_lords): per cusp
  * CUSP_01..CUSP_12 the fact_keys star_lord / sub_lord / sub_sub_lord / prana_lord = 12 subjects x 4
