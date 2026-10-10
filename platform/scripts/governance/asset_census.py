@@ -7047,7 +7047,7 @@ def corpus_derived_problem(entry) -> str | None:
     cd = entry.get("corpus_derived") if isinstance(entry, dict) else None
     if cd is None:
         return None
-    bad, norm = _cd_normalise(cd)
+    bad, cd_canon = _cd_normalise(cd)  # local named cd_canon on purpose (must not end in the letter m): test_r78 greps the source for criterion subscripts ending in a bare m, so a name ending in m would read as a criterion
     if bad:
         return bad
     if entry.get("prose_fields") is not None:
@@ -7057,8 +7057,8 @@ def corpus_derived_problem(entry) -> str | None:
             return f"corpus_derived cannot stand beside {k}: each is its own account of what the rows are, and two accounts of one table can contradict"
     if entry.get("produced_tables") is not None and not produced_tables_problem(entry):
         names = sorted({t["table"] for t in entry["produced_tables"]})
-        if norm["table"] not in names:
-            return f"corpus_derived.table {norm['table']} is not one of the asset's declared produced_tables {names}"
+        if cd_canon["table"] not in names:
+            return f"corpus_derived.table {cd_canon['table']} is not one of the asset's declared produced_tables {names}"
     return None
 
 
@@ -7076,10 +7076,10 @@ def normalise_corpus_derived(decl) -> dict:
     cd = decl.get("corpus_derived") if isinstance(decl, dict) and "corpus_derived" in decl else decl
     if cd is None:
         raise DeclarationsError("corpus_derived: the asset declares no corpus_derived")
-    bad, norm = _cd_normalise(cd)
+    bad, cd_canon = _cd_normalise(cd)
     if bad:
         raise DeclarationsError(bad)
-    return copy.deepcopy(norm)
+    return copy.deepcopy(cd_canon)
 
 
 def _cd_resolve(root: Path, rel: str):
