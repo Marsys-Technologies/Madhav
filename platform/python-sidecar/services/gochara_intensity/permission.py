@@ -278,7 +278,7 @@ def compute_permission(
     if targets:
         try:
             with savepoint_scope(conn, "sade_sati_permission"):
-                sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn)
+                sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn, ayanamsha_id=ayanamsha_id)
                 for s in sentences:
                     start_iso = s.detail.get("phase_start_iso")
                     end_iso = s.detail.get("phase_end_iso")
