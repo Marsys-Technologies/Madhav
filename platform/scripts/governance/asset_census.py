@@ -64,6 +64,17 @@ Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4
       --rollup failed (census still written, without it; the measured exit is named on stderr, never lost).
       6 bad --assets scope (empty / duplicate / miscased / unknown / wrong layer / retired id, or --out naming the
       full census file) — nothing measured, nothing written.
+      14 SUVARNA_CENSUS_STATEMENT_CAP_SECS is set but is not a positive whole number of seconds — refused before any read.
+
+SS N-430 (hygiene of the reads; verdict-neutral with the cap off):
+  read_timings   every layer head carries `read_timings`: each psql read's elapsed seconds, attributed to an asset and a read label (never a host, credential or value), as the slowest
+                 reads per asset plus per-asset totals and the overall maximum; `--read-timings-report CENSUS.json` prints them. Elapsed times are non-deterministic: nothing fingerprints,
+                 hashes or compares them.
+  statement cap  SUVARNA_CENSUS_STATEMENT_CAP_SECS (OFF by default: unset or empty = today's behaviour exactly). A positive integer N makes every census psql session start with
+                 `SET statement_timeout = N*1000` and `SET lock_timeout = 5000`. The integrity runner (a registry-stored integrity_check_sql) is EXEMPT and keeps its own budget. A malformed
+                 value exits 14 before any read. A read the cap (or the role's own limit) cancels reads NO_DETECTOR naming the timeout, never ERRORED and never PASS.
+  retry          a read-only statement whose connection drops (`server closed the connection unexpectedly` ...) is retried once; the timing entry says `retries: 1`.
+  Full semantics: the block comment above `_psql_run`.
 """
 
 from __future__ import annotations
@@ -72,6 +83,7 @@ import argparse
 import ast
 import bisect
 import collections
+import contextlib
 import copy
 import datetime as dt
 import functools
@@ -3891,7 +3903,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
                                                         expected_digest=d3_expected_writer_digest(aid, spec["recorded"]["writer_digest_file"])),
                                 declared_carriage=dict(applies=applies, nature=car["nature"]))
             except Unknown as exc:                                     # R41: this check's failure degrades only this check
-                out[own] = dict(v=ERRORED, measured=f"check errored: {' '.join(str(exc).split())} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
+                out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {' '.join(str(exc).split())} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)"))
             return out
         try:
             rd = d3m.spec_read(spec)
@@ -3908,7 +3920,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
             elif "permission denied for" in msg.lower():
                 out[own] = dict(d3_denied_record(spec, msg), declared_carriage=dict(applies=applies, nature=car["nature"]))
             else:
-                out[own] = dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)")
+                out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc} (the D3 read runs in ONE read-only pass under a {D3_READ_TIMEOUT_SECONDS} second client timeout; nothing is truncated, a timeout is an error)"))
         return out
     if applies != "D1":
         out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
@@ -3929,7 +3941,7 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
         out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table,
                                  ledger=dict(columns=column_types, prose_columns=list(prose_columns or ())))
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
+        out[own] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state")))
     return out
 
 
@@ -4163,7 +4175,7 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
         pairs = alias_fetch_values(table, spec["vocab_column"], spec["alias_column"])
         return {"Vocab.alias": grade_vocab_alias(spec, forms, pairs)}
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        return {"Vocab.alias": dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")}
+        return {"Vocab.alias": _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))}
 
 
 # ─────────────────── N-176 (REGISTRY_REVISION 26): the VALUE-BASED Vocab.alias detector ───────────────────
@@ -5404,7 +5416,7 @@ def ldgr_source_declared_check(aid: str, ls, table, cols, keys=None) -> dict:
                                                           "json(b) can carry a citation, so presence on it is not a source")}
         return {"Ldgr.source_presence": grade_ldgr_source(ls, ldgr_fetch_source_stats(table, col, kc[:3], kind), table)}
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
-        return {"Ldgr.source_presence": dict(v=ERRORED, declared=True, citation_state=cs, measured=f"check errored: {exc}")}
+        return {"Ldgr.source_presence": _read_failure_cell(exc, dict(v=ERRORED, declared=True, citation_state=cs, measured=f"check errored: {exc}"))}
 
 
 # ─────────────────── N-151 (REGISTRY_REVISION 26): the declared `source` reading of Ldgr.source_presence ───────────────────
@@ -5743,9 +5755,56 @@ LDGR_CHEAP_MIN_ROWS = 250_000      # catalog estimate (pg_class.reltuples) at or
 LDGR_SAMPLE_LIMIT = 3              # offending identities named by the existence read
 
 
+def _read_timeout_kind(exc) -> str | None:
+    """SS N-430: WHICH timeout cancelled a read, or None (a real failure). `exc` is an exception or the text of one (a stored count error).
+      'client'    the census's own wall-clock kill (CheckTimeout);
+      'statement' the server's `canceling statement due to statement timeout` (SQLSTATE 57014; the role's own limit or SUVARNA_CENSUS_STATEMENT_CAP_SECS);
+      'lock'      `canceling statement due to lock timeout` (SQLSTATE 55P03, lock_not_available; SUVARNA_CENSUS_STATEMENT_CAP_SECS sets lock_timeout too).
+    A timed-out read measured NOTHING: it is not an error of the part (the cell reads NO_DETECTOR), and it is never a pass."""
+    if isinstance(exc, CheckTimeout):
+        return "client"
+    text = str(exc).casefold()
+    if "statement timeout" in text:
+        return "statement"
+    if "lock timeout" in text or "lock_not_available" in text or "55p03" in text:
+        return "lock"
+    return None
+
+
 def _is_statement_timeout(exc) -> bool:
-    """True for the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line) and for the client-side CheckTimeout."""
-    return isinstance(exc, CheckTimeout) or "statement timeout" in str(exc)
+    """True for a read cancelled by a timeout: the server's `canceling statement due to statement timeout` (it arrives as an Unknown carrying psql's first stderr line), its
+    `lock timeout` twin (SS N-430) and the client-side CheckTimeout."""
+    return _read_timeout_kind(exc) is not None
+
+
+_TIMEOUT_CAUSE = {"statement": "the server's statement timeout", "lock": "the server's lock timeout"}
+
+
+def _server_timeout_kind(exc) -> str | None:
+    """'statement' or 'lock' when the SERVER cancelled the read, else None (a client-side kill, CheckTimeout, is NOT included: see `_read_failure_cell`)."""
+    kind = _read_timeout_kind(exc)
+    return kind if kind in ("statement", "lock") else None
+
+
+def _read_timeout_text(exc) -> str | None:
+    """The FIXED NO_DETECTOR cause for a read the SERVER cancelled by a timeout (no psql text, no SQL, no host), or None when `exc` is not a server-side read timeout."""
+    kind = _server_timeout_kind(exc)
+    if kind is None:
+        return None
+    return (f"NO_DETECTOR — a read this check needs was cancelled by {_TIMEOUT_CAUSE[kind]}: nothing was measured, so this is neither a PASS nor a FAIL "
+            "(not an error of the part; the check needs a longer per-check limit or a narrower read)")
+
+
+def _read_failure_cell(exc, errored_cell: dict) -> dict:
+    """SS N-430 (T3): the cell for a check whose READ failed with `exc` (an exception or its text). `errored_cell` is the ERRORED cell the site always built; it comes back UNCHANGED
+    unless the SERVER cancelled the read by a statement timeout or a lock timeout (`_server_timeout_kind`), in which case it comes back as NO_DETECTOR: same keys in the same order
+    (declared, citation_state, source ...), `v` NO_DETECTOR, and a FIXED `measured` that names the timeout (no psql text, no SQL, no host). A real error stays ERRORED. A CLIENT-side
+    kill (CheckTimeout, the census's own wall clock) also stays ERRORED here, exactly as before: the documented conventions of Carr.D3 ("one read-only pass under a stated client timeout;
+    nothing is truncated, a timeout is an error", N-156) and of the null convention ("a client timeout included") say so, and their tests pin it."""
+    text = _read_timeout_text(exc)
+    if text is None:
+        return errored_cell
+    return dict(errored_cell, v=NO_DET, measured=text)
 
 
 def source_estimate_rows(table: str):
@@ -10658,7 +10717,7 @@ def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
     try:
         rec = grade_null_convention(nc, cols, types, null_convention_fetch(table, cols, types, nc, scope[0]))
     except (Unknown, OSError, ValueError) as exc:                 # R41: this check's failure (a client timeout included) degrades only this check
-        return dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+        return _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))
     if scope[1] == UPPER_BOUND and rec["v"] in (PASS, FAIL, PARTIAL):
         return dict(rec, v=PARTIAL, measured=f"the table was read as a {UPPER_BOUND} (count_sql is not chart-scoped and the table carries chart_id): rows of other charts "
                                              f"count, so this chart is neither passed nor failed on them (the whole table reads {rec['v']}: {rec['measured']}); chart-scope the count to decide")
@@ -11453,7 +11512,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
         try:
             out[crit] = fn()
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
-            out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+            out[crit] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
     _apply_writer_scan(out, pf, ctx)
     _apply_forwarded_leaves(out, pf, ctx)                       # N-189: the forwarded-leaf detector (no declaration = no change)
     _apply_curated_corpus(out, pf, ctx, decl)                  # N-192: the pinned curated corpus replaces the scan's constant-write findings of its columns (no declaration = no change)
@@ -11654,16 +11713,178 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
     return _Capped(p.returncode, bytes(kept["out"]), bytes(kept["err"]), over["out"])
 
 
+# ─────────────────────── SS N-430: per-read timing, the optional statement cap, one retry on connection loss ───────────────────────
+# (1) READ TIMINGS (T1, verdict-neutral). Every psql read `_psql_run` makes is timed (monotonic seconds, the retry pause included) and appended to an in-memory log:
+#     {asset, label, seconds, retries, outcome}. `asset` is the asset being measured (`measure()` sets it per asset; the stamp phase says `(run)`; none = `(layer)`), `label` is the
+#     criterion / probe name when the caller declared one (`read_label`) else the statement's first 60 characters with every literal (strings, dollar-quoted bodies, numbers) replaced by `?`.
+#     NEVER stored: a host, a credential, a value, the full statement or the error text. `outcome` is ok / error / timeout. `main()` drains the log into each layer head's `read_timings`
+#     key (see `read_timings_summary`). Elapsed times are NON-DETERMINISTIC by nature: they are a head key only, no fingerprint, hash, verdict or cell text reads them, and
+#     `read_timings_report` prints them so a person can set a cap from evidence.
+# (2) STATEMENT CAP (T2), OFF BY DEFAULT. Environment variable SUVARNA_CENSUS_STATEMENT_CAP_SECS:
+#       unset or the empty string  -> exactly today's behaviour: no session command is added, `-q` is not forced, nothing changes;
+#       a positive integer (ASCII digits, no sign, no leading zero, 1..CENSUS_STATEMENT_CAP_MAX_SECONDS) -> EVERY census psql session starts with `SET statement_timeout = <n*1000>` and
+#       `SET lock_timeout = 5000` as its first `-c` commands (the same session as the statement; never PGOPTIONS, which a pooled connection refuses; `-q` is forced so their command tags
+#       stay out of the rows). A statement the server cancels reaches the existing paths as an `Unknown` carrying `canceling statement due to statement timeout` / `lock timeout`, which
+#       the cells read as NO_DETECTOR (see `_read_failure_cell`), never PASS and never ERRORED;
+#       anything else (`0`, `-5`, `+5`, `5.0`, `abc`, ` 5`, `007`, a value above the maximum) -> REFUSED LOUDLY, never ignored: `main()` exits 14 before any read, and `_psql_run` raises
+#       `CensusCapRefused` (a SystemExit, which the per-check `except Exception` guards cannot swallow) before it starts psql.
+#     The INTEGRITY RUNNER (`psql_read_only`, a registry-stored integrity_check_sql) is EXEMPT: it keeps its own budget (`SET LOCAL statement_timeout` = 90% of its client limit) whatever the cap is,
+#     because no certified part may lose its verdict to a cap (ga_fact_identity's integrity SQL alone takes ~74 s). The argv is a list: no shell string is ever built; the numbers are validated ints.
+# (3) ONE RETRY ON CONNECTION LOSS (T4). A READ-ONLY statement whose psql run fails with a dropped-connection message (`server closed the connection unexpectedly`, `connection to server was lost`,
+#     `could not receive data from server`, `SSL SYSCALL error: EOF detected`, `Connection reset by peer`, `no connection to the server`) and NO `ERROR:` line and no timeout text is run ONE more
+#     time after CONN_RETRY_PAUSE_SECONDS; the read timing entry says `retries: 1`. A second failure is reported exactly as a first one always was. A timeout and an SQL error are never retried;
+#     a statement that is not provably read-only (see `_retry_safe`) is never retried.
+CENSUS_STATEMENT_CAP_ENV = "SUVARNA_CENSUS_STATEMENT_CAP_SECS"
+CENSUS_STATEMENT_CAP_MAX_SECONDS = 86_400
+CENSUS_LOCK_TIMEOUT_SECONDS = 5
+EXIT_STATEMENT_CAP_REFUSED = 14
+CONN_RETRY_PAUSE_SECONDS = 1.0
+READ_TIMINGS_SLOWEST_PER_ASSET = 5
+READ_TIMINGS_REPORT_TOP = 10
+
+
+class CensusCapRefused(SystemExit):
+    """SUVARNA_CENSUS_STATEMENT_CAP_SECS is set to something that is not a positive integer. A SystemExit on purpose: the per-check `except Exception` guards must not turn a bad
+    operator setting into an ERRORED cell and carry on reading; the message is the exit text."""
+
+
+def census_statement_cap_secs(environ=None) -> int | None:
+    """The statement cap in seconds, or None (unset / empty: no cap). Raises CensusCapRefused for any other value that is not a positive integer (see the block comment above)."""
+    raw = (os.environ if environ is None else environ).get(CENSUS_STATEMENT_CAP_ENV)
+    if raw is None or raw == "":
+        return None
+    if not re.fullmatch(r"[1-9][0-9]{0,5}", raw) or int(raw) > CENSUS_STATEMENT_CAP_MAX_SECONDS:
+        shown = raw if len(raw) <= 20 and raw.isprintable() else "(unprintable or too long)"
+        raise CensusCapRefused(f"asset_census: {CENSUS_STATEMENT_CAP_ENV}={shown!r} refused: the statement cap must be a positive whole number of seconds, "
+                               f"1..{CENSUS_STATEMENT_CAP_MAX_SECONDS} (digits only, no sign, no leading zero); unset it (or set it empty) for no cap. Nothing was read.")
+    return int(raw)
+
+
+def census_session_prelude(cap_secs: int) -> list[str]:
+    """The two session commands that precede every capped statement (milliseconds; `cap_secs` is a validated int)."""
+    return [f"SET statement_timeout = {int(cap_secs) * 1000}", f"SET lock_timeout = {CENSUS_LOCK_TIMEOUT_SECONDS * 1000}"]
+
+
+_READ_LOG: list[dict] = []
+_READ_CTX: dict = {"asset": None, "label": None}
+_LIT_DOLLAR = re.compile(r"\$(\w*)\$.*?\$\1\$", re.S)
+_LIT_STRING = re.compile(r"'(?:[^']|'')*'")
+_LIT_NUMBER = re.compile(r"\b\d+(?:\.\d+)?\b")
+
+
+def _statement_label(sql: str) -> str:
+    """The first 60 characters of a statement with its literals stripped (dollar-quoted bodies, string literals, an unterminated quote and its tail, numbers): a label, never a value."""
+    t = _LIT_DOLLAR.sub("$?$", str(sql))
+    t = _LIT_STRING.sub("?", t)
+    if "'" in t:
+        t = t.split("'", 1)[0] + "?"
+    t = _LIT_NUMBER.sub("?", t)
+    return " ".join(t.split())[:60]
+
+
+@contextlib.contextmanager
+def read_label(label: str, asset: str | None = None):
+    """Attribute the psql reads made inside the block to `label` (a criterion or probe name: a fixed string) and, when given, `asset`. Restores the previous attribution on exit."""
+    prev = dict(_READ_CTX)
+    _READ_CTX["label"] = label
+    if asset is not None:
+        _READ_CTX["asset"] = asset
+    try:
+        yield
+    finally:
+        _READ_CTX.update(prev)
+
+
+def set_read_asset(asset: str | None) -> None:
+    """The asset the following reads belong to (None: layer-wide / run-level)."""
+    _READ_CTX["asset"] = asset
+    _READ_CTX["label"] = None
+
+
+def _record_read(statement: str, seconds: float, retries: int, outcome: str) -> None:
+    _READ_LOG.append(dict(asset=_READ_CTX["asset"], label=_READ_CTX["label"] or _statement_label(statement), seconds=seconds, retries=retries, outcome=outcome))
+
+
+def drain_read_log() -> list[dict]:
+    """Every read recorded since the last drain (the log is emptied)."""
+    out = list(_READ_LOG)
+    _READ_LOG.clear()
+    return out
+
+
+def read_timings_summary(entries: list[dict], slowest: int = READ_TIMINGS_SLOWEST_PER_ASSET) -> dict:
+    """The `read_timings` head key: n_reads, total_seconds, the overall maximum (and which read it was), and per asset (sorted by asset id) its read count, total, maximum and its `slowest` reads.
+    Bounded: at most `slowest` reads per asset. NOT deterministic (elapsed times); read by no verdict, fingerprint or hash."""
+    by: dict[str, list[dict]] = {}
+    for e in entries:
+        by.setdefault(e.get("asset") or "(layer)", []).append(e)
+    per_asset = []
+    for a in sorted(by):
+        es = sorted(by[a], key=lambda e: (-e["seconds"], str(e["label"])))
+        per_asset.append(dict(asset=a, n_reads=len(es), total_seconds=round(sum(e["seconds"] for e in es), 3), max_seconds=round(es[0]["seconds"], 3),
+                              slowest=[dict(label=e["label"], seconds=round(e["seconds"], 3), retries=e["retries"], outcome=e["outcome"]) for e in es[:slowest]]))
+    worst = max(entries, key=lambda e: e["seconds"]) if entries else None
+    return dict(schema="read_timings/1", unit="seconds", slowest_per_asset=slowest, n_reads=len(entries), total_seconds=round(sum(e["seconds"] for e in entries), 3),
+                max_seconds=round(worst["seconds"], 3) if worst else 0.0,
+                max_read=dict(asset=worst.get("asset") or "(layer)", label=worst["label"]) if worst else None, per_asset=per_asset)
+
+
+def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
+    """A person-readable report of the slowest reads in a census (the loaded JSON, or a path to it): per layer the overall maximum, then the `top` slowest reads over all assets."""
+    if isinstance(census, (str, os.PathLike)):
+        census = json.loads(Path(census).read_text(encoding="utf-8"))
+    lines: list[str] = []
+    for layer in sorted(k for k, v in (census or {}).items() if isinstance(v, dict) and isinstance(v.get("read_timings"), dict)):
+        rt = census[layer]["read_timings"]
+        mr = rt.get("max_read") or {}
+        lines.append(f"{layer}: {rt.get('n_reads', 0)} read(s), {rt.get('total_seconds', 0)} s in total; slowest {rt.get('max_seconds', 0)} s ({mr.get('asset', '-')}: {mr.get('label', '-')})")
+        flat = [(r["seconds"], pa["asset"], r["label"], r.get("retries", 0), r.get("outcome", "?")) for pa in rt.get("per_asset", []) for r in pa.get("slowest", [])]
+        for sec, asset, label, retries, outcome in sorted(flat, key=lambda x: (-x[0], x[1], str(x[2])))[:max(0, int(top))]:
+            lines.append(f"  {sec:>9.3f} s  {asset}  {label}  [{outcome}{', retries ' + str(retries) if retries else ''}]")
+    return "\n".join(lines) if lines else "no read_timings in this census"
+
+
+_CONN_LOSS_MARKERS = ("server closed the connection unexpectedly", "connection to server was lost", "could not receive data from server",
+                      "ssl syscall error: eof detected", "connection reset by peer", "no connection to the server")
+_RETRY_UNSAFE_WORDS = re.compile(r"\b(insert|update|delete|merge|into|copy|truncate|alter|create|drop|grant|revoke|lock|vacuum|call|reindex|cluster|refresh|comment|nextval|setval|set_config|"
+                                 r"pg_advisory\w*|pg_notify|lo_\w+|dblink\w*)\b", re.I)
+
+
+def _is_connection_loss(stderr_text: str) -> bool:
+    """psql's stderr says the connection dropped (and is neither a server `ERROR:` nor a timeout)."""
+    t = stderr_text.casefold()
+    if _read_timeout_kind(t) is not None or any(ln.lstrip().startswith("error:") for ln in t.splitlines()):
+        return False
+    return any(m in t for m in _CONN_LOSS_MARKERS)
+
+
+def _retry_safe(cmds: list[str]) -> bool:
+    """True when running the batch twice is harmless: it opens a server-enforced `BEGIN READ ONLY` transaction, or every command is a SELECT / WITH / SHOW / VALUES with no write-ish word in it
+    (conservative: a word inside a string literal only costs the retry)."""
+    if any(re.fullmatch(r"\s*BEGIN\s+READ\s+ONLY\s*", c, re.I) for c in cmds):
+        return True
+    return all(re.match(r"\s*(select|with|show|values)\b", c, re.I) and not _RETRY_UNSAFE_WORDS.search(c) for c in cmds)
+
+
 def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: bool = False, label: int = 0, verbose: bool = False,
-              cap: int | None = None, via_stdin: bool = False) -> list[list[str]]:
+              cap: int | None = None, via_stdin: bool = False, session_cap: bool = True) -> list[list[str]]:
     """The ONE psql subprocess runner: `cmds` are sent as separate `-c` commands in one session (a single command for every ordinary
     read). Timeout, error and parse handling are shared by `psql` and `psql_read_only`. `label` is the index of the command named in a timeout
     message; `verbose` asks for error text carrying the SQLSTATE (`ERROR:  42501: ...`). `via_stdin` (needs `cap`) sends the same commands as ONE
     script on psql's stdin (each command ends `;` + newline) instead of separate `-c` arguments, for a command past the OS limit of one argument;
     the caller guarantees the large text sits inside a dollar-quoted body, which psql's scanner passes through untouched (no backslash command, no
-    variable interpolation)."""
+    variable interpolation). SS N-430: every run is timed (`_record_read`); `session_cap` False exempts the run from SUVARNA_CENSUS_STATEMENT_CAP_SECS (the integrity runner);
+    a dropped connection on a read-only batch is retried once (see the block comment above)."""
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
+    named = cmds[label]                                         # the command a timeout message names (a cap prelude is added in front of the list below)
+    cap_secs = census_statement_cap_secs()                   # refuses a malformed cap BEFORE psql is started (the exempt integrity run included: a bad setting is never ignored)
+    if not session_cap:
+        cap_secs = None                                      # EXEMPT: the integrity runner keeps its own budget
+    retry_ok = _retry_safe(list(cmds))
+    if cap_secs is not None:
+        cmds = census_session_prelude(cap_secs) + list(cmds)   # the timeouts ride in the SAME session, first; `-q` keeps their command tags out of the rows
+        quiet = True
     argv = ["psql", "-qtAX" if quiet else "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1"] + (["-v", "VERBOSITY=verbose"] if verbose else [])
     script = None
     if via_stdin:
@@ -11673,22 +11894,37 @@ def _psql_run(cmds: list[str], sep: str, limit: int, width: int | None, quiet: b
     else:
         for c in cmds:
             argv += ["-c", c]
+    t0, retries, outcome = time.monotonic(), 0, "error"
     try:
-        # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
-        p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
-    except subprocess.TimeoutExpired as exc:
-        raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
-                           f"{' '.join(cmds[label].split())[:120]}") from exc
-    if p.returncode != 0:
-        err = p.stderr.decode("utf-8", errors="replace")
-        raise Unknown((err.strip().splitlines() or ["psql failed"])[0][:400])
-    if cap is not None and p.over:
-        raise ReadError(f"psql output exceeds the {cap}-byte cap; not read")
-    try:
-        out = p.stdout.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
-    return parse_psql_output(out, sep, width)
+        while True:
+            try:
+                # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
+                p = subprocess.run(argv, capture_output=True, env=env, timeout=limit) if cap is None else _run_capped(argv, env, limit, cap, script)
+            except subprocess.TimeoutExpired as exc:
+                outcome = "timeout"
+                raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
+                                   f"{' '.join(named.split())[:120]}") from exc
+            if p.returncode != 0 and retries == 0 and retry_ok and _is_connection_loss(p.stderr.decode("utf-8", errors="replace")):
+                retries = 1                                     # SS N-430 T4: a dropped connection on a read-only batch: ONE more run after a short pause
+                time.sleep(CONN_RETRY_PAUSE_SECONDS)
+                continue
+            break
+        if p.returncode != 0:
+            err = p.stderr.decode("utf-8", errors="replace")
+            first = (err.strip().splitlines() or ["psql failed"])[0][:400]
+            outcome = "timeout" if _read_timeout_kind(first) else "error"
+            raise Unknown(first)
+        if cap is not None and p.over:
+            raise ReadError(f"psql output exceeds the {cap}-byte cap; not read")
+        try:
+            out = p.stdout.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
+        rows = parse_psql_output(out, sep, width)
+        outcome = "ok"
+        return rows
+    finally:
+        _record_read(named, time.monotonic() - t0, retries, outcome)
 
 
 def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
@@ -11776,7 +12012,8 @@ def psql_read_only(sql: str, sep: str = "\x1f", timeout: int | None = None, widt
     read_back = f"SELECT coalesce(current_setting('{guc}', true), 'none')"
     rows = _psql_run(["SET default_transaction_read_only = on", "BEGIN READ ONLY", f"SET LOCAL statement_timeout = {ms}", run_sql, read_back, "ROLLBACK"],
                      sep, limit, width, quiet=True, label=3, verbose=True, cap=INTEGRITY_OUTPUT_CAP,
-                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES)
+                     via_stdin=len(run_sql.encode("utf-8", errors="replace")) > INTEGRITY_ARG_MAX_BYTES,
+                     session_cap=False)                  # SS N-430: EXEMPT from SUVARNA_CENSUS_STATEMENT_CAP_SECS; the integrity run keeps its own budget (SET LOCAL statement_timeout above)
     return _integrity_first_value(rows)
 
 
@@ -12012,7 +12249,8 @@ def _integrity_outcome(sql: str) -> dict:
         why, _stmt = _integrity_statement(sql)
         if why is not None:
             return done("unrunnable" if why.startswith("integrity SQL too large") else "refused", why)
-        rows = psql_read_only(_stmt)
+        with read_label("integrity_check_sql"):
+            rows = psql_read_only(_stmt)
     except Exception as exc:                    # Unknown / CheckTimeout / ReadError, and any runner surprise: degrade THIS check only
         msg = " ".join(str(exc).split())[:240]
         if isinstance(exc, Unknown) and _PERMISSION_DENIED.match(msg):
@@ -17331,6 +17569,8 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g, static=None
         try:
             owners = owners_fn()
         except Unknown as exc:
+            if _server_timeout_kind(exc) is not None:      # SS N-430: the ownership READ was cancelled by the server's timeout: nothing was measured (NO_DETECTOR), not an error of the part
+                return NO_DET, _read_timeout_text(exc), {}
             return ERRORED, (f"check errored: table ownership unreadable, so what the writer reads cannot be attributed to "
                              f"assets: {exc}"), {}
     try:
@@ -17637,7 +17877,7 @@ def _measure_target(r: dict, owners, declared_kind) -> dict:
         # R242 (W2-2 OS-B): the registry-wide read happens only when absent (the caller caches it).
         return _grade_target_less(r, owners)
     except Unknown as exc:
-        return dict(v=ERRORED, measured=f"check errored: {exc}")
+        return _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
 
 def _grade_target_less(r: dict, owners) -> dict:
@@ -17801,8 +18041,8 @@ def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: li
         return dict(v=NO_DET, measured=f"NO_DETECTOR — target_floor={floor} is declared but no count_sql is "
                                        "registered to measure it")
     if error is not None or live is None:
-        return dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
-                                        f"floor={floor} not measured")
+        return _read_failure_cell(error, dict(v=ERRORED, measured=f"check errored: {error or 'count_sql produced no value'} — "
+                                                                  f"floor={floor} not measured"))
     if not ctables:
         return dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant {live}); "
                                        f"floor={floor} cannot be measured against it")
@@ -17870,7 +18110,8 @@ def _run_carriage_detector(aid: str) -> dict:
 def _layer_read(name: str, fn, *args):
     """F12 (A_REVIEW.md): name the layer-wide read that failed, so the UNKNOWN says which one."""
     try:
-        return fn(*args)
+        with read_label(name):                     # SS N-430: the layer-wide read's reads are timed under its name
+            return fn(*args)
     except Unknown as exc:
         raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
 
@@ -17926,7 +18167,7 @@ def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
         scope = None if sc is None else (_bind_chart(sc[0], CHART_ID), sc[1])
         conv = null_convention_check(nc, own, cat.get("exists") or (), scope)
     except Unknown as exc:                                  # an unbindable scope (a phantom chart id ...) degrades only this check
-        conv = dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+        conv = _read_failure_cell(exc, dict(v=ERRORED, declared=True, measured=f"check errored: {exc}"))
     # a declared prose field that lives outside the declared table is not covered by the convention detector (S3's placeholder definition is applied to the declared
     # table only): the lift needs full coverage, so such an asset stays capped (a FAIL still flips the cell)
     table_cols = set(own[table][0] or ()) if table in own and isinstance(own[table][0], (list, tuple, set)) else set()
@@ -18469,7 +18710,7 @@ def forwarded_leaves_check(ff: dict, cols) -> dict:
     try:
         return grade_forwarded_leaves(ff, forwarded_leaves_read(ff, cols, CHART_ID))
     except Exception as exc:                                    # fault isolation (R41): a failure here degrades only this detector
-        return dict(declared=True, v=ERRORED, measured="forwarded-leaf detector errored: " + type(exc).__name__ + ": " + str(exc)[:160])
+        return _read_failure_cell(exc, dict(declared=True, v=ERRORED, measured="forwarded-leaf detector errored: " + type(exc).__name__ + ": " + str(exc)[:160]))
 
 
 # ── the fold into the two Null records and the rollup's re-check ──
@@ -18679,7 +18920,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             counts.update(_group_counts(groups, r, own, shared))
             ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
         except Unknown as exc:
-            errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+            errored = {c: _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}")) for c in ("Narr.checkable", "Null.blank_rows")}
     _ff = decl.get("forwarded_leaves") if isinstance(decl, dict) else None
     if pf and isinstance(_ff, dict) and not forwarded_leaves_problem(decl):
         # N-189: the forwarded-leaf detector reads the measured chart's rows of the declared (owned) table through the read scope measure() installed
@@ -18716,7 +18957,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         try:
             out.update(_measure_null_convention(decl, nc, r, own, cat, shared, out))
         except (Unknown, OSError, ValueError) as exc:
-            out.update({c: dict(out[c], null_convention=dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}")) for c in NULL_CHECKS})
+            out.update({c: dict(out[c], null_convention=_read_failure_cell(exc, dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}"))) for c in NULL_CHECKS})
     return out
 
 
@@ -19205,6 +19446,7 @@ def measure(layer_key: str, assets=None) -> dict:
     (`live_counts` isolates per asset itself — F2; `duration_instrument_present` degrades to
     `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
+    set_read_asset(None)                                   # SS N-430: the layer-wide reads below are timed under no asset
     reg_all, population = _layer_read("registry", registry, layer_key)
     reg, assets_sel = reg_all, None                       # E1.9: `assets_sel` is the scope label (None: a full run)
     if assets is not None:
@@ -19333,6 +19575,7 @@ def measure(layer_key: str, assets=None) -> dict:
     assets = []
     set_read_scope(None)
     for aid, r in reg.items():
+        set_read_asset(aid)                                   # SS N-430: the reads that follow are timed under this asset
         set_read_scope(None)                                  # the measured-chart scope of the live data reads is per asset (set below, after the owned tables are known)
         _rscopes: dict = {}
         m: dict[str, dict] = {}
@@ -19428,12 +19671,12 @@ def measure(layer_key: str, assets=None) -> dict:
         zr_out = (zero_row_convention_outcome(zr_decl, CHART_ID)       # read only where the case arises: a writer-backed asset that declares one, counted 0
                   if (zr_decl is not None and live == 0 and r["has_writer"] and aid not in count_errors) else None)
         if pset is not None and pset.get("error"):
-            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}")
+            m["Build.completion"] = _read_failure_cell(pset["error"], dict(v=ERRORED, measured=f"check errored: the declared produced-table set could not be counted: {pset['error']}"))
         elif aid in count_errors and pset is None:
             # F2 (A_REVIEW.md): a count_sql that RAISED must never read N/A "no count_sql" — that
             # reading is CLOSABLE and a live demonstration (bg_ephemeris) closed the gap on a query
             # that in fact errored. D4 case 1 ("never on an errored check") requires ERRORED here.
-            m["Build.completion"] = dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}")
+            m["Build.completion"] = _read_failure_cell(count_errors[aid], dict(v=ERRORED, measured=f"check errored: {count_errors[aid]}"))
         elif live is None and r["count_sql"].strip() and pset is None:
             # R222 / N1: a count_sql exists but produced no value that live_counts recorded. Never
             # "no count_sql" — that text would be false, and N/A would close a gap.
@@ -19612,7 +19855,8 @@ def measure(layer_key: str, assets=None) -> dict:
             # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
             # slow/failing query must degrade only its OWN criterion, never blind the other three.
             try:
-                dc = depth_census(tbl, cat["cols"].get(tbl, []))
+                with read_label("Complete.depth"):                       # SS N-430: read timings are labelled by criterion
+                    dc = depth_census(tbl, cat["cols"].get(tbl, []))
                 if dc.get("note") or not dc.get("rows"):
                     # R222 / N5 (A_REVIEW2 G2): an empty table (or one with no readable columns) has
                     # no column population to measure. It read PASS ("never populated: []" is
@@ -19628,7 +19872,7 @@ def measure(layer_key: str, assets=None) -> dict:
                                                          f"{dc.get('never',[])}"))
             except Unknown as exc:
                 dc = {}
-                m["Complete.depth"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                m["Complete.depth"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             if multi and isinstance(dc.get("rows"), int) and m["Build.completion"]["v"] in (PASS, FAIL):
                 # R42: the target table's own rows, stated as context — never the compared figure.
@@ -19646,7 +19890,8 @@ def measure(layer_key: str, assets=None) -> dict:
                     # against the naive form's >180s). An EXISTS/HAVING duplicate-group probe can
                     # stop at the first violation instead of counting the whole table when one
                     # exists, and never needs the second full DISTINCT pass either way.
-                    has_dup, figure = identity_duplicates(tbl, kd)
+                    with read_label("Vocab.identity"):
+                        has_dup, figure = identity_duplicates(tbl, kd)
                     m["Vocab.identity"] = dict(v=(FAIL if has_dup else PASS),
                                                measured=f"declared key ({kd}): {figure}")
                     if not has_dup:
@@ -19655,16 +19900,18 @@ def measure(layer_key: str, assets=None) -> dict:
                         # depth census when it ran; otherwise one EXISTS probe.
                         nrows = dc.get("rows")
                         if nrows is None:
-                            nrows = 1 if identity_has_rows(tbl) else 0
+                            with read_label("Vocab.identity"):
+                                nrows = 1 if identity_has_rows(tbl) else 0
                         if nrows == 0:
                             m["Vocab.identity"] = dict(v=NO_DET, measured=f"NO_DETECTOR — table empty: uniqueness "
                                                                           f"under ({kd}) is vacuous on 0 rows")
                 except Unknown as exc:
-                    m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m["Vocab.identity"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             try:
                 _hn, _hn_bad = vocab_alias_honest_null_sets(_sd, tbl, cat["cols"].get(tbl, []))
-                ac = None if _va_declared else (alias_census(tbl, cat["cols"].get(tbl, []), lift=_hn) if _hn else alias_census(tbl, cat["cols"].get(tbl, [])))
+                with read_label("Vocab.alias"):
+                    ac = None if _va_declared else (alias_census(tbl, cat["cols"].get(tbl, []), lift=_hn) if _hn else alias_census(tbl, cat["cols"].get(tbl, [])))
                 if ac and _hn_bad:
                     m["Vocab.alias"] = dict(v=NO_DET, declaration_disagreements=[dict(field="vocab_alias_honest_null", declared=", ".join(sorted(f"{d['table']}.{d['entity_class']}" for d in (_sd.get("vocab_alias_honest_null") or []) if isinstance(d, dict))), measured="; ".join(_hn_bad))],
                                             measured="NO_DETECTOR — the declared vocab_alias_honest_null is refused, so no empty alias set is lifted: " + "; ".join(_hn_bad))
@@ -19686,7 +19933,7 @@ def measure(layer_key: str, assets=None) -> dict:
                     else:
                         m["Vocab.alias"] = dict(v=(PASS if not bad else FAIL), measured=_body, severity=round(frac, 4))
             except Unknown as exc:
-                m["Vocab.alias"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                m["Vocab.alias"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
             # R23: field-level reachability of the target table (reported, not graded).
             m["Reach.fields"], reach = _grade_reach(tbl, cat["cols"].get(tbl, []), dc, caps_sql, caps_note, CHART_ID)
@@ -19704,15 +19951,17 @@ def measure(layer_key: str, assets=None) -> dict:
                 col = cit[0]
                 try:
                     # C2(ii) (pin 24): a placeholder citation is not a source; ldgr_legacy_presence is the one reading (shared predicate with the declared ldgr_source check)
-                    m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
+                    with read_label("Ldgr.source_presence"):
+                        m["Ldgr.source_presence"] = ldgr_legacy_presence(tbl, col, dc["rows"])
                 except Unknown as exc:
-                    m["Ldgr.source_presence"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m["Ldgr.source_presence"] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
         elif tbl:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
 
         # E6 S3: the declared forms (N/A by declaration, or measured against bg_ontology / the declared source column); {} for an undeclared asset
         # (the DECLARED table and, only when it exists in production with known columns, its columns: a table that is absent, or a view, is NO_DETECTOR, never a pass-through)
-        m.update(vocab_alias_declared_check(aid, _va, tbl or None, _target_columns_fact(tbl, cat)))
+        with read_label("Vocab.alias/Ldgr.source_presence (declared)"):
+            m.update(vocab_alias_declared_check(aid, _va, tbl or None, _target_columns_fact(tbl, cat)))
         # N-176: the VALUE reading of Vocab.alias (bounded, read-only samples of every text-capable / json column of the asset's owned tables). It fills an undeclared asset's absent record and OVERRIDES a declared
         # `no_alias_class` (advisory: the data decides); a declared measured alias class, the `synonyms` census and a documented-alias contradiction keep their own readings (`vocab_value_merge`).
         _own_v = {t_: (_target_columns_fact(t_, cat), (cat.get("types") or {}).get(t_) if cat.get("types") is not None else None) for t_ in dict.fromkeys(([tbl] if tbl else []) + list(ctables)) if t_ and t_ in cat["exists"]}
@@ -19788,11 +20037,12 @@ def measure(layer_key: str, assets=None) -> dict:
             try:
                 if prose_tests is None and (prose_decls.get(aid) or {}).get("prose_fields"):
                     prose_tests = python_tests()
-                m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
-                                        prose_vocab))
+                with read_label("Narr/Null (prose checks)"):
+                    m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
+                                            prose_vocab))
             except (Unknown, DeclarationsError) as exc:
                 for _c in NARR_CHECKS + NULL_CHECKS:
-                    m[_c] = dict(v=ERRORED, measured=f"check errored: {exc}")
+                    m[_c] = _read_failure_cell(exc, dict(v=ERRORED, measured=f"check errored: {exc}"))
 
         # SS N-256: the declared vocab_embedded_text is refused (NO_DETECTOR, nothing lifted) when it is unsound, or when the covering prose_none block of the Narr.agree just measured contradicts an exempted column
         if _np_problems:
@@ -19925,6 +20175,7 @@ def measure(layer_key: str, assets=None) -> dict:
                            count_sql_declared=bool((r["count_sql"] or "").strip()),
                            measurements=m))
 
+    set_read_asset(None)                                  # SS N-430: the reads after the per-asset loop are layer-wide again
     credit_sibling_cells(assets)                          # SS N-236: a VERIFIED writer_sibling rider is exercised / built / recorded by its primary's runs
     extra = sorted(set(regd) - known)
     never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
@@ -20782,7 +21033,12 @@ def main() -> int:
                     help="with --registry-check: exit 11 when a required criterion is uncovered (detector NONE and not declared "
                          "per-asset-pending); without it coverage is reported, not gated")
     ap.add_argument("--out", default=None, help="default: <control>/asset_census.json (scoped: asset_census_scoped.json)")
+    ap.add_argument("--read-timings-report", default=None, metavar="CENSUS_JSON",
+                    help="SS N-430: print the slowest psql reads recorded in a finished census file (its `read_timings` head key), then exit; reads no database")
     a = ap.parse_args()
+    if a.read_timings_report is not None:
+        print(read_timings_report(a.read_timings_report))
+        return 0
     if (a.check or a.require_covered) and not a.registry_check:
         ap.error("--check / --require-covered require --registry-check")
     if a.registry_check:
@@ -20791,6 +21047,16 @@ def main() -> int:
         if clash:
             ap.error(f"--registry-check is registry-only and cannot be combined with {', '.join(clash)}")
         return registry_check_main(a.out if a.out is not None else str(CTRL / "registry_coverage_report.json"), a.check, a.require_covered)
+    try:
+        stmt_cap = census_statement_cap_secs()      # SS N-430: a malformed SUVARNA_CENSUS_STATEMENT_CAP_SECS refuses HERE, before any read (exit 14); unset/empty = no cap
+    except CensusCapRefused as exc:
+        print(str(exc.code), file=sys.stderr)
+        return EXIT_STATEMENT_CAP_REFUSED
+    if stmt_cap is not None:
+        print(f"asset_census: statement cap ACTIVE: every census psql session runs under statement_timeout {stmt_cap} s and lock_timeout {CENSUS_LOCK_TIMEOUT_SECONDS} s "
+              "(the integrity runner is exempt); a cancelled read reads NO_DETECTOR", file=sys.stderr)
+    drain_read_log()                                # SS N-430: this run's read timings start empty
+    set_read_asset(None)
     if a.layer is None:
         a.layer = "L0"
     keys = list(LAYERS) if a.layer.lower() == "all" else [k.strip().upper() for k in a.layer.split(",")]
@@ -20824,14 +21090,17 @@ def main() -> int:
             print(f"asset_census: withholding refused — {exc} (nothing written)", file=sys.stderr)
             return EXIT_WITHHOLDING
 
+    set_read_asset("(run)")
     try:
         stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
     except EvalCopyRefused as exc:
         print(f"asset_census: evaluation copy refused: {exc}", file=sys.stderr)
         return EXIT_EVAL_COPY_REFUSED
+    set_read_asset(None)
     if (stamp.get("census_target") or {}).get("declared") == "production":
         print(f"asset_census: {PRODUCTION_RUN_WARNING}", file=sys.stderr)
     out, worst = {}, 0
+    layer_reads: dict[str, list[dict]] = {}
     for k in keys:
         try:
             c = measure(k) if by_layer is None else measure(k, assets=by_layer[k])
@@ -20880,6 +21149,7 @@ def main() -> int:
             n = by[crit]
             print(f"    FAIL {crit}: {len(n)} — {', '.join(n[:6])}{'…' if len(n) > 6 else ''}")
         worst = max(worst, 2 if fails else (3 if (parts or errored) else 0))
+        layer_reads[k] = drain_read_log()           # SS N-430: the reads measuring this layer (the stamp's and the scope check's go to the first)
         if a.emit_gaps:
             try:
                 g = emit_gaps_summary(c)
@@ -20911,6 +21181,10 @@ def main() -> int:
             rollup_error = f"{type(exc).__name__}: {exc}"
             print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup; measured exit "
                   f"{worst} overridden by 5)", file=sys.stderr)
+    if layer_reads:                  # SS N-430: `read_timings` in each layer head, written LAST: no verdict, rollup, fingerprint or ledger row reads it
+        layer_reads[list(layer_reads)[-1]] += drain_read_log()
+        for k, entries in layer_reads.items():
+            out[k]["read_timings"] = dict(read_timings_summary(entries), statement_cap_secs=stmt_cap)
     if by_layer is not None:    # E1.9: the file header says it is partial, before any layer is read
         out = {"scope": dict(assets=sorted(x for k in keys for x in by_layer[k]), partial=True, layers=list(keys)), **out}
     text = json.dumps(out, indent=1, default=str) + "\n"
