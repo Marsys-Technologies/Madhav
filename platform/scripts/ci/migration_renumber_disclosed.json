@@ -142,6 +142,15 @@
       "reason": "K0a-4 draft 1336 was applied only to disposable lane database ky_k5 by item precheck before the live PR sweep identified Suvarna PR #3330 as the owner of number 1336; coordination reserves 1337 for K2-1b. Renamed to 1338 without changing SQL bytes. Every statement is ADD COLUMN IF NOT EXISTS; deliberately execute it again under 1338 to validate the final migration filename through the normal runner. This does not disclose or match the unrelated Suvarna migration. No production application by k5.",
       "disclosed_via": "KALA-YANTRA K0a-4, k5 cycle 224; local item precheck MigrationRenumberedError, recorded before PR handover",
       "disclosed_on": "2026-10-09"
+    },
+    {
+      "new_filename": "1349_k3_1_negative_space_contract.sql",
+      "applied_filename": "1343_k3_1_negative_space_contract.sql",
+      "sql_identity": "95ac576094fa6dffd2f6c1dad5d9ad1971f4aea5d172d4e305c0f453d0f19fc5",
+      "disposition": "intentional-reapply",
+      "reason": "K3-1 draft 1343 was applied only to disposable lane databases (ky_k1 and ky_v3) before the live coordination/open-PR sweep identified Suvarna PR #3368 as the owner of number 1343 and PR #3371 as owner of 1344-1348. Renamed to 1349 without changing SQL bytes (SHA256 2dc36ccb98d32bac2ebe848fe3fb21239e995e677390caf1f253af6d58fd78c8). All ALTER statements use ADD COLUMN IF NOT EXISTS and the CHECK is guarded by its exact table/constraint name; intentionally execute under the final filename through the normal runner, preserving old ledger rows. Same disposable-only renumber disposition as K0a-4 1336->1338. This pins only this K3-1 SQL identity, never the unrelated Suvarna 1343 migration. No production application by k1.",
+      "disclosed_via": "KALA-YANTRA K3-1, k1 cycle 394; v3 cycle220 collision finding and local item precheck MigrationRenumberedError recorded before repaired PR handoff",
+      "disclosed_on": "2026-10-09"
     }
   ]
 }
