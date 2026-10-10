@@ -1,16 +1,12 @@
 ---
 artifact: PARISHODHANA_REPORT
 canonical_id: PARISHODHANA_REPORT_v1_0
-version: 1.1
+version: 1.0
 status: CLOSED
 created: 2026-07-28
 author: PARIŚODHANA Conductor
 mode: FULLY AUTONOMOUS per PARISHODHANA_BRIEF_v1_0.md — native-confirmed real-time authorization
   this session (see PARISHODHANA_RECONCILIATION_v1_0.md §5 for the T3-7 disposition).
-changelog:
-  - "v1.1: filled in §4 (dark-corpus re-measurement, real sampled numbers from PR #865) and §10
-    (cleanup, actual result) — both were placeholders in v1.0 pending a still-running background
-    agent. No other section changed."
 ---
 
 # PARIŚODHANA — Close Report
@@ -111,34 +107,11 @@ state directly, merge-state ≠ verification-state):
 
 ## §4 — Dark-corpus re-measurement
 
-Ran post-deploy (PR #865), against the final head, on both canonical charts, via the unmodified
-sealed harness (`evals/omega7/darkcorpus_match.py` + `build_report.py`). **Sampled, not full
-coverage — disclosed explicitly:** 5 of 21 replay questions per domain per chart (20 fresh runs
-total), not the full 21/21. The served-universe denominator was regenerated live and found
-**unchanged** from the stale 2026-07-25 snapshot for chart `482012f1` (12,450 wealth / 12,455
-career) — expected, since B1/B2 were serving-layer wiring fixes, not data rebuilds; chart
-`1c826d5a`'s denominator (12,203 wealth / 12,207 career) was computed for the first time.
-
-| Domain | Chart | Served | Bright | Dark | Coverage |
-|---|---|---|---|---|---|
-| wealth | 482012f1 | 12,450 | 89 | 12,361 | 0.71% |
-| career | 482012f1 | 12,455 | 125 | 12,330 | 1.00% |
-| wealth | 1c826d5a | 12,203 | 80 | 12,123 | 0.66% |
-| career | 1c826d5a | 12,207 | 363 | 11,844 | 2.97% |
-
-**A raw comparison to the stale 5.58%/8.47% baseline (full 21/21) is invalid** — bright count
-accumulates over however many questions are run, so a 5-question sample mechanically scores lower
-than a 21-question one regardless of any underlying change. Re-scoring the *same 5 question IDs*
-against the archived pre-deploy transcripts showed a large bright-count drop (wealth 506→89,
-career 1,048→125) that could look like a regression — but the agent traced it to a **tool-choice
-confound, not a defect**: the archived transcripts called the raw fact-dump tool
-(`ganita_chart_facts_get`, whose output the matcher string-matches easily) heavily, while this
-session's fresh replay runs answered the same questions via composed/prose tools (`assess_wealth`,
-`judgment_query`) that are plausibly richer for a real user but harder for the harness's literal
-token-matcher to credit. **No regression or improvement is concluded either way** — that requires
-either a full 21/21 run or a substance-level grader, neither of which this session performed. This
-honest ambiguity, the sample method, and the full per-question detail are appended to
-`capability_map/DARK_CORPUS_REPORT_v1_0.md`.
+[Pending — a dedicated agent is re-running the sealed dark-corpus harness against both canonical
+charts on the final deployed head, per B2 sub-problem 3. This section will be completed once that
+run reports; see `capability_map/DARK_CORPUS_REPORT_v1_0.md` for the appended, dated result once
+available. If the campaign closes before that agent reports, this is itself disclosed as an open
+item rather than backfilled with an estimate.]
 
 ## §5 — Preserve-list result
 
@@ -203,22 +176,7 @@ carried here per its instruction not to silently drop them.
 
 ## §10 — Cleanup
 
-All 12 Phase-B/C-follow-up agent worktrees (`.claude/worktrees/agent-*` for every PARIŚODHANA
-branch) removed. All 15 corresponding local branches force-deleted after independently confirming
-each PR's `MERGED` state via `gh pr view` (squash-merges aren't `git merge-base --is-ancestor`
-detectable, so PR state was the correct check, not ancestry). Remote branches for every merged PR
-were deleted automatically by GitHub's default merge behavior.
-
-**Residual, disclosed rather than forced:** 3-4 local branches used directly in the shared main
-working directory (`parishodhana/phase-a-reconciliation`, `parishodhana/phase-close`,
-`parishodhana/dark-corpus-remeasure`, and this closing branch) remain undeleted. This directory is
-visibly shared with other concurrently-running sessions/campaigns (SUDDHA-VACA, PARIPRASHNA-BUILD,
-and others observed mid-flight throughout this campaign); switching its checked-out branch to
-free these names up risked disrupting another session's in-progress state for a purely cosmetic
-gain. Left in place rather than force-switched. A stray, uncommitted, superseded draft of root
-`CLAUDECODE_BRIEF.md` (belonging to the SUDDHA-VACA campaign, already superseded by their own
-later commit on `main`) was found sitting in this shared working tree partway through the session
-— per rail §6, it was never staged, committed, or discarded, only worked around.
-
-`git status` on `origin/main` (the authoritative state): clean. Production confirmed == `main`
-HEAD by direct Cloud Run image-tag inspection for both `amjis-web` and `amjis-mcp` (§2).
+[To be completed as the final step of this session — worktrees under `.claude/worktrees/agent-*`
+and `.worktrees/parishodhana-*` removed, local PARIŚODHANA branches deleted (remote branches for
+merged PRs are deleted automatically by GitHub's default merge behavior), `git status` confirmed
+clean.]
