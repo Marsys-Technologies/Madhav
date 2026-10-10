@@ -88,6 +88,6 @@ if last_sid in M2A_SESSION_TABLE:
         sessions_total = int(brief.get('sessions_total', 5))
         brief['session_display'] = f'Session {num} of {sessions_total} — {label}'
     else:
-        brief['session_display'] = 'MILESTONE COMPLETE — report to Abhisek'
+        brief['session_display'] = 'MILESTONE COMPLETE — report to the native'
 
 print(json.dumps({'phases': phases, 'brief': brief, 'last_session': last_session}))

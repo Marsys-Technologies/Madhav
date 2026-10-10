@@ -659,7 +659,7 @@ def golden_before():
         for cusp in range(12):                                                               # kp_cuspal_significators: 12 cusps x 5 keys x 5 ayanamshas = 300 rows (tiers[4])
             for key in ("sign_lord", "star_lord", "sub_lord", "sub_sub_lord", "cusp_degree_text"):
                 s["chart_facts"].append([ay, "kp_cuspal_significators", f"CUSP{cusp + 1}", key, "Sun", "", "two_pass_verified"])
-    s["dashas"].append(["lahiri_chitrapaksha", "mudda", 1, "/Sun", "1984-02-05T10:43:00+00:00", "1985-02-05T10:43:00+00:00"])
+    s["dashas"].append(["lahiri_chitrapaksha", "mudda", 1, "/Sun", "2000-01-01T06:00:00+00:00", "2001-01-01T06:00:00+00:00"])
     return s
 
 

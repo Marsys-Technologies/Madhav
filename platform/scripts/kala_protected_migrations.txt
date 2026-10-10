@@ -13,3 +13,6 @@
 #   00_ARCHITECTURE/briefs/kalayantra/KALA_PROTECTED_WINDOW_v1_0.md
 1330_kala_layer_manifest_candidates.sql
 1334_kala_layer_verifier_conflict_read_grant.sql
+1339_k2_1b_promise_graph_columns.sql
+1341_k1_2_avadhi_candidate_dossiers.sql
+1342_k2_2_f1_relationships.sql

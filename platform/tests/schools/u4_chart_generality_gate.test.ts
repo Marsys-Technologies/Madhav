@@ -1,113 +1,79 @@
 /**
  * u4_chart_generality_gate.test.ts — CHART-GENERALITY GATE (D28)
  *
- * The critical integrity gate for U4 school consensus activation.
- * Proves that the 7-school engines read live ChartData (not hardcoded ABHISEK presets).
+ * The integrity gate for school consensus. Proves the 7-school engines read the live
+ * ChartData and the live signals passed in, and carry NO hardcoded preset or stored chart
+ * (SS N-362: the former native-chart presets were removed; CLAUDE.md §N.7).
  *
- * GATE: runFullTriangulation(SYNTHETIC_CHART) MUST produce per-domain school scores that
- * DIFFER materially from runFullTriangulation(ABHISEK_CHART).
- * If identical → engines still reading defaultSignals → de-hardcode FAILED.
+ * GATE (rewritten for the no-defaults engines):
+ *   1. With no live signals, two very different charts give the same honest result:
+ *      every school not available (nothing chart-specific leaks out of the engines).
+ *   2. With the same live signals, two different charts give the same per-school scores
+ *      (scores depend on signals only, not on a stored chart).
+ *   3. With different live signals, scores differ (the engines do read the signals).
  *
- * Also covers:
- *   AC1: buildChartData returns different planets for different chartIds (mock)
- *   AC2: engine receives live signals (assert defaultSignals NOT reached for chart with signals)
- *   AC3: D28 generality gate — synthetic fixture yields DIFFERENT scores than native
- *   AC4: 78 existing tests still pass (regression; verified separately)
- *   AC5: Tājika/BNN pending flags resolved via getTajikaYear + gochara service data
- *   E2: per-domain authority weights produce weighted score
- *   E3: output carries meanDomainScore + stdDomainScore
- *   Anti-drift: runner never writes to DB tables
+ * Also covers: live-signal routing, E2 authority weights, E3 magnitude, pending flags,
+ * runner stays DB-free.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { ABHISEK_CHART } from '@/lib/schools/types'
-import { SYNTHETIC_CHART } from '@/lib/schools/__fixtures__/synthetic_chart'
+import { SYNTHETIC_CHART, SYNTHETIC_CHART_B } from '@/lib/schools/__fixtures__/synthetic_chart'
 import { runFullTriangulation, runSchoolsForDomain } from '@/lib/schools/school_runner'
 import { DOMAIN_AUTHORITY_WEIGHTS } from '@/lib/schools/chart_data_adapter'
+import { ALL_DOMAINS, liveSignalsForAll } from './_support'
 
 // ── D28 CHART-GENERALITY GATE ────────────────────────────────────────────────
 
 describe('D28 CHART-GENERALITY GATE', () => {
-  it('SYNTHETIC_CHART has different metadata than ABHISEK_CHART', () => {
-    expect(SYNTHETIC_CHART.chartId).not.toBe(ABHISEK_CHART.chartId)
-    expect(SYNTHETIC_CHART.ascendant).not.toBe(ABHISEK_CHART.ascendant)
-    expect(SYNTHETIC_CHART.moonSign).not.toBe(ABHISEK_CHART.moonSign)
-    expect(SYNTHETIC_CHART.sunSign).not.toBe(ABHISEK_CHART.sunSign)
-    // Saturn debilitated in fixture vs exalted in native — must differ
-    const synSaturn = SYNTHETIC_CHART.planets.find(p => p.planet === 'saturn')
-    const natSaturn = ABHISEK_CHART.planets.find(p => p.planet === 'saturn')
-    expect(synSaturn?.isExalted).toBe(false)
-    expect(synSaturn?.isDebilitated).toBe(true)
-    expect(natSaturn?.isExalted).toBe(true)
-    expect(natSaturn?.isDebilitated).toBe(false)
+  it('the two fictional fixtures differ in every headline field', () => {
+    expect(SYNTHETIC_CHART.chartId).not.toBe(SYNTHETIC_CHART_B.chartId)
+    expect(SYNTHETIC_CHART.ascendant).not.toBe(SYNTHETIC_CHART_B.ascendant)
+    expect(SYNTHETIC_CHART.moonSign).not.toBe(SYNTHETIC_CHART_B.moonSign)
+    expect(SYNTHETIC_CHART.sunSign).not.toBe(SYNTHETIC_CHART_B.sunSign)
   })
 
-  it('runFullTriangulation produces DIFFERENT per-domain scores for synthetic vs native (D28 PASS)', async () => {
-    const [nativeResults, syntheticResults] = await Promise.all([
-      runFullTriangulation(ABHISEK_CHART),
-      runFullTriangulation(SYNTHETIC_CHART),
-    ])
-
-    // Collect per-domain mean scores
-    const nativeByDomain = Object.fromEntries(nativeResults.map(r => [r.domain, r.convergence.meanDomainScore]))
-    const syntheticByDomain = Object.fromEntries(syntheticResults.map(r => [r.domain, r.convergence.meanDomainScore]))
-
-    const domains = ['CAREER', 'HEALTH', 'RELATIONSHIP', 'SPIRITUAL', 'PSYCHOLOGICAL'] as const
-
-    // At least 3 domains must differ by ≥ 0.1 (material difference threshold)
-    const domainsDifferingMaterially = domains.filter(d =>
-      Math.abs((nativeByDomain[d] ?? 0) - (syntheticByDomain[d] ?? 0)) >= 0.1
-    )
-
-    expect(domainsDifferingMaterially.length).toBeGreaterThanOrEqual(3)
-
-    // The total per-school scores across domains must differ
-    const nativeTotalScores = nativeResults.flatMap(r => Object.values(r.convergence.perSchoolScores ?? {}))
-    const syntheticTotalScores = syntheticResults.flatMap(r => Object.values(r.convergence.perSchoolScores ?? {}))
-    const nativeSum = nativeTotalScores.reduce((a, b) => a + b, 0)
-    const syntheticSum = syntheticTotalScores.reduce((a, b) => a + b, 0)
-    expect(Math.abs(nativeSum - syntheticSum)).toBeGreaterThan(0.4)
+  it('no live signals: both charts give an identical all-not-available triangulation', async () => {
+    const [a, b] = await Promise.all([runFullTriangulation(SYNTHETIC_CHART), runFullTriangulation(SYNTHETIC_CHART_B)])
+    for (const set of [a, b]) {
+      expect(set).toHaveLength(5)
+      for (const r of set) {
+        expect(r.convergence.convergenceLevel).toBe('NOT_AVAILABLE')
+        expect(r.schoolResults.every(s => s.available === false)).toBe(true)
+        expect(r.schoolResults.every(s => s.domainScore === null)).toBe(true)
+      }
+    }
   })
 
-  it('CAREER domain: Saturn-in-10H exalted yoga produces higher score for native than synthetic', async () => {
-    const [nativeResult, syntheticResult] = await Promise.all([
-      runSchoolsForDomain(ABHISEK_CHART, 'CAREER'),
-      runSchoolsForDomain(SYNTHETIC_CHART, 'CAREER'),
-    ])
-    // Native has exalted Saturn 10H (dominant career raja yoga);
-    // Synthetic has debilitated Saturn 10H — must score lower on CAREER.
-    expect(nativeResult.convergence.meanDomainScore)
-      .toBeGreaterThan(syntheticResult.convergence.meanDomainScore - 0.01)
-    // Not strictly required to be higher (other factors may compensate) but
-    // they must not be IDENTICAL — that would indicate hardcoded preset.
-    expect(nativeResult.convergence.meanDomainScore)
-      .not.toBeCloseTo(syntheticResult.convergence.meanDomainScore, 2)
+  it('same live signals on different charts: identical per-school scores (no stored-chart influence)', async () => {
+    const live = { liveSignals: liveSignalsForAll(3.9) }
+    const [a, b] = await Promise.all([runFullTriangulation(SYNTHETIC_CHART, live), runFullTriangulation(SYNTHETIC_CHART_B, live)])
+    for (let i = 0; i < a.length; i++) {
+      expect(a[i].convergence.perSchoolScores).toEqual(b[i].convergence.perSchoolScores)
+      expect(a[i].convergence.meanDomainScore).toBe(b[i].convergence.meanDomainScore)
+    }
+  })
+
+  it('different live signals: scores differ materially (engines read the signals)', async () => {
+    const hi = await runFullTriangulation(SYNTHETIC_CHART, { liveSignals: liveSignalsForAll(4.6) })
+    const lo = await runFullTriangulation(SYNTHETIC_CHART, { liveSignals: liveSignalsForAll(1.4) })
+    for (let i = 0; i < hi.length; i++) {
+      expect((hi[i].convergence.meanDomainScore as number) - (lo[i].convergence.meanDomainScore as number)).toBeGreaterThan(2)
+    }
   })
 })
 
-// ── U4 AC2: live signals path doesn't reach defaultSignals ──────────────────
+// ── live signals routing ─────────────────────────────────────────────────────
 
-describe('U4 AC2: live signals routing', () => {
+describe('live signals routing', () => {
   it('runSchoolsForDomain passes liveSignals to each engine when provided', async () => {
-    const mockSignals = [
-      { signalId: 'SIG.LIVE.001', signalName: 'Live test signal', score: 4.5, weight: 0.9 },
-    ]
-    // Provide signals for all 7 schools; any school that hits defaultSignals must warn
-    const liveSignals = {
-      parashari: mockSignals, jaimini: mockSignals, tajika: mockSignals,
-      kp: mockSignals, nadi: mockSignals, bnn: mockSignals, yogini: mockSignals,
-    }
-    const consoleSpy = vi.spyOn(console, 'warn')
-    const result = await runSchoolsForDomain(ABHISEK_CHART, 'CAREER', { liveSignals })
-    // When all 7 schools receive live signals, no defaultSignals warning should fire
-    const defaultSignalsWarnings = consoleSpy.mock.calls.filter(
-      args => String(args[0]).includes('defaultSignals') || String(args[0]).includes('fallback')
-    )
-    expect(defaultSignalsWarnings.length).toBe(0)
+    const result = await runSchoolsForDomain(SYNTHETIC_CHART, 'CAREER', { liveSignals: liveSignalsForAll(4.5) })
     expect(result.schoolResults.length).toBe(7)
-    consoleSpy.mockRestore()
+    expect(result.schoolResults.every(r => r.available === true)).toBe(true)
+    for (const r of result.schoolResults) {
+      expect(r.topSignals.every(t => t.signalId.startsWith('SIG.TEST.'))).toBe(true)
+    }
   })
 })
 
@@ -115,28 +81,23 @@ describe('U4 AC2: live signals routing', () => {
 
 describe('E2: domain authority weighting', () => {
   it('DOMAIN_AUTHORITY_WEIGHTS has 5 domains × 7 schools each summing to 1.0', () => {
-    const domains = ['CAREER', 'HEALTH', 'RELATIONSHIP', 'SPIRITUAL', 'PSYCHOLOGICAL'] as const
     const schools = ['parashari', 'jaimini', 'kp', 'tajika', 'nadi', 'bnn', 'yogini'] as const
-    for (const domain of domains) {
+    for (const domain of ALL_DOMAINS) {
       const weights = DOMAIN_AUTHORITY_WEIGHTS[domain]
       const sum = schools.reduce((acc, s) => acc + (weights[s] ?? 0), 0)
       expect(Math.abs(sum - 1.0)).toBeLessThan(0.005)
     }
   })
 
-  it('runSchoolsForDomain result carries weightedMeanScore', async () => {
-    const result = await runSchoolsForDomain(ABHISEK_CHART, 'CAREER')
-    expect(result).toHaveProperty('weightedMeanScore')
+  it('runSchoolsForDomain result carries weightedMeanScore when schools are available', async () => {
+    const result = await runSchoolsForDomain(SYNTHETIC_CHART, 'CAREER', { liveSignals: liveSignalsForAll(3.9) })
     expect(typeof result.weightedMeanScore).toBe('number')
-    expect(result.weightedMeanScore).toBeGreaterThan(0)
+    expect(result.weightedMeanScore).toBeCloseTo(3.9, 2)
   })
 
-  it('weightedMeanScore differs from unweighted meanDomainScore', async () => {
-    const result = await runSchoolsForDomain(ABHISEK_CHART, 'CAREER')
-    // They don't have to differ dramatically, but weighting non-uniform → likely differ
-    // (unless all schools happen to score exactly the same AND weights are uniform, which they're not)
-    expect(result.weightedMeanScore).toBeDefined()
-    expect(result.convergence.meanDomainScore).toBeDefined()
+  it('weightedMeanScore is null (not zero) when no school is available', async () => {
+    const result = await runSchoolsForDomain(SYNTHETIC_CHART, 'CAREER')
+    expect(result.weightedMeanScore).toBeNull()
   })
 })
 
@@ -144,37 +105,31 @@ describe('E2: domain authority weighting', () => {
 
 describe('E3: direction and magnitude in output', () => {
   it('convergence carries meanDomainScore + stdDomainScore', async () => {
-    const result = await runSchoolsForDomain(ABHISEK_CHART, 'SPIRITUAL')
-    expect(result.convergence.meanDomainScore).toBeDefined()
-    expect(result.convergence.stdDomainScore).toBeDefined()
+    const result = await runSchoolsForDomain(SYNTHETIC_CHART, 'SPIRITUAL', { liveSignals: liveSignalsForAll(3.5) })
     expect(result.convergence.meanDomainScore).toBeGreaterThanOrEqual(0)
     expect(result.convergence.stdDomainScore).toBeGreaterThanOrEqual(0)
   })
 
   it('convergenceNarrative describes direction+magnitude', async () => {
-    const result = await runSchoolsForDomain(ABHISEK_CHART, 'CAREER', { includeNarratives: true })
+    const result = await runSchoolsForDomain(SYNTHETIC_CHART, 'CAREER', { liveSignals: liveSignalsForAll(4.5), includeNarratives: true })
     const narrative = result.convergence.convergenceNarrative ?? ''
-    // Narrative should reference either a score or a direction word
-    const hasMagnitude = /\d+\.\d+|strong|high|positive|exceptional|moderate|low/i.test(narrative)
-    expect(hasMagnitude).toBe(true)
+    expect(/\d+\.\d+|strong|high|positive|exceptional|moderate|low/i.test(narrative)).toBe(true)
   })
 })
 
-// ── AC5: Tājika / BNN flags resolved ──────────────────────────────────────
+// ── pending flags ────────────────────────────────────────────────────────────
 
-describe('AC5: pending flag resolution', () => {
+describe('pending flag resolution', () => {
   it('synthetic fixture has no pending flags (clean baseline)', () => {
     expect(SYNTHETIC_CHART.pendingFlags).toEqual([])
   })
 
-  it('tajika_engine produces non-pending result when varshaKundaliYear is set', async () => {
+  it('tajika_engine produces non-pending result when the chart carries no pending flag', async () => {
     const chartWithYear = { ...SYNTHETIC_CHART, varshaKundaliYear: 2026 }
-    const result = await runSchoolsForDomain(chartWithYear, 'CAREER')
+    const result = await runSchoolsForDomain(chartWithYear, 'CAREER', { liveSignals: liveSignalsForAll(3.5) })
     const tajika = result.schoolResults.find(r => r.school === 'tajika')
     expect(tajika).toBeDefined()
-    // When varshaKundaliYear is provided, no VARSHA_KUNDALI_PENDING flag
-    const hasPendingFlag = tajika?.pendingFlags?.includes('VARSHA_KUNDALI_PENDING')
-    expect(hasPendingFlag).toBeFalsy()
+    expect(tajika?.pendingFlags?.includes('VARSHA_KUNDALI_PENDING')).toBeFalsy()
   })
 })
 
@@ -182,8 +137,6 @@ describe('AC5: pending flag resolution', () => {
 
 describe('Anti-drift: runner stays DB-free', () => {
   it('school_runner.ts does not import from db/client directly', () => {
-    // The runner imports from chart_data_adapter (DOMAIN_AUTHORITY_WEIGHTS) — fine.
-    // It must NOT import query/getPool from db/client.
     const src = fs.readFileSync(
       path.join(__dirname, '../../src/lib/schools/school_runner.ts'),
       'utf-8'
@@ -194,8 +147,8 @@ describe('Anti-drift: runner stays DB-free', () => {
     expect(src).not.toContain('UPDATE school_')
   })
 
-  it('SYNTHETIC_CHART.chartId is not the native chart_id', () => {
-    expect(SYNTHETIC_CHART.chartId).not.toBe('482012f1-710e-4a25-994a-93821f5871aa')
-    expect(SYNTHETIC_CHART.chartId).not.toBe('abhisek_primary')
+  it('SYNTHETIC_CHART.chartId is not a real chart_id', () => {
+    expect(SYNTHETIC_CHART.chartId).toMatch(/^synthetic-/)
+    expect(SYNTHETIC_CHART_B.chartId).toMatch(/^synthetic-/)
   })
 })
