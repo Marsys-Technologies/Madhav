@@ -63,8 +63,8 @@ MSR_CLASSES = {
 
 # (file, line, substring the line must contain): every cite the evidence text carries as `<basename>:<line>`
 _QS = _L + "L2_bodha/query_signals.ts"
-MSR_SERVED = [(_QS, 142, "'signal_type_class'"), (_QS, 143, "'signal_summary_text', 'signal_headline_text'"),
-              (_QS, 463, "m.signal_type_class = "), (_QS, 527, "FROM bodha_msr_signals m")]
+MSR_SERVED = [(_QS, 143, "'signal_type_class'"), (_QS, 144, "'signal_summary_text', 'signal_headline_text'"),
+              (_QS, 478, "m.signal_type_class = "), (_QS, 546, "FROM bodha_msr_signals m")]
 
 KEPT = {
     "bo_arudha": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_arudha.py", emitter=_BW + "arudha_emitter.py", cites=MSR_SERVED + [
@@ -80,9 +80,9 @@ KEPT = {
         (_WR + "bo_nakshatra_semantic.py", 141, "row = build_signal_row("), (_WR + "bo_nakshatra_semantic.py", 168, "conn.execute(_INSERT_SQL, row)"),
         (_WR + "bo_nakshatra_semantic.py", 175, "INSERT INTO public.bodha_msr_signals"),
         (_WR + "bo_nakshatra_semantic.py", 208, "%(signal_summary_text)s, %(signal_headline_text)s"),
-        (_BW + "nakshatra_semantic_emitter.py", 251, "headline_bits = [f"), (_BW + "nakshatra_semantic_emitter.py", 258, 'headline = " | ".join(headline_bits)'),
-        (_BW + "nakshatra_semantic_emitter.py", 260, "summary = ("),
-        (_BW + "nakshatra_semantic_emitter.py", 281, '"signal_summary_text": summary'), (_BW + "nakshatra_semantic_emitter.py", 282, '"signal_headline_text": headline')]),
+        (_BW + "nakshatra_semantic_emitter.py", 252, "headline_bits = [f"), (_BW + "nakshatra_semantic_emitter.py", 259, 'headline = " | ".join(headline_bits)'),
+        (_BW + "nakshatra_semantic_emitter.py", 261, "summary = ("),
+        (_BW + "nakshatra_semantic_emitter.py", 282, '"signal_summary_text": summary'), (_BW + "nakshatra_semantic_emitter.py", 283, '"signal_headline_text": headline')]),
     "bo_special_lagna": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_special_lagna.py", emitter=_BW + "special_lagna_emitter.py", cites=MSR_SERVED + [
         (_WR + "bo_special_lagna.py", 134, "row = build_signal_row("), (_WR + "bo_special_lagna.py", 155, "conn.execute(_INSERT_SQL, row)"),
         (_WR + "bo_special_lagna.py", 162, "INSERT INTO public.bodha_msr_signals"),
@@ -131,9 +131,9 @@ KEPT = {
         (_WR + "bo_anveshana.py", 751, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 753, 'surface=f"{subject} as an individual'),
         (_WR + "bo_anveshana.py", 754, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 755, 'delta=f"Broker role'),
         (_WR + "bo_anveshana.py", 848, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
-        (_L + "L2_bodha/query_discoveries.ts", 122, "surface_reading, depth_reading, surface_depth_delta"),
-        (_L + "L2_bodha/query_discoveries.ts", 123, "hypothesis_text, why_an_acharya_misses_it"),
-        (_L + "L2_bodha/query_discoveries.ts", 126, "FROM bodha_discoveries")]),
+        (_L + "L2_bodha/query_discoveries.ts", 137, "surface_reading, depth_reading, surface_depth_delta"),
+        (_L + "L2_bodha/query_discoveries.ts", 138, "hypothesis_text, why_an_acharya_misses_it"),
+        (_L + "L2_bodha/query_discoveries.ts", 141, "FROM bodha_discoveries")]),
     "mi_darshana": dict(table="mimamsa_insight_units", cols=["statement"], writer=_WR + "mi_darshana.py", emitter=None, cites=[
         (_WR + "mi_darshana.py", 230, "statement = ("), (_WR + "mi_darshana.py", 296, "statement = ("), (_WR + "mi_darshana.py", 303, "statement = ("),
         (_WR + "mi_darshana.py", 308, "statement = ("), (_WR + "mi_darshana.py", 370, 'r["statement"],'), (_WR + "mi_darshana.py", 400, "statement = ("),
