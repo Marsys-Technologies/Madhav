@@ -203,12 +203,13 @@ def test_gestalt_notes_and_labels_golden(monkeypatch):
     }
 
     assert headline_epistemic == {
-        "ayanamsha_count": 5,
+        "ayanamsha_count": None,                      # SS N-347: not the constant 5; the post-loop pass patches the measured count
         "fragility_class": None,
         "note": (
-            "fragility_class is None here by construction — a single ayanamsha's write cannot "
-            "compare across ayanamshas. It is patched to a real value once all ayanamsha rows "
-            "for this build exist; see run()'s post-loop _assess_fragility() pass."
+            "ayanamsha_count and fragility_class are None here by construction — a single "
+            "ayanamsha's write can neither count nor compare across ayanamshas. They are "
+            "patched to real values once all ayanamsha rows for this build exist; see "
+            "run()'s post-loop _assess_fragility() pass."
         ),
     }
 
@@ -270,7 +271,7 @@ def test_gestalt_note_after_patch_matches_the_patched_state_not_the_transient_on
         "across 2 ayanamsha rows of this build; 1 domain(s) comparable across >=2 rows, "
         "0 with a disagreeing dominant valence."
     )
-    assert final["ayanamsha_count"] == 5
+    assert final["ayanamsha_count"] == 2                                  # the two rows the build wrote, not the canonical list size (5)
 
 
 def test_gestalt_note_for_a_none_class_states_why(monkeypatch):
