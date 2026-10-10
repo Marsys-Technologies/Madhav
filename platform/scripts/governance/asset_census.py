@@ -394,6 +394,9 @@ NA_RULE_DECISIONS: dict[str, str] = {
     "Carr.D3#measured:no-table-no-prose": "SS N-283: a table-less service probe stores no value, so Carr.D3 has nothing to apply to; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row (empty target_table, no count_sql table), the @register scan, no declared produced_tables and no declared carriage nature",
     "Vocab.identity#measured:no-table-no-prose": "SS 2026-10-05 no-table-no-prose: Vocab.identity applies to a declared key of a non-empty table (its own applicability text); a service that owns no table has neither; declaration-keyed (no_table) and checked against has_writer false, the service kind, the registry row and the @register scan",
     "Idem.pattern#measured:update-only-by-intent": "SS 2026-10-05 Idem update-only: the writer UPDATEs its own table(s) in place by declared intent (update_only {why, evidence}); checked against the writer scope: only UPDATE statements on the own tables, no INSERT / upsert / DELETE, no cut or dynamic statement, no accumulating assignment",
+    # SS N-430 (views): a declared `passive_projection` (a view whose writer runs no DDL or DML), CHECKED against the writer scan (static_read machinery, executed DDL forbidden) and the live catalog (the target is a view). Inert until an asset declares one.
+    "Idem.pattern#measured:passive-projection": "SS N-430 Idem passive projection: the asset is a view whose writer runs no DDL or DML, so there is no own-table write to replace; declaration-keyed (passive_projection {why, evidence}) and checked against the writer scope (no write of any table, scan complete, no executed DDL) and the live catalog (the target is a view)",
+    "Build.count_integrity#measured:passive-projection-constant-count": "SS N-430 count_integrity passive projection: a view target whose registry count_sql is a constant by design (the census counts the view itself); declaration-keyed (passive_projection {why, evidence}) and checked against the same writer scan and the live catalog, and against the constant count_sql of a view target",
     "Earn.build_record#measured:no-writer-registry-agrees": "SS 2026-10-05 build_record no-writer/static: no writer; declaration-keyed (has_writer: false) and checked against the registry row, the @register scan and the asset's build_run_assets attempts",
     "Narr.lint#measured:lint-not-applicable": "N-150 R2: N/A only for an asset that declares lint_none and whose own lint scan agrees (a scanned writer file, no lint surface); never on the declaration alone",
     # N-176 (SS 2026-10-07): Vocab.alias is VALUE-keyed. N/A only where bounded, read-only reads of every text-capable / json column of the asset's owned tables found no graha / rashi / nakshatra / bhava value; the evidence block names
@@ -409,9 +412,9 @@ NA_RULE_DECISIONS: dict[str, str] = {
 NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.registered": ("no-writer-registry-agrees",),
     "Build.contract": ("no-writer-registry-agrees",),
-    "Idem.pattern": ("no-writer-registry-agrees", "update-only-by-intent"),
+    "Idem.pattern": ("no-writer-registry-agrees", "update-only-by-intent", "passive-projection"),
     "Build.target": ("service-no-target-table", "no-writer-no-target-table"),
-    "Build.count_integrity": ("no-writer-no-count-sql", "service-no-writer-no-count-sql"),
+    "Build.count_integrity": ("no-writer-no-count-sql", "service-no-writer-no-count-sql", "passive-projection-constant-count"),
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql", "service-no-writer-no-count-sql"),
     "Count.floor": ("target-floor-zero", "zero-row-convention-holds"),
     "Dens.served": ("no-served-surface", "dens-not-served", "dens-owned-by-sibling"),
@@ -615,6 +618,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                 bad = bad or lint_na_problem(crit, meas)                                      # N-150 R2: a lint-not-applicable N/A needs the scan's agreement
                 bad = bad or no_writer_na_problem(crit, meas)                                 # N-150 R5: a no-writer N/A needs the declaration and the two agreeing facts
                 bad = bad or update_only_na_problem(crit, meas)                               # SS 2026-10-05: an update-only N/A needs the declaration and the agreeing scan
+                bad = bad or passive_projection_na_problem(crit, meas)                        # SS N-430: a passive-projection N/A needs the declaration and the agreeing scan
                 bad = bad or no_table_na_problem(crit, meas)                                  # SS 2026-10-05: a no-table N/A needs the declaration and the agreeing registry / code facts
                 bad = bad or vocab_values_na_problem(crit, meas)                              # N-176: a no-vocabulary-values N/A needs its checked bounded value reading
                 bad = bad or unsourced_declared_na_problem(crit, meas)                        # N-177: an unsourced-declared N/A needs its verified residual block
@@ -626,6 +630,10 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                             decision=NA_RULE_DECISIONS[rid], reason="measured N/A under a declared rule")
             return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
                         reason="measured N/A but N/A rule undecided (N-22): an undeclared N/A is not N/A")
+        if crit == "Vocab.identity" and v == PASS and meas.get("logical_key") is not None:
+            bad = logical_key_block_problem(meas)                                  # SS N-430: a logical-key PASS is honoured ONLY with its complete checked block
+            if bad:
+                return dict(criterion=crit, v=NO_DET, state="MEASURED", reason=bad)
         if crit == "Carr.D1" and v in (PASS, PARTIAL):
             # S2 (adversarial review MED 4): a D1 verdict is honoured ONLY with its evidence: the verified chunk ledger and the digest of
             # the cut span, a citation_state that is not unsourced/refuted, and (PASS) every row matched with the declared row count.
@@ -2640,6 +2648,94 @@ def validate_update_only_declaration(where: str, e: dict) -> None:
         raise DeclarationsError(f"{where}.{bad}" if bad.startswith("update_only") else f"{where}.update_only: {bad}")
 
 
+# SS N-430 (views): two OPT-IN declarations for an asset whose registry identity is a VIEW (bo_samvada = vw_chart_digest). An asset that declares neither measures exactly as before.
+#   `logical_key` {object, columns, basis, why, evidence}: "this view has no constraint, but its rows are unique on `columns`, because the view is a GROUP BY of exactly those columns". The declaration is the
+#       scope of the check, never its verdict: Vocab.identity reads PASS only when (1) `object` is the asset's target and a view that exists, its columns exist; (2) a bounded pg_get_viewdef read shows ONE top-level
+#       SELECT (no set operation) with a top-level GROUP BY whose elements are plain columns equal to the declared columns, each exposed by the select list under its own name (a viewdef the parser cannot read
+#       to that conclusion reads NO_DETECTOR, never PASS: a data probe alone cannot prove a key); (3) no key column holds a NULL in the measured chart's rows; (4) the existing duplicate probe finds no duplicate
+#       group (a duplicate reads FAIL); (5) the view has rows in the measured chart's scope. basis `group_by` is the only basis.
+#   `passive_projection` {why, evidence}: "this asset is a read-only projection: its writer runs no DDL or DML". Released to N/A (Idem.pattern cause passive-projection; Build.count_integrity cause
+#       passive-projection-constant-count, only for a view whose registry count_sql is a constant) ONLY when the writer scope the static_read machinery reads (static_write_scan, delegation read to its deep limit,
+#       every statement resolved, plus no executed DDL) holds no write to any table, and the target is a live view. Any other writer contradicts it (NO_DETECTOR, the disagreement named).
+LOGICAL_KEY_FIELDS = ("object", "columns", "basis", "why", "evidence")
+LOGICAL_KEY_BASES = ("group_by",)
+LOGICAL_KEY_MAX_COLUMNS = 8
+PASSIVE_PROJECTION_DECL_FIELDS = ("why", "evidence")
+
+
+def logical_key_problem(entry):
+    """None when `entry` has no `logical_key` or a sound one (SHAPE only; the viewdef, the data and the catalog are the detector's); else why it is refused."""
+    if not isinstance(entry, dict) or entry.get("logical_key") is None:
+        return None
+    d = entry["logical_key"]
+    if not isinstance(d, dict) or set(d) != set(LOGICAL_KEY_FIELDS):
+        return f"logical_key must be an object with exactly the fields {list(LOGICAL_KEY_FIELDS)}"
+    if entry.get("kind") != "view":
+        return "logical_key is for an asset declared kind `view` (a table's keys come from its constraints)"
+    if not (isinstance(d["object"], str) and _D1_SQL_IDENT.fullmatch(d["object"])):
+        return "logical_key.object must be the view's name (an identifier)"
+    cols = d["columns"]
+    if not (isinstance(cols, list) and 1 <= len(cols) <= LOGICAL_KEY_MAX_COLUMNS and len(set(cols)) == len(cols) and all(isinstance(c, str) and _D1_SQL_IDENT.fullmatch(c) for c in cols)):
+        return f"logical_key.columns must be 1 to {LOGICAL_KEY_MAX_COLUMNS} distinct column names"
+    if d["basis"] not in LOGICAL_KEY_BASES:
+        return f"logical_key.basis must be one of {list(LOGICAL_KEY_BASES)}"
+    bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"logical_key.why {bad}"
+    ev = d["evidence"]
+    bad = _s3_evidence_problem(ev, allow_unverified=False)
+    if bad:
+        return f"logical_key.evidence {ev!r} {bad}"
+    if not re.search(r":[0-9]+$", ev):
+        return f"logical_key.evidence {ev!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def validate_logical_key_declaration(where: str, e: dict) -> None:
+    bad = logical_key_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("logical_key") else f"{where}.logical_key: {bad}")
+
+
+def passive_projection_problem(entry):
+    """None when `entry` has no `passive_projection` or a sound one (SHAPE only; the writer scan and the live catalog are the detector's); else why it is refused."""
+    if not isinstance(entry, dict) or entry.get("passive_projection") is None:
+        return None
+    d = entry["passive_projection"]
+    if not isinstance(d, dict):
+        return "passive_projection must be an object {why, evidence} (omit the key to declare none)"
+    extra = sorted(set(d) - set(PASSIVE_PROJECTION_DECL_FIELDS))
+    if extra:
+        return f"passive_projection: unknown field(s) {extra}"
+    missing = [f for f in PASSIVE_PROJECTION_DECL_FIELDS if f not in d]
+    if missing:
+        return f"passive_projection: missing field(s) {missing}"
+    if entry.get("kind") != "view":
+        return "passive_projection is for an asset declared kind `view`"
+    if entry.get("produced_tables") is not None or entry.get("update_only") is not None:
+        return "passive_projection cannot stand beside produced_tables or update_only: a projection writes nothing"
+    bad = _s3_text_problem(d["why"], min_chars=15, min_words=3)
+    if bad:
+        return f"passive_projection.why {bad} (why this asset is a read-only projection)"
+    if "projection" not in d["why"].casefold():
+        return f"passive_projection.why must say the asset is a read-only projection: {d['why']!r}"
+    ev = d["evidence"]
+    if isinstance(ev, str) and ev.startswith("unverified:"):
+        return "passive_projection.evidence may not be `unverified:`: a declaration that releases a check must point at a real file:line the reviewer read"
+    bad = _s3_evidence_problem(ev, allow_unverified=False)
+    if bad:
+        return f"passive_projection.evidence {ev!r} {bad}"
+    if not re.search(r":[0-9]+$", ev):
+        return f"passive_projection.evidence {ev!r} must name a line (repo-relative file:LINE)"
+    return None
+
+
+def validate_passive_projection_declaration(where: str, e: dict) -> None:
+    bad = passive_projection_problem(e)
+    if bad:
+        raise DeclarationsError(f"{where}.{bad}" if bad.startswith("passive_projection") else f"{where}.passive_projection: {bad}")
+
+
 def validate_lint_none_declaration(where: str, e: dict) -> None:
     bad = lint_none_problem(e)
     if bad:
@@ -2660,7 +2756,7 @@ _FIDELITY_REF_RE = re.compile(r"platform/python-sidecar/[A-Za-z0-9_./-]+\.py::[A
 
 # ───────────────────────── E5.7 W2 (SS rulings 2026-10-06): the declared prose EXCLUSION and the closed-values LABEL forms ─────────────────────────
 DECL_E57_KEYS = ("prose_excluded", "label_columns")
-DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null", "vocab_multi_kind", "vocab_point_codes")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
+DECL_FORMGAP_KEYS = ("curated_corpus", "writer_sibling", "code_vocabulary", "service_wiring", "vocab_embedded_text", "vocab_name_code_pairs", "writer_constant_phrases", "vocab_closed_homographs", "vocab_alias_honest_null", "vocab_multi_kind", "vocab_point_codes", "logical_key", "passive_projection")             # FORM-GAP (N-192): the top-level curated-corpus declaration (its validator is in the FORM-GAP block)
 DECISIONS_REGISTER_PATH = ROOT / "00_ARCHITECTURE" / "control" / "suvarna" / "state" / "DECISIONS.jsonl"
 PROSE_EXCLUSION_DECISIONS_PATH = Path(__file__).resolve().parent / "prose_exclusion_decisions.json"
 PROSE_EXCLUDED_FIELDS = ("column", "decision_id", "why")
@@ -3228,6 +3324,10 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_lint_none_declaration(where, e)
         if e.get("update_only") is not None:
             validate_update_only_declaration(where, e)
+        if e.get("logical_key") is not None:
+            validate_logical_key_declaration(where, e)
+        if e.get("passive_projection") is not None:
+            validate_passive_projection_declaration(where, e)
         if e.get("no_table") is not None:
             validate_no_table_declaration(where, e)
         bad = has_writer_problem(e)
@@ -8436,6 +8536,7 @@ _STATIC_PURE_FUNCS = frozenset({
     "count", "sum", "min", "max", "avg", "coalesce", "nullif", "now", "exists", "array_agg", "jsonb_agg", "json_agg", "jsonb_build_object", "jsonb_build_array", "to_jsonb", "to_json", "length", "lower",
     "upper", "btrim", "trim", "md5", "string_agg", "bool_or", "bool_and", "greatest", "least", "cast", "round", "abs", "date_trunc", "extract", "row_to_json", "jsonb_typeof", "jsonb_array_length",
     "regexp_replace", "replace", "concat", "left", "right", "substr", "substring", "array_length", "unnest", "generate_series", "pg_typeof", "to_char", "bit_and", "bit_or", "stddev", "variance"})
+_STATIC_DDL_RX = re.compile(r"\b(CREATE|ALTER|DROP|GRANT|REVOKE|COMMENT\s+ON|REFRESH\s+MATERIALIZED)\b", re.I)      # SS N-430: the DDL verbs of an executed statement (static_write_scan forbid_ddl)
 _STATIC_EXEC_ATTRS = ("execute", "executemany", "execute_values", "execute_batch", "copy", "copy_expert", "copy_from", "mogrify")
 _STATIC_DYNAMIC_CALLS = ("__import__", "eval", "exec", "compile")
 
@@ -8494,13 +8595,15 @@ def _static_render(n, consts, node_texts):
     return None
 
 
-def static_write_scan(aid: str, files, tables) -> dict:
+def static_write_scan(aid: str, files, tables, forbid_ddl: bool = False) -> dict:
     """The COMPLETE-ness of the writer scan that `static_read` rests on (review fixes HIGH 4 and the re-review): it releases an asset because nothing writes its tables, which a scan that was cut short or that
     could not read a write cannot show. dict(complete: bool, why: str | None, hit: [asset tables a statement writes]). Incomplete (the form never applies) when: the delegation chain is cut at the deep hop
     limit, or ANY first-party module is reached beyond it (transitive: a forwarding hop hides the one behind it); the scan cannot parse the writer; any write statement (INSERT / UPDATE / DELETE / MERGE /
     COPY / TRUNCATE, quoted or schema-qualified names, every table of a TRUNCATE list) names a table it cannot resolve, or an execute-like statement starts or ends on an unresolved piece; an
     execute-like call takes anything but a literal, an f-string, a module constant or a `+` concatenation of those; a statement calls server code that could write (CALL, PERFORM, DO, EXECUTE, SELECT of a
-    function that is not a known pure one); or the code dispatches dynamically (getattr / __import__ / import_module / eval / exec, or calls the result of a call)."""
+    function that is not a known pure one); or the code dispatches dynamically (getattr / __import__ / import_module / eval / exec, or calls the result of a call).
+    SS N-430 `forbid_ddl` (default False = the scan exactly as before): an EXECUTED statement (the rendered argument of an execute-like call) that carries DDL (CREATE / ALTER / DROP / GRANT / REVOKE /
+    COMMENT ON / REFRESH MATERIALIZED VIEW) makes the scan incomplete, naming it; a DDL text that nothing executes (a view definition kept as a constant) is not a statement the writer runs."""
     tset = {t.lower() for t in tables if t}
     try:
         units, beyond = _delegation_scope(aid, files, hops=PRODUCED_SET_HOPS, strict=True)
@@ -8550,6 +8653,8 @@ def static_write_scan(aid: str, files, tables) -> dict:
         text = re.sub(r"\b(?:FOR\s+(?:NO\s+KEY\s+)?UPDATE|DO\s+UPDATE)\b", " ", text, flags=re.I)            # a row lock / an upsert clause is not a write verb
         if executed and text.lstrip().startswith("{?}"):
             return f"{where}: a statement starts on a piece the scan cannot resolve"
+        if forbid_ddl and executed and _STATIC_DDL_RX.search(text):
+            return f"{where}: an executed statement carries DDL ({_STATIC_DDL_RX.search(text).group(1).upper()}): the writer is not a passive projection"
         if executed and _STATIC_VERB_END_RX.search(text):
             return f"{where}: a write statement ends on a table name the scan cannot resolve (a concatenated name)"
         for m in _STATIC_WRITE_RX.finditer(text):
@@ -9029,9 +9134,42 @@ def _apply_curated_corpus(out: dict, pf, ctx: dict, decl) -> None:
 # Null records read NO_DETECTOR); EVERY finding of the scan covered by a declared literal (any other literal, fallback or unresolved path keeps the PARTIAL cap and is named); both records the clean data-level
 # readings; every declared prose entry with a found write path. The lifted records carry the verified phrases in `writer_scan.constant_phrases`, which `writer_scan_problem` re-checks.
 WRITER_CONSTANT_PHRASES_FIELDS = ("file", "entry", "form", "literal", "why", "evidence")
+# SS N-430 (opt-in; a declaration that uses none of the three keys below reads and measures exactly as before):
+#   `entry`       may be a LIST of declared prose entries (at most WRITER_CONSTANT_PHRASES_ENTRIES_MAX): one declaration of a literal then covers it on each listed entry. The writer scan attributes
+#                 every constant literal it finds in a shared builder to EVERY declared entry of the same column family, so a writer with 7 fixed sentences and 8 JSON-leaf entries reports 56 findings;
+#                 the list form states the 7 sentences once, not 56 times. Each (file, entry, form, literal) is still checked on its own against the writer source and the scan (the lift is per entry).
+#   `literal_max` the longest literal this declaration may carry, 160 (the default) up to WRITER_CONSTANT_PHRASES_LITERAL_CEILING. A fixed pointer sentence of two clauses runs past 160 characters;
+#                 the ceiling is fixed here (not declared) so a declaration cannot make the field a place to hide arbitrary text, and the literal is still checked VERBATIM in the writer source.
+#   `closed`      true, or a list of the declaration's own entries: an OPT-IN live closure check. The DISTINCT string leaves actually stored at each such entry (label_read, bounded, scoped to the measured chart)
+#                 must be a SUBSET of the constant_write literals declared for that entry. A stored value outside them contradicts the declaration (Narr.agree FAIL naming it, the Null cap stays); a read that did not
+#                 happen, or no stored string leaf at all (a closure over nothing), keeps the cap and says so. Needs form constant_write (an optional suffix is never the whole stored value).
+WRITER_CONSTANT_PHRASES_OPTIONAL = ("closed", "literal_max")
 WRITER_CONSTANT_PHRASES_FORMS = ("constant_write", "optional_suffix")
 WRITER_CONSTANT_PHRASES_MAX = 12
+WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT = 160
+WRITER_CONSTANT_PHRASES_LITERAL_CEILING = 400
+WRITER_CONSTANT_PHRASES_ENTRIES_MAX = 16
+WRITER_CONSTANT_PHRASES_EXPANDED_MAX = 128
 _CP_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
+
+
+def _cp_entries(d) -> list:
+    """The declared entries of one phrase declaration as a list (a single `entry` string is a list of one)."""
+    e = d.get("entry") if isinstance(d, dict) else None
+    return list(e) if isinstance(e, list) else [e]
+
+
+def _cp_expand(items) -> list:
+    """The per-entry view of the declarations: ONE flat item per (declaration, entry), in declaration order, carrying `_closed` (this entry is closure-checked by that declaration). An unexpanded
+    declaration (a single entry string, no optional key) comes back as itself plus the two private keys, so every reader below sees only single-entry items."""
+    out = []
+    for d in items:
+        cl = d.get("closed")
+        ents = _cp_entries(d)
+        shut = set(ents) if cl is True else set(cl) if isinstance(cl, list) else set()
+        for e in ents:
+            out.append(dict(d, entry=e, _closed=(e in shut)))
+    return out
 
 
 def writer_constant_phrases_problem(entry) -> str | None:
@@ -9043,27 +9181,43 @@ def writer_constant_phrases_problem(entry) -> str | None:
     seen = set()
     for i, d in enumerate(cp):
         lab = f"writer_constant_phrases[{i}]"
-        if not (isinstance(d, dict) and set(d) == set(WRITER_CONSTANT_PHRASES_FIELDS)):
-            return f"{lab} has exactly the fields {list(WRITER_CONSTANT_PHRASES_FIELDS)}"
+        if not (isinstance(d, dict) and set(WRITER_CONSTANT_PHRASES_FIELDS) <= set(d) <= set(WRITER_CONSTANT_PHRASES_FIELDS) | set(WRITER_CONSTANT_PHRASES_OPTIONAL)):
+            return f"{lab} has the fields {list(WRITER_CONSTANT_PHRASES_FIELDS)} and optionally {list(WRITER_CONSTANT_PHRASES_OPTIONAL)}"
         if not (isinstance(d["file"], str) and _CP_FILE.fullmatch(d["file"]) and ".." not in d["file"]):
             return f"{lab}.file must be the writer file path the scan reports (a relative .py path)"
-        if not (isinstance(d["entry"], str) and d["entry"].strip()):
+        ents = d["entry"]
+        if isinstance(ents, list):
+            if not (1 <= len(ents) <= WRITER_CONSTANT_PHRASES_ENTRIES_MAX and all(isinstance(x, str) and x.strip() for x in ents) and len(set(ents)) == len(ents)):
+                return f"{lab}.entry as a list must hold 1 to {WRITER_CONSTANT_PHRASES_ENTRIES_MAX} distinct declared prose entries"
+        elif not (isinstance(ents, str) and ents.strip()):
             return f"{lab}.entry must be a declared prose entry"
         if d["form"] not in WRITER_CONSTANT_PHRASES_FORMS:
             return f"{lab}.form must be one of {list(WRITER_CONSTANT_PHRASES_FORMS)}"
+        lmax = d.get("literal_max", WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT)
+        if not (isinstance(lmax, int) and not isinstance(lmax, bool) and WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT <= lmax <= WRITER_CONSTANT_PHRASES_LITERAL_CEILING):
+            return f"{lab}.literal_max must be an integer from {WRITER_CONSTANT_PHRASES_LITERAL_DEFAULT} to {WRITER_CONSTANT_PHRASES_LITERAL_CEILING}"
         lit = d["literal"]
-        if not (isinstance(lit, str) and 1 <= len(lit) <= 160 and lit.strip() and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in lit)):
-            return f"{lab}.literal must be a 1 to 160 character text without control or invisible characters"
-        key = (d["file"], d["entry"], d["form"], lit)
-        if key in seen:
-            return f"{lab} is listed twice"
-        seen.add(key)
+        if not (isinstance(lit, str) and 1 <= len(lit) <= lmax and lit.strip() and not any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") for ch in lit)):
+            return f"{lab}.literal must be a 1 to {lmax} character text without control or invisible characters"
+        if "closed" in d:
+            cl = d["closed"]
+            if d["form"] != "constant_write":
+                return f"{lab}.closed needs form constant_write (an optional suffix is never the whole stored value)"
+            if not (cl is True or (isinstance(cl, list) and cl and len(set(cl)) == len(cl) and all(x in _cp_entries(d) for x in cl))):
+                return f"{lab}.closed must be true, or a list of distinct entries of this declaration"
+        for e1 in _cp_entries(d):
+            key = (d["file"], e1, d["form"], lit)
+            if key in seen:
+                return f"{lab} is listed twice"
+            seen.add(key)
         bad = _formgap_text_ok(d["why"], f"{lab}.why")
         if bad:
             return bad
         bad = _s3_evidence_problem(d["evidence"], allow_unverified=False)
         if bad:
             return f"{lab}.evidence {d['evidence']!r} {bad}"
+    if len(seen) > WRITER_CONSTANT_PHRASES_EXPANDED_MAX:
+        return f"writer_constant_phrases covers {len(seen)} (entry, literal) pairs; at most {WRITER_CONSTANT_PHRASES_EXPANDED_MAX}"
     return None
 
 
@@ -9098,11 +9252,16 @@ def _cp_suffix_nodes(tree, literal: str) -> list:
 def constant_phrases_check(items: list, pf, ws: dict, units) -> dict:
     """{problems: [...], covered: {index: n findings}, left: [findings no declared phrase covers]} (pure). A problem refuses the declaration. The scan reports ONE finding per line, so an optional-suffix finding is
     covered only if EVERY conditional-else-'' expression that starts on its line is a declared literal of that file and entry (an undeclared one sharing the line keeps the finding)."""
+    items = _cp_expand(items)                                     # SS N-430: one flat item per (declaration, entry); a single-entry declaration is unchanged
     problems, covered, claimed = [], {}, set()
     findings = list(ws.get("problems") or [])
     trees = {}
     for u in units or []:
         trees.setdefault(u.get("rel"), u.get("tree"))
+    shut = {d["entry"] for d in items if d.get("_closed")}
+    for e_ in sorted(shut):
+        if any(d["entry"] == e_ and d["form"] == "optional_suffix" for d in items):
+            problems.append(f"{e_}: a closed entry cannot also carry an optional_suffix phrase (its stored value is then not one of the declared whole literals)")
     ok = []
     for i, d in enumerate(items):
         lab = f"{d['file']} {d['entry']} {d['form']} {d['literal']!r}"
@@ -9150,18 +9309,58 @@ def constant_phrases_check(items: list, pf, ws: dict, units) -> dict:
         else:
             problems.append(f"{items[i]['file']} {items[i]['entry']} {items[i]['form']} {items[i]['literal']!r}: no scan finding is this literal any more (a stale declaration)")
     left = [f"{p_.get('entry')} {p_.get('where')} ({p_.get('kind')}) {p_.get('text')}" for j, p_ in enumerate(findings) if j not in claimed]
-    return dict(problems=problems, covered=covered, left=left)
+    return dict(problems=problems, covered=covered, left=left, flat=items)
 
 
-def constant_phrases_block_problem(cb, entries) -> str | None:
-    """None when a writer_scan block's `constant_phrases` sub-block is complete (read by `writer_scan_problem`): every item verified, naming file, entry (one of the block's entries), form, literal and at least one finding."""
+def constant_phrases_block_problem(cb, entries, closed=None) -> str | None:
+    """None when a writer_scan block's `constant_phrases` sub-block is complete (read by `writer_scan_problem`): every item verified, naming file, entry (one of the block's entries), form, literal and at least one finding.
+    SS N-430: `closed` (the block's `closed_entries`, None when no entry was closure-checked) must, per entry, be verified, name at least one stored string value, and every stored value must be one of the
+    constant_write literals the sub-block carries for that entry (a closed entry holds no optional suffix)."""
     if not (isinstance(cb, list) and cb):
         return "the constant_phrases sub-block is empty"
     for x in cb:
         if not (isinstance(x, dict) and x.get("verified") is True and isinstance(x.get("file"), str) and x["file"] and x.get("entry") in (entries or []) and x.get("form") in WRITER_CONSTANT_PHRASES_FORMS
                 and isinstance(x.get("literal"), str) and x["literal"] and isinstance(x.get("findings"), int) and not isinstance(x.get("findings"), bool) and x["findings"] >= 1):
             return "a constant phrase is not verified, or does not name its file, covered entry, form, literal and at least one finding"
+    if closed is not None:
+        if not (isinstance(closed, dict) and closed):
+            return "the closed_entries sub-block is empty"
+        for e, c in closed.items():
+            lits = {x["literal"] for x in cb if x["entry"] == e and x["form"] == "constant_write"}
+            if (e not in (entries or []) or not lits or any(x["entry"] == e and x["form"] == "optional_suffix" for x in cb) or not isinstance(c, dict) or c.get("verified") is not True
+                    or not (isinstance(c.get("stored"), list) and c["stored"] and all(isinstance(v, str) for v in c["stored"]) and set(c["stored"]) <= lits)):
+                return f"the closure of entry {e!r} is not verified: it needs constant_write literals only, at least one stored value, and every stored value one of those literals"
     return None
+
+
+def grade_closed_phrases(corpus: dict, fetched: dict) -> dict:
+    """SS N-430 (pure): the closure reading of the `closed` entries of writer_constant_phrases. `corpus`: {entry: [declared constant_write literals]}; `fetched`: {entry: what label_read returned: a list of
+    the DISTINCT stored string values, a dict(stray=[...]) existence read, a dict(blocked=why) or None (not read)}. dict(stray={entry: [values outside the corpus]}, unread={entry: why}, stored={entry:
+    [values]}). A stored value outside the corpus is a fact (stray) even from a bounded read; no stored string value at all is NOT a closure (unread: a closure over nothing is vacuous); a read that
+    did not happen is unread. Nothing here FAILs on a read that did not happen."""
+    stray, unread, stored = {}, {}, {}
+    for e, lits in corpus.items():
+        got = fetched.get(e)
+        if isinstance(got, dict) and got.get("blocked"):
+            unread[e] = f"the read scope blocks it ({got['blocked']})"
+        elif isinstance(got, dict):
+            if got.get("stray"):
+                stray[e] = sorted(got["stray"])[:5]
+            else:
+                unread[e] = "only a bounded existence read ran (no stored value was listed), so which literals are stored is unknown"
+        elif got is None:
+            unread[e] = "the live read did not happen"
+        else:
+            out_of = sorted(v for v in got if v not in set(lits))
+            if out_of:
+                stray[e] = out_of[:5]
+            elif len(got) > MAX_LABEL_VALUES:
+                unread[e] = f"more than {MAX_LABEL_VALUES} distinct stored values"
+            elif not got:
+                unread[e] = "no string value is stored at the path in the measured chart's rows (a closure over nothing)"
+            else:
+                stored[e] = sorted(got)
+    return dict(stray=stray, unread=unread, stored=stored)
 
 
 def _apply_constant_phrases(out: dict, pf, ctx: dict, decl) -> None:
@@ -9196,9 +9395,37 @@ def _apply_constant_phrases(out: dict, pf, ctx: dict, decl) -> None:
         for crit in NULL_CHECKS:
             out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: a declared prose entry has no found write path")
         return
-    phr = [dict(verified=True, file=d["file"], entry=d["entry"], form=d["form"], literal=d["literal"], findings=chk["covered"][i]) for i, d in enumerate(items)]
+    flat = chk["flat"]
+    phr = [dict(verified=True, file=d["file"], entry=d["entry"], form=d["form"], literal=d["literal"], findings=chk["covered"][i]) for i, d in enumerate(flat)]
+    shut = sorted({d["entry"] for d in flat if d.get("_closed")})
+    closed_block = None
+    if shut:                                                     # SS N-430: the opt-in live closure check (no `closed` anywhere = this branch never runs)
+        corpus = {e: sorted({d["literal"] for d in flat if d["entry"] == e and d["form"] == "constant_write"}) for e in shut}
+        try:
+            own = _own3(ctx)
+        except Exception:                                         # noqa: BLE001 -- no owned-table facts: every closed entry is then unread, never passed
+            own = {}
+        fetched = {}
+        for e in shut:
+            held = _holders(parse_prose_field(e)[0], own)
+            fetched[e] = label_read(held[0], e, corpus[e]) if held else None
+        g = grade_closed_phrases(corpus, fetched)
+        if g["stray"]:
+            msg = "; ".join(f"{e} holds a stored value outside the declared literals: {g['stray'][e]!r}" for e in sorted(g["stray"]))
+            if isinstance(out.get("Narr.agree"), dict) and out["Narr.agree"].get("v") != FAIL:
+                out["Narr.agree"] = dict(v=FAIL, measured="the declared writer_constant_phrases closure does not hold: " + msg)
+            for crit in NULL_CHECKS:
+                out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: {msg}")
+            return
+        if g["unread"]:
+            msg = "; ".join(f"{e}: {g['unread'][e]}" for e in sorted(g["unread"]))
+            for crit in NULL_CHECKS:
+                out[crit] = dict(recs[crit], measured=f"{recs[crit]['measured']}; declared constant phrases not applied: the closure is not verified ({msg})")
+            return
+        closed_block = {e: dict(verified=True, stored=g["stored"][e]) for e in shut}
     block = dict(verified=True, v=PASS, entries=list(pf), columns=sorted({parse_prose_field(e)[0] for e in pf}), files=list(ws["files"]),
-                 paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"], constant_phrases=phr)
+                 paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"], constant_phrases=phr,
+                 **({"closed_entries": closed_block} if closed_block else {}))
     n = sum(x["findings"] for x in phr)
     for crit in NULL_CHECKS:
         out[crit] = dict(out[crit], v=PASS, writer_scan=dict(block),
@@ -10753,7 +10980,7 @@ def writer_scan_problem(meas, facts=None) -> str | None:
     if isinstance(facts, dict) and isinstance(facts.get("declared_prose_fields"), list) and sorted(facts["declared_prose_fields"]) != sorted(ents):
         return "the block's entries are not the asset's declared prose_fields"
     if ws.get("constant_phrases") is not None:
-        bad = constant_phrases_block_problem(ws["constant_phrases"], ents)               # N-279: a lift that rests on declared constant phrases must carry each verified phrase
+        bad = constant_phrases_block_problem(ws["constant_phrases"], ents, ws.get("closed_entries"))               # N-279: a lift that rests on declared constant phrases must carry each verified phrase
         if bad:
             return bad
     if ws.get("curated_corpus") is not None:
@@ -16410,6 +16637,208 @@ def identity_has_rows(tbl: str) -> bool:
     return (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl}{_where_scope(tbl)})::text") or "f") in ("t", "true")
 
 
+# ─────────────────────── SS N-430: a LOGICAL key of a view (declared `logical_key`, CHECKED against its definition) ───────────────────────
+VIEWDEF_MAX_CHARS = 20_000      # the view definition is read bounded: a longer one is not parsed (the key is then unproven)
+_VD_TOKEN = re.compile(r"""\s+|--[^\n]*|/\*.*?\*/|(?P<str>[eE]'(?:[^'\\]|\\.|'')*'|'(?:[^']|'')*'|\$(?P<tag>[A-Za-z_]*)\$.*?\$(?P=tag)\$)|(?P<qid>"(?:[^"]|"")*")|(?P<word>[A-Za-z_][A-Za-z0-9_$]*)|(?P<num>[0-9]+(?:\.[0-9]+)?)|(?P<op>::|.)""", re.S)
+_VD_GROUP_END = frozenset({"HAVING", "WINDOW", "ORDER", "LIMIT", "OFFSET", "FETCH", "FOR", "UNION", "INTERSECT", "EXCEPT"})
+
+
+def _vd_tokens(defn: str):
+    """The tokens of a view definition as [(kind, text, depth)] (kind word / qid / str / num / op; a word's text is lower-case, a quoted identifier keeps its case unquoted; depth is the parenthesis / bracket depth
+    OUTSIDE the token, so a `(` and its `)` share a depth). Comments and white space are dropped. None when the parentheses do not balance."""
+    out, depth = [], 0
+    for m in _VD_TOKEN.finditer(defn):
+        k = m.lastgroup if m.lastgroup != "tag" else "str"
+        if k is None:
+            continue
+        txt = m.group(k) if k != "str" else m.group("str")
+        if txt is None:
+            continue
+        if k == "qid":
+            out.append(("qid", txt[1:-1].replace('""', '"'), depth))
+        elif k == "word":
+            out.append(("word", txt.lower(), depth))
+        elif k == "op" and txt in ")]":
+            depth -= 1
+            if depth < 0:
+                return None
+            out.append(("op", txt, depth))
+        elif k == "op" and txt in "([":
+            out.append(("op", txt, depth))
+            depth += 1
+        else:
+            out.append((k, txt, depth))
+    return out if depth == 0 else None
+
+
+def _vd_split(toks):
+    """Split a token list at its depth-0 commas (the depth of the first token is the top level of this list)."""
+    base = min((d for _k, _t, d in toks), default=0)
+    parts, cur = [], []
+    for t in toks:
+        if t[0] == "op" and t[1] == "," and t[2] == base:
+            parts.append(cur)
+            cur = []
+        else:
+            cur.append(t)
+    parts.append(cur)
+    return parts
+
+
+def _vd_plain_ref(toks):
+    """(qualifier | None, column) for a plain column reference `col` / `alias.col` (quoted or not), else None."""
+    names = [t for t in toks if t[0] in ("word", "qid")]
+    if len(toks) == 1 and len(names) == 1:
+        return (None, toks[0][1])
+    if len(toks) == 3 and toks[1][:2] == ("op", ".") and toks[0][0] in ("word", "qid") and toks[2][0] in ("word", "qid"):
+        return (toks[0][1], toks[2][1])
+    return None
+
+
+def viewdef_group_by(defn: str) -> dict:
+    """Read a pg_get_viewdef text (pure) for the identity a GROUP BY proves. dict(ok: bool, why: str | None, group_by: [(qualifier | None, column)], exposed: {output name: (qualifier | None, column)}).
+    ok only when the definition is ONE top-level SELECT (no UNION / INTERSECT / EXCEPT / VALUES at the top level; CTEs and sub-selects sit inside parentheses and are not the view's own rows) with exactly one
+    top-level GROUP BY whose elements are all plain columns (no ROLLUP / CUBE / GROUPING SETS, no expression, no ordinal), and `exposed` lists the select-list items that are plain column references under
+    the name the view outputs them as. Anything else is not ok, with the reason: the caller reads NO_DETECTOR, never a PASS."""
+    toks = _vd_tokens(defn or "")
+    if toks is None:
+        return dict(ok=False, why="the definition's parentheses do not balance", group_by=[], exposed={})
+    while toks and toks[-1][:2] == ("op", ";"):
+        toks.pop()
+    top = [(i, t[1].upper()) for i, t in enumerate(toks) if t[0] == "word" and t[2] == 0]
+    words = [w for _i, w in top]
+    if any(w in ("UNION", "INTERSECT", "EXCEPT", "VALUES") for w in words):
+        return dict(ok=False, why="the definition is a set operation or VALUES at the top level", group_by=[], exposed={})
+    if words.count("SELECT") != 1:
+        return dict(ok=False, why=f"the definition has {words.count('SELECT')} top-level SELECT(s), not one", group_by=[], exposed={})
+    gb_at = [i for i, w in top if w == "GROUP" and i + 1 < len(toks) and toks[i + 1][:2] == ("word", "by") and toks[i + 1][2] == 0]
+    if len(gb_at) != 1:
+        return dict(ok=False, why="the definition has no single top-level GROUP BY", group_by=[], exposed={})
+    sel_at = next(i for i, w in top if w == "SELECT")
+    from_at = [i for i, w in top if w == "FROM" and i > sel_at]
+    if len(from_at) != 1 or from_at[0] > gb_at[0]:
+        return dict(ok=False, why="the top-level SELECT has no single FROM before its GROUP BY", group_by=[], exposed={})
+    end = next((i for i, w in top if i > gb_at[0] + 1 and w in _VD_GROUP_END), len(toks))
+    gb, bad = [], None
+    for el in _vd_split(toks[gb_at[0] + 2:end]):
+        ref = _vd_plain_ref(el)
+        if ref is None:
+            bad = "a GROUP BY element is not a plain column (an expression, an ordinal, ROLLUP / CUBE / GROUPING SETS)"
+            break
+        gb.append(ref)
+    if bad or not gb:
+        return dict(ok=False, why=bad or "the GROUP BY is empty", group_by=[], exposed={})
+    items = toks[sel_at + 1:from_at[0]]
+    while items and items[0][0] == "word" and items[0][1] in ("distinct", "all"):
+        items = items[1:]
+    if items and items[0][0] == "word" and items[0][1] == "on":
+        return dict(ok=False, why="SELECT DISTINCT ON is not read", group_by=gb, exposed={})
+    exposed = {}
+    for it in _vd_split(items):
+        alias = None
+        if len(it) >= 3 and it[-2][:2] == ("word", "as") and it[-1][0] in ("word", "qid"):
+            alias, it = it[-1][1], it[:-2]
+        ref = _vd_plain_ref(it)
+        if ref is not None:
+            exposed.setdefault(alias or ref[1], ref)
+    return dict(ok=True, why=None, group_by=gb, exposed=exposed)
+
+
+def _vd_same_ref(a, b) -> bool:
+    return a[1] == b[1] and (a[0] is None or b[0] is None or a[0] == b[0])
+
+
+def viewdef_proves_key(parsed: dict, columns) -> str | None:
+    """None when the parsed definition proves `columns` is the view's GROUP BY identity: each declared column is a view OUTPUT name that a plain GROUP BY column is selected under (an alias is fine), two declared
+    columns are never the same GROUP BY column, and together they cover EVERY element of the top-level GROUP BY (a key that is a part of the GROUP BY is not the view's identity). Else why not."""
+    if not parsed.get("ok"):
+        return parsed.get("why") or "the definition could not be read"
+    gb, exposed = parsed["group_by"], parsed["exposed"]
+    hit = set()
+    for c in columns:
+        ref = exposed.get(c)
+        idx = [i for i, g in enumerate(gb) if ref is not None and _vd_same_ref(ref, g)]
+        if not idx:
+            return f"the declared column {c} is not a GROUP BY column that the view outputs under that name"
+        hit.add(idx[0])
+    if len(hit) != len(columns):
+        return "two declared columns are the same GROUP BY column"
+    if hit != set(range(len(gb))):
+        return f"the top-level GROUP BY has {len(gb)} element(s) and the declared columns cover {len(hit)} of them: the key is not the whole GROUP BY"
+    return None
+
+
+def view_definition(view: str):
+    """(text | None, length): the bounded pg_get_viewdef of the public view `view` (at most VIEWDEF_MAX_CHARS + 1 characters are brought back, hex-encoded so no separator or newline can break the read).
+    (None, 0) when the relation does not exist. Raises Unknown on a failed read; ValueError for a non-identifier."""
+    if not _D1_SQL_IDENT.fullmatch(view or ""):
+        raise ValueError("view_definition needs a view identifier")
+    rows = psql("SELECT coalesce(length(d), 0)::text, coalesce(encode(convert_to(substr(d, 1, " + str(VIEWDEF_MAX_CHARS + 1) + "), 'UTF8'), 'hex'), '') FROM "
+                f"(SELECT pg_get_viewdef(to_regclass('public.{view}'), true) AS d) x")
+    if not rows or len(rows[0]) != 2:
+        raise Unknown("the view definition read answered no row")
+    n, hx = rows[0]
+    try:
+        return (bytes.fromhex(hx).decode("utf-8") if hx else None), int(n)
+    except ValueError as exc:
+        raise Unknown(f"the view definition read is malformed: {exc}") from exc
+
+
+def logical_key_identity(tbl: str, decl: dict, cat: dict) -> dict:
+    """SS N-430: the Vocab.identity record of a VIEW that declares `logical_key` (see the declaration block). Checked, never trusted; each failure of a step reads as the step's own state:
+    NO_DETECTOR where the key cannot be proven (not the target, not a view, a column missing, the definition unread / too long / not a single GROUP BY of exactly the declared columns, no rows in the scope),
+    FAIL where the data contradicts it (a duplicate group, a NULL in a key column), ERRORED on a failed read, PASS only when every step holds. Pure over `psql` and the read scope."""
+    lk = decl["logical_key"]
+    cols, obj = lk["columns"], lk["object"]
+    head = f"declared logical key ({', '.join(cols)}) of the view {obj}"
+    if obj != tbl:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: the declared object is not the asset's target table {tbl}")
+    if tbl not in (cat.get("views") or ()):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: {tbl} is not a view or materialized view in the live catalog")
+    have = set((cat.get("cols") or {}).get(tbl, []))
+    missing = [c for c in cols if c not in have]
+    if missing:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: the view has no column {', '.join(missing)}")
+    try:
+        kd = ", ".join(f'"{c}"' for c in cols)
+        has_dup, figure = identity_duplicates(tbl, kd)
+        if has_dup:
+            return dict(v=FAIL, measured=f"{head}: {figure} — the declared key does not hold on the data")
+        nulls = (scalar(f"SELECT EXISTS(SELECT 1 FROM {tbl} WHERE " + _sw(tbl, " OR ".join(f'"{c}" IS NULL' for c in cols)) + ")::text") or "f") in ("t", "true")
+        if nulls:
+            return dict(v=FAIL, measured=f"{head}: a key column holds NULL in the measured chart's rows — NULL is not an identity")
+        text, n = view_definition(tbl)
+        if text is None or n > VIEWDEF_MAX_CHARS:
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: the view definition is {'absent' if text is None else f'{n} characters, longer than the {VIEWDEF_MAX_CHARS} read'}, so the GROUP BY is not proven")
+        parsed = viewdef_group_by(text)
+        bad = viewdef_proves_key(parsed, cols)
+        if bad:
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: pg_get_viewdef does not prove it ({bad}); a data probe alone cannot prove a key")
+        if not identity_has_rows(tbl):
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — {head}: the view holds no row in the measured chart's scope, so uniqueness is vacuous")
+    except (Unknown, ValueError) as exc:
+        return dict(v=ERRORED, measured=f"check errored: {exc}")
+    import hashlib
+    gb = [(f"{q}." if q else "") + c for q, c in parsed["group_by"]]
+    return dict(v=PASS, measured=f"{head} (GROUP BY of exactly those columns, proven from pg_get_viewdef, evidence: {lk['evidence']}): 0 duplicate(s), no NULL key, rows present",
+                logical_key=dict(declared=True, object=obj, columns=list(cols), basis=lk["basis"], group_by=gb, viewdef_sha256=hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
+                                 viewdef_chars=n, duplicates=0, null_keys=0, rows_exist=True))
+
+
+def logical_key_block_problem(meas) -> str | None:
+    """None unless a Vocab.identity PASS that carries a `logical_key` block carries a COMPLETE one (read by `_check_contribution`): declared, a proven GROUP BY equal to the declared columns, no duplicate, no NULL
+    key, rows present. A record without the block is not judged here (the plain declared-key reading is unchanged)."""
+    b = meas.get("logical_key") if isinstance(meas, dict) else None
+    if b is None:
+        return None
+    cols = b.get("columns") if isinstance(b, dict) else None
+    if not (isinstance(b, dict) and b.get("declared") is True and b.get("basis") in LOGICAL_KEY_BASES and isinstance(cols, list) and cols and isinstance(b.get("group_by"), list)
+            and sorted(g.rsplit(".", 1)[-1] for g in b["group_by"]) == sorted(cols) and b.get("duplicates") == 0 and b.get("null_keys") == 0 and b.get("rows_exist") is True
+            and isinstance(b.get("viewdef_sha256"), str) and len(b["viewdef_sha256"]) >= 12):
+        return "the logical-key PASS does not carry a complete block: a declared key, a GROUP BY equal to its columns, no duplicate, no NULL key, rows present"
+    return None
+
+
 def depth_census(table: str, cols: list[str]) -> dict:
     if not cols:
         return dict(columns=0, note="no columns")
@@ -16560,6 +16989,65 @@ def update_only_na_problem(crit: str, meas) -> str | None:
     return None
 
 
+# ─────────────────────── SS N-430: a declared PASSIVE PROJECTION (a view whose writer runs no DDL or DML) ───────────────────────
+PASSIVE_PROJECTION_CAUSES = {"Idem.pattern": "passive-projection", "Build.count_integrity": "passive-projection-constant-count"}
+
+
+def passive_projection_facts(aid: str, files: list[str], tables, is_view: bool, constant_count_view: bool = False) -> dict:
+    """The CHECKED facts a declared `passive_projection` rests on (offline over the writer source plus the live catalog's word that the target is a view): what the writer scope writes (`produced_set_written`:
+    INSERT / upsert / DELETE / TRUNCATE / UPDATE of any table, bookkeeping excepted), whether that scan is complete, and the `static_read` machinery's `static_write_scan` with executed DDL forbidden
+    (complete, and no hit on the asset's tables). Never raises: an unreadable scope is an incomplete scan."""
+    try:
+        w = produced_set_written(aid, files)
+    except Unknown as exc:
+        w = dict(written=[], update_only=[], delete_only=[], complete=False, error=str(exc))
+    sc = static_write_scan(aid, files, list(tables), forbid_ddl=True)
+    return dict(declared=True, target_is_view=bool(is_view), constant_count_view=bool(constant_count_view), written=list(w["written"]), update_only=list(w["update_only"]),
+                delete_only=list(w["delete_only"]), writes_complete=bool(w["complete"]), scan_complete=sc["complete"] is True, scan_why=sc.get("why"), scan_hit=list(sc.get("hit") or []),
+                writer_files=list(files))
+
+
+def passive_projection_scan_problem(b, crit: str = "Idem.pattern") -> str | None:
+    """None when a `passive_projection` block shows a writer that writes nothing and a target that is a live view (and, for Build.count_integrity, a view whose registry count_sql is a constant); else why not."""
+    if not isinstance(b, dict) or b.get("declared") is not True:
+        return "no declared passive_projection block"
+    if b.get("target_is_view") is not True:
+        return "the asset's target is not a view in the live catalog"
+    if b.get("writes_complete") is not True or b.get("scan_complete") is not True:
+        return "the writer scan is not shown complete: " + str(b.get("scan_why") or "a delegation chain was cut or a statement's table could not be named")
+    bad = [f"{k} {b.get(k)}" for k in ("written", "update_only", "delete_only", "scan_hit") if b.get(k) != []]
+    if bad:
+        return "the writer scope writes or touches tables (" + ", ".join(bad) + "): it is not a passive projection"
+    if not (isinstance(b.get("writer_files"), list) and b["writer_files"]):
+        return "no writer file was scanned"
+    if crit == "Build.count_integrity" and b.get("constant_count_view") is not True:
+        return "the registry count_sql is not a constant over a view target"
+    return None
+
+
+def passive_count_integrity(rec: dict, ci_text: str, pp) -> dict:
+    """SS N-430: the Build.count_integrity record of a view target whose registry count_sql is a constant (`rec`, the PARTIAL the census gives it), given the asset's passive_projection block `pp` (None = nothing
+    declared: `rec` comes back untouched, byte for byte). A declared projection the scan AGREES with reads N/A (cause passive-projection-constant-count); one it contradicts keeps `rec` and names the disagreement."""
+    if pp is None:
+        return rec
+    bad = passive_projection_scan_problem(pp, "Build.count_integrity")
+    if bad is None:
+        return dict(_na(f"{ci_text}; passive projection by declared intent (reviewed, evidence: {pp['evidence']}): {pp['why']}; the writer scan agrees: the view target and no DDL or DML in the writer scope, "
+                        "so its constant count_sql is by design and the census counts the view itself (Build.completion)", "passive-projection-constant-count"), passive_projection=pp)
+    return dict(rec, declaration_disagreements=[bad], measured=rec["measured"] + f"; passive_projection is declared but {bad}: not applied")
+
+
+def passive_projection_na_problem(crit: str, meas) -> str | None:
+    """None unless a passive-projection N/A (Idem.pattern / Build.count_integrity) is NOT backed by the agreeing scan: the record must carry the block, read clean by `passive_projection_scan_problem`. Pure; read by
+    `_check_contribution` and `_na_released`."""
+    if crit not in PASSIVE_PROJECTION_CAUSES or not isinstance(meas, dict) or meas.get("v") != NA or meas.get("cause") != PASSIVE_PROJECTION_CAUSES[crit]:
+        return None
+    bad = passive_projection_scan_problem(meas.get("passive_projection"), crit)
+    if bad:
+        return (f"{crit} N/A rests on a declared passive_projection that the writer scan AGREES with (SS N-430): {bad}, so the declaration alone is not a release")
+    return None
+
+
 def _no_writer_scanned(aid: str, has_writer: bool, check: str, declared: bool = False) -> dict:
     """R222 / N2 (A_REVIEW2 G2): no writer file was recognised for this asset. That is a genuine
     N/A only when the registry agrees there is no writer. With `has_writer=true` the writer exists
@@ -16589,7 +17077,7 @@ def _measure_contract(aid: str, files: list[str], has_writer: bool, declared_no_
         return dict(v=ERRORED, measured=f"check errored: {exc}")
 
 
-def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool, targets=(), declared_no_writer: bool = False, update_only=None) -> dict:
+def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool, targets=(), declared_no_writer: bool = False, update_only=None, passive=None) -> dict:
     """R41 fault isolation for Idem.pattern — same discipline as `_measure_contract`. `targets`
     (C-KSHETRA): the asset's own tables — target_table ∪ count_sql tables — a counted DELETE must name."""
     if not files:
@@ -16605,6 +17093,13 @@ def _measure_idem(aid: str, files: list[str], convention: str, has_writer: bool,
                             update_only=dict(facts, declared=True))
             return dict(v=NO_DET, update_only=dict(facts, declared=True), declaration_disagreements=[bad],
                         measured=f"NO_DETECTOR — update_only is declared but {bad}: the declaration is contradicted by the writer scan (the scan read: {'; '.join(notes)[:200]})")
+        if isinstance(passive, dict) and v != FAIL:                          # SS N-430: a declared passive projection; a measured FAIL is never excused by it
+            bad = passive_projection_scan_problem(passive, "Idem.pattern")
+            if bad is None:
+                return dict(_na(f"passive projection by declared intent (reviewed, evidence: {passive.get('evidence')}): {passive.get('why')}; the writer scan agrees: the view target, no DDL or DML anywhere in the "
+                                f"writer scope ({', '.join(passive['writer_files'])})", "passive-projection"), passive_projection=passive)
+            return dict(v=NO_DET, passive_projection=passive, declaration_disagreements=[bad],
+                        measured=f"NO_DETECTOR — passive_projection is declared but {bad}: the declaration is contradicted by the scan (the idempotency scan read: {'; '.join(notes)[:200]})")
         return dict(v=v, measured="; ".join(notes))
     except Unknown as exc:
         return dict(v=ERRORED, measured=f"check errored: {exc}")
@@ -19358,9 +19853,15 @@ def measure(layer_key: str, assets=None) -> dict:
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
         m["Build.contract"] = _measure_contract(aid, files, r["has_writer"], _nwd)
+        _ppd = (declarations or {}).get(aid, {}).get("passive_projection") if isinstance(declarations, dict) and isinstance((declarations or {}).get(aid), dict) else None
+        _pp = None                                            # SS N-430: the CHECKED facts of a declared passive projection (None = nothing declared: every cell below reads exactly as before)
+        if isinstance(_ppd, dict):
+            _pp = dict(passive_projection_facts(aid, files, [t_ for t_ in [r["target_table"]] + _count_tables(r["count_sql"]) if t_], r["target_table"] in cat.get("views", set()),
+                                                constant_count_view=aid in view_counts), why=_ppd["why"], evidence=_ppd["evidence"])
         m["Idem.pattern"] = _measure_idem(aid, files, cfg["idem"], r["has_writer"],
                                           [r["target_table"]] + _count_tables(r["count_sql"]), _nwd,
-                                          (declarations or {}).get(aid, {}).get("update_only") if isinstance(declarations, dict) and isinstance((declarations or {}).get(aid), dict) else None)
+                                          (declarations or {}).get(aid, {}).get("update_only") if isinstance(declarations, dict) and isinstance((declarations or {}).get(aid), dict) else None,
+                                          passive=_pp)
 
         # Build.target
         m["Build.target"] = _measure_target(
@@ -19392,6 +19893,7 @@ def measure(layer_key: str, assets=None) -> dict:
             # SS: a view target whose registered count_sql reads no table is a constant (a stub): it cannot fail, so presence of it is not a detector.
             m["Build.count_integrity"] = dict(v=PARTIAL, measured=ci_text.replace("count_sql reads no table (a constant)", "count_sql is constant (reads no table)", 1)
                                               + " — a constant count_sql cannot fail, so it is not a count detector (the census counts the view itself)")
+            m["Build.count_integrity"] = passive_count_integrity(m["Build.count_integrity"], ci_text, _pp)      # SS N-430 (no declaration = the record above, unchanged)
         elif ok_ci:
             m["Build.count_integrity"] = dict(v=PASS, measured=ci_text)
         elif not r["has_writer"] and not r["count_sql"]:
@@ -19661,6 +20163,8 @@ def measure(layer_key: str, assets=None) -> dict:
                                                                           f"under ({kd}) is vacuous on 0 rows")
                 except Unknown as exc:
                     m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+            elif isinstance(_sd.get("logical_key"), dict):
+                m["Vocab.identity"] = logical_key_identity(tbl, _sd, cat)          # SS N-430: a view with no constraint and a declared logical key, CHECKED against its definition and its data
 
             try:
                 _hn, _hn_bad = vocab_alias_honest_null_sets(_sd, tbl, cat["cols"].get(tbl, []))
@@ -19990,6 +20494,8 @@ def _na_released(crit: str, rec: dict, all_meas=None, layer=None, facts=None) ->
     if no_writer_na_problem(crit, rec):            # N-150 R5: a no-writer N/A closes a ledger row only with the declaration and the agreeing facts
         return False
     if update_only_na_problem(crit, rec):          # SS 2026-10-05: an update-only N/A closes a ledger row only with the declaration and the agreeing scan
+        return False
+    if passive_projection_na_problem(crit, rec):   # SS N-430: a passive-projection N/A closes a ledger row only with the declaration and the agreeing scan
         return False
     if no_table_na_problem(crit, rec):             # SS 2026-10-05: a no-table N/A closes a ledger row only with the declaration and the agreeing facts
         return False

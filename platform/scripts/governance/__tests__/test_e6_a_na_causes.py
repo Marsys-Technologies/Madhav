@@ -261,6 +261,11 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     _uo = ac._na("update-only by declared intent", "update-only-by-intent")
     assert _uo["cause"] in ac.NA_CAUSES["Idem.pattern"]
     observed.add(("Idem.pattern", _uo["cause"]))          # SS 2026-10-05 Idem update-only: emitted by `_measure_idem` (tested in test_ss_idem_update_only)
+    _pb = dict(ac.passive_projection_facts("bo_samvada", ["bo_samvada.py"], ["vw_chart_digest"], True, True), why="the asset is a read-only projection of a view", evidence="platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py:147")
+    _pi = ac._measure_idem("bo_samvada", ["bo_samvada.py"], "upsert", True, ["vw_chart_digest"], False, None, passive=_pb)      # SS N-430: emitted by `_measure_idem` / `passive_count_integrity` (tested in test_n430_views_logical_key)
+    _pn = ac.passive_count_integrity(dict(v=ac.PARTIAL, measured="m"), "count_sql=yes", _pb)
+    assert _pi["v"] == NA and _pn["v"] == NA, (_pi, _pn)
+    observed.update({("Idem.pattern", _pi["cause"]), ("Build.count_integrity", _pn["cause"])})
     # SS 2026-10-05 R-c / R-d: the causes emitted by measure() on the no-writer / service / static assets (tested in test_ss_build_record_no_writer.py and test_ss_rd_service_static.py)
     import test_ss_rd_service_static as rd  # noqa: PLC0415
     rd._stub(monkeypatch, tmp_path, {rd.SVC: rd._row(rd.SVC, "service"), rd.STA: rd._row(rd.STA, "data", deps=["bg_dep"], target_table="bg_static_tbl"), "bg_dep": rd._row("bg_dep", "data", has_writer=True)},
