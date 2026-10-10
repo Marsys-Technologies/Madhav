@@ -42,6 +42,7 @@ import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { budgetMcpContent } from '../lib/response_budget.js'
+import { CANONICAL_NAKSHATRA_NAMES, nakshatraNumberOf } from '../lib/nakshatra_names.js'
 
 // ── MCP response wrapping (T-7 fix) ─────────────────────────────────────────
 //
@@ -89,7 +90,7 @@ export const MuhurtaFinderInputSchema = z.object({
     .describe(
       'The type of action to find auspicious windows for. ' +
       'marriage — vivah muhurta (Rohini/Guruvara auspicious per BPHS ch.46); ' +
-      'travel — yatra muhurta (Ashwini/Mrigashira/Pushya preferred); ' +
+      'travel — yatra muhurta (Ashwini/Mrigasira/Pushya preferred); ' +
       'business — vyapara muhurta (Rohini/Hasta/Budhavara); ' +
       'medical — rogashanti muhurta (Pushya/Ashwini; avoid Krittika); ' +
       'education — vidya muhurta (Pushya nakshatra most auspicious; Mercury/Thursday days); ' +
@@ -98,7 +99,7 @@ export const MuhurtaFinderInputSchema = z.object({
       // Lane F (EL-50) additions, each with a cited classical rule set (see ACTIVITY_RULES):
       'spiritual_initiation — mantra/guru dīkṣā (Pushya/Punarvasu/Anuradha/Revati; Jupiter-day/hora; ' +
       'avoid ugra & tīkṣṇa nakshatras — Muhurta Chintamani dīkṣā-prakaraṇa); ' +
-      'remedial_ritual — upaya/homa/dāna/śānti-karma (Pushya/Ashwini/Hasta/Mrigashira mridu-kshipra; ' +
+      'remedial_ritual — upaya/homa/dāna/śānti-karma (Pushya/Ashwini/Hasta/Mrigasira mridu-kshipra; ' +
       'BPHS Grahaśānti Adhyāya; Muhurta Chintamani śānti-karma); ' +
       'japa_start — beginning a sustained japa/anuṣṭhāna (dhruva/sthira nakshatras Rohini/Uttara-* for ' +
       'permanence + Pushya; Jupiter/Moon day — Muhurta Martanda anuṣṭhāna-ārambha).'
@@ -376,31 +377,19 @@ export interface PredictionFiling {
 // chart value). They post-process the platform's returned windows; the coarse
 // panchanga/dasha/transit score still comes from the Python muhurta primitive.
 
-/** The 27 nakshatras, index 0 → number 1 (Ashwini) … index 26 → number 27 (Revati). */
-export const NAKSHATRAS = [
-  'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu',
-  'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta',
-  'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha',
-  'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadrapada',
-  'Uttara Bhadrapada', 'Revati',
-] as const
+/**
+ * The 27 nakshatras (canonical L0-lexicon spelling: Mrigasira, Moola, Dhanishtha), index 0 -> number 1
+ * (Ashwini) ... index 26 -> number 27 (Revati). One table: ../lib/nakshatra_names.ts.
+ */
+export const NAKSHATRAS = CANONICAL_NAKSHATRA_NAMES
 
-/** Loose-match a nakshatra name → number 1..27 (case/spacing/diacritic tolerant). Returns null if unknown. */
+/**
+ * Loose-match a nakshatra name -> number 1..27. Case / spacing / diacritic tolerant; resolves the canonical
+ * spelling, the old L1 / medical-seed spellings (Mrigashira, Mula, Dhanishta) and common aliases.
+ * Returns null if unknown (never a guess).
+ */
 export function nakshatraNumber(name: string | undefined | null): number | null {
-  if (!name) return null
-  const norm = (s: string) => s.toLowerCase().replace(/[\s_\-.]+/g, '').replace(/aa/g, 'a').replace(/sh/g, 's').replace(/ph/g, 'f')
-  const target = norm(name)
-  for (let i = 0; i < NAKSHATRAS.length; i++) {
-    const nk = NAKSHATRAS[i]
-    if (nk && norm(nk) === target) return i + 1
-  }
-  // common alias fragments
-  const alias: Record<string, number> = {
-    pushyami: 8, aslesha: 9, poorvaphalguni: 11, uttaraphalguni: 12, poorvaashadha: 20,
-    uttaraashadha: 21, dhanistha: 23, satabhisha: 24, poorvabhadrapada: 25, uttarabhadrapada: 26,
-    mrigasira: 5, arudra: 6, thiruvathirai: 6,
-  }
-  return alias[target] ?? null
+  return nakshatraNumberOf(name)
 }
 
 // ── Tāra bala (Nava-tārā chakra — Muhurta Chintamani, Nakshatra Prakarana) ──────
@@ -464,7 +453,7 @@ const VARA_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn
 export const ACTIVITY_RULES: Record<ActionType, ActivityRule> = {
   marriage: {
     event_class: 'vivah', base_action_type: 'marriage',
-    favorable_nakshatras: [4, 5, 13, 12, 21, 26, 27, 17],  // Rohini, Mrigashira, Hasta, Uttara-*, U.Bhadra, Revati, Anuradha
+    favorable_nakshatras: [4, 5, 13, 12, 21, 26, 27, 17],  // Rohini, Mrigasira, Hasta, Uttara-*, U.Bhadra, Revati, Anuradha
     favorable_varas: ['Moon', 'Jupiter', 'Venus'],
     avoid_nakshatras: [2, 6, 9, 10, 19],
     karaka_graha: 'Venus',
@@ -476,7 +465,7 @@ export const ACTIVITY_RULES: Record<ActionType, ActivityRule> = {
     favorable_varas: ['Moon', 'Mercury', 'Jupiter', 'Venus'],
     avoid_nakshatras: [3, 9, 16],
     karaka_graha: 'Mercury',
-    citation: 'Muhurta Chintamani yātrā-prakaraṇa (Ashwini/Mrigashira/Pushya cara-nakshatras).',
+    citation: 'Muhurta Chintamani yātrā-prakaraṇa (Ashwini/Mrigasira/Pushya cara-nakshatras).',
   },
   business: {
     event_class: 'vyapara', base_action_type: 'business',
@@ -521,17 +510,17 @@ export const ACTIVITY_RULES: Record<ActionType, ActivityRule> = {
   // ── EL-50 taxonomy extension ──────────────────────────────────────────────────
   spiritual_initiation: {
     event_class: 'mantra_initiation', base_action_type: 'general',
-    // Pushya, Punarvasu, Anuradha, Revati, Hasta, Ashwini, Mrigashira, U.Bhadrapada
+    // Pushya, Punarvasu, Anuradha, Revati, Hasta, Ashwini, Mrigasira, U.Bhadrapada
     favorable_nakshatras: [8, 7, 17, 27, 13, 1, 5, 26],
     favorable_varas: ['Jupiter', 'Moon'],
-    // avoid ugra (Bharani, Magha, P.Phalguni, P.Ashadha, P.Bhadrapada) + tīkṣṇa (Ardra, Ashlesha, Jyeshtha, Mula)
+    // avoid ugra (Bharani, Magha, P.Phalguni, P.Ashadha, P.Bhadrapada) + tīkṣṇa (Ardra, Ashlesha, Jyeshtha, Moola)
     avoid_nakshatras: [2, 10, 11, 20, 25, 6, 9, 18, 19],
     karaka_graha: 'Jupiter',
     citation: 'Mantra/guru dīkṣā — Muhurta Chintamani dīkṣā-prakaraṇa; Guru-vāra + Jupiter-horā, Pushya/Anuradha; avoid ugra & tīkṣṇa nakshatras.',
   },
   remedial_ritual: {
     event_class: 'upaya_ritual', base_action_type: 'general',
-    // śānti-karma: mridu (Mrigashira, Chitra, Anuradha, Revati) + kshipra (Ashwini, Pushya, Hasta) + Shravana
+    // śānti-karma: mridu (Mrigasira, Chitra, Anuradha, Revati) + kshipra (Ashwini, Pushya, Hasta) + Shravana
     favorable_nakshatras: [8, 1, 13, 5, 14, 17, 27, 22],
     favorable_varas: ['Moon', 'Mercury', 'Jupiter', 'Venus'],
     avoid_nakshatras: [2, 10, 11, 20, 25],   // avoid ugra for pacific śānti
@@ -1051,7 +1040,7 @@ export function registerMuhurtaFinder(
           'Action type: marriage | travel | business | medical | education | property | general | ' +
           'spiritual_initiation | remedial_ritual | japa_start. ' +
           'education = Pushya/Mercury/Thursday auspicious; marriage = Rohini/Guruvara; ' +
-          'business = Rohini/Hasta/Budhavara; travel = Ashwini/Mrigashira; ' +
+          'business = Rohini/Hasta/Budhavara; travel = Ashwini/Mrigasira; ' +
           'spiritual_initiation = mantra dīkṣā (Pushya/Anuradha, Guru-vāra); ' +
           'remedial_ritual = homa/dāna/śānti; japa_start = sustained anuṣṭhāna (dhruva nakshatras).'
         ),
