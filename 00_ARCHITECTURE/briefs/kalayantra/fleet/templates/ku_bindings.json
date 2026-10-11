@@ -5,7 +5,7 @@
   "path": "00_ARCHITECTURE/briefs/kalayantra/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_2.md",
   "sha256": "9f94344b7ceaf2891afe3e18c112dcdb37aa908906e65664b8077ea00f6a626f"
  },
- "rule": "A B-1 packet for a component named in required_in carries the clause text verbatim in its Spec excerpt (plan §8.3); kypacket.py check compares text_sha256.",
+ "rule": "A B-1 packet for a component named in required_in carries the clause text verbatim in its Spec excerpt (plan §8.3). Nothing enforces this yet: kypacket.py is a B-1 deliverable, and its check is to compare text_sha256 in every required_in packet; until it exists the packet reviewer verifies each clause hash by hand (sha256 of the excerpt's clause text equals text_sha256) and says so in the review.",
  "clauses": {
   "KU-01": {
    "title": "HIGH before conductor paste: audit disagrees with typed completion",
@@ -13,7 +13,8 @@
    "text_sha256": "bb3670a36b9f2c101c21b9c2e246c218495ff90efa177b8eefb3f0a2328f5936",
    "required_in": [
     "tracker-semantics",
-    "preflight-v3"
+    "preflight-v3",
+    "kyverdicts"
    ],
    "acceptance_binding": "B-2 preflight acceptance: remaining legacy claim/verdict findings are reconciled explicitly first"
   },
@@ -24,7 +25,9 @@
    "required_in": [
     "local-db",
     "kylock",
-    "finalize-v3"
+    "finalize-v3",
+    "kyloop-crash-cleanup",
+    "dispatcher-ready-receipts"
    ],
    "acceptance_binding": "every session that starts a test database: session-close / lock-release path and finalisation"
   },

@@ -42,6 +42,35 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_veto.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_veto_effective.json
 
+# area: qualification — launch probes and launch qualification
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyprobe.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyqualify.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
+
+# area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/TOKEN_MEASUREMENT.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/KU_REPLACEMENTS_v2_7.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/ku_bindings.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/kycardtokens.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py
+
+# tranche: deferred — second part of step 3 (owner decision 2026-10-12): listed and pinned, reviewed separately,
+#   not bound by the first bootstrap manifest and not used by step 4 (the launcher does not import them).
+# tranche: deferred
+
 # area: loops — headless loop controller, control script, notifier, launchd jobs, loop prompts
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyctl.sh
@@ -72,23 +101,3 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/crash_tick.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_git
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_ky
-
-# area: qualification — launch probes and launch qualification
-00_ARCHITECTURE/briefs/kalayantra/fleet/kyprobe.py
-00_ARCHITECTURE/briefs/kalayantra/fleet/kyqualify.py
-00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
-00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
-
-# area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/KU_REPLACEMENTS_v2_7.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/ku_bindings.json

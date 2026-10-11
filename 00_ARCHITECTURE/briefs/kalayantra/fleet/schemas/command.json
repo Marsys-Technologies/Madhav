@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ky.command/1",
   "title": "KĀLA-YANTRA v3 cockpit command, run/commands/<UTC yyyymmddThhmmssZ>-<id>.json (relaunch plan v2.7 §4a.1, §4a.5)",
-  "description": "One owner command, written QUEUED by the cockpit (kycommands.py submit) and settled exactly once — APPLIED or REJECTED — by the fenced owner of the addressed role, in filename order. A veto is addressed to the veto role, pause/resume to the campaign role. Shape only: that the file name carries this id, that the applier held the role lock, and that the order was respected is enforced by kycommands.py, not by this schema. Timestamps are UTC ISO-8601 ('Z' or '+00:00').",
+  "description": "One owner command, written QUEUED by the cockpit (kycommands.py submit) and settled exactly once — APPLIED or REJECTED — by the fenced owner of the addressed role, in filename order. A veto is addressed to the veto role, pause/resume to the campaign role. `from` records the submitting session together with the pid and start identity of the process that wrote the file: a record of origin for later examination, NOT a proof of it — until the fleet has an enforced write boundary for run/commands, that only the owner's cockpit submits is a convention. Shape only: that the file name carries this id, that the applier was the owner process of the role lock, and that the order was respected is enforced by kycommands.py, not by this schema. Timestamps are UTC ISO-8601 ('Z' or '+00:00').",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,7 +18,9 @@
       "required": ["kind", "session_id"],
       "properties": {
         "kind": {"const": "cockpit"},
-        "session_id": {"type": "string", "minLength": 1}
+        "session_id": {"type": "string", "minLength": 1},
+        "pid": {"description": "The submitting process, as it saw itself (written by submit).", "type": "integer", "minimum": 1},
+        "process_start": {"description": "Its start identity (`ps -o lstart=`), null when it could not be read.", "type": ["string", "null"], "minLength": 1}
       }
     },
     "role": {"enum": ["planner", "conductor", "dispatcher", "veto", "campaign"]},

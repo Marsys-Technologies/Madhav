@@ -1,6 +1,7 @@
 """kyboot (relaunch plan v2.7: pairing rule, §4a.1 action records, §7 bootstrap launches and launch
-qualification KV-06, §5 job I/O, §6 job identity, §14 B-0c): the bootstrap supervisor. Every launch rule is shown
-passing and — on a launch input that is otherwise launchable — refusing for its own named reason.
+qualification KV-06, §5 job I/O, §6 job identity, §14 B-0c; cockpit rulings R1, R2, R6 of B-0c rework round 1):
+the bootstrap supervisor. Every launch rule is shown passing and — on a launch input that is otherwise
+launchable — refusing for its own named reason.
 
 How the tests are staged (it is what the plan requires of the real thing):
   * the supervisor never runs from this checkout. A session fixture commits byte-identical copies of kyboot.py,
@@ -10,7 +11,15 @@ How the tests are staged (it is what the plan requires of the real thing):
   * every command-line test goes through the real `kymanifest.py check`. In-process tests answer that one
     subprocess from memory (fixture `gate`) unless they ask for `real_gate`; everything kyboot itself reads from
     the manifest is real in both;
-  * the `claude` program is always a fake shell script from fixtures/b0c; the real one is never run."""
+  * THE RIG STUBS THE QUALIFICATION HARNESS: the staged source's `kyqualify.py` is a stand-in (HARNESS_STUB) that
+    accepts every receipt it is asked about under `--require-context launchd`, and its LAUNCH_CONFIG.<role>.json
+    files are stand-ins too. What the real harness accepts is test_kyqualify.py's subject, not this file's; what
+    kyboot itself compares in a receipt is tested here against receipts this file writes;
+  * the `claude` program is always a fake shell script from fixtures/b0c; the real one is never run;
+  * SAFETY — launchd is never reached. launchctl is always an ABSOLUTE path to the fake under the test's own
+    scratch root: the harness refuses to start kyboot when KY_LAUNCHCTL is unset, relative, outside the pytest
+    base folder or anything but the fake (`fake_launchctl_or_fail`), in-process and by command line; and kyboot
+    itself runs no launchctl from outside KY_SCRATCH_ROOT_OVERRIDE while that tests-only variable is set."""
 import ast
 import copy
 import datetime as dt
@@ -23,6 +32,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import textwrap
 import time
 from pathlib import Path
 
@@ -50,6 +60,54 @@ LABEL = "in.marsys.kalayantra.boot." + JOB
 DOMAIN = f"gui/{os.getuid()}"
 needs_plutil = pytest.mark.skipif(not os.path.exists("/usr/bin/plutil"), reason="plutil (macOS) lints the agent's plist")
 OTHER_START = "Mon Jan  1 00:00:00 2001"
+RELATIVE_LAUNCHCTL = "relative/kyboot-test-launchctl"     # resolves to nothing, anywhere: it can never be run
+# cockpit ruling R1, stated literally: the environment names of the qualified launch configurations
+BUILDER_ENV_NAMES = ["HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_SCRATCH",
+                     "JOB_SCRATCH", "KY_ITEM", "KY_PY"]
+SURROGATE_ENV_NAMES = ["HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_FLEET",
+                       "KY_SCRATCH", "JOB_SCRATCH"]
+
+# the staged source's stand-in for the reviewed qualification harness (see the module docstring): kymanifest.py
+# runs `kyqualify.py check <receipt> --config <launch config> --require-context launchd` for every receipt
+HARNESS_STUB = '''"""Stand-in for kyqualify.py in the staged source of tests/test_kyboot.py: `check <receipt> --config <config>
+--require-context launchd` exits 0 unless a file <receipt>.reject exists. It judges nothing."""
+import os
+import sys
+
+args = sys.argv[1:]
+asked = args[:1] == ["check"] and "--config" in args and "--require-context" in args \\
+    and args[args.index("--require-context") + 1] == "launchd"
+sys.exit(0 if asked and not os.path.exists(args[1] + ".reject") else 1)
+'''
+SAFE = {"basetemp": None, "fake": None}                    # set once per session by the `staged` fixture
+
+
+def fake_launchctl_or_fail(program):
+    """SAFETY: the only launchctl a test may let kyboot choose is the fake, named by an absolute path under the
+    pytest base folder (a path there that does not exist can run nothing and is allowed). Anything else —
+    unset, the real /bin/launchctl, a relative name a PATH could resolve — stops the test before kyboot starts."""
+    base, fake = SAFE["basetemp"], SAFE["fake"]
+    if not base or not fake:
+        raise RuntimeError("SAFETY: the harness has no scratch root yet; kyboot is not started")
+    if not isinstance(program, str) or not program:
+        raise RuntimeError("SAFETY: KY_LAUNCHCTL is unset; tests never start kyboot without the fake launchctl")
+    if not os.path.isabs(program) or os.path.normpath(program) != program or not program.startswith(base + os.sep):
+        raise RuntimeError(f"SAFETY: KY_LAUNCHCTL {program!r} is not an absolute path under the test scratch root "
+                           f"{base}; kyboot is not started")
+    if os.path.lexists(program) and os.path.realpath(program) != fake:
+        raise RuntimeError(f"SAFETY: KY_LAUNCHCTL {program!r} is not the fake launchctl; kyboot is not started")
+    return program
+
+
+def kyboot_command(path, *args, isolated=True) -> list:
+    """the supervisor as a program — isolated (-I -B) as its documentation and its launchd agent run it"""
+    return [sys.executable, *(["-I", "-B"] if isolated else []), str(path), *map(str, args)]
+
+
+def run_kyboot(path, environ, *args, timeout=60, isolated=True, cwd=None):
+    fake_launchctl_or_fail(environ.get("KY_LAUNCHCTL"))
+    return subprocess.run(kyboot_command(path, *args, isolated=isolated), capture_output=True, text=True,
+                          timeout=timeout, env=environ, cwd=cwd)
 
 
 def _git_dir() -> str:
@@ -94,6 +152,35 @@ def launch_line(launch) -> list:
             launch["env"]["KY_ROOT"]]
 
 
+def result_line(**changes) -> str:
+    """the prompt line that makes the fake job leave a result.json (by default a valid one for JOB and ITEM)"""
+    result = {"schema": "ky.job_result/1", "job_id": JOB, "item": ITEM, "status": "done",
+              "branch": BRANCH, "head_sha": "a" * 40, "pr_number": None,
+              "tests": [{"cmd": "pytest", "exit": 0, "summary": "ok"}], "blocked_reason": None, "notes": ""}
+    result.update(changes)
+    return "FAKE_RESULT_JSON:" + json.dumps(result) + "\n"
+
+
+def settings_digest(worktree) -> str:
+    """cockpit ruling R6, stated independently of kyboot: sha256 of <worktree>/.claude/settings.json, or the
+    word absent when there is no such file"""
+    path = Path(worktree) / ".claude" / "settings.json"
+    return sha(path) if path.is_file() else "absent"
+
+
+def zdotdir_digest(ky_root) -> str:
+    """cockpit ruling R6, stated independently of kyboot: sha256 over the sorted name + content of every regular
+    file directly under <KY_ROOT>/zdotdir, or the word absent when there is no such folder"""
+    folder = Path(ky_root) / "zdotdir"
+    if not folder.is_dir():
+        return "absent"
+    digest = hashlib.sha256()
+    for path in sorted(folder.iterdir(), key=lambda entry: entry.name):
+        if path.is_file() and not path.is_symlink():
+            digest.update(path.name.encode("utf-8") + path.read_bytes())
+    return digest.hexdigest()
+
+
 # --------------------------------------------------------------------------------------------------------------
 # the staged source (once per session) and one launchable job (per test)
 # --------------------------------------------------------------------------------------------------------------
@@ -102,6 +189,7 @@ def staged(tmp_path_factory):
     """the immutable staged source: a repository holding the approved bundle and the committed supervisor files,
     its manifest built by the real kymanifest.py, and a clone of it as the template of a job's worktree"""
     global kyboot
+    SAFE["basetemp"] = os.path.realpath(tmp_path_factory.getbasetemp())
     top = Path(os.path.realpath(tmp_path_factory.mktemp("staged")))
     source, run = top / "source", top / "run"
     fleet = source / kymanifest.FLEET
@@ -119,8 +207,13 @@ def staged(tmp_path_factory):
 
     (fleet / "schemas").mkdir(parents=True)
     (fleet / "cards").mkdir()
+    (fleet / "templates").mkdir()
     for name in ("kyboot.py", "kyschema.py", "kymanifest.py", "mcp.none.json"):
         shutil.copyfile(FLEET / name, fleet / name)
+    (source / kymanifest.HARNESS).write_text(HARNESS_STUB, encoding="utf-8")       # the rig stubs the harness
+    for role in ROLES:                                                              # … and its launch configurations
+        (source / (kymanifest.LAUNCH_CONFIG % role)).write_text(
+            json.dumps({"schema": "ky.launch_config/1", "role": role, "stand_in": True}) + "\n", encoding="utf-8")
     for name in MY_SCHEMAS:
         shutil.copyfile(FLEET / "schemas" / f"{name}.json", fleet / "schemas" / f"{name}.json")
     (fleet / "cards" / "BOOTSTRAP.md").write_text("# BOOTSTRAP card (test stand-in)\n", encoding="utf-8")
@@ -131,17 +224,33 @@ def staged(tmp_path_factory):
     git_in(source, "commit", "-q", "-m", "staged supervisor", home=top)
     head = git_in(source, "rev-parse", "HEAD", home=top)
 
+    # the review receipt, backed by per-area review records on disk that together cover every component
+    (top / "area-reviews").mkdir()
+    areas = []
+    for index, name in enumerate(("supervisor", "everything-else")):
+        record = top / "area-reviews" / f"{name}.review.json"
+        covered = [rel for rel in components if (rel.endswith(("kyboot.py", "kyschema.py"))) == (index == 0)]
+        record.write_text(json.dumps({"area": name, "reviewer_session_id": f"area-reviewer-{index}",
+                                      "inputs": {rel: sha(source / rel) for rel in covered},
+                                      "review": {"verdict": "ACCEPTED"}}), encoding="utf-8")
+        areas.append({"area": name, "record": str(record), "record_sha256": sha(record)})
     review = source / "reviews" / "B0C_REVIEW.json"
     review.parent.mkdir()
     review.write_text(json.dumps({"verdict": "ACCEPTED", "reviewer_session_id": "reviewer-session-1",
-                                  "source_commit": approved,
+                                  "source_commit": approved, "area_reviews": areas,
                                   "inputs": {rel: sha(source / rel) for rel in components}}), encoding="utf-8")
     run.mkdir()
-    (run / "PROBES.json").write_text(json.dumps({"contexts": {}, "extra_lean_flags": {"chosen": []}}), encoding="utf-8")
-    built = subprocess.run([sys.executable, str(fleet / "kymanifest.py"), "build", "--repo", str(source), "--run",
-                            str(run), "--approved-commit", approved, "--review", str(review), "--out",
+    works = {model: {"sign_in": "works"} for model in kymanifest.ROSTER}
+    (run / "PROBES.json").write_text(json.dumps({"contexts": {"shell": works, "launchd": works},
+                                                 "extra_lean_flags": {"chosen": []}}), encoding="utf-8")
+    (run / "QUALIFICATIONS").mkdir()                                     # a build needs one receipt; each World
+    (run / "QUALIFICATIONS" / "bootstrap-builder-claude-opus-5-5.json").write_text(json.dumps({   # writes its own
+        "schema": "ky.qualification/1", "role": "bootstrap-builder", "model": "claude-opus-5-5",
+        "context": "launchd", "result": "PASS"}), encoding="utf-8")
+    built = subprocess.run([sys.executable, "-I", "-B", str(fleet / "kymanifest.py"), "build", "--repo", str(source),
+                            "--run", str(run), "--approved-commit", approved, "--review", str(review), "--out",
                             str(run / "VERSIONS.bootstrap.json")], capture_output=True, text=True,
-                           env=dict(GIT_ENV, HOME=str(top), PYTHONDONTWRITEBYTECODE="1"))
+                           env=dict(GIT_ENV, HOME=str(top)))
     assert built.returncode == 0, built.stderr
 
     worktree = top / "worktree-template"
@@ -170,6 +279,7 @@ def staged(tmp_path_factory):
     body = (FIX / "fake_launchctl.py").read_text(encoding="utf-8").split("\n", 1)[1]
     fakes["launchctl"].write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
     fakes["launchctl"].chmod(0o755)
+    SAFE["fake"] = os.path.realpath(fakes["launchctl"])
 
     spec = importlib.util.spec_from_file_location("kyboot_staged", fleet / "kyboot.py")
     module = importlib.util.module_from_spec(spec)
@@ -177,7 +287,8 @@ def staged(tmp_path_factory):
     kyboot = module                                                     # from here on, `kyboot` is the staged copy
     yield {"top": top, "source": source, "fleet": fleet, "approved": approved, "head": head, "review": review,
            "probes": run / "PROBES.json", "manifest": json.loads((run / "VERSIONS.bootstrap.json").read_text()),
-           "worktree": worktree, "worktree_head": worktree_head, "fakes": fakes, "components": components}
+           "worktree": worktree, "worktree_head": worktree_head, "fakes": fakes, "components": components,
+           "harness": source / kymanifest.HARNESS}
     kyboot = CHECKOUT_KYBOOT
 
 
@@ -192,28 +303,36 @@ class World:
         self.scratch = self.root / "scratch" / "20261011-kalayantra-v3"
         self.ky_root = self.root / "kalayantra"
         self.run_dir = self.ky_root / "run"
-        self.repo = self.root / "wt" / "kalayantra-kv3-b-kylock"
+        self.wt_root = self.root / "wt"
+        self.repo = self.wt_root / "kalayantra-kv3-b-kylock"
         self.job_scratch = self.scratch / "jobs" / JOB
-        for folder in (self.home, self.run_dir, self.repo.parent, self.job_scratch, self.root / "bin"):
+        self.launchd = self.root / "fake-launchd"
+        for folder in (self.home, self.run_dir, self.wt_root, self.job_scratch, self.root / "bin", self.launchd):
             folder.mkdir(parents=True)
         shutil.copytree(staged["worktree"], self.repo, symlinks=True)
         shutil.copyfile(staged["probes"], self.run_dir / "PROBES.json")
         self.base, self.head = staged["head"], staged["worktree_head"]
-        self.prompt = self.job_scratch / "prompt.md"
-        self.prompt.write_text("card + packet + job header\n", encoding="utf-8")
         self.fakes = staged["fakes"]
         self.claude = self.fakes["fake_claude_ok.sh"]
-        assert shutil.which("launchctl", path=str(self.fakes["launchctl"].parent)) == str(self.fakes["launchctl"])
+        # the fake launchctl, reached through a link in this test's own root: it reads its state from
+        # <root>/fake-launchd (never from its environment) and adds the tests-only overrides to an agent it starts
+        self.launchctl = self.root / "bin" / "launchctl"
+        os.symlink(str(self.fakes["launchctl"]), str(self.launchctl))
+        (self.launchd / "config.json").write_text(json.dumps({
+            "ky_run": str(self.run_dir), "agent_env": {"KY_SCRATCH_ROOT_OVERRIDE": str(self.root),
+                                                       "KY_WORKTREE_ROOT_OVERRIDE": str(self.wt_root)}}),
+            encoding="utf-8")
         self.version_line = "2.1.296 (Claude Code)"
         self.context = "shell"                      # where the qualification receipt says it was earned
+        self.deadline_seconds = 3600                # what the qualification receipt binds as the longest job
         self.auto_qualify = True
-        self.launchd = self.root / "fake-launchd"
         self.launch_path = self.root / "launch.json"
         self.manifest_path = self.run_dir / "VERSIONS.bootstrap.json"
         self.kyboot_path = staged["fleet"] / "kyboot.py"
         self.mcp = self.repo / kymanifest.FLEET / "mcp.none.json"
         self.card = self.repo / kymanifest.FLEET / "cards" / "BOOTSTRAP.md"
         self.packet = self.repo / kymanifest.K / "packets" / "PACKET_KV3-B-KYLOCK_v1.md"
+        self.prompt = self.job_scratch / "prompt.md"
         tmp_dir = str(self.job_scratch / "tmp")
         self.launch = {
             "schema": "ky.bootstrap_launch_input/1", "job_id": JOB, "item": ITEM, "kind": "BUILD",
@@ -221,7 +340,7 @@ class World:
             "claude_bin": str(self.claude), "claude_min_version": "2.1.296",
             "model": "claude-opus-5-5", "effort": "high", "permission_mode": "bypassPermissions", "max_turns": 150,
             "mcp_config": str(self.mcp), "mcp_config_sha256": sha(self.mcp),
-            "prompt_path": str(self.prompt), "prompt_sha256": sha(self.prompt),
+            "prompt_path": str(self.prompt), "prompt_sha256": "",
             "card_path": str(self.card), "card_sha256": sha(self.card),
             "packet_path": str(self.packet), "packet_sha256": sha(self.packet),
             "job_scratch": str(self.job_scratch), "stdout_path": str(self.job_scratch / "stdout.jsonl"),
@@ -229,18 +348,19 @@ class World:
             "state_path": str(self.run_dir / "jobs" / JOB / "state.json"),
             "env": {"HOME": str(self.home), "PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8", "TERM": "dumb",
                     "USER": "tester", "TMPDIR": tmp_dir, "KY_ROOT": str(self.ky_root), "KY_RUN": str(self.run_dir),
-                    "KY_ITEM": ITEM},
+                    "KY_SCRATCH": str(self.scratch), "JOB_SCRATCH": str(self.job_scratch), "KY_ITEM": ITEM},
             "extra_lean_flags": ["--disable-slash-commands"], "disallowed_tools": [],
             "deadline": stamp(3600), "plan_version": "2.7", "approved_source_commit": staged["approved"],
         }
-        # SAFETY: the fake launchctl's folder comes first on PATH, so that even a supervisor broken enough to look
-        # `launchctl` up by name (a bug, or a mutant of the code under test) can only ever reach the fake; and
-        # KY_LAUNCHCTL always names the fake, so the default /bin/launchctl is never the one that is run.
-        self.environ = {"PATH": str(self.fakes["launchctl"].parent) + os.pathsep + TOOL_PATH,
-                        "HOME": str(self.home), "KY_SCRATCH": str(self.scratch),
+        self.set_prompt("")
+        # SAFETY: KY_LAUNCHCTL always names the fake by an absolute path under this test's root, and
+        # KY_SCRATCH_ROOT_OVERRIDE is that root — so kyboot itself refuses any launchctl outside it. No fake sits on
+        # PATH: a supervisor broken enough to look `launchctl` up by name must find nothing a test planted.
+        self.environ = {"PATH": TOOL_PATH, "HOME": str(self.home), "KY_SCRATCH": str(self.scratch),
                         "KY_RUN": str(self.run_dir), "KY_SCRATCH_ROOT_OVERRIDE": str(self.root),
+                        "KY_WORKTREE_ROOT_OVERRIDE": str(self.wt_root),
                         "PYTHONDONTWRITEBYTECODE": "1", "KY_TEST_MARKER": "must-not-reach-the-job",
-                        "KY_LAUNCHCTL": str(self.fakes["launchctl"]), "KY_FAKE_LAUNCHD": str(self.launchd)}
+                        "KY_LAUNCHCTL": str(self.launchctl)}
 
     # --- building blocks ---
     def git(self, *args) -> str:
@@ -270,8 +390,17 @@ class World:
         self.launch["claude_bin"] = str(self.claude)
         return self.claude
 
-    def set_prompt(self, text: str):
-        self.prompt.write_text(text, encoding="utf-8")
+    def prompt_bytes(self, text: str) -> bytes:
+        """a prompt as plan §7 composes it: the card's exact bytes, the packet's exact bytes, the job header —
+        then the lines that steer the fake job; unless `text` brings its own, a line that makes the job leave a
+        valid result.json (a job without one is not a success)"""
+        header = f"job header: {self.launch['job_id']} · {self.launch['worktree']} · {BRANCH}\n"
+        tail = "" if "FAKE_RESULT_JSON:" in text or "FAKE_NO_RESULT_JSON" in text else \
+            result_line(job_id=self.launch["job_id"], item=self.launch["item"])
+        return self.card.read_bytes() + self.packet.read_bytes() + (header + text + tail).encode("utf-8")
+
+    def set_prompt(self, text: str, raw: bytes = None):
+        self.prompt.write_bytes(self.prompt_bytes(text) if raw is None else raw)
         self.launch["prompt_sha256"] = sha(self.prompt)
 
     # --- the qualification receipt and the manifest that records it ---
@@ -288,9 +417,13 @@ class World:
                           else "0" * 64,
                           "claude_version": self.version_line, "argv": launch_line(launch), "model": launch["model"],
                           "effort": launch["effort"], "permission_mode": launch["permission_mode"],
-                          "max_turns": launch["max_turns"], "deadline_seconds": 3600, "worktree": launch["worktree"],
+                          "max_turns": launch["max_turns"], "deadline_seconds": self.deadline_seconds,
+                          "worktree": launch["worktree"],
                           "env_names": sorted(env), "child_path": env.get("PATH"),
                           "prompt_sha256": launch["prompt_sha256"], "mcp_config_sha256": launch["mcp_config_sha256"],
+                          "project_settings_sha256": settings_digest(launch["worktree"]),
+                          "zdotdir_sha256": zdotdir_digest(env["KY_ROOT"]),
+                          "harness_sha256": sha(self.staged["harness"]),
                           "extra_flags": list(launch["extra_lean_flags"]),
                           "disallowed_tools": list(launch["disallowed_tools"]), "add_dirs": [env["KY_ROOT"]]}}
 
@@ -299,7 +432,7 @@ class World:
         place, or as the document `replace` — and record it in the manifest"""
         try:
             receipt, path = self.receipt(), self.receipt_path()
-        except (KeyError, TypeError, AttributeError):
+        except (KeyError, TypeError, AttributeError, ValueError, OSError):
             return None                     # a launch input too broken to qualify keeps the receipt it had
         if change is not None:
             change(receipt)
@@ -313,20 +446,28 @@ class World:
 
     def sync_manifest(self, change=None):
         """this run folder's manifest: the staged source's real manifest, re-observed for this folder's probes
-        and qualification receipts the way kymanifest.py records them, then digested by kymanifest's own code"""
+        and qualification receipts in the shape kymanifest.py records them (for a PASS receipt: exactly its
+        `observe_qualifications` entry, so the real `check` agrees), then digested by kymanifest's own code.
+        A receipt that is not PASS could never be in a built manifest; it is recorded as "not PASS" here so
+        that kyboot's own rule is exercised too."""
         manifest = copy.deepcopy(self.staged["manifest"])
         manifest.pop("manifest_sha256")
         manifest["probes"]["path"] = str(self.run_dir / "PROBES.json")
         recorded = []
         for path in sorted((self.run_dir / "QUALIFICATIONS").glob("*.json")):
             try:
-                result = json.loads(path.read_text()).get("result")
-            except (ValueError, AttributeError):
-                result = None
+                document = json.loads(path.read_text())
+            except ValueError:
+                document = None
+            document = document if isinstance(document, dict) else {}
+            role = document.get("role")
+            config = kymanifest.LAUNCH_CONFIG % role if isinstance(role, str) else None
+            config_file = self.staged["source"] / config if config else None
             recorded.append({"path": str(path), "sha256": sha(path),
-                             "result": result if result in ("PASS", "FAIL") else "unknown"})
+                             "result": "PASS" if document.get("result") == "PASS" else "not PASS", "role": role,
+                             "model": document.get("model"), "context": document.get("context"), "config": config,
+                             "config_sha256": sha(config_file) if config_file and config_file.is_file() else None})
         manifest["qualifications"] = recorded
-        manifest["qualifications_all_pass"] = bool(recorded) and all(q["result"] == "PASS" for q in recorded)
         if change is not None:
             change(manifest)
         self.manifest_path.write_text(json.dumps(kymanifest.with_digest(manifest), indent=1, ensure_ascii=False,
@@ -338,19 +479,22 @@ class World:
             self.qualify()
         return self.launch_path
 
-    def another_job(self, job_id, item=None) -> Path:
+    def another_job(self, job_id, item=None, text="FAKE_SLEEP:0\n") -> Path:
         """a second launch input in the same run folder (same role, model and program: the same qualification)"""
         launch = copy.deepcopy(self.launch)
         scratch = self.scratch / "jobs" / job_id
         scratch.mkdir(parents=True)
-        (scratch / "prompt.md").write_text("FAKE_SLEEP:0\n", encoding="utf-8")
         launch.update(job_id=job_id, job_scratch=str(scratch), prompt_path=str(scratch / "prompt.md"),
-                      prompt_sha256=sha(scratch / "prompt.md"), stdout_path=str(scratch / "stdout.jsonl"),
+                      stdout_path=str(scratch / "stdout.jsonl"),
                       stderr_path=str(scratch / "stderr.log"), tmp_path=str(scratch / "tmp"),
                       state_path=str(self.run_dir / "jobs" / job_id / "state.json"))
-        launch["env"]["TMPDIR"] = str(scratch / "tmp")
+        launch["env"].update(TMPDIR=str(scratch / "tmp"), JOB_SCRATCH=str(scratch))
         if item is not None:
             launch["item"] = launch["env"]["KY_ITEM"] = item
+        (scratch / "prompt.md").write_bytes(
+            self.card.read_bytes() + self.packet.read_bytes() + ("job header: " + job_id + "\n" + text + result_line(
+                job_id=job_id, item=launch["item"])).encode("utf-8"))
+        launch["prompt_sha256"] = sha(scratch / "prompt.md")
         path = self.root / f"launch-{job_id}.json"
         path.write_text(json.dumps(launch, indent=1) + "\n", encoding="utf-8")
         return path
@@ -362,12 +506,10 @@ class World:
     def run(self, grace=1.0):
         return kyboot.run(str(self.write()), self.environ, grace=grace, report=lambda text: None)
 
-    def cli(self, *args, environ=None, timeout=60):
+    def cli(self, *args, environ=None, timeout=60, isolated=True, cwd=None):
         self.write()
-        used = self.environ if environ is None else environ
-        assert used.get("KY_LAUNCHCTL") and used["KY_LAUNCHCTL"] != "/bin/launchctl", "tests never reach launchd"
-        return subprocess.run([sys.executable, str(self.kyboot_path), *map(str, args)], capture_output=True,
-                              text=True, timeout=timeout, env=self.environ if environ is None else environ)
+        return run_kyboot(self.kyboot_path, self.environ if environ is None else environ, *args, timeout=timeout,
+                          isolated=isolated, cwd=cwd)
 
     def state(self, job=JOB) -> dict:
         return json.loads((self.run_dir / "jobs" / job / "state.json").read_text(encoding="utf-8"))
@@ -378,17 +520,29 @@ class World:
     def lock(self, item=ITEM) -> Path:
         return self.run_dir / "locks" / f"kyboot.{item}"
 
+    def lock_leftovers(self) -> list:
+        """every name under run/locks that is not a lock in place: private new locks, graves, released locks"""
+        return sorted(p.name for p in (self.run_dir / "locks").glob("*") if ".new." in p.name or ".stale." in p.name
+                      or ".released." in p.name)
+
     def launched(self) -> bool:
         return (self.job_scratch / "tmp" / "fake_argv.txt").exists()
 
     # --- the fake launchd ---
     def mode(self, **how):
-        self.launchd.mkdir(exist_ok=True)
         (self.launchd / "mode.json").write_text(json.dumps(how), encoding="utf-8")
 
     def calls(self) -> list:
         try:
             return [json.loads(line) for line in (self.launchd / "calls.jsonl").read_text().splitlines()]
+        except OSError:
+            return []
+
+    def launchctl_env_names(self) -> list:
+        """for each invocation of the fake launchctl, the sorted names of the environment it was given"""
+        try:                                         # (__CF_USER_TEXT_ENCODING is added by macOS itself, to every process)
+            return [[name for name in json.loads(line) if name != "__CF_USER_TEXT_ENCODING"]
+                    for line in (self.launchd / "env.jsonl").read_text().splitlines()]
         except OSError:
             return []
 
@@ -472,6 +626,14 @@ def gate(request, monkeypatch):
     return asked
 
 
+@pytest.fixture(autouse=True)
+def never_the_real_launchctl(monkeypatch, staged):
+    """SAFETY, in-process: whatever launchctl the supervisor is about to choose is checked before it can be run —
+    an environment without KY_LAUNCHCTL (which would mean /bin/launchctl) stops the test"""
+    chosen = kyboot.launchctl_program
+    monkeypatch.setattr(kyboot, "launchctl_program", lambda environ: fake_launchctl_or_fail(chosen(environ)))
+
+
 def refused(world, *needles):
     """the launch input is refused and ONE finding carries every needle"""
     result = world.check()
@@ -541,16 +703,23 @@ def test_a_complete_launch_input_passes_check_in_process_and_by_cli(world, gate)
     cli = world.cli("check", world.launch_path)
     assert cli.returncode == 0, cli.stderr
     assert cli.stdout.startswith("CHECK-PASSED") and JOB in cli.stdout and "role bootstrap-builder" in cli.stdout
+    assert result.facts["python_isolated"] is False and "overrides: KY_LAUNCHCTL=" in cli.stdout
     assert not (world.run_dir / "jobs").exists() and not world.launched()      # check launches nothing
     assert not (world.run_dir / "actions").exists() and not (world.run_dir / "locks").exists()
 
 
-def test_the_fixture_launch_input_is_refused_on_this_host_for_real_reasons(tmp_path):
-    """the static example names paths that are not prepared here: shape-valid is not launchable"""
-    result = kyboot.check(str(FIX / "launch_input.json"), {"PATH": TOOL_PATH, "KY_SCRATCH": str(tmp_path),
-                                                           "KY_SCRATCH_ROOT_OVERRIDE": str(tmp_path),
-                                                           "KY_RUN": str(tmp_path / "run")})
+def test_the_fixture_launch_input_is_refused_on_this_host_for_real_reasons(world):
+    """the static example names paths that are not prepared here: shape-valid is not launchable — and the program
+    it names (the real one, where this host has it) is never run for an input that no receipt qualifies"""
+    world.write()                                             # a manifest and a gate that pass: the input is examined
+    result = kyboot.check(str(FIX / "launch_input.json"), world.environ)
     assert not result.ok and not any(line.startswith("schema:") for line in result.findings)
+    assert not any("unfilled placeholder" in line for line in result.findings)
+    assert any(line.startswith(("env.", "state_path:", "worktree:")) for line in result.findings)
+    assert result.facts.get("claude_version") is None        # nothing was executed
+    fixture = kyschema.load_json(FIX / "launch_input.json")
+    assert sorted(fixture["env"]) == sorted(BUILDER_ENV_NAMES)             # cockpit ruling R1: the builder list
+    assert fixture["env"]["JOB_SCRATCH"] == fixture["job_scratch"] == fixture["env"]["KY_SCRATCH"] + "/jobs/" + JOB
 
 
 def test_a_missing_field_refuses_and_names_the_field(world):
@@ -852,7 +1021,7 @@ def test_ky_scratch_outside_the_root_refuses(world):
 
 def test_without_the_override_the_root_is_the_owner_scratch_folder(world):
     del world.environ["KY_SCRATCH_ROOT_OVERRIDE"]
-    world.environ["KY_SCRATCH"] = str(FIX)                    # exists, and is not under the owner's scratch root
+    world.environ["KY_SCRATCH"] = "/usr"                      # exists, and is not under the owner's scratch root
     refused(world, "KY_SCRATCH:", "is not beneath the scratch root /Users/Dev/scratch.noindex")
     assert kyboot.DEFAULT_SCRATCH_ROOT == "/Users/Dev/scratch.noindex"
 
@@ -860,11 +1029,15 @@ def test_without_the_override_the_root_is_the_owner_scratch_folder(world):
 @pytest.mark.skipif(not str(Path(__file__).resolve()).startswith("/Users/Dev/") or
                     not os.path.isdir("/Users/Dev/scratch.noindex"), reason="the owner's scratch root is not on this host")
 def test_without_the_override_a_scratch_folder_under_the_owner_root_passes(world):
+    """… and the worktree override is then not honoured either: only the owner's worktree root is left to refuse"""
     if not str(world.root).startswith("/Users/Dev/scratch.noindex/"):
         pytest.skip("pytest's base temp is not under the owner's scratch root")
     del world.environ["KY_SCRATCH_ROOT_OVERRIDE"]
     result = world.check()
-    assert result.findings == [] and result.facts["scratch_root_override"] is False
+    assert result.facts["scratch_root_override"] is False and result.facts["ky_scratch"] == str(world.scratch)
+    assert result.findings == [f"worktree: {world.repo} is not beneath the worktree root "
+                               f"/Users/Dev/worktrees.noindex/madhav/claude"]
+    assert result.facts["overrides"] == {"KY_LAUNCHCTL": str(world.launchctl)}
 
 
 def test_the_override_cannot_point_at_a_system_temporary_directory_or_at_nothing(world):
@@ -956,7 +1129,8 @@ def test_a_name_outside_the_allowlist_refuses_for_that_reason_alone(world, name)
 def test_every_allowlisted_name_is_accepted_and_the_allowlist_is_the_plan_line(world):
     assert sorted(kyboot.ENV_ALLOWLIST) == sorted([
         "HOME", "PATH", "LANG", "TERM", "USER", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_FLEET", "KY_STREAM",
-        "KY_LANE", "KY_ITEM", "KY_PY", "SE_EPHE_PATH", "SWE_EPHE_PATH", "TESTS"])
+        "KY_LANE", "KY_ITEM", "KY_PY", "SE_EPHE_PATH", "SWE_EPHE_PATH", "TESTS", "KY_SCRATCH", "JOB_SCRATCH"])
+    assert set(BUILDER_ENV_NAMES) | set(SURROGATE_ENV_NAMES) <= set(kyboot.ENV_ALLOWLIST)     # cockpit ruling R1
     assert not any(kyboot.forbidden_env_name(name) for name in kyboot.ENV_ALLOWLIST)
     world.launch["env"].update({
         "ZDOTDIR": str(world.ky_root / "zdotdir"),
@@ -974,11 +1148,16 @@ def test_forbidden_env_name_pattern():
         assert not kyboot.forbidden_env_name(name), name
 
 
-@pytest.mark.parametrize("name", ["HOME", "PATH", "KY_ROOT", "TMPDIR"])
+@pytest.mark.parametrize("name", ["HOME", "PATH", "KY_ROOT", "TMPDIR", "KY_SCRATCH", "JOB_SCRATCH"])
 def test_a_missing_required_environment_name_refuses(world, name):
-    assert kyboot.ENV_REQUIRED == ("HOME", "PATH", "KY_ROOT", "TMPDIR")
+    """cockpit ruling R1: JOB_SCRATCH and KY_SCRATCH are required — a card that reads them never expands nothing"""
+    assert kyboot.ENV_REQUIRED == ("HOME", "PATH", "KY_ROOT", "TMPDIR", "KY_SCRATCH", "JOB_SCRATCH")
+    world.write()
+    world.auto_qualify = False
     del world.launch["env"][name]
-    refused(world, f"env: required name {name} is missing")
+    findings = refused(world, f"env: required name {name} is missing")
+    assert "claude_bin: --version was not run because the job environment is refused" in findings
+    assert world.run() == 1 and not world.launched()
 
 
 def test_environment_values_must_be_strings_and_paths_absolute(world):
@@ -1006,6 +1185,43 @@ def test_environment_values_must_agree_with_the_launch_input(world):
     world.launch["env"]["KY_ITEM"] = ITEM
     world.launch["env"]["KY_ROOT"] = str(world.root / "no-such-root")
     refused(world, "env.KY_ROOT:", "is not an existing directory")
+    world.launch["env"]["KY_ROOT"] = str(world.ky_root)
+    world.launch["env"]["ZDOTDIR"] = str(world.root / "another-zdotdir")
+    refused(world, "env.ZDOTDIR:", "must equal <KY_ROOT>/zdotdir")
+    world.launch["env"]["ZDOTDIR"] = str(world.ky_root / "zdotdir")
+    assert world.check().findings == []
+
+
+def test_job_scratch_and_ky_scratch_in_the_job_environment_are_the_supervisors_own_values(world):
+    """cockpit ruling R1: JOB_SCRATCH equals the launch input's job_scratch, KY_SCRATCH the resolved scratch folder"""
+    other = world.scratch / "jobs" / "J-OTHER"
+    other.mkdir()
+    world.launch["env"]["JOB_SCRATCH"] = str(other)
+    refused(world, f"env.JOB_SCRATCH: {str(other)!r} must equal job_scratch {str(world.job_scratch)!r}")
+    world.launch["env"]["JOB_SCRATCH"] = "jobs/" + JOB
+    refused(world, "env.JOB_SCRATCH: not an absolute path")
+    world.launch["env"]["JOB_SCRATCH"] = str(world.job_scratch)
+    world.launch["env"]["KY_SCRATCH"] = str(world.scratch.parent)
+    refused(world, f"env.KY_SCRATCH: {str(world.scratch.parent)!r} differs from the supervisor's resolved KY_SCRATCH "
+                   f"{str(world.scratch)!r}")
+    alias = world.root / "scratch-alias"                      # the same folder under another name is not the value
+    os.symlink(str(world.scratch), str(alias))
+    world.launch["env"]["KY_SCRATCH"] = str(alias)
+    refused(world, "env.KY_SCRATCH:", "differs from the supervisor's resolved KY_SCRATCH")
+    world.launch["env"]["KY_SCRATCH"] = str(world.scratch)
+    world.environ["KY_SCRATCH"] = str(alias)                  # the supervisor's own spelling is resolved first
+    assert world.check().findings == []
+    spelled = str(alias / "jobs" / JOB)                       # … and a job_scratch spelled through the alias is refused
+    world.launch.update(job_scratch=spelled)
+    world.launch["env"]["JOB_SCRATCH"] = spelled
+    refused(world, f"job_scratch: {spelled} is not written as the resolved path {world.job_scratch}")
+
+
+def test_the_job_receives_job_scratch_and_ky_scratch(world):
+    assert world.run() == 0
+    lines = (world.job_scratch / "tmp" / "fake_env.txt").read_text().splitlines()
+    assert f"JOB_SCRATCH={world.job_scratch}" in lines and f"KY_SCRATCH={world.scratch}" in lines
+    assert (world.job_scratch / "result.json").is_file()     # … and that is where the job left its result
 
 
 def test_the_program_is_not_probed_and_not_qualified_with_a_refused_environment(world):
@@ -1061,15 +1277,19 @@ def test_lean_flags_that_are_not_forbidden_pass(world):
 
 @pytest.mark.parametrize("kind,effort,expected", [("BUILD", "xhigh", "high"), ("REWORK", "xhigh", "high"),
                                                   ("VERIFY", "xhigh", "high"), ("ARTIFACT", "xhigh", "high"),
-                                                  ("PLAN", "high", "xhigh")])
+                                                  ("PRE-ACCEPT", "xhigh", "high"), ("RULING", "xhigh", "high"),
+                                                  ("SURROGATE", "xhigh", "high"), ("PLAN", "high", "xhigh")])
 def test_the_wrong_effort_for_the_kind_refuses(world, kind, effort, expected):
     world.launch.update(kind=kind, effort=effort, max_turns=1)
     refused(world, f"effort: kind {kind} requires effort {expected}, found {effort}")
 
 
-@pytest.mark.parametrize("kind,cap", [("BUILD", 150), ("REWORK", 100), ("VERIFY", 60), ("ARTIFACT", 60), ("PLAN", 300)])
+@pytest.mark.parametrize("kind,cap", [("BUILD", 150), ("REWORK", 100), ("VERIFY", 60), ("ARTIFACT", 60),
+                                      ("PRE-ACCEPT", 40), ("RULING", 30), ("SURROGATE", 30), ("PLAN", 300)])
 def test_the_turn_cap_of_each_kind_is_enforced_at_its_boundary(world, kind, cap):
-    assert kyboot.TURN_CAPS[kind] == cap
+    """plan §7: BUILD 150, REWORK 100, VERIFY 60, PRE-ACCEPT 40, RULING 30, PLAN 300 (finding N-15: a ruling, a
+    pre-acceptance and an owner-surrogate job have kinds of their own and need not borrow a larger cap)"""
+    assert kyboot.TURN_CAPS[kind] == cap and len(kyboot.TURN_CAPS) == 8
     world.launch.update(kind=kind, effort="xhigh" if kind == "PLAN" else "high", max_turns=cap)
     assert world.check().findings == []
     world.launch["max_turns"] = cap + 1
@@ -1097,6 +1317,7 @@ def test_a_deadline_that_is_not_utc_iso_8601_refuses(world, text):
 
 
 def test_a_future_deadline_in_either_utc_spelling_passes(world):
+    world.deadline_seconds = 4 * 10 ** 9                      # a receipt qualified for longer than any date below
     for text in (stamp(60), stamp(60, "+00:00"), "2099-01-01T00:00:00Z"):
         world.launch["deadline"] = text
         assert world.check().findings == []
@@ -1416,10 +1637,14 @@ def test_a_failed_qualification_launches_nothing(world):
     world.write()
     world.auto_qualify = False
     world.qualify(lambda r: r.update(result="FAIL"))
-    for command in ("check", "argv", "run"):
+    for command in ("check", "argv", "run"):                 # the real manifest tool refuses it before kyboot does
         cli = world.cli(command, world.launch_path)
-        assert cli.returncode == 1 and cli.stdout == "" and "only \"PASS\" qualifies" in cli.stderr
+        assert cli.returncode == 1 and cli.stdout == ""
+        assert "manifest gate: refused: qualification receipt is not PASS ('FAIL')" in cli.stderr
+        assert "launch input: not examined" in cli.stderr
     assert not world.launched() and not (world.run_dir / "jobs").exists() and not (world.run_dir / "actions").exists()
+    assert world.run() == 1                                   # … and kyboot's own rule, behind a gate that answers yes
+    assert not world.launched() and not (world.run_dir / "jobs").exists()
 
 
 def test_a_receipt_the_manifest_does_not_record_or_records_differently_refuses(world):
@@ -1476,6 +1701,14 @@ BIND_CHANGES = [
     ("mcp_config_sha256", "9" * 64),
     ("env_names", ["HOME", "PATH"]),
     ("env_names", "HOME"),
+    ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"),
+    ("child_path", ["/usr/bin", "/bin"]),
+    ("project_settings_sha256", "9" * 64),
+    ("project_settings_sha256", None),
+    ("zdotdir_sha256", "9" * 64),
+    ("zdotdir_sha256", "ABSENT"),
+    ("harness_sha256", "9" * 64),
+    ("harness_sha256", "absent"),
 ]
 
 
@@ -1490,10 +1723,18 @@ def test_every_bound_fact_must_bind_this_launch(world, name, value):
     refused(world, f"qualification: binds.{name} is missing")
 
 
-def test_the_bound_facts_are_the_ones_named_for_the_gate():
+def test_the_bound_facts_are_the_ones_named_for_the_gate(world):
     names = {name for name, _ in BIND_CHANGES}
     assert names == {"claude_bin", "claude_bin_sha256", "claude_version", "model", "effort", "permission_mode",
-                     "max_turns", "mcp_config_sha256", "env_names"}
+                     "max_turns", "mcp_config_sha256", "env_names", "child_path", "project_settings_sha256",
+                     "zdotdir_sha256", "harness_sha256"}
+    assert names == set(kyboot.BOUND_FACTS) | {"claude_version"}            # + the launch line and deadline_seconds
+    result = world.check()
+    observed = kyboot.expected_binds(result.launch, {c["path"]: c["sha256"] for c in world.staged["manifest"]["components"]},
+                                     result.facts)
+    assert tuple(observed) == kyboot.BOUND_FACTS and all(value is not None for value in observed.values())
+    receipt = json.loads(world.receipt_path().read_text())["binds"]
+    assert {name: receipt[name] for name in observed} == observed            # what this file writes is what binds
 
 
 def test_the_bound_version_is_compared_as_a_version_and_the_program_hash_is_of_the_resolved_file(world):
@@ -1631,7 +1872,8 @@ def test_argv_is_the_plan_launch_line_with_a_clean_environment_and_is_determinis
         "--strict-mcp-config", "--mcp-config", str(world.mcp),
         "--output-format", "stream-json", "--verbose", "--add-dir", str(world.ky_root)]
     assert out["env"] == world.launch["env"] and out["env"]["TMPDIR"] == world.launch["tmp_path"]
-    assert "KY_TEST_MARKER" not in out["env"] and "KY_SCRATCH" not in out["env"]
+    assert out["env"]["JOB_SCRATCH"] == str(world.job_scratch) and out["env"]["KY_SCRATCH"] == str(world.scratch)
+    assert "KY_TEST_MARKER" not in out["env"] and "KY_LAUNCHCTL" not in out["env"]
 
 
 def test_argv_carries_disallowed_tools_and_extra_flags_in_the_qualified_order(world):
@@ -1677,9 +1919,10 @@ def test_run_launches_the_checked_line_in_a_new_session_and_records_the_job(worl
     names = {line.split("=", 1)[0] for line in (tmp / "fake_env.txt").read_text().splitlines()}
     assert names - {"PWD", "OLDPWD", "SHLVL", "_"} == set(world.launch["env"])
     assert f"TMPDIR={tmp}" in (tmp / "fake_env.txt").read_text().splitlines()
-    assert "KY_TEST_MARKER" not in names and "KY_SCRATCH" not in names
+    assert "KY_TEST_MARKER" not in names and "KY_SCRATCH_ROOT_OVERRIDE" not in names and "KY_LAUNCHCTL" not in names
     assert (tmp / "fake_cwd.txt").read_text().strip() == str(world.repo)
     assert (tmp / "fake_stdin.txt").read_text() == world.prompt.read_text()
+    assert world.prompt.read_bytes().startswith(world.card.read_bytes() + world.packet.read_bytes())
     # its own process group and session, recorded as observed
     assert state["pid"] == state["pgid"] == int((tmp / "fake_pgid.txt").read_text())
     assert state["pgid"] != os.getpgid(0)
@@ -1699,7 +1942,8 @@ def test_run_launches_the_checked_line_in_a_new_session_and_records_the_job(worl
     assert state["provider_session_id"] == SESSION
     assert state["result_event"] == {"subtype": "success", "is_error": False, "num_turns": 3,
                                      "usage": {"input_tokens": 31000, "output_tokens": 120}}
-    assert state["job_result_valid"] is None and state["job_result_errors"] == []
+    assert state["job_result_valid"] is True and state["job_result_errors"] == []
+    assert state["termination_detail"] is None and "supervisor_error" not in state
     assert SESSION in Path(world.launch["stdout_path"]).read_text()
     assert Path(world.launch["stderr_path"]).read_text() == "fake stderr line\n"
     assert sorted(p.name for p in Path(world.launch["state_path"]).parent.iterdir()) == ["state.json"]
@@ -1716,6 +1960,14 @@ def test_run_launches_the_checked_line_in_a_new_session_and_records_the_job(worl
     assert state["label"] is None and time.strptime(state["supervisor_process_start"], kyboot.LSTART_FMT)
     assert world.calls() == []                                # a shell run never talks to launchd
     assert state["action_path"] == str(world.run_dir / "actions" / f"ACT-launch-{JOB}.json")
+    # what the job was made of and what it ran under (cockpit ruling R6, findings N-04 and N-07)
+    assert state["schema"] == "ky.bootstrap_job_state/3" and state["python_isolated"] is True
+    assert state["card_sha256"] == sha(world.card) == world.launch["card_sha256"]
+    assert state["card_path"] == str(world.card) and state["packet_sha256"] == sha(world.packet)
+    assert state["prompt_sha256"] == sha(world.prompt)
+    assert state["project_settings_sha256"] == "absent" and state["zdotdir_sha256"] == "absent"
+    assert state["overrides"] == {"KY_SCRATCH_ROOT_OVERRIDE": str(world.root), "KY_LAUNCHCTL": str(world.launchctl),
+                                  "KY_WORKTREE_ROOT_OVERRIDE": str(world.wt_root)}
 
 
 def test_run_refuses_a_second_run_of_the_same_job(world, capsys):
@@ -1923,7 +2175,7 @@ def wait_until_running(world, job=JOB, limit=20.0):
         try:
             state = json.loads(state_path.read_text())
             owner = json.loads((world.lock(state["item"]) / "owner.json").read_text())
-            if state["phase"] == "running" and state["process_start"] and owner.get("child"):
+            if state["phase"] == "running" and state["process_start"] and isinstance(owner.get("child"), dict):
                 return state, owner
         except (OSError, ValueError, KeyError):
             pass
@@ -1932,7 +2184,8 @@ def wait_until_running(world, job=JOB, limit=20.0):
 
 
 def start_supervisor(world, launch_path, *options):
-    return subprocess.Popen([sys.executable, str(world.kyboot_path), "run", str(launch_path), *options],
+    fake_launchctl_or_fail(world.environ.get("KY_LAUNCHCTL"))
+    return subprocess.Popen(kyboot_command(world.kyboot_path, "run", launch_path, *options),
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=world.environ)
 
 
@@ -1965,9 +2218,12 @@ def test_a_supervisor_error_still_ends_the_job_and_is_recorded(world, monkeypatc
     monkeypatch.setattr(kyboot, "first_session_id", broken)
     code = world.run(grace=5)
     state = world.state()
-    assert code == 130
-    assert state["termination"] == "interrupted_term" and state["supervisor_error"] == "RuntimeError: scan failed"
-    assert state["group_gone"] is True and gone(state["pid"])
+    assert code == 3                                          # not 130 (no signal) and never 1 (a job was started)
+    assert state["termination"] == "supervisor_error_term" and state["supervisor_error"] == "RuntimeError: scan failed"
+    assert state["group_gone"] is True and gone(state["pid"]) and state["phase"] == "ended"
+    action = world.action()
+    assert action["state"] == "FAILED" and action["result"]["supervisor_error"] == "RuntimeError: scan failed"
+    assert action["result"]["supervisor_exit"] == 3 and not world.lock().exists()
 
 
 def test_a_group_that_cannot_be_confirmed_gone_is_reported_not_assumed_and_keeps_its_item_locked(world, monkeypatch):
@@ -2119,8 +2375,7 @@ def test_a_second_supervisor_for_the_same_item_is_refused_while_the_first_lives(
         assert owner["process_start"] == kyboot.process_start(first.pid) and owner["pgid"] == os.getpgid(first.pid)
         assert owner["child"] == {"job_id": JOB, "pid": state["pid"], "pgid": state["pgid"],
                                   "process_start": state["process_start"]}
-        refused_run = subprocess.run([sys.executable, str(world.kyboot_path), "run", str(second)],
-                                     capture_output=True, text=True, env=world.environ, timeout=60)
+        refused_run = run_kyboot(world.kyboot_path, world.environ, "run", second)
         assert refused_run.returncode == 1
         assert f"item lock: item {ITEM} is held by a live supervisor ({owner['session_or_run_id']}, pid {first.pid})" \
             in refused_run.stderr
@@ -2128,8 +2383,7 @@ def test_a_second_supervisor_for_the_same_item_is_refused_while_the_first_lives(
         assert not (world.run_dir / "actions" / "ACT-launch-J-20261011T220000Z-b2.json").exists()
         assert not (world.scratch / "jobs" / "J-20261011T220000Z-b2" / "tmp").exists()
         assert json.loads((world.lock() / "owner.json").read_text()) == owner         # the holder was not disturbed
-        elsewhere = subprocess.run([sys.executable, str(world.kyboot_path), "run", str(other_item)],
-                                   capture_output=True, text=True, env=world.environ, timeout=60)
+        elsewhere = run_kyboot(world.kyboot_path, world.environ, "run", other_item)
         assert elsewhere.returncode == 0, elsewhere.stderr                            # another item is not blocked
         assert world.state("J-20261011T220100Z-b3")["item"] == "KV3-B-KYALLOC"
         assert world.state()["phase"] == "running"
@@ -2137,8 +2391,7 @@ def test_a_second_supervisor_for_the_same_item_is_refused_while_the_first_lives(
         first.send_signal(signal.SIGTERM)
         first.communicate(timeout=30)
     assert first.returncode == 130 and not world.lock().exists()
-    after = subprocess.run([sys.executable, str(world.kyboot_path), "run", str(second)], capture_output=True, text=True,
-                           env=world.environ, timeout=60)
+    after = run_kyboot(world.kyboot_path, world.environ, "run", second)
     assert after.returncode == 0, after.stderr                                        # free once the first ended
 
 
@@ -2178,12 +2431,12 @@ UNKNOWN_OWNERS = [
     ("live id with an unreadable start", {"session_or_run_id": "x", "pid": "SELF", "process_start": "a while ago"}),
     ("id is not an integer", {"session_or_run_id": "x", "pid": "4242", "process_start": "START"}),
     ("no id at all", {"session_or_run_id": "x", "process_start": "START"}),
+    ("id is a truth value", {"session_or_run_id": "x", "pid": True, "process_start": "START", "child": None}),
 ]
 
 
 @pytest.mark.parametrize("what,owner", UNKNOWN_OWNERS, ids=[c[0] for c in UNKNOWN_OWNERS])
 def test_a_lock_whose_owner_cannot_be_identified_is_never_taken_over(world, monkeypatch, capsys, what, owner):
-    monkeypatch.setattr(kyboot, "LOCK_OWNER_WAIT_SECONDS", 0.2)
     if isinstance(owner, dict):
         owner = {key: os.getpid() if value == "SELF" else kyboot.process_start(os.getpid()) if value == "START"
                  else value for key, value in owner.items()}
@@ -2194,14 +2447,22 @@ def test_a_lock_whose_owner_cannot_be_identified_is_never_taken_over(world, monk
     assert not world.launched() and not (world.run_dir / "jobs").exists() and not (world.run_dir / "actions").exists()
     said = capsys.readouterr().err
     assert "item lock:" in said and "never taken over" in said
+    assert world.lock_leftovers() == []                       # the contender's private new lock was removed again
 
 
-def test_a_lock_is_never_taken_over_when_ps_cannot_be_asked(world, monkeypatch):
+def test_a_lock_is_never_taken_over_when_ps_cannot_be_asked(world, monkeypatch, capsys):
+    """cockpit ruling R2: unknown — ps cannot run, or times out — is never 'gone'"""
     dead, dead_start = dead_process()
-    lock = plant_lock(world, {"session_or_run_id": "kyboot-old", "pid": dead, "process_start": dead_start})
+    lock = plant_lock(world, {"session_or_run_id": "kyboot-old", "pid": dead, "process_start": dead_start,
+                              "child": None})
     real = kyboot.ps_identity
-    monkeypatch.setattr(kyboot, "ps_identity", lambda pid: None)
+    monkeypatch.setattr(kyboot, "ps_identity", lambda pid: None if pid == dead else real(pid))
     assert world.run() == 1 and (lock / "owner.json").exists() and not world.launched()
+    assert f"the owner of {lock} (pid {dead}) cannot be confirmed gone" in capsys.readouterr().err
+    monkeypatch.setattr(kyboot, "ps_identity", lambda pid: None)      # … nor is a lock written by a supervisor
+    assert world.run() == 1 and (lock / "owner.json").exists()        # that cannot read its own identity
+    assert "this supervisor's own start identity cannot be read" in capsys.readouterr().err
+    assert world.lock_leftovers() == []
     monkeypatch.setattr(kyboot, "ps_identity", real)
     assert world.run() == 0                                   # the same lock, once its owner is positively gone
 
@@ -2269,16 +2530,22 @@ def test_the_launch_is_recorded_as_intended_before_the_job_starts_and_completed_
         "launch_input_path": str(world.launch_path), "launch_input_sha256": sha(world.launch_path),
         "manifest_sha256": state["manifest_sha256"], "supervisor_sha256": sha(staged["fleet"] / "kyboot.py"),
         "qualification_sha256": sha(world.receipt_path()), "prompt_sha256": world.launch["prompt_sha256"],
-        "packet_sha256": world.launch["packet_sha256"], "argv": launch_line(world.launch)}
+        "card_sha256": sha(world.card), "packet_sha256": world.launch["packet_sha256"],
+        "argv": launch_line(world.launch),
+        "overrides": {"KY_SCRATCH_ROOT_OVERRIDE": str(world.root), "KY_LAUNCHCTL": str(world.launchctl),
+                      "KY_WORKTREE_ROOT_OVERRIDE": str(world.wt_root)}}
     assert action["target"] == {"job_id": JOB, "item": ITEM, "kind": "BUILD", "role": "bootstrap-builder",
                                 "worktree": str(world.repo), "branch": BRANCH,
                                 "state_path": world.launch["state_path"]}
     assert JOB in action["intended_transition"] and ITEM in action["intended_transition"]
     assert action["state"] == "DONE"
-    assert action["result"] == {"phase": "ended", "termination": "exited", "exit_code": 0, "exit_signal": None,
+    assert action["result"] == {"phase": "ended", "termination": "exited", "termination_detail": None,
+                                "exit_code": 0, "exit_signal": None,
                                 "group_gone": True, "pid": state["pid"], "pgid": state["pgid"],
-                                "process_start": state["process_start"], "launch_error": None,
+                                "process_start": state["process_start"], "job_result_valid": True,
+                                "launch_error": None, "supervisor_error": None,
                                 "state_path": world.launch["state_path"], "supervisor_exit": 0}
+    assert (world.job_scratch / "tmp" / "fake_owner_at_launch.txt").exists()
     assert kyboot.parse_utc(action["created_at"]) <= kyboot.parse_utc(state["started_at"])
     assert kyboot.parse_utc(action["completed_at"]) >= kyboot.parse_utc(state["ended_at"])
     assert sorted(p.name for p in (world.run_dir / "actions").iterdir()) == [f"ACT-launch-{JOB}.json"]
@@ -2362,7 +2629,7 @@ def test_a_run_writes_only_its_job_state_its_action_and_its_lock(world):
     assert tree(world.staged["fleet"]) == before_source                  # nor the reviewed source it runs from
     assert {name: after_run[name] for name in before_run} == before_run  # every earlier file is untouched
     assert sorted(set(after_run) - set(before_run)) == [f"actions/ACT-launch-{JOB}.json", f"jobs/{JOB}/state.json"]
-    assert [p.name for p in (world.run_dir / "locks").iterdir()] == []
+    assert [p.name for p in (world.run_dir / "locks").iterdir()] == []      # no lock, no grave, no guard file
     assert not list(world.run_dir.rglob("*.tmp.*"))
 
 
@@ -2401,6 +2668,11 @@ def test_the_supervisor_starts_only_git_ps_the_manifest_tool_and_the_job():
     ])
     assert kyboot.PLUTIL == "/usr/bin/plutil" and kyboot.DEFAULT_LAUNCHCTL == "/bin/launchctl"
     assert "os.system" not in source and "shell=True" not in source and "os.exec" not in source
+    # the only code it executes that is not its own file: kyschema.py, from the bytes it verified
+    executed = [ast.unparse(node) for node in ast.walk(module)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("exec", "eval")]
+    assert executed == ["exec(compile(data, path, 'exec'), module.__dict__)"]
+    assert kyboot.SCHEMA_TOOL == "kyschema.py" and kyboot.HARNESS_FILE == "kyqualify.py"
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -2504,9 +2776,10 @@ def test_submit_renders_a_one_shot_agent_bootstraps_it_and_returns_while_the_job
                              "StandardErrorPath", "StandardOutPath"]
     assert "KeepAlive" not in plist and plist["RunAtLoad"] is True and plist["ProcessType"] == "Background"
     assert plist["Label"] == LABEL
-    assert plist["ProgramArguments"] == [sys.executable, "-u", str(staged["fleet"] / "kyboot.py"), "run",
+    # … in an isolated interpreter: no script folder on the import path, no user site, no compiled cache (N-01)
+    assert plist["ProgramArguments"] == [sys.executable, "-I", "-B", "-u", str(staged["fleet"] / "kyboot.py"), "run",
                                          str(world.launch_path), "--manifest", str(world.manifest_path)]
-    assert os.path.isabs(plist["ProgramArguments"][0]) and os.path.isabs(plist["ProgramArguments"][2])
+    assert os.path.isabs(plist["ProgramArguments"][0]) and os.path.isabs(plist["ProgramArguments"][4])
     assert sorted(plist["EnvironmentVariables"]) == ALLOWED_AGENT_ENV == sorted(kyboot.AGENT_ENV_NAMES)
     assert plist["EnvironmentVariables"] == {
         "PATH": "/opt/homebrew/bin:/usr/bin:/bin", "HOME": str(world.home), "USER": plist["EnvironmentVariables"]["USER"],
@@ -2535,8 +2808,14 @@ def test_submit_renders_a_one_shot_agent_bootstraps_it_and_returns_while_the_job
     assert state["termination"] == "exited" and state["exit_code"] == 0 and state["job_result_valid"] is True
     assert state["supervisor_pid"] == world.loaded()["pid"]
     assert world.action()["state"] == "DONE" and not world.lock().exists()
-    assert set(world.loaded()["env_names"]) == set(ALLOWED_AGENT_ENV) | {"XPC_SERVICE_NAME", "KY_SCRATCH_ROOT_OVERRIDE",
-                                                                        "KY_TEST_PPID"}
+    assert set(world.loaded()["env_names"]) == set(ALLOWED_AGENT_ENV) | {
+        "XPC_SERVICE_NAME", "KY_SCRATCH_ROOT_OVERRIDE", "KY_WORKTREE_ROOT_OVERRIDE", "KY_TEST_PPID"}
+    assert state["python_isolated"] is True
+    assert state["overrides"] == {"KY_SCRATCH_ROOT_OVERRIDE": str(world.root), "KY_TEST_PPID": "1",
+                                  "KY_WORKTREE_ROOT_OVERRIDE": str(world.wt_root)}      # recorded, never silent
+    assert action["inputs"]["overrides"]["KY_LAUNCHCTL"] == str(world.launchctl)
+    assert action["inputs"]["card_sha256"] == sha(world.card)
+    assert world.launchctl_env_names() == [["HOME", "LANG", "PATH", "USER"]]             # launchctl's whole environment
     names = {line.split("=", 1)[0] for line in (world.job_scratch / "tmp" / "fake_env.txt").read_text().splitlines()}
     assert names - {"PWD", "OLDPWD", "SHLVL", "_"} == set(world.launch["env"])       # the job's env is still its own
     assert json.loads((world.job_scratch / "supervisor.out").read_text()) == state
@@ -2554,6 +2833,7 @@ def test_submit_renders_a_one_shot_agent_bootstraps_it_and_returns_while_the_job
 ])
 def test_submit_refuses_whatever_check_refuses_and_asks_launchd_nothing(world, what, break_it, reason):
     world.context = "launchd"
+    world.write()                                             # a manifest that passes: the launch input is examined
     break_it(world)
     cli = world.cli("submit", world.launch_path)
     assert cli.returncode == 1 and cli.stdout == "" and reason in cli.stderr
@@ -2568,7 +2848,8 @@ def test_submit_refuses_when_the_manifest_gate_or_the_qualification_fails(world)
     world.auto_qualify = False
     world.qualify(lambda r: r.update(result="FAIL"))
     cli = world.cli("submit", world.launch_path)
-    assert cli.returncode == 1 and 'only "PASS" qualifies' in cli.stderr
+    assert cli.returncode == 1 and "manifest gate: refused: qualification receipt is not PASS" in cli.stderr
+    assert kyboot.submit(str(world.launch_path), world.environ, report=lambda text: None) == 1     # kyboot's own rule
     world.qualify()
     (world.run_dir / "PROBES.json").unlink()
     cli = world.cli("submit", world.launch_path)
@@ -2631,8 +2912,7 @@ def test_a_job_id_that_is_not_a_safe_label_component_is_not_submitted(world, job
     other = world.another_job(job_id)
     assert kyschema.validate(kyschema.load_json(FLEET / "schemas" / "bootstrap_launch_input.json"),
                              json.loads(other.read_text())) == []          # a valid job id, but not a label
-    cli = subprocess.run([sys.executable, str(world.kyboot_path), "submit", str(other)], capture_output=True, text=True,
-                         env=world.environ, timeout=60)
+    cli = run_kyboot(world.kyboot_path, world.environ, "submit", other)
     assert cli.returncode == 1 and f"submit: job_id '{job_id}' is not a safe launchd label component" in cli.stderr
     assert world.calls() == [] and not (world.run_dir / "actions").exists()
     for fine in ("J-1", "j_2.b-3", "20261011.a"):
@@ -2649,11 +2929,14 @@ def test_submit_is_refused_as_root_with_a_relative_launchctl_and_with_a_plist_th
     assert kyboot.submit(path, world.environ, report=lambda text: None) == 1
     assert "submit: refused as root" in capsys.readouterr().err
     monkeypatch.undo()
-    world.environ["KY_LAUNCHCTL"] = "launchctl"               # by name: on this PATH that is the fake (see World)
+    # a launchctl named by a relative path: the name never comes from a test's environment (see the module
+    # docstring) — the choice itself is replaced by one that resolves to nothing, anywhere
+    monkeypatch.setattr(kyboot, "launchctl_program", lambda environ: RELATIVE_LAUNCHCTL)
     assert kyboot.submit(path, world.environ, report=lambda text: None) == 1
     assert "submit: KY_LAUNCHCTL is not an absolute path" in capsys.readouterr().err
     assert world.calls() == [] and not list(world.job_scratch.glob("*.plist"))
-    world.environ["KY_LAUNCHCTL"] = str(world.fakes["launchctl"])
+    monkeypatch.undo()
+    monkeypatch.setattr(kyboot, "launchctl_program", lambda environ: fake_launchctl_or_fail(str(world.launchctl)))
     monkeypatch.setattr(kyboot, "PLUTIL", "/usr/bin/false")
     assert kyboot.submit(path, world.environ, report=lambda text: None) == 1
     assert "submit: the rendered plist fails plutil -lint (exit 1); it was removed" in capsys.readouterr().err
@@ -2735,6 +3018,7 @@ def test_reap_boots_out_a_finished_job_and_verifies_that_it_is_gone(world):
     before = tree(world.run_dir)
     status = json.loads(world.cli("status", JOB).stdout)["jobs"][0]
     assert status["label_loaded"] is True and status["process_alive"] is False and status["supervisor_alive"] is False
+    assert status["process_group"] == "gone"
     assert status["state"]["phase"] == "ended" and status["state"]["launch_context"] == "launchd"
     assert status["state"]["pid"] == state["pid"] and status["submit"]["state"] == "DONE"
     assert tree(world.run_dir) == before                      # status changes nothing
@@ -2761,6 +3045,7 @@ def test_reap_never_boots_out_a_job_that_is_running(world):
         status = json.loads(world.cli("status").stdout)["jobs"]
         assert [job["job_id"] for job in status] == [JOB]
         assert status[0]["process_alive"] is True and status[0]["supervisor_alive"] is True
+        assert status[0]["process_group"] == "live"
         assert status[0]["label_loaded"] is True and status[0]["state"]["phase"] == "running"
         reaped = json.loads(world.cli("reap").stdout)["reaped"]
         assert reaped == [{"job_id": JOB, "label": LABEL, "action": "left", "why": "the job's process is alive"}]
@@ -2777,7 +3062,7 @@ def planted_state(world, **fields) -> dict:
     dead, dead_start = dead_process()
     job, job_start = dead_process()
     state = {"job_id": JOB, "item": ITEM, "phase": "ended", "termination": "exited", "exit_code": 0, "pid": job,
-             "process_start": job_start, "supervisor_pid": dead, "supervisor_process_start": dead_start,
+             "pgid": job, "process_start": job_start, "supervisor_pid": dead, "supervisor_process_start": dead_start,
              "launch_context": "launchd"}
     state.update(fields)
     path = world.run_dir / "jobs" / JOB / "state.json"
@@ -2798,6 +3083,10 @@ def test_reap_boots_out_only_when_the_job_and_its_supervisor_are_positively_gone
         ({"supervisor_pid": me, "supervisor_process_start": None}, "the supervisor cannot be identified"),
         ({"supervisor_pid": None}, "the supervisor cannot be identified"),
         ({"phase": "running", "termination": None, "pid": me, "process_start": started}, "the job's process is alive"),
+        ({"pgid": None}, "the job's process group is not recorded"),                    # finding N-06: a job is over
+        ({"pgid": "4242"}, "the job's process group is not recorded"),                  # only with its whole group
+        ({"pgid": True}, "the job's process group is not recorded"),
+        ({"pgid": os.getpgrp()}, "the job's process group cannot be identified"),       # not the job's own group
     ]
     for fields, why in cases:
         planted_state(world, **fields)
@@ -2805,7 +3094,9 @@ def test_reap_boots_out_only_when_the_job_and_its_supervisor_are_positively_gone
         assert entry == {"job_id": JOB, "label": LABEL, "action": "left", "why": why}, fields
         status = kyboot.status_of(str(world.run_dir), world.environ, JOB)
         assert status["label_loaded"] is True
-        if "job's process" in why:
+        if "process group" in why:
+            assert status["process_alive"] is False, fields
+        elif "job's process" in why:
             assert status["process_alive"] == (True if why.endswith("alive") else "unknown"), fields
         else:
             assert status["supervisor_alive"] == (True if why.endswith("alive") else None
@@ -2818,12 +3109,13 @@ def test_reap_boots_out_only_when_the_job_and_its_supervisor_are_positively_gone
     assert [call[0] for call in world.calls()].count("bootout") == 0 and world.loaded() is not None
     # positively over, in each way a job can be over
     for fields in ({}, {"phase": "launch_failed", "pid": None, "process_start": None, "termination": None},
-                   {"phase": "running", "termination": None}, {"phase": "prepared", "pid": None, "termination": None}):
+                   {"phase": "running", "termination": None}, {"phase": "prepared", "pid": None, "termination": None},
+                   {"phase": "launch_failed", "pgid": os.getpgrp()}):   # killed by pid: it never led a group
         planted_state(world, **fields)
         entry = kyboot.reap_one(str(world.run_dir), world.environ, JOB)
         assert entry["action"] == "booted_out" and entry["absent"] is True and entry["bootout_exit"] == 0, fields
         assert world.loaded() is None
-    assert [call[0] for call in world.calls()].count("bootout") == 4
+    assert [call[0] for call in world.calls()].count("bootout") == 5
 
 
 def test_reap_reports_an_agent_that_is_still_loaded_after_bootout_and_a_launchctl_it_cannot_ask(world, monkeypatch):
@@ -2841,19 +3133,106 @@ def test_reap_reports_an_agent_that_is_still_loaded_after_bootout_and_a_launchct
     assert kyboot.label_loaded(world.environ, JOB) == "unknown"
 
 
-def test_launchctl_is_never_looked_up_by_name(world):
-    """a relative KY_LAUNCHCTL is not run — not even when a program of that name is on PATH (here: the fake)"""
+@pytest.mark.parametrize("code", [1, 3, 5, 64, 112, 114, 127])
+def test_only_launchctls_not_found_status_reads_as_not_loaded(world, code):
+    """finding N-08: any other failure of `launchctl print` is unknown — reap must not call an agent absent on it"""
+    assert kyboot.LAUNCHCTL_NOT_FOUND == 113
     planted_state(world)
-    world.environ["KY_LAUNCHCTL"] = "launchctl"
-    assert shutil.which("launchctl", path=world.environ["PATH"]) == str(world.fakes["launchctl"])
+    assert kyboot.label_state(world.environ, JOB) == (True, 0)
+    world.mode(print_exit=code)
+    assert kyboot.label_state(world.environ, JOB) == ("unknown", code)
+    assert kyboot.status_of(str(world.run_dir), world.environ, JOB)["label_loaded"] == "unknown"
+    entry = kyboot.reap_one(str(world.run_dir), world.environ, JOB)
+    assert entry["action"] == "left" and world.loaded() is not None
+    assert entry["why"] == ("launchctl could not be asked" if code == 127 else
+                            f"launchctl did not say whether the agent is loaded (exit {code})")
+    assert [call[0] for call in world.calls()].count("bootout") == 0
+    world.mode(print_exit=113)                                # the genuine status, whatever is loaded
+    assert kyboot.label_state(world.environ, JOB) == (False, 113)
+    assert kyboot.reap_one(str(world.run_dir), world.environ, JOB)["action"] == "not_loaded"
+
+
+def test_an_agent_that_cannot_be_confirmed_absent_after_bootout_is_reported(world, monkeypatch):
+    """… and after a bootout, only that status confirms the agent is gone: reap then exits 3"""
+    monkeypatch.setattr(kyboot, "ABSENT_CONFIRM_SECONDS", 0.3)
+    planted_state(world)
+    real = kyboot.label_state
+    answers = iter([(True, 0)])
+    monkeypatch.setattr(kyboot, "label_state", lambda environ, job: next(answers, ("unknown", 5)))
+    entry = kyboot.reap_one(str(world.run_dir), world.environ, JOB)
+    assert entry["action"] == "booted_out" and entry["absent"] is False
+    assert real(world.environ, JOB) == (False, 113)           # (the fake did unload it; launchctl just did not say so)
+
+
+def test_launchctl_is_never_looked_up_by_name(world, monkeypatch):
+    """a launchctl that is not named by an absolute path is not run at all. The relative name is never put into a
+    test's environment (a broken supervisor could resolve it): the supervisor's choice is replaced by a name that
+    resolves to nothing, and the pure choice function is asked what it would have chosen."""
+    choose = CHECKOUT_KYBOOT.launchctl_program               # the unguarded, pure function
+    assert choose({}) == "/bin/launchctl" == kyboot.DEFAULT_LAUNCHCTL and choose({"KY_LAUNCHCTL": ""}) == "/bin/launchctl"
+    assert choose({"KY_LAUNCHCTL": "launchctl"}) == "launchctl"          # a relative value is passed on — to the refusal:
+    planted_state(world)
+    monkeypatch.setattr(kyboot, "launchctl_program", lambda environ: RELATIVE_LAUNCHCTL)
     code, _, error = kyboot.launchctl(world.environ, "print", kyboot.agent_target(JOB))
     assert code == 127 and "is not an absolute path; it was not run" in error
     assert kyboot.label_loaded(world.environ, JOB) == "unknown"
     assert kyboot.reap_one(str(world.run_dir), world.environ, JOB)["why"] == "launchctl could not be asked"
     assert kyboot.status_of(str(world.run_dir), world.environ, JOB)["label_loaded"] == "unknown"
     assert world.calls() == [] and world.loaded() is not None
-    world.environ["KY_LAUNCHCTL"] = str(world.fakes["launchctl"])
+    monkeypatch.undo()
     assert kyboot.label_loaded(world.environ, JOB) is True and world.calls() == [["print", f"{DOMAIN}/{LABEL}"]]
+
+
+def test_a_test_run_never_reaches_a_launchctl_outside_its_own_scratch_root(world, monkeypatch):
+    """the supervisor's own interlock: with the tests-only KY_SCRATCH_ROOT_OVERRIDE set, a launchctl that does not
+    lie beneath that root — the real one above all — is not run"""
+    planted_state(world)
+    ran = []
+    real_run = kyboot.subprocess.run
+
+    def run(argv, **kwargs):                                  # (this test itself never lets anything but the fake run,
+        ran.append(argv)                                      # whatever the supervisor under test would have done)
+        if argv[0] != str(world.launchctl):
+            raise AssertionError(f"SAFETY: {argv[0]} was about to be run")
+        return real_run(argv, **kwargs)
+
+    monkeypatch.setattr(kyboot.subprocess, "run", run)
+    for outside in ("/bin/launchctl", str(world.staged["fakes"]["launchctl"]), str(world.root) + "-sibling/launchctl",
+                    str(world.root / "bin" / ".." / ".." / "launchctl")):
+        monkeypatch.setattr(kyboot, "launchctl_program", lambda environ, program=outside: program)
+        code, _, error = kyboot.launchctl(world.environ, "print", kyboot.agent_target(JOB))
+        assert code == 127 and "is not beneath that root; it was not run" in error, outside
+    for unusable in ("", "relative-root"):
+        code, _, error = kyboot.launchctl(dict(world.environ, KY_SCRATCH_ROOT_OVERRIDE=unusable), "print", "x")
+        assert code == 127 and "it was not run" in error
+    assert ran == [] and world.calls() == []
+    monkeypatch.setattr(kyboot, "launchctl_program", lambda environ: str(world.launchctl))
+    assert kyboot.launchctl(world.environ, "print", kyboot.agent_target(JOB))[0] == 0 and len(ran) == 1
+    assert ran[0][0] == str(world.launchctl)
+
+
+def test_the_harness_refuses_to_start_kyboot_without_the_fake_launchctl(world):
+    """SAFETY of this file itself: no command-line or in-process path starts the supervisor with a launchctl that
+    is unset, relative, outside the pytest base folder, or not the fake"""
+    world.write()
+    for bad in (None, "", "launchctl", "/bin/launchctl", "/usr/bin/true", str(world.root / ".." / "x"),
+                str(FLEET / "tests" / "fixtures" / "b0c" / "fake_launchctl.py")):
+        environ = dict(world.environ)
+        if bad is None:
+            del environ["KY_LAUNCHCTL"]
+        else:
+            environ["KY_LAUNCHCTL"] = bad
+        with pytest.raises(RuntimeError, match="SAFETY"):
+            world.cli("status", environ=environ)
+        with pytest.raises(RuntimeError, match="SAFETY"):
+            kyboot.check(str(world.launch_path), environ)
+    stranger = world.root / "bin" / "another-program"        # under the scratch root, but not the fake
+    stranger.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    stranger.chmod(0o755)
+    with pytest.raises(RuntimeError, match="is not the fake launchctl"):
+        world.cli("status", environ=dict(world.environ, KY_LAUNCHCTL=str(stranger)))
+    assert world.calls() == []
+    assert world.cli("status").returncode == 0                # the fake, by its link in this test's root, is accepted
 
 
 def test_status_and_reap_are_about_known_jobs_only(world):
@@ -2880,6 +3259,1120 @@ def test_status_and_reap_are_about_known_jobs_only(world):
 
 
 # --------------------------------------------------------------------------------------------------------------
+# B-0c rework round 1 — SUP-01: the takeover of a stale lock (cockpit ruling R2)
+# --------------------------------------------------------------------------------------------------------------
+class OpenGuard:
+    """no serialisation at all: what is left is the lock protocol itself"""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+
+# a real second supervisor process: the staged kyboot's own acquire_item_lock, then it holds what it got
+CONTENDER = textwrap.dedent('''
+    import importlib.util, json, os, sys, time
+    path, ky_run, item, run_id, delay, guard, go = sys.argv[1:8]
+    spec = importlib.util.spec_from_file_location("kyboot_contender", path)
+    kyboot = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(kyboot)
+    if float(delay):
+        judge = kyboot.process_matches
+        def slow(pid, start):
+            verdict = judge(pid, start)
+            time.sleep(float(delay))          # the instant between the judgment and the rename, made long
+            return verdict
+        kyboot.process_matches = slow
+    if guard == "off":
+        class Open:
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        kyboot.lock_folder_guard = lambda folder: Open()
+    while go and not os.path.exists(go):
+        time.sleep(0.005)
+    lock, reason, taken = kyboot.acquire_item_lock(ky_run, item, run_id)
+    print(json.dumps({"lock": lock, "reason": reason, "taken_over": taken, "pid": os.getpid()}), flush=True)
+    if lock:
+        sys.stdin.read()                      # hold the lock, alive, until the test lets go
+''')
+
+
+def contender(world, run_id, delay=0.0, guard="on", go=""):
+    return subprocess.Popen([sys.executable, "-I", "-B", "-c", CONTENDER, str(world.kyboot_path), str(world.run_dir),
+                             ITEM, run_id, str(delay), guard, str(go)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, env={"PATH": "/usr/bin:/bin"})
+
+
+def let_go(*procs):
+    for proc in procs:
+        if proc is None:
+            continue
+        try:
+            proc.stdin.close()
+            proc.wait(timeout=20)
+        except (OSError, subprocess.SubprocessError):
+            proc.kill()
+            proc.wait()
+        finally:
+            proc.stdout.close()
+            proc.stderr.close()
+
+
+def stale_owner(child=None) -> dict:
+    dead, dead_start = dead_process()
+    return {"session_or_run_id": "kyboot-old", "pid": dead, "pgid": dead, "process_start": dead_start,
+            "acquired_at": "2026-10-11T20:00:00.000000Z", "child": child}
+
+
+def test_two_takeovers_of_one_stale_lock_interleaved_between_judgment_and_rename_leave_one_holder(world, monkeypatch):
+    """SUP-01, the reviewer's sequence, made deterministic: this contender has JUDGED the lock stale; before it
+    can rename it, a real second supervisor process takes the same stale lock over completely and holds it; this
+    contender's rename then moves the SECOND supervisor's live lock. Verify-after-rename finds another owner in
+    the grave than the one that was judged, puts the lock back untouched and refuses. (The first contender runs
+    without kyboot's folder guard here, or the two could not interleave at all.)"""
+    stale = stale_owner()
+    lock = plant_lock(world, stale)
+    second = {}
+    real_rename = os.rename
+
+    def rename(source, target):
+        if source == str(lock) and ".stale." in target and not second:
+            second["proc"] = contender(world, "kyboot-second")
+            second["said"] = json.loads(second["proc"].stdout.readline())
+        return real_rename(source, target)
+
+    try:
+        with monkeypatch.context() as local:
+            local.setattr(kyboot.os, "rename", rename)
+            local.setattr(kyboot, "lock_folder_guard", lambda folder: OpenGuard())
+            got, reason, taken = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-first")
+        assert second["said"]["lock"] == str(lock) and second["said"]["taken_over"] == stale     # the second took over
+        assert got is None and taken is None                                                    # the first did not
+        assert f"item lock: {lock} changed owner while it was being judged (now kyboot-second); it was put back " \
+               f"untouched and is not taken over" == reason
+        owner = json.loads((lock / "owner.json").read_text())
+        assert owner["session_or_run_id"] == "kyboot-second" and owner["pid"] == second["proc"].pid
+        assert second["proc"].poll() is None and world.lock_leftovers() == []
+        got, reason, _ = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-third")    # a later, ordinary look
+        assert got is None and "is held by a live supervisor (kyboot-second" in reason
+    finally:
+        let_go(second.get("proc"))
+
+
+def test_a_whole_run_in_that_position_launches_nothing_and_disturbs_nobody(world, monkeypatch, capsys):
+    stale = stale_owner()
+    lock = plant_lock(world, stale)
+    second = {}
+    real_rename = os.rename
+
+    def rename(source, target):
+        if source == str(lock) and ".stale." in target and not second:
+            second["proc"] = contender(world, "kyboot-second")
+            second["said"] = json.loads(second["proc"].stdout.readline())
+        return real_rename(source, target)
+
+    monkeypatch.setattr(kyboot.os, "rename", rename)
+    monkeypatch.setattr(kyboot, "lock_folder_guard", lambda folder: OpenGuard())
+    try:
+        assert world.run() == 1
+        assert "changed owner while it was being judged (now kyboot-second)" in capsys.readouterr().err
+        assert not world.launched() and not (world.run_dir / "jobs").exists() and not (world.run_dir / "actions").exists()
+        assert json.loads((lock / "owner.json").read_text())["pid"] == second["proc"].pid
+    finally:
+        let_go(second.get("proc"))
+
+
+@pytest.mark.parametrize("guard", ["on", "off"])
+def test_two_supervisors_racing_for_one_stale_lock_never_both_hold_it(world, guard):
+    """two real processes, both judging the same stale lock at the same time (the judgment is made slow, so that
+    both hold their verdict together), with kyboot's folder guard and without it: exactly one holds the lock"""
+    for attempt in range(3):
+        lock = plant_lock(world, stale_owner())
+        go = world.root / f"go-{guard}-{attempt}"
+        racers = [contender(world, f"kyboot-{name}", delay=0.4, guard=guard, go=go) for name in ("a", "b")]
+        try:
+            time.sleep(0.6)                                   # both have loaded the supervisor and wait for `go`
+            go.write_text("", encoding="utf-8")
+            said = [json.loads(proc.stdout.readline()) for proc in racers]
+            holders = [answer for answer in said if answer["lock"]]
+            assert len(holders) == 1, said
+            loser = next(answer for answer in said if not answer["lock"])
+            assert "is held by a live supervisor" in loser["reason"] or "changed owner while it was being judged" in \
+                loser["reason"] or "lost the race" in loser["reason"], loser
+            owner = json.loads((lock / "owner.json").read_text())
+            assert owner["pid"] == holders[0]["pid"] and owner["child"] is None
+            assert world.lock_leftovers() == []
+        finally:
+            let_go(*racers)
+        shutil.rmtree(lock)                                   # the holder was a bare contender: it released nothing
+
+
+def test_a_lock_that_changed_and_cannot_be_put_back_is_kept_untouched_and_nothing_is_taken(world, monkeypatch):
+    """the one case left when something that is not kyboot interferes: the moved lock is not this contender's to
+    remove, and its place is taken — it stays where it is, whole, and the refusal names it"""
+    stale = stale_owner()
+    lock = plant_lock(world, stale)
+    other = dict(stale_owner(), session_or_run_id="another-holder")
+    real_rename = os.rename
+    seen = []
+
+    def rename(source, target):
+        seen.append((source, target))
+        if source == str(lock) and ".stale." in target:           # between the judgment and the rename: another owner
+            (lock / "owner.json").write_text(json.dumps(other), encoding="utf-8")
+        if target == str(lock) and ".stale." in source:           # between the look in the grave and putting it back:
+            lock.mkdir()                                          # a third party occupies the lock's place
+            (lock / "owner.json").write_text('{"session_or_run_id": "a-third-party"}', encoding="utf-8")
+        return real_rename(source, target)
+
+    monkeypatch.setattr(kyboot.os, "rename", rename)
+    got, reason, taken = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-first")
+    assert got is None and taken is None
+    grave = next(target for source, target in seen if ".stale." in target)
+    assert "changed owner while it was being judged (now another-holder) and could not be put back" in reason
+    assert f"it is kept untouched at {grave}" in reason
+    assert json.loads((Path(grave) / "owner.json").read_text()) == other
+    assert json.loads((lock / "owner.json").read_text()) == {"session_or_run_id": "a-third-party"}
+
+
+def test_a_lock_appears_complete_with_its_owner_or_not_at_all(world, monkeypatch):
+    """cockpit ruling R2: the owner record is written in a private directory beside the lock, and that directory
+    is renamed onto the lock path — the lock path itself is never created empty"""
+    lock = world.lock()
+    arrivals = []
+    real_rename, real_mkdir = os.rename, os.mkdir
+
+    def rename(source, target):
+        if target == str(lock):
+            assert not lock.exists()
+            arrivals.append((source, json.loads((Path(source) / "owner.json").read_text())))
+        return real_rename(source, target)
+
+    def mkdir(path, *args, **kwargs):
+        assert os.fspath(path) != str(lock), "the lock path is never made by mkdir"
+        return real_mkdir(path, *args, **kwargs)
+
+    with monkeypatch.context() as local:
+        local.setattr(kyboot.os, "rename", rename)
+        local.setattr(kyboot.os, "mkdir", mkdir)
+        got, reason, taken = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-mine")
+    assert got == str(lock) and reason is None and taken is None and len(arrivals) == 1
+    source, owner = arrivals[0]
+    assert os.path.dirname(source) == str(lock.parent) and ".new." in os.path.basename(source)
+    assert owner == json.loads((lock / "owner.json").read_text())
+    assert owner["session_or_run_id"] == "kyboot-mine" and owner["pid"] == os.getpid() and owner["child"] is None
+    assert owner["process_start"] == kyboot.process_start(os.getpid())
+    assert sorted(p.name for p in lock.parent.iterdir()) == [lock.name] and sorted(p.name for p in lock.iterdir()) == ["owner.json"]
+    assert kyboot.release_item_lock(got, "kyboot-mine") is True and list(lock.parent.iterdir()) == []
+
+
+def test_a_release_removes_only_this_runs_lock_even_when_it_changes_under_the_look(world, monkeypatch):
+    """releasing follows the takeover's rule: rename the lock away, read its owner again, remove it only if it is
+    this run's — a lock that became another holder's in between is put back whole"""
+    lock, _, _ = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-mine")
+    other = dict(stale_owner(), session_or_run_id="another-holder")
+    real_rename = os.rename
+
+    def rename(source, target):
+        if source == lock and ".released." in target:         # between the look and the rename: another holder's lock
+            (Path(lock) / "owner.json").write_text(json.dumps(other), encoding="utf-8")
+        return real_rename(source, target)
+
+    with monkeypatch.context() as local:
+        local.setattr(kyboot.os, "rename", rename)
+        assert kyboot.release_item_lock(lock, "kyboot-mine") is False
+    assert json.loads((Path(lock) / "owner.json").read_text()) == other and world.lock_leftovers() == []
+    assert kyboot.release_item_lock(lock, "another-holder") is False      # nor by the right name from the wrong process
+    mine = dict(other, session_or_run_id="kyboot-mine", pid=os.getpid())
+    (Path(lock) / "owner.json").write_text(json.dumps(mine), encoding="utf-8")
+    assert kyboot.release_item_lock(lock, "kyboot-mine") is True and list(world.lock().parent.iterdir()) == []
+
+
+def test_kyboot_serialises_its_own_acquisitions_on_the_locks_folder_and_leaves_no_file(world, monkeypatch):
+    locks = world.run_dir / "locks"
+    locks.mkdir()
+    monkeypatch.setattr(kyboot, "LOCK_GUARD_WAIT_SECONDS", 0.3)
+    with kyboot.lock_folder_guard(str(locks)):                # another acquisition is under way
+        started = time.monotonic()
+        got, reason, _ = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-waiting")
+        assert got is None and f"item lock: {world.lock()} could not be taken" in reason
+        assert time.monotonic() - started >= 0.3 and list(locks.iterdir()) == []
+    got, reason, _ = kyboot.acquire_item_lock(str(world.run_dir), ITEM, "kyboot-waiting")
+    assert got == str(world.lock()) and sorted(p.name for p in locks.iterdir()) == [f"kyboot.{ITEM}"]
+
+
+# --------------------------------------------------------------------------------------------------------------
+# SUP-02: once the job's process exists, nothing leaves it unsupervised; `child: "pending"` before it exists
+# --------------------------------------------------------------------------------------------------------------
+def watch_the_job_start(world, monkeypatch, after_start=None):
+    """wrap the one Popen that starts the job: record what was on disk at that instant, the job's pid, and
+    optionally do something the moment the process exists"""
+    seen = {"started": False}
+    real_popen = subprocess.Popen
+
+    def popen(argv, **kwargs):
+        if isinstance(argv, list) and argv[:2] == [world.launch["claude_bin"], "-p"]:
+            seen["owner"] = json.loads((world.lock() / "owner.json").read_text())
+            seen["state"] = world.state()
+            seen["action"] = world.action()
+            proc = real_popen(argv, **kwargs)
+            seen.update(started=True, pid=proc.pid)
+            if after_start is not None:
+                after_start()
+            return proc
+        return real_popen(argv, **kwargs)
+
+    monkeypatch.setattr(kyboot.subprocess, "Popen", popen)
+    return seen
+
+
+def test_the_lock_says_a_job_is_pending_before_the_jobs_process_exists(world, monkeypatch):
+    seen = watch_the_job_start(world, monkeypatch)
+    assert world.run() == 0
+    assert seen["owner"]["child"] == "pending" == kyboot.CHILD_PENDING
+    assert seen["owner"]["pid"] == os.getpid() and seen["owner"]["session_or_run_id"] == world.state()["supervisor_run_id"]
+    assert seen["state"]["phase"] == "prepared" and seen["state"]["pid"] is None and seen["action"]["state"] == "INTENDED"
+    at_launch = json.loads((world.job_scratch / "tmp" / "fake_owner_at_launch.txt").read_text())
+    assert at_launch["child"] == "pending" or at_launch["child"]["pid"] == world.state()["pid"]    # never null
+
+
+MISSING = object()
+
+
+@pytest.mark.parametrize("child,why", [
+    ("pending", "it was about to start a job and never recorded which (child: pending)"),
+    (MISSING, "its record does not say whether it started a job (no child field)"),
+    ("a job", "the job it recorded cannot be identified"),
+    (["pending"], "the job it recorded cannot be identified"),
+    (7, "the job it recorded cannot be identified"),
+    ({"job_id": "J-OLD"}, "the job it recorded is alive or cannot be confirmed gone"),
+    ({"job_id": "J-OLD", "pid": "DEAD", "process_start": "DEAD"}, "the job it recorded is alive or cannot be confirmed gone"),
+    ({"job_id": "J-OLD", "pid": "DEAD", "process_start": "DEAD", "pgid": 0}, "the job it recorded is alive or cannot be"),
+    ({"job_id": "J-OLD", "pid": "DEAD", "process_start": "DEAD", "pgid": 1}, "the job it recorded is alive or cannot be"),
+    ({"job_id": "J-OLD", "pid": "DEAD", "process_start": "DEAD", "pgid": True}, "the job it recorded is alive or cannot"),
+    ({"job_id": "J-OLD", "pid": "DEAD", "process_start": "DEAD", "pgid": "DEAD-TEXT"}, "the job it recorded is alive or"),
+], ids=["pending", "no child field", "a word", "a list", "a number", "no identity", "no group", "group 0", "group 1",
+        "group true", "group as text"])
+def test_a_dead_supervisor_whose_job_is_pending_or_unidentified_is_never_taken_over(world, capsys, child, why):
+    """SUP-02: a supervisor that died between starting its job and recording it leaves `child: "pending"`; that
+    lock — like any whose job cannot be shown to be gone — is never taken over (the orphan may be running)"""
+    dead, dead_start = dead_process()
+    if isinstance(child, dict):
+        child = {key: (dead if value == "DEAD" and key == "pid" else dead_start if value == "DEAD" else
+                       str(dead) if value == "DEAD-TEXT" else value) for key, value in child.items()}
+    owner = stale_owner()
+    if child is MISSING:
+        del owner["child"]
+    else:
+        owner["child"] = child
+    lock = plant_lock(world, owner)
+    assert world.run() == 1
+    said = capsys.readouterr().err
+    assert f"item lock: the previous supervisor of item {ITEM} is gone but {why}" in said
+    assert "reconcile that job before any new launch (the lock is never taken over)" in said
+    assert json.loads((lock / "owner.json").read_text()) == owner and world.lock_leftovers() == []
+    assert not world.launched() and not (world.run_dir / "jobs").exists() and not (world.run_dir / "actions").exists()
+
+
+def a_group_whose_leader_is_gone():
+    """(leader pid, its start identity, a member of its group that lives on): a job whose main process has died
+    while something it started is still running in its process group"""
+    leader = subprocess.Popen(["/bin/sh", "-c", "/bin/sleep 120 & echo $!; wait"], stdout=subprocess.PIPE, text=True,
+                              start_new_session=True)
+    member = int(leader.stdout.readline())
+    started = kyboot.process_start(leader.pid)
+    os.kill(leader.pid, signal.SIGKILL)
+    leader.wait()
+    leader.stdout.close()
+    assert started and gone(leader.pid) and not gone(member, wait=0.2)
+    return leader.pid, started, member
+
+
+def test_a_dead_job_leader_with_a_living_group_member_is_not_gone(world, capsys):
+    """finding N-06 / ruling R2: the leader is positively gone, but `killpg(pgid, 0)` still answers — not gone"""
+    leader, started, member = a_group_whose_leader_is_gone()
+    try:
+        assert kyboot.process_matches(leader, started) is False and kyboot.group_state(leader) == "live"
+        assert kyboot.job_gone(leader, started, leader) is False
+        owner = stale_owner({"job_id": "J-OLD", "pid": leader, "pgid": leader, "process_start": started})
+        lock = plant_lock(world, owner)
+        assert world.run() == 1 and not world.launched()
+        assert "the job it recorded is alive or cannot be confirmed gone; reconcile that job" in capsys.readouterr().err
+        assert json.loads((lock / "owner.json").read_text()) == owner
+    finally:
+        os.kill(member, signal.SIGKILL)
+    assert gone(member) and kyboot.job_gone(leader, started, leader) is True
+    assert world.run() == 0                                   # the whole group is gone: now it is stale
+    assert world.state()["lock_taken_over_from"] == owner
+
+
+def test_reap_leaves_the_agent_of_a_job_whose_group_still_has_a_member(world, monkeypatch):
+    """finding N-06, for reap and status: a dead leader is not a job that is over while its group still answers"""
+    leader, started, member = a_group_whose_leader_is_gone()
+    try:
+        planted_state(world, pid=leader, pgid=leader, process_start=started, phase="running", termination=None)
+        entry = kyboot.reap_one(str(world.run_dir), world.environ, JOB)
+        assert entry == {"job_id": JOB, "label": LABEL, "action": "left",
+                         "why": "members of the job's process group are alive"}
+        status = kyboot.status_of(str(world.run_dir), world.environ, JOB)
+        assert status["process_alive"] is False and status["process_group"] == "live" and status["label_loaded"] is True
+        with monkeypatch.context() as local:                  # members that exist but cannot be signalled
+            local.setattr(kyboot, "group_state", lambda pgid: "unreaped")
+            assert kyboot.reap_one(str(world.run_dir), world.environ, JOB)["why"] == \
+                "the job's process group cannot be confirmed gone"
+        assert [call[0] for call in world.calls()].count("bootout") == 0 and world.loaded() is not None
+    finally:
+        os.kill(member, signal.SIGKILL)
+    assert gone(member)
+    world.wait_for(lambda: kyboot.recorded_group_state(leader) == "gone")
+    entry = kyboot.reap_one(str(world.run_dir), world.environ, JOB)
+    assert entry["action"] == "booted_out" and entry["absent"] is True and world.loaded() is None
+    assert kyboot.status_of(str(world.run_dir), world.environ, JOB)["process_group"] == "gone"
+
+
+def test_job_gone_needs_the_leader_and_the_whole_group_positively_gone(monkeypatch):
+    me, started = os.getpid(), kyboot.process_start(os.getpid())
+    dead, dead_start = dead_process()
+    assert kyboot.job_gone(dead, dead_start, dead) is True
+    assert kyboot.job_gone(me, started, dead) is False                    # the leader is alive
+    assert kyboot.job_gone(dead, dead_start, os.getpgrp()) is False       # a group that answers
+    for unknown in (None, "7", True, 0, 1, -5, 1.5):
+        assert kyboot.recorded_group_state(unknown) == "unknown", unknown
+        assert kyboot.job_gone(dead, dead_start, unknown) is False, unknown
+    monkeypatch.setattr(kyboot, "group_state", lambda pgid: "unreaped")   # members that cannot be signalled
+    assert kyboot.job_gone(dead, dead_start, dead) is False
+    monkeypatch.setattr(kyboot, "group_state", lambda pgid: "gone")
+    monkeypatch.setattr(kyboot, "ps_identity", lambda pid: None)          # ps cannot be asked
+    assert kyboot.job_gone(dead, dead_start, dead) is False
+
+
+def test_a_supervisor_killed_while_its_job_runs_leaves_a_lock_that_is_never_taken_over(world):
+    """the reviewer's orphan: the supervisor is SIGKILLed, the job runs on with no deadline. Its lock names it,
+    so a second launch for the item is refused until that job is ended (ending it is the planner's step, B-1)"""
+    world.set_prompt("FAKE_SLEEP:120\n")
+    world.write()
+    second = world.another_job("J-20261011T220000Z-b2")
+    first = start_supervisor(world, world.launch_path, "--grace", "5")
+    state = {}
+    try:
+        state, owner = wait_until_running(world)
+        first.kill()
+        first.communicate(timeout=30)
+        assert gone(first.pid) and not gone(state["pid"], wait=0.3)
+        refused_run = run_kyboot(world.kyboot_path, world.environ, "run", second)
+        assert refused_run.returncode == 1
+        assert "the job it recorded is alive or cannot be confirmed gone; reconcile that job" in refused_run.stderr
+        assert json.loads((world.lock() / "owner.json").read_text()) == owner
+        assert not (world.run_dir / "jobs" / "J-20261011T220000Z-b2").exists()
+        status = json.loads(world.cli("status", JOB).stdout)["jobs"][0]
+        assert status["supervisor_alive"] is False and status["process_alive"] is True and status["process_group"] == "live"
+    finally:
+        if first.poll() is None:
+            first.kill()
+        if state.get("pgid"):
+            os.killpg(state["pgid"], signal.SIGKILL)          # what the planner's reconciliation would do (B-1)
+    assert gone(state["pid"])
+    world.wait_for(lambda: kyboot.recorded_group_state(state["pgid"]) == "gone")
+    after = run_kyboot(world.kyboot_path, world.environ, "run", second)
+    assert after.returncode == 0, after.stderr                # the job is positively gone: the lock is taken over
+    assert world.state("J-20261011T220000Z-b2")["lock_taken_over_from"]["child"]["job_id"] == JOB
+
+
+FAILURES_AFTER_START = ["the first state write", "the second state write", "the owner record", "every later write"]
+
+
+@pytest.mark.parametrize("what", FAILURES_AFTER_START)
+def test_a_failure_after_the_job_was_started_ends_the_job_and_never_answers_1(world, monkeypatch, capsys, what):
+    """SUP-02: an OSError in the bookkeeping that follows Popen (a full disk, a removed state folder) used to
+    leave the job running with no deadline and exit 1 = 'nothing was launched'. Now every such step runs inside
+    the guard that ends the process group and records why; the exit status is 3, never 1."""
+    world.set_prompt("FAKE_SLEEP:120\n")
+    seen = watch_the_job_start(world, monkeypatch)
+    real_write = kyboot.write_state
+    failed = []
+
+    def write(path, document, exclusive=False):
+        if seen["started"]:
+            is_state = os.path.basename(path) == "state.json"
+            is_owner = os.path.basename(path) == "owner.json"
+            hit = (what == "the first state write" and is_state and not failed) \
+                or (what == "the second state write" and is_state and document.get("process_start") and not failed) \
+                or (what == "the owner record" and is_owner and isinstance(document.get("child"), dict)) \
+                or what == "every later write"
+            if hit:
+                failed.append("state" if is_state else "owner" if is_owner else "action")
+                raise OSError(28, "No space left on device")
+        return real_write(path, document, exclusive)
+
+    monkeypatch.setattr(kyboot, "write_state", write)
+    code = world.run(grace=5)
+    said = capsys.readouterr().err
+    assert failed and seen["started"]
+    assert code == 3                                          # never 1 ("nothing was launched"), never 0
+    assert gone(seen["pid"])                                  # the job was ended …
+    with pytest.raises(ProcessLookupError):
+        os.killpg(seen["pid"], 0)                             # … with its whole process group
+    assert "SUPERVISOR ERROR" in said and "No space left on device" in said
+    assert not world.lock().exists() and world.lock_leftovers() == []       # confirmed gone: the item is free again
+    state, action = world.state(), world.action()
+    if what == "every later write":                           # nothing could be recorded: the last good record stays,
+        assert state["phase"] == "prepared" and state["pid"] is None          # and stderr and the exit status say it
+        assert action["state"] == "INTENDED" and "STATE NOT WRITTEN" in said and "ACTION NOT COMPLETED" in said
+        assert failed.count("state") >= 2 and "action" in failed
+    else:
+        assert state["phase"] == "ended" and state["termination"] == "supervisor_error_term"
+        assert state["supervisor_error"] == "OSError: [Errno 28] No space left on device"
+        assert state["pid"] == seen["pid"] and state["group_gone"] is True and state["exit_signal"] == signal.SIGTERM
+        assert action["state"] == "FAILED" and action["result"]["supervisor_exit"] == 3
+        assert action["result"]["supervisor_error"] == state["supervisor_error"]
+
+
+def test_a_lock_lost_while_the_job_starts_ends_the_job(world, monkeypatch, capsys):
+    """the lock is what makes the job the only one on its item: if it is not this run's any more when the job's
+    identity is to be recorded, the job is ended — it is never left running under another holder's lock"""
+    world.set_prompt("FAKE_SLEEP:120\n")
+    seen = watch_the_job_start(world, monkeypatch, after_start=lambda: shutil.rmtree(world.lock()))
+    code = world.run(grace=5)
+    state = world.state()
+    assert code == 3 and gone(seen["pid"]) and state["group_gone"] is True
+    assert state["supervisor_error"].startswith("LockLost: the item lock") and state["termination"] == "supervisor_error_term"
+    assert "was not released by this run" in capsys.readouterr().err
+    assert world.action()["state"] == "FAILED"
+
+
+def test_a_job_that_cannot_be_started_withdraws_the_pending_marker_and_frees_the_item(world, monkeypatch):
+    world.install("fake_claude_ok.sh", private=True)
+    seen = {}
+
+    def unlink_and_look():
+        world.claude.unlink()
+    after_check(monkeypatch, unlink_and_look)
+    real_release = kyboot.release_item_lock
+    monkeypatch.setattr(kyboot, "release_item_lock",
+                        lambda lock, run_id: seen.update(owner=json.loads((Path(lock) / "owner.json").read_text()))
+                        or real_release(lock, run_id))
+    assert world.run() == 3
+    assert seen["owner"]["child"] is None                     # no process was started: the marker was withdrawn
+    assert world.state()["phase"] == "launch_failed" and not world.lock().exists()
+
+
+# --------------------------------------------------------------------------------------------------------------
+# cockpit ruling R1: the job's result
+# --------------------------------------------------------------------------------------------------------------
+def test_a_job_that_ends_without_its_result_is_not_a_success(world):
+    world.set_prompt("FAKE_NO_RESULT_JSON\n")
+    cli = world.cli("run", world.launch_path)
+    state, action = world.state(), world.action()
+    assert cli.returncode == 5 == kyboot.EXIT_NO_RESULT       # never 0
+    assert f"NO RESULT {JOB}: the job ended without leaving {world.job_scratch}/result.json" in cli.stderr
+    assert state["exit_code"] == 0 and state["termination"] == "exited" and state["group_gone"] is True
+    assert state["job_result_valid"] is False and state["termination_detail"] == "no_result"
+    assert state["job_result_errors"] == ["result.json is missing: the job ended without leaving its result"]
+    assert action["state"] == "FAILED" and action["result"]["termination_detail"] == "no_result"
+    assert action["result"]["job_result_valid"] is False and action["result"]["supervisor_exit"] == 5
+    assert not world.lock().exists()                          # the group is gone: this 5 does not keep the lock
+
+
+@pytest.mark.parametrize("text,code,termination", [("FAKE_NO_RESULT_JSON\nFAKE_EXIT:7\n", 5, "exited"),
+                                                   ("FAKE_NO_RESULT_JSON\nFAKE_SLEEP:120\n", 124, "timed_out_term")])
+def test_no_result_is_recorded_whatever_else_happened(world, text, code, termination):
+    world.set_prompt(text)
+    if code == 124:
+        world.launch["deadline"] = stamp(3)
+    assert world.run(grace=5) == code
+    state, action = world.state(), world.action()
+    assert state["termination"] == termination and state["termination_detail"] == "no_result"
+    assert state["job_result_valid"] is False and action["state"] == "FAILED"
+
+
+def test_a_result_that_is_a_symbolic_link_is_refused_and_never_read(world):
+    elsewhere = world.root / "someone-elses-result.json"
+    elsewhere.write_text(result_line(notes="MUST-NOT-BE-ECHOED")[len("FAKE_RESULT_JSON:"):], encoding="utf-8")
+    assert kyschema.validate(kyschema.load_json(FLEET / "schemas" / "job_result.json"), kyschema.load_json(elsewhere)) == []
+    world.set_prompt(f"FAKE_RESULT_SYMLINK:{elsewhere}\n")
+    code = world.run()
+    state = world.state()
+    assert (world.job_scratch / "result.json").is_symlink()
+    assert code == 3 and state["job_result_valid"] is False and state["termination_detail"] == "result_refused"
+    assert state["job_result_errors"] == ["result.json is a symbolic link: it is refused and was not read"]
+    assert "MUST-NOT-BE-ECHOED" not in Path(world.launch["state_path"]).read_text()
+    assert world.action()["state"] == "FAILED"
+
+
+def test_job_result_reads_only_a_regular_file_of_bounded_size(world):
+    checked = world.check()
+    tool, launch, result = checked.schema_tool, checked.launch, world.job_scratch / "result.json"
+    assert kyboot.job_result(launch, tool) == (False, ["result.json is missing: the job ended without leaving its "
+                                                       "result"], "no_result")
+    os.symlink(str(world.root / "nowhere.json"), str(result))             # a dangling link is a link, not "missing"
+    assert kyboot.job_result(launch, tool)[2] == "result_refused"
+    result.unlink()
+    result.mkdir()
+    assert kyboot.job_result(launch, tool) == (False, ["result.json is not a regular file: it is refused and was not "
+                                                       "read"], "result_refused")
+    result.rmdir()
+    os.mkfifo(str(result))                                                # never opened: a reader would block for ever
+    assert kyboot.job_result(launch, tool)[2] == "result_refused"
+    result.unlink()
+    result.write_bytes(b" " * (kyboot.RESULT_MAX_BYTES + 1))
+    valid, errors, detail = kyboot.job_result(launch, tool)
+    assert valid is False and "is larger than" in errors[0] and detail == "result_refused"
+    result.write_text(result_line()[len("FAKE_RESULT_JSON:"):], encoding="utf-8")
+    assert kyboot.job_result(launch, tool) == (True, [], None)
+
+
+# --------------------------------------------------------------------------------------------------------------
+# cockpit ruling R6: what a receipt binds beyond the launch line
+# --------------------------------------------------------------------------------------------------------------
+def test_the_job_worktrees_project_settings_are_bound(world):
+    """the settings `--setting-sources project` loads for the job are the ones the role was qualified under"""
+    assert world.check().facts["project_settings_sha256"] == "absent"
+    settings = world.repo / ".claude" / "settings.json"
+    settings.write_text('{"permissions": {"deny": []}}\n', encoding="utf-8")
+    result = world.check()                                    # requalified with the file: bound by its sha256
+    assert result.findings == [] and result.facts["project_settings_sha256"] == sha(settings)
+    world.auto_qualify = False
+    settings.write_text('{"permissions": {"allow": ["Bash(*)"]}}\n', encoding="utf-8")
+    refused(world, "qualification: binds.project_settings_sha256", f'does not bind this launch ("{sha(settings)}")')
+    settings.unlink()
+    refused(world, "qualification: binds.project_settings_sha256", 'does not bind this launch ("absent")')
+    world.qualify()                                           # qualified without one …
+    settings.write_text("{}\n", encoding="utf-8")             # … and one appears
+    refused(world, 'qualification: binds.project_settings_sha256 "absent" does not bind this launch')
+    assert world.run() == 1 and not world.launched()
+    settings.unlink()
+    os.symlink(str(world.root / "nowhere"), str(settings))    # there, but unreadable: never "absent"
+    refused(world, "qualification: binds.project_settings_sha256 cannot be compared")
+    assert CHECKOUT_KYBOOT.project_settings_digest(str(world.root / "no-worktree")) == "absent"
+
+
+def test_the_shell_start_up_folder_is_bound(world):
+    zdotdir = world.ky_root / "zdotdir"
+    assert world.check().facts["zdotdir_sha256"] == "absent"
+    zdotdir.mkdir()
+    (zdotdir / ".zshenv").write_text("# empty on purpose\n", encoding="utf-8")
+    (zdotdir / "nested").mkdir()                               # only regular files directly in the folder count:
+    (zdotdir / "nested" / "ignored").write_text("x", encoding="utf-8")
+    os.symlink(str(world.root / "elsewhere-zshrc"), str(zdotdir / ".zlogin"))           # no sub-folder, no link
+    result = world.check()
+    expected = hashlib.sha256(b".zshenv" + b"# empty on purpose\n").hexdigest()
+    assert result.findings == [] and result.facts["zdotdir_sha256"] == expected == zdotdir_digest(world.ky_root)
+    assert CHECKOUT_KYBOOT.zdotdir_digest(str(zdotdir / ".zshenv")) is None             # not a folder: never "absent"
+    assert CHECKOUT_KYBOOT.zdotdir_digest(str(world.root / "no-such-folder")) == "absent"
+    world.auto_qualify = False
+    (zdotdir / ".zshenv").write_text("export PATH=/somewhere/else:$PATH\n", encoding="utf-8")
+    refused(world, "qualification: binds.zdotdir_sha256", "does not bind this launch")
+    (zdotdir / ".zshenv").write_text("# empty on purpose\n", encoding="utf-8")
+    assert world.check().findings == []
+    (zdotdir / ".zshrc").write_text("# another start-up file\n", encoding="utf-8")
+    refused(world, "qualification: binds.zdotdir_sha256", "does not bind this launch")
+    shutil.rmtree(zdotdir)
+    refused(world, "qualification: binds.zdotdir_sha256", 'does not bind this launch ("absent")')
+    assert world.run() == 1 and not world.launched()
+
+
+def test_the_digests_are_the_ones_the_qualification_harness_writes(tmp_path):
+    """across areas (read-only): the two digests kyboot compares with a receipt are computed exactly as
+    kyqualify.py — which writes them into the receipt — computes them, on every kind of tree"""
+    spec = importlib.util.spec_from_file_location("kyqualify_sibling", FLEET / "kyqualify.py")
+    harness = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(harness)
+    trees = {name: tmp_path / name for name in ("absent", "empty", "files", "a-file", "links")}
+    trees["empty"].mkdir()
+    trees["files"].mkdir()
+    for name, text in ((".zshenv", "export A=1\n"), (".zshrc", ""), ("ünï", "x"), ("b", "\x00\xff")):
+        (trees["files"] / name).write_bytes(text.encode("latin-1"))
+    (trees["files"] / "sub").mkdir()
+    (trees["files"] / "sub" / "inner").write_text("ignored", encoding="utf-8")
+    trees["a-file"].write_text("not a folder", encoding="utf-8")
+    trees["links"].mkdir()
+    (trees["links"] / "real").write_text("r", encoding="utf-8")
+    os.symlink(str(trees["links"] / "real"), str(trees["links"] / "link"))
+    os.symlink(str(tmp_path / "nowhere"), str(trees["links"] / "dangling"))
+    seen = set()
+    for name, tree in trees.items():
+        mine = CHECKOUT_KYBOOT.zdotdir_digest(str(tree))
+        assert mine == harness.directory_digest(str(tree)), name
+        seen.add(mine)
+    assert len(seen) == 5 and "absent" in seen and None in seen
+    for name, worktree in trees.items():                      # <worktree>/.claude/settings.json
+        (worktree / ".claude").mkdir(parents=True) if name in ("files", "links") else None
+    (trees["files"] / ".claude" / "settings.json").write_text('{"hooks": {}}\n', encoding="utf-8")
+    os.symlink(str(tmp_path / "nowhere"), str(trees["links"] / ".claude" / "settings.json"))
+    answers = []
+    for name, worktree in trees.items():
+        mine = CHECKOUT_KYBOOT.project_settings_digest(str(worktree))
+        assert mine == harness.file_digest(harness.project_settings_path({"worktree": str(worktree)})), name
+        answers.append(mine)
+    assert answers.count("absent") == 3 and None in answers and sha(trees["files"] / ".claude" / "settings.json") in answers
+    assert sha(FLEET / "kyqualify.py") == harness.sha_or_none(os.path.realpath(harness.__file__))   # harness_sha256
+
+
+def test_the_receipt_must_come_from_the_reviewed_harness(world):
+    assert world.check().findings == []
+    world.auto_qualify = False
+    relative = f"{kymanifest.FLEET}/kyqualify.py"
+    world.sync_manifest(lambda m: next(c for c in m["components"] if c["path"] == relative).update(sha256="7" * 64))
+    refused(world, "qualification: binds.harness_sha256", f'does not bind this launch ("{"7" * 64}")')
+    world.sync_manifest(lambda m: m["components"].remove(next(c for c in m["components"] if c["path"] == relative)))
+    refused(world, "qualification: binds.harness_sha256 cannot be compared (kyqualify.py is not a component of the "
+                   "manifest)")
+    world.sync_manifest()
+    assert world.check().findings == []
+
+
+def test_the_launch_path_is_the_qualified_child_path(world):
+    world.write()
+    world.auto_qualify = False
+    world.launch["env"]["PATH"] = "/opt/homebrew/bin:/usr/bin:/bin"
+    refused(world, 'qualification: binds.child_path "/usr/bin:/bin" does not bind this launch '
+                   '("/opt/homebrew/bin:/usr/bin:/bin")')
+    assert world.run() == 1 and not world.launched()
+
+
+def test_a_deadline_is_never_later_than_the_qualified_job_length(world):
+    """cockpit ruling R6: the launch deadline is no later than now + the receipt's deadline_seconds"""
+    assert world.deadline_seconds == 3600
+    world.launch["deadline"] = stamp(3540)
+    assert world.check().findings == []
+    world.launch["deadline"] = stamp(3700)
+    refused(world, f"deadline: {world.launch['deadline']} is later than now + the qualified deadline_seconds (3600)")
+    world.launch["deadline"] = "2099-01-01T00:00:00Z"
+    refused(world, "deadline: 2099-01-01T00:00:00Z is later than now + the qualified deadline_seconds (3600)")
+    assert world.run() == 1 and not world.launched()
+    world.deadline_seconds = 120
+    world.launch["deadline"] = stamp(100)
+    assert world.check().findings == []
+    world.launch["deadline"] = stamp(200)
+    refused(world, "is later than now + the qualified deadline_seconds (120)")
+
+
+@pytest.mark.parametrize("seconds", [0, -1, "3600", 3600.0, True, None, [3600]])
+def test_a_receipt_without_a_usable_job_length_does_not_qualify(world, seconds):
+    world.write()
+    world.auto_qualify = False
+    world.qualify(lambda r: r["binds"].update(deadline_seconds=seconds))
+    findings = refused(world, "qualification: binds.deadline_seconds", "is not a positive whole number of seconds")
+    assert len([line for line in findings if line.startswith("qualification:")]) == 1
+    world.qualify(lambda r: r["binds"].pop("deadline_seconds"))
+    refused(world, "qualification: binds.deadline_seconds is missing")
+
+
+def test_a_receipt_of_the_round_before_this_ruling_does_not_qualify(world):
+    """a receipt that lacks every bind cockpit ruling R6 adds is refused once per missing bind"""
+    world.write()
+    world.auto_qualify = False
+    new = ("child_path", "project_settings_sha256", "zdotdir_sha256", "harness_sha256", "deadline_seconds")
+    world.qualify(lambda r: [r["binds"].pop(name) for name in new])
+    findings = world.check().findings
+    for name in new:
+        assert f"qualification: binds.{name} is missing" in findings, name
+    assert world.run() == 1 and not world.launched()
+
+
+# --------------------------------------------------------------------------------------------------------------
+# interface with the action records: a job id leaves room for its action ids
+# --------------------------------------------------------------------------------------------------------------
+def test_a_job_id_leaves_room_for_its_action_ids(world):
+    """ACT-launch-<job_id> and ACT-submit-<job_id> are action ids. The supervisor reviewer found a 128-character
+    job id overflowing the then 120-character action id; the action schema now allows 160, and kyboot refuses
+    any job id whose action ids would not fit — whichever of the two limits moves next."""
+    longest_job_id = 128                                      # the launch-input schema: 1 + {0,127}
+    job_pattern = kyschema.load_json(FLEET / "schemas" / "bootstrap_launch_input.json")["properties"]["job_id"]["pattern"]
+    assert job_pattern == "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" == kyboot._JOB_ID.pattern.replace("\\Z", "$")
+    assert kyboot.ACTION_ID_MAX == 160 and kyboot.ACTION_VERBS == ("launch", "submit")
+    assert len("ACT-launch-") + longest_job_id <= kyboot.ACTION_ID_MAX and len("ACT-submit-") + longest_job_id <= 160
+    # across areas (read-only): the limit kyboot assumes is the one the action schema and the action tool enforce,
+    # and every character a job id may hold is one an action id may hold
+    action = kyschema.load_json(FLEET / "schemas" / "action.json")["properties"]["action_id"]["pattern"]
+    assert action == "^[A-Za-z0-9][A-Za-z0-9._:-]{0,%d}$" % (kyboot.ACTION_ID_MAX - 1)
+    for job_id in ("J-" + "a" * 126, "J.b_c-d", "9" * 128):
+        assert len(job_id) <= 128 and kyschema.compile_pattern(job_pattern).search(job_id)
+        for verb in kyboot.ACTION_VERBS:
+            assert kyschema.compile_pattern(action).search(f"ACT-{verb}-{job_id}"), (verb, job_id)
+            assert os.path.basename(kyboot.action_path("/r", job_id, verb)) == f"ACT-{verb}-{job_id}.json"
+        assert kyboot.job_id_findings(job_id) == []
+    assert kyboot.job_id_findings("J" * 149) == [] and len("ACT-launch-" + "J" * 149) == 160
+    assert kyboot.job_id_findings("J" * 150) == [
+        "job_id: 150 characters; its action ids (ACT-launch-<job_id>, ACT-submit-<job_id>) would have 161, more than "
+        "the 160 an action id may have"]
+    # the longest job id the schema admits is launchable and its action record is written under that id
+    world.write()
+    longest = "J-" + "a" * 126
+    path = world.another_job(longest)
+    assert kyboot.check(str(path), world.environ).findings == []
+    assert kyboot.run(str(path), world.environ, report=lambda text: None) == 0
+    assert world.action(longest)["action_id"] == f"ACT-launch-{longest}" and len(world.action(longest)["action_id"]) == 139
+    with pytest.MonkeyPatch.context() as local:               # … and with the limit the reviewer saw, it is refused
+        local.setattr(kyboot, "ACTION_ID_MAX", 120)
+        other = world.another_job("J-" + "b" * 126)
+        assert kyboot.check(str(other), world.environ).findings == [
+            "job_id: 128 characters; its action ids (ACT-launch-<job_id>, ACT-submit-<job_id>) would have 139, more "
+            "than the 120 an action id may have"]
+        assert kyboot.run(str(other), world.environ, report=lambda text: None) == 1
+        assert not (world.run_dir / "actions" / ("ACT-launch-J-" + "b" * 126 + ".json")).exists()
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-01: nothing is imported from the supervisor's own folder
+# --------------------------------------------------------------------------------------------------------------
+STDLIB_IMPORTS = ["datetime", "errno", "fcntl", "hashlib", "json", "os", "plistlib", "pwd", "re", "signal", "stat",
+                  "subprocess", "sys", "time", "types"]
+
+
+def test_the_supervisor_imports_only_the_standard_library_and_never_its_siblings():
+    source = (FLEET / "kyboot.py").read_text(encoding="utf-8")
+    module = ast.parse(source)
+    imported = []
+    for node in ast.walk(module):
+        if isinstance(node, ast.Import):
+            imported += [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            imported.append(node.module)
+    assert sorted(imported) == STDLIB_IMPORTS
+    assert all(name in sys.stdlib_module_names for name in STDLIB_IMPORTS)
+    assert "__future__" not in source                        # that import would run before the path is cleaned
+    assert "sys.path.insert" not in source and "sys.path.append" not in source and "importlib" not in source
+    first = [node for node in module.body if not isinstance(node, ast.Expr)][:3]      # after the docstring:
+    assert isinstance(first[0], ast.Import) and [alias.name for alias in first[0].names] == ["sys"]
+    refusal = ast.unparse(first[1])                                                   # before any other import
+    assert isinstance(first[1], ast.If) and refusal.startswith("if __name__ == '__main__' and (not sys.flags.isolated):")
+    assert refusal.rstrip().endswith("sys.exit(2)") and isinstance(first[2], ast.Import)
+    assert not hasattr(kyboot, "kyschema")                   # no sibling module object at all
+
+
+PLANTED = ["json", "hashlib", "subprocess", "plistlib", "re", "types", "fcntl", "errno", "stat", "datetime", "signal",
+           "pwd", "time", "pathlib", "__future__", "kyschema_reviewed", "kyschema_by_path"]
+
+
+@pytest.mark.parametrize("how", ["isolated", "isolated, from its own folder", "isolated, its folder on PYTHONPATH"])
+def test_a_module_planted_beside_the_supervisor_is_never_imported(world, staged, how):
+    """the reviewer's bypass: fleet/json.py (or hashlib, subprocess, …) beside the reviewed files, which no hash
+    covers, used to run inside the supervisor while every hash passed. The fleet folder's top level is not a
+    covered directory, so the manifest gate itself says nothing about these files. (The rig's stand-in harness
+    imports only os and sys; what the real kyqualify.py imports when kymanifest.py starts it is not kyboot's.)"""
+    fleet = staged["fleet"]
+    marker = world.root / "a-planted-module-was-imported"
+    world.write()
+    world.auto_qualify = False
+    environ = {name: value for name, value in world.environ.items() if name != "PYTHONDONTWRITEBYTECODE"}
+    if "PYTHONPATH" in how:
+        environ["PYTHONPATH"] = str(fleet)
+    cwd = str(fleet) if "own folder" in how else None
+    planted = [fleet / f"{name}.py" for name in PLANTED]
+    try:
+        for path in planted:
+            assert not path.exists()
+            path.write_text(f"open({str(marker)!r}, 'a').write({path.stem!r} + '\\n')\n"
+                            f"raise ImportError('planted {path.stem}')\n", encoding="utf-8")
+        for command in (["check", world.launch_path], ["argv", world.launch_path], ["status"],
+                        ["validate", "job_result", FIX / "job_result_done.json"], ["run", world.launch_path]):
+            cli = world.cli(*command, environ=environ, cwd=cwd)
+            assert cli.returncode == 0, (command, cli.stderr)
+            assert not marker.exists(), (command, marker.read_text())
+        assert world.state()["python_isolated"] is True and world.state()["phase"] == "ended"
+        assert not (fleet / "__pycache__").exists()           # no compiled cache was read from or written to it
+    finally:
+        for path in planted:
+            path.unlink(missing_ok=True)
+        shutil.rmtree(fleet / "__pycache__", ignore_errors=True)
+    assert subprocess.run(["git", "-C", str(staged["source"]), "status", "--porcelain", "--", kymanifest.FLEET],
+                          capture_output=True, text=True, env=dict(GIT_ENV, HOME=str(world.home))).stdout == ""
+
+
+@pytest.mark.parametrize("command", [["check", "LAUNCH"], ["argv", "LAUNCH"], ["run", "LAUNCH"], ["submit", "LAUNCH"],
+                                     ["status"], ["reap"], ["validate", "job_result", str(FIX / "job_result_done.json")],
+                                     []])
+def test_the_supervisor_refuses_to_run_as_a_program_unless_isolated(world, staged, command):
+    """without -I the interpreter puts the supervisor's own folder first on its import path: it stops before its
+    first import, so that even then a planted module is not loaded (and `import json` is the very next line)"""
+    fleet = staged["fleet"]
+    marker = world.root / "a-planted-module-was-imported"
+    world.write()
+    world.auto_qualify = False
+    planted = [fleet / f"{name}.py" for name in PLANTED]
+    words = [str(world.launch_path) if word == "LAUNCH" else word for word in command]
+    try:
+        for path in planted:
+            path.write_text(f"open({str(marker)!r}, 'a').write({path.stem!r} + '\\n')\n", encoding="utf-8")
+        for cwd in (None, str(fleet)):
+            cli = world.cli(*words, isolated=False, cwd=cwd)
+            assert cli.returncode == 2 and cli.stdout == ""
+            assert cli.stderr.startswith("kyboot.py runs only in an isolated interpreter: python3 -I -B kyboot.py")
+            assert not marker.exists(), marker.read_text()
+        assert not (world.run_dir / "jobs").exists() and not (world.run_dir / "actions").exists() and world.calls() == []
+        assert not (fleet / "__pycache__").exists()
+    finally:
+        for path in planted:
+            path.unlink(missing_ok=True)
+        shutil.rmtree(fleet / "__pycache__", ignore_errors=True)
+
+
+def test_the_manifest_tool_is_started_isolated_and_inherits_no_python_variable(world, staged, monkeypatch):
+    seen = {}
+    real_run = subprocess.run
+
+    def run(argv, **kwargs):
+        if isinstance(argv, list) and str(staged["fleet"] / "kymanifest.py") in argv:
+            seen.update(argv=argv, env=dict(kwargs["env"]), cwd=kwargs["cwd"])
+        return real_run(argv, **kwargs)
+
+    world.write()
+    world.environ.update(PYTHONPATH=str(staged["fleet"]), PYTHONSTARTUP="/x/start.py", PYTHONHOME_NOTE="x",
+                         GIT_DIR="/x/.git")
+    with monkeypatch.context() as local:
+        local.setattr(kyboot.subprocess, "run", run)
+        code, said, error = CHECKOUT_KYBOOT.run_manifest_check(
+            str(staged["fleet"] / "kymanifest.py"), str(world.manifest_path), str(staged["source"]),
+            str(world.run_dir), world.environ)
+    assert code == 0 and json.loads(said)["ok"] is True, error
+    assert seen["argv"][:4] == [sys.executable, "-I", "-B", str(staged["fleet"] / "kymanifest.py")] and seen["cwd"] == "/"
+    assert not [name for name in seen["env"] if name.startswith(("PYTHON", "GIT_"))]
+    assert seen["env"]["KY_RUN"] == str(world.run_dir)
+
+
+def test_the_schema_tool_is_executed_from_the_very_bytes_that_were_hashed(world, staged, monkeypatch):
+    """kyschema.py is read once: what is hashed against the manifest is what is executed. A file swapped after
+    that read is not what runs, and a file that differs at that read is refused before anything is executed."""
+    reads = []
+    real_open = open
+
+    def watching(path, *args, **kwargs):
+        if os.fspath(path) == str(staged["fleet"] / "kyschema.py"):
+            reads.append(args[:1] or ("r",))
+        return real_open(path, *args, **kwargs)
+
+    with monkeypatch.context() as local:
+        local.setattr(kyboot, "open", watching, raising=False)
+        result = world.check()
+    assert result.findings == [] and reads == [("rb",)]       # read exactly once, as bytes
+    tool = result.schema_tool
+    assert tool.__name__ == "kyschema_reviewed" and tool.__file__ == str(staged["fleet"] / "kyschema.py")
+    assert tool is not kyschema and tool.validate({"type": "string"}, 7) != []
+    assert "kyschema_reviewed" not in sys.modules            # never registered with the import system
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-02: the program is executed only after the gate passed and the recorded receipt binds it
+# --------------------------------------------------------------------------------------------------------------
+def test_the_program_is_executed_only_after_the_gate_passed_and_the_recorded_receipt_binds_it(world, monkeypatch):
+    marker = world.root / "version-was-run"
+    script = f"#!/bin/bash\necho ran >> '{marker}'\necho '2.1.296'\n"
+    world.install(script=script, says="2.1.296")
+    assert world.check().findings == [] and marker.read_text() == "ran\n"      # qualified: it is asked, once
+    marker.unlink()
+    world.auto_qualify = False
+    not_run = "claude_bin: --version was not run because the program is not the one a recorded PASS receipt binds"
+
+    def is_refused_unrun(*needles):
+        findings = refused(world, *needles)
+        assert not marker.exists(), "the program was executed"
+        return findings
+
+    # a refused supervisor, a refused manifest, a refused gate: the launch input is not even examined
+    world.sync_manifest(lambda m: next(c for c in m["components"] if c["path"].endswith("/kyboot.py")).update(sha256="7" * 64))
+    findings = is_refused_unrun("supervisor:", "is not the reviewed file")
+    assert findings[-1].startswith("launch input: not examined, and nothing it names was executed")
+    world.sync_manifest()
+    with monkeypatch.context() as local:
+        local.setattr(kyboot, "run_manifest_check", lambda *a: (1, "", "refused: component differs: x\n"))
+        findings = is_refused_unrun("manifest gate: refused: component differs: x")
+        assert len(findings) == 2 and findings[-1].startswith("launch input: not examined")
+    world.manifest_path.write_text("{}", encoding="utf-8")
+    assert len(is_refused_unrun("is not a ky.versions_bootstrap/1 manifest")) == 2
+    world.sync_manifest()
+    assert world.check().findings == [] and marker.exists()
+    marker.unlink()
+
+    # other bytes at the qualified path (the hash is compared before anything is executed)
+    world.claude.write_text(script + "# changed after it was qualified\n", encoding="utf-8")
+    findings = is_refused_unrun("qualification: binds.claude_bin_sha256", "does not bind this launch")
+    assert any(line.startswith(not_run) for line in findings)
+    world.claude.write_text(script, encoding="utf-8")
+    # the qualified bytes at another path
+    other = world.root / "bin" / "claude-copy"
+    shutil.copyfile(world.claude, other)
+    other.chmod(0o755)
+    world.launch["claude_bin"] = str(other)
+    assert any(line.startswith(not_run) for line in is_refused_unrun("qualification: binds.claude_bin ", "does not bind"))
+    world.launch["claude_bin"] = str(world.claude)
+    # a receipt the manifest does not record, or records with other bytes
+    world.sync_manifest(lambda m: m.update(qualifications=[]))
+    assert any(line.startswith(not_run) for line in is_refused_unrun("the receipt is not recorded in the manifest"))
+    world.sync_manifest()
+    world.qualify(lambda r: r.update(note="edited after the manifest was built"), sync=False)
+    assert any(line.startswith(not_run) for line in is_refused_unrun("is not the one the manifest records as PASS"))
+    # no receipt at all, and a receipt without binds
+    world.receipt_path().unlink()
+    world.sync_manifest()
+    assert any(line.startswith(not_run) for line in is_refused_unrun("qualification: no receipt at"))
+    world.qualify(lambda r: r.pop("binds"))
+    assert any(line.startswith(not_run) for line in is_refused_unrun("the receipt carries no binds"))
+    assert world.run() == 1 and not marker.exists() and not world.launched()
+    world.qualify()
+    assert world.check().findings == [] and marker.read_text() == "ran\n"
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-04: the prompt is the reviewed card + the packet + the job header
+# --------------------------------------------------------------------------------------------------------------
+def test_the_prompt_must_hold_the_exact_bytes_of_the_reviewed_card_and_of_the_packet(world):
+    card, packet = world.card.read_bytes(), world.packet.read_bytes()
+    tail = ("job header\n" + result_line()).encode("utf-8")
+    no_card = "prompt_path: the prompt does not contain the exact bytes of card_path"
+    no_packet = "prompt_path: the prompt does not contain the exact bytes of packet_path"
+    for raw, reasons in ((packet + tail, [no_card]), (card + tail, [no_packet]), (tail, [no_card, no_packet]),
+                         (card[:-1] + b" \n" + packet + tail, [no_card]),                 # one byte of the card altered
+                         (card.replace(b"\n", b"\r\n") + packet + tail, [no_card]),       # other line ends
+                         (card + packet.upper() + tail, [no_packet]),
+                         (card[1:] + packet + tail, [no_card])):                          # the card, cut
+        world.set_prompt("", raw=raw)
+        findings = world.check().findings
+        assert [line.split(" (")[0] for line in findings] == reasons, raw
+    assert world.run() == 1 and not world.launched() and not (world.run_dir / "jobs").exists()
+    world.set_prompt("", raw=b"a line before\n" + card + b"between\n" + packet + b"after\n" + tail)
+    assert world.check().findings == []                       # contained, wherever: the order is the planner's
+    world.set_prompt("")
+    assert world.run() == 0 and world.state()["card_sha256"] == hashlib.sha256(card).hexdigest()
+
+
+def test_an_empty_card_or_packet_cannot_be_shown_to_be_in_the_prompt(world):
+    world.packet.write_bytes(b"")
+    world.launch["packet_sha256"] = sha(world.packet)
+    world.set_prompt("")
+    assert world.check().findings == ["packet_path: the file is empty; an empty file cannot be shown to be in the prompt"]
+
+
+def test_a_file_too_large_to_be_a_prompt_is_refused_unread(world, monkeypatch):
+    monkeypatch.setattr(kyboot, "FILE_MAX_BYTES", 64)
+    world.set_prompt("x" * 200 + "\n")
+    refused(world, "prompt_path: larger than 64 bytes; refused unread")
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-05: where a job may never run
+# --------------------------------------------------------------------------------------------------------------
+def test_the_worktree_policy_names_the_owners_roots():
+    assert CHECKOUT_KYBOOT.SHARED_CHECKOUT == "/Users/Dev/Vibe-Coding/Apps/Madhav"
+    assert CHECKOUT_KYBOOT.WORKTREE_ROOT == "/Users/Dev/worktrees.noindex/madhav/claude"
+    policy, root = CHECKOUT_KYBOOT.worktree_policy_findings, CHECKOUT_KYBOOT.worktree_root
+    inside = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-b-kylock"
+    assert policy({"worktree": inside, "branch": BRANCH}, {}) == []
+    for elsewhere in ("/Users/Dev/worktrees.noindex/madhav/codex/x", "/Users/Dev/worktrees.noindex/madhav/claude",
+                      "/Users/Dev/worktrees.noindex/madhav/claude-other/x", "/Users/Dev/x", "/tmp/x"):
+        found = policy({"worktree": elsewhere, "branch": BRANCH}, {})
+        assert len(found) == 1 and "is not beneath the worktree root" in found[0], elsewhere
+    for shared in ("/Users/Dev/Vibe-Coding/Apps/Madhav", "/Users/Dev/Vibe-Coding/Apps/Madhav/platform"):
+        found = policy({"worktree": shared, "branch": BRANCH}, {})
+        assert any("is the shared checkout /Users/Dev/Vibe-Coding/Apps/Madhav; a job never runs there" in line
+                   for line in found), shared
+        testing = {"KY_SCRATCH_ROOT_OVERRIDE": "/Users/Dev", "KY_WORKTREE_ROOT_OVERRIDE": "/Users/Dev/Vibe-Coding"}
+        assert any("is the shared checkout" in line for line in policy({"worktree": shared, "branch": BRANCH}, testing))
+    # the tests-only root is honoured only together with the tests-only scratch root
+    assert root({}) == ("/Users/Dev/worktrees.noindex/madhav/claude", False)
+    assert root({"KY_WORKTREE_ROOT_OVERRIDE": "/x"}) == ("/Users/Dev/worktrees.noindex/madhav/claude", False)
+    assert root({"KY_WORKTREE_ROOT_OVERRIDE": "/x", "KY_SCRATCH_ROOT_OVERRIDE": "/y"}) == ("/x", True)
+    for branch in ("main", "suvarna", "suvarna/ri02", "suvarna-integration", "Suvarna/RI02", "SUVARNA"):
+        assert policy({"worktree": inside, "branch": branch}, {}) == [
+            f"branch: {branch!r} is refused (`main` and `suvarna*` are never job branches)"], branch
+    for branch in ("maintenance", "kalayantra/main", "kalayantra/suvarna-fix", "Main"):
+        assert policy({"worktree": inside, "branch": branch}, {}) == [], branch
+
+
+def test_a_worktree_outside_the_worktree_root_or_in_the_shared_checkout_refuses(world, monkeypatch):
+    elsewhere = world.root / "elsewhere"
+    elsewhere.mkdir()
+    world.environ["KY_WORKTREE_ROOT_OVERRIDE"] = str(elsewhere)
+    refused(world, f"worktree: {world.repo} is not beneath the worktree root {elsewhere}")
+    world.environ["KY_WORKTREE_ROOT_OVERRIDE"] = str(world.repo)             # the root itself is not beneath it
+    refused(world, f"worktree: {world.repo} is not beneath the worktree root {world.repo}")
+    assert world.run() == 1 and not world.launched()
+    for unusable in ("", "wt", str(world.root / "absent")):
+        world.environ["KY_WORKTREE_ROOT_OVERRIDE"] = unusable
+        refused(world, "KY_WORKTREE_ROOT_OVERRIDE: is set but is not an existing absolute directory")
+    world.environ["KY_WORKTREE_ROOT_OVERRIDE"] = str(world.wt_root)
+    assert world.check().findings == []
+    monkeypatch.setattr(kyboot, "SHARED_CHECKOUT", str(world.repo))           # "this worktree is the shared checkout"
+    findings = refused(world, f"worktree: {world.repo} is the shared checkout {world.repo}; a job never runs there")
+    assert len(findings) == 1 and world.run() == 1 and not world.launched()
+
+
+@pytest.mark.parametrize("branch", ["main", "suvarna/ri02", "Suvarna-integration"])
+def test_a_job_never_runs_on_main_or_on_a_suvarna_branch(world, branch):
+    world.git("checkout", "-q", "-b", branch)
+    world.launch["branch"] = branch
+    assert world.check().findings == [f"branch: {branch!r} is refused (`main` and `suvarna*` are never job branches)"]
+    assert world.run() == 1 and not world.launched()
+    world.git("checkout", "-q", "-b", "kalayantra/" + branch.lower())
+    world.launch["branch"] = "kalayantra/" + branch.lower()
+    assert world.check().findings == []
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-07: an override is never silently in force
+# --------------------------------------------------------------------------------------------------------------
+def test_every_override_in_use_is_named(world):
+    used = CHECKOUT_KYBOOT.overrides_in_use
+    assert used({}) == {} and CHECKOUT_KYBOOT.show_overrides({}) == "none"
+    assert used({"KY_LAUNCHCTL": "/bin/launchctl"}) == {} and used({"KY_LAUNCHCTL": ""}) == {}
+    assert used({"KY_LAUNCHCTL": "/x/launchctl"}) == {"KY_LAUNCHCTL": "/x/launchctl"}
+    # the two that are honoured only together with the scratch root are named only then
+    assert used({"KY_TEST_PPID": "1", "KY_WORKTREE_ROOT_OVERRIDE": "/w"}) == {}
+    assert used({"KY_SCRATCH_ROOT_OVERRIDE": "/s", "KY_TEST_PPID": "1", "KY_WORKTREE_ROOT_OVERRIDE": "/w"}) == {
+        "KY_SCRATCH_ROOT_OVERRIDE": "/s", "KY_TEST_PPID": "1", "KY_WORKTREE_ROOT_OVERRIDE": "/w"}
+    assert CHECKOUT_KYBOOT.show_overrides({"KY_TEST_PPID": "1\nCHECK-PASSED forged", "KY_LAUNCHCTL": "/x"}) == \
+        'KY_LAUNCHCTL="/x", KY_TEST_PPID="1\\nCHECK-PASSED forged"'               # one line, whatever the value
+    as_launchd(world)
+    world.context = "launchd"
+    cli = world.cli("check", world.launch_path)
+    assert cli.returncode == 0, cli.stderr
+    assert cli.stdout.count("\n") == 1 and cli.stdout.rstrip().endswith(
+        f'overrides: KY_LAUNCHCTL="{world.launchctl}", KY_SCRATCH_ROOT_OVERRIDE="{world.root}", KY_TEST_PPID="1", '
+        f'KY_WORKTREE_ROOT_OVERRIDE="{world.wt_root}")')
+    assert world.cli("run", world.launch_path).returncode == 0
+    expected = {"KY_LAUNCHCTL": str(world.launchctl), "KY_SCRATCH_ROOT_OVERRIDE": str(world.root), "KY_TEST_PPID": "1",
+                "KY_WORKTREE_ROOT_OVERRIDE": str(world.wt_root)}
+    assert world.state()["overrides"] == expected == world.action()["inputs"]["overrides"]
+    assert world.state()["launch_context"] == "launchd" and world.state()["launch_context_parent_pid_injected"] is True
+    status = json.loads(world.cli("status", JOB).stdout)["jobs"][0]
+    assert status["state"]["overrides"] == expected
+
+
+# --------------------------------------------------------------------------------------------------------------
+# finding N-09: status and reap are refused with a credential in the environment, and launchctl sees none of it
+# --------------------------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("name", ["DATABASE_URL", "KALA_DATABASE_URL", "PGPASSWORD", "ANTHROPIC_API_KEY"])
+def test_status_reap_submit_and_validate_also_exit_78_with_a_credential_in_the_environment(world, name):
+    world.context = "launchd"
+    world.write()
+    planted_state(world)
+    environ = dict(world.environ, **{name: SECRET})
+    for command in (["status"], ["status", JOB], ["reap"], ["reap", JOB], ["submit", world.launch_path],
+                    ["validate", "job_result", FIX / "job_result_done.json"]):
+        cli = world.cli(*command, environ=environ)
+        assert cli.returncode == 78 and cli.stdout == "", command
+        assert name in cli.stderr and SECRET not in cli.stderr
+    assert world.calls() == [] and world.loaded() is not None             # launchd was asked nothing
+    assert world.cli("reap", environ=dict(world.environ, PGPASSWORDS="x")).returncode == 0
+    assert world.cli("status", "../x", environ=environ).returncode == 2   # a malformed command stays a 2
+
+
+def test_launchctl_is_given_a_fixed_minimal_environment(world):
+    planted_state(world)
+    carried = dict(world.environ, GITHUB_TOKEN=SECRET, MY_SECRET_THING=SECRET, NODE_OPTIONS="--inspect",
+                   SSH_AUTH_SOCK="/x/agent.sock", LANG="fr_FR.UTF-8", USER="caller-user")
+    assert json.loads(world.cli("status", environ=carried).stdout)["jobs"][0]["label_loaded"] is True
+    assert json.loads(world.cli("reap", environ=carried).stdout)["reaped"][0]["action"] == "booted_out"
+    assert [call[0] for call in world.calls()] == ["print", "print", "bootout", "print"]
+    assert world.launchctl_env_names() == [["HOME", "LANG", "PATH", "USER"]] * 4
+    given = CHECKOUT_KYBOOT.launchctl_environment(carried)
+    assert given == {"PATH": "/usr/bin:/bin", "HOME": str(world.home), "USER": "caller-user", "LANG": "en_US.UTF-8"}
+    assert CHECKOUT_KYBOOT.launchctl_environment({"HOME": "relative"})["HOME"].startswith("/")
+
+
+# --------------------------------------------------------------------------------------------------------------
 # validate, template, README
 # --------------------------------------------------------------------------------------------------------------
 VALIDATE = [("packet", "packet_bootstrap.json"), ("release_receipt", "release_receipt_wait.json"),
@@ -2888,8 +4381,9 @@ VALIDATE = [("packet", "packet_bootstrap.json"), ("release_receipt", "release_re
 
 
 def bare_cli(*args):
-    return subprocess.run([sys.executable, kyboot.__file__, *map(str, args)], capture_output=True, text=True,
-                          timeout=30, env={"PATH": TOOL_PATH, "PYTHONDONTWRITEBYTECODE": "1"})
+    """the supervisor with next to no environment — but never without the fake launchctl (see the module docstring)"""
+    return run_kyboot(kyboot.__file__, {"PATH": TOOL_PATH, "KY_LAUNCHCTL": str(Path(SAFE["basetemp"]) / "no-launchctl")},
+                      *args, timeout=30)
 
 
 @pytest.mark.parametrize("name,doc", VALIDATE)
@@ -2917,6 +4411,12 @@ def test_the_template_names_exactly_the_schema_fields_and_is_refused_until_fille
     assert template["schema"] == "ky.bootstrap_launch_input/1" and template["claude_min_version"] == "2.1.296"
     assert template["plan_version"] == "2.7" == kymanifest.PLAN_VERSION
     assert set(template["env"]) <= set(kyboot.ENV_ALLOWLIST) and set(kyboot.ENV_REQUIRED) <= set(template["env"])
+    assert list(template["env"]) == BUILDER_ENV_NAMES        # cockpit ruling R1: the bootstrap-builder list, literally
+    assert template["env"]["JOB_SCRATCH"] == template["job_scratch"] == "<JOB_SCRATCH>"
+    assert template["env"]["KY_SCRATCH"] == "<KY_SCRATCH>" and template["env"]["TMPDIR"] == template["tmp_path"]
+    # cockpit ruling R6: PATH is the qualified child_path form — no <NODE_BIN>, which no receipt binds
+    assert template["env"]["PATH"] == "<KY_ROOT>/bin:/opt/homebrew/bin:/usr/bin:/bin"
+    assert "NODE_BIN" not in (TEMPLATES / "BOOTSTRAP_LAUNCH_INPUT.template.json").read_text(encoding="utf-8")
     world.write()
     result = kyboot.check(str(TEMPLATES / "BOOTSTRAP_LAUNCH_INPUT.template.json"), world.environ)
     assert not result.ok
@@ -2929,6 +4429,22 @@ def test_the_template_names_exactly_the_schema_fields_and_is_refused_until_fille
     assert cli.returncode == 1 and "unfilled placeholder" in cli.stderr
 
 
+def test_the_template_agrees_with_the_qualified_bootstrap_builder_configuration():
+    """across areas (read-only): the launch-input template and the sibling's LAUNCH_CONFIG.bootstrap-builder.json
+    name the same environment and the same PATH — kyboot would refuse a launch where they differ, and this test
+    says so before anybody fills a template"""
+    template = kyschema.load_json(TEMPLATES / "BOOTSTRAP_LAUNCH_INPUT.template.json")
+    config = kyschema.load_json(TEMPLATES / "LAUNCH_CONFIG.bootstrap-builder.json")
+    root = "/Users/Dev/kalayantra"
+    assert template["env"]["PATH"].replace("<KY_ROOT>", root) == config["child_path"]
+    assert sorted(template["env"]) == sorted(config["env_names"]) == sorted(BUILDER_ENV_NAMES)
+    assert sorted(kyschema.load_json(TEMPLATES / "LAUNCH_CONFIG.surrogate.json")["env_names"]) == sorted(SURROGATE_ENV_NAMES)
+    for name in ("bootstrap-builder", "bootstrap-reviewer", "surrogate"):
+        qualified = kyschema.load_json(TEMPLATES / f"LAUNCH_CONFIG.{name}.json")
+        assert set(qualified["env_names"]) <= set(kyboot.ENV_ALLOWLIST), name
+        assert set(kyboot.ENV_REQUIRED) <= set(qualified["env_names"]), name
+
+
 def test_the_template_readme_explains_every_field_and_every_gate_within_sixty_lines():
     readme = (TEMPLATES / "BOOTSTRAP_LAUNCH_INPUT.README.md").read_text(encoding="utf-8")
     assert len(readme.splitlines()) <= 60
@@ -2937,5 +4453,12 @@ def test_the_template_readme_explains_every_field_and_every_gate_within_sixty_li
         assert f"`{field}`" in readme, f"{field} is not explained"
     for phrase in ("refuses launch", "never from memory", "kyboot.py check", "VERSIONS.bootstrap.json",
                    "QUALIFICATIONS/<role>-<model>.json", "never from `fleet_live`", "locks/kyboot.<item>",
-                   "actions/ACT-launch-<job_id>.json", "plan v2.7"):
+                   "actions/ACT-launch-<job_id>.json", "plan v2.7", "python3 -I -B", "`JOB_SCRATCH`", "`KY_SCRATCH`",
+                   "`child_path`", "`deadline_seconds`", "`.claude/settings.json`", "`<KY_ROOT>/zdotdir`",
+                   "`kyqualify.py`", "$JOB_SCRATCH/result.json", "exits 5", "`ACT-launch-<job_id>`",
+                   "`main` and `suvarna*` are refused", "the card's exact bytes + the packet's exact bytes"):
         assert phrase in readme, phrase
+    for kind, cap in kyboot.TURN_CAPS.items():
+        assert f"`{kind}`" in readme and f"{kind} {cap}" in readme, kind
+    for name in kyboot.ENV_ALLOWLIST:
+        assert name in readme, name

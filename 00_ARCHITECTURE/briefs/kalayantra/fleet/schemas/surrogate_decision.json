@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "ky.surrogate_decision/2",
  "title": "KĀLA-YANTRA v3 owner-surrogate decision, one line of run/DECISIONS_SURROGATE.jsonl (relaunch plan v2.7 §4a.3; .claude/agents/kalayantra-owner-surrogate.md, Record format)",
- "description": "One decision record of the owner surrogate on one awaiting item, in one of the states PROPOSED → EFFECTIVE → EXECUTED (routine classes) or PROPOSED → PENDING_VETO → EFFECTIVE → EXECUTED | VETOED | FAILED (veto classes). A veto-class record carries its veto_deadline and may be EFFECTIVE only with an effective_at time (the veto controller, 'kyveto', publishes at expiry; nothing is published at proposal). A routine record carries no veto_deadline and is never PENDING_VETO or VETOED. A hard_stop record is owner-only: it stays PROPOSED and is never published as a delegated decision. Shape only: that 'awaiting' names an existing awaiting item, that the target is unchanged at expiry, that the authority binding is the active bundle's, that effective_at is not before veto_deadline, that the state history is a legal sequence, that the class is the charter's classification and that the notification was really submitted is not checked by this schema. veto_deadline and effective_at are UTC ISO-8601 ('Z' or '+00:00').",
+ "description": "One decision record of the owner surrogate on one awaiting item, in one of the states PROPOSED → EFFECTIVE → EXECUTED (routine classes) or PROPOSED → PENDING_VETO → EFFECTIVE → EXECUTED | VETOED | FAILED (veto classes). A veto-class record carries its veto_deadline and may be EFFECTIVE or EXECUTED only with an effective_at time (the veto controller, 'kyveto', publishes at expiry; nothing is published at proposal; a veto decision cannot have been executed without having become effective). A routine record carries no veto_deadline and is never PENDING_VETO or VETOED. A hard_stop record is owner-only: it stays PROPOSED and is never published as a delegated decision. Shape only: that 'awaiting' names an existing awaiting item, that the target is unchanged at expiry, that the authority binding is the active bundle's, that effective_at is not before veto_deadline, that the state history is a legal sequence, that the class is the charter's classification and that the notification was really submitted is not checked by this schema. veto_deadline and effective_at are UTC ISO-8601 ('Z' or '+00:00').",
  "type": "object",
  "additionalProperties": false,
  "required": [
@@ -270,6 +270,30 @@
         "pattern": "^[0-9a-f]{64}$"
        }
       }
+     }
+    }
+   }
+  },
+  {
+   "$comment": "veto class: EXECUTED only with the effective_at time it became effective at.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "veto"
+     },
+     "state": {
+      "const": "EXECUTED"
+     }
+    },
+    "required": [
+     "class",
+     "state"
+    ]
+   },
+   "then": {
+    "properties": {
+     "effective_at": {
+      "type": "string"
      }
     }
    }

@@ -3,16 +3,21 @@
 #
 #   kynotify.sh "<message>" [--level info|decision|hard_stop]
 #
-# 1. Appends ONE line `- <UTC ISO> [<level>] <message>` to $KY_RUN/JOURNAL_COCKPIT.md (a single
-#    printf append; newlines in the message are flattened to spaces).
-# 2. Submits a macOS notification unless KY_NOTIFY_DRY=1. The message reaches osascript ONLY as an
+# 1. Submits a macOS notification unless KY_NOTIFY_DRY=1. The message reaches osascript ONLY as an
 #    argument (`on run argv`), never as script text, so nothing in it is ever evaluated.
+# 2. THEN appends ONE line to $KY_RUN/JOURNAL_COCKPIT.md (a single printf append):
+#        - <UTC ISO> [<level>] <message> [notify=submitted|failed|dry]
+#    The timestamp is taken AFTER the submission attempt and the line always ENDS with the result that was
+#    really observed — whatever the message itself says. Every line-breaking character in the message (CR, LF,
+#    VT, FF, FS/GS/RS, NEL, U+2028, U+2029) is flattened to a space, so a message can never forge a second
+#    journal line. The veto handler reads this line: one whose message begins `<SD id>:` and that ends
+#    `[notify=submitted]` is its evidence that the owner's window was opened, and when.
 #
-# Exit: 0 once the journal line is written (a failed notification is recorded as a second
-#       `[notify_failed]` line and reported on stdout, never fatal); 3 if the journal append failed
-#       (the notification is still attempted); 64 on usage errors.
-# Stdout (for the caller's record — the plan stores the SUBMISSION result; delivery is never
-#       evidence that the owner read it):  kynotify: journal=ok|failed notify=submitted|failed|dry
+# Stdout: EXACTLY one line — `notify=submitted`, `notify=failed` or `notify=dry`. A caller records the
+#       submission as made only when that line is exactly `notify=submitted` (delivery is never evidence
+#       that the owner read it). Diagnostics go to stderr.
+# Exit: 0 once the journal line is written (a failed or dry notification is not fatal: read stdout);
+#       3 if the journal append failed (the notification was still attempted); 64 on usage errors.
 set -euo pipefail
 
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"
@@ -33,16 +38,15 @@ done
 [ "$have_msg" -eq 1 ] || usage
 case "$level" in info|decision|hard_stop) ;; *) usage ;; esac
 
-msg="${msg//$'\r'/ }"
-msg="${msg//$'\n'/ }"
+flatten() {   # bytewise, so that the multi-byte separators are matched whatever the caller's locale is
+  local LC_ALL=C s="$1" c
+  for c in $'\r' $'\n' $'\v' $'\f' $'\x1c' $'\x1d' $'\x1e' $'\xc2\x85' $'\xe2\x80\xa8' $'\xe2\x80\xa9'; do
+    s="${s//"$c"/ }"
+  done
+  FLAT="$s"
+}
+flatten "$msg"; msg="$FLAT"
 [ -n "${msg// /}" ] || usage
-
-ts="$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)"
-journal=ok
-if ! { printf -- '- %s [%s] %s\n' "$ts" "$level" "$msg" >> "$JOURNAL"; } 2>/dev/null; then
-  journal=failed
-  echo "kynotify: cannot append to $JOURNAL" >&2
-fi
 
 notify=dry
 if [ "${KY_NOTIFY_DRY:-0}" != "1" ]; then
@@ -54,13 +58,17 @@ if [ "${KY_NOTIFY_DRY:-0}" != "1" ]; then
     notify=submitted
   else
     notify=failed
-    if [ "$journal" = ok ]; then
-      { printf -- '- %s [notify_failed] notification submission failed (rc=%s) for the preceding [%s] entry\n' \
-          "$ts" "$rc" "$level" >> "$JOURNAL"; } 2>/dev/null || true
-    fi
+    echo "kynotify: notification submission failed (rc=$rc)" >&2
   fi
 fi
 
-echo "kynotify: journal=$journal notify=$notify"
+ts="$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)"
+journal=ok
+if ! { printf -- '- %s [%s] %s [notify=%s]\n' "$ts" "$level" "$msg" "$notify" >> "$JOURNAL"; } 2>/dev/null; then
+  journal=failed
+  echo "kynotify: cannot append to $JOURNAL" >&2
+fi
+
+echo "notify=$notify"
 [ "$journal" = ok ] || exit 3
 exit 0

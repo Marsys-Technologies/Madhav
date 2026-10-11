@@ -28,14 +28,16 @@
  "state_path": "<KY_RUN>/jobs/<JOB_ID>/state.json",
  "env": {
   "HOME": "<HOME>",
-  "PATH": "<KY_ROOT>/bin:<NODE_BIN>:/opt/homebrew/bin:/usr/bin:/bin",
+  "USER": "<USER>",
   "LANG": "en_US.UTF-8",
   "TERM": "dumb",
-  "USER": "<USER>",
+  "PATH": "<KY_ROOT>/bin:/opt/homebrew/bin:/usr/bin:/bin",
   "TMPDIR": "<JOB_SCRATCH>/tmp",
   "ZDOTDIR": "<KY_ROOT>/zdotdir",
   "KY_ROOT": "<KY_ROOT>",
   "KY_RUN": "<KY_RUN>",
+  "KY_SCRATCH": "<KY_SCRATCH>",
+  "JOB_SCRATCH": "<JOB_SCRATCH>",
   "KY_ITEM": "<KV3_B_ITEM_ID>",
   "KY_PY": "<KY_ROOT>/venv/bin/python"
  },

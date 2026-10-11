@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""kyschema.py — a minimal, stdlib-only JSON-Schema validator for the KĀLA-YANTRA v3 fleet schemas.
+r"""kyschema.py — a minimal, stdlib-only JSON-Schema validator for the KĀLA-YANTRA v3 fleet schemas.
 
-Relaunch plan v2.3 §14 B-0c (schemas for §8 packets, §10 release receipt, §4a.3 awaiting / surrogate decision,
+Relaunch plan v2.7 §14 B-0c (schemas for §8 packets, §10 release receipt, §4a.3 awaiting / surrogate decision,
 §6 job result, §7 bootstrap launch input). `jsonschema` is not installed on the campaign host and is not assumed
 in CI, so the fleet carries exactly the subset its schemas use. Python >= 3.9, no third-party imports.
 
@@ -15,11 +15,24 @@ Deliberate narrowings (each one refuses more, never less, than the standard):
   * a schema is always an object: the boolean schemas `true` / `false` are refused;
   * "integer" is a JSON number written as an integer: 3 is one, 3.0 is not; booleans are never numbers;
   * enum / const compare JSON values (true is not 1; 1 equals 1.0; objects by key set, arrays by position);
-  * pattern is a Python `re` search with ASCII character classes, and `$` matches only at the true end of the
-    string (never before a trailing newline), which is the ECMA-262 behaviour the standard asks for;
   * `then` / `else` without `if`, a `$ref` cycle that consumes no input, and a `required` name that the same
     schema's `additionalProperties: false` forbids are refused at lint time;
   * documents are loaded strictly: a duplicate object key, NaN or Infinity refuses the document.
+
+pattern is a Python `re` search, made to read a pattern the way ECMA-262 (which the standard names) reads it
+without its `u` flag — neither stricter nor laxer where the two languages can be made to agree:
+  * `$` matches only at the true end of the string, never before a trailing newline;
+  * `\d`, `\w`, `\b` and their negations are the ASCII classes;
+  * `\s` is the ECMA-262 white space and line terminator set (tab, LF, VT, FF, CR, space, U+00A0, U+1680,
+    U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF), inside a character class too, so `[^\s]`
+    refuses a no-break space or a line separator exactly as ECMA-262 does; `\S` is its complement outside a
+    class and is refused at lint time inside one (it cannot be written there faithfully);
+  * an unescaped `.` outside a class matches any character except the four ECMA-262 line terminators (LF, CR,
+    U+2028, U+2029).
+What is NOT reconciled, and is therefore the pattern author's to avoid: syntax only one of the two languages
+has (for example Python's `(?P<name>…)`, `\A` and `\Z`; ECMA-262's `\cX` and `\p{…}`), characters outside the
+Basic Multilingual Plane (ECMA-262 without `u` sees two surrogates, Python one character) and case-insensitive
+matching (never requested here). A pattern Python cannot compile is refused at lint time, never ignored.
 
 Usage:
   kyschema.py validate <schema.json> <doc.json>
@@ -127,13 +140,28 @@ def _child(path: str, key) -> str:
     return f"{path}.{key}" if _IDENT.match(key) else f"{path}[{json.dumps(key, ensure_ascii=False)}]"
 
 
+# ECMA-262 WhiteSpace + LineTerminator, as the body of a Python character class (what `\s` means there)
+ECMA_SPACE = "\\t\\n\\x0b\\x0c\\r \\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff"
+ECMA_LINE_TERMINATORS = "\\n\\r\\u2028\\u2029"
+
+
 def compile_pattern(pattern: str):
-    """Python `re`, ASCII classes, with every unescaped `$` outside a character class anchored at the true end"""
+    r"""Python `re` reading the pattern as ECMA-262 does (see the module docstring): ASCII `\d \w \b`, the
+    ECMA-262 set for `\s` / `\S`, `.` stopping at every ECMA-262 line terminator, and every unescaped `$`
+    outside a character class anchored at the true end. re.error when it cannot be written faithfully."""
     out, i, in_class = [], 0, False
     while i < len(pattern):
         ch = pattern[i]
         if ch == "\\":
-            out.append(pattern[i:i + 2])
+            escaped = pattern[i + 1:i + 2]
+            if escaped == "s":
+                out.append(ECMA_SPACE if in_class else "[" + ECMA_SPACE + "]")
+            elif escaped == "S":
+                if in_class:
+                    raise re.error("\\S inside a character class is not supported (write the class without it)")
+                out.append("[^" + ECMA_SPACE + "]")
+            else:
+                out.append(pattern[i:i + 2])
             i += 2
             continue
         if in_class:
@@ -152,6 +180,10 @@ def compile_pattern(pattern: str):
             continue
         elif ch == "$":
             out.append("\\Z")
+            i += 1
+            continue
+        elif ch == ".":
+            out.append("[^" + ECMA_LINE_TERMINATORS + "]")
             i += 1
             continue
         out.append(ch)

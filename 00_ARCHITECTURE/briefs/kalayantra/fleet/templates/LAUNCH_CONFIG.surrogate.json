@@ -20,7 +20,9 @@
   "ZDOTDIR",
   "KY_ROOT",
   "KY_RUN",
-  "KY_FLEET"
+  "KY_FLEET",
+  "KY_SCRATCH",
+  "JOB_SCRATCH"
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
  "extra_flags": [],

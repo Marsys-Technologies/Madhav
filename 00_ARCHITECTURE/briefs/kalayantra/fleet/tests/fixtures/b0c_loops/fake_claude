@@ -7,6 +7,10 @@
 #   claude.d/emit.jsonl, emit.stderr, emit.rc, emit.checkpoint   what the `emit` mode prints verbatim on stdout /
 #                      stderr, its exit status (default 0) and whether it also writes one valid checkpoint request
 #   claude.d/release   the `wait-substep` mode blocks until this file exists (it announces itself in waiting.<n>)
+#   claude.d/substeps  how many checkpoint requests the `many-substeps` mode writes in one run (default 25)
+#   claude.d/survivor.pid   pid of the background process the `leave-survivor` mode leaves in its process group
+# Modes that write under $KY_RUN/actions write what `kyaction.py begin` would write for a job (actor
+# {role, holder_kind: "job", controller_id, run_id}, id JOB-<run_id>-<slug>) — or deliberately something else.
 # Every run records its argv, environment NAMES (never values), cwd, stdin and mode in claude.d/calls/.
 set -u
 D="$(cd "$(dirname "$0")" && pwd)/claude.d"
@@ -54,6 +58,20 @@ elif ev == "badhash":
     evidence.append({"type": "file", "path": p, "sha256": hashlib.sha256(b"what the child claims").hexdigest()})
 elif ev == "event":
     evidence.append({"type": "event", "ref": "E-" + step_id})
+elif ev == "nul":           # a path no file can have: open() raises ValueError on it
+    evidence.append({"type": "file", "path": os.path.join(run, "evidence") + "/a\x00b.txt", "sha256": "0" * 64})
+elif ev == "outside":       # a readable file with the right hash, outside the worktree / run scratch / run dir
+    p = "/etc/hosts"
+    evidence.append({"type": "file", "path": p, "sha256": hashlib.sha256(open(p, "rb").read()).hexdigest()})
+elif ev == "symlink":       # inside the run directory by name, outside it by what it resolves to
+    os.makedirs(os.path.join(run, "evidence"), exist_ok=True)
+    p = os.path.join(run, "evidence", "%s-%s.link" % (job["run_id"], step_id))
+    os.symlink("/etc/hosts", p)
+    evidence.append({"type": "file", "path": p, "sha256": hashlib.sha256(open(p, "rb").read()).hexdigest()})
+elif ev == "scratch":       # the run scratch is an allowed root
+    p = os.path.join(rs, "evidence-%s.txt" % step_id)
+    open(p, "w").write("evidence in the run scratch for %s\n" % step_id)
+    evidence.append({"type": "file", "path": p, "sha256": hashlib.sha256(open(p, "rb").read()).hexdigest()})
 req = {"schema": "ky.checkpoint_request/1", "run_id": job["run_id"],
        "fence": job["fence"] if fence_override == "-" else fence_override,
        "item": item, "step_id": step_id, "kind": kind, "evidence": evidence,
@@ -72,8 +90,87 @@ d = json.load(open(p)); d["heartbeat"] = "child-%s" % n; json.dump(d, open(p, "w
 PY
 }
 
+job_action() {  # job_action <what>: a record under $KY_RUN/actions as a job would leave it (see the header)
+  python3 - "$RS" "$KY_RUN" "$KY_ROLE" "$1" <<'PY'
+import json, os, sys
+rs, run, role, what = sys.argv[1:5]
+job = json.load(open(os.path.join(rs, "job.json")))
+rid, d = job["run_id"], os.path.join(run, "actions")
+os.makedirs(d, exist_ok=True)
+actor = {"role": role, "holder_kind": "job", "controller_id": job["controller_id"], "run_id": rid}
+def record(action_id, kind, inputs, target, actor=actor, state="INTENDED", result=None):
+    return {"schema": "ky.action/1", "action_id": action_id, "kind": kind, "actor": actor, "inputs": inputs,
+            "target": target, "intended_transition": "%s by the fake job" % kind,
+            "created_at": "2026-01-01T00:00:00Z", "state": state, "result": result,
+            "completed_at": "2026-01-01T00:00:01Z" if result is not None else None, "process": None}
+def write(name, obj):
+    with open(os.path.join(d, name), "w") as f:
+        f.write(obj if isinstance(obj, str) else json.dumps(obj))
+item = job["work_items"][0]["id"]
+push = {"remote": "origin", "ref": "refs/heads/kalayantra/fake", "commit": "c" * 40}
+if what == "unknown-kind":      # well-formed, unfinished, and nothing the controller can observe
+    write("JOB-%s-open-pr.json" % rid, record("JOB-%s-open-pr" % rid, "pr_create", {"title": "x"}, {"item": item}))
+elif what == "unknown-kind-no-item":
+    write("JOB-%s-tracker.json" % rid, record("JOB-%s-tracker" % rid, "tracker_event", {"event": "x"}, {}))
+elif what == "push":            # well-formed, unfinished: the controller asks `git ls-remote`
+    write("JOB-%s-push.json" % rid, record("JOB-%s-push" % rid, "git_push", push, {"item": item}))
+elif what == "finished":        # begun and completed by the job itself: nothing is left to reconcile
+    write("JOB-%s-push.json" % rid, record("JOB-%s-push" % rid, "git_push", push, {"item": item}, state="DONE",
+                                           result={"pushed": True}))
+elif what == "malformed":       # everything a job must not leave under run/actions
+    write("JOB-%s-torn.json" % rid, "{torn")                                    # its namespace, not JSON
+    write("JOB-%s-not-a-record.json" % rid, {"note": "pushed the branch"})      # its namespace, no schema
+    write("push-1.json", {"what": "pushed", "when": "now"})                     # free-form, outside any namespace
+    write("JOB-%s-wrong-actor.json" % rid,                                      # its namespace, another actor
+          record("JOB-%s-wrong-actor" % rid, "push", {}, {},
+                 actor={"role": role, "holder_kind": "controller", "controller_id": job["controller_id"]}))
+    write("ACT-forged-controller.json",                                         # claims this role's controller
+          record("ACT-forged-controller", "push", {"branch": "x"}, {"remote": "origin"},
+                 actor={"role": role, "holder_kind": "controller", "controller_id": job["controller_id"]}))
+PY
+}
+
 case "$mode" in
   substep)            checkpoint substep - file ;;
+  substep-scratch)    checkpoint substep - scratch ;;
+  nulpath)            checkpoint substep - nul ;;
+  outside)            checkpoint step - outside ;;
+  symlink-out)        checkpoint substep - symlink ;;
+  many-substeps)      python3 - "$RS" "$KY_RUN" "$n" "$D" <<'PY'
+import hashlib, json, os, sys
+rs, run, n, d = sys.argv[1:5]
+job = json.load(open(os.path.join(rs, "job.json")))
+item = job["work_items"][0]
+count = int(open(os.path.join(d, "substeps")).read()) if os.path.exists(os.path.join(d, "substeps")) else 25
+os.makedirs(os.path.join(run, "evidence"), exist_ok=True)
+for i in range(count):
+    step_id = "%s.r%s-%03d" % (item["key"], n, i)
+    p = os.path.join(run, "evidence", "%s-%s.txt" % (job["run_id"], step_id))
+    open(p, "w").write("trivial evidence %s\n" % step_id)
+    req = {"schema": "ky.checkpoint_request/1", "run_id": job["run_id"], "fence": job["fence"], "item": item["id"],
+           "step_id": step_id, "kind": "substep", "summary": "trivial", "next": "more",
+           "evidence": [{"type": "file", "path": p, "sha256": hashlib.sha256(open(p, "rb").read()).hexdigest()}]}
+    out = os.path.join(job["out_dir"], "checkpoints", "%03d-%03d.json" % (int(n), i))
+    json.dump(req, open(out + ".tmp", "w")); os.replace(out + ".tmp", out)
+PY
+                      ;;
+  job-unknown)        job_action unknown-kind; checkpoint substep - file ;;
+  job-unknown-noitem) job_action unknown-kind-no-item ;;
+  job-push)           job_action push ;;
+  job-finished)       job_action finished; checkpoint substep - file ;;
+  job-malformed)      job_action malformed; checkpoint substep - file ;;
+  job-cli)            # exactly what the loop prompt tells a job to run: begin, then exit without complete / fail
+                      printf '%s' "{\"action_id\":\"JOB-$KY_RUN_ID-cli-push\",\"kind\":\"git_push\",\"inputs\":{\"remote\":\"origin\",\"ref\":\"refs/heads/kalayantra/fake\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\"},\"target\":{\"item\":\"step.B-3\"},\"intended_transition\":\"push the branch\",\"actor\":{\"role\":\"$KY_ROLE\",\"controller_id\":\"$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["controller_id"])' "$RS/job.json")\"}}" \
+                        | python3 "$KY_FLEET/kyaction.py" begin > "$D/calls/$n.kyaction.out" 2> "$D/calls/$n.kyaction.err"
+                      echo "$?" > "$D/calls/$n.kyaction.rc" ;;
+  tamper)             touch_state
+                      chmod u+w "$RS/state.snapshot.json" && echo '{"active": {}, "completed_steps": [], "forged": true}' > "$RS/state.snapshot.json"
+                      checkpoint substep - file ;;
+  tamper-snapshot-gone) touch_state; rm -f "$RS/state.snapshot.json"; checkpoint substep - file ;;
+  substep-hang)       checkpoint substep - file; echo "$$" > "$D/hang.pid"; exec /bin/sleep 60 ;;
+  leave-survivor)     /bin/sleep 60 >/dev/null 2>&1 &
+                      echo "$!" > "$D/survivor.pid" ;;
+  envdump)            printf '%s\n' "$JOB_SCRATCH" > "$D/calls/$n.job_scratch"; printf '%s\n' "$KY_SCRATCH" > "$D/calls/$n.ky_scratch" ;;
   step)               checkpoint step - file ;;
   noprogress)         touch_state ;;
   noprogress-stop)    touch_state; : > "$KY_RUN/STOP_$KY_ROLE" ;;

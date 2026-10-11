@@ -10,6 +10,15 @@ detector that can fail (CLAUDE.md §N.8); an item the probe cannot show is "unkn
   kyprobe.py launchd --out-dir DIR --project-dir DIR        (one-shot job; booted out after)
   kyprobe.py assemble --shell-dir DIR --launchd-dir DIR --out PROBES.json
 
+"launchd" is a proven context, never a label: `matrix --context launchd` refuses (exit 77) unless this very
+process is the one-shot agent — its parent is pid 1 AND XPC_SERVICE_NAME is the agent's label, the proof
+kyqualify.py asks of its own agent — and records that proof in MATRIX.json. `assemble` reports the launchd
+context as "unknown" without it.
+
+launchctl is /bin/launchctl. KY_LAUNCHCTL (an ABSOLUTE path) replaces it for tests; the path used is always
+recorded, and a run made with a replaced launchctl counts as launchd only under the tests-only gate
+KY_QUALIFY_TEST_OVERRIDE=1 (recorded too) — see launchctl_choice().
+
 Stdlib only. Never reads, prints or stores a credential: environment NAMES only.
 """
 import argparse
@@ -18,6 +27,7 @@ import datetime
 import hashlib
 import json
 import os
+import plistlib
 import re
 import signal
 import subprocess
@@ -32,6 +42,9 @@ FOOTER = re.compile(r"^\*(CLAUDE\.md v[0-9.]+ \(\d{4}-\d{2}-\d{2}\))", re.M)
 ARCHIVE = re.compile(r"Archives worth keeping[^`\n]*`([^`\n]+)`")
 LEAN_FLAG = "--disable-slash-commands"
 LEAN_MIN_SAVING = 500  # tokens; the flag is chosen only on a measured saving of at least this
+SYSTEM_LAUNCHCTL = "/bin/launchctl"
+LAUNCHCTL_ENV = "KY_LAUNCHCTL"                  # tests: an ABSOLUTE fake; always recorded in the receipt
+TEST_GATE_ENV = "KY_QUALIFY_TEST_OVERRIDE"      # tests only: "1" lets a replaced launchctl count as launchd
 
 PROMPT_CTX = (
     "Reply in exactly two lines and use no tool.\n"
@@ -82,6 +95,30 @@ def claude_version(claude_bin):
     except (OSError, subprocess.TimeoutExpired):
         return None
     return parse_version(out.stdout)
+
+
+def launchctl_choice(environ):
+    """(path, replaced, test_gate, error). The launchctl this run uses: /bin/launchctl unless KY_LAUNCHCTL names
+    another ABSOLUTE path (never a PATH lookup). `replaced` is recorded in every receipt; `test_gate` is true only
+    when the tests-only variable KY_QUALIFY_TEST_OVERRIDE is "1" as well — outside it a run made with a replaced
+    launchctl is never accepted as having run under launchd."""
+    path = environ.get(LAUNCHCTL_ENV) or SYSTEM_LAUNCHCTL
+    if not path.startswith("/") or os.path.normpath(path) != path:
+        return path, True, False, "%s must be an absolute, normalised path (got %r)" % (LAUNCHCTL_ENV, path)
+    replaced = path != SYSTEM_LAUNCHCTL
+    return path, replaced, replaced and environ.get(TEST_GATE_ENV) == "1", None
+
+
+def launchd_proof(label, environ=None):
+    """what this very process can show about being the launchd job `label`"""
+    environ = os.environ if environ is None else environ
+    return {"pid": os.getpid(), "ppid": os.getppid(), "xpc_service_name": environ.get("XPC_SERVICE_NAME"),
+            "label": label, "env_names": sorted(environ)}
+
+
+def inside_launchd(proof, label):
+    """true only for the proof kyqualify.py asks of its own agent: parent pid 1 AND XPC_SERVICE_NAME == label"""
+    return isinstance(proof, dict) and proof.get("ppid") == 1 and proof.get("xpc_service_name") == label
 
 
 def ancestor_claude_md(path):
@@ -310,11 +347,21 @@ def cmd_matrix(a):
     if bad:
         print("refused: credential variable name(s) set: " + ", ".join(bad), file=sys.stderr)
         return 78
+    out_dir = os.path.realpath(a.out_dir)
+    proof = None
+    if a.context == "launchd":          # a shell run is never labelled launchd: prove it or refuse
+        proof = launchd_proof(LABEL)
+        if not inside_launchd(proof, LABEL):
+            reason = ("not inside launchd: parent pid %s (launchd is 1), XPC_SERVICE_NAME %r (the agent's label is %r)"
+                      % (proof["ppid"], proof["xpc_service_name"], LABEL))
+            os.makedirs(out_dir, exist_ok=True)
+            write_json(os.path.join(out_dir, "REFUSED.json"), {"reason": reason, "context_proof": proof})
+            print("refused: " + reason, file=sys.stderr)
+            return 77
     version = claude_version(a.claude_bin)
     if version is None or version < MIN_VERSION:
         print("refused: %s version %s is below %s" % (a.claude_bin, version, MIN_VERSION), file=sys.stderr)
         return 70
-    out_dir = os.path.realpath(a.out_dir)
     os.makedirs(out_dir, exist_ok=True)
     runs = plan_runs(a.context, out_dir, os.path.realpath(a.project_dir), a.claude_bin,
                      os.path.realpath(a.mcp_config), a.add_dir, a.with_control)
@@ -322,7 +369,7 @@ def cmd_matrix(a):
         recs = list(pool.map(lambda s: run_one(s, a.timeout), runs))
     home = os.environ.get("HOME", "")
     write_json(os.path.join(out_dir, "MATRIX.json"), {
-        "schema": "ky.probe_matrix/1", "context": a.context, "generated_at": utc(),
+        "schema": "ky.probe_matrix/1", "context": a.context, "context_proof": proof, "generated_at": utc(),
         "claude_bin": a.claude_bin, "claude_version": ".".join(map(str, version)),
         "mcp_config": os.path.realpath(a.mcp_config), "mcp_config_sha256": sha256_file(a.mcp_config),
         "project_dir": os.path.realpath(a.project_dir),
@@ -338,63 +385,82 @@ def cmd_matrix(a):
 # ---------------------------------------------------------------- launchd one-shot
 
 def render_plist(a, out_dir):
+    """the one-shot agent as a property list (RunAtLoad, no KeepAlive), serialised by plistlib — never by hand"""
     me = os.path.realpath(__file__)
     args = [a.python, "-u", me, "matrix", "--context", "launchd", "--out-dir", out_dir,
             "--project-dir", os.path.realpath(a.project_dir), "--claude-bin", a.claude_bin,
             "--mcp-config", os.path.realpath(a.mcp_config), "--add-dir", a.add_dir,
             "--timeout", str(a.timeout)]
-
-    def esc(s):
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
     env = {"PATH": "/opt/homebrew/bin:/usr/bin:/bin", "HOME": os.environ["HOME"],
            "USER": os.environ["USER"], "LANG": "en_US.UTF-8"}
-    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
-            '<plist version="1.0"><dict>\n'
-            "  <key>Label</key><string>%s</string>\n"
-            "  <key>ProgramArguments</key><array>%s</array>\n"
-            "  <key>EnvironmentVariables</key><dict>%s</dict>\n"
-            "  <key>RunAtLoad</key><true/>\n"
-            "  <key>ProcessType</key><string>Background</string>\n"
-            "  <key>StandardOutPath</key><string>%s</string>\n"
-            "  <key>StandardErrorPath</key><string>%s</string>\n"
-            "</dict></plist>\n") % (
-        LABEL, "".join("<string>%s</string>" % esc(x) for x in args),
-        "".join("<key>%s</key><string>%s</string>" % (k, esc(v)) for k, v in sorted(env.items())),
-        esc(os.path.join(out_dir, "launchd.out")), esc(os.path.join(out_dir, "launchd.err")))
+    return {"Label": LABEL, "ProgramArguments": args, "EnvironmentVariables": env, "RunAtLoad": True,
+            "ProcessType": "Background", "StandardOutPath": os.path.join(out_dir, "launchd.out"),
+            "StandardErrorPath": os.path.join(out_dir, "launchd.err")}
 
 
 def cmd_launchd(a):
-    launchctl = os.environ.get("KY_LAUNCHCTL", "/bin/launchctl")
+    launchctl, replaced, gate, error = launchctl_choice(os.environ)
+    if error:
+        print("refused: " + error, file=sys.stderr)
+        return 65
     out_dir = os.path.realpath(a.out_dir)
     os.makedirs(out_dir, exist_ok=True)
-    done = os.path.join(out_dir, "DONE")
-    if os.path.exists(done):
+    done, refused = os.path.join(out_dir, "DONE"), os.path.join(out_dir, "REFUSED.json")
+    if os.path.exists(done) or os.path.exists(refused):
         print("refused: %s already holds a finished probe" % out_dir, file=sys.stderr)
         return 73
     plist = os.path.join(out_dir, LABEL + ".plist")
-    with open(plist, "w") as f:
-        f.write(render_plist(a, out_dir))
+    with open(plist, "wb") as f:
+        plistlib.dump(render_plist(a, out_dir), f)
     if subprocess.run(["/usr/bin/plutil", "-lint", plist], capture_output=True).returncode != 0:
         print("refused: rendered plist fails plutil -lint", file=sys.stderr)
         return 65
     domain = "gui/%d" % os.getuid()
     target = "%s/%s" % (domain, LABEL)
-    receipt = {"label": LABEL, "plist": plist, "domain": domain, "bootstrapped_at": utc()}
+    receipt = {"label": LABEL, "plist": plist, "domain": domain, "bootstrapped_at": utc(),
+               "launchctl": launchctl, "launchctl_replaced": replaced, "test_override": gate}
     boot = subprocess.run([launchctl, "bootstrap", domain, plist], capture_output=True, text=True)
     receipt["bootstrap_exit"] = boot.returncode
+    receipt["loaded_after_bootstrap"] = (boot.returncode == 0 and subprocess.run(
+        [launchctl, "print", target], capture_output=True, text=True).returncode == 0)
     deadline = time.time() + a.wait
-    while boot.returncode == 0 and not os.path.exists(done) and time.time() < deadline:
+    while (boot.returncode == 0 and not os.path.exists(done) and not os.path.exists(refused)
+           and time.time() < deadline):
         time.sleep(a.poll)
     receipt["finished"] = os.path.exists(done)
     out = subprocess.run([launchctl, "bootout", target], capture_output=True, text=True)
     receipt["bootout_exit"] = out.returncode
     gone = subprocess.run([launchctl, "print", target], capture_output=True, text=True)
     receipt["absent_after_bootout"] = gone.returncode != 0
+    # the agent's own proof of where it ran: from the matrix it wrote, or from its refusal
+    proof = None
+    for name in ("MATRIX.json", "REFUSED.json"):
+        try:
+            with open(os.path.join(out_dir, name), encoding="utf-8") as f:
+                proof = proof or (json.load(f) or {}).get("context_proof")
+        except (OSError, ValueError, AttributeError):
+            pass
+    receipt["inner"] = proof if isinstance(proof, dict) else None
+    receipt["launchd_context"] = launchd_context(receipt)
     receipt["ended_at"] = utc()
     write_json(os.path.join(out_dir, "LAUNCHD_RECEIPT.json"), receipt)
-    return 0 if (receipt["finished"] and receipt["absent_after_bootout"]) else 1
+    return 0 if (receipt["finished"] and receipt["absent_after_bootout"]
+                 and receipt["launchd_context"] == "proven") else 1
+
+
+def launchd_context(receipt):
+    """"proven" only when launchd listed the agent, the agent itself saw parent pid 1 and its own label, and the
+    launchctl was the system's (or the tests-only gate was set and recorded); otherwise the reason it is not."""
+    if not isinstance(receipt, dict):
+        return "no launchd receipt"
+    if receipt.get("launchctl") != SYSTEM_LAUNCHCTL and receipt.get("test_override") is not True:
+        return "launchctl was replaced (%s): nothing shows the job ran under the system's launchd" % (
+            receipt.get("launchctl"),)
+    if receipt.get("loaded_after_bootstrap") is not True:
+        return "launchd did not list the agent after bootstrap"
+    if not inside_launchd(receipt.get("inner"), receipt.get("label")):
+        return "the job's own context was not launchd's (parent pid 1 and XPC_SERVICE_NAME = the label)"
+    return "proven"
 
 
 # ---------------------------------------------------------------- verdicts
@@ -489,18 +555,34 @@ def cmd_assemble(a):
     shell, shell_sha = load(a.shell_dir)
     launchd, launchd_sha = load(a.launchd_dir)
     control = by_id(shell).get("sonnet-5-5.control")
+    receipt = None
+    if a.launchd_dir:
+        try:
+            with open(os.path.join(a.launchd_dir, "LAUNCHD_RECEIPT.json"), encoding="utf-8") as f:
+                receipt = json.load(f)
+        except (OSError, ValueError):
+            receipt = None
+    # the launchd context counts only with its proof: the receipt's, and the same proof inside the matrix itself
+    proven = launchd_context(receipt)
+    if proven == "proven" and not (isinstance(launchd, dict) and launchd.get("context") == "launchd"
+                                   and inside_launchd(launchd.get("context_proof"), LABEL)):
+        proven = "the launchd matrix does not carry the job's own launchd proof"
     out = {"schema": "ky.probes/1", "plan_version": "2.7", "generated_at": utc(),
            "claude_version": (shell or launchd or {}).get("claude_version", "unknown"),
            "launch_line": "plan v2.7 §7: -p --setting-sources project --permission-mode <explicit> "
                           "--strict-mcp-config --mcp-config mcp.none.json (no --bare)",
            "evidence": {"shell_matrix": a.shell_dir, "shell_matrix_sha256": shell_sha,
-                        "launchd_matrix": a.launchd_dir, "launchd_matrix_sha256": launchd_sha},
+                        "launchd_matrix": a.launchd_dir, "launchd_matrix_sha256": launchd_sha,
+                        "launchd_launchctl": (receipt or {}).get("launchctl", "unknown") if isinstance(receipt, dict) else "unknown",
+                        "launchd_test_override": (receipt or {}).get("test_override", "unknown") if isinstance(receipt, dict) else "unknown",
+                        "launchd_context": proven if launchd is not None else "not run",
+                        "launchd_context_proof": (launchd or {}).get("context_proof") if isinstance(launchd, dict) else None},
            "control": {"hook_events": (control or {}).get("hook_events", "unknown"),
                        "write_landed": (control or {}).get("write_landed", "unknown"),
                        "user_plugins_seen": len(((control or {}).get("observed") or {}).get("plugins_nonbuiltin") or []),
                        "note": "the control loads the user's settings on purpose; calibration only"},
            "contexts": {}}
-    for name, matrix in (("shell", shell), ("launchd", launchd)):
+    for name, matrix in (("shell", shell), ("launchd", launchd if proven == "proven" else None)):
         out["contexts"][name] = ("unknown" if matrix is None
                                  else {m: verdict_for(m, matrix, control) for m in ROSTER})
     # EXTRA_LEAN_FLAGS: chosen by rule from measured numbers, per model, never by judgment.

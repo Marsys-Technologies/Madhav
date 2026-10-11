@@ -28,15 +28,18 @@
  "state_path": "/Users/Dev/kalayantra/run/jobs/J-20261011T215900Z-b1/state.json",
  "env": {
   "HOME": "/Users/Dev",
-  "PATH": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+  "USER": "Dev",
   "LANG": "en_US.UTF-8",
   "TERM": "dumb",
-  "USER": "Dev",
+  "PATH": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
   "TMPDIR": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/jobs/J-20261011T215900Z-b1/tmp",
   "ZDOTDIR": "/Users/Dev/kalayantra/zdotdir",
   "KY_ROOT": "/Users/Dev/kalayantra",
   "KY_RUN": "/Users/Dev/kalayantra/run",
-  "KY_ITEM": "KV3-B-KYLOCK"
+  "KY_SCRATCH": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3",
+  "JOB_SCRATCH": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/jobs/J-20261011T215900Z-b1",
+  "KY_ITEM": "KV3-B-KYLOCK",
+  "KY_PY": "/Users/Dev/kalayantra/venv/bin/python"
  },
  "extra_lean_flags": [
   "--disable-slash-commands"

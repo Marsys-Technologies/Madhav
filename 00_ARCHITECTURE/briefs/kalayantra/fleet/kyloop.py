@@ -5,16 +5,23 @@
     kyloop.py planner|conductor|veto            the long-running controller launchd keeps alive
     kyloop.py admin enable|disable <loop> --reason TEXT [--by WHO]     durable admission switch
     kyloop.py admin show <loop>                 print $KY_RUN/loops/<loop>.json (or {"present": false})
+    kyloop.py admin child <loop>                one line `<state> <pid|-> <run id|->` for the child that loop's
+                                                controller recorded: none|pending|alive|survivors|gone|unknown
     kyloop.py admin expected-qualification <role>   the launch configuration AND context a qualification
                                                 receipt must bind (planner, conductor)
+    kyloop.py admin launch-config <role>        the ky.launch_config/1 kyqualify.py qualifies that role with
 
 launchd supervises THIS script, never an unconditional chain of model runs. The controller
 
   * is the sole holder of the role lock ($KY_RUN/locks/<role>, or $KY_FLEET/kylock.sh when installed) and
-    the sole writer of $KY_RUN/<ROLE>_STATE.json and JOURNAL_<ROLE>.md while it runs. A lock is taken over
-    ONLY when its recorded pid + process-start identity is positively gone; a missing or unreadable owner
-    record, a null or malformed pid and an unanswerable `ps` are unknown and are never taken over. A live
-    cockpit holder is respected (recorded as waiting state `role_held_by_cockpit`, exit 0);
+    the sole writer of $KY_RUN/<ROLE>_STATE.json and JOURNAL_<ROLE>.md while it runs. ONE liveness rule
+    (process_matches: True alive · False POSITIVELY gone · None unknown) governs every lock here: a lock is
+    created atomically WITH its owner record (a private directory renamed onto the lock path, which fails when
+    the path exists at all), is taken over ONLY when its recorded pid + process-start identity is positively
+    gone, and the takeover is verified after the rename (the buried lock must still be the one that was
+    judged; otherwise it is put back). A missing or unreadable owner record, a null or malformed pid and an
+    unanswerable `ps` are unknown: never taken over, never removed by age, raised as one attention item. A
+    live cockpit holder is respected (recorded as waiting state `role_held_by_cockpit`, exit 0);
   * honours durable state before EVERY launch, in this order: STOP_<role>, the `enabled` switch in
     $KY_RUN/loops/<role>.json (absent = not enabled: a loaded plist never authorises a run), the owner's
     queued commands, completion, $KY_ROOT/HOLD, an owner pause, the circuit breaker and quota backoff — all
@@ -27,17 +34,33 @@ launchd supervises THIS script, never an unconditional chain of model runs. The 
   * waits itself (hold, pause, backoff, "no eligible work", inbox polling) and launches ONE bounded
     `claude -p` child only for an eligible work item (planner: a pending Wave B step) or an actionable,
     deduplicated, handled-state-checked batch of inbox messages (conductor);
-  * wraps every child launch in an action record (kyaction: INTENDED before Popen, the observed
-    exit / termination after) and reconciles every unfinished action it owns at start-up and before any
-    relaunch — what it cannot observe is unknown: one awaiting file, no retry;
+  * wraps every side effect of its own in an action record (kyaction: INTENDED before, the observed result
+    after) — each child launch, each notification and the conductor's dispatcher start — and reconciles every
+    unfinished action it owns at start-up and before any relaunch — what it cannot observe is unknown: one
+    awaiting file, no retry;
+  * reconciles what its CHILD recorded: a job writes action records only through `kyaction.py
+    begin|complete|fail`, as actor {role, holder_kind: "job", controller_id, run_id}, in the id namespace
+    `JOB-<run_id>-<slug>`. After the child exits the controller settles that run's unfinished records by
+    observation (kind `git_push`: `git ls-remote` equality); a kind it has no observer for is unknown — ONE
+    awaiting item naming the record, no retry, and the loop goes on with other items. A malformed job-authored
+    file is moved to $KY_RUN/actions/quarantine/ with an awaiting item and never stops the loop;
   * gives each child an immutable state snapshot and a fenced job identity (job.json); the child returns
-    checkpoint requests, which the controller validates (fence, assignment, evidence hash / observed ack)
-    and persists. A child's own write to the role-state file is detected, preserved for forensics and undone;
-  * counts progress only as accepted checkpoint requests or a changed external dependency — never a
-    heartbeat, timestamp or journal append; three consecutive runs without progress open the breaker
-    (awaiting file + STOP), and a restart is refused until recorded evidence has changed;
+    checkpoint requests, which the controller validates (fence, assignment, evidence inside the role worktree /
+    run scratch / run directory and its hash, the per-item sub-step cap, or the observed ack) and persists. A
+    child's own write to the role-state file is detected, preserved for forensics and undone from the
+    controller's own in-memory copy; when the child also removed or altered its snapshot the run is REFUSED
+    (nothing it returned is accepted, it counts as no progress, one attention item);
+  * counts progress only as accepted checkpoint requests or a changed external dependency THE RUN DID NOT
+    AUTHOR — never a heartbeat, timestamp, journal append or an owner-wait the job itself raised; three
+    consecutive runs without progress open the breaker (awaiting file + STOP) — the launch decision reads the
+    count itself — and a restart is refused until recorded evidence has changed;
   * reconciles a surviving child of a dead controller (by PID + PGID + process-start identity) before any
-    replacement, and forwards TERM/INT to the child's process group.
+    replacement — a job is gone only when its leader is positively gone AND its process group is empty; a
+    child recorded as `pending` (written BEFORE it is started) or never identified is never gone — forwards
+    TERM/INT to the child's process group, and while a child runs looks at STOP_<role> and at the queue for
+    `loops stop` / `handoff` every 15 s: on either it ends the child's group, records it and stops;
+  * never ends in a traceback launchd would respawn: every unexpected exception becomes one awaiting item,
+    the STOP file, `enabled: false` and exit 0.
 
 The conductor takes its approved manifest digest from the terminal link of the validated activation chain
 ($KY_RUN/ACTIVATION_RECORD.json when present, then ACTIVATION_RECORD.<n>.json exactly as kyveto.py writes them;
@@ -46,7 +69,19 @@ nothing ever falls back to the installed manifest.
 
 The `veto` role (plan §4a.2/§4a.3) launches no model at all: it holds the `veto` lock and calls kyveto.py's
 `tick` as that lock's holder, waiting in between until the earliest pending veto deadline, a new command for
-the veto role, or its poll period. Each tick's outcome is recorded in $KY_RUN/loops/veto.json.
+the veto role, or its poll period. It is admitted exactly like the model loops — an installation receipt of
+mode bootstrap or final AND a passing kyversion.sh in the matching mode, at start-up and whenever the receipt
+changes — and passes the authorised bundle to every tick explicitly: the terminal activation link's source
+commit and its manifest's entrypoints digest when a chain exists, otherwise PLANNER_STATE.json
+`authorised_source`; when neither can be read every decision is held and one attention item is raised. Each
+tick's outcome is recorded in $KY_RUN/loops/veto.json.
+
+TEST HOOKS (the only two; both are environment variables and neither belongs in an installed plist):
+KY_LOOP_SLEEP_SCALE (0 < scale <= 1) compresses the controller's own waits, and KY_LOOP_TEST_CONTEXT replaces the
+context detector — the latter ONLY while the scale override is active, so at the production scale nothing can
+tell a controller that it runs under launchd. Any use of either is written into every run record and into
+$KY_RUN/loops/<role>.json (`test_hooks`), and a controller that PROVABLY runs under launchd refuses to launch
+while either is in use.
 
 Exit codes: 0 clean stop or legitimate "nothing to run" (launchd KeepAlive{SuccessfulExit:false} does not
 respawn); 78 refused environment (a credential variable NAME is present — names only are printed);
@@ -58,6 +93,8 @@ receipts, activation chain, handled records, owner-decision files, kylock.sh / k
 from __future__ import annotations
 
 import calendar
+import contextlib
+import errno
 import fcntl
 import hashlib
 import importlib
@@ -76,13 +113,15 @@ ROLES = ("planner", "conductor")                # the roles that launch model jo
 CONTROLLER_ROLES = ROLES + ("veto",)            # every role this file is the controller of
 SWITCH_LOOPS = ("dispatcher",) + CONTROLLER_ROLES
 SIBLINGS = ("kyaction", "kycommands", "kyveto")  # read-only modules beside this file, imported on first use
+HARNESS = "kyqualify"                           # optional sibling: when installed, ITS check_receipt judges a receipt
 LABEL_PREFIX = "in.marsys.kalayantra."          # + <role>: the launchd label of a loop (kyctl.sh label_of)
 TEST_CONTEXT_ENV = "KY_LOOP_TEST_CONTEXT"       # TEST-ONLY, see Controller.context()
 MIN_CLAUDE = (2, 1, 296)
 BACKOFF_MINUTES = (5, 10, 20, 30)
 NO_PROGRESS_LIMIT = 3
 HOLD_POLL_S = 30.0          # the global HOLD and an owner pause are polled; other waits are event- or deadline-bound
-WAIT_POLL_S = 15.0          # "no eligible work" / inbox polling period
+WAIT_POLL_S = 15.0          # "no eligible work" / inbox polling period; also how often a running child's
+                            # controller looks at STOP_<role> and at the queue for `loops stop` / `handoff`
 COMMAND_POLL_S = 1.0        # how often a waiting controller looks for a new command / a still-pending one
 VETO_POLL_S = 30.0          # the veto controller's tick period when no deadline or command comes sooner
 VETO_LOCK_WAIT_S = 150.0    # how long the veto controller waits for another handler's tick to release the lock
@@ -90,9 +129,19 @@ TERM_GRACE_S = 10.0         # TERM → KILL → record must fit inside launchd's
 CHILD_POLL_S = 0.2
 EVENT_SOURCE_FAILURE_LIMIT = 5
 BATCH_MAX = 20
+SUBSTEP_CAP = 20            # accepted sub-steps per item; beyond it the item needs changed recorded evidence
+STATE_MUTEX_WAIT_S = 10.0   # how long a loop-state update waits for another writer's flock
+QUALIFIED_TOOLS = ("Read", "Write", "Edit", "Bash")     # what a loop role's qualification must cover as intended
+RECEIPT_SCHEMA = "ky.qualification/1"
+JOB_HOLDER = "job"          # holder_kind of an action record a child job wrote through `kyaction.py begin`
+GIT_REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")           # a configured remote NAME, never a URL
+GIT_REF_RE = re.compile(r"^refs/[A-Za-z0-9][A-Za-z0-9._/-]{0,199}\Z")
+ENTRYPOINT_ROLES = ("plan", "cockpit_prompt", "owner_decisions", "strategy", "surrogate_agent")
+MANIFEST_FILES = ("VERSIONS.json", "VERSIONS.bootstrap.json")              # where an installed manifest lives
 PLANNER_STEPS = (("B-3", ()), ("B-4", ()), ("B-5", ("B-3", "B-4")))      # plan §14; B-5 binds B-3 and B-4
 PROMPTS = {"planner": "PLANNER_LOOP_v2_4.md", "conductor": "CONDUCTOR_LOOP_v2_4.md"}
-RECEIPT_MODES = {"planner": ("bootstrap", "final"), "conductor": ("final",)}
+RECEIPT_MODES = {"planner": ("bootstrap", "final"), "conductor": ("final",), "veto": ("bootstrap", "final")}
+KYVERSION_ARGS = {"bootstrap": ["--bootstrap"], "final": []}       # the veto loop: the mode its receipt names
 DEFAULTS = {
     "planner": {"worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
                 "model": "claude-opus-5-5", "effort": "xhigh", "max_turns": 300,
@@ -101,11 +150,12 @@ DEFAULTS = {
                   "model": "claude-opus-5-5", "effort": "high", "max_turns": 150,
                   "permission_mode": "bypassPermissions", "deadline_seconds": 7200},
 }
-CONFIG_KEYS = ("worktree", "model", "effort", "max_turns", "permission_mode", "mcp_config", "deadline_seconds")
+CONFIG_KEYS = ("worktree", "model", "effort", "max_turns", "permission_mode", "mcp_config", "deadline_seconds",
+               "substep_cap")
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 PERMISSION_MODES = ("default", "acceptEdits", "plan", "bypassPermissions")
 CHILD_ENV_NAMES = ("HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_FLEET",
-                   "KY_SCRATCH", "KY_ROLE", "KY_RUN_ID")
+                   "KY_SCRATCH", "JOB_SCRATCH", "KY_ROLE", "KY_RUN_ID")
 CREDENTIAL_EXACT = ("DATABASE_URL", "PGPASSWORD", "ANTHROPIC_API_KEY")
 RATE_LIMIT_REFUSING = ("rejected", "blocked", "limited", "exceeded")       # rate_limit_info.status: a refusal
 RATE_LIMIT_ALLOWED = ("allowed",)                                           # … positively not one
@@ -129,8 +179,38 @@ class Refusal(Exception):
         self.reasons = list(reasons)
 
 
+class Fault(Refusal):
+    """An UNEXPECTED exception inside the controller. It takes the very path of a refused precondition — one
+    awaiting item, the STOP file, `enabled: false`, exit 0 — so that launchd never respawns a traceback."""
+
+    def __init__(self, where, exc):
+        super().__init__(["controller_fault: %s raised %s: %s" % (where, type(exc).__name__, flat(exc, 200))])
+        self.where = where
+
+
+class LoopStateUnreadable(Refusal):
+    """$KY_RUN/loops/<loop>.json exists but cannot be read as an object. It is NEVER rewritten from empty (that
+    would lose the breaker state and the no-progress count): the update is refused and attention raised."""
+
+    def __init__(self, path, why):
+        super().__init__(["loop_state_unreadable: %s (%s) — never rewritten from empty; repair or remove it by hand"
+                          % (path, why)])
+        self.path = str(path)
+
+
 class Interrupted(Exception):
     pass
+
+
+@contextlib.contextmanager
+def guarded(where):
+    """Turn any unexpected exception of the enclosed controller phase into a Fault naming that phase."""
+    try:
+        yield
+    except (Refusal, Interrupted):
+        raise
+    except Exception as e:
+        raise Fault(where, e) from e
 
 
 # ───────────────────────── small deterministic helpers ─────────────────────────
@@ -151,25 +231,37 @@ def sha_bytes(data):
 
 
 def sha_file(path):
+    """sha256 hex of a file, or None when it cannot be read. TOTAL: a path that is not a path (a number would be
+    read as a file descriptor), one holding a NUL byte (ValueError) and every OSError are all "cannot be read"."""
+    if not isinstance(path, (str, os.PathLike)):
+        return None
     try:
         h = hashlib.sha256()
         with open(path, "rb") as f:
             for chunk in iter(lambda: f.read(1 << 20), b""):
                 h.update(chunk)
         return h.hexdigest()
-    except OSError:
+    except (OSError, ValueError, RecursionError):
         return None
 
 
 def read_json(path):
-    """(object, None) or (None, reason). Never raises."""
+    """(object, None) or (None, reason). TOTAL — never raises: a missing file, an unreadable one, text that is
+    not JSON, a NUL in the path (ValueError) and JSON nested too deeply to parse (RecursionError) are reasons."""
+    if not isinstance(path, (str, os.PathLike)):
+        return None, "unreadable: not a path"
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f), None
     except FileNotFoundError:
         return None, "missing"
-    except (OSError, ValueError) as e:
+    except (OSError, ValueError, RecursionError) as e:
         return None, "unreadable: %s" % type(e).__name__
+
+
+def as_int(value, default=0):
+    """A stored counter as an int; anything that is not a real integer is `default` (never a crash)."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
 def write_atomic(path, data, mode=None):
@@ -261,38 +353,231 @@ def proven_context(label, ppid, xpc_service_name):
     return "launchd" if type(ppid) is int and ppid == 1 and xpc_service_name == label else "shell"
 
 
-def update_loop_state(run_dir, loop, fn):
-    """Read-modify-write $KY_RUN/loops/<loop>.json under a short mkdir mutex (kyctl and the controller both write)."""
-    path = Path(run_dir) / "loops" / (loop + ".json")
-    mutex = Path(run_dir) / "locks" / ("loopstate." + loop)
-    os.makedirs(path.parent, exist_ok=True)
-    os.makedirs(mutex.parent, exist_ok=True)
-    for _ in range(400):
-        try:
-            os.mkdir(mutex)
-            break
-        except FileExistsError:
-            try:
-                if time.time() - mutex.stat().st_mtime > 30:
-                    os.rmdir(mutex)
-                    continue
-            except OSError:
-                pass
-            time.sleep(0.025)
-    else:
-        raise RuntimeError("loop-state mutex busy: %s" % mutex)
+def group_gone(pgid):
+    """True: no process is left in that process group (killpg(pgid, 0) raises ProcessLookupError). False: at least
+    one member is still there. None: it cannot be told — not a real pgid, or a group that cannot be signalled
+    (which is also what a group holding nothing but a not-yet-reaped zombie answers: unknown until it is reaped)."""
+    if isinstance(pgid, bool) or not isinstance(pgid, int) or pgid <= 1:
+        return None
     try:
-        cur, _ = read_json(path)
-        doc = fn(dict(cur) if isinstance(cur, dict) else {})
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return True
+    except OSError:
+        return None
+    return False
+
+
+def job_state(pid, pgid, start):
+    """What became of a job this role started as its own process-group leader (pgid == pid):
+      "live"       its leader runs, with the recorded start identity;
+      "survivors"  the leader is positively gone but its process group still has members;
+      "gone"       the leader is positively gone AND the group is empty — the ONLY state a job is finished in;
+      "unknown"    anything that cannot be told: no recorded pid (a child recorded as pending), an identity that
+                   cannot be compared, an unanswerable ps or killpg.
+    A leader pid that now belongs to ANOTHER process (start identities differ) proves its own group gone: a pid
+    is never reused while a process group of that id exists, so a group of that id — if there is one — is
+    someone else's and is never probed or signalled. "survivors" is reported only for a group the job led
+    itself (pgid == pid); a recorded group that is not the leader's own is either provably empty or unknown."""
+    match = process_matches(pid, start)
+    if match is True:
+        return "live"
+    if match is None:
+        return "unknown"
+    probe = ps_probe(pid)
+    if probe is None:
+        return "unknown"
+    if pgid == pid:
+        if probe[0] == "alive" and not probe[1].startswith("Z"):
+            return "gone"                       # the pid was reused: the recorded job and its group are gone
+        empty = group_gone(pgid)
+        return "gone" if empty is True else "survivors" if empty is False else "unknown"
+    return "gone" if group_gone(pgid) is True else "unknown"
+
+
+# ───────────────────────── locks: atomic with their owner, taken over only when positively gone ─────────────────────────
+
+OWNER_IDENTITY = ("session_or_run_id", "pid", "process_start")     # what makes two owner records the same owner
+_LIBC = []
+
+
+def _renamex():
+    """darwin's renamex_np (a rename that can be told to fail when the target exists), or None."""
+    if not _LIBC:
+        try:
+            import ctypes
+            fn = ctypes.CDLL(None, use_errno=True).renamex_np
+            fn.argtypes, fn.restype = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint], ctypes.c_int
+            _LIBC.append((fn, ctypes.get_errno))
+        except (ImportError, AttributeError, OSError):
+            _LIBC.append(None)
+    return _LIBC[0]
+
+
+def rename_exclusive(src, dst):
+    """Rename the directory `src` onto `dst`, failing with FileExistsError when `dst` exists AT ALL. A plain
+    rename() silently replaces an existing EMPTY directory — an ownerless lock would be taken over by accident —
+    so the exclusive form is used where the platform has one; elsewhere existence is checked first and the plain
+    rename still fails on any lock that has an owner record in it."""
+    native = _renamex()
+    if native is not None:
+        fn, get_errno = native
+        if fn(os.fsencode(str(src)), os.fsencode(str(dst)), 0x4) == 0:          # RENAME_EXCL
+            return
+        err = get_errno()
+        if err in (errno.EEXIST, errno.ENOTEMPTY):
+            raise FileExistsError(err, os.strerror(err), str(dst))
+        if err not in (errno.ENOTSUP, errno.EINVAL, errno.ENOSYS):
+            raise OSError(err, os.strerror(err), str(dst))
+    if os.path.lexists(dst):
+        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), str(dst))
+    try:
+        os.rename(src, dst)
+    except OSError as e:
+        if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
+            raise FileExistsError(e.errno, os.strerror(e.errno), str(dst)) from None
+        raise
+
+
+def lock_create(path, owner):
+    """Take the lock directory `path` atomically WITH its owner record: owner.json is written into a private
+    directory beside the lock, and that directory is renamed onto the lock path. → True when this call created
+    the lock, False when the path already exists. A lock therefore never exists without an owner; one that does
+    (or whose owner cannot be read) was made by someone else in some other way — it is unknown, and never ours."""
+    path = Path(path)
+    tmp = path.parent / (".%s.new.%d.%s" % (path.name, os.getpid(), secrets.token_hex(4)))
+    os.mkdir(tmp)
+    try:
+        write_json(tmp / "owner.json", owner)
+        rename_exclusive(tmp, path)
+        return True
+    except FileExistsError:
+        return False
+    finally:
+        if tmp.exists():                        # not renamed: nothing of it may stay behind
+            with contextlib.suppress(OSError):
+                for entry in tmp.iterdir():
+                    entry.unlink()
+                os.rmdir(tmp)
+
+
+def lock_bury(path, judged):
+    """Verify-after-rename removal of the lock directory `path`, whose owner record `judged` the caller holds to
+    be removable (positively gone, or the caller's own). The lock is renamed to a grave beside it — atomic — and
+    the grave's owner.json re-read: only when it is exactly the owner that was judged (same id, pid and process
+    start) is it removed. Anything else is put back (exclusively). Serialised among takeovers by flock on
+    locks/.takeover.guard (the guard kyaction.py uses).
+      → "removed"   it was that lock and it is gone: the path is free
+        "absent"    there was no lock at that path any more
+        "changed"   the lock there is ANOTHER owner's already (seen before anything was moved): untouched
+        "restored"  it became another owner's between that look and the rename: put back untouched
+        "conflict"  as "restored", but the path was re-taken meanwhile: the buried lock is left in its grave for
+                    a human — never deleted, never overwritten."""
+    path = Path(path)
+
+    def same(owner):
+        return isinstance(owner, dict) and isinstance(judged, dict) \
+            and all(owner.get(k) == judged.get(k) for k in OWNER_IDENTITY)
+
+    guard = os.open(str(path.parent / ".takeover.guard"), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        if not os.path.lexists(path):
+            return "absent"
+        if not same(read_json(path / "owner.json")[0]):
+            return "changed"
+        grave = path.parent / (".%s.grave.%d.%s" % (path.name, os.getpid(), secrets.token_hex(4)))
+        try:
+            os.rename(path, grave)
+        except FileNotFoundError:
+            return "absent"
+        buried, _ = read_json(grave / "owner.json")
+        if same(buried):
+            with contextlib.suppress(OSError):
+                for entry in grave.iterdir():
+                    entry.unlink()
+                os.rmdir(grave)
+            return "removed"
+        try:
+            rename_exclusive(grave, path)
+        except FileExistsError:
+            return "conflict"
+        return "restored"
+    finally:
+        os.close(guard)
+
+
+def update_loop_state(run_dir, loop, fn):
+    """Read-modify-write $KY_RUN/loops/<loop>.json (kyctl and the controller both write). Serialised by flock on
+    locks/.loopstate.<loop>.flock: the kernel drops it when its holder ends, so nothing is ever stale and nothing
+    is ever removed by age. A file that exists but cannot be read as an object raises LoopStateUnreadable — it is
+    never rewritten from empty."""
+    path = Path(run_dir) / "loops" / (loop + ".json")
+    os.makedirs(path.parent, exist_ok=True)
+    os.makedirs(Path(run_dir) / "locks", exist_ok=True)
+    fd = os.open(str(Path(run_dir) / "locks" / (".loopstate.%s.flock" % loop)), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        end = time.monotonic() + STATE_MUTEX_WAIT_S
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as e:
+                if e.errno not in (errno.EWOULDBLOCK, errno.EAGAIN, errno.EINTR) or time.monotonic() >= end:
+                    raise RuntimeError("loop-state mutex busy or unusable: %s (%s)" % (loop, type(e).__name__))
+                time.sleep(0.01)
+        cur, err = read_json(path)
+        if err and err != "missing":
+            raise LoopStateUnreadable(path, err)
+        if cur is not None and not isinstance(cur, dict):
+            raise LoopStateUnreadable(path, "not an object")
+        doc = fn(dict(cur) if cur else {})
         doc.setdefault("schema", "ky.loop/1")
         doc["loop"] = loop
         write_json(path, doc)
         return doc
     finally:
-        try:
-            os.rmdir(mutex)
-        except OSError:
-            pass
+        os.close(fd)
+
+
+def loop_state(run_dir, loop):
+    """({…}, None) — {} when there is no file yet — or (None, reason) when it exists and cannot be read."""
+    doc, err = read_json(Path(run_dir) / "loops" / (loop + ".json"))
+    if err == "missing":
+        return {}, None
+    if err or not isinstance(doc, dict):
+        return None, err or "not an object"
+    return doc, None
+
+
+def canonical(obj):
+    """The byte form kymanifest.py digests (sorted keys, no padding, UTF-8)."""
+    return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+
+
+def manifest_entrypoints(path, manifest_digest):
+    """The entrypoints digest of the manifest file `path` — only when that file IS the manifest of
+    `manifest_digest`: its digest recomputed here (canonical JSON without `manifest_sha256`, as kymanifest.py
+    does) equals it, it carries the five-role `entrypoints` mapping, and any `entrypoints_digest` it states
+    equals the one recomputed from that mapping. → (digest, None) or (None, reason)."""
+    doc, err = read_json(path)
+    if err or not isinstance(doc, dict):
+        return None, "manifest %s" % (err or "is not an object")
+    try:
+        body = canonical({k: v for k, v in doc.items() if k != "manifest_sha256"})
+    except (TypeError, ValueError, RecursionError):
+        return None, "manifest cannot be digested"
+    if sha_bytes(body) != manifest_digest:
+        return None, "not the manifest of that digest"
+    entry = doc.get("entrypoints")
+    if not isinstance(entry, dict) or set(entry) != set(ENTRYPOINT_ROLES) or any(
+            not isinstance(e, dict) or not isinstance(e.get("path"), str) or not isinstance(e.get("git_blob"), str)
+            for e in entry.values()):
+        return None, "manifest carries no five-role entrypoints mapping"
+    digest = sha_bytes(canonical({r: {"path": e["path"], "git_blob": e["git_blob"]} for r, e in entry.items()}))
+    if "entrypoints_digest" in doc and doc["entrypoints_digest"] != digest:
+        return None, "manifest states another entrypoints digest than its mapping gives"
+    return digest, None
 
 
 def rate_limit_reset(info):
@@ -391,6 +676,40 @@ def provider_session(stdout_path):
     return None
 
 
+def project_settings_digest(worktree):
+    """sha256 of <worktree>/.claude/settings.json — the project settings `--setting-sources project` puts in
+    force for a job in that worktree — or the string "absent" when nothing is there. None (which never equals a
+    bind) when something is there that cannot be read as a file. (kyqualify.py: file_digest.)"""
+    path = os.path.join(str(worktree), ".claude", "settings.json")
+    if not os.path.lexists(path):
+        return "absent"
+    return sha_file(path) if os.path.isfile(path) else None
+
+
+def zdotdir_digest(directory):
+    """sha256 over the name, then the content, of every regular file directly under `directory`, names sorted (no
+    separator; links and sub-directories skipped) — the shell start-up files the child's ZDOTDIR holds — or
+    "absent" when there is no such directory; None when it cannot be read. Byte for byte kyqualify.py's
+    directory_digest, which writes this bind."""
+    directory = str(directory)
+    if not os.path.lexists(directory):
+        return "absent"
+    if not os.path.isdir(directory):
+        return None
+    digest = hashlib.sha256()
+    try:
+        for name in sorted(os.listdir(directory)):
+            path = os.path.join(directory, name)
+            if os.path.islink(path) or not os.path.isfile(path):
+                continue
+            digest.update(name.encode("utf-8"))
+            with open(path, "rb") as f:
+                digest.update(f.read())
+    except (OSError, ValueError):
+        return None
+    return digest.hexdigest()
+
+
 # ───────────────────────────────── controller ─────────────────────────────────
 
 class Controller:
@@ -422,16 +741,36 @@ class Controller:
         self.event_failures = 0
         self.state_sha = None       # sha256 of the role-state file as this controller last saw or wrote it
         self._bin_hash = None
+        self.lock_held = False      # True only between a successful acquire() and release_lock()
+        self.notify_seq = 0
+        self.own_actions = set()    # ids of the action records THIS controller began (never taken for a job's)
+        self.item_locks = {}        # {item id: kyaction Lock} of the message locks held for the current run
+        self.dispatcher_checked = False
+        self.harness = None         # kyqualify, when it is installed beside this file (see load_harness)
+        self.qualification_check = None     # which layer judged the receipt at the last verify_launch (N-05)
 
     # ---- plumbing
     def log(self, msg):
         print("kyloop[%s] %s %s" % (self.role, utc(), msg), file=sys.stderr, flush=True)
 
     def ls(self, fn=None):
+        """Read ($KY_RUN/loops/<role>.json as an object; {} when absent) or read-modify-write it. A file that
+        exists and cannot be read raises LoopStateUnreadable either way: it is never taken for empty."""
         if fn is None:
-            cur, _ = read_json(self.run / "loops" / (self.role + ".json"))
-            return cur if isinstance(cur, dict) else {}
+            cur, err = loop_state(self.run, self.role)
+            if cur is None:
+                raise LoopStateUnreadable(self.run / "loops" / (self.role + ".json"), err)
+            return cur
         return update_loop_state(self.run, self.role, fn)
+
+    def test_hooks(self):
+        """None, or which TEST hooks this controller runs with (N-06). Written into every run record and into
+        loops/<role>.json, so that a run made under a compressed clock or an injected context says so itself."""
+        injected = os.environ.get(TEST_CONTEXT_ENV)
+        if self.scale == 1 and injected is None:
+            return None
+        return {"sleep_scale": self.scale, "context_injected": injected,
+                "context_injection_honoured": injected in ("launchd", "shell") and self.scale < 1}
 
     def load_siblings(self):
         """kyaction, kycommands and kyveto — the read-only modules this controller is wired to — imported on first
@@ -461,19 +800,29 @@ class Controller:
     def actor(self):
         return {"role": self.role, "holder_kind": "controller", "controller_id": self.controller_id}
 
+    def real_context(self):
+        """The context PROVEN by the detector alone (parent pid 1 and this loop's own launchd label)."""
+        return proven_context(LABEL_PREFIX + self.role, os.getppid(), os.environ.get("XPC_SERVICE_NAME"))
+
     def context(self):
         """The context this controller PROVABLY runs in — what a qualification receipt must have been earned in.
 
-        TEST-ONLY injection: KY_LOOP_TEST_CONTEXT=launchd|shell replaces the detector, and is honoured ONLY while
-        the test sleep-scale override is active (KY_LOOP_SLEEP_SCALE < 1). At the production scale (1, or unset)
-        the variable is ignored, so a real loop can never be told which context it runs in."""
+        TEST-ONLY injection (N-06): KY_LOOP_TEST_CONTEXT=launchd|shell replaces the detector, and is honoured
+        ONLY while the test sleep-scale override is active (KY_LOOP_SLEEP_SCALE < 1). At the production scale
+        (1, or unset) the variable is ignored — a `launchd`-labelled context is REFUSED there — so a real loop
+        can never be told which context it runs in. Its use is recorded (test_hooks()), and a controller that
+        really runs under launchd refuses to launch with either hook set (verify_launch)."""
         injected = os.environ.get(TEST_CONTEXT_ENV)
         if injected in ("launchd", "shell") and self.scale < 1:
             return injected
-        return proven_context(LABEL_PREFIX + self.role, os.getppid(), os.environ.get("XPC_SERVICE_NAME"))
+        return self.real_context()
 
     def admitted(self):
-        return not self.stop_path.exists() and self.ls().get("enabled") is True
+        """Not stopped and enabled. A loop state that cannot be read is not an admission."""
+        try:
+            return not self.stop_path.exists() and self.ls().get("enabled") is True
+        except LoopStateUnreadable:
+            return False
 
     def on_signal(self, signum, _frame):
         self.signal = signum
@@ -501,14 +850,18 @@ class Controller:
             d.setdefault("breaker", {"open": False, "history": []})
             d.setdefault("quota", {"level": 0, "notified_level": 0, "not_before": None, "backoff_minutes": 0})
             d.setdefault("expected_child", None)
+            d["test_hooks"] = self.test_hooks()
             return d
         self.ls(fn)
 
     def identity(self):
-        if not hasattr(self, "_identity"):
+        """This controller's own identity. A start identity that could not be read (ps unanswerable) is asked for
+        again the next time: it is never cached as "none"."""
+        if getattr(self, "_identity", None) is None or self._identity["process_start"] is None:
             ident = ps_identity(os.getpid())
+            started = self._identity["started_at"] if getattr(self, "_identity", None) else utc()
             self._identity = {"controller_id": self.controller_id, "pid": os.getpid(), "pgid": os.getpgid(0),
-                              "process_start": ident[1] if ident else None, "started_at": utc()}
+                              "process_start": ident[1] if ident else None, "started_at": started}
         return dict(self._identity)
 
     def disable(self, reason, force=False):
@@ -518,21 +871,82 @@ class Controller:
             return d
         self.ls(fn)
 
-    def notify(self, message, level):
+    def submit_notification(self, message, level):
+        """Run kynotify.sh once. → {"notify": submitted|failed|dry|unavailable|unknown, "rc", "journal"}: `notify`
+        is what its ONE stdout line says, and nothing else is ever read as a submission."""
         script = self.fleet / "kynotify.sh"
-        result = "unavailable"
-        if script.is_file():
-            try:
-                r = subprocess.run(["/bin/bash", str(script), message, "--level", level], capture_output=True,
-                                   text=True, timeout=60)
-                m = re.search(r"journal=(\w+) notify=(\w+)", r.stdout)
-                result = "journal=%s notify=%s rc=%d" % (m.group(1), m.group(2), r.returncode) if m \
-                    else "rc=%d" % r.returncode
-            except (OSError, subprocess.SubprocessError) as e:
-                result = "error: %s" % type(e).__name__
-        self.ls(lambda d: dict(d, last_notification={"at": utc(), "level": level, "result": result}))
-        self.log("notification (%s): %s" % (level, result))
-        return result
+        if not script.is_file():
+            return {"notify": "unavailable", "rc": None, "journal": None}
+        try:
+            r = subprocess.run(["/bin/bash", str(script), message, "--level", level], capture_output=True,
+                               text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError) as e:
+            return {"notify": "unknown", "rc": None, "journal": None, "error": type(e).__name__}
+        said = r.stdout.strip()
+        notify = said[len("notify="):] if said in ("notify=submitted", "notify=failed", "notify=dry") else "unknown"
+        return {"notify": notify, "rc": r.returncode,
+                "journal": "ok" if r.returncode == 0 else "failed" if r.returncode == 3 else "unknown"}
+
+    def notify(self, message, level):
+        """One owner notification, wrapped in an action record (plan §4a.1 lists notifications among the side
+        effects): NOTIFY-<controller id>-<n> is INTENDED before kynotify.sh runs and carries the observed
+        submission result after. Without the control modules (a refusal raised before they could be loaded) the
+        notification is still attempted and says so. Never raises: a notification must not turn a refusal into a
+        crash."""
+        message, result, action_id = flat(message, 300), None, None
+        try:
+            if self.ka is not None:
+                self.notify_seq += 1
+                action_id = "NOTIFY-%s-%d" % (self.controller_id, self.notify_seq)
+                self.own_actions.add(action_id)
+                status, _ = self.ka.begin(
+                    self.run, action_id, "notification", self.actor(), {"level": level, "message": message},
+                    {"journal": str(self.run / "JOURNAL_COCKPIT.md"), "channel": "kynotify.sh"},
+                    "notify the owner once: not submitted → submitted, one journal line")
+                if status != "new":
+                    result = {"notify": "not_attempted", "rc": None, "journal": None,
+                              "reason": "action record %s is %s" % (action_id, status)}
+            if result is None:
+                result = self.submit_notification(message, level)
+                if action_id is not None:
+                    if result["notify"] in ("submitted", "dry"):
+                        self.ka.complete(self.run, action_id, result)
+                    elif result["notify"] in ("failed", "unavailable"):
+                        self.ka.fail(self.run, action_id, result)
+                    # "unknown" was not observed: the record stays INTENDED and is reconciled from the journal
+        except Exception as e:
+            result = dict(result or {"notify": "unknown", "rc": None, "journal": None},
+                          record_error="%s: %s" % (type(e).__name__, flat(e, 160)))
+        summary = "notify=%s journal=%s rc=%s" % (result.get("notify"), result.get("journal"), result.get("rc"))
+        try:
+            self.ls(lambda d: dict(d, last_notification={"at": utc(), "level": level, "result": summary,
+                                                         "action": action_id}))
+        except Exception as e:
+            self.log("notification result not recorded in the loop state (%s)" % type(e).__name__)
+        self.log("notification (%s): %s" % (level, summary))
+        return summary
+
+    def observe_notification(self, record):
+        """kyaction observer for a notification a previous controller began and never settled: the journal line
+        kynotify.sh writes AFTER its submission attempt is the evidence. No such line → positively not journaled
+        (not_done: it is submitted now, under the same record); an unreadable journal → unknown."""
+        inputs = record.get("inputs") if isinstance(record.get("inputs"), dict) else {}
+        message, level = inputs.get("message"), inputs.get("level")
+        if not isinstance(message, str) or level not in ("info", "decision", "hard_stop"):
+            return "unknown", {"reason": "the record does not carry a message and a level"}
+        try:
+            with open(self.run / "JOURNAL_COCKPIT.md", "r", encoding="utf-8", errors="replace") as f:
+                lines = f.read().split("\n")
+        except FileNotFoundError:
+            lines = []
+        except OSError as e:
+            return "unknown", {"reason": "journal unreadable: %s" % type(e).__name__}
+        want = " [%s] %s [notify=" % (level, message)
+        for line in lines:
+            at = line.find(want)
+            if at > 0 and line.endswith("]") and line[at + len(want):-1] in ("submitted", "failed", "dry"):
+                return "done", {"notify": line[at + len(want):-1], "journal": "ok", "rc": None, "reconciled": True}
+        return "not_done", {"journal_line": False}
 
     # ---- role lock (sole holder across child jobs)
     @staticmethod
@@ -546,100 +960,133 @@ class Controller:
         match = process_matches(owner.get("pid"), owner.get("process_start"))
         return "live" if match is True else "gone" if match is False else "unknown"
 
+    def owner_doc(self, child):
+        ident = self.identity()
+        return {"session_or_run_id": self.controller_id, "holder_kind": "controller", "pid": ident["pid"],
+                "pgid": ident["pgid"], "process_start": ident["process_start"], "acquired_at": ident["started_at"],
+                "child": child}
+
     def acquire_lock(self):
+        """Take the role lock, or say in self.lock_refusal why not. A lock is created atomically WITH its owner
+        (lock_create), and an existing one is taken over only when its recorded owner is POSITIVELY gone, by a
+        takeover that is verified after the rename (lock_bury). Nothing here ever removes a lock by its age."""
         self.lock_refusal = None
         kylock = self.fleet / "kylock.sh"
         if kylock.is_file() and os.access(kylock, os.X_OK):
             r = subprocess.run([str(kylock), "acquire", self.role, self.controller_id], capture_output=True, text=True)
             if r.returncode == 0:
-                self.lock_mode = "kylock"
+                self.lock_mode, self.lock_held = "kylock", True
                 return True
             self.lock_refusal = {"state": "kylock", "detail": "kylock.sh rc=%d" % r.returncode}
             self.log("lock held or refused by kylock.sh (rc=%d): %s" % (r.returncode, flat(r.stderr or r.stdout)))
             return False
         os.makedirs(self.lock_dir.parent, exist_ok=True)
-        for _ in range(2):
-            try:
-                os.mkdir(self.lock_dir)
-            except FileExistsError:
-                owner = self.read_owner()
-                state = self.lock_owner_state(owner)
-                holder = {k: owner.get(k) for k in ("session_or_run_id", "holder_kind", "pid", "process_start")} \
-                    if isinstance(owner, dict) else None
-                if state == "live":
-                    cockpit = owner.get("holder_kind") == "cockpit"
-                    self.lock_refusal = {"state": "cockpit" if cockpit else "live", "holder": holder}
-                    self.log("lock held by a live %s (%s, pid %s); this instance exits without launching"
-                             % ("cockpit" if cockpit else "owner", owner.get("session_or_run_id"), owner.get("pid")))
-                    return False
-                if state == "unknown":
-                    why = "no readable owner record" if holder is None else \
-                        "its recorded owner (pid %r) cannot be confirmed gone" % (holder["pid"],)
-                    self.lock_refusal = {"state": "unknown", "holder": holder, "detail": why}
-                    self.log("lock held: %s exists and %s — an unknown owner is never taken over"
-                             % (self.lock_dir, why))
-                    return False
-                if self.remove_stale_lock(owner):
-                    self.log("stale lock taken over (previous owner %s, pid %s, positively gone)"
-                             % (owner.get("session_or_run_id"), owner.get("pid")))
-                continue                        # mkdir again: exactly one contender gets it
-            self.lock_mode = "builtin"
-            self.write_owner(None)
-            return True
+        if self.identity()["process_start"] is None:
+            # a lock whose owner nobody can verify is "unknown" to every other actor, for good: never create one
+            self.lock_refusal = {"state": "self_unknown", "detail": "this process's own start identity cannot be read"}
+            self.log("lock not taken: this controller's own process identity cannot be read (ps)")
+            return False
+        for _ in range(3):
+            if lock_create(self.lock_dir, self.owner_doc(None)):
+                self.lock_mode, self.lock_held = "builtin", True
+                return True
+            owner = self.read_owner()
+            state = self.lock_owner_state(owner)
+            holder = {k: owner.get(k) for k in ("session_or_run_id", "holder_kind", "pid", "process_start")} \
+                if isinstance(owner, dict) else None
+            if state == "live":
+                cockpit = owner.get("holder_kind") == "cockpit"
+                self.lock_refusal = {"state": "cockpit" if cockpit else "live", "holder": holder}
+                self.log("lock held by a live %s (%s, pid %s); this instance exits without launching"
+                         % ("cockpit" if cockpit else "owner", owner.get("session_or_run_id"), owner.get("pid")))
+                return False
+            if state == "unknown":
+                if not os.path.lexists(self.lock_dir):
+                    continue                    # released between the failed create and the look: try again
+                why = "no readable owner record" if holder is None else \
+                    "its recorded owner (pid %r) cannot be confirmed gone" % (holder["pid"],)
+                self.lock_refusal = {"state": "unknown", "holder": holder, "detail": why}
+                self.log("lock held: %s exists and %s — an unknown owner is never taken over"
+                         % (self.lock_dir, why))
+                return False
+            outcome = self.remove_stale_lock(owner)
+            if outcome == "removed":
+                self.log("stale lock taken over (previous owner %s, pid %s, positively gone)"
+                         % (owner.get("session_or_run_id"), owner.get("pid")))
+                if owner.get("child") is not None:
+                    self.log("the previous owner recorded a child (%s): it is reconciled before any replacement, "
+                             "and is never taken for gone while pending or unidentified" % flat(owner.get("child"), 120))
+            elif outcome == "conflict":
+                self.lock_refusal = {"state": "unknown", "holder": holder,
+                                     "detail": "a takeover found another owner's lock and could not put it back"}
+                self.log("lock takeover conflict: another owner's lock was left buried beside %s" % self.lock_dir)
+                return False
+            # "absent" / "changed" / "restored": someone else moved first — create again: one contender gets it
         self.lock_refusal = {"state": "race"}
         self.log("lock held: lost the takeover race")
         return False
 
     def remove_stale_lock(self, judged):
-        """Remove the lock directory iff it is STILL the lock whose owner was judged positively gone: serialised by
-        flock on locks/.takeover.guard (the guard kyaction.py's lock takeover uses) and re-read under it, so two
-        contenders can never remove each other's fresh lock. → True when it was removed."""
+        """Take the role lock away from an owner that was judged POSITIVELY gone — verify-after-rename (lock_bury),
+        so two contenders can never remove each other's fresh lock. → lock_bury's outcome."""
         try:
-            guard = os.open(str(self.lock_dir.parent / ".takeover.guard"), os.O_CREAT | os.O_RDWR, 0o600)
-        except OSError:
-            return False
-        try:
-            fcntl.flock(guard, fcntl.LOCK_EX)
-            owner, _ = read_json(self.lock_dir / "owner.json")
-            if owner != judged or self.lock_owner_state(owner) != "gone":
-                return False
-            for entry in self.lock_dir.glob("*"):
-                entry.unlink()
-            os.rmdir(self.lock_dir)
-            return True
-        except OSError:
-            return False
-        finally:
-            os.close(guard)
+            return lock_bury(self.lock_dir, judged)
+        except OSError as e:
+            self.log("stale lock not removed (%s)" % type(e).__name__)
+            return "absent"
 
     def record_lock_wait(self):
         """A live cockpit holder, or an owner that cannot be identified, is recorded as this loop's waiting state.
-        A live controller holder is not: it writes this file itself, and a duplicate start must leave it alone."""
+        A live controller holder is not: it writes this file itself, and a duplicate start must leave it alone.
+        An UNKNOWN owner additionally raises ONE attention item (it is never taken over and never treated as
+        gone, so somebody has to look) — but no STOP and no switch: this instance never stops what it cannot see."""
         refusal = self.lock_refusal or {}
-        waiting = {"cockpit": "role_held_by_cockpit", "unknown": "role_lock_owner_unknown"}.get(refusal.get("state"))
-        if waiting:
+        waiting = {"cockpit": "role_held_by_cockpit", "unknown": "role_lock_owner_unknown",
+                   "self_unknown": "own_process_identity_unknown"}.get(refusal.get("state"))
+        if not waiting:
+            return
+        try:
             self.ls(lambda d: dict(d, waiting=waiting, lock_wait=dict(refusal, at=utc(), observed_by=self.controller_id)))
+        except LoopStateUnreadable as r:
+            self.log("lock wait not recorded: %s" % r)
+        if refusal.get("state") == "self_unknown":
+            self.raise_attention(
+                "loop-%s-identity-unknown" % self.role,
+                "A %s loop controller could not read its own process-start identity (ps did not answer), so it took "
+                "no lock and launched nothing: a lock whose owner nobody can verify would block the role for good."
+                % self.role, ["controller: %s" % self.controller_id],
+                message="%s loop did not start: its own process identity cannot be read" % self.role)
+        if refusal.get("state") == "unknown":
+            self.raise_attention(
+                "loop-%s-lock-owner-unknown" % self.role,
+                "The %s role lock %s exists but its owner cannot be identified (%s). It is never taken over and "
+                "never removed by age, so the %s loop cannot start. Is its owner gone?"
+                % (self.role, self.lock_dir, flat(refusal.get("detail"), 160), self.role),
+                ["lock: %s" % self.lock_dir, "recorded owner: %s" % flat(json.dumps(refusal.get("holder")), 200)],
+                options=[{"id": "remove-lock", "text": "The owner is gone: remove the lock directory by hand, then "
+                                                       "`kyctl.sh start %s`." % self.role},
+                         {"id": "leave", "text": "The owner is alive (or unknown): leave the lock alone."}],
+                message="%s loop cannot start: its role lock has an owner that cannot be identified" % self.role)
 
     def read_owner(self):
-        """owner.json of the role lock as an object, or None when it is missing (after a short wait for a
-        concurrent acquirer to write it) or not readable as an object."""
+        """owner.json of the role lock as an object, or None when it is missing (after a short wait for an
+        acquirer that makes its lock in two steps — the cockpit's documented mkdir fence) or not readable as an
+        object."""
         for _ in range(8):
             owner, err = read_json(self.lock_dir / "owner.json")
             if isinstance(owner, dict):
                 return owner
-            if err != "missing":
+            if err != "missing" or not os.path.lexists(self.lock_dir):
                 return None
             time.sleep(max(0.01, 0.25 * self.scale))
         return None
 
     def write_owner(self, child):
+        """Record the child this lock's holder is responsible for: None, "pending" (written BEFORE the child is
+        started, so a controller that dies in between never looks child-less), or its identity."""
         if self.lock_mode != "builtin":
             return
-        ident = self.identity()
-        write_json(self.lock_dir / "owner.json", {
-            "session_or_run_id": self.controller_id, "holder_kind": "controller", "pid": ident["pid"],
-            "pgid": ident["pgid"], "process_start": ident["process_start"], "acquired_at": ident["started_at"],
-            "child": child})
+        write_json(self.lock_dir / "owner.json", self.owner_doc(child))
 
     def release_lock(self):
         if self.lock_mode == "kylock":
@@ -647,17 +1094,19 @@ class Controller:
                            capture_output=True, text=True)
         elif self.lock_mode == "builtin":
             owner, _ = read_json(self.lock_dir / "owner.json")
-            if isinstance(owner, dict) and owner.get("session_or_run_id") == self.controller_id:
-                try:
-                    (self.lock_dir / "owner.json").unlink()
-                    os.rmdir(self.lock_dir)
+            if isinstance(owner, dict) and owner.get("session_or_run_id") == self.controller_id \
+                    and owner.get("pid") == os.getpid():
+                try:                            # buried whole: the lock never stands there without its owner
+                    outcome = lock_bury(self.lock_dir, owner)
+                    if outcome != "removed":
+                        self.log("the lock was not released (%s)" % outcome)
                 except OSError as e:
                     self.log("could not release the lock: %s" % type(e).__name__)
-        self.lock_mode = None
+        self.lock_mode, self.lock_held = None, False
 
     # ---- configuration and launch preconditions
     def load_config(self):
-        cfg = dict(DEFAULTS[self.role], mcp_config=str(self.fleet / "mcp.none.json"))
+        cfg = dict(DEFAULTS[self.role], mcp_config=str(self.fleet / "mcp.none.json"), substep_cap=SUBSTEP_CAP)
         path = self.run / "loops.json"
         if not path.exists():
             return cfg, []
@@ -683,7 +1132,7 @@ class Controller:
                         bad = v not in EFFORTS
                     elif k == "permission_mode":
                         bad = v not in PERMISSION_MODES
-                    elif k in ("max_turns", "deadline_seconds"):
+                    elif k in ("max_turns", "deadline_seconds", "substep_cap"):
                         bad = not (isinstance(v, int) and not isinstance(v, bool) and v > 0)
                     if bad:
                         errs.append("%s.%s is unknown or has the wrong type/value" % (role, k))
@@ -720,14 +1169,61 @@ class Controller:
         return self._bin_hash[1]
 
     def expected_binds(self, cfg):
-        """Everything a launch qualification receipt must bind (plan §7 KV-06)."""
-        return {"claude_bin": str(self.claude), "claude_bin_sha256": self.bin_sha(),
-                "claude_version": self.read_claude_version()[0], "argv": self.argv(cfg), "model": cfg["model"],
-                "effort": cfg["effort"], "permission_mode": cfg["permission_mode"], "max_turns": cfg["max_turns"],
+        """Everything a launch qualification receipt must bind (plan §7 KV-06): the program and its hash and
+        version, the exact argv, the limits, the role worktree AND the project settings in force there
+        (`<worktree>/.claude/settings.json`, or "absent"), the child environment's names (JOB_SCRATCH among them)
+        and its PATH, the shell start-up files the child's ZDOTDIR holds, the prompt and the MCP configuration —
+        and, when the qualification harness is installed beside this file, that harness itself (`harness_sha256`,
+        which kyqualify.py binds into every receipt it writes: a receipt from another harness, or one that binds a
+        harness while none is installed here to compare it with, is a mismatch)."""
+        binds = {"claude_bin": str(self.claude), "claude_bin_sha256": self.bin_sha(),
+                 "claude_version": self.read_claude_version()[0], "argv": self.argv(cfg), "model": cfg["model"],
+                 "effort": cfg["effort"], "permission_mode": cfg["permission_mode"], "max_turns": cfg["max_turns"],
+                 "deadline_seconds": cfg["deadline_seconds"], "worktree": cfg["worktree"],
+                 "env_names": sorted(CHILD_ENV_NAMES), "child_path": self.child_path(),
+                 "prompt_sha256": sha_file(self.fleet / "prompts" / PROMPTS[self.role]),
+                 "mcp_config_sha256": sha_file(cfg["mcp_config"]),
+                 "project_settings_sha256": project_settings_digest(cfg["worktree"]),
+                 "zdotdir_sha256": zdotdir_digest(self.root / "zdotdir")}
+        harness = os.path.join(os.path.dirname(os.path.abspath(__file__)), HARNESS + ".py")
+        if os.path.isfile(harness):
+            binds["harness_sha256"] = sha_file(os.path.realpath(harness))
+        return binds
+
+    def launch_config(self, cfg):
+        """The ky.launch_config/1 a loop role is qualified with: what `kyqualify.py qualify --config` is given
+        (`kyloop.py admin launch-config <role>` prints it) and what its check_receipt recomputes the binds from."""
+        return {"schema": "ky.launch_config/1", "role": self.role, "model": cfg["model"], "effort": cfg["effort"],
+                "permission_mode": cfg["permission_mode"], "max_turns": cfg["max_turns"],
                 "deadline_seconds": cfg["deadline_seconds"], "worktree": cfg["worktree"],
-                "env_names": sorted(CHILD_ENV_NAMES), "child_path": self.child_path(),
-                "prompt_sha256": sha_file(self.fleet / "prompts" / PROMPTS[self.role]),
-                "mcp_config_sha256": sha_file(cfg["mcp_config"])}
+                "claude_bin": str(self.claude), "mcp_config": cfg["mcp_config"],
+                "prompt_path": str(self.fleet / "prompts" / PROMPTS[self.role]),
+                "env_names": list(CHILD_ENV_NAMES), "child_path": self.child_path(), "extra_flags": [],
+                "disallowed_tools": [], "add_dirs": [str(self.root)], "intended_tools": list(QUALIFIED_TOOLS),
+                "denied_tools": []}
+
+    def load_harness(self):
+        """kyqualify — the launch-qualification harness — when it is installed beside this file; None when it is
+        not. Imported from THIS directory only; one that is there and cannot be loaded (kyprobe.py, which it
+        imports, missing or broken) is a refused precondition, never silently skipped."""
+        if self.harness is not None:
+            return self.harness
+        here = os.path.dirname(os.path.abspath(__file__))
+        if not os.path.isfile(os.path.join(here, HARNESS + ".py")):
+            return None
+        sys.dont_write_bytecode = True
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        try:
+            mod = importlib.import_module(HARNESS)
+        except Exception as e:
+            raise Refusal(["qualification_harness_unloadable: %s.py (%s)" % (HARNESS, type(e).__name__)])
+        origin = os.path.dirname(os.path.abspath(getattr(mod, "__file__", "") or ""))
+        if origin != here or not callable(getattr(mod, "check_receipt", None)):
+            raise Refusal(["qualification_harness_unusable: %s was loaded from %s and offers %s check_receipt"
+                           % (HARNESS, origin, "a" if callable(getattr(mod, "check_receipt", None)) else "no")])
+        self.harness = mod
+        return mod
 
     def qualification_path(self, cfg):
         return self.run / "QUALIFICATIONS" / ("%s-%s.json" % (self.role, cfg["model"]))
@@ -783,6 +1279,11 @@ class Controller:
         cfg, errs = self.load_config()
         if errs:
             raise Refusal(errs)
+        hooks = self.test_hooks()
+        if hooks and self.real_context() == "launchd":
+            reasons.append("test_hooks_in_launchd_context: %s is set for a controller that runs under launchd"
+                           % " and ".join(n for n, on in (("KY_LOOP_SLEEP_SCALE", self.scale != 1),
+                                                         (TEST_CONTEXT_ENV, hooks["context_injected"] is not None)) if on))
         receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
         if err == "missing":
             reasons.append("install_receipt_missing: %s" % (self.run / "INSTALL_RECEIPT.json"))
@@ -808,9 +1309,10 @@ class Controller:
                 digest = links[-1]["manifest_digest"]
                 activation = {"links": len(links), "terminal": links[-1]["file"],
                               "terminal_sha256": links[-1]["sha256"], "manifest_digest": digest}
+        version_args = None
         if self.role == "planner" or digest:        # the conductor's digest comes from the activation chain only
-            rc = self.run_helper("kyversion.sh", ["--bootstrap"] if self.role == "planner"
-                                 else ["--expected-manifest-digest", digest], 300)
+            version_args = ["--bootstrap"] if self.role == "planner" else ["--expected-manifest-digest", digest]
+            rc = self.run_helper("kyversion.sh", version_args, 300)
             if rc is None:
                 reasons.append("kyversion_missing: %s" % (self.fleet / "kyversion.sh"))
             elif rc != 0:
@@ -847,7 +1349,12 @@ class Controller:
         if reasons:
             raise Refusal(reasons)
         self.cfg = cfg
-        self.ls(lambda d: dict(d, bundle_verified_at=utc(), **({"activation": activation} if activation else {})))
+        bundle = {"verified_at": utc(), "by": "kyversion.sh %s" % " ".join(version_args or []),
+                  "receipt_mode": receipt.get("mode"), "receipt_sha256": sha_file(self.run / "INSTALL_RECEIPT.json"),
+                  "manifest_digest": digest}
+        self.ls(lambda d: dict(d, bundle_verified_at=bundle["verified_at"], bundle=bundle,
+                               qualification_check=self.qualification_check,
+                               **({"activation": activation} if activation else {})))
 
     def activation_chain(self):
         """The conductor's authorisation chain, validated from its start. → ([link, …], None) or (None, reason).
@@ -924,12 +1431,27 @@ class Controller:
         return links, None
 
     def check_qualification(self, cfg):
+        """Every reason the role's qualification receipt does not qualify THIS launch ([] = it does).
+
+        Two layers (N-05). (1) The controller's own comparison: the receipt is a ky.qualification/1 for this role
+        and model, says PASS, was earned in the context this controller provably runs in, and binds exactly what
+        this controller is about to launch. (2) When the harness is installed beside this file, kyqualify.py's
+        own `check_receipt(receipt, launch configuration, require_context=…)` — which re-evaluates the receipt's
+        checks and negative probes, its launchd receipt, its tool coverage and the binds recomputed from disk —
+        must return no reason either. Which layer judged is recorded in loops/<role>.json
+        (`qualification_check.mode`: "kyqualify.check_receipt" or "controller_only")."""
+        self.qualification_check = None
         path = self.qualification_path(cfg)
         doc, err = read_json(path)
         if err == "missing":
             return ["qualification_missing: %s" % path]
         if err or not isinstance(doc, dict):
             return ["qualification_unreadable: %s" % path]
+        if doc.get("schema") != RECEIPT_SCHEMA:
+            return ["qualification_schema: %s is not a %s receipt" % (path.name, RECEIPT_SCHEMA)]
+        if doc.get("role") != self.role or doc.get("model") != cfg["model"]:
+            return ["qualification_role_mismatch: the receipt is for role %r and model %r, this controller launches "
+                    "%r with %r" % (doc.get("role"), doc.get("model"), self.role, cfg["model"])]
         if doc.get("result") != "PASS":
             return ["qualification_not_pass: result is %r (unknown refuses)" % (doc.get("result"),)]
         mine, earned = self.context(), doc.get("context")
@@ -939,11 +1461,30 @@ class Controller:
         if earned != mine:
             return ["qualification_context_mismatch: the receipt was earned in %r, this controller runs in %r"
                     % (earned, mine)]
+        harness = self.load_harness()
         expected, got = self.expected_binds(cfg), doc.get("binds")
         if not isinstance(got, dict):
             return ["qualification_mismatch: no binds"]
         diff = sorted(k for k in set(expected) | set(got) if expected.get(k) != got.get(k) or expected.get(k) is None)
-        return ["qualification_mismatch: %s" % ", ".join(diff)] if diff else []
+        if diff:
+            return ["qualification_mismatch: %s" % ", ".join(diff)]
+        mode = "controller_only"
+        if harness is not None:
+            config = self.launch_config(cfg)
+            missing = sorted(set(getattr(harness, "CONFIG_KEYS", ())) - set(config))
+            if missing:
+                return ["qualification_config_incomplete: the harness needs %s in a launch configuration"
+                        % ", ".join(missing)]
+            try:
+                refused = harness.check_receipt(doc, config, require_context=mine)
+            except Exception as e:              # a harness that cannot judge has accepted nothing
+                return ["qualification_harness_failed: %s: %s" % (type(e).__name__, flat(e, 160))]
+            if refused:
+                return ["qualification_refused_by_harness: %s" % "; ".join(flat(r, 200) for r in list(refused)[:8])]
+            mode = "kyqualify.check_receipt"
+        self.qualification_check = {"mode": mode, "receipt": str(path), "receipt_sha256": sha_file(path),
+                                    "context": mine, "at": utc()}
+        return []
 
     # ---- owner-waits raised by the controller itself
     def write_awaiting(self, slug, question, options, recommendation, evidence, item=None, blocks="loop"):
@@ -970,21 +1511,48 @@ class Controller:
         if not self.stop_path.exists():
             write_atomic(self.stop_path, "%s %s: %s\n" % (utc(), self.controller_id, why))
 
+    def raise_attention(self, slug, question, evidence, options=None, item=None, blocks="none", message=None,
+                        level="decision"):
+        """ONE owner-visible item that does not stop the loop: an awaiting file — none while an item of that slug
+        is still open — and one notification for it. → the item written, or None. Never raises."""
+        try:
+            if self.open_awaiting(slug):
+                return None
+            doc = self.write_awaiting(slug, question, options or [{"id": "acknowledge", "text": "Seen; nothing further."}],
+                                      None, [flat(e, 300) for e in evidence], item=item, blocks=blocks)
+        except Exception as e:
+            self.log("attention item %s could not be written (%s: %s)" % (slug, type(e).__name__, flat(e, 160)))
+            return None
+        self.notify("%s; see %s" % (flat(message or question, 160), doc["id"]), level)
+        return doc
+
     def raise_precondition(self, reasons):
+        """The ONE shape of a refusal: STOP_<role>, one awaiting item (none while one is open) with one
+        notification, `enabled: false`. Each step is attempted whatever became of the others, and none of them can
+        raise: this is also where an unexpected exception ends, and it must end in exit 0."""
         slug = "loop-%s-precondition" % self.role
         self.log("REFUSED launch: " + "; ".join(reasons))
-        if not self.open_awaiting(slug):
+
+        def item():
+            if self.open_awaiting(slug):
+                return
             doc = self.write_awaiting(
                 slug, "The %s loop controller refused to launch because a launch precondition failed. "
                       "Correct the cause and restart, or keep the loop stopped?" % self.role,
                 [{"id": "fix-and-restart", "text": "Correct the failed precondition(s), then run "
                                                    "`kyctl.sh start %s --clear-stop`." % self.role},
                  {"id": "keep-stopped", "text": "Leave the %s loop stopped." % self.role}],
-                "fix-and-restart", ["precondition: %s" % r for r in reasons])
+                "fix-and-restart", ["precondition: %s" % flat(r, 400) for r in reasons])
             self.notify("%s loop stopped: launch precondition failed (%s); see %s"
                         % (self.role, flat(reasons[0], 120), doc["id"]), "decision")
-        self.ensure_stop("precondition failed")
-        self.disable("precondition failed: %s" % flat(reasons[0], 160), force=True)
+
+        for what, step in (("STOP file", lambda: self.ensure_stop("precondition failed")), ("awaiting item", item),
+                           ("enabled switch", lambda: self.disable("precondition failed: %s" % flat(reasons[0], 160),
+                                                                    force=True))):
+            try:
+                step()
+            except Exception as e:
+                self.log("refusal: the %s could not be written (%s: %s)" % (what, type(e).__name__, flat(e, 160)))
 
     # ---- work: what is eligible right now
     def accepted_steps(self, state):
@@ -995,26 +1563,36 @@ class Controller:
                 out[entry["id"]] = entry
         return out
 
-    def awaiting_blocks(self):
-        """(loop_blocked, blocked item keys, ids) from open owner-waits; the controller's own two are excluded
-        (they act through STOP and the breaker, and resolving them is not changed evidence)."""
+    def awaiting_blocks(self, authored=None):
+        """(loop_blocked, blocked item keys, ids) from open owner-waits. Everything the controller raised itself
+        is excluded (its items act through STOP, the breaker or as plain attention, and resolving them is not
+        changed evidence). `authored`, when given, is filled with the ids of the items a JOB of this role raised
+        (raised_by.role is this role and raised_by.job_id is set) — they block like any other, but a run is never
+        credited with a "changed dependency" for an owner-wait a job wrote (N-02)."""
         loop_blocked, items, ids = False, set(), []
-        own = re.compile(r"-loop-%s-(precondition|no-progress)$" % re.escape(self.role))
         directory = self.run / "awaiting"
         for p in sorted(directory.glob("*.json")) if directory.is_dir() else []:
             if p.name.endswith(OWNER_DECISION_SUFFIX):  # the owner's recorded answer beside an item, not an item
                 continue
             doc, _ = read_json(p)
-            if not isinstance(doc, dict) or own.search(str(doc.get("id", p.stem))):
+            if not isinstance(doc, dict):
                 continue
-            item, blocks = str(doc.get("item", "")), doc.get("blocks")
             raised = doc.get("raised_by") if isinstance(doc.get("raised_by"), dict) else {}
+            aid = str(doc.get("id", p.stem))
+            if raised.get("role") == self.role and str(raised.get("session_id", "")).startswith("CTL-") \
+                    and raised.get("job_id") is None and doc.get("blocks") != "item":
+                continue                        # this role's controller wrote it: STOP / breaker / attention
+            item, blocks = str(doc.get("item", "")), doc.get("blocks")
+            counted = False
             if blocks == "loop" and (item == "loop.%s" % self.role or raised.get("role") == self.role):
-                loop_blocked = True
-                ids.append(str(doc.get("id", p.stem)))
+                loop_blocked = counted = True
             elif blocks == "item" and item:
                 items.add(item.split(".", 1)[1] if item.startswith(("step.", "msg.")) else item)
-                ids.append(str(doc.get("id", p.stem)))
+                counted = True
+            if counted:
+                ids.append(aid)
+                if authored is not None and raised.get("role") == self.role and raised.get("job_id") is not None:
+                    authored.add(aid)
         return loop_blocked, items, sorted(ids)
 
     @staticmethod
@@ -1107,14 +1685,26 @@ class Controller:
         self.log("WAVE_B_DONE derived from accepted B-3…B-5 evidence and the final receipt")
 
     # ---- progress and breaker evidence
-    def dependency_fingerprint(self):
-        _, _, ids = self.awaiting_blocks()
-        parts = {"awaiting": ids}
+    def dependency_fingerprint(self, external_only=False):
+        """A digest of the external dependencies a run may be waiting for: the open owner-waits that block this
+        role, the installation receipt, the manifests, the owner's resume, the release receipt and the
+        activation chain. With `external_only`, owner-waits a job of this role raised are left out: a run that
+        only wrote an owner-wait has changed nothing it did not author (N-02)."""
+        authored = set()
+        _, _, ids = self.awaiting_blocks(authored)
+        parts = {"awaiting": [i for i in ids if i not in authored] if external_only else ids}
         for name in ("INSTALL_RECEIPT.json", "VERSIONS.bootstrap.json", "VERSIONS.json", "OWNER_RESUME.json",
                      "RELEASE_RECEIPT.json"):
             parts[name] = sha_file(self.run / name)
         parts["activation_chain"] = [[p.name, sha_file(p)] for p in sorted(self.run.glob("ACTIVATION_RECORD*.json"))]
         return sha_bytes(json.dumps(parts, sort_keys=True).encode())
+
+    def substep_evidence(self):
+        """What must differ before an item that reached its sub-step cap is credited with sub-steps again: the
+        external dependencies no job authored and the owner's recorded answers — never accepted sub-steps
+        themselves (N-01)."""
+        return sha_bytes(json.dumps({"dependencies": self.dependency_fingerprint(external_only=True),
+                                     "owner_decisions": self.owner_decisions()}, sort_keys=True).encode())
 
     def owner_decisions(self):
         """[[file name, sha256]] of the owner's answers this role applied (`decide` commands): recorded evidence."""
@@ -1130,7 +1720,8 @@ class Controller:
         state, _ = read_json(self.state_path)
         ids = sorted(self.accepted_steps(state)) if isinstance(state, dict) else []
         return {"accepted_count": len(ids), "accepted_digest": sha_bytes("\n".join(ids).encode()),
-                "dependency_fingerprint": self.dependency_fingerprint()}
+                "dependency_fingerprint": self.dependency_fingerprint(),
+                "external_fingerprint": self.dependency_fingerprint(external_only=True)}
 
     def evidence_fingerprint(self):
         """What must change before an open breaker may be reopened: accepted work, external dependencies,
@@ -1175,10 +1766,18 @@ class Controller:
 
     def breaker_gate(self, st):
         """True → refused (unchanged evidence). Reopening requires recorded changed evidence — also when the
-        surrogate or the owner decided to restart."""
+        surrogate or the owner decided to restart. The decision reads the no-progress COUNT itself (N-09): a
+        controller that died between recording the third no-progress run and opening the breaker opens it here,
+        before anything is launched."""
         br = st.get("breaker") if isinstance(st.get("breaker"), dict) else {}
         if not br.get("open"):
-            return False
+            count = as_int(st.get("no_progress_count"))
+            if count < NO_PROGRESS_LIMIT:
+                return False
+            self.log("%d consecutive no-progress runs are recorded and the breaker is not open: opening it now"
+                     % count)
+            self.open_breaker(count)
+            return True
         now_fp = self.evidence_fingerprint()
         if now_fp == br.get("evidence_fingerprint"):
             self.log("breaker open since %s and evidence unchanged — restart refused" % br.get("opened_at"))
@@ -1220,6 +1819,10 @@ class Controller:
             if role == "campaign":
                 try:
                     campaign = ka.acquire_lock(self.run, "campaign", self.controller_id, log=self.log)
+                except ka.LockUnknown as e:      # never taken over: the command waits, and somebody is told
+                    self.lock_attention("campaign", e)
+                    self.commands_blocked = "campaign_lock_owner_unknown"
+                    continue
                 except (ka.ActionError, OSError) as e:
                     raise Refusal(["command_queue_error: locks/campaign: %s" % type(e).__name__])
                 if campaign is None:
@@ -1245,16 +1848,25 @@ class Controller:
             # §4a.6: an awaiting item is locked by its id before it is acted on; the handler re-reads it afterwards
             try:
                 item = ka.acquire_lock(self.run, "awaiting." + args["awaiting_id"], self.controller_id, log=self.log)
+            except ka.LockUnknown as e:
+                self.lock_attention("awaiting." + args["awaiting_id"], e)
+                self.commands_blocked = "awaiting_item_lock_owner_unknown: %s" % args["awaiting_id"]
+                return False
             except (ka.ActionError, OSError) as e:
                 raise Refusal(["command_queue_error: %s: %s" % (cid, type(e).__name__)])
             if item is None:
                 self.commands_blocked = "awaiting_item_locked: %s" % args["awaiting_id"]
                 return False
+        self.own_actions.add("CMD-%s" % cid)
         try:
             status, out = kc.apply(self.run, cid, self.controller_id, lambda cmd: self.handle_command(role, cmd),
                                    observer=lambda record: self.observe_command(role, record), log=self.log)
         except ka.LockBusy:
             self.commands_blocked = "action_record_busy: CMD-%s" % cid
+            return False
+        except ka.LockUnknown as e:
+            self.lock_attention(getattr(e, "name", "CMD-%s" % cid), e)
+            self.commands_blocked = "lock_owner_unknown: CMD-%s" % cid
             return False
         except (kc.CommandError, ka.ActionError, OSError) as e:
             raise Refusal(["command_queue_error: %s: %s: %s" % (cid, type(e).__name__, flat(e, 160))])
@@ -1270,7 +1882,7 @@ class Controller:
             def fn(d):
                 c = dict(d.get("commands") or {})
                 key = "applied" if state == "APPLIED" else "rejected"
-                c[key] = int(c.get(key, 0)) + (status in ("applied", "rejected"))
+                c[key] = as_int(c.get(key)) + (status in ("applied", "rejected"))
                 c["last"] = {"id": cid, "command": doc.get("command"), "role": role, "state": state, "at": utc(),
                              "reason": reason}
                 d["commands"] = c
@@ -1279,6 +1891,11 @@ class Controller:
             return True
         reason = str(out.get("reason"))
         if status == "locked" or reason.startswith("earlier_command_pending"):
+            self.commands_blocked = "%s: %s" % (cid, reason)
+            return False
+        if out.get("attention") and reason.startswith("command_lock_owner_unknown"):
+            # the command's own lock has an owner nobody can judge: never taken over — it waits, and someone is told
+            self.lock_attention("command." + str(cid), reason)
             self.commands_blocked = "%s: %s" % (cid, reason)
             return False
         if status == "unreconciled":            # an earlier application died inside its handler and cannot be observed
@@ -1482,7 +2099,12 @@ class Controller:
             return "hold"
         return "owner_paused" if self.owner_pause() else None
 
-    # ---- action records (plan §4a.1): every launch, and recovery before anything is (re)launched
+    # ---- action records (plan §4a.1): every side effect of this controller, and recovery before any (re)launch
+    def begin_own(self, action_id, kind, inputs, target, transition):
+        """kyaction.begin for a side effect of this controller; the id is remembered as its own."""
+        self.own_actions.add(action_id)
+        return self.ka.begin(self.run, action_id, kind, self.actor(), inputs, target, transition)
+
     def launch_result(self, run):
         keys = ("run_id", "exit_code", "ended_reason", "ended_at", "timed_out", "terminated_by_signal", "pid",
                 "pgid", "process_start")
@@ -1519,34 +2141,326 @@ class Controller:
         return "done", dict(self.launch_result(run), reconciled=True)
 
     def reconcile_child(self, run):
-        """A run recorded as unfinished belongs to a controller that no longer runs. A surviving child (PID +
-        process-start identity) is waited for — and terminated by identity once past its recorded deadline —
-        before any replacement; only a POSITIVELY gone child's run is finalised. An identity that cannot be
-        established leaves the run record unfinished: its launch action then stays unknown."""
-        pid, start = run.get("pid"), run.get("process_start")
-        match, reason = process_matches(pid, start), "interrupted"
-        if match is True:
+        """A run recorded as unfinished belongs to a controller that no longer runs. Its job is finalised only when
+        it is GONE — the leader positively gone AND its process group empty (job_state). A surviving leader (PID +
+        process-start identity) is waited for, and its group terminated by that identity once past its recorded
+        deadline, before any replacement. Everything else leaves the run record unfinished, so that its launch
+        action stays unknown — one awaiting item, nothing relaunched: a child recorded as pending or never
+        identified, a state that cannot be told, and a process group found WITHOUT its leader (its members cannot
+        be identified as this job's any more — after a restart of the machine that group id may be anyone's — so
+        they are never signalled from here)."""
+        pid, pgid, start = run.get("pid"), run.get("pgid"), run.get("process_start")
+
+        def settled():
+            """job_state, giving a leader that has just ended a moment to be reaped (its group answers "unknown"
+            while only its zombie is left; an orphan's zombie is reaped by launchd at once)."""
+            end, state = time.time() + 5.0, job_state(pid, pgid, start)
+            while state == "unknown" and time.time() < end:
+                probe = ps_probe(pid)
+                if not (probe and probe[0] == "alive" and probe[1].startswith("Z")):
+                    break
+                time.sleep(0.05)
+                state = job_state(pid, pgid, start)
+            return state
+
+        state, reason = settled(), "interrupted"
+        if state == "live":
             self.log("surviving child %s (pid %d) of a dead controller: waiting before any replacement"
                      % (run.get("run_id"), pid))
             deadline = parse_utc(run.get("deadline_at")) or time.time()
-            while match is True:
-                if time.time() >= deadline and run.get("pgid") == pid:
-                    self.terminate_group(pid)             # past its recorded deadline, by identity
-                    if process_matches(pid, start) is True:
+            while state == "live":
+                if time.time() >= deadline and pgid == pid:
+                    self.terminate_group(pgid)            # past its recorded deadline, by identity
+                    state = settled()
+                    if state == "live":
                         self.wait("orphan_child", HOLD_POLL_S)
                 else:
                     self.wait("orphan_child", 1.0)
-                match = process_matches(pid, start)
+                state = settled()
             reason = "orphan_reconciled"
-        if match is False:
-            self.finalize(run, None, reason, supervised=False)
+        if state == "gone":
+            with guarded("finalize"):
+                self.finalize(run, None, reason, supervised=False)
+        else:
+            self.log("%s is not confirmed gone (%s): its run record stays unfinished" % (run.get("run_id"), state))
+
+    # ---- what a JOB recorded (R8): reconciled by the controller after the job has exited
+    def quarantine(self, names, why, run_id=None):
+        """Move job-authored files that are not usable action records out of $KY_RUN/actions into
+        actions/quarantine/ (bytes kept, nothing deleted) and raise ONE awaiting item naming them. This never
+        stops the loop. → the quarantined names."""
+        moved, directory = [], self.run / "actions" / "quarantine"
+        for name in names:
+            try:
+                os.makedirs(directory, exist_ok=True)
+                target = directory / ("%s.%s" % (name, utc("%Y%m%dT%H%M%SZ")))
+                n = 1
+                while os.path.lexists(target):
+                    n += 1
+                    target = directory / ("%s.%s.%d" % (name, utc("%Y%m%dT%H%M%SZ"), n))
+                os.rename(self.run / "actions" / name, target)
+                moved.append({"file": name, "quarantined_as": str(target), "reason": flat(why.get(name), 200)})
+            except OSError as e:
+                self.log("could not quarantine %s (%s)" % (name, type(e).__name__))
+        if moved:
+            self.log("quarantined %d job-authored file(s) that are not usable action records: %s"
+                     % (len(moved), ", ".join(m["file"] for m in moved)))
+            slug = "loop-%s-quarantine-%s" % (self.role, re.sub(r"[^a-z0-9-]", "-", str(run_id or "recovery").lower()))
+            self.raise_attention(
+                slug, "A %s job wrote %d file(s) under run/actions that are not action records it may write (a job "
+                      "records side effects only through `kyaction.py begin|complete|fail`, as JOB-<run_id>-<slug>). "
+                      "They were moved to %s; whether a side effect stands behind them is unknown. What should "
+                      "happen?" % (self.role, len(moved), directory),
+                ["%s → %s (%s)" % (m["file"], m["quarantined_as"], m["reason"]) for m in moved[:20]],
+                options=[{"id": "acknowledge", "text": "Seen; no side effect stands behind them."},
+                         {"id": "investigate", "text": "Check the named side effects by hand before the item goes on."}],
+                message="%s loop: %d malformed job-authored action file(s) quarantined" % (self.role, len(moved)))
+        return moved
+
+    def job_files_to_quarantine(self, run_id=None, before=None, own_window=False):
+        """{file name: why} of the files under run/actions that a job of this role wrote and that are not usable
+        job records. Attributed to a job by evidence only:
+          * the name lies in a job namespace of this role (JOB-<run id of this role>-…; with `run_id`, that run's);
+          * `before` being the listing taken just before that run's child was started: the file is not in it and
+            cannot be read as a record (every other writer under run/actions writes whole, valid records);
+          * `own_window` — this controller supervised that child from start to exit, so the listing brackets
+            exactly the child's lifetime and every record this controller wrote meanwhile is known to it: a
+            record that appeared and claims this role's controller, although this controller did not write it.
+        Another actor's record, and an unreadable file that was there before, are never touched here."""
+        ka, out = self.ka, {}
+        prefix = "%s%s-" % (ka.JOB_PREFIX, run_id if run_id else self.ROLE)
+        for name, reason in ka.unreadable(self.run):
+            if name.startswith(prefix) or (before is not None and name not in before):
+                out[name] = reason
+        for rec in ka.scan(self.run)[0]:
+            aid, name = rec["action_id"], rec["action_id"] + ".json"
+            actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+            claims_job = actor.get("holder_kind") == JOB_HOLDER
+            if claims_job and ka.is_job_record(rec, actor.get("run_id")):
+                continue                        # a job's own well-formed record (this role's or another's)
+            if name.startswith(prefix) or (claims_job and str(actor.get("run_id", "")).startswith(self.ROLE + "-")):
+                out[name] = "not a job record of the run its id or actor names"
+            elif own_window and before is not None and name not in before and aid not in self.own_actions \
+                    and actor.get("role") == self.role and actor.get("holder_kind") == "controller":
+                out[name] = "appeared while the job ran and claims this role's controller, which did not write it"
+        return out
+
+    def observe_git_push(self, record):
+        """kyaction observer for a job's `git_push`: `git ls-remote <remote> <ref>` in the role worktree. The remote
+        ref at exactly the recorded commit → done; at another commit or absent → not_done; anything that cannot be
+        asked or read → unknown. inputs (or target) carry {"remote": a configured remote NAME, "ref":
+        "refs/heads/<branch>" (a bare branch name is read as that), "commit": the full commit id}."""
+        inputs = record.get("inputs") if isinstance(record.get("inputs"), dict) else {}
+        target = record.get("target") if isinstance(record.get("target"), dict) else {}
+
+        def named(key):
+            value = inputs.get(key, target.get(key))
+            return value if isinstance(value, str) else None
+
+        remote, ref, commit, repo = named("remote"), named("ref"), named("commit"), named("repo")
+        if ref and not ref.startswith("refs/"):
+            ref = "refs/heads/" + ref
+        if not (remote and GIT_REMOTE_RE.match(remote) and ref and GIT_REF_RE.match(ref) and ".." not in ref
+                and commit and HEX_COMMIT.match(commit)):
+            return "unknown", {"reason": "the record does not name a remote, a ref and a full commit id"}
+        cfg = self.cfg or self.load_config()[0]
+        worktree = cfg.get("worktree") if isinstance(cfg, dict) else None
+        if not worktree or not os.path.isdir(worktree):
+            return "unknown", {"reason": "the role worktree is not known"}
+        if repo is not None and os.path.realpath(repo) != os.path.realpath(worktree):
+            return "unknown", {"reason": "the record names another repository than the role worktree"}
+        home = os.environ.get("HOME") or pwd.getpwuid(os.getuid()).pw_dir
+        try:
+            r = subprocess.run([os.environ.get("KY_GIT") or "/usr/bin/git", "-C", worktree, "ls-remote", remote, ref],
+                               capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL,
+                               env={"PATH": "/usr/bin:/bin", "HOME": home, "LC_ALL": "C", "GIT_TERMINAL_PROMPT": "0",
+                                    "GIT_OPTIONAL_LOCKS": "0"})
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
+            return "unknown", {"reason": "git ls-remote could not be run (%s)" % type(e).__name__}
+        if r.returncode != 0:
+            return "unknown", {"reason": "git ls-remote rc=%d" % r.returncode}
+        at = [parts[0] for parts in (line.split() for line in r.stdout.splitlines())
+              if len(parts) == 2 and parts[1] == ref]
+        if at == [commit]:
+            return "done", {"remote": remote, "ref": ref, "commit": commit, "observed_by": "git ls-remote",
+                            "reconciled": True}
+        return "not_done", {"remote": remote, "ref": ref, "intended": commit, "observed": at[0] if at else None}
+
+    JOB_OBSERVERS = {"git_push": "observe_git_push"}
+
+    def reconcile_job_record(self, rec):
+        """One unfinished record a job of this role wrote (the job has exited). An observer for its kind settles
+        it (done → DONE; not_done → FAILED, from the observation — the next job does it under its own record).
+        Without one, or when the observer cannot tell, it is UNKNOWN: recorded as such, ONE awaiting item naming
+        the record (once per record), never retried — and the loop goes on with other items. → the outcome."""
+        ka, aid, kind = self.ka, rec["action_id"], str(rec.get("kind"))
+        actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+        raised = any(isinstance(x, dict) and x.get("outcome") == "unknown" for x in rec.get("reconciliations") or [])
+        name = self.JOB_OBSERVERS.get(kind)
+        observer = getattr(self, name) if name else \
+            (lambda r: ("unknown", {"reason": "no observer for kind %r" % kind}))
+        outcome, after = ka.reconcile(self.run, aid, observer, by=self.controller_id)
+        detail = (after.get("reconciliations") or [{}])[-1].get("detail")
+        if outcome == "not_done":
+            ka.fail(self.run, aid, dict(detail if isinstance(detail, dict) else {"observed": detail},
+                                        reconciled=True, reason="the side effect was not observed"))
+        elif outcome == "unknown" and not raised:
+            run, _ = read_json(self.loop_dir / ("%s.json" % actor.get("run_id")))
+            items = [w for w in (run.get("work_items") if isinstance(run, dict) else None) or [] if isinstance(w, dict)]
+            target = rec.get("target") if isinstance(rec.get("target"), dict) else {}
+            named = next((w for w in items if w.get("id") == target.get("item")), None) \
+                or (items[0] if len(items) == 1 else None)
+            why = detail.get("reason") if isinstance(detail, dict) else None
+            self.raise_attention(
+                "job-action-" + re.sub(r"[^a-z0-9-]", "-", aid.lower()),
+                "The %s job %s recorded the intention of a side effect (action %s, kind %s) and exited without "
+                "recording its result; the controller cannot observe what became of it (%s). It is not retried. "
+                "Did it happen?" % (self.role, actor.get("run_id"), aid, kind, flat(why, 160) or "unknown"),
+                ["action record: %s" % (self.run / "actions" / (aid + ".json")),
+                 "intended transition: %s" % flat(rec.get("intended_transition"), 200),
+                 "target: %s" % flat(json.dumps(target, sort_keys=True), 200)],
+                options=[{"id": "happened", "text": "It happened: settle the record as done (kyaction reconcile) and "
+                                                    "let the item go on."},
+                         {"id": "did-not-happen", "text": "It did not happen: settle the record as failed; the next "
+                                                          "job may do it under its own record."}],
+                item=named["id"] if named else None, blocks="item" if named else "none",
+                message="%s loop: the outcome of job action %s is unknown" % (self.role, aid))
+        return outcome
+
+    def reconcile_job_actions(self, run_id, before=None, own_window=False):
+        """After the job of `run_id` has exited (R8): quarantine what it wrote under run/actions that is not a
+        usable job record, then reconcile its unfinished JOB-<run_id>-* records. → a summary for the run record.
+        Nothing here ever stops the loop."""
+        ka = self.ka
+        out = {"quarantined": [], "reconciled": [], "unknown": []}
+        if ka is None:
+            return None
+        bad = self.job_files_to_quarantine(run_id, before, own_window)
+        out["quarantined"] = [m["file"] for m in self.quarantine(sorted(bad), bad, run_id)]
+        for rec in ka.job_records(self.run, run_id, state="INTENDED"):
+            try:
+                outcome = self.reconcile_job_record(rec)
+            except (ka.ActionError, OSError) as e:
+                self.log("job action %s not reconciled (%s: %s)" % (rec["action_id"], type(e).__name__, flat(e, 160)))
+                outcome = "unknown"
+            out["unknown" if outcome == "unknown" else "reconciled"].append(rec["action_id"])
+        return out
+
+    # ---- the dispatcher start and notifications of a previous controller: observed, never repeated blind
+    def observe_dispatcher(self, record=None):
+        """kyaction observer for the conductor's `kyctl.sh start dispatcher`: what `kyctl.sh status` reports for
+        the dispatcher. running → done; stopped or not installed → not_done; anything else → unknown."""
+        try:
+            r = subprocess.run(["/bin/bash", str(self.fleet / "kyctl.sh"), "status"], capture_output=True, text=True,
+                               timeout=120)
+        except (OSError, subprocess.SubprocessError) as e:
+            return "unknown", {"reason": "kyctl.sh status could not be run (%s)" % type(e).__name__}
+        line = next((x for x in r.stdout.splitlines() if x.startswith("dispatcher ")), None)
+        facts = dict(tok.split("=", 1) for tok in line.split()[1:] if "=" in tok) if line else {}
+        if r.returncode != 0 or facts.get("state") not in ("running", "stopped", "not-installed"):
+            return "unknown", {"reason": "kyctl.sh status reported state=%s (rc=%d)" % (facts.get("state"), r.returncode)}
+        if facts["state"] == "running":
+            return "done", {"state": "running", "pid": facts.get("pid"), "observed_by": "kyctl.sh status",
+                            "reconciled": True}
+        return "not_done", {"state": facts["state"], "observed_by": "kyctl.sh status"}
+
+    def dispatcher_attention(self, action_id, why):
+        self.raise_attention(
+            "loop-conductor-dispatcher-start",
+            "The conductor could not confirm that the dispatcher was started (%s). It is not started again blindly, "
+            "and the conductor goes on handling messages. Start it by hand, or leave it stopped?" % flat(why, 200),
+            ["action record: %s" % (self.run / "actions" / (action_id + ".json")),
+             "command: kyctl.sh start dispatcher"],
+            options=[{"id": "start", "text": "Correct the cause and run `kyctl.sh start dispatcher`."},
+                     {"id": "leave-stopped", "text": "Leave the dispatcher stopped."}],
+            item="loop.dispatcher", message="conductor: the dispatcher start is unconfirmed (%s)" % flat(why, 80))
+
+    def start_dispatcher(self):
+        """The conductor's idempotent dispatcher start (plan §11), once per controller, as a recorded side effect
+        whose exit status is honoured (N-04):
+          * STOP_dispatcher, or a switch that says `enabled: false` (the owner's stop), is respected — a dispatcher
+            the owner disabled is never re-enabled from here; a switch that cannot be read is unknown: not started;
+          * an open awaiting item about an earlier start means that start is still unconfirmed: no blind retry;
+          * otherwise DISPATCHER-START-<controller id> is INTENDED, `kyctl.sh start dispatcher` runs, and exit 0
+            completes the record. A non-zero exit fails it; an exit that was not observed (the helper is missing,
+            could not be run or timed out) is settled by observation, and stays unfinished when that is unknown.
+            Anything but success raises ONE awaiting item — and the conductor goes on."""
+        if self.dispatcher_checked:
+            return
+        self.dispatcher_checked = True
+        note = {"at": utc()}
+        try:
+            switch, err = loop_state(self.run, "dispatcher")
+            if (self.run / "STOP_dispatcher").exists():
+                note["skipped"] = "stop_file_present"
+            elif switch is None:
+                note["skipped"] = "dispatcher_switch_unreadable: %s" % err
+            elif switch.get("enabled") is False:
+                note["skipped"] = "disabled_by_switch: %s" % flat(switch.get("reason"), 120)
+            elif self.open_awaiting("loop-conductor-dispatcher-start"):
+                note["skipped"] = "an earlier start is still unconfirmed (awaiting item open)"
+            else:
+                action_id = "DISPATCHER-START-%s" % self.controller_id
+                status, _ = self.begin_own(action_id, "dispatcher_start", {"argv": ["kyctl.sh", "start", "dispatcher"]},
+                                           {"loop": "dispatcher", "label": LABEL_PREFIX + "dispatcher"},
+                                           "start the dispatcher loop idempotently: not running → running")
+                note["action"] = action_id
+                if status != "new":
+                    note["skipped"] = "action record is %s" % status
+                else:
+                    rc = self.run_helper("kyctl.sh", ["start", "dispatcher"], 120)
+                    note["rc"] = rc
+                    if rc == 0:
+                        self.ka.complete(self.run, action_id, {"rc": 0})
+                    elif rc in (None, 124, 126):            # not observed: ask what is there now
+                        outcome, _ = self.ka.reconcile(self.run, action_id, self.observe_dispatcher, by=self.controller_id)
+                        note["observed"] = outcome
+                        if outcome == "not_done":
+                            self.ka.fail(self.run, action_id, {"rc": rc, "reason": "the start was not observed and the "
+                                                                                 "dispatcher is not running"})
+                        if outcome != "done":
+                            self.dispatcher_attention(action_id, "kyctl.sh start dispatcher gave no exit status (%s)" % rc)
+                    else:
+                        self.ka.fail(self.run, action_id, {"rc": rc})
+                        self.dispatcher_attention(action_id, "kyctl.sh start dispatcher exited %d" % rc)
+        except (self.ka.ActionError, OSError) as e:
+            note["error"] = "%s: %s" % (type(e).__name__, flat(e, 160))
+        if "skipped" in note or "error" in note:
+            self.log("dispatcher start: %s" % (note.get("skipped") or note.get("error")))
+        self.ls(lambda d: dict(d, dispatcher_start=note))
+
+    def reconcile_soft(self, rec):
+        """An unfinished notification or dispatcher start of a PREVIOUS controller of this role. Neither ever stops
+        the loop: a notification that was positively not journaled is submitted now, under the same record; a
+        dispatcher start is settled from what is running, and raises its one awaiting item when that is unknown."""
+        ka, aid, kind = self.ka, rec["action_id"], rec.get("kind")
+        if kind == "notification":
+            outcome, _ = ka.reconcile(self.run, aid, self.observe_notification, by=self.controller_id)
+            if outcome == "not_done":
+                inputs = rec.get("inputs") if isinstance(rec.get("inputs"), dict) else {}
+                result = self.submit_notification(inputs["message"], inputs["level"])
+                if result["notify"] in ("submitted", "dry"):
+                    ka.complete(self.run, aid, dict(result, reconciled=True))
+                elif result["notify"] in ("failed", "unavailable"):
+                    ka.fail(self.run, aid, dict(result, reconciled=True))
+            return
+        outcome, _ = ka.reconcile(self.run, aid, self.observe_dispatcher, by=self.controller_id)
+        if outcome == "not_done":
+            ka.fail(self.run, aid, {"reason": "the start was never observed and the dispatcher is not running",
+                                    "reconciled": True})
+        elif outcome == "unknown":
+            self.dispatcher_attention(aid, "an earlier controller's dispatcher start was never observed")
 
     def reconcile_actions(self, full=False):
         """Recovery (plan §4a.1), at controller start (`full`) and before every (re)launch: each unfinished action
         that is this role's own launch record, or that a previous controller of this role began, is reconciled
         against run-record and process evidence. What cannot be observed is unknown — Refusal: one awaiting file,
-        nothing launched, nothing retried."""
+        nothing launched, nothing retried. What a JOB of this role recorded never refuses: its malformed files
+        are quarantined first (so the strict read below cannot fail on them), its unfinished records are settled
+        by observation or raised as one awaiting item each (R8)."""
         ka = self.ka
+        bad = self.job_files_to_quarantine()
+        self.quarantine(sorted(bad), bad)
         try:
             pending = ka.unfinished(self.run)   # strict: a record that cannot be read is never "finished"
         except (ka.ActionError, OSError) as e:
@@ -1568,13 +2482,20 @@ class Controller:
             raise Refusal(["action_unreconciled: %s — unknown, nothing is launched or retried" % "; ".join(unknown)])
 
     def reconcile_each(self, pending, unknown, handled):
-        ka = self.ka
+        ka, jobs = self.ka, []
         for rec in pending:
             aid, kind = rec["action_id"], str(rec.get("kind"))
             actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+            if actor.get("holder_kind") == JOB_HOLDER:
+                if str(actor.get("run_id", "")).startswith(self.ROLE + "-") and ka.is_job_record(rec, actor["run_id"]):
+                    jobs.append(rec)            # after the launches: its job must be known gone first
+                continue
             mine = actor.get("role") == self.role and actor.get("holder_kind") == "controller"
             if not mine or not (kind == "launch" or actor.get("controller_id") != self.controller_id):
                 continue                        # another role's, a cockpit's or the bootstrap supervisor's record
+            if kind in ("notification", "dispatcher_start"):
+                self.reconcile_soft(rec)
+                continue
             if kind == "launch":
                 run_id = (rec.get("target") or {}).get("run_id") if isinstance(rec.get("target"), dict) else None
                 handled.add(run_id)
@@ -1599,6 +2520,14 @@ class Controller:
                 if kind != "launch":
                     ka.reconcile(self.run, aid, lambda r, why=why: ("unknown", {"reason": why}), by=self.controller_id)
                 unknown.append("%s (%s)" % (aid, why))
+        for rec in jobs:
+            run, _ = read_json(self.loop_dir / ("%s.json" % rec["actor"]["run_id"]))
+            if isinstance(run, dict) and not run.get("ended_at"):
+                continue                        # its job is not known gone: the launch action above says so
+            try:
+                self.reconcile_job_record(rec)
+            except (ka.ActionError, OSError) as e:      # a job's record never stops the loop
+                self.log("job action %s not reconciled (%s: %s)" % (rec["action_id"], type(e).__name__, flat(e, 160)))
 
     # ---- one bounded child job
     def new_run_id(self):
@@ -1610,46 +2539,56 @@ class Controller:
         raise Refusal(["run_id_exhausted: %s" % base])
 
     def lock_items(self, items, run_id):
-        """Message locks, each followed by a fresh handled-state check (double-action guard, §4a.6)."""
+        """Message locks, each followed by a fresh handled-state check (double-action guard, §4a.6). Taken through
+        kyaction's lock — the one rule: atomic with its owner, taken over only from an owner that is positively
+        gone. A lock held by a live actor skips that message; one whose owner cannot be judged skips it too and
+        raises one attention item (never taken over)."""
         if self.role != "conductor":
             return items
         kept = []
         for it in items:
-            lock = self.run / "locks" / it["id"]
             try:
-                os.mkdir(lock)
-            except FileExistsError:
-                owner, _ = read_json(lock / "owner.json")
-                if isinstance(owner, dict) and process_matches(owner.get("pid"), owner.get("process_start")) is False:
-                    for p in lock.glob("*"):
-                        p.unlink()
-                    try:
-                        os.rmdir(lock)
-                        os.mkdir(lock)
-                    except OSError:
-                        continue
-                else:
-                    self.log("%s is locked by another actor; skipped" % it["id"])
-                    continue
-            ident = self.identity()
-            write_json(lock / "owner.json", {"session_or_run_id": run_id, "pid": ident["pid"], "pgid": ident["pgid"],
-                                             "process_start": ident["process_start"], "acquired_at": utc()})
+                lock = self.ka.acquire_lock(self.run, it["id"], run_id, log=self.log)
+            except self.ka.LockUnknown as e:
+                self.lock_attention(it["id"], e)
+                continue
+            if lock is None:
+                continue
+            self.item_locks[it["id"]] = lock
             if (self.run / "handled" / (it["id"] + ".json")).exists():
-                self.release_item_locks([it["id"]], run_id)
+                self.release_item_locks([it["id"]])
             else:
                 kept.append(it)
         return kept
 
-    def release_item_locks(self, ids, run_id):
+    def lock_attention(self, name, error):
+        self.log("%s — skipped" % flat(error, 200))
+        self.raise_attention(
+            "lock-owner-unknown-" + re.sub(r"[^a-z0-9-]", "-", name.lower()),
+            "The lock %s exists and its owner cannot be judged alive or gone (%s). It is never taken over and never "
+            "removed by age, so what it guards waits. Is its owner gone?" % (name, flat(error, 200)),
+            ["lock: %s" % (self.run / "locks" / name)],
+            options=[{"id": "remove-lock", "text": "The owner is gone: remove the lock directory by hand."},
+                     {"id": "leave", "text": "The owner is alive (or unknown): leave the lock alone."}],
+            message="%s loop: lock %s has an owner that cannot be identified" % (self.role, name))
+
+    def release_item_locks(self, ids):
+        """Release the message locks THIS controller took for its current run. (The locks of a dead controller's
+        run are not released here: they are taken over once their owner is positively gone.)"""
         for iid in ids:
-            lock = self.run / "locks" / iid
-            owner, _ = read_json(lock / "owner.json")
-            if isinstance(owner, dict) and owner.get("session_or_run_id") == run_id:
+            lock = self.item_locks.pop(iid, None)
+            if lock is not None:
                 try:
-                    (lock / "owner.json").unlink()
-                    os.rmdir(lock)
+                    self.ka.release_lock(lock)
                 except OSError:
                     pass
+
+    def substep_window(self, item_id, caps, evidence):
+        """How many sub-steps of that item were accepted under the CURRENT recorded evidence (N-01). The count
+        starts again only when that evidence — external dependencies no job authored, the owner's answers —
+        differs from the evidence the window was counted under."""
+        window = caps.get(item_id) if isinstance(caps.get(item_id), dict) else {}
+        return as_int(window.get("count")) if window.get("evidence") == evidence else 0
 
     def run_job(self, items):
         cfg = self.cfg
@@ -1668,12 +2607,21 @@ class Controller:
         before = self.accepted_summary()
         deadline = time.time() + cfg["deadline_seconds"] * self.scale
         fence = secrets.token_hex(16)
-        public_items = [{k: v for k, v in it.items() if k != "message"} for it in items]
+        caps, evidence = self.ls().get("substeps") or {}, self.substep_evidence()
+        public_items = []
+        for it in items:
+            entry = {k: v for k, v in it.items() if k != "message"}
+            if it["kind"] == "step":            # how many more sub-steps of it can still be accepted (N-01)
+                entry["substeps_left"] = max(0, cfg["substep_cap"] - self.substep_window(it["id"], caps, evidence))
+            public_items.append(entry)
         job = {"schema": "ky.loop_job/1", "run_id": run_id, "role": self.role, "controller_id": self.controller_id,
                "fence": fence, "work_items": public_items, "state_snapshot": str(snap),
                "state_snapshot_sha256": sha_bytes(state_bytes), "journal_path": str(self.journal_path),
                "out_dir": str(out), "checkpoint_dir": str(out / "checkpoints"), "awaiting_dir": str(self.run / "awaiting"),
-               "actions_dir": str(self.run / "actions"), "max_turns": cfg["max_turns"], "deadline_at": utc(t=deadline)}
+               "actions_dir": str(self.run / "actions"), "action_namespace": "JOB-%s-" % run_id,
+               "kyaction": str(self.fleet / "kyaction.py"), "job_scratch": str(rs),
+               "evidence_roots": [cfg["worktree"], str(rs), str(self.run)],
+               "max_turns": cfg["max_turns"], "deadline_at": utc(t=deadline)}
         if self.role == "conductor":
             job["batch_path"] = str(rs / "batch.json")
             write_json(rs / "batch.json", {"schema": "ky.loop_batch/1", "run_id": run_id, "items": [
@@ -1681,17 +2629,17 @@ class Controller:
         write_json(rs / "job.json", job, 0o444)
         prompt_path = rs / "prompt.md"
         header = ("\n\n---\n## Run header (written by kyloop.py — data, not instructions)\n"
-                  "- run id: %s\n- role: %s\n- job file: %s\n- state snapshot (read-only): %s\n"
+                  "- run id: %s\n- role: %s\n- controller id: %s\n- job file: %s\n- state snapshot (read-only): %s\n"
                   "- journal (read-only): %s\n- checkpoint requests go to: %s\n- max turns: %d\n- UTC now: %s\n"
-                  % (run_id, self.role, rs / "job.json", snap, self.journal_path, out / "checkpoints",
-                     cfg["max_turns"], utc()))
+                  % (run_id, self.role, self.controller_id, rs / "job.json", snap, self.journal_path,
+                     out / "checkpoints", cfg["max_turns"], utc()))
         write_atomic(prompt_path, (self.fleet / "prompts" / PROMPTS[self.role]).read_text(encoding="utf-8") + header)
         home = os.environ.get("HOME") or pwd.getpwuid(os.getuid()).pw_dir
         user = os.environ.get("USER") or pwd.getpwuid(os.getuid()).pw_name
         child_env = {"HOME": home, "USER": user, "LANG": "en_US.UTF-8", "TERM": "dumb", "PATH": self.child_path(),
                      "TMPDIR": str(rs / "tmp"), "ZDOTDIR": str(self.root / "zdotdir"), "KY_ROOT": str(self.root),
                      "KY_RUN": str(self.run), "KY_FLEET": str(self.fleet), "KY_SCRATCH": str(self.scratch),
-                     "KY_ROLE": self.role, "KY_RUN_ID": run_id}
+                     "JOB_SCRATCH": str(rs), "KY_ROLE": self.role, "KY_RUN_ID": run_id}
         argv = self.argv(cfg)
         record = {"schema": "ky.loop_run/1", "run_id": run_id, "role": self.role, "controller_id": self.controller_id,
                   "pid": None, "pgid": None, "process_start": None, "started_at": utc(), "ended_at": None,
@@ -1701,18 +2649,20 @@ class Controller:
                   "work_items": public_items, "argv": argv, "env_names": sorted(child_env), "worktree": cfg["worktree"],
                   "model": cfg["model"], "effort": cfg["effort"], "max_turns": cfg["max_turns"],
                   "permission_mode": cfg["permission_mode"], "mcp_config": cfg["mcp_config"],
+                  "substep_cap": cfg["substep_cap"], "test_hooks": self.test_hooks(),
                   "prompt_sha256": sha_file(prompt_path), "deadline_at": utc(t=deadline), "progress_before": before,
                   "progress_after": None, "progressed": None, "quota_refusal": None, "backoff_minutes": None,
                   "quota": None, "rate_limit_status_unrecognised": None,
-                  "timed_out": False, "terminated_by_signal": False, "state_violation": None,
+                  "timed_out": False, "terminated_by_signal": False, "stop_request": None, "survivors": None,
+                  "state_violation": None, "snapshot_intact": None, "job_actions": None,
                   "accepted": [], "refused": [], "provider_session_id": None, "ended_reason": None}
         record_path = self.loop_dir / (run_id + ".json")
         # Intent first: the launch is a side effect (§4a.1). The action record is the ONE recovery mechanism;
         # the run record written next is the observation its reconciliation reads (pid, start identity, result).
         action_id = "LAUNCH-" + run_id
         try:
-            status, _ = self.ka.begin(
-                self.run, action_id, "launch", self.actor(),
+            status, _ = self.begin_own(
+                action_id, "launch",
                 {"run_id": run_id, "argv": argv, "worktree": cfg["worktree"], "model": cfg["model"],
                  "effort": cfg["effort"], "max_turns": cfg["max_turns"], "permission_mode": cfg["permission_mode"],
                  "prompt_sha256": record["prompt_sha256"], "state_snapshot_sha256": record["state_snapshot_sha256"],
@@ -1722,11 +2672,20 @@ class Controller:
         except (self.ka.ActionError, OSError) as e:
             status = "%s: %s" % (type(e).__name__, flat(e, 160))
         if status != "new":
-            self.release_item_locks([it["id"] for it in items], run_id)
+            self.release_item_locks([it["id"] for it in items])
             raise Refusal(["launch_action_not_recorded: %s (%s) — nothing was launched" % (action_id, status)])
+        # what lies under run/actions just before the child exists: whatever else appears there while it runs and
+        # is not a usable record is attributed to the job (R8)
+        actions_before = sorted(n for n in os.listdir(self.run / "actions") if n.endswith(".json") and not n.startswith("."))
+        write_json(rs / "actions.before.json", actions_before, 0o444)
+        record["actions_before"] = {"path": str(rs / "actions.before.json"),
+                                    "sha256": sha_file(rs / "actions.before.json")}
         write_json(record_path, record)
         self.ls(lambda d: dict(d, counters=dict(d.get("counters") or {}, launches=(d.get("counters") or {}).get("launches", 0) + 1,
-                                                wakeups=(d.get("counters") or {}).get("wakeups", 0) + (self.role == "conductor"))))
+                                                wakeups=(d.get("counters") or {}).get("wakeups", 0) + (self.role == "conductor")),
+                               expected_child={"run_id": run_id, "pid": None, "pgid": None, "process_start": None,
+                                               "pending": True}, last_run_id=run_id))
+        self.write_owner("pending")             # BEFORE the child exists: a dead owner never looks child-less (R2)
         try:
             with open(prompt_path, "rb") as fin, open(record["stdout_path"], "wb") as fo, \
                     open(record["stderr_path"], "wb") as fe:
@@ -1734,65 +2693,139 @@ class Controller:
                                         start_new_session=True)
         except OSError as e:
             self.log("launch failed: %s" % type(e).__name__)
-            self.finalize(record, None, "launch_failed")
+            with guarded("finalize"):
+                self.finalize(record, None, "launch_failed", state_bytes=state_bytes, actions_before=set(actions_before))
             return
-        ident = None
-        for _ in range(20):
-            ident = ps_identity(proc.pid)
-            if ident or proc.poll() is not None:
-                break
-            time.sleep(0.01)
-        record.update(pid=proc.pid, pgid=proc.pid, process_start=ident[1] if ident else None)
-        write_json(record_path, record)
-        child = {"run_id": run_id, "pid": proc.pid, "pgid": proc.pid, "process_start": record["process_start"]}
-        self.write_owner(child)
-        self.ls(lambda d: dict(d, expected_child=child, waiting=None, last_run_id=run_id, last_iteration_at=utc()))
-        self.log("launched %s (pid %d) for %s" % (run_id, proc.pid, ", ".join(i["id"] for i in items)))
-        reason = "exited"
-        while True:
-            try:
-                proc.wait(timeout=CHILD_POLL_S)
-                break
-            except subprocess.TimeoutExpired:
-                pass
-            if self.signal:
-                record["terminated_by_signal"], reason = True, "controller_signalled"
-            elif time.time() >= deadline:
-                record["timed_out"], reason = True, "deadline"
-            else:
-                continue
+        fault = None
+        try:                                    # from here on a started child is never left unsupervised
+            ident = None
+            for _ in range(20):
+                ident = ps_identity(proc.pid)
+                if ident or proc.poll() is not None:
+                    break
+                time.sleep(0.01)
+            record.update(pid=proc.pid, pgid=proc.pid, process_start=ident[1] if ident else None)
+            write_json(record_path, record)
+            child = {"run_id": run_id, "pid": proc.pid, "pgid": proc.pid, "process_start": record["process_start"]}
+            self.write_owner(child)
+            self.ls(lambda d: dict(d, expected_child=child, waiting=None, last_run_id=run_id, last_iteration_at=utc()))
+            self.log("launched %s (pid %d) for %s" % (run_id, proc.pid, ", ".join(i["id"] for i in items)))
+            reason = self.supervise(proc, record, deadline)
+        except Exception as e:
+            fault, reason = e, "controller_fault"
+            record["supervision_fault"] = "%s: %s" % (type(e).__name__, flat(e, 200))
             self.terminate_group(proc.pid, proc)
-            break
-        self.finalize(record, proc.returncode, reason)
+        with guarded("finalize"):
+            self.finalize(record, proc.returncode, reason, state_bytes=state_bytes, actions_before=set(actions_before))
+        if fault is not None:
+            raise Fault("supervision", fault)
         if self.signal:
             raise Interrupted()
 
+    def stop_request(self):
+        """Is this loop asked to stop while its child runs (N-10)? STOP_<role>, or a queued `loops stop` for this
+        loop or `handoff` — the commands that end with the loop disabled. → what was seen, or None. Nothing is
+        applied here: the top of the loop honours STOP and applies the queue, in order, once the child is gone."""
+        if self.stop_path.exists():
+            return {"source": "stop_file", "at": utc()}
+        try:
+            queue = self.kc.pending(self.run, self.role)
+        except Exception:                       # an unreadable queue is honoured as a pause before the next launch
+            return None
+        for doc in queue:
+            args = doc.get("args") if isinstance(doc.get("args"), dict) else {}
+            if doc.get("command") == "handoff" or (doc.get("command") == "loops" and args.get("op") == "stop"
+                                                   and args.get("loop") == self.role):
+                return {"source": "command", "command_id": doc.get("id"), "command": doc.get("command"), "at": utc()}
+        return None
+
+    def supervise(self, proc, record, deadline):
+        """Wait for the child. → why it ended: "exited" · "controller_signalled" (TERM/INT forwarded to its group)
+        · "deadline" · "stopped" (STOP_<role>, or a queued `loops stop` / `handoff`, looked for every 15 s — the
+        group is ended, the request recorded, and the loop then stops through its ordinary gates). A group that
+        outlives a leader that exited by itself is ended too: a job is over only when its group is empty."""
+        next_look = time.time() + WAIT_POLL_S * self.scale
+        while True:
+            try:
+                proc.wait(timeout=CHILD_POLL_S)
+                if group_gone(proc.pid) is False:
+                    record["survivors"] = True
+                    self.log("%s exited and left processes behind in its group: ending them" % record["run_id"])
+                    self.terminate_group(proc.pid, proc)
+                return "exited"
+            except subprocess.TimeoutExpired:
+                pass
+            now = time.time()
+            if self.signal:
+                record["terminated_by_signal"], reason = True, "controller_signalled"
+            elif now >= deadline:
+                record["timed_out"], reason = True, "deadline"
+            elif now >= next_look:
+                next_look = now + WAIT_POLL_S * self.scale
+                request = self.stop_request()
+                if request is None:
+                    continue
+                record["stop_request"], reason = request, "stopped"
+                self.log("%s: stop requested (%s) while the child runs: ending its process group"
+                         % (record["run_id"], request.get("command_id") or request["source"]))
+            else:
+                continue
+            self.terminate_group(proc.pid, proc)
+            return reason
+
     def terminate_group(self, pgid, proc=None):
-        """TERM the child's process group, wait, then KILL what is left."""
+        """TERM the job's process group, wait, then KILL what is left. → True when the group is positively empty.
+        Never this controller's own group, never a pgid that is not a real one."""
+        if isinstance(pgid, bool) or not isinstance(pgid, int) or pgid <= 1 or pgid == os.getpgid(0):
+            return False
         for sig, grace in ((signal.SIGTERM, max(0.5, TERM_GRACE_S * self.scale)), (signal.SIGKILL, 5.0)):
             try:
                 os.killpg(pgid, sig)
-            except (ProcessLookupError, PermissionError):
+            except ProcessLookupError:
+                break
+            except PermissionError:
                 pass
             end = time.time() + grace
             while time.time() < end:
                 if proc is not None:
-                    if proc.poll() is not None:
-                        return
-                elif ps_identity(pgid) is None or ps_identity(pgid)[0].startswith("Z"):
-                    return
+                    proc.poll()                 # reap our own child: its group cannot empty around a zombie
+                if group_gone(pgid) is True:
+                    break
                 time.sleep(0.05)
+            if group_gone(pgid) is True:
+                break
         if proc is not None:
             proc.wait()
+        return group_gone(pgid) is True
 
-    def validate_request(self, req, record, state_ids, unacked):
+    def evidence_root(self, path, record):
+        """Which allowed root a file-evidence path lies under — the role worktree, the run scratch or the run
+        directory (N-01) — after resolving every symbolic link; None for anything else."""
+        try:
+            real = os.path.realpath(path)
+        except (OSError, ValueError):
+            return None
+        roots = (("worktree", record.get("worktree")),
+                 ("run_scratch", os.path.dirname(record["prompt_path"]) if isinstance(record.get("prompt_path"), str) else None),
+                 ("run_dir", str(self.run)))
+        for name, root in roots:
+            if not isinstance(root, str) or not root.startswith("/"):
+                continue
+            base = os.path.realpath(root)
+            if real.startswith(base.rstrip(os.sep) + os.sep) and os.path.isfile(real):
+                return name
+        return None
+
+    def validate_request(self, req, record, state_ids, unacked, substeps_used=None):
+        """→ (None, the entry to persist) or (named refusal, None). `substeps_used(item id)` says how many
+        sub-steps of that item are already accepted under the current recorded evidence."""
         if not isinstance(req, dict) or req.get("schema") != "ky.checkpoint_request/1":
             return "malformed", None
         if req.get("run_id") != record.get("run_id"):
             return "run_id_mismatch", None
         if req.get("fence") != record.get("fence"):
             return "fence_mismatch", None
-        item = next((w for w in record.get("work_items", []) if w.get("id") == req.get("item")), None)
+        item = next((w for w in record.get("work_items", []) if isinstance(w, dict) and w.get("id") == req.get("item")), None)
         if item is None:
             return "item_not_assigned", None
         key, step_id, kind = item["key"], req.get("step_id"), req.get("kind")
@@ -1809,8 +2842,11 @@ class Controller:
                 return "evidence_malformed", None
             if ev.get("type") == "file":
                 path, digest = ev.get("path"), ev.get("sha256")
-                if not (isinstance(path, str) and path.startswith("/") and isinstance(digest, str) and SHA_RE.match(digest)):
+                if not (isinstance(path, str) and path.startswith("/") and "\0" not in path and len(path) <= 4096
+                        and isinstance(digest, str) and SHA_RE.match(digest)):
                     return "evidence_malformed", None
+                if self.evidence_root(path, record) is None:
+                    return "evidence_outside_allowed_roots", None
                 if sha_file(path) != digest:
                     return "evidence_hash_mismatch", None
                 files.append(digest)
@@ -1826,18 +2862,25 @@ class Controller:
                 return "message_still_unacked", None
         elif not files:
             return "no_verifiable_evidence", None
+        if kind == "substep" and substeps_used is not None \
+                and substeps_used(item["id"]) >= as_int(record.get("substep_cap"), SUBSTEP_CAP):
+            return "substep_cap_reached", None
         digest = files[0] if files else sha_bytes(json.dumps(evidence, sort_keys=True).encode())
         return None, {"id": step_id, "evidence_sha256": digest, "evidence": evidence, "item": item["id"], "kind": kind,
                       "outcome": flat(req.get("outcome"), 40) or None, "note": flat(req.get("summary")),
                       "next": flat(req.get("next")), "accepted_at": utc(),
                       "accepted_by": {"controller_id": self.controller_id, "run_id": record.get("run_id")}}
 
-    def process_outbox(self, record):
+    def process_outbox(self, record, refuse_all=None):
+        """Validate and persist the child's checkpoint requests. `refuse_all` names why NOTHING this run returned
+        is accepted (a run that tampered with its snapshot while writing role state, N-03)."""
         accepted, refused = [], []
         directory = Path(record.get("out_dir") or "/nonexistent") / "checkpoints"
         files = sorted(directory.glob("*.json")) if directory.is_dir() else []
         if not files:
             return accepted, refused
+        if refuse_all:
+            return accepted, [{"file": f.name, "reason": refuse_all} for f in files]
         state, _ = read_json(self.state_path)
         if not isinstance(state, dict) or not isinstance(state.get("completed_steps", []), list):
             return accepted, [{"file": f.name, "reason": "role_state_unreadable"} for f in files]
@@ -1846,14 +2889,24 @@ class Controller:
         if self.role == "conductor":
             msgs = self.poll_inboxes() if self.event_failures < EVENT_SOURCE_FAILURE_LIMIT - 1 else None
             unacked = None if msgs is None else {str(m.get("msg_id")) for _, m in msgs}
+        stored = self.ls().get("substeps")
+        caps, evidence = dict(stored) if isinstance(stored, dict) else {}, self.substep_evidence()
+        counted = False
         for f in files:
             req, _ = read_json(f)
-            reason, entry = self.validate_request(req, record, ids, unacked)
+            reason, entry = self.validate_request(req, record, ids, unacked,
+                                                  lambda item_id: self.substep_window(item_id, caps, evidence))
             if reason:
                 refused.append({"file": f.name, "reason": reason})
                 continue
             ids.add(entry["id"])
             accepted.append(entry)
+            if entry["kind"] == "substep":
+                caps[entry["item"]] = {"count": self.substep_window(entry["item"], caps, evidence) + 1,
+                                       "evidence": evidence, "at": entry["accepted_at"]}
+                counted = True
+        if counted:
+            self.ls(lambda d: dict(d, substeps=caps))
         if accepted:
             state.setdefault("completed_steps", []).extend(accepted)
             write_json(self.state_path, state)
@@ -1870,39 +2923,66 @@ class Controller:
                         "by": {"role": self.role, **e["accepted_by"]}, "checkpoint": e})
         return accepted, refused
 
-    def finalize(self, record, exit_code, reason, supervised=True):
+    def restore_role_state(self, record, state_bytes):
+        """The sole-writer check after a supervised child (plan §4a.1, N-03). → (violation, snapshot_intact).
+        A role-state file that differs from what the child was given was written by the child: its version is
+        kept in the run scratch and the controller's OWN copy — the bytes it held in memory, never the child's
+        read-only snapshot file — is written back. `snapshot_intact` says whether that snapshot file is still
+        the one the child was given."""
+        snap_sha = record.get("state_snapshot_sha256")
+        snap = Path(record.get("state_snapshot_path") or "/nonexistent")
+        intact = sha_file(snap) == snap_sha
+        violation = sha_file(self.state_path) != snap_sha
+        if violation:
+            try:
+                write_atomic(snap.with_name("state.child_modified.json"), self.state_path.read_bytes())
+            except OSError:
+                pass
+            write_atomic(self.state_path, state_bytes)
+            self.log("%s wrote the role-state file; its version is preserved in the run scratch and the "
+                     "controller's copy restored%s" % (record.get("run_id"), "" if intact else
+                                                      " — its snapshot is missing or altered: the run is refused"))
+        return violation, intact
+
+    def finalize(self, record, exit_code, reason, supervised=True, state_bytes=None, actions_before=None):
         """Record the observed result; only now does the controller write role state (validated requests).
         `supervised` is False for a run inherited from a dead controller: another fenced writer may have
-        written the state since, so its snapshot is never restored and the violation flag stays unknown."""
+        written the state since, so nothing is restored and the violation flag stays unknown."""
         run_id = record.get("run_id")
-        violation = None
-        snap_sha = record.get("state_snapshot_sha256")
-        if snap_sha and supervised:
-            violation = sha_file(self.state_path) != snap_sha
-            snap = Path(record.get("state_snapshot_path") or "/nonexistent")
-            if violation and snap.is_file() and sha_file(snap) == snap_sha:
-                try:
-                    write_atomic(snap.with_name("state.child_modified.json"), self.state_path.read_bytes())
-                except OSError:
-                    pass
-                write_atomic(self.state_path, snap.read_bytes())
-                self.log("%s wrote the role-state file; its version is preserved in the run scratch and the "
-                         "snapshot restored" % run_id)
-        accepted, refused = self.process_outbox(record)
+        violation = intact = refuse_all = None
+        if supervised and state_bytes is not None and sha_bytes(state_bytes) == record.get("state_snapshot_sha256"):
+            violation, intact = self.restore_role_state(record, state_bytes)
+            if violation and not intact:
+                refuse_all = "state_snapshot_tampered"
+        accepted, refused = self.process_outbox(record, refuse_all)
         self.state_sha = sha_file(self.state_path)
         seen = detect_quota(record.get("stdout_path", ""), record.get("stderr_path", ""))
         quota, backoff = seen["refusal"], [None]
-        after = self.accepted_summary()
+        after = self.accepted_summary()         # before the controller raises anything of its own below
         before = record.get("progress_before") or {}
-        dependency_changed = bool(before.get("dependency_fingerprint")) and \
-            before["dependency_fingerprint"] != after["dependency_fingerprint"]
-        progressed = bool(accepted) or dependency_changed
+        # a changed external dependency counts only when the run did not author it (N-02): owner-waits raised by
+        # a job of this role are in neither fingerprint
+        basis = "external_fingerprint" if before.get("external_fingerprint") else "dependency_fingerprint"
+        dependency_changed = bool(before.get(basis)) and before[basis] != after[basis]
+        progressed = (bool(accepted) or dependency_changed) and not refuse_all
+        if actions_before is None and supervised is False:      # an inherited run: the listing its controller kept
+            listing = record.get("actions_before") if isinstance(record.get("actions_before"), dict) else {}
+            names, _ = read_json(listing.get("path"))
+            if isinstance(names, list) and sha_file(listing.get("path")) == listing.get("sha256"):
+                actions_before = set(n for n in names if isinstance(n, str))
+        job_actions = None
+        if reason != "launch_failed":
+            try:
+                job_actions = self.reconcile_job_actions(run_id, actions_before, own_window=supervised)
+            except (self.ka.ActionError, OSError) as e:
+                job_actions = {"error": "%s: %s" % (type(e).__name__, flat(e, 160))}
+                self.log("job actions of %s not reconciled (%s)" % (run_id, job_actions["error"]))
         notify_level = [None]
 
         def fn(d):
             q = d.get("quota") if isinstance(d.get("quota"), dict) else {}
-            level, notified = int(q.get("level", 0)), int(q.get("notified_level", 0))
-            count = int(d.get("no_progress_count", 0))
+            level, notified = as_int(q.get("level")), as_int(q.get("notified_level"))
+            count = as_int(d.get("no_progress_count"))
             minutes, not_before = 0, q.get("not_before")
             if progressed:
                 count, level, notified, not_before = 0, 0, 0, None
@@ -1921,7 +3001,7 @@ class Controller:
                               "backoff_until": not_before, "backoff_basis": "resets_at" if sooner else "backoff_step"}
                 if level > notified:
                     notified, notify_level[0] = level, minutes
-            elif not progressed:
+            elif not progressed and reason != "stopped":    # a run the owner's stop cut short proves nothing either way
                 count += 1
             d["quota"] = {"level": level, "notified_level": notified, "not_before": not_before,
                           "backoff_minutes": minutes, "resets_at": seen["resets_at"] if quota else None,
@@ -1933,6 +3013,7 @@ class Controller:
             return d
         st = self.ls(fn)
         record.update(ended_at=utc(), exit_code=exit_code, ended_reason=reason, state_violation=violation,
+                      snapshot_intact=intact, job_actions=job_actions,
                       accepted=[e["id"] for e in accepted], refused=refused, quota_refusal=quota,
                       quota=backoff[0], rate_limit_status_unrecognised=seen["unrecognised"],
                       progress_after=after, dependency_changed=dependency_changed, progressed=progressed,
@@ -1941,9 +3022,20 @@ class Controller:
         if supervised:                          # an inherited run's action is settled by reconcile_actions()
             self.settle_launch_action(record)
         self.write_owner(None)
-        self.release_item_locks([w.get("id") for w in record.get("work_items", []) if isinstance(w, dict)], run_id)
+        self.release_item_locks([w.get("id") for w in record.get("work_items", []) if isinstance(w, dict)])
         self.log("%s ended (%s, exit %s): accepted %d, refused %d, progressed=%s, quota_refusal=%s"
                  % (run_id, reason, exit_code, len(accepted), len(refused), progressed, quota))
+        if refuse_all:
+            self.raise_attention(
+                "loop-%s-state-tamper-%s" % (self.role, re.sub(r"[^a-z0-9-]", "-", str(run_id).lower())),
+                "The %s job %s wrote the role-state file AND its read-only state snapshot is missing or altered. "
+                "The controller restored its own copy of the state, accepted nothing the run returned and counted "
+                "it as no progress. What should happen with that run's work?" % (self.role, run_id),
+                ["run record: %s" % (self.loop_dir / (str(run_id) + ".json")),
+                 "the child's version of the state: %s" % Path(record.get("state_snapshot_path") or "").with_name(
+                     "state.child_modified.json")],
+                message="%s loop: run %s tampered with role state and its snapshot; the run was refused"
+                        % (self.role, run_id))
         if notify_level[0]:
             self.notify("%s loop: quota refusal; backing off %d min, then resuming automatically"
                         % (self.role, notify_level[0]), "info")
@@ -2005,8 +3097,7 @@ class Controller:
                 self.verify_launch()
                 self.verified_once = True
                 if self.role == "conductor":
-                    rc = self.run_helper("kyctl.sh", ["start", "dispatcher"], 120)
-                    self.ls(lambda d: dict(d, dispatcher_start={"at": utc(), "rc": rc}))
+                    self.start_dispatcher()
             not_before = (st.get("quota") or {}).get("not_before") if isinstance(st.get("quota"), dict) else None
             if isinstance(not_before, (int, float)) and time.time() < not_before:
                 self.wait("quota_backoff", real_seconds=min(not_before - time.time(), HOLD_POLL_S))
@@ -2020,7 +3111,8 @@ class Controller:
                 continue
             if not fresh:
                 self.verify_launch()
-            self.reconcile_actions()            # before any relaunch: nothing unfinished of ours is left behind
+            with guarded("reconciliation"):
+                self.reconcile_actions()        # before any relaunch: nothing unfinished of ours is left behind
             closed = self.launch_gate()
             if closed:
                 self.log("launch withheld at the last look (%s)" % closed)
@@ -2037,44 +3129,101 @@ class Controller:
         self.state_sha = sha_file(self.state_path)
         self.reconcile_actions(full=True)
 
+    def state_unreadable(self, refusal):
+        """loops/<role>.json exists and cannot be read (N-08). It is never rewritten from empty; the loop is
+        refused — STOP_<role>, since `enabled: false` cannot be recorded in a file nobody can read — and ONE
+        attention item is raised. A loop whose switch cannot be read is not admitted, so nothing runs."""
+        self.log("REFUSED: %s" % refusal)
+        try:
+            if self.lock_held:                  # only the lock holder stops the loop; a duplicate start never does
+                self.ensure_stop("loop state unreadable")
+        except Exception as e:
+            self.log("the STOP file could not be written (%s)" % type(e).__name__)
+        self.raise_attention(
+            "loop-%s-state-unreadable" % self.role,
+            "The %s loop's own record %s exists but cannot be read. It holds the admission switch, the breaker and "
+            "the no-progress count, so it is never rewritten from empty and the loop does not run. Repair it?"
+            % (self.role, refusal.path),
+            ["%s" % refusal], options=[{"id": "repair", "text": "Repair or remove the file by hand, then "
+                                                               "`kyctl.sh start %s --clear-stop`." % self.role},
+                                       {"id": "keep-stopped", "text": "Leave the %s loop stopped." % self.role}],
+            message="%s loop refused: its loop-state file cannot be read" % self.role)
+
     def main(self):
+        """Exit 0 for every ending that launchd must not respawn — and that includes every UNEXPECTED exception
+        (R10): it becomes the one-awaiting-item + STOP + disabled refusal, never a traceback. Only a signal
+        without a STOP file ends non-zero."""
         if not self.run.is_dir():
             self.log("REFUSED: $KY_RUN is not a directory: %s" % self.run)
             return 78
+        try:
+            return self.run_controller()
+        except LoopStateUnreadable as r:
+            self.state_unreadable(r)
+            return 0
+        except Refusal as r:
+            self.refuse(r.reasons)
+            return 0
+        except Interrupted:
+            try:
+                if self.stop_path.exists():
+                    self.disable("STOP_%s present" % self.role)
+                    return 0
+            except Exception as e:
+                self.log("signalled; the stop could not be recorded (%s)" % type(e).__name__)
+                return 0
+            self.log("terminated by signal %d without a STOP file" % self.signal)
+            return 128 + self.signal
+        except Exception as e:                  # nothing leaves this process as a traceback launchd would respawn
+            self.refuse(Fault("main", e).reasons)
+            return 0
+        finally:
+            if self.lock_held:
+                try:
+                    self.ls(lambda d: dict(d, controller=None, waiting=None, expected_child=d.get("expected_child")))
+                except Exception as e:
+                    self.log("the loop state was not updated at exit (%s)" % type(e).__name__)
+                try:
+                    self.release_lock()
+                except Exception as e:
+                    self.log("the lock was not released at exit (%s)" % type(e).__name__)
+
+    def refuse(self, reasons):
+        """A refusal by the LOCK HOLDER is the full shape (STOP, one awaiting item, disabled). An instance that
+        does not hold the role lock — a duplicate start that failed before or while acquiring it — raises its one
+        attention item only: it never stops a loop it cannot see."""
+        if self.lock_held:
+            self.raise_precondition(reasons)
+        else:
+            self.log("REFUSED before the role lock was held: " + "; ".join(reasons))
+            self.raise_attention(
+                "loop-%s-start-fault" % self.role,
+                "A start of the %s loop controller failed before it held the role lock (%s). Nothing was stopped "
+                "and nothing was launched by it." % (self.role, flat(reasons[0], 200)),
+                ["precondition: %s" % flat(r, 400) for r in reasons],
+                message="%s loop: a controller start failed before taking the role lock" % self.role)
+
+    def run_controller(self):
         if not self.acquire():
             self.record_lock_wait()
             return 0
         signal.signal(signal.SIGTERM, self.on_signal)
         signal.signal(signal.SIGINT, self.on_signal)
+        self.heartbeat()
+        if self.ls().get("lock_wait"):
+            self.ls(lambda d: {k: v for k, v in d.items() if k != "lock_wait"})
         try:
-            self.heartbeat()
-            if self.ls().get("lock_wait"):
-                self.ls(lambda d: {k: v for k, v in d.items() if k != "lock_wait"})
-            try:
+            with guarded("prepare"):
                 self.prepare()
-            except Refusal as r:
-                if self.admitted():
-                    raise
-                # a loop that is stopped or was never started raises nothing: no awaiting file, no STOP of its own
-                self.log("not admitted (STOP file or not enabled); recovery refused and nothing raised: %s" % r)
-                if self.stop_path.exists():
-                    self.disable("STOP_%s present" % self.role)
-                return 0
-            return self.loop()
         except Refusal as r:
-            self.raise_precondition(r.reasons)
-            return 0
-        except Interrupted:
+            if self.admitted():
+                raise
+            # a loop that is stopped or was never started raises nothing: no awaiting file, no STOP of its own
+            self.log("not admitted (STOP file or not enabled); recovery refused and nothing raised: %s" % r)
             if self.stop_path.exists():
                 self.disable("STOP_%s present" % self.role)
-                return 0
-            self.log("terminated by signal %d without a STOP file" % self.signal)
-            return 128 + self.signal
-        finally:
-            try:
-                self.ls(lambda d: dict(d, controller=None, waiting=None, expected_child=d.get("expected_child")))
-            finally:
-                self.release_lock()
+            return 0
+        return self.loop()
 
 
 class VetoController(Controller):
@@ -2090,15 +3239,22 @@ class VetoController(Controller):
         decision log or command queue that cannot be read, a command that could not be settled — opens the
         loop's breaker-equivalent: one awaiting file (blocks the loop), one notification, `enabled: false`, and a
         restart is refused until the recorded evidence has changed;
-      * something final for one decision (failed after its publication, a veto that came too late) is raised
-        once as its own awaiting item and notification; the loop goes on, since that decision is never
-        reported again."""
+      * something final for one decision (failed, refused — a hard stop is never delegated —, a veto that came
+        too late) is raised once as its own awaiting item and notification; the loop goes on, since that decision
+        is never reported again;
+      * decisions HELD because the authorised bundle cannot be read raise ONE attention item and the loop goes
+        on: the hold ends by itself, and an owner veto is honoured meanwhile."""
+
+    receipt_verified = None     # sha256 of the installation receipt the installed bundle was verified under
+    authority_seen = None       # the authority source last logged (logged only when it changes)
+    authority_source = None     # {"known", "source"} of the authority given to the last tick
 
     def heartbeat(self, waiting=None):
         def fn(d):
             d["controller"] = self.identity()
             d["waiting"] = waiting
             d.setdefault("breaker", {"open": False, "history": []})
+            d["test_hooks"] = self.test_hooks()
             return d
         self.ls(fn)
 
@@ -2113,26 +3269,135 @@ class VetoController(Controller):
         return True
 
     def prepare(self):
-        self.load_siblings()                    # kyveto's tick reconciles its own unfinished actions itself
+        """kyveto's tick reconciles its own unfinished actions itself; what is left for this controller is a
+        notification a previous veto controller began and never settled."""
+        self.load_siblings()
+        try:
+            for rec in self.ka.scan(self.run)[0]:
+                actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+                if rec["state"] == "INTENDED" and rec.get("kind") == "notification" and actor.get("role") == self.role \
+                        and actor.get("holder_kind") == "controller" and actor.get("controller_id") != self.controller_id:
+                    self.reconcile_soft(rec)
+        except (self.ka.ActionError, OSError) as e:
+            self.log("earlier notifications not reconciled (%s)" % type(e).__name__)
 
     def verify_veto(self):
-        receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
+        """Admission of the veto loop — the same gate as the model loops (R9): an installation receipt whose mode
+        is bootstrap or final AND a passing kyversion.sh in the matching mode (`--bootstrap` for a bootstrap
+        receipt, none for a final one). Read on EVERY pass; kyversion.sh is run at start-up and again whenever
+        the receipt's bytes change. A receipt that is missing, unreadable or of any other mode, and a kyversion.sh
+        that is missing or does not pass, refuse: this loop publishes delegated decisions and writes activation
+        records, so the mere existence of a receipt file grants nothing."""
+        path = self.run / "INSTALL_RECEIPT.json"
+        receipt, err = read_json(path)
+        digest = sha_file(path)
         if err == "missing":
-            raise Refusal(["install_receipt_missing: %s" % (self.run / "INSTALL_RECEIPT.json")])
-        if err or not isinstance(receipt, dict):
+            raise Refusal(["install_receipt_missing: %s" % path])
+        if err or not isinstance(receipt, dict) or digest is None:
             raise Refusal(["install_receipt_unreadable"])
+        mode = receipt.get("mode")
+        if not isinstance(mode, str) or mode not in RECEIPT_MODES[self.role]:
+            raise Refusal(["install_receipt_mode: got %r, the veto loop needs %s"
+                           % (mode, " or ".join(RECEIPT_MODES[self.role]))])
+        if digest == self.receipt_verified:
+            return
+        if self.test_hooks() and self.real_context() == "launchd":
+            raise Refusal(["test_hooks_in_launchd_context: a test hook is set for a controller that runs under launchd"])
+        args = KYVERSION_ARGS[mode]
+        rc = self.run_helper("kyversion.sh", args, 300)
+        if rc is None:
+            raise Refusal(["kyversion_missing: %s" % (self.fleet / "kyversion.sh")])
+        if rc != 0:
+            raise Refusal(["kyversion_failed: rc=%d (kyversion.sh %s, for a %s receipt)" % (rc, " ".join(args), mode)])
+        self.receipt_verified = digest
+        bundle = {"verified_at": utc(), "by": "kyversion.sh %s" % " ".join(args), "receipt_mode": mode,
+                  "receipt_sha256": digest, "manifest_digest": None}
+        self.ls(lambda d: dict(d, bundle_verified_at=bundle["verified_at"], bundle=bundle))
+
+    def authority(self):
+        """The authorised bundle every tick is given explicitly (R5). → ({"source_commit", "entrypoints_digest"},
+        where it was read) or (None, why it cannot be read).
+
+        When an activation chain exists it is the ONLY source: the terminal link's source commit, and the
+        entrypoints digest of that link's manifest — a manifest file whose digest, recomputed here, IS the digest
+        the link binds (the path the record names, else the installed VERSIONS.json / VERSIONS.bootstrap.json). A
+        chain that is broken, forked or whose manifest cannot be found is unknown: it never falls back to an
+        older source. Without any activation record the source is PLANNER_STATE.json `authorised_source`
+        {source_commit, entrypoints_digest}, which the fenced planner writer keeps."""
+        if any(self.run.glob("ACTIVATION_RECORD*.json")):
+            links, err = self.activation_chain()
+            if err:
+                return None, err
+            link = links[-1]
+            if not link["commit"]:
+                return None, "activation_record_invalid: %s names no source commit" % link["file"]
+            doc, _ = read_json(self.run / link["file"])
+            doc = doc if isinstance(doc, dict) else {}
+            bound = doc.get("new_manifest") if isinstance(doc.get("new_manifest"), dict) else {}     # as kyveto writes it
+            named = [v for v in [bound.get("path")] + [doc.get(k) for k in ("new_manifest_path", "manifest_path",
+                                                                           "final_manifest_path")]
+                     if isinstance(v, str) and v and "\0" not in v]
+            tried = []
+            for cand in named + list(MANIFEST_FILES):
+                path = Path(cand) if os.path.isabs(cand) else self.run / cand
+                digest, why = manifest_entrypoints(path, link["manifest_digest"])
+                if digest and bound.get("entrypoints_digest") not in (None, digest):
+                    digest, why = None, "the record binds another entrypoints digest than this manifest gives"
+                if digest:
+                    return ({"source_commit": link["commit"], "entrypoints_digest": digest},
+                            "activation_chain: %s, manifest %s" % (link["file"], path.name))
+                tried.append("%s (%s)" % (path.name, why))
+            return None, ("activation_manifest_unreadable: no manifest of digest %s for %s — %s"
+                          % (link["manifest_digest"][:12], link["file"], "; ".join(tried)))
+        state, _ = read_json(self.run / "PLANNER_STATE.json")
+        source = state.get("authorised_source") if isinstance(state, dict) else None
+        if isinstance(source, dict) and isinstance(source.get("source_commit"), str) \
+                and HEX_COMMIT.match(source["source_commit"]) and isinstance(source.get("entrypoints_digest"), str) \
+                and SHA_RE.match(source["entrypoints_digest"]):
+            return ({"source_commit": source["source_commit"], "entrypoints_digest": source["entrypoints_digest"]},
+                    "planner_state")
+        return None, ("authorised_source_unreadable: no activation record, and PLANNER_STATE.json carries no "
+                      "authorised_source {source_commit, entrypoints_digest}")
 
     def tick(self):
         """The ONE call site of the veto handler: in-process, as the controller that holds the veto lock
-        (`kyveto.py tick --as <controller_id> --holder-kind controller`). Any failure to complete a pass is a
-        refused precondition — never a retry loop."""
+        (`kyveto.py tick --as <controller_id> --holder-kind controller`). The handler reads the wall clock itself
+        — no time is passed — and is GIVEN the authority (R5): the bundle this controller established
+        (authority()), or kyveto.UNKNOWN when it could not, in which case the handler holds every decision (an
+        owner veto is still honoured) and reports one `authority_unknown` problem. Any failure to complete a pass
+        is a refused precondition — never a retry loop."""
         kv = self.kv
+        authorised, source = self.authority()
+        if source != self.authority_seen:
+            self.log("authority: %s" % (source if authorised else "UNKNOWN — %s; decisions are held" % source))
+            self.authority_seen = source
+        self.authority_source = {"known": authorised is not None, "source": source}
         try:
-            return kv.tick(env=kv.Env(), holder=self.controller_id, holder_kind="controller", log=self.log)
+            return kv.tick(env=kv.Env(), authorised=authorised if authorised is not None else kv.UNKNOWN,
+                           holder=self.controller_id, holder_kind="controller", log=self.log)
         except kv.NotHolder as e:
             raise Refusal(["veto_lock_not_held: %s" % flat(e, 200)])
         except Exception as e:
             raise Refusal(["veto_tick_failed: %s: %s" % (type(e).__name__, flat(e, 200))])
+
+    def raise_authority_unknown(self, problem):
+        """Decisions are HELD because the authorised bundle cannot be read: ONE attention item while that lasts
+        (none while one is open), and the loop goes on ticking — the hold ends by itself once the authority can
+        be read, and an owner veto is honoured meanwhile."""
+        why = (self.authority_source or {}).get("source")
+        self.raise_attention(
+            "loop-veto-authority-unknown",
+            "The veto handler holds veto-class decisions because the authorised bundle cannot be established "
+            "(%s). Nothing becomes effective and nothing fails while that lasts. Which bundle is authorised?"
+            % flat(why, 240),
+            ["veto tick: %s" % flat(problem, 300), "authority: %s" % flat(why, 300),
+             "activation chain: %s" % (self.run / "ACTIVATION_RECORD*.json"),
+             "planner state: %s" % (self.run / "PLANNER_STATE.json")],
+            options=[{"id": "repair", "text": "Repair the activation chain / its manifest, or record `authorised_source` "
+                                              "{source_commit, entrypoints_digest} in PLANNER_STATE.json as the fenced "
+                                              "planner writer; the held decisions then proceed by themselves."},
+                     {"id": "veto", "text": "Veto the held decisions (`veto <decision-id>`)."}],
+            item="loop.veto", message="veto loop: decisions are held — the authorised bundle cannot be established")
 
     def record_tick(self, report):
         """→ the earliest deadline (epoch) among decisions still inside their window, or None."""
@@ -2147,11 +3412,12 @@ class VetoController(Controller):
 
         def fn(d):
             before = d.get("veto") if isinstance(d.get("veto"), dict) else {}
-            d["veto"] = {"last_tick_at": utc(), "ticks": int(before.get("ticks", 0)) + 1, "pending": pending,
+            d["veto"] = {"last_tick_at": utc(), "ticks": as_int(before.get("ticks")) + 1, "pending": pending,
                          "next_deadline": utc(t=deadlines[0]) if deadlines else None, "holds": holds,
                          "outcomes": outcomes, "attention": bool(report.get("attention")),
                          "problems": len(report.get("problems") or []),
-                         "authority_source": (report.get("authority") or {}).get("source")}
+                         "authority_source": (report.get("authority") or {}).get("source"),
+                         "authority": self.authority_source}
             d["controller"] = self.identity()
             d["last_iteration_at"] = utc()      # the last SUCCESSFUL control iteration: a completed tick
             d["waiting"] = "hold" if holds else "veto_window" if deadlines else "idle"
@@ -2161,8 +3427,11 @@ class VetoController(Controller):
 
     @staticmethod
     def attention_items(report):
-        """(persistent, final): what would be reported again on every tick, and what is final for one decision."""
-        persistent = ["problem: %s" % flat(x, 200) for x in report.get("problems") or []]
+        """(persistent, final): what would be reported again on every tick, and what is final for one decision.
+        The handler's `authority_unknown` problem is neither: its decisions are held, not stuck — see
+        held_for_authority()."""
+        persistent = ["problem: %s" % flat(x, 200) for x in report.get("problems") or []
+                      if not str(x).startswith("authority_unknown")]
         final = []
         for d in report.get("decisions") or []:
             if isinstance(d, dict) and d.get("attention"):
@@ -2174,9 +3443,15 @@ class VetoController(Controller):
         for c in report.get("commands") or []:
             if isinstance(c, dict) and c.get("attention"):
                 persistent.append("command %s: %s (%s)" % (c.get("id"), c.get("status"), flat(c.get("reason"), 160)))
-        if report.get("attention") and not persistent and not final:
+        if report.get("attention") and not persistent and not final \
+                and not VetoController.held_for_authority(report):
             persistent.append("attention reported without a named item")
         return persistent, final
+
+    @staticmethod
+    def held_for_authority(report):
+        """The handler's one `authority_unknown` problem, or None."""
+        return next((str(x) for x in report.get("problems") or [] if str(x).startswith("authority_unknown")), None)
 
     def raise_final(self, decision_id, text):
         slug = "veto-attention-" + re.sub(r"[^a-z0-9-]", "-", decision_id.lower())
@@ -2299,6 +3574,9 @@ class VetoController(Controller):
             report = self.tick()
             deadline = self.record_tick(report)
             persistent, final = self.attention_items(report)
+            held = self.held_for_authority(report)
+            if held:
+                self.raise_authority_unknown(held)
             for decision_id, text in final:
                 self.raise_final(decision_id, text)
             if persistent:
@@ -2311,7 +3589,32 @@ class VetoController(Controller):
 
 USAGE = ("usage: kyloop.py planner|conductor|veto\n"
          "       kyloop.py admin enable|disable <loop> --reason TEXT [--by WHO]\n"
-         "       kyloop.py admin show <loop> | expected-qualification planner|conductor")
+         "       kyloop.py admin show <loop> | child <loop>\n"
+         "       kyloop.py admin expected-qualification|launch-config planner|conductor")
+
+
+def recorded_child(run_dir, loop):
+    """(state, pid, run id) of the child that loop's controller recorded — for `kyctl.sh status` and `stop` (N-07).
+    state: none (no child is recorded) · pending (one was about to be started and was never identified) · alive ·
+    survivors (its leader is gone, its process group is not empty) · gone · unknown. What the role lock's owner
+    record says is used when the loop state names no child: a controller that died says nothing more itself."""
+    doc, _ = loop_state(run_dir, loop)
+    if doc is None:
+        return "unknown", None, None
+    child = doc.get("expected_child")
+    if child is None:
+        owner, _ = read_json(Path(run_dir) / "locks" / loop / "owner.json")
+        held = owner.get("child") if isinstance(owner, dict) else None
+        child = {"pending": True} if held == "pending" else held
+    if child is None:
+        return "none", None, None
+    if not isinstance(child, dict):
+        return "unknown", None, None
+    pid, run_id = child.get("pid"), child.get("run_id") if isinstance(child.get("run_id"), str) else None
+    if child.get("pending") or pid is None:
+        return "pending", None, run_id
+    state = job_state(pid, child.get("pgid"), child.get("process_start"))
+    return {"live": "alive"}.get(state, state), pid if isinstance(pid, int) else None, run_id
 
 
 def admin(args):
@@ -2335,18 +3638,29 @@ def admin(args):
         def switch(d):
             d = {k: v for k, v in d.items() if k != "disabled_by_command"}      # a new switch supersedes a command's
             return dict(d, enabled=enabled, reason=flat(reason), updated_at=utc(), updated_by=flat(by, 80))
-        update_loop_state(run_dir, args[1], switch)
+        try:
+            update_loop_state(run_dir, args[1], switch)
+        except LoopStateUnreadable as r:        # never rewritten from empty: the switch is refused, by name
+            print("kyloop: REFUSED %s" % r, file=sys.stderr)
+            return 1
         return 0
     if len(args) == 2 and args[0] == "show" and args[1] in SWITCH_LOOPS:
         doc, err = read_json(run_dir / "loops" / (args[1] + ".json"))
         print(json.dumps(dict(doc, present=True) if isinstance(doc, dict) else {"present": False, "error": err}))
         return 0
-    if len(args) == 2 and args[0] == "expected-qualification" and args[1] in ROLES:
+    if len(args) == 2 and args[0] == "child" and args[1] in SWITCH_LOOPS:
+        state, pid, run_id = recorded_child(run_dir, args[1])
+        print("%s %s %s" % (state, pid if pid is not None else "-", run_id or "-"))
+        return 0
+    if len(args) == 2 and args[0] in ("expected-qualification", "launch-config") and args[1] in ROLES:
         c = Controller(args[1])
         cfg, errs = c.load_config()
         if errs:
             print("\n".join(errs), file=sys.stderr)
             return 1
+        if args[0] == "launch-config":          # what `kyqualify.py qualify --config` is given for this role
+            print(json.dumps(c.launch_config(cfg), indent=1))
+            return 0
         print(json.dumps({"role": c.role, "model": cfg["model"], "receipt_path": str(c.qualification_path(cfg)),
                           "binds": c.expected_binds(cfg), "context": c.context()}, indent=1, sort_keys=True))
         return 0

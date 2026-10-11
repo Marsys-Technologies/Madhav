@@ -10,9 +10,12 @@ and the fenced owner of the addressed role applies it, in filename order, exactl
     status, doc = apply(run_dir, command_id, applier, handler, observer=None, in_order=True)
         "applied" | "rejected"                     this call settled the command (handler result / reason recorded)
         "already_applied" | "already_rejected"     settled earlier: the handler was NOT called again
-        "locked"                                   another live actor is applying it right now: skipped
-        "refused"                                  nothing changed; doc = {"reason": …}: the applier does not hold
-                                                   $KY_RUN/locks/<role>, or an earlier command of the role is QUEUED
+        "locked"                                   another live actor is applying it right now, or the process that
+                                                   began applying it is still alive elsewhere: skipped
+        "refused"                                  nothing changed; doc = {"reason": …}: the applier is not the
+                                                   owner of $KY_RUN/locks/<role>, an earlier command of the role is
+                                                   QUEUED or cannot be read, or the command's lock has an owner
+                                                   that cannot be judged (then doc also has "attention": true)
         "unreconciled"                             an earlier application died inside the handler and no observer
                                                    could say whether it took effect: it is not repeated blind
     owner_paused(run_dir)                          True/False from the APPLIED pause/resume history
@@ -22,11 +25,23 @@ Rules this file enforces (each has a test in tests/test_kycontrol.py):
   * submit validates the role, the command name, the argument shape and the sender; `veto` is addressed to the
     `veto` role and `pause` / `resume` to the `campaign` role, nowhere else;
   * filename order is submission order, also within one second and when the wall clock has stepped back;
-  * apply requires the applier to be the recorded owner of the role lock (owner.json session_or_run_id) with a
-    live, verifiable owner process; it then takes the lock `command.<id>` and re-reads the command (handled-state
-    check), runs the handler through a kyaction record `CMD-<id>` and marks APPLIED or REJECTED once;
-  * an owner pause is ended only by an APPLIED owner `resume`; a queue that cannot be read is "unknown", never
-    "not paused".
+  * apply requires the applier to BE the owner of the role lock: owner.json names its id, the recorded owner
+    process is alive with the recorded start identity (kyaction.process_matches is True — unknown is refused),
+    and that process is the caller itself or one of its ancestors. Naming the holder's id from another process
+    is refused. The check is repeated after the lock `command.<id>` has been taken; then the command is re-read
+    (handled-state check), the handler runs through a kyaction record `CMD-<id>`, and the command is marked
+    APPLIED or REJECTED once;
+  * within a role, a command is not applied while an earlier file in the queue cannot be read (it may be an
+    earlier command of that role);
+  * an owner pause is ended only by an APPLIED owner `resume`; a `pause` whose handler failed with an error
+    (REJECTED "handler_error: …") stays in force as a requested pause until the owner resumes; a queue that
+    cannot be read is "unknown", never "not paused".
+
+Origin of a command: `from` = {kind: "cockpit", session_id, pid, process_start} — the submitting process as it
+saw itself. This is a CONVENTION, not an enforced boundary: any process that can write $KY_RUN/commands can
+queue a command, a `resume` or a `veto` included, and name any session. Until the fleet has an enforced write
+boundary for that directory, "only the owner's cockpit submits" rests on the roles' instructions; pid and
+process start are recorded so that a command's real origin can be examined afterwards.
 
 A handler receives a copy of the command and returns a JSON object (the result) or raises Reject(reason).
 Any other exception is recorded as REJECTED "handler_error: <Type>" and is never retried automatically.
@@ -66,6 +81,7 @@ SEQ_RE = re.compile(r"^([0-9]{6})-")
 SD_RE = re.compile(r"^SD-[0-9]{8}T[0-9]{6}Z-[0-9]+\Z")
 AW_RE = re.compile(r"^AW-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\Z")
 STAMP = "%Y%m%dT%H%M%SZ"
+HANDLER_ERROR = "handler_error"                 # REJECTED because the handler raised, not because it said no
 
 
 class CommandError(Exception):
@@ -128,12 +144,19 @@ def args_problem(command, args):
 
 
 def sender_problem(from_):
-    if not isinstance(from_, dict) or set(from_) != {"kind", "session_id"}:
-        return "from must be {kind, session_id}"
+    """None, or why `from_` is not a sender: {kind: "cockpit", session_id} as submit() is given it, optionally with
+    the pid and process_start submit() records beside them."""
+    if not isinstance(from_, dict) or not {"kind", "session_id"} <= set(from_) \
+            or set(from_) - {"kind", "session_id", "pid", "process_start"}:
+        return "from must be {kind, session_id} (pid and process_start are recorded by submit)"
     if from_["kind"] != "cockpit":
         return "only the cockpit submits commands (from.kind %r)" % (from_["kind"],)
     if not _text(from_["session_id"]):
         return "from.session_id must be a non-empty string"
+    if "pid" in from_ and not _count(from_["pid"]):
+        return "from.pid must be a positive integer"
+    if from_.get("process_start") is not None and not _text(from_["process_start"]):
+        return "from.process_start must be a non-empty string or null"
     return None
 
 
@@ -153,35 +176,41 @@ def queue_dir(run_dir):
     return Path(run_dir) / "commands"
 
 
-def scan(run_dir):
-    """(entries, problems). Entries are in filename order: {"stem", "path", "doc", "invalid"}; `invalid` is None
-    or the reason a structurally identified command (id, role, state readable) is not acceptable — such a command
-    is settled as REJECTED by apply(). Files that cannot be identified at all are listed in problems only."""
+def _scan(run_dir):
+    """(entries, [(file name, reason)]); see scan()."""
     directory = queue_dir(run_dir)
     try:
         names = sorted(os.listdir(directory))
     except FileNotFoundError:
         return [], []
-    entries, problems = [], []
+    entries, bad = [], []
     for name in names:
         if name.startswith(".") or not name.endswith(".json"):
             continue
         stem, path = name[:-5], directory / name
         m = STEM_RE.match(stem)
         if not m:
-            problems.append("%s: not <UTC yyyymmddThhmmssZ>-<id>.json" % name)
+            bad.append((name, "not <UTC yyyymmddThhmmssZ>-<id>.json"))
             continue
         doc, err = kyaction.read_json(path)
         if err or not isinstance(doc, dict):
-            problems.append("%s: %s" % (name, err or "not an object"))
+            bad.append((name, err or "not an object"))
             continue
         if doc.get("schema") != SCHEMA or doc.get("id") != m.group(2) or doc.get("role") not in ROLES \
                 or doc.get("state") not in STATES:
-            problems.append("%s: no usable schema / id / role / state" % name)
+            bad.append((name, "no usable schema / id / role / state"))
             continue
         invalid = command_problem(doc["role"], doc.get("command"), doc.get("args"), doc.get("from"))
         entries.append({"stem": stem, "path": path, "doc": doc, "invalid": invalid})
-    return entries, problems
+    return entries, bad
+
+
+def scan(run_dir):
+    """(entries, problems). Entries are in filename order: {"stem", "path", "doc", "invalid"}; `invalid` is None
+    or the reason a structurally identified command (id, role, state readable) is not acceptable — such a command
+    is settled as REJECTED by apply(). Files that cannot be identified at all are listed in problems only."""
+    entries, bad = _scan(run_dir)
+    return entries, ["%s: %s" % (name, why) for name, why in bad]
 
 
 def find(run_dir, command_id):
@@ -212,8 +241,12 @@ def _after(last_stem):
 
 
 def submit(run_dir, role, command, args, from_):
-    """Validate and enqueue one command; → its id. The file is created exclusively and atomically."""
+    """Validate and enqueue one command; → its id. The file is created exclusively and atomically. `from_` is
+    {kind: "cockpit", session_id}; the pid and start identity of the submitting process are recorded with it
+    (a record of origin, not a proof of it — see the module docstring)."""
     problem = command_problem(role, command, args, from_)
+    if not problem and isinstance(from_, dict) and set(from_) != {"kind", "session_id"}:
+        problem = "from must be {kind, session_id}: the submitting process is recorded by submit itself"
     if problem:
         raise CommandInvalid(problem)
     try:
@@ -222,6 +255,7 @@ def submit(run_dir, role, command, args, from_):
         raise CommandInvalid("args is not JSON-serialisable") from None
     directory = queue_dir(run_dir)
     os.makedirs(directory, exist_ok=True)
+    me = kyaction.self_identity()                            # who really wrote this file, as far as it can say
     for _ in range(50):
         now = time.time()
         stamp, seq = time.strftime(STAMP, time.gmtime(now)), int((now % 1) * 1000000)
@@ -233,7 +267,8 @@ def submit(run_dir, role, command, args, from_):
             stamp, seq = _after(last)
         command_id = "%06d-%s-%s" % (seq, command, token)
         doc = {"schema": SCHEMA, "id": command_id, "created_at": kyaction.utc(now),
-               "from": {"kind": from_["kind"], "session_id": from_["session_id"]}, "role": role,
+               "from": {"kind": from_["kind"], "session_id": from_["session_id"], "pid": me["pid"],
+                        "process_start": me["process_start"]}, "role": role,
                "command": command, "args": args, "state": "QUEUED", "applied_by": None, "applied_at": None,
                "result": None}
         if kyaction.write_exclusive(directory / ("%s-%s.json" % (stamp, command_id)), _dump(doc)):
@@ -259,8 +294,10 @@ def applier_identity(applier):
 
 
 def holds_role_lock(run_dir, role, applier_id):
-    """(True, None) iff $KY_RUN/locks/<role>/owner.json names `applier_id` and its recorded process is alive with
-    the recorded start identity; otherwise (False, named reason). A stale or unverifiable lock proves nothing."""
+    """(True, None) iff the CALLER is the owner of $KY_RUN/locks/<role>: owner.json names `applier_id`, its
+    recorded process is alive with the recorded start identity, and that process is this process or one of its
+    ancestors (a controller applying in-process, or the helper a lock holder started). Otherwise (False, named
+    reason): naming the holder's id is not holding the lock, and a stale or unverifiable lock proves nothing."""
     owner, err = kyaction.lock_owner(run_dir, role)
     if owner is None:
         return False, "role_lock_not_held: %s lock %s" % (role, err)
@@ -270,7 +307,13 @@ def holds_role_lock(run_dir, role, applier_id):
     if alive is False:
         return False, "role_lock_stale: the recorded owner process is not alive"
     if alive is None:
-        return False, "role_lock_owner_unverifiable: no comparable process start identity is recorded"
+        return False, "role_lock_owner_unverifiable: the recorded owner process cannot be confirmed alive"
+    mine = kyaction.is_self_or_ancestor(owner.get("pid"))
+    if mine is False:
+        return False, ("role_lock_not_owned_by_caller: the %s lock belongs to pid %s, which is neither this process "
+                       "nor one of its ancestors" % (role, owner.get("pid")))
+    if mine is None:
+        return False, "role_lock_owner_unverifiable: this process's ancestry cannot be read"
     return True, None
 
 
@@ -303,10 +346,17 @@ def apply(run_dir, command_id, applier, handler, observer=None, in_order=True, l
     held, why = holds_role_lock(run_dir, role, applier_id)
     if not held:
         return "refused", {"reason": why}
-    lock = kyaction.acquire_lock(run_dir, "command." + command_id, applier_id, log=log)
+    try:
+        lock = kyaction.acquire_lock(run_dir, "command." + command_id, applier_id, log=log)
+    except kyaction.LockUnknown as e:                        # never taken over: somebody has to look at it
+        return "refused", {"reason": "command_lock_owner_unknown: %s" % kyaction.flat(e.detail, 200),
+                           "attention": True}
     if lock is None:
         return "locked", {"reason": "command_lock_held"}
     try:
+        held, why = holds_role_lock(run_dir, role, applier_id)       # still the owner, now that the lock is ours
+        if not held:
+            return "refused", {"reason": why}
         entry = find(run_dir, command_id)                    # fresh handled-state check under the lock
         if entry is None:
             raise CommandError("command %s disappeared from the queue" % command_id)
@@ -314,7 +364,11 @@ def apply(run_dir, command_id, applier, handler, observer=None, in_order=True, l
         if doc["state"] != "QUEUED":
             return ("already_applied" if doc["state"] == "APPLIED" else "already_rejected"), doc
         if in_order:
-            for other in scan(run_dir)[0]:
+            entries, bad = _scan(run_dir)
+            for name, _ in bad:                              # its role is unknown: it may be an earlier command
+                if name[:-5] < entry["stem"]:
+                    return "refused", {"reason": "earlier_command_unreadable: %s" % name}
+            for other in entries:
                 if other["stem"] >= entry["stem"]:
                     break
                 if other["doc"]["role"] == role and other["doc"]["state"] == "QUEUED":
@@ -327,6 +381,9 @@ def apply(run_dir, command_id, applier, handler, observer=None, in_order=True, l
             run_dir, action_id, "command:" + doc["command"], actor,
             {"role": role, "command": doc["command"], "args": doc["args"]},
             {"command_id": command_id, "file": entry["path"].name}, "command %s: QUEUED → APPLIED" % command_id)
+        if status == "in_progress":                          # the process that began applying it may still be at it
+            return "locked", {"reason": "application_in_progress: %s was begun by a process that is still alive"
+                                        % action_id, "action_id": action_id}
         if status == "unfinished":
             if observer is None:
                 return "unreconciled", {"reason": "an earlier application did not finish; no observer was given",
@@ -347,7 +404,7 @@ def apply(run_dir, command_id, applier, handler, observer=None, in_order=True, l
             kyaction.fail(run_dir, action_id, {"rejected": rejected.reason})
             return _settle(entry, "REJECTED", actor, {"reason": rejected.reason})
         except Exception as e:
-            reason = "handler_error: %s" % type(e).__name__
+            reason = "%s: %s" % (HANDLER_ERROR, type(e).__name__)
             kyaction.fail(run_dir, action_id, {"error": reason})
             return _settle(entry, "REJECTED", actor, {"reason": reason})
         kyaction.complete(run_dir, action_id, result)
@@ -363,28 +420,41 @@ def pause_state(run_dir):
 
     paused       an APPLIED `pause` for the campaign role with no later APPLIED `resume` (filename order)
     unknown      a command file is unreadable, or an unsettled command is not acceptable: nothing is concluded
-    pending_pause  the id of a QUEUED owner `pause` no later owner `resume` (QUEUED or APPLIED) follows: the
-                 owner has asked, the campaign role has not applied it yet. Callers that must never act against
-                 the owner's wish (kyveto) treat it as a pause; it is not part of `state`."""
+    pending_pause  the id of an owner `pause` that is requested but not in force as APPLIED, with no later owner
+                 `resume` (QUEUED or APPLIED) after it: the owner has asked. pending_kind says why it is not
+                 applied — "queued" (the campaign role has not applied it yet) or "handler_error" (the role's
+                 handler failed while applying it: the request stands, it was not refused on its merits).
+                 Callers that must never act against the owner's wish (kyveto) treat it as a pause; it is not
+                 part of `state`. A `pause` the role rejected on purpose (Reject) is not a pending pause."""
     entries, problems = scan(run_dir)
     problems = list(problems) + ["%s.json: %s" % (e["stem"], e["invalid"]) for e in entries
                                  if e["invalid"] and e["doc"]["state"] != "REJECTED"]
-    applied, pending_pause = None, None
+    applied, pending_pause, pending_kind = None, None, None
     for e in entries:
         doc = e["doc"]
         if e["invalid"] or doc["role"] != "campaign" or doc["command"] not in ("pause", "resume"):
             continue
         if doc["command"] == "pause":
             if doc["state"] == "APPLIED":
-                applied, pending_pause = doc["id"], None
+                applied, pending_pause, pending_kind = doc["id"], None, None
             elif doc["state"] == "QUEUED":
-                pending_pause = doc["id"]
+                pending_pause, pending_kind = doc["id"], "queued"
+            elif _handler_error(doc):
+                pending_pause, pending_kind = doc["id"], "handler_error"
         elif doc["state"] == "APPLIED":
-            applied, pending_pause = None, None
+            applied, pending_pause, pending_kind = None, None, None
         elif doc["state"] == "QUEUED":
-            pending_pause = None                             # the owner's later wish; it never ends an APPLIED pause
+            pending_pause, pending_kind = None, None         # the owner's later wish; it never ends an APPLIED pause
     state = "unknown" if problems else ("paused" if applied else "not_paused")
-    return {"state": state, "applied_pause": applied, "pending_pause": pending_pause, "problems": problems}
+    return {"state": state, "applied_pause": applied, "pending_pause": pending_pause, "pending_kind": pending_kind,
+            "problems": problems}
+
+
+def _handler_error(doc):
+    """True for a command settled REJECTED because its handler raised (apply() records "handler_error: <Type>")."""
+    result = doc.get("result")
+    return doc.get("state") == "REJECTED" and isinstance(result, dict) \
+        and isinstance(result.get("reason"), str) and result["reason"].startswith(HANDLER_ERROR)
 
 
 def owner_paused(run_dir):

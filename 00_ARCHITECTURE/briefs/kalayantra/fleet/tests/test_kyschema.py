@@ -98,6 +98,20 @@ KEYWORD_CASES = [
     ("pattern-dollar-is-the-true-end", {"pattern": "^[a-z]+$"}, "abc", "abc\n", "does not match pattern"),
     ("pattern-is-a-search", {"pattern": "b"}, "abc", "xyz", "does not match pattern"),
     ("pattern-digits-are-ascii", {"pattern": "^\\d+$"}, "123", "１２３", "does not match pattern"),
+    ("pattern-word-characters-are-ascii", {"pattern": "^\\w+$"}, "a_1", "é", "does not match pattern"),
+    # finding N-13: \\s is the ECMA-262 white-space set, so a negated class refuses what the standard refuses
+    ("pattern-not-space-refuses-a-no-break-space", {"pattern": "^[^\\s]+$"}, "a-b", "a\u00a0b", "does not match pattern"),
+    ("pattern-not-space-refuses-a-line-separator", {"pattern": "^[^\\s]+$"}, "a-b", "a\u2028b", "does not match pattern"),
+    ("pattern-not-space-refuses-a-byte-order-mark", {"pattern": "^[^\\s]+$"}, "a-b", "a\ufeffb", "does not match pattern"),
+    ("pattern-not-space-refuses-an-ideographic-space", {"pattern": "^[^\\s]+$"}, "a-b", "a\u3000b", "does not match pattern"),
+    ("pattern-space-matches-a-no-break-space", {"pattern": "^a\\sb$"}, "a\u00a0b", "a\u200bb", "does not match pattern"),
+    ("pattern-space-in-a-class-with-others", {"pattern": "^[\\s,]+$"}, " ,\u2029\t", " ;", "does not match pattern"),
+    ("pattern-non-space", {"pattern": "^\\S+$"}, "a\u200bb", "a\u00a0b", "does not match pattern"),
+    ("pattern-dot-stops-at-a-carriage-return", {"pattern": "^a.b$"}, "a\u00a0b", "a\rb", "does not match pattern"),
+    ("pattern-dot-stops-at-a-line-separator", {"pattern": "^a.b$"}, "a b", "a\u2028b", "does not match pattern"),
+    ("pattern-dot-stops-at-a-paragraph-separator", {"pattern": "^.*$"}, "", "a\u2029b", "does not match pattern"),
+    ("pattern-escaped-dot-is-a-dot", {"pattern": "^a\\.b$"}, "a.b", "axb", "does not match pattern"),
+    ("pattern-dot-in-a-class-is-a-dot", {"pattern": "^[.]+$"}, "..", "\r", "does not match pattern"),
     ("minLength", {"minLength": 2}, "ab", "a", "shorter than minLength 2"),
     ("maxLength", {"maxLength": 2}, "ab", "abc", "longer than maxLength 2"),
     ("minimum", {"minimum": 1}, 1, 0, "less than the minimum 1"),
@@ -123,6 +137,32 @@ KEYWORD_CASES = [
 def test_each_supported_keyword_accepts_and_refuses(name, sch, good, bad, reason):
     assert_valid(sch, good)
     assert_refused(sch, bad, reason)
+
+
+def test_patterns_are_read_as_ecma_262_reads_them_and_the_docstring_says_what_is_not_reconciled():
+    """finding N-13: with ASCII classes `[^\\s]` accepted a no-break space and U+2028, which the standard's
+    pattern language refuses — 'refuses more, never less' was untrue for negated classes"""
+    ecma_space = "\t\n\x0b\x0c\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a" \
+                 "\u2028\u2029\u202f\u205f\u3000\ufeff"
+    assert len(ecma_space) == 25
+    space, not_space, in_class = (kyschema.compile_pattern(p) for p in ("^\\s$", "^\\S$", "^[^\\s]$"))
+    for character in ecma_space:
+        assert space.search(character) and not not_space.search(character) and not in_class.search(character), hex(ord(character))
+    for character in "a0_-\x00\x1f\x85\u200b\u2060\u180e":          # not white space in ECMA-262 (U+0085, U+200B, …)
+        assert not space.search(character) and not_space.search(character) and in_class.search(character), hex(ord(character))
+    dot = kyschema.compile_pattern("^.$")
+    assert [c for c in "\n\r\u2028\u2029" if dot.search(c)] == [] and all(dot.search(c) for c in "a \t\x0b\x0c\x85\xa0")
+    # the three places that use a negated white-space class (packet.json): path, revision, schema_receipt_id
+    packet = (SCHEMAS / "packet.json").read_text(encoding="utf-8")
+    assert packet.count('"^[^\\\\s]+$"') == 3
+    for bad in ("a\u00a0b", "a\u2028b", "a b", "a\tb", "a\ufeffb", ""):
+        assert kyschema.validate({"pattern": "^[^\\s]+$"}, bad), repr(bad)
+    doc = kyschema.__doc__
+    assert "plan v2.7" in doc and "v2.3" not in doc
+    for phrase in ("`\\s` is the ECMA-262 white space and line terminator set", "inside a character class too",
+                   "`\\S` is its complement outside a", "refused at lint time inside one", "What is NOT reconciled",
+                   "an unescaped `.` outside a class", "A pattern Python cannot compile is refused at lint time"):
+        assert phrase in doc, phrase
 
 
 def test_the_supported_keyword_list_is_exactly_the_documented_one():
@@ -179,6 +219,7 @@ UNSUPPORTED = [
     ("then-without-if", {"then": {"required": ["a"]}}, "'then' without 'if'"),
     ("else-without-if", {"else": {"required": ["a"]}}, "'else' without 'if'"),
     ("bad-pattern", {"pattern": "("}, "pattern does not compile"),
+    ("non-space-inside-a-class", {"pattern": "^[\\S,]+$"}, "\\S inside a character class is not supported"),
     ("empty-enum", {"enum": []}, "enum must be a non-empty array"),
     ("required-not-strings", {"required": [1]}, "required must be an array of distinct strings"),
     ("required-duplicate", {"required": ["a", "a"]}, "required must be an array of distinct strings"),
@@ -687,6 +728,10 @@ SMALL_NEG = [
      ("$.effective_at", "expected type string", "allOf/1/then")),
     ("surrogate_decision", "surrogate_decision_veto_effective.json", {"veto_deadline": None},
      ("$.veto_deadline", "expected type string")),
+    ("surrogate_decision", "surrogate_decision_veto_effective.json", {"state": "EXECUTED", "effective_at": None},
+     ("$.effective_at", "expected type string", "allOf/5/then")),
+    ("surrogate_decision", "surrogate_decision_veto.json", {"state": "EXECUTED"},
+     ("$.effective_at", "expected type string", "allOf/5/then")),
     ("surrogate_decision", "surrogate_decision_routine.json", {"target": "KY_BUILDERS_MAX"},
      ("$.target", "expected type object")),
     ("surrogate_decision", "surrogate_decision_routine.json", {"authority__source_commit": "e709f60d7"},
@@ -778,14 +823,21 @@ def test_the_surrogate_decision_states_each_class_may_take():
     assert sch["properties"]["by"]["enum"] == ["kalayantra-owner-surrogate", "kyveto"]
     routine, veto, hard = (fixture(f"surrogate_decision_{name}.json") for name in ("routine", "veto", "hard_stop"))
     allowed = {"routine": {"PROPOSED", "EFFECTIVE", "EXECUTED", "FAILED"},
-               "veto": {"PROPOSED", "PENDING_VETO", "EXECUTED", "VETOED", "FAILED"},      # EFFECTIVE: see below
+               "veto": {"PROPOSED", "PENDING_VETO", "VETOED", "FAILED"},      # EFFECTIVE, EXECUTED: see below
                "hard_stop": {"PROPOSED"}}
     for doc, name in ((routine, "routine"), (veto, "veto"), (hard, "hard_stop")):
         for state in states:
             for effective_at in (None, "2026-10-11T22:35:02Z"):
                 found = kyschema.validate(sch, edit(doc, state=state, effective_at=effective_at))
-                expected = state in allowed[name] or (name == "veto" and state == "EFFECTIVE" and effective_at)
+                # finding N-14: a veto decision that was executed became effective first — at a recorded time
+                expected = state in allowed[name] or (name == "veto" and state in ("EFFECTIVE", "EXECUTED")
+                                                      and effective_at)
                 assert (not found) == bool(expected), (name, state, effective_at, found[:1])
+    executed = edit(fixture("surrogate_decision_veto_effective.json"), state="EXECUTED")
+    assert_valid(sch, executed)
+    assert_refused(sch, edit(executed, effective_at=None), "$.effective_at: expected type string, found null")
+    assert_valid(sch, edit(routine, state="EXECUTED", effective_at=None))        # a routine record needs none
+    assert len(sch["allOf"]) == 6 and "EXECUTED only with the effective_at" in sch["allOf"][5]["$comment"]
     assert fixture("surrogate_decision_veto_effective.json")["by"] == "kyveto"
     assert_valid(sch, edit(routine, by="kyveto"))
     assert_valid(sch, edit(routine, reason="superseded"))
@@ -815,7 +867,8 @@ LAUNCH_NEG = [
     ({"item": "K4-2a"}, ("$.item", "does not match pattern")),
     ({"job_id": "a/b"}, ("$.job_id", "does not match pattern")),
     ({"job_id": ".."}, ("$.job_id", "does not match pattern")),
-    ({"kind": "RULING"}, ("$.kind", "is not one of")),
+    ({"kind": "POST-READBACK"}, ("$.kind", "is not one of")),
+    ({"kind": "ruling"}, ("$.kind", "is not one of")),
     ({"base_sha": "HEAD"}, ("$.base_sha", "does not match pattern")),
     ({"claude_min_version": "2.1.239"}, ("$.claude_min_version", 'must equal "2.1.296"')),
     ({"model": "claude-haiku-5"}, ("$.model", "is not one of")),
@@ -864,6 +917,12 @@ def test_bootstrap_launch_input_requires_exactly_the_pinned_fields():
     assert sch["properties"]["plan_version"] == {"const": "2.7"} == schema("packet")["properties"]["plan_version"]
     for role in sch["properties"]["role"]["enum"]:
         assert_valid(sch, edit(fixture("launch_input.json"), role=role))
+    # finding N-15: a ruling, a pre-acceptance and an owner-surrogate job have kinds (and turn caps) of their own
+    assert sch["properties"]["kind"]["enum"] == ["BUILD", "REWORK", "ARTIFACT", "VERIFY", "PRE-ACCEPT", "RULING",
+                                                 "SURROGATE", "PLAN"]
+    for kind in sch["properties"]["kind"]["enum"]:
+        assert_valid(sch, edit(fixture("launch_input.json"), kind=kind))
+        assert f"{kind} " in sch["properties"]["kind"]["description"], kind
 
 
 # --------------------------------------------------------------------------------------------------------------

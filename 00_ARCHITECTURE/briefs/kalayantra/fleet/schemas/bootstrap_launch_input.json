@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ky.bootstrap_launch_input/1",
   "title": "KĀLA-YANTRA v3 bootstrap launch input (relaunch plan v2.7 §7 bootstrap launches and launch qualification, §14 B-0c / B-1)",
-  "description": "Everything the planner must have prepared and recorded before it launches one Wave B bootstrap job directly (no kyjob.sh, no dispatcher). A missing field refuses launch. This schema checks shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: every path absolute and normalised; the worktree, its branch and base_sha; the program's version against claude_min_version; the four sha256 values (each is the SHA-256 of the named file's bytes - packet_sha256 here is the file digest, not the front-matter field of the same name); the empty MCP configuration; the scratch and state locations; the environment allowlist; the forbidden launch flags; effort and turn cap per kind; the deadline; the bootstrap manifest and its review receipt; the supervisor's own reviewed bytes; that card_path and mcp_config are manifest components; the qualification receipt of role and model; the item lock. A schema-valid launch input is therefore not a launchable one.",
+  "description": "Everything the planner must have prepared and recorded before it launches one Wave B bootstrap job directly (no kyjob.sh, no dispatcher). A missing field refuses launch. This schema checks shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: the bootstrap manifest and its review receipt and the supervisor's own reviewed bytes (first: nothing else is examined when they fail); a job id short enough for its action ids; every path absolute and normalised; the worktree (never the shared checkout, always beneath the worktree root), its branch (never main or suvarna*) and base_sha; the four sha256 values (each is the SHA-256 of the named file's bytes - packet_sha256 here is the file digest, not the front-matter field of the same name); that the prompt holds the exact bytes of the card and of the packet; the empty MCP configuration; the scratch and state locations; the environment allowlist with JOB_SCRATCH and KY_SCRATCH; the forbidden launch flags; effort and turn cap per kind; the deadline; that card_path and mcp_config are manifest components; the qualification receipt of role and model and everything it binds; the program's version against claude_min_version (run only for the program that receipt binds); the item lock. A schema-valid launch input is therefore not a launchable one.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,12 +15,15 @@
   "properties": {
     "schema": {"const": "ky.bootstrap_launch_input/1"},
     "job_id": {
-      "description": "One safe path component: it names <KY_SCRATCH>/jobs/<job_id> and <KY_RUN>/jobs/<job_id>.",
+      "description": "One safe path component: it names <KY_SCRATCH>/jobs/<job_id> and <KY_RUN>/jobs/<job_id>. Its action ids ACT-launch-<job_id> and ACT-submit-<job_id> must fit the 160 characters of an action id (schemas/action.json); kyboot.py refuses a job id whose action ids would not.",
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
     },
     "item": {"type": "string", "pattern": "^KV3-B-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
-    "kind": {"enum": ["BUILD", "REWORK", "ARTIFACT", "VERIFY", "PLAN"]},
+    "kind": {
+      "description": "The job kind; it sets the turn cap kyboot.py enforces (plan §7): BUILD 150, REWORK 100, VERIFY 60, ARTIFACT 60, PRE-ACCEPT 40, RULING 30, SURROGATE 30 (the owner surrogate's ruling job), PLAN 300.",
+      "enum": ["BUILD", "REWORK", "ARTIFACT", "VERIFY", "PRE-ACCEPT", "RULING", "SURROGATE", "PLAN"]
+    },
     "role": {
       "description": "The launch configuration's role: it names the qualification receipt <KY_RUN>/QUALIFICATIONS/<role>-<model>.json that must be PASS and must bind this launch (plan §7, KV-06).",
       "enum": ["bootstrap-builder", "bootstrap-reviewer", "surrogate", "planner"]
@@ -51,7 +54,7 @@
     "tmp_path": {"$ref": "#/$defs/text"},
     "state_path": {"$ref": "#/$defs/text"},
     "env": {
-      "description": "The job's whole environment (env -i semantics). Names and values are checked by kyboot.py against the plan §7 allowlist; this schema cannot type an open map.",
+      "description": "The job's whole environment (env -i semantics). Names and values are checked by kyboot.py against the plan §7 allowlist; JOB_SCRATCH (= job_scratch) and KY_SCRATCH (= the supervisor's resolved campaign scratch folder) are required there. This schema cannot type an open map.",
       "type": "object"
     },
     "extra_lean_flags": {

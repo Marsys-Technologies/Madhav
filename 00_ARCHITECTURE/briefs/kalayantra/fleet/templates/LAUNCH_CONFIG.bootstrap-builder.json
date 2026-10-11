@@ -20,6 +20,8 @@
   "ZDOTDIR",
   "KY_ROOT",
   "KY_RUN",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
   "KY_ITEM",
   "KY_PY"
  ],

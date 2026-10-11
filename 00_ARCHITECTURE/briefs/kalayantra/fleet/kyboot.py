@@ -10,56 +10,97 @@ staged source bundle; its own proven instance lock; never starts the campaign di
 fleet_live as a shortcut"). Stdlib only, Python >= 3.9. It never reads a credential and prints the NAMES of
 forbidden environment variables only, never a value.
 
-  kyboot.py check <launch_input.json> [--manifest M]   every launch precondition; one named reason per refusal
-  kyboot.py argv  <launch_input.json> [--manifest M]   after check: {"cwd", "env", "argv"} — the §7 launch line
-  kyboot.py run   <launch_input.json> [--manifest M] [--grace SECONDS]
+  python3 -I -B kyboot.py check <launch_input.json> [--manifest M]   every launch precondition; one named reason
+                                           per refusal
+  … argv  <launch_input.json> [--manifest M]   after check: {"cwd", "env", "argv"} — the §7 launch line
+  … run   <launch_input.json> [--manifest M] [--grace SECONDS]
                                            check, take the item lock, record the action, launch in a new
                                            session, supervise to exit or deadline, record state.json
-  kyboot.py submit <launch_input.json> [--manifest M]  check (for the launchd context), render a one-shot
-                                           launchd user agent that runs `run`, bootstrap it, return at once
-  kyboot.py status [<job_id>]              read-only: state.json, whether the agent's label is loaded, whether
+  … submit <launch_input.json> [--manifest M]  check (for the launchd context), render a one-shot launchd user
+                                           agent that runs `run`, bootstrap it, return at once
+  … status [<job_id>]                      read-only: state.json, whether the agent's label is loaded, whether
                                            the recorded processes are alive (true | false | "unknown")
-  kyboot.py reap   [<job_id>]              boot out the agents of jobs that are positively over; never one whose
-                                           job or supervisor is alive or cannot be identified
-  kyboot.py validate <schema-name> <file>  shape-check a document against fleet/schemas/<schema-name>.json
+  … reap   [<job_id>]                      boot out the agents of jobs that are positively over; never one whose
+                                           job, job group or supervisor is alive or cannot be identified
+  … validate <schema-name> <file>          shape-check a document against fleet/schemas/<schema-name>.json
+                                           (no manifest is involved: kyschema.py is loaded by path, unverified —
+                                           a convenience, never a gate)
+
+Nothing is imported from this file's own folder. As a program it runs ONLY in an isolated interpreter (-I: no
+script folder, no PYTHONPATH, no user site on the import path) and refuses, exit 2, before its first import
+otherwise; the launchd agent it renders runs `python -I -B`. The strict JSON reader lives in this file, and
+kyschema.py is executed from the very bytes whose sha256 equalled the manifest's, never through the import
+system — so a module or a compiled cache planted beside the reviewed code is not loaded. The manifest tool is
+started isolated too, and is given no PYTHON* variable to hand on to what it starts.
 
 Context (a job runs where its qualification was earned): the context is "launchd" only when this process's
 parent is pid 1 AND XPC_SERVICE_NAME is the job's own label in.marsys.kalayantra.boot.<job_id> — the way
 kyqualify.py proves it — and "shell" otherwise; the receipt's `context` must equal it. `submit` checks against
-"launchd" (where the job will run); the `run` it starts checks again from inside the agent. The agent's
-environment is PATH, HOME, USER, LANG, KY_RUN, KY_SCRATCH, KY_ROOT and nothing else.
+"launchd" (where the job will run); the `run` it starts checks again from inside the agent. The manifest tool
+accepts only receipts earned under launchd, so a real job is started by `submit`; `run` from a shell then
+refuses with a context mismatch. The agent's environment is PATH, HOME, USER, LANG, KY_RUN, KY_SCRATCH, KY_ROOT
+and nothing else.
 
-Before EVERY launch (check, argv and run alike), in this order:
+Before EVERY launch (check, argv, run and submit alike), in this order — and a refusal at 1 or 2 stops there:
+the launch input is then not examined and nothing it names is executed:
   1. the supervisor itself: it does not run from the installed fleet (/Users/Dev/kalayantra/fleet_live or
      $KY_FLEET), and kyboot.py, kyschema.py and kymanifest.py are components of the manifest with exactly the
      reviewed bytes;
   2. the manifest gate: `kymanifest.py check <M> --repo <the repository this file is in> --run <KY_RUN>` exits
      0 (entrypoints, components, generated pairs, probes, qualifications and the ACCEPTED review receipt still
      match disk); M defaults to <KY_RUN>/VERSIONS.bootstrap.json;
-  3. the launch input (shape, paths, worktree, program version, hashes, empty MCP configuration, scratch and
-     state locations, environment allowlist, flags, effort, turn cap, deadline), bound to the manifest: the same
-     approved source commit and plan version, and card_path and mcp_config are manifest components;
+  3. the launch input (shape, job id, paths, worktree and branch policy, hashes, the prompt holding the exact
+     bytes of the reviewed card and of the packet, empty MCP configuration, scratch and state locations,
+     environment allowlist with JOB_SCRATCH and KY_SCRATCH, flags, effort, turn cap, deadline), bound to the
+     manifest: the same approved source commit and plan version, and card_path and mcp_config are components;
   4. the qualification gate: <KY_RUN>/QUALIFICATIONS/<role>-<model>.json is recorded in the manifest, says
-     exactly "PASS" and binds this launch (program path, hash and version, model, effort, permission mode, turn
-     limit, MCP configuration hash, environment names, and the launch line itself, flag for flag).
+     exactly "PASS" and binds this launch: program path and sha256, model, effort, permission mode, turn limit,
+     MCP configuration hash, environment names, the child PATH, the job worktree's .claude/settings.json
+     (sha256 or "absent"), <KY_ROOT>/zdotdir, the qualification harness (kyqualify.py as the manifest lists
+     it), a deadline no later than now + the qualified deadline_seconds, and the launch line, flag for flag.
+     A receipt lacking any of these binds refuses;
+  5. the program: `<claude_bin> --version` is run ONLY after 1–4 found the file to be the one the recorded
+     receipt binds (path and sha256); its version must be at least the pin and the receipt's.
 `run` then takes <KY_RUN>/locks/kyboot.<item> (one live supervisor per item), writes
 <KY_RUN>/actions/ACT-launch-<job_id>.json (INTENDED) before the launch and completes it (DONE | FAILED) with
-the observed termination, and records <KY_RUN>/jobs/<job_id>/state.json. It writes nothing else under KY_RUN:
+the observed termination, and records <KY_RUN>/jobs/<job_id>/state.json. It writes nothing else under KY_RUN
+(beside a lock, only that lock's own short-lived private directories kyboot.<item>.new.*, .stale.*, .released.*):
 no role-state file, nothing of the dispatcher's, nothing in fleet_live.
+
+The item lock (cockpit ruling R2, the same rule in every fleet tool). A lock is a directory that never exists
+without its owner.json: it is built in a private directory beside it and renamed into place. It is taken over
+only when its recorded owner is POSITIVELY gone (ps: no such process, a zombie, or another start identity) and
+the job that owner recorded is too: `child` null (none was started), or an identified job whose leader is
+positively gone AND whose process group answers `killpg(pgid, 0)` with ESRCH. `child: "pending"` — written
+before the job is started — an unidentified child, a missing or unreadable owner and anything ps cannot answer
+are never taken over. A takeover renames the stale lock to a grave, reads the grave's owner.json again and
+removes it only if it is exactly the owner that was judged; anything else is put back untouched. kyboot also
+serialises its own acquisitions with an exclusive flock on the locks folder (no file is created).
+
+Once the job's process exists nothing can leave it unsupervised: every later step — state writes, the owner
+record, the supervision loop — runs inside one guard that ends the process group and records why, and `run`
+then never answers 1.
 
 Read from kyboot's own environment: KY_SCRATCH (required; the dated campaign scratch folder), KY_RUN (default
 /Users/Dev/kalayantra/run), KY_FLEET (only to refuse running from it), KY_LAUNCHCTL (default /bin/launchctl),
-XPC_SERVICE_NAME (set by launchd), PATH (to find git and ps), and two TESTS-ONLY names: KY_SCRATCH_ROOT_OVERRIDE
-(replaces the root KY_SCRATCH must lie under) and KY_TEST_PPID (stands in for the parent pid, honoured only
-when KY_SCRATCH_ROOT_OVERRIDE is also set). The use of either is recorded in state.json.
+XPC_SERVICE_NAME (set by launchd), PATH (to find git and ps), and three TESTS-ONLY names: KY_SCRATCH_ROOT_OVERRIDE
+(replaces the root KY_SCRATCH must lie under), and — honoured only when that one is also set — KY_TEST_PPID
+(stands in for the parent pid) and KY_WORKTREE_ROOT_OVERRIDE (replaces the root a job worktree must lie under).
+With KY_SCRATCH_ROOT_OVERRIDE set, launchctl is run only from beneath that root: a test can never reach the real
+launchd. Every override in use, and a KY_LAUNCHCTL that is not the default, is recorded in state.json and in
+the action record and printed in the CHECK-PASSED line.
 
-Exit: 0   check / argv / validate / status passed; run: the job exited 0 and any result.json it left is valid;
+Exit: 0   check / argv / validate / status passed; run: the job exited 0 and left a valid result.json;
           submit: launchctl bootstrap exited 0; reap: every agent it booted out is confirmed absent
       1   refused (every reason on stderr) — nothing was launched or submitted
-      2   malformed command, unknown schema name, or a schema that kyschema refuses
-      3   run: the job could not be started, exited non-zero, or left an invalid result.json;
-          submit: launchctl bootstrap failed; reap: an agent is still loaded after bootout
-      5   run: the job's process group could not be confirmed gone (the item lock is then left in place)
+      2   malformed command, unknown schema name, a schema that kyschema refuses, or an interpreter that is
+          not isolated (python3 -I)
+      3   run: the job could not be started, exited non-zero, left a result.json that is invalid or refused (a
+          symbolic link is never read), or the supervisor failed after starting it (the job was ended;
+          state.json `supervisor_error`); submit: launchctl bootstrap failed; reap: an agent is still loaded
+          after bootout
+      5   run: the job's process group could not be confirmed gone (the item lock is then left in place), or
+          the job ended without leaving result.json (state.json `termination_detail: "no_result"`; never 0)
       78  a credential variable name is set in kyboot's own environment (names printed, values never read)
       124 run: the deadline passed (the group was terminated)      130 run: the supervisor was signalled
 
@@ -70,79 +111,116 @@ exiting 0 is not acceptance of the job's work (plan §7: independent review foll
 Limits, stated rather than hidden:
   * the group is the unit of supervision: a descendant that leaves the job's session / process group is not
     seen, and `group_gone` says nothing about it;
+  * if the supervisor itself is killed, the job runs on with no deadline. Its lock then names it (or says
+    "pending") and is never taken over; ending that job before a relaunch is the planner's step (B-1);
   * "gone" is `killpg(pgid, 0)` → ESRCH, asked after the leader has been collected. Signals after that point
-    go to a group id that only its surviving members keep reserved;
+    go to a group id that only its surviving members keep reserved; a recorded group id that another process
+    group reuses later reads as "not gone" and keeps the lock for a person to reconcile;
   * a process identity is (pid, the text `LC_ALL=C ps -o lstart=` prints): local time, one-second resolution;
   * on Linux an exited-but-uncollected member still answers `killpg(…, 0)`, so a job whose children are
     collected late may be reported as `leftover_group: "terminated"` there; on macOS it is waited out;
-  * the supervisor verifies the bytes on disk of the code it runs, at check time; it cannot prove what an
-    interpreter loaded earlier, and the manifest gate is as strong as the reviewed kymanifest.py;
+  * the lock is installed with rename(2), which replaces an EMPTY directory: an empty directory that a foreign
+    program creates at the lock path in the instant after kyboot looked is replaced (it named no owner);
+  * the supervisor verifies the bytes on disk of the code it runs, at check time, and executes kyschema.py from
+    those bytes; kymanifest.py is run by path (isolated) after its hash matched, and what the manifest tool
+    starts in turn (kyqualify.py and what that imports) is verified, and isolated or not, by that tool — not
+    here. The gate is as strong as the reviewed kymanifest.py; the interpreter and its standard library are
+    trusted;
+  * the program is hashed at check time, before `--version` is run; it is not hashed again at the instant it
+    is executed or launched;
   * the qualification receipt is read for the fields compared here; its other fields are not judged;
+  * the worktree and branch policy is a refusal list (the shared checkout, anything outside the Claude/Madhav
+    worktree root, `main`, `suvarna*`); that the worktree is the right one for the item is the planner's;
   * `submit` returns when launchd has accepted the agent, not when the job has started: what the job did is in
     state.json and <job_scratch>/supervisor.err (`status`). A `run` that refuses inside the agent writes no
     state.json, so `reap` leaves that label loaded (its job's identity is unknown) for a person to boot out.
 """
-from __future__ import annotations
-
-import datetime as _dt
-import hashlib
-import json
-import os
-import plistlib
-import pwd
-import re
-import signal
-import subprocess
 import sys
-import time
-from pathlib import Path
 
-FLEET = Path(__file__).resolve().parent
-sys.path.insert(0, str(FLEET))
+if __name__ == "__main__" and not sys.flags.isolated:
+    # Before anything else is imported: without -I the folder this file is in comes first on the import path, and
+    # a file planted beside the reviewed code (json.py, hashlib.py, …) would run inside the supervisor before it
+    # has verified anything. An isolated interpreter has neither that folder, nor PYTHONPATH, nor the user site.
+    sys.stderr.write("kyboot.py runs only in an isolated interpreter: python3 -I -B kyboot.py <command> …\n"
+                     "(without -I this file's own folder, PYTHONPATH and the user site could answer its imports; "
+                     "nothing was read and nothing was run)\n")
+    sys.exit(2)
 
-import kyschema  # noqa: E402
+import datetime as _dt  # noqa: E402
+import errno  # noqa: E402
+import fcntl  # noqa: E402
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import plistlib  # noqa: E402
+import pwd  # noqa: E402
+import re  # noqa: E402
+import signal  # noqa: E402
+import stat  # noqa: E402
+import subprocess  # noqa: E402
+import time  # noqa: E402
+import types  # noqa: E402
 
-SCHEMA_DIR = FLEET / "schemas"
+FLEET = os.path.dirname(os.path.realpath(__file__))
+
+SCHEMA_DIR = os.path.join(FLEET, "schemas")
 LAUNCH_SCHEMA = "bootstrap_launch_input"
-STATE_SCHEMA = "ky.bootstrap_job_state/2"
+STATE_SCHEMA = "ky.bootstrap_job_state/3"
 MANIFEST_SCHEMA = "ky.versions_bootstrap/1"
 QUALIFICATION_SCHEMA = "ky.qualification/1"
 ACTION_SCHEMA = "ky.action/1"
 
 EXIT_OK, EXIT_REFUSED, EXIT_USAGE, EXIT_JOB_FAILED, EXIT_GROUP_SURVIVED = 0, 1, 2, 3, 5
+EXIT_NO_RESULT = 5                                         # cockpit ruling R1: a job without result.json, never 0
 EXIT_CREDENTIAL_ENV, EXIT_TIMED_OUT, EXIT_INTERRUPTED = 78, 124, 130
 
 DEFAULT_KY_RUN = "/Users/Dev/kalayantra/run"
 INSTALLED_FLEET = "/Users/Dev/kalayantra/fleet_live"       # never the supervisor's home (plan §14 B-0c)
-SUPERVISOR_CODE = ("kyboot.py", "kyschema.py", "kymanifest.py")    # everything this supervisor runs or imports
+SUPERVISOR_CODE = ("kyboot.py", "kyschema.py", "kymanifest.py")    # everything this supervisor runs or executes
+SCHEMA_TOOL = "kyschema.py"                                # executed from its verified bytes, never imported
+HARNESS_FILE = "kyqualify.py"                              # the qualification harness a receipt binds by sha256
 MANIFEST_BOUND_FILES = (("card_path", "card_sha256"), ("mcp_config", "mcp_config_sha256"))
-LSTART_FMT = "%a %b %d %H:%M:%S %Y"                        # `LC_ALL=C ps -o lstart=`, as kyloop.py pins it
-LOCK_OWNER_WAIT_SECONDS = 1.0
+LSTART_FMT = "%a %b %d %H:%M:%S %Y"                        # `LC_ALL=C ps -o lstart=`, as every fleet tool pins it
+CHILD_PENDING = "pending"                                  # owner.json `child` from just before the job is started
+LOCK_ATTEMPTS = 3
+LOCK_GUARD_WAIT_SECONDS = 60.0
 LABEL_PREFIX = "in.marsys.kalayantra.boot."                # + <job_id>: the one-shot agent of one bootstrap job
 DEFAULT_LAUNCHCTL = "/bin/launchctl"
+LAUNCHCTL_NOT_FOUND = 113                                  # `launchctl print`: "Could not find service"
+LAUNCHCTL_PATH = "/usr/bin:/bin"
 PLUTIL = "/usr/bin/plutil"
 AGENT_PATH = "/opt/homebrew/bin:/usr/bin:/bin"
 AGENT_ENV_NAMES = ("PATH", "HOME", "USER", "LANG", "KY_RUN", "KY_SCRATCH", "KY_ROOT")   # the agent's whole environment
 ABSENT_CONFIRM_SECONDS = 2.0
 DEFAULT_SCRATCH_ROOT = "/Users/Dev/scratch.noindex"
 SCRATCH_ROOT_NEVER = ("/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp")    # owner policy: never /tmp
+SHARED_CHECKOUT = "/Users/Dev/Vibe-Coding/Apps/Madhav"     # never a job's worktree (isolation rule)
+WORKTREE_ROOT = "/Users/Dev/worktrees.noindex/madhav/claude"   # every job worktree lies beneath it (owner policy)
+BRANCHES_NEVER = "`main` and `suvarna*` are never job branches"
 DEFAULT_GRACE_SECONDS = 20.0
 KILL_CONFIRM_SECONDS = 10.0
 POLL_SECONDS = 0.05
 SESSION_SCAN_BYTES = 262144
+FILE_MAX_BYTES = 8 << 20                                   # prompt, card, packet, MCP configuration: read whole
+RESULT_MAX_BYTES = 1 << 20
+ACTION_ID_MAX = 160                                        # schemas/action.json and kyaction.py: an action id's length
+ACTION_VERBS = ("launch", "submit")                        # ACT-<verb>-<job_id>: the two action ids of one job
 
-# plan §7 launch line: the only names a job's environment may carry
+# plan §7 launch line plus cockpit ruling R1 (JOB_SCRATCH, KY_SCRATCH): the only names a job's environment may carry
 ENV_ALLOWLIST = ("HOME", "PATH", "LANG", "TERM", "USER", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_FLEET",
-                 "KY_STREAM", "KY_LANE", "KY_ITEM", "KY_PY", "SE_EPHE_PATH", "SWE_EPHE_PATH", "TESTS")
-ENV_REQUIRED = ("HOME", "PATH", "KY_ROOT", "TMPDIR")
+                 "KY_STREAM", "KY_LANE", "KY_ITEM", "KY_PY", "SE_EPHE_PATH", "SWE_EPHE_PATH", "TESTS",
+                 "KY_SCRATCH", "JOB_SCRATCH")
+ENV_REQUIRED = ("HOME", "PATH", "KY_ROOT", "TMPDIR", "KY_SCRATCH", "JOB_SCRATCH")
 ENV_PATH_VALUED = ("HOME", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_FLEET", "KY_PY", "SE_EPHE_PATH",
-                   "SWE_EPHE_PATH")
+                   "SWE_EPHE_PATH", "KY_SCRATCH", "JOB_SCRATCH")
 ENV_FORBIDDEN = re.compile(r"^(DATABASE_URL|.*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY|.*TOKEN.*|.*SECRET.*)\Z",
                            re.IGNORECASE)
 OWN_ENV_CREDENTIAL = re.compile(r"^(DATABASE_URL|.*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY)\Z")
 
-# plan §7 turn caps (ARTIFACT is the verifier's job kind and takes the VERIFY cap)
-TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "ARTIFACT": 60, "PLAN": 300}
+# plan §7 turn caps (ARTIFACT is the verifier's job kind and takes the VERIFY cap; SURROGATE is the owner
+# surrogate's ruling job and takes the RULING cap)
+TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "ARTIFACT": 60, "PRE-ACCEPT": 40, "RULING": 30,
+             "SURROGATE": 30, "PLAN": 300}
 
 FLAGS_NEVER = {
     "--bare": "P-1: it never reads the stored sign-in and accepts only an API key",
@@ -159,8 +237,12 @@ PATH_FIELDS = ("worktree", "claude_bin", "mcp_config", "prompt_path", "card_path
                "stdout_path", "stderr_path", "tmp_path", "state_path")
 HASHED_FILES = (("prompt_path", "prompt_sha256"), ("card_path", "card_sha256"), ("packet_path", "packet_sha256"),
                 ("mcp_config", "mcp_config_sha256"))
+IN_THE_PROMPT = ("card_path", "packet_path")              # their exact bytes must be in the prompt (plan §7)
 BENEATH_JOB_SCRATCH = ("prompt_path", "stdout_path", "stderr_path", "tmp_path")
-EMPTY_MCP = {"mcpServers": {}}
+# what a receipt must bind beyond its launch line and its program version (plan §7 KV-06, cockpit ruling R6)
+BOUND_FACTS = ("claude_bin", "claude_bin_sha256", "model", "effort", "permission_mode", "max_turns",
+               "mcp_config_sha256", "env_names", "child_path", "project_settings_sha256", "zdotdir_sha256",
+               "harness_sha256")
 
 _PLACEHOLDER = re.compile(r"<[A-Z][A-Z0-9_]*>")
 _VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?=\s|\Z)")
@@ -215,16 +297,56 @@ def sha256_file(path) -> str:
     return digest.hexdigest()
 
 
+def load_json_text(text: str):
+    """strict JSON: a duplicate object key, NaN or Infinity refuses the document (ValueError names the reason).
+    The rule of kyschema.py, kept here so that nothing of this folder is needed before it has been verified."""
+    def pairs(items):
+        out = {}
+        for key, value in items:
+            if key in out:
+                raise ValueError(f"duplicate key {key!r}")
+            out[key] = value
+        return out
+
+    def constant(name):
+        raise ValueError(f"{name} is not JSON")
+
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=constant)
+
+
 def read_json_and_sha(path):
     """(the strictly parsed document, the sha256 of the very bytes it was parsed from); ValueError says why not"""
     try:
-        data = Path(path).read_bytes()
+        with open(path, "rb") as handle:
+            data = handle.read()
     except OSError as unreadable:
         raise ValueError(f"cannot read {path}: {unreadable}") from None
     try:
-        return kyschema.load_json_text(data.decode("utf-8")), hashlib.sha256(data).hexdigest()
-    except (ValueError, UnicodeDecodeError) as bad:
+        return load_json_text(data.decode("utf-8")), hashlib.sha256(data).hexdigest()
+    except (ValueError, UnicodeDecodeError, RecursionError) as bad:
         raise ValueError(f"{path} is not acceptable JSON: {bad}") from None
+
+
+def read_json(path):
+    return read_json_and_sha(path)[0]
+
+
+def read_bounded(path, limit):
+    """the whole content of a file, or None when it is larger than `limit` bytes; OSError when it cannot be read"""
+    with open(path, "rb") as handle:
+        data = handle.read(limit + 1)
+    return None if len(data) > limit else data
+
+
+def same_json(a, b) -> bool:
+    """two JSON values are the same value of the same type (150 is not 150.0 and true is not 1)"""
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, list):
+        return len(a) == len(b) and all(same_json(x, y) for x, y in zip(a, b))
+    if isinstance(a, dict):
+        return a.keys() == b.keys() and all(same_json(a[key], b[key]) for key in a)
+    return a == b
 
 
 def _show(value) -> str:
@@ -272,21 +394,34 @@ def _git(worktree, environ, *args):
 
 
 def schema_names() -> list:
-    return sorted(path.stem for path in SCHEMA_DIR.glob("*.json"))
+    try:
+        return sorted(name[:-len(".json")] for name in os.listdir(SCHEMA_DIR) if name.endswith(".json"))
+    except OSError:
+        return []
 
 
 def load_schema(name: str):
-    return kyschema.load_json(SCHEMA_DIR / f"{name}.json")
+    return read_json(os.path.join(SCHEMA_DIR, f"{name}.json"))
+
+
+def module_from_bytes(name, path, data):
+    """a module made of exactly these bytes: nothing is looked up on the import path and no compiled cache
+    beside the file is read or written"""
+    module = types.ModuleType(name)
+    module.__file__ = path
+    exec(compile(data, path, "exec"), module.__dict__)
+    return module
 
 
 # --------------------------------------------------------------------------------------------------------------
 # check
 # --------------------------------------------------------------------------------------------------------------
 class Checked:
-    """the outcome of `check`: .launch (None when unreadable), .findings (every refusal), .facts (what was observed)"""
+    """the outcome of `check`: .launch (None when unreadable or not examined), .findings (every refusal),
+    .facts (what was observed), .schema_tool (the verified kyschema module, None when the gate refused)"""
 
-    def __init__(self, launch, findings, facts):
-        self.launch, self.findings, self.facts = launch, findings, facts
+    def __init__(self, launch, findings, facts, schema_tool=None):
+        self.launch, self.findings, self.facts, self.schema_tool = launch, findings, facts, schema_tool
 
     @property
     def ok(self) -> bool:
@@ -320,7 +455,30 @@ def resolve_scratch(environ, findings):
     return real, root, override is not None
 
 
-def env_findings(launch, ky_run) -> list:
+def overrides_in_use(environ) -> dict:
+    """{name: value} of every tests-only override this run honours and of a launchctl that is not the default:
+    recorded in state.json and in the action record, and printed by `check` (never silently in force)"""
+    used = {}
+    testing = environ.get("KY_SCRATCH_ROOT_OVERRIDE") is not None
+    if testing:
+        used["KY_SCRATCH_ROOT_OVERRIDE"] = environ["KY_SCRATCH_ROOT_OVERRIDE"]
+        for name in ("KY_TEST_PPID", "KY_WORKTREE_ROOT_OVERRIDE"):
+            if environ.get(name) is not None:
+                used[name] = environ[name]
+    if launchctl_program(environ) != DEFAULT_LAUNCHCTL:
+        used["KY_LAUNCHCTL"] = launchctl_program(environ)
+    return used
+
+
+def show_overrides(used) -> str:
+    """one line, whatever the values hold: each value as a JSON string, whole"""
+    return ", ".join(f"{name}={json.dumps(used[name], ensure_ascii=False)}" for name in sorted(used)) if used else "none"
+
+
+def env_findings(launch, ky_run, scratch) -> list:
+    """the job's environment: allowlist, required names, absolute paths, and the values the supervisor can
+    check — TMPDIR, KY_RUN, KY_ITEM, ZDOTDIR, and (ruling R1) JOB_SCRATCH and KY_SCRATCH. `scratch` is the
+    supervisor's resolved KY_SCRATCH, None when that was refused."""
     out = []
     env = launch["env"]
     for name in sorted(env):
@@ -344,6 +502,11 @@ def env_findings(launch, ky_run) -> list:
                 out.append(f"env.PATH: entry {entry!r} is not an absolute path")
     if "TMPDIR" in env and env["TMPDIR"] != launch["tmp_path"]:
         out.append(f"env.TMPDIR: {env['TMPDIR']!r} must equal tmp_path {launch['tmp_path']!r}")
+    if "JOB_SCRATCH" in env and env["JOB_SCRATCH"] != launch["job_scratch"]:
+        out.append(f"env.JOB_SCRATCH: {env['JOB_SCRATCH']!r} must equal job_scratch {launch['job_scratch']!r}")
+    if "KY_SCRATCH" in env and scratch is not None and env["KY_SCRATCH"] != scratch:
+        out.append(f"env.KY_SCRATCH: {env['KY_SCRATCH']!r} differs from the supervisor's resolved KY_SCRATCH "
+                   f"{scratch!r}")
     if "KY_RUN" in env and env["KY_RUN"] != ky_run:
         out.append(f"env.KY_RUN: {env['KY_RUN']!r} differs from the supervisor's KY_RUN {ky_run!r}")
     if "KY_ITEM" in env and env["KY_ITEM"] != launch["item"]:
@@ -351,6 +514,8 @@ def env_findings(launch, ky_run) -> list:
     root = env.get("KY_ROOT")
     if isinstance(root, str) and os.path.isabs(root) and not os.path.isdir(root):
         out.append(f"env.KY_ROOT: {root} is not an existing directory (it is passed as --add-dir)")
+    if "ZDOTDIR" in env and isinstance(root, str) and env["ZDOTDIR"] != os.path.join(root, "zdotdir"):
+        out.append(f"env.ZDOTDIR: {env['ZDOTDIR']!r} must equal <KY_ROOT>/zdotdir (the qualified shell start-up)")
     return out
 
 
@@ -369,8 +534,35 @@ def flag_findings(flags) -> list:
 
 def clean_env(launch) -> dict:
     """the job's whole environment: the launch input's allowlisted env, nothing inherited (check has required it
-    to carry TMPDIR and that TMPDIR to be tmp_path)"""
+    to carry TMPDIR, JOB_SCRATCH and KY_SCRATCH with the values the supervisor resolved)"""
     return {name: launch["env"][name] for name in sorted(launch["env"]) if name in ENV_ALLOWLIST}
+
+
+def worktree_root(environ):
+    """(the root every job worktree must lie beneath, whether the tests-only override replaced it).
+    TESTS ONLY: KY_WORKTREE_ROOT_OVERRIDE replaces the root, and ONLY when KY_SCRATCH_ROOT_OVERRIDE (itself
+    tests-only) is also set; its use is recorded like every override."""
+    if environ.get("KY_SCRATCH_ROOT_OVERRIDE") is not None and environ.get("KY_WORKTREE_ROOT_OVERRIDE") is not None:
+        return environ["KY_WORKTREE_ROOT_OVERRIDE"], True
+    return WORKTREE_ROOT, False
+
+
+def worktree_policy_findings(launch, environ) -> list:
+    """where a job may never run: the shared checkout, anywhere outside the worktree root, `main`, `suvarna*`"""
+    out = []
+    real = os.path.realpath(launch["worktree"])
+    shared = os.path.realpath(SHARED_CHECKOUT)
+    if real == shared or _is_beneath(real, shared):
+        out.append(f"worktree: {real} is the shared checkout {SHARED_CHECKOUT}; a job never runs there")
+    root, overridden = worktree_root(environ)
+    if overridden and (not os.path.isabs(root) or not os.path.isdir(root)):
+        out.append("KY_WORKTREE_ROOT_OVERRIDE: is set but is not an existing absolute directory")
+    elif not _is_beneath(real, os.path.realpath(root)):
+        out.append(f"worktree: {real} is not beneath the worktree root {os.path.realpath(root)}")
+    branch = launch["branch"]
+    if branch == "main" or branch.lower().startswith("suvarna"):
+        out.append(f"branch: {branch!r} is refused ({BRANCHES_NEVER})")
+    return out
 
 
 def _git_findings(launch, environ, facts) -> list:
@@ -406,7 +598,9 @@ def _git_findings(launch, environ, facts) -> list:
     return out
 
 
-def _claude_findings(launch, facts) -> list:
+def _program_findings(launch, facts) -> list:
+    """the program as a file: it exists, is executable, and its resolved bytes are hashed. NOTHING is executed
+    here — the hash is compared with the recorded qualification receipt first (see `_version_findings`)."""
     binary = launch["claude_bin"]
     if not os.path.isfile(binary):
         return [f"claude_bin: does not exist or is not a file: {binary}"]
@@ -417,6 +611,13 @@ def _claude_findings(launch, facts) -> list:
         facts["claude_bin_sha256"] = sha256_file(facts["claude_bin_realpath"])
     except OSError as unreadable:
         return [f"claude_bin: cannot be read: {unreadable}"]
+    return []
+
+
+def _version_findings(launch, facts, binds) -> list:
+    """run `<claude_bin> --version` — only ever called for a program the recorded PASS receipt binds by path and
+    sha256 — and hold its answer against the pinned minimum and the receipt's version"""
+    binary = launch["claude_bin"]
     env = clean_env(launch)
     env.pop("TMPDIR", None)                       # tmp_path need not exist before `run`
     try:
@@ -431,43 +632,77 @@ def _claude_findings(launch, facts) -> list:
     if found is None:
         return [f"claude_bin: version output is not X.Y.Z: {first[:80]!r}"]
     facts["claude_version"] = first.strip()
+    out = []
     minimum = parse_version(launch["claude_min_version"])
     if minimum is None or found < minimum:
-        return [f"claude_bin: version {'.'.join(map(str, found))} is below the pinned minimum "
-                f"{launch['claude_min_version']}"]
-    return []
+        out.append(f"claude_bin: version {'.'.join(map(str, found))} is below the pinned minimum "
+                   f"{launch['claude_min_version']}")
+    bound = parse_version(binds["claude_version"]) if isinstance(binds.get("claude_version"), str) else None
+    if "claude_version" not in binds:
+        out.append("qualification: binds.claude_version is missing")
+    elif bound is None or found != bound:
+        out.append(f"qualification: binds.claude_version {_show(binds['claude_version'])} does not bind this "
+                   f"launch ({facts['claude_version']!r})")
+    return out
 
 
 def _file_findings(launch) -> list:
-    out = []
+    """the four hashed files hold the bytes their hashes name; the MCP configuration is the empty one; and the
+    prompt carries the exact bytes of the reviewed card and of the packet (plan §7: card + packet + header)"""
+    out, content = [], {}
     for path_field, hash_field in HASHED_FILES:
         path = launch[path_field]
         if not os.path.isfile(path):
             out.append(f"{path_field}: does not exist or is not a file: {path}")
             continue
         try:
-            actual = sha256_file(path)
+            data = read_bounded(path, FILE_MAX_BYTES)
         except OSError as unreadable:
             out.append(f"{path_field}: cannot be read: {unreadable}")
             continue
+        if data is None:
+            out.append(f"{path_field}: larger than {FILE_MAX_BYTES} bytes; refused unread")
+            continue
+        actual = hashlib.sha256(data).hexdigest()
         if actual != launch[hash_field]:
             out.append(f"{path_field}: sha256 mismatch: the file is {actual}, {hash_field} says {launch[hash_field]}")
-    if os.path.isfile(launch["mcp_config"]):
-        try:
-            content = kyschema.load_json(launch["mcp_config"])
-        except ValueError as bad:
-            out.append(f"mcp_config: {bad}")
         else:
-            if type(content) is not dict or not kyschema.json_equal(content, EMPTY_MCP):
-                out.append('mcp_config: the content must be exactly {"mcpServers":{}} for a bootstrap job')
+            content[path_field] = data
+        if path_field == "mcp_config":
+            try:
+                configured = load_json_text(data.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError, RecursionError) as bad:
+                out.append(f"mcp_config: {path} is not acceptable JSON: {bad}")
+            else:
+                if type(configured) is not dict or list(configured) != ["mcpServers"] \
+                        or type(configured["mcpServers"]) is not dict or configured["mcpServers"]:
+                    out.append('mcp_config: the content must be exactly {"mcpServers":{}} for a bootstrap job')
+    if "prompt_path" in content:
+        for field in IN_THE_PROMPT:
+            if field not in content:
+                continue                                  # already refused above, by its own reason
+            if not content[field]:
+                out.append(f"{field}: the file is empty; an empty file cannot be shown to be in the prompt")
+            elif content[field] not in content["prompt_path"]:
+                out.append(f"prompt_path: the prompt does not contain the exact bytes of {field} "
+                           f"({launch[field]}); a prompt is the reviewed card + the packet + the job header")
     return out
 
 
-def _location_findings(launch, environ, ky_run, facts) -> list:
+def job_id_findings(job_id: str) -> list:
+    """a job id leaves room for its action ids: ACT-launch-<job_id> and ACT-submit-<job_id> are action ids, and an
+    action id has at most ACTION_ID_MAX characters. (The launch-input schema's own limit of 128 is the tighter
+    one today; this refusal is what stops either limit from moving without the other.)"""
+    longest = max(len(f"ACT-{verb}-{job_id}") for verb in ACTION_VERBS)
+    if longest > ACTION_ID_MAX:
+        return [f"job_id: {len(job_id)} characters; its action ids (ACT-launch-<job_id>, ACT-submit-<job_id>) would "
+                f"have {longest}, more than the {ACTION_ID_MAX} an action id may have"]
+    return []
+
+
+def _location_findings(launch, ky_run, scratch) -> list:
     out = []
     job_id = launch["job_id"]
-    scratch, root, overridden = resolve_scratch(environ, out)
-    facts["scratch_root"], facts["scratch_root_override"], facts["ky_scratch"] = root, overridden, scratch
     expected_state = os.path.join(ky_run, "jobs", job_id, "state.json")
     if launch["state_path"] != expected_state:
         out.append(f"state_path: {launch['state_path']} is not <KY_RUN>/jobs/<job_id>/state.json = "
@@ -477,6 +712,9 @@ def _location_findings(launch, environ, ky_run, facts) -> list:
         expected = os.path.join(scratch, "jobs", job_id)
         if job_real != expected:
             out.append(f"job_scratch: {job_real} is not <KY_SCRATCH>/jobs/<job_id> = {expected}")
+        elif launch["job_scratch"] != expected:
+            out.append(f"job_scratch: {launch['job_scratch']} is not written as the resolved path {expected} "
+                       f"(the job reads it as JOB_SCRATCH)")
     for field in BENEATH_JOB_SCRATCH:
         real = os.path.realpath(launch[field])
         if not _is_beneath(real, job_real):
@@ -535,8 +773,9 @@ def installed_fleet_root(path, environ):
 
 
 def run_manifest_check(kymanifest_path, manifest_path, source_repo, ky_run, environ):
-    """(exit code, stdout, stderr) of the reviewed sibling: kymanifest.py check <manifest> --repo … --run …"""
-    env = {name: value for name, value in environ.items() if not name.startswith("GIT_")}
+    """(exit code, stdout, stderr) of the reviewed sibling: kymanifest.py check <manifest> --repo … --run …
+    — isolated, and with no GIT_* redirection and no PYTHON* variable to pass on to the harness it starts"""
+    env = {name: value for name, value in environ.items() if not name.startswith(("GIT_", "PYTHON"))}
     try:
         done = subprocess.run([sys.executable, "-I", "-B", kymanifest_path, "check", manifest_path,
                                "--repo", source_repo, "--run", ky_run], capture_output=True, text=True, env=env,
@@ -573,14 +812,17 @@ def load_manifest(manifest_path):
 
 
 def manifest_gate(manifest_path, ky_run, environ, facts):
-    """(manifest or None, components, findings): the supervisor is the reviewed code and the manifest gate passes"""
+    """(manifest or None, components, findings, the verified kyschema module or None): the supervisor is the
+    reviewed code and the manifest gate passes. Each sibling is read ONCE: the bytes that are hashed are the
+    bytes that are executed (kyschema.py) — nothing is imported from this folder."""
     findings = []
     own = os.path.realpath(__file__)
     facts["supervisor_path"], facts["manifest_path"] = own, manifest_path
+    facts["python_isolated"] = bool(sys.flags.isolated)
     try:
         facts["supervisor_sha256"] = sha256_file(own)
     except OSError as unreadable:
-        return None, {}, [f"supervisor: cannot read its own file {own}: {unreadable}"]
+        return None, {}, [f"supervisor: cannot read its own file {own}: {unreadable}"], None
     installed = installed_fleet_root(own, environ)
     if installed:
         findings.append(f"supervisor: {own} runs from the installed fleet {installed}; the bootstrap supervisor "
@@ -588,15 +830,15 @@ def manifest_gate(manifest_path, ky_run, environ, facts):
     code, top = _git(os.path.dirname(own), environ, "rev-parse", "--show-toplevel")
     if code != 0 or not top:
         return None, {}, findings + [f"supervisor: {own} is not inside a git work tree; there is no reviewed "
-                                     f"source to verify it against"]
+                                     f"source to verify it against"], None
     source = os.path.realpath(top)
     facts["source_repo"] = source
     manifest, components, file_sha, problems = load_manifest(manifest_path)
     if manifest is None:
-        return None, {}, findings + problems
+        return None, {}, findings + problems, None
     facts["manifest_sha256"], facts["manifest_file_sha256"] = manifest["manifest_sha256"], file_sha
 
-    reviewed_code = True
+    reviewed_code, code_bytes = True, {}
     for name in SUPERVISOR_CODE:
         path = os.path.join(os.path.dirname(own), name)
         relative = os.path.relpath(path, source)
@@ -605,7 +847,9 @@ def manifest_gate(manifest_path, ky_run, environ, facts):
             reviewed_code = False
             continue
         try:
-            actual = sha256_file(path)
+            with open(path, "rb") as handle:
+                code_bytes[name] = handle.read()
+            actual = hashlib.sha256(code_bytes[name]).hexdigest()
         except OSError:
             actual = "unreadable"
         if actual != components[relative]:
@@ -615,13 +859,19 @@ def manifest_gate(manifest_path, ky_run, environ, facts):
     if not reviewed_code:
         findings.append("manifest gate: kymanifest.py check was not run because the supervisor's own code is not "
                         "the reviewed code")
-        return manifest, components, findings
+        return manifest, components, findings, None
+    try:
+        schema_tool = module_from_bytes("kyschema_reviewed", os.path.join(os.path.dirname(own), SCHEMA_TOOL),
+                                        code_bytes[SCHEMA_TOOL])
+    except Exception as broken:                      # reviewed bytes that do not even load: a refusal, not a crash
+        return manifest, components, findings + [f"supervisor: {SCHEMA_TOOL} could not be loaded from its "
+                                                 f"reviewed bytes: {type(broken).__name__}: {broken}"], None
     code, out, err = run_manifest_check(os.path.join(os.path.dirname(own), "kymanifest.py"), manifest_path, source,
                                         ky_run, environ)
     if code != 0:
         first = (err.strip().splitlines() or [f"kymanifest.py check exited {code}"])[0]
         findings.append(f"manifest gate: {first}")
-        return manifest, components, findings
+        return manifest, components, findings, schema_tool
     try:
         said = json.loads(out)
     except ValueError:
@@ -629,7 +879,7 @@ def manifest_gate(manifest_path, ky_run, environ, facts):
     if type(said) is not dict or said.get("ok") is not True \
             or said.get("manifest_sha256") != manifest["manifest_sha256"]:
         findings.append("manifest gate: kymanifest.py check exited 0 without confirming this manifest's digest")
-    return manifest, components, findings
+    return manifest, components, findings, schema_tool
 
 
 def binding_findings(launch, manifest, components, facts) -> list:
@@ -675,20 +925,68 @@ def portable_argv(argv, worktree):
     return out
 
 
-def qualification_findings(launch, manifest, ky_run, facts, context) -> list:
-    """plan §7 KV-06: only a recorded PASS receipt that binds exactly this launch configuration, earned in the
-    context the job runs in, qualifies it"""
+def project_settings_digest(worktree):
+    """the sha256 of <worktree>/.claude/settings.json · "absent" when there is no such file · None when it is
+    there but cannot be read (cockpit ruling R6: what `--setting-sources project` loads for the job; the same
+    value as kyqualify.py's `file_digest`, which writes this bind)"""
+    path = os.path.join(worktree, ".claude", "settings.json")
+    if not os.path.lexists(path):
+        return "absent"
+    try:
+        return sha256_file(path) if os.path.isfile(path) else None
+    except OSError:
+        return None
+
+
+def zdotdir_digest(folder):
+    """the sha256 over the name, then the content, of every regular file directly in `folder`, names sorted (no
+    separator; links and sub-directories skipped) · "absent" when there is no such folder · None when it is not
+    a folder or cannot be read. Cockpit ruling R6: the shell start-up files a job's ZDOTDIR names — byte for
+    byte kyqualify.py's `directory_digest`, which writes this bind (and kyloop.py's `zdotdir_digest`)."""
+    if not os.path.lexists(folder):
+        return "absent"
+    if not os.path.isdir(folder):
+        return None
+    digest = hashlib.sha256()
+    try:
+        for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
+            if os.path.islink(path) or not os.path.isfile(path):
+                continue
+            digest.update(name.encode("utf-8"))
+            with open(path, "rb") as handle:
+                digest.update(handle.read())
+    except (OSError, ValueError):
+        return None
+    return digest.hexdigest()
+
+
+def expected_binds(launch, components, facts) -> dict:
+    """what a receipt must bind for THIS launch, each value observed by the supervisor (None: not observable)"""
+    harness = os.path.relpath(os.path.join(FLEET, HARNESS_FILE), facts["source_repo"])
+    return {"claude_bin": launch["claude_bin"], "claude_bin_sha256": facts.get("claude_bin_sha256"),
+            "model": launch["model"], "effort": launch["effort"], "permission_mode": launch["permission_mode"],
+            "max_turns": launch["max_turns"], "mcp_config_sha256": launch["mcp_config_sha256"],
+            "env_names": sorted(launch["env"]), "child_path": launch["env"]["PATH"],
+            "project_settings_sha256": facts.get("project_settings_sha256"),
+            "zdotdir_sha256": facts.get("zdotdir_sha256"), "harness_sha256": components.get(harness)}
+
+
+def qualification_findings(launch, manifest, components, ky_run, facts, context):
+    """(findings, the receipt's binds or None, whether the receipt is the one the manifest records as PASS).
+    Plan §7 KV-06: only a recorded PASS receipt that binds exactly this launch configuration, earned in the
+    context the job runs in, qualifies it. Nothing is executed here."""
     path = os.path.join(ky_run, "QUALIFICATIONS", f"{launch['role']}-{launch['model']}.json")
     facts["qualification_path"] = path
     if not os.path.isfile(path):
         return [f"qualification: no receipt at {path}; role {launch['role']} with model {launch['model']} is not a "
-                f"qualified launch configuration"]
+                f"qualified launch configuration"], None, False
     try:
         receipt, facts["qualification_sha256"] = read_json_and_sha(path)
     except ValueError as bad:
-        return [f"qualification: {bad}"]
+        return [f"qualification: {bad}"], None, False
     if type(receipt) is not dict or receipt.get("schema") != QUALIFICATION_SCHEMA:
-        return [f"qualification: {path} is not a {QUALIFICATION_SCHEMA} receipt"]
+        return [f"qualification: {path} is not a {QUALIFICATION_SCHEMA} receipt"], None, False
     out = []
     if receipt.get("context") != context:
         earned = receipt["context"] if isinstance(receipt.get("context"), str) else _show(receipt.get("context"))
@@ -700,37 +998,39 @@ def qualification_findings(launch, manifest, ky_run, facts, context) -> list:
         if receipt.get(key) != launch[key]:
             out.append(f"qualification: the receipt's {key} {_show(receipt.get(key))} is not the launch "
                        f"input's {launch[key]!r}")
-    if manifest is not None:
-        recorded = [entry for entry in manifest.get("qualifications") or [] if type(entry) is dict
-                    and isinstance(entry.get("path"), str) and os.path.realpath(entry["path"]) == os.path.realpath(path)]
-        if not recorded:
-            out.append("qualification: the receipt is not recorded in the manifest")
-        elif recorded[0].get("sha256") != facts["qualification_sha256"] or recorded[0].get("result") != "PASS":
-            out.append("qualification: the receipt is not the one the manifest records as PASS (its bytes or its "
-                       "result changed after the manifest was built)")
+    listed = manifest.get("qualifications")
+    recorded = [entry for entry in listed if type(entry) is dict and isinstance(entry.get("path"), str)
+                and os.path.realpath(entry["path"]) == os.path.realpath(path)] if isinstance(listed, list) else []
+    is_recorded = bool(recorded) and recorded[0].get("sha256") == facts["qualification_sha256"] \
+        and recorded[0].get("result") == "PASS"
+    if not recorded:
+        out.append("qualification: the receipt is not recorded in the manifest")
+    elif not is_recorded:
+        out.append("qualification: the receipt is not the one the manifest records as PASS (its bytes or its "
+                   "result changed after the manifest was built)")
     binds = receipt.get("binds")
     if type(binds) is not dict:
-        return out + ["qualification: the receipt carries no binds"]
+        return out + ["qualification: the receipt carries no binds"], None, False
 
-    expected = {"claude_bin": launch["claude_bin"], "claude_bin_sha256": facts.get("claude_bin_sha256"),
-                "model": launch["model"], "effort": launch["effort"], "permission_mode": launch["permission_mode"],
-                "max_turns": launch["max_turns"], "mcp_config_sha256": launch["mcp_config_sha256"],
-                "env_names": sorted(launch["env"])}
-    for name, want in expected.items():
+    for name, want in expected_binds(launch, components, facts).items():
         if name not in binds:
             out.append(f"qualification: binds.{name} is missing")
         elif want is None:
-            out.append(f"qualification: binds.{name} cannot be compared (the launch's value was not observed)")
-        elif type(binds[name]) is not type(want) or not kyschema.json_equal(binds[name], want):
+            why = "kyqualify.py is not a component of the manifest" if name == "harness_sha256" \
+                else "the launch's value was not observed"
+            out.append(f"qualification: binds.{name} cannot be compared ({why})")
+        elif not same_json(binds[name], want):
             out.append(f"qualification: binds.{name} {_show(binds[name])} does not bind this launch "
                        f"({_show(want)})")
-    observed = parse_version(facts.get("claude_version") or "")
-    bound = parse_version(binds["claude_version"]) if isinstance(binds.get("claude_version"), str) else None
-    if "claude_version" not in binds:
-        out.append("qualification: binds.claude_version is missing")
-    elif observed is None or bound is None or observed != bound:
-        out.append(f"qualification: binds.claude_version {_show(binds['claude_version'])} does not bind this "
-                   f"launch ({facts.get('claude_version')!r})")
+    seconds = binds.get("deadline_seconds")
+    if "deadline_seconds" not in binds:
+        out.append("qualification: binds.deadline_seconds is missing")
+    elif isinstance(seconds, bool) or not isinstance(seconds, int) or seconds <= 0:
+        out.append(f"qualification: binds.deadline_seconds {_show(seconds)} is not a positive whole number of "
+                   f"seconds")
+    elif facts.get("deadline_epoch") is not None and facts["deadline_epoch"] > time.time() + seconds:
+        out.append(f"deadline: {launch['deadline']} is later than now + the qualified deadline_seconds "
+                   f"({seconds}); a job never runs longer than its configuration was qualified for")
     argv = binds.get("argv")
     if "argv" not in binds:
         out.append("qualification: binds.argv is missing")
@@ -745,36 +1045,42 @@ def qualification_findings(launch, manifest, ky_run, facts, context) -> list:
             out.append(f"qualification: binds.argv is not this launch's line (same flags, same order): they differ at "
                        f"element {where}: qualified {_show(_flag_names(theirs[where:where + 1]))}, this launch "
                        f"{_show(_flag_names(mine[where:where + 1]))}")
-    return out
+    return out, binds, is_recorded
 
 
 def check(launch_path, environ, manifest_path=None, context=None) -> Checked:
-    """every precondition of a bootstrap launch; findings are complete (never only the first) once the shape holds.
-    `context` is the context the job will run in when that is not this process's own (submit passes "launchd")."""
-    facts: dict = {}
+    """every precondition of a bootstrap launch. A refused supervisor or manifest gate stops the check: the
+    launch input is then not examined and nothing it names is executed. Past the gate the findings are complete
+    (never only the first) once the shape holds. `context` is the context the job will run in when that is not
+    this process's own (submit passes "launchd")."""
+    facts: dict = {"overrides": overrides_in_use(environ)}
     ky_run = environ.get("KY_RUN") or DEFAULT_KY_RUN
     facts["ky_run"] = ky_run
     if not os.path.isabs(ky_run) or os.path.normpath(ky_run) != ky_run:
         return Checked(None, [f"KY_RUN: {ky_run!r} is not a normalised absolute path"], facts)
     manifest_path = os.path.abspath(manifest_path) if manifest_path else os.path.join(ky_run, "VERSIONS.bootstrap.json")
-    manifest, components, gate = manifest_gate(manifest_path, ky_run, environ, facts)
+    manifest, components, gate, schema_tool = manifest_gate(manifest_path, ky_run, environ, facts)
+    if gate or manifest is None or schema_tool is None:
+        return Checked(None, gate + ["launch input: not examined, and nothing it names was executed, because the "
+                                     "supervisor or its manifest gate is refused"], facts)
 
     try:
-        launch = kyschema.load_json(launch_path)
+        launch = read_json(launch_path)
     except ValueError as bad:
-        return Checked(None, gate + [f"launch input: {bad}"], facts)
+        return Checked(None, [f"launch input: {bad}"], facts, schema_tool)
     findings = list(_placeholders(launch))
     try:
         findings += [f"schema: {_value_free(error)}"
-                     for error in kyschema.validate(load_schema(LAUNCH_SCHEMA), launch)]
-    except (ValueError, kyschema.SchemaError) as refused:
-        return Checked(launch, gate + [f"schema {LAUNCH_SCHEMA} is refused: {refused}"], facts)
+                     for error in schema_tool.validate(load_schema(LAUNCH_SCHEMA), launch)]
+    except ValueError as refused:                    # an unreadable schema, or one kyschema refuses (SchemaError)
+        return Checked(launch, [f"schema {LAUNCH_SCHEMA} is refused: {refused}"], facts, schema_tool)
     if findings:
-        return Checked(launch, gate + findings, facts)  # the rules below read fields the shape must guarantee
+        return Checked(launch, findings, facts, schema_tool)      # the rules below read fields the shape guarantees
     detected, injected = detect_context(environ, launch["job_id"])
     facts["launch_context"] = context or detected
     facts["launch_context_parent_pid_injected"] = injected and context is None
 
+    findings += job_id_findings(launch["job_id"])
     unsafe_paths = set()
     for field in PATH_FIELDS:
         value = launch[field]
@@ -784,7 +1090,10 @@ def check(launch_path, environ, manifest_path=None, context=None) -> Checked:
         elif os.path.normpath(value) != value:
             findings.append(f"{field}: path is not normalised (no '..', '.', doubled or trailing slash): {value!r}")
             unsafe_paths.add(field)
-    findings += env_findings(launch, ky_run)
+    scratch, root, overridden = resolve_scratch(environ, findings)
+    facts["scratch_root"], facts["scratch_root_override"], facts["ky_scratch"] = root, overridden, scratch
+    environment = env_findings(launch, ky_run, scratch)
+    findings += environment
     findings += flag_findings(launch["extra_lean_flags"])
 
     expected_effort = "xhigh" if launch["kind"] == "PLAN" else "high"
@@ -802,20 +1111,31 @@ def check(launch_path, environ, manifest_path=None, context=None) -> Checked:
     facts["deadline_epoch"] = deadline
 
     if unsafe_paths:
-        return Checked(launch, gate + findings, facts)  # never probe the filesystem through a relative path
-    findings += _location_findings(launch, environ, ky_run, facts)
+        return Checked(launch, findings, facts, schema_tool)      # never probe the filesystem through a relative path
+    findings += _location_findings(launch, ky_run, scratch)
+    findings += worktree_policy_findings(launch, environ)
     findings += _git_findings(launch, environ, facts)
-    env_is_clean = not any(line.startswith("env") for line in findings)
-    findings += _claude_findings(launch, facts) if env_is_clean else \
-        ["claude_bin: --version was not run because the job environment is refused"]
     findings += _file_findings(launch)
-    if manifest is not None:
-        findings += binding_findings(launch, manifest, components, facts)
-    if env_is_clean:
-        findings += qualification_findings(launch, manifest, ky_run, facts, facts["launch_context"])
-    else:
-        findings.append("qualification: not compared because the job environment is refused")
-    return Checked(launch, gate + findings, facts)
+    findings += binding_findings(launch, manifest, components, facts)
+    program = _program_findings(launch, facts)       # the file and its hash; nothing is executed yet
+    findings += program
+    if environment:
+        findings += ["claude_bin: --version was not run because the job environment is refused",
+                     "qualification: not compared because the job environment is refused"]
+        return Checked(launch, findings, facts, schema_tool)
+    facts["project_settings_sha256"] = project_settings_digest(launch["worktree"])
+    facts["zdotdir_sha256"] = zdotdir_digest(os.path.join(launch["env"]["KY_ROOT"], "zdotdir"))
+    found, binds, recorded = qualification_findings(launch, manifest, components, ky_run, facts,
+                                                    facts["launch_context"])
+    findings += found
+    if not program:
+        if recorded and binds.get("claude_bin") == launch["claude_bin"] \
+                and binds.get("claude_bin_sha256") == facts["claude_bin_sha256"]:
+            findings += _version_findings(launch, facts, binds)
+        else:
+            findings.append("claude_bin: --version was not run because the program is not the one a recorded PASS "
+                            "receipt binds (path and sha256 are compared before anything is executed)")
+    return Checked(launch, findings, facts, schema_tool)
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -864,7 +1184,7 @@ def _events(path, limit=None):
     for raw in data.split(b"\n"):                   # a line cut by `limit` is not a JSON object: it is skipped
         try:
             event = json.loads(raw.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
+        except (ValueError, UnicodeDecodeError, RecursionError):
             continue
         if isinstance(event, dict):
             yield event
@@ -889,21 +1209,42 @@ def final_result_event(path):
     return {key: last.get(key) for key in ("subtype", "is_error", "num_turns", "usage")}
 
 
-def job_result(launch):
-    """(valid, errors): (None, []) when <job_scratch>/result.json is absent"""
+def job_result(launch, schema_tool):
+    """(valid, errors, detail) for <job_scratch>/result.json, the job's own report (cockpit ruling R1).
+    A job that ends without it is not a success: (False, […], "no_result"). The file must be a regular file of
+    the job's own: a symbolic link, or anything else that is not a regular file, is refused and never read
+    (detail "result_refused"). A file that is read is strict JSON, schema-valid and names this job and item."""
     path = os.path.join(launch["job_scratch"], "result.json")
-    if not os.path.lexists(path):
-        return None, []
     try:
-        result = kyschema.load_json(path)
-        errors = kyschema.validate(load_schema("job_result"), result)
-    except (ValueError, kyschema.SchemaError) as bad:
-        return False, [str(bad)][:10]
+        found = os.lstat(path)
+    except FileNotFoundError:
+        return False, ["result.json is missing: the job ended without leaving its result"], "no_result"
+    except OSError as failed:
+        return False, [f"result.json cannot be examined: {failed}"], "result_refused"
+    if stat.S_ISLNK(found.st_mode):
+        return False, ["result.json is a symbolic link: it is refused and was not read"], "result_refused"
+    if not stat.S_ISREG(found.st_mode):
+        return False, ["result.json is not a regular file: it is refused and was not read"], "result_refused"
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                return False, ["result.json is not a regular file: it is refused and was not read"], "result_refused"
+            data = handle.read(RESULT_MAX_BYTES + 1)
+    except OSError as failed:
+        return False, [f"result.json cannot be read: {failed}"], "result_refused"
+    if len(data) > RESULT_MAX_BYTES:
+        return False, [f"result.json is larger than {RESULT_MAX_BYTES} bytes: it is refused"], "result_refused"
+    try:
+        result = load_json_text(data.decode("utf-8"))
+        errors = schema_tool.validate(load_schema("job_result"), result)
+    except (ValueError, UnicodeDecodeError, RecursionError) as bad:
+        return False, [f"{path} is not acceptable JSON: {bad}"[:400]], None
     if not errors:
         for field in ("job_id", "item"):
             if result[field] != launch[field]:
                 errors.append(f"$.{field}: {result[field]!r} is not this job's {field} {launch[field]!r}")
-    return not errors, errors[:10]
+    return not errors, errors[:10], None
 
 
 def group_state(pgid: int) -> str:
@@ -916,6 +1257,17 @@ def group_state(pgid: int) -> str:
     except PermissionError:
         return "unreaped"
     return "live"
+
+
+def recorded_group_state(pgid) -> str:
+    """`group_state` of a process group id read from a record · 'unknown' when the record does not hold the id
+    of a group that could be a job's (not a whole number above 1): an unidentified group is never 'gone'"""
+    if isinstance(pgid, bool) or not isinstance(pgid, int) or pgid <= 1:
+        return "unknown"
+    try:
+        return group_state(pgid)
+    except OSError:
+        return "unknown"
 
 
 def _signal_group(pgid: int, signum) -> None:
@@ -968,9 +1320,10 @@ def process_start(pid: int):
 
 
 def process_matches(pid, start):
-    """True: alive with this start identity · False: positively gone (no such process, an uncollected exit, or
-    another process under a reused id) · None: it cannot be told. The rule of kyloop.py `process_matches`, with
-    one difference: a malformed record or an unanswerable ps is None here, never False. Never steal on None."""
+    """The one liveness rule of every fleet tool (cockpit ruling R2).
+    True: alive with this start identity · False: POSITIVELY gone (ps reports no such process, an uncollected
+    exit, or another process under a reused id) · None: unknown (ps cannot be asked or times out, the id is
+    missing or not a positive whole number, the start identity cannot be compared). Unknown is never gone."""
     if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
         return None
     identity = ps_identity(pid)
@@ -989,89 +1342,213 @@ def process_matches(pid, start):
         return None
 
 
+def job_gone(pid, start, pgid) -> bool:
+    """True only when a recorded job is POSITIVELY gone: its leader is (`process_matches` → False) AND no member
+    of its process group answers (`killpg(pgid, 0)` → ESRCH). A live leader, a surviving member, a group that
+    cannot be asked and an identity that cannot be read are all 'not gone' (cockpit ruling R2)."""
+    return process_matches(pid, start) is False and recorded_group_state(pgid) == "gone"
+
+
 # --------------------------------------------------------------------------------------------------------------
-# the item lock (plan §14 B-0c "its own proven instance lock") and the action record (plan §4a.1)
+# the item lock (plan §14 B-0c "its own proven instance lock"; cockpit ruling R2) and the action record (§4a.1)
 # --------------------------------------------------------------------------------------------------------------
+class LockLost(OSError):
+    """the item lock is no longer this run's: whatever it guarded must stop"""
+
+
+class _FolderGuard:
+    """an exclusive flock on the locks folder itself (no file is created): one kyboot acquisition at a time
+    looks, judges, renames and installs. Released on exit — and by the system if this process dies."""
+
+    def __init__(self, folder, wait):
+        self.folder, self.wait, self.descriptor = folder, wait, None
+
+    def __enter__(self):
+        self.descriptor = os.open(self.folder, os.O_RDONLY)
+        limit = time.monotonic() + self.wait
+        while True:
+            try:
+                fcntl.flock(self.descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return self
+            except OSError as busy:
+                if busy.errno not in (errno.EWOULDBLOCK, errno.EAGAIN) or time.monotonic() >= limit:
+                    os.close(self.descriptor)
+                    raise
+            time.sleep(POLL_SECONDS)
+
+    def __exit__(self, *_exc):
+        try:
+            fcntl.flock(self.descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(self.descriptor)
+        return False
+
+
+def lock_folder_guard(folder):
+    return _FolderGuard(folder, LOCK_GUARD_WAIT_SECONDS)
+
+
 def item_lock_path(ky_run, item) -> str:
     return os.path.join(ky_run, "locks", f"kyboot.{item}")
 
 
-def read_lock_owner(lock, wait=0.0):
-    """owner.json of a lock directory as a dict, or None when it is missing (after `wait`) or not readable"""
-    limit = time.monotonic() + wait
-    while True:
-        try:
-            owner = kyschema.load_json(os.path.join(lock, "owner.json"))
-            return owner if type(owner) is dict else None
-        except ValueError:
-            if os.path.lexists(os.path.join(lock, "owner.json")) or time.monotonic() >= limit:
-                return None
-        time.sleep(POLL_SECONDS)
-
-
-def acquire_item_lock(ky_run, item, run_id):
-    """(lock directory, None, taken-over owner or None) · (None, reason, None). One live supervisor per item:
-    an existing lock is taken over only when its recorded owner — and the job that owner recorded — are
-    positively gone; an unknown identity is never taken over."""
-    lock = item_lock_path(ky_run, item)
-    os.makedirs(os.path.dirname(lock), exist_ok=True)
-    taken_over = None
-    for _ in range(2):
-        try:
-            os.mkdir(lock)
-        except FileExistsError:
-            owner = read_lock_owner(lock, LOCK_OWNER_WAIT_SECONDS)
-            if owner is None:
-                return None, (f"item lock: {lock} exists and its owner is not recorded or not readable; an unknown "
-                              f"owner is never taken over"), None
-            alive = process_matches(owner.get("pid"), owner.get("process_start"))
-            if alive is True:
-                return None, (f"item lock: item {item} is held by a live supervisor "
-                              f"({owner.get('session_or_run_id')}, pid {owner.get('pid')})"), None
-            if alive is None:
-                return None, (f"item lock: the owner of {lock} (pid {owner.get('pid')}) cannot be confirmed gone; an "
-                              f"unknown owner is never taken over"), None
-            child = owner.get("child")
-            if child is not None:
-                gone = process_matches(child.get("pid"), child.get("process_start")) if type(child) is dict else None
-                if gone is not False:
-                    return None, (f"item lock: the previous supervisor of item {item} is gone but the job it "
-                                  f"recorded is alive or cannot be confirmed gone; reconcile that job before any "
-                                  f"new launch"), None
-            grave = f"{lock}.stale.{os.getpid()}"
-            try:
-                os.rename(lock, grave)                 # atomic: exactly one contender wins the takeover
-            except OSError:
-                continue
-            for name in os.listdir(grave):
-                os.unlink(os.path.join(grave, name))
-            os.rmdir(grave)
-            taken_over = owner
-            continue
-        write_lock_owner(lock, run_id, None)
-        return lock, None, taken_over
-    return None, f"item lock: lost the takeover race for {lock}", None
-
-
-def write_lock_owner(lock, run_id, child, acquired_at=None):
-    previous = read_lock_owner(lock) or {}
-    write_state(os.path.join(lock, "owner.json"), {
-        "session_or_run_id": run_id, "pid": os.getpid(), "pgid": os.getpgrp(),
-        "process_start": process_start(os.getpid()),
-        "acquired_at": acquired_at or previous.get("acquired_at") or utc_now_text(), "child": child})
-
-
-def release_item_lock(lock, run_id) -> bool:
-    """remove the lock if, and only if, this run still owns it"""
-    owner = read_lock_owner(lock)
-    if owner is None or owner.get("session_or_run_id") != run_id:
-        return False
+def read_lock_owner(lock):
+    """owner.json of a lock directory as a dict, or None when it is missing or not readable as one"""
     try:
-        os.unlink(os.path.join(lock, "owner.json"))
-        os.rmdir(lock)
+        owner = read_json(os.path.join(lock, "owner.json"))
+    except ValueError:
+        return None
+    return owner if type(owner) is dict else None
+
+
+def _is_mine(owner, run_id) -> bool:
+    return type(owner) is dict and owner.get("session_or_run_id") == run_id and owner.get("pid") == os.getpid()
+
+
+def _remove_lock_directory(path) -> bool:
+    """remove a directory this process owns outright (a private new lock, a verified grave) and what is in it"""
+    try:
+        for name in os.listdir(path):
+            os.unlink(os.path.join(path, name))
+        os.rmdir(path)
     except OSError:
         return False
     return True
+
+
+def judge_lock(lock, item):
+    """("stale", owner): the recorded owner and the job it recorded are positively gone — the lock may be taken
+    over · ("held", reason): anything else, never taken over · ("vanished", None): it went away while it was
+    read (look again)."""
+    owner = read_lock_owner(lock)
+    if owner is None:
+        if not os.path.lexists(lock):
+            return "vanished", None
+        return "held", (f"item lock: {lock} exists and its owner is not recorded or not readable; an unknown "
+                        f"owner is never taken over")
+    alive = process_matches(owner.get("pid"), owner.get("process_start"))
+    if alive is True:
+        return "held", (f"item lock: item {item} is held by a live supervisor "
+                        f"({owner.get('session_or_run_id')}, pid {owner.get('pid')})")
+    if alive is None:
+        return "held", (f"item lock: the owner of {lock} (pid {owner.get('pid')}) cannot be confirmed gone; an "
+                        f"unknown owner is never taken over")
+    if "child" not in owner:
+        why = "its record does not say whether it started a job (no child field)"
+    elif owner["child"] is None:
+        return "stale", owner
+    elif owner["child"] == CHILD_PENDING:
+        why = "it was about to start a job and never recorded which (child: pending)"
+    elif type(owner["child"]) is dict:
+        child = owner["child"]
+        if job_gone(child.get("pid"), child.get("process_start"), child.get("pgid")):
+            return "stale", owner
+        why = "the job it recorded is alive or cannot be confirmed gone"
+    else:
+        why = "the job it recorded cannot be identified"
+    return "held", (f"item lock: the previous supervisor of item {item} is gone but {why}; reconcile that job "
+                    f"before any new launch (the lock is never taken over)")
+
+
+def bury_stale_lock(lock, owner):
+    """Take a lock that was judged stale out of the way — verify-after-rename (cockpit ruling R2).
+    (True, None): it is gone · (False, None): it had moved already (look again) · (False, reason): refuse.
+    The lock is renamed to a grave and the grave's owner.json is read again: only if it is exactly the owner
+    that was judged gone is the grave removed. If another contender installed its own lock in the instant
+    between the judgment and the rename, that lock is what was moved: it is put back untouched."""
+    grave = f"{lock}.stale.{os.getpid()}.{os.urandom(4).hex()}"
+    try:
+        os.rename(lock, grave)
+    except OSError:
+        return False, None
+    found = read_lock_owner(grave)
+    if found is not None and same_json(found, owner):
+        _remove_lock_directory(grave)
+        return True, None
+    holder = found.get("session_or_run_id") if found is not None else "an unreadable owner"
+    try:
+        os.rename(grave, lock)
+    except OSError as failed:
+        return False, (f"item lock: {lock} changed owner while it was being judged (now {holder}) and could not be "
+                       f"put back ({failed}); it is kept untouched at {grave} for a person to reconcile")
+    return False, (f"item lock: {lock} changed owner while it was being judged (now {holder}); it was put back "
+                   f"untouched and is not taken over")
+
+
+def acquire_item_lock(ky_run, item, run_id):
+    """(lock directory, None, taken-over owner or None) · (None, reason, None). One live supervisor per item.
+    The lock appears complete — a directory holding this run's owner.json, renamed into place — or not at all;
+    an existing lock is taken over only when `judge_lock` finds it stale, and then by `bury_stale_lock`."""
+    lock = item_lock_path(ky_run, item)
+    folder = os.path.dirname(lock)
+    try:
+        os.makedirs(folder, exist_ok=True)
+        with lock_folder_guard(folder):
+            return _acquire(lock, item, run_id)
+    except OSError as failed:
+        return None, f"item lock: {lock} could not be taken: {failed}", None
+
+
+def _acquire(lock, item, run_id):
+    record = {"session_or_run_id": run_id, "pid": os.getpid(), "pgid": os.getpgrp(),
+              "process_start": process_start(os.getpid()), "acquired_at": utc_now_text(), "child": None}
+    if not record["process_start"]:
+        return None, ("item lock: this supervisor's own start identity cannot be read (ps); a lock whose owner "
+                      "could never be judged is not written"), None
+    mine = f"{lock}.new.{os.getpid()}.{os.urandom(4).hex()}"
+    taken_over = None
+    os.mkdir(mine)
+    try:
+        write_state(os.path.join(mine, "owner.json"), record)
+        for _ in range(LOCK_ATTEMPTS):
+            if not os.path.lexists(lock):
+                try:
+                    os.rename(mine, lock)                 # atomic: the lock exists with its owner, or not at all
+                except OSError:
+                    continue                              # another contender's lock appeared first: judge it
+                mine = None
+                return lock, None, taken_over
+            verdict, detail = judge_lock(lock, item)
+            if verdict == "held":
+                return None, detail, None
+            if verdict == "stale":
+                buried, reason = bury_stale_lock(lock, detail)
+                if reason is not None:
+                    return None, reason, None
+                if buried:
+                    taken_over = detail
+        return None, f"item lock: lost the race for {lock} to another contender", None
+    finally:
+        if mine is not None:
+            _remove_lock_directory(mine)
+
+
+def write_lock_owner(lock, run_id, child):
+    """record in this run's lock what it knows of its job: "pending" just before the job is started, its
+    identity once it runs. LockLost when the lock is not (or no longer) this run's — never written then."""
+    owner = read_lock_owner(lock)
+    if not _is_mine(owner, run_id):
+        raise LockLost(f"the item lock {lock} is not held by this run ({run_id}) any more")
+    write_state(os.path.join(lock, "owner.json"), dict(owner, child=child))
+
+
+def release_item_lock(lock, run_id) -> bool:
+    """remove the lock if, and only if, this run still owns it — by the takeover's own rule: rename it away,
+    read the owner again, remove it only if it is this run's, otherwise put it back"""
+    if not _is_mine(read_lock_owner(lock), run_id):
+        return False
+    grave = f"{lock}.released.{os.getpid()}.{os.urandom(4).hex()}"
+    try:
+        os.rename(lock, grave)
+    except OSError:
+        return False
+    if _is_mine(read_lock_owner(grave), run_id):
+        return _remove_lock_directory(grave)
+    try:
+        os.rename(grave, lock)
+    except OSError:
+        pass
+    return False
 
 
 def action_path(ky_run, job_id, verb="launch") -> str:
@@ -1138,6 +1615,17 @@ def _exit_facts(proc, pgid) -> dict:
             "group_gone": code is not None and group_state(pgid) == "gone"}
 
 
+def _record(state_path, state) -> bool:
+    """write state.json; a failure is said on stderr and answered, never raised (the caller is past the point
+    where an error may interrupt it)"""
+    try:
+        write_state(state_path, state)
+    except Exception as failed:
+        print(f"STATE NOT WRITTEN {state_path}: {type(failed).__name__}: {failed}", file=sys.stderr)
+        return False
+    return True
+
+
 def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifest_path=None) -> int:
     checked = check(launch_path, environ, manifest_path)
     if not checked.ok:
@@ -1170,16 +1658,20 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
         return EXIT_REFUSED
     keep_lock = False
     try:
-        launch_sha = sha256_file(launch_path)
         try:
+            launch_sha = sha256_file(launch_path)
             action = begin_action(act_path, launch, run_id, {
                 "launch_input_path": os.path.abspath(launch_path), "launch_input_sha256": launch_sha,
                 "manifest_sha256": facts.get("manifest_sha256"), "supervisor_sha256": facts.get("supervisor_sha256"),
                 "qualification_sha256": facts.get("qualification_sha256"), "prompt_sha256": launch["prompt_sha256"],
-                "packet_sha256": launch["packet_sha256"], "argv": plan["argv"]})
+                "card_sha256": launch["card_sha256"], "packet_sha256": launch["packet_sha256"],
+                "argv": plan["argv"], "overrides": facts["overrides"]})
         except FileExistsError:
             _refuse(launch_path, [f"action: {act_path} already exists; a launch of job {launch['job_id']} was "
                                   f"already intended (reconcile it, never repeat it)"])
+            return EXIT_REFUSED
+        except OSError as failed:
+            _refuse(launch_path, [f"action: the intent could not be recorded at {act_path}: {failed}"])
             return EXIT_REFUSED
         state = {
             "schema": STATE_SCHEMA, "phase": "prepared",
@@ -1188,6 +1680,9 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
             "worktree_head": facts.get("worktree_head"),
             "job_scratch": scratch, "prompt_path": launch["prompt_path"], "stdout_path": launch["stdout_path"],
             "stderr_path": launch["stderr_path"], "tmp_path": launch["tmp_path"], "state_path": state_path,
+            "prompt_sha256": launch["prompt_sha256"], "card_path": launch["card_path"],
+            "card_sha256": launch["card_sha256"], "packet_path": launch["packet_path"],
+            "packet_sha256": launch["packet_sha256"],
             "model": launch["model"], "effort": launch["effort"], "permission_mode": launch["permission_mode"],
             "max_turns": launch["max_turns"], "deadline": launch["deadline"], "grace_seconds": grace,
             "claude_bin": launch["claude_bin"], "claude_bin_realpath": facts.get("claude_bin_realpath"),
@@ -1196,12 +1691,16 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
             "argv": plan["argv"], "plan_version": launch["plan_version"],
             "approved_source_commit": launch["approved_source_commit"],
             "supervisor_path": facts.get("supervisor_path"), "supervisor_sha256": facts.get("supervisor_sha256"),
+            "python_isolated": facts.get("python_isolated"),
             "source_repo": facts.get("source_repo"), "manifest_path": facts.get("manifest_path"),
             "manifest_sha256": facts.get("manifest_sha256"),
             "manifest_file_sha256": facts.get("manifest_file_sha256"),
             "qualification_path": facts.get("qualification_path"),
             "qualification_sha256": facts.get("qualification_sha256"),
+            "project_settings_sha256": facts.get("project_settings_sha256"),
+            "zdotdir_sha256": facts.get("zdotdir_sha256"),
             "scratch_root": facts.get("scratch_root"), "scratch_root_override": facts.get("scratch_root_override"),
+            "overrides": facts["overrides"],
             "supervisor_pid": os.getpid(), "supervisor_process_start": process_start(os.getpid()),
             "supervisor_run_id": run_id, "lock_path": lock,
             "launch_context": facts.get("launch_context"),
@@ -1209,39 +1708,73 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
             "label": job_label(launch["job_id"]) if facts.get("launch_context") == "launchd" else None,
             "lock_taken_over_from": taken_over, "action_path": act_path,
             "started_at": None, "pid": None, "pgid": None, "process_start": None, "provider_session_id": None,
-            "ended_at": None, "exit_code": None, "exit_signal": None, "termination": None, "leftover_group": None,
+            "ended_at": None, "exit_code": None, "exit_signal": None, "termination": None,
+            "termination_detail": None, "leftover_group": None,
             "group_gone": None, "result_event": None, "job_result_valid": None, "job_result_errors": [],
         }
-        os.makedirs(os.path.dirname(state_path), exist_ok=True)
         try:
+            os.makedirs(os.path.dirname(state_path), exist_ok=True)
             write_state(state_path, state, exclusive=True)
-        except FileExistsError:
-            complete_action(act_path, action, False, {"phase": "refused", "reason": "state.json already exists"})
+        except OSError as failed:
+            exists = isinstance(failed, FileExistsError)
+            reason = "state.json already exists" if exists else f"state.json could not be written: {failed}"
+            try:
+                complete_action(act_path, action, False, {"phase": "refused", "reason": reason})
+            except OSError:
+                pass
             _refuse(launch_path, [f"state_path: {state_path} already exists for job {launch['job_id']} "
-                                  f"(no silent re-run)"])
+                                  f"(no silent re-run)" if exists else f"state_path: {reason}"])
             return EXIT_REFUSED
-        keep_lock = True                               # until the outcome says the job cannot be alive
-        code = _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id)
+
+        # from here on a process may exist: nothing below answers 1, and nothing below raises past the job
+        code, started = _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id, checked.schema_tool)
         launched = state["phase"] == "ended"
-        keep_lock = state["phase"] == "running" or (launched and state["group_gone"] is not True)
-        complete_action(act_path, action, launched and state["group_gone"] is True, {
-            "phase": state["phase"], "termination": state["termination"], "exit_code": state["exit_code"],
-            "exit_signal": state["exit_signal"], "group_gone": state["group_gone"], "pid": state["pid"],
-            "pgid": state["pgid"], "process_start": state["process_start"],
-            "launch_error": state.get("launch_error"), "state_path": state_path, "supervisor_exit": code})
-        report(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=1))
+        keep_lock = launched and state["group_gone"] is not True    # a job that may still be alive stays locked
+        done = launched and state["group_gone"] is True and state["job_result_valid"] is True \
+            and not state.get("supervisor_error")
+        try:
+            complete_action(act_path, action, done, {
+                "phase": state["phase"], "termination": state["termination"],
+                "termination_detail": state["termination_detail"], "exit_code": state["exit_code"],
+                "exit_signal": state["exit_signal"], "group_gone": state["group_gone"], "pid": state["pid"],
+                "pgid": state["pgid"], "process_start": state["process_start"],
+                "job_result_valid": state["job_result_valid"], "launch_error": state.get("launch_error"),
+                "supervisor_error": state.get("supervisor_error"), "state_path": state_path,
+                "supervisor_exit": code})
+        except Exception as failed:
+            print(f"ACTION NOT COMPLETED {act_path}: {type(failed).__name__}: {failed} (it may still say INTENDED; "
+                  f"state.json and this exit status say what happened)", file=sys.stderr)
+            if started and code == EXIT_OK:
+                code = EXIT_JOB_FAILED
+        try:
+            report(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=1))
+        except Exception as failed:
+            print(f"STATE NOT REPORTED: {type(failed).__name__}: {failed}", file=sys.stderr)
         return code
     finally:
-        if not keep_lock:                              # a job that may still be alive keeps its item locked
-            release_item_lock(lock, run_id)
+        if not keep_lock and not release_item_lock(lock, run_id):
+            print(f"item lock: {lock} was not released by this run (it is not this run's any more, or it could "
+                  f"not be removed)", file=sys.stderr)
 
 
-def _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id) -> int:
-    """start the job in a session of its own, supervise it, and leave the final record in `state` and on disk"""
+def _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id, schema_tool):
+    """(exit status, whether a process was started). Start the job in a session of its own, supervise it, and
+    leave the final record in `state` and on disk. Once the process exists this function does not raise: every
+    step after the start runs inside one guard that ends the process group and records why."""
     state_path, scratch = launch["state_path"], launch["job_scratch"]
     stop = {"signal": None}
     previous = {}
     proc = None
+    early = None
+
+    def restore_signals():
+        for signum, handler in list(previous.items()):
+            try:
+                signal.signal(signum, handler)
+            except (OSError, ValueError):
+                pass
+        previous.clear()
+
     try:
         os.makedirs(scratch, exist_ok=True)
         os.makedirs(launch["tmp_path"], exist_ok=True)
@@ -1251,24 +1784,36 @@ def _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id) -> in
             if digest != launch["prompt_sha256"]:               # the very descriptor it inherits
                 raise OSError(f"prompt_path changed after check: sha256 is now {digest}")
             stdin.seek(0)
+            # BEFORE the job's process exists the lock says a job is pending: a supervisor that dies from here on —
+            # before it could record which process it started — leaves a lock that is never taken over (ruling R2)
+            write_lock_owner(lock, run_id, CHILD_PENDING)
             for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
                 previous[signum] = signal.signal(signum, lambda number, _frame: stop.update(signal=number))
             proc = subprocess.Popen(plan["argv"], cwd=plan["cwd"], env=plan["env"], stdin=stdin, stdout=stdout,
                                     stderr=stderr, start_new_session=True, close_fds=True)
-    except OSError as failed:
-        for signum, handler in previous.items():
-            signal.signal(signum, handler)
-        state.update(phase="launch_failed", ended_at=utc_now_text(), launch_error=str(failed))
-        write_state(state_path, state)
-        print(f"NOT LAUNCHED {launch['job_id']}: {failed}", file=sys.stderr)
-        return EXIT_JOB_FAILED
+    except (OSError, ValueError, subprocess.SubprocessError) as failed:
+        if proc is None:                            # nothing was started
+            restore_signals()
+            try:
+                write_lock_owner(lock, run_id, None)            # the marker is withdrawn: there is no job
+            except OSError:
+                pass
+            state.update(phase="launch_failed", ended_at=utc_now_text(), launch_error=str(failed))
+            _record(state_path, state)
+            print(f"NOT LAUNCHED {launch['job_id']}: {failed}", file=sys.stderr)
+            return EXIT_JOB_FAILED, False
+        early = failed                              # the process exists: only the guard below may deal with it
 
+    pgid, leads, outcome = None, False, None
     try:
         try:
             pgid = os.getpgid(proc.pid)
         except OSError:
             pgid = proc.pid                         # start_new_session: the child leads its own group
-        if pgid != proc.pid or pgid == os.getpgrp():
+        leads = pgid == proc.pid and pgid != os.getpgrp()
+        if early is not None:
+            raise early
+        if not leads:
             # the job must lead a group of its own: signalling any other group would reach the supervisor,
             # its parents or strangers. End the one process we started, by pid, and record why.
             proc.kill()
@@ -1277,49 +1822,77 @@ def _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id) -> in
                          pgid=pgid,
                          launch_error=f"the job is not the leader of its own process group "
                                       f"(pid {proc.pid}, pgid {pgid}); it was killed by pid")
+        else:
+            state.update(phase="running", started_at=utc_now_text(), pid=proc.pid, pgid=pgid)
+            write_state(state_path, state)              # the identity first; the start time needs another process
+            state["process_start"] = process_start(proc.pid)
             write_state(state_path, state)
-            print(f"NOT LAUNCHED {launch['job_id']}: {state['launch_error']}", file=sys.stderr)
-            return EXIT_JOB_FAILED
-        state.update(phase="running", started_at=utc_now_text(), pid=proc.pid, pgid=pgid)
-        write_state(state_path, state)              # the identity first; the start time needs another process
-        state["process_start"] = process_start(proc.pid)
-        write_state(state_path, state)
-        write_lock_owner(lock, run_id, {"job_id": launch["job_id"], "pid": proc.pid, "pgid": pgid,
-                                        "process_start": state["process_start"]})
+            write_lock_owner(lock, run_id, {"job_id": launch["job_id"], "pid": proc.pid, "pgid": pgid,
+                                            "process_start": state["process_start"]})
 
-        def on_session(session_id):
-            state["provider_session_id"] = session_id
-            write_state(state_path, state)
+            def on_session(session_id):
+                state["provider_session_id"] = session_id
+                write_state(state_path, state)
 
-        try:
             outcome = supervise(proc, pgid, facts["deadline_epoch"], grace, launch["stdout_path"], on_session, stop)
-        except BaseException as crashed:            # never leave an unsupervised job behind
-            outcome = {"termination": f"interrupted_{end_group(proc, pgid, grace)}", "leftover_group": "none"}
-            outcome.update(_exit_facts(proc, pgid))
-            state["supervisor_error"] = f"{type(crashed).__name__}: {crashed}"
+    except BaseException as crashed:                # a full disk, a removed state folder, a lost lock, a bug:
+        if leads:                                   # whatever it was, the job never runs on unsupervised
+            how = end_group(proc, pgid, grace)
+            ended = _exit_facts(proc, pgid)
+        else:
+            how = "kill"
+            try:
+                proc.kill()
+                proc.wait(timeout=KILL_CONFIRM_SECONDS)
+            except (OSError, subprocess.SubprocessError):
+                pass
+            ended = {"exit_code": None, "exit_signal": None, "group_gone": proc.poll() is not None}
+        outcome = dict({"termination": f"supervisor_error_{how}", "leftover_group": "none"}, **ended)
+        state.update(pid=proc.pid, pgid=pgid, started_at=state["started_at"] or utc_now_text(),
+                     supervisor_error=f"{type(crashed).__name__}: {crashed}")
     finally:
-        for signum, handler in previous.items():
-            signal.signal(signum, handler)
+        restore_signals()
 
+    if outcome is None:                             # the one process was not a group leader: killed, never supervised
+        _record(state_path, state)
+        print(f"NOT LAUNCHED {launch['job_id']}: {state['launch_error']}", file=sys.stderr)
+        return EXIT_JOB_FAILED, True
+
+    # the process group has been ended, or is reported as not confirmed gone: what follows only records
     state.update(outcome)
     if stop["signal"] is not None:
         state["supervisor_signal"] = int(stop["signal"])
-    valid, errors = job_result(launch)
-    state.update(phase="ended", ended_at=utc_now_text(),
-                 provider_session_id=state["provider_session_id"] or first_session_id(launch["stdout_path"]),
-                 result_event=final_result_event(launch["stdout_path"]),
-                 job_result_valid=valid, job_result_errors=errors)
-    write_state(state_path, state)
+    try:
+        valid, errors, detail = job_result(launch, schema_tool)
+    except Exception as failed:
+        valid, errors, detail = False, [f"result.json could not be judged: {type(failed).__name__}: {failed}"], None
+    try:
+        session = state["provider_session_id"] or first_session_id(launch["stdout_path"])
+        event = final_result_event(launch["stdout_path"])
+    except Exception:
+        session, event = state["provider_session_id"], None
+    state.update(phase="ended", ended_at=utc_now_text(), provider_session_id=session, result_event=event,
+                 job_result_valid=valid, job_result_errors=errors, termination_detail=detail)
+    recorded = _record(state_path, state)
+    job = launch["job_id"]
     if not state["group_gone"]:
         print(f"PROCESS GROUP {state['pgid']} NOT CONFIRMED GONE", file=sys.stderr)
-        return EXIT_GROUP_SURVIVED
+        return EXIT_GROUP_SURVIVED, True
     if state["termination"].startswith("timed_out"):
-        return EXIT_TIMED_OUT
+        return EXIT_TIMED_OUT, True
     if state["termination"].startswith("interrupted"):
-        return EXIT_INTERRUPTED
-    if state["exit_code"] != 0 or valid is False:
-        return EXIT_JOB_FAILED
-    return EXIT_OK
+        return EXIT_INTERRUPTED, True
+    if state.get("supervisor_error"):
+        print(f"SUPERVISOR ERROR {job}: {state['supervisor_error']} (the job's process group was ended)",
+              file=sys.stderr)
+        return EXIT_JOB_FAILED, True
+    if detail == "no_result":
+        print(f"NO RESULT {job}: the job ended without leaving {os.path.join(scratch, 'result.json')}",
+              file=sys.stderr)
+        return EXIT_NO_RESULT, True
+    if state["exit_code"] != 0 or valid is not True or not recorded:
+        return EXIT_JOB_FAILED, True
+    return EXIT_OK, True
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -1329,16 +1902,31 @@ def launchctl_program(environ) -> str:
     return environ.get("KY_LAUNCHCTL") or DEFAULT_LAUNCHCTL
 
 
+def launchctl_environment(environ) -> dict:
+    """the whole environment launchctl is given: a fixed PATH and this user's HOME and USER, never the caller's"""
+    me = pwd.getpwuid(os.getuid())
+    home = environ.get("HOME") or ""
+    return {"PATH": LAUNCHCTL_PATH, "HOME": home if os.path.isabs(home) else me.pw_dir,
+            "USER": environ.get("USER") or me.pw_name, "LANG": "en_US.UTF-8"}
+
+
 def launchctl(environ, *args):
-    """(exit status, stdout, stderr) of ${KY_LAUNCHCTL:-/bin/launchctl} <args>; 127 when it could not be run.
-    The program is never looked up on PATH: a name that is not an absolute path is not run at all."""
+    """(exit status, stdout, stderr) of ${KY_LAUNCHCTL:-/bin/launchctl} <args>; 127 when it was not run.
+    The program is never looked up on PATH: a name that is not an absolute path is not run at all. With the
+    tests-only KY_SCRATCH_ROOT_OVERRIDE set, a program that does not lie beneath that root is not run either —
+    a test run can never reach the real launchd."""
     program = launchctl_program(environ)
     if not os.path.isabs(program):
         return 127, "", f"KY_LAUNCHCTL {program!r} is not an absolute path; it was not run"
+    testing = environ.get("KY_SCRATCH_ROOT_OVERRIDE")
+    if testing is not None and not (os.path.isabs(testing)
+                                    and _is_beneath(os.path.normpath(program), os.path.normpath(testing))):
+        return 127, "", (f"KY_SCRATCH_ROOT_OVERRIDE is set (a test run): {program} is not beneath that root; it "
+                         f"was not run")
     try:
-        done = subprocess.run([program, *args], capture_output=True, text=True, env=dict(environ), timeout=120,
-                              stdin=subprocess.DEVNULL)
-    except (OSError, subprocess.SubprocessError) as failed:
+        done = subprocess.run([program, *args], capture_output=True, text=True, env=launchctl_environment(environ),
+                              timeout=120, stdin=subprocess.DEVNULL)
+    except (OSError, KeyError, subprocess.SubprocessError) as failed:
         return 127, "", f"{program} could not be run: {failed}"
     return done.returncode, done.stdout, done.stderr
 
@@ -1358,11 +1946,12 @@ def agent_environment(launch, facts, environ) -> dict:
 
 
 def agent_plist(launch, facts, environ, launch_path) -> dict:
-    """the one-shot agent: RunAtLoad, never KeepAlive, running this very file's `run` on the same launch input"""
+    """the one-shot agent: RunAtLoad, never KeepAlive, running this very file's `run` on the same launch input
+    in an isolated interpreter (-I: no script folder, no user site, no PYTHON* variable; -B: no compiled cache)"""
     scratch = launch["job_scratch"]
     return {"Label": job_label(launch["job_id"]),
-            "ProgramArguments": [sys.executable, "-u", facts["supervisor_path"], "run", os.path.abspath(launch_path),
-                                 "--manifest", facts["manifest_path"]],
+            "ProgramArguments": [sys.executable, "-I", "-B", "-u", facts["supervisor_path"], "run",
+                                 os.path.abspath(launch_path), "--manifest", facts["manifest_path"]],
             "RunAtLoad": True, "ProcessType": "Background",
             "EnvironmentVariables": agent_environment(launch, facts, environ),
             "StandardOutPath": os.path.join(scratch, "supervisor.out"),
@@ -1405,8 +1994,12 @@ def submit(launch_path, environ, manifest_path=None, report=print) -> int:
         _refuse(launch_path, refusals)
         return EXIT_REFUSED
 
-    with open(plist, "xb") as handle:
-        plistlib.dump(document, handle)
+    try:
+        with open(plist, "xb") as handle:
+            plistlib.dump(document, handle)
+    except OSError as failed:
+        _refuse(launch_path, [f"submit: the agent's plist could not be written at {plist}: {failed}"])
+        return EXIT_REFUSED
     try:
         lint = subprocess.run([PLUTIL, "-lint", plist], capture_output=True, text=True, timeout=60,
                               stdin=subprocess.DEVNULL).returncode
@@ -1422,21 +2015,26 @@ def submit(launch_path, environ, manifest_path=None, report=print) -> int:
             "launch_input_path": os.path.abspath(launch_path), "launch_input_sha256": sha256_file(launch_path),
             "manifest_path": facts["manifest_path"], "manifest_sha256": facts.get("manifest_sha256"),
             "supervisor_sha256": facts.get("supervisor_sha256"), "plist_sha256": sha256_file(plist),
-            "program_arguments": document["ProgramArguments"],
-            "environment_names": sorted(document["EnvironmentVariables"])},
+            "card_sha256": launch["card_sha256"], "program_arguments": document["ProgramArguments"],
+            "environment_names": sorted(document["EnvironmentVariables"]), "overrides": facts["overrides"]},
             kind="submit", more_target={"label": label, "domain": domain, "plist": plist},
             transition=f"bootstrap the one-shot launchd agent {label} that runs job {job_id}")
-    except FileExistsError:
+    except OSError as failed:
         os.unlink(plist)
         _refuse(launch_path, [f"submit: action {submit_path} already exists; job {job_id} was already submitted "
-                              f"(never repeat it)"])
+                              f"(never repeat it)" if isinstance(failed, FileExistsError) else
+                              f"submit: the intent could not be recorded at {submit_path}: {failed}"])
         return EXIT_REFUSED
     code, _, error = launchctl(environ, "bootstrap", domain, plist)
-    complete_action(submit_path, action, code == 0, {
-        "launchctl": "bootstrap", "exit": code, "stderr": (error.strip().splitlines() or [""])[0][:300],
-        "label": label, "domain": domain, "plist": plist})
-    report(json.dumps({"job_id": job_id, "label": label, "plist": plist, "state_path": launch["state_path"]},
-                      ensure_ascii=False, sort_keys=True, indent=1))
+    try:                                            # launchd has been asked: what follows records, and never raises
+        complete_action(submit_path, action, code == 0, {
+            "launchctl": "bootstrap", "exit": code, "stderr": (error.strip().splitlines() or [""])[0][:300],
+            "label": label, "domain": domain, "plist": plist})
+        report(json.dumps({"job_id": job_id, "label": label, "plist": plist, "state_path": launch["state_path"]},
+                          ensure_ascii=False, sort_keys=True, indent=1))
+    except Exception as failed:
+        print(f"ACTION NOT COMPLETED {submit_path}: {type(failed).__name__}: {failed} (launchctl bootstrap exited "
+              f"{code}; `status` shows whether the agent is loaded)", file=sys.stderr)
     if code != 0:
         print(f"NOT SUBMITTED {job_id}: launchctl bootstrap exited {code}", file=sys.stderr)
         return EXIT_JOB_FAILED
@@ -1464,7 +2062,7 @@ def read_record(path):
     if not os.path.lexists(path):
         return None, "missing"
     try:
-        document = kyschema.load_json(path)
+        document = read_json(path)
     except ValueError:
         return None, "unreadable"
     return (document, None) if type(document) is dict else (None, "unreadable")
@@ -1478,15 +2076,46 @@ def alive(pid, start):
     return "unknown" if verdict is None else verdict
 
 
-def label_loaded(environ, job_id):
-    """true | false from `launchctl print`'s exit status; "unknown" when launchctl could not be run"""
+def label_state(environ, job_id):
+    """(true | false | "unknown", launchctl's exit status). Loaded: `launchctl print` exits 0. Not loaded: ONLY
+    its genuine not-found status (113, "Could not find service"). Any other answer — launchctl not run, a
+    domain error, a timeout — is unknown, never "not loaded"."""
     code, _, _ = launchctl(environ, "print", agent_target(job_id))
-    return "unknown" if code == 127 else code == 0
+    return (True if code == 0 else False if code == LAUNCHCTL_NOT_FOUND else "unknown"), code
 
 
-STATUS_FIELDS = ("item", "kind", "role", "phase", "termination", "exit_code", "exit_signal", "group_gone", "pid", "pgid",
-                 "process_start", "supervisor_pid", "supervisor_process_start", "started_at", "ended_at", "deadline",
-                 "launch_context", "provider_session_id", "job_result_valid", "launch_error")
+def label_loaded(environ, job_id):
+    return label_state(environ, job_id)[0]
+
+
+def recorded_job_over(state):
+    """(None, None) when the job a state.json records is positively over, else (why it is not, the group's
+    state). Over: no process was recorded; or its leader is positively gone AND — when it led a group of its
+    own — that group answers `killpg` with ESRCH; a job that never led a group (recorded as a failed launch)
+    is over with its one process."""
+    pid, pgid = state.get("pid"), state.get("pgid")
+    job = alive(pid, state.get("process_start"))
+    if job is None:
+        return None, None
+    if job is not False:
+        return ("the job's process is alive" if job is True else "the job's process cannot be identified"), None
+    if isinstance(pgid, bool) or not isinstance(pgid, int):
+        return "the job's process group is not recorded", "unknown"
+    if pgid != pid:
+        if state.get("phase") == "launch_failed":
+            return None, None
+        return "the job's process group cannot be identified", "unknown"
+    group = recorded_group_state(pgid)
+    if group == "gone":
+        return None, group
+    return ("members of the job's process group are alive" if group == "live"
+            else "the job's process group cannot be confirmed gone"), group
+
+
+STATUS_FIELDS = ("item", "kind", "role", "phase", "termination", "termination_detail", "exit_code", "exit_signal",
+                 "group_gone", "pid", "pgid", "process_start", "supervisor_pid", "supervisor_process_start",
+                 "started_at", "ended_at", "deadline", "launch_context", "provider_session_id", "job_result_valid",
+                 "launch_error", "supervisor_error", "overrides")
 
 
 def status_of(ky_run, environ, job_id) -> dict:
@@ -1494,34 +2123,37 @@ def status_of(ky_run, environ, job_id) -> dict:
     state, problem = read_record(os.path.join(ky_run, "jobs", job_id, "state.json"))
     submitted, _ = read_record(action_path(ky_run, job_id, "submit"))
     state = state or {}
+    pgid = state.get("pgid")
     return {"job_id": job_id, "label": job_label(job_id), "label_loaded": label_loaded(environ, job_id),
             "state_file": problem or "present",
             "state": {name: state.get(name) for name in STATUS_FIELDS} if state else None,
             "process_alive": alive(state.get("pid"), state.get("process_start")),
+            "process_group": recorded_group_state(pgid) if pgid is not None and pgid == state.get("pid") else None,
             "supervisor_alive": alive(state.get("supervisor_pid"), state.get("supervisor_process_start")),
             "submit": {"state": submitted.get("state"), "result": submitted.get("result")} if submitted else None}
 
 
 def reap_one(ky_run, environ, job_id) -> dict:
-    """boot out the agent of a job that is positively over: its state.json is readable, the process it recorded
-    (if any) is positively gone, and so is its supervisor. A live or unidentifiable process leaves the label alone."""
+    """boot out the agent of a job that is positively over: its state.json is readable, the job it recorded
+    (leader AND process group) is positively gone, and so is its supervisor. A live or unidentifiable process,
+    group or launchctl answer leaves the label alone."""
     entry = {"job_id": job_id, "label": job_label(job_id), "action": "left", "why": None}
     state, problem = read_record(os.path.join(ky_run, "jobs", job_id, "state.json"))
     if state is None:
         entry["why"] = f"state.json is {problem}: the job's identity is unknown"
         return entry
-    job = alive(state.get("pid"), state.get("process_start"))
-    supervisor = alive(state.get("supervisor_pid"), state.get("supervisor_process_start"))
-    if job is not None and job is not False:
-        entry["why"] = "the job's process is alive" if job is True else "the job's process cannot be identified"
+    entry["why"], _ = recorded_job_over(state)
+    if entry["why"] is not None:
         return entry
+    supervisor = alive(state.get("supervisor_pid"), state.get("supervisor_process_start"))
     if supervisor is not False:
         entry["why"] = "the supervisor is alive" if supervisor is True else "the supervisor cannot be identified"
         return entry
-    loaded = label_loaded(environ, job_id)
+    loaded, code = label_state(environ, job_id)
     if loaded is not True:
         entry.update(action="not_loaded" if loaded is False else "left",
-                     why=None if loaded is False else "launchctl could not be asked")
+                     why=None if loaded is False else "launchctl could not be asked" if code == 127
+                     else f"launchctl did not say whether the agent is loaded (exit {code})")
         return entry
     code, _, _ = launchctl(environ, "bootout", agent_target(job_id))
     limit = time.monotonic() + ABSENT_CONFIRM_SECONDS
@@ -1537,9 +2169,9 @@ def reap_one(ky_run, environ, job_id) -> dict:
 # --------------------------------------------------------------------------------------------------------------
 # command line
 # --------------------------------------------------------------------------------------------------------------
-USAGE = ("usage: kyboot.py check <launch_input.json> [--manifest M] | argv <launch_input.json> [--manifest M] | "
-         "run <launch_input.json> [--manifest M] [--grace SECONDS] | submit <launch_input.json> [--manifest M] | "
-         "status [<job_id>] | reap [<job_id>] | validate <schema-name> <file>")
+USAGE = ("usage: python3 -I -B kyboot.py check <launch_input.json> [--manifest M] | argv <launch_input.json> "
+         "[--manifest M] | run <launch_input.json> [--manifest M] [--grace SECONDS] | submit <launch_input.json> "
+         "[--manifest M] | status [<job_id>] | reap [<job_id>] | validate <schema-name> <file>")
 
 
 def _refuse(launch_path, findings):
@@ -1549,19 +2181,23 @@ def _refuse(launch_path, findings):
 
 
 def _validate(name, path) -> int:
+    """shape-check one document. No manifest is involved, so kyschema.py is executed from its bytes on disk
+    WITHOUT being verified: this is a convenience for people and tests, never one of the launch gates."""
     if name not in schema_names():
         print(f"unknown schema {name!r}; known: {', '.join(schema_names())}", file=sys.stderr)
         return EXIT_USAGE
     try:
+        with open(os.path.join(FLEET, SCHEMA_TOOL), "rb") as handle:
+            schema_tool = module_from_bytes("kyschema_by_path", os.path.join(FLEET, SCHEMA_TOOL), handle.read())
         schema = load_schema(name)
-        findings = kyschema.lint(schema)
-    except ValueError as bad:
-        findings = [str(bad)]
+        findings = schema_tool.lint(schema)
+    except Exception as bad:
+        findings = [f"{type(bad).__name__}: {bad}"]
     if findings:
         print(f"SCHEMA REFUSED {name}\n" + "\n".join(findings), file=sys.stderr)
         return EXIT_USAGE
     try:
-        errors = kyschema.validate(schema, kyschema.load_json(path))
+        errors = schema_tool.validate(schema, read_json(path))
     except ValueError as bad:
         errors = [str(bad)]
     if errors:
@@ -1588,6 +2224,9 @@ def _status_or_reap(command, job_id, environ) -> int:
     if not os.path.isabs(ky_run) or (job_id is not None and not _JOB_ID.match(job_id)):
         print(USAGE, file=sys.stderr)
         return EXIT_USAGE
+    names = own_env_credentials(environ)
+    if names:
+        return _credential_refusal(names)
     jobs = known_jobs(ky_run)
     if job_id is not None and job_id not in jobs:
         print(f"no job {job_id} under {ky_run}", file=sys.stderr)
@@ -1602,11 +2241,18 @@ def _status_or_reap(command, job_id, environ) -> int:
     return EXIT_JOB_FAILED if any(entry["action"] == "booted_out" and not entry["absent"] for entry in done) else EXIT_OK
 
 
+def _credential_refusal(names) -> int:
+    print("REFUSED: credential variable name(s) set in this process's own environment: "
+          f"{', '.join(names)} (values not read; plan §7 → exit 78)", file=sys.stderr)
+    return EXIT_CREDENTIAL_ENV
+
+
 def main(argv=None, environ=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     environ = os.environ if environ is None else environ
     if len(argv) == 3 and argv[0] == "validate":
-        return _validate(argv[1], argv[2])
+        names = own_env_credentials(environ)
+        return _credential_refusal(names) if names else _validate(argv[1], argv[2])
     if argv and argv[0] in ("status", "reap") and len(argv) <= 2:
         return _status_or_reap(argv[0], argv[1] if len(argv) == 2 else None, environ)
     if len(argv) < 2 or argv[0] not in ("check", "argv", "run", "submit"):
@@ -1628,9 +2274,7 @@ def main(argv=None, environ=None) -> int:
             return EXIT_USAGE
     names = own_env_credentials(environ)
     if names:
-        print("REFUSED: credential variable name(s) set in this process's own environment: "
-              f"{', '.join(names)} (values not read; plan §7 → exit 78)", file=sys.stderr)
-        return EXIT_CREDENTIAL_ENV
+        return _credential_refusal(names)
     manifest_path = options.get("--manifest")
     if command == "run":
         return run(launch_path, environ, grace, manifest_path=manifest_path)
@@ -1646,7 +2290,8 @@ def main(argv=None, environ=None) -> int:
         print(f"CHECK-PASSED {launch_path}: every launch precondition kyboot checks held when checked "
               f"(job {checked.launch['job_id']}, {checked.launch['kind']}, role {checked.launch['role']}, "
               f"context {checked.facts.get('launch_context')}, {checked.facts.get('claude_version')}, "
-              f"manifest {checked.facts.get('manifest_sha256')})")
+              f"manifest {checked.facts.get('manifest_sha256')}, overrides: "
+              f"{show_overrides(checked.facts['overrides'])})")
     return EXIT_OK
 
 

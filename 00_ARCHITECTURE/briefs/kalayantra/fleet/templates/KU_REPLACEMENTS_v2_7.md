@@ -3,14 +3,14 @@ artifact: KU_REPLACEMENTS_v2_7.md
 version: 2.7
 status: DRAFT — pending the B-0c independent review
 source: reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_2.md §3 (KU-01…KU-03), verbatim; machine copy in ku_bindings.json
-rule: these clauses enter the named B-1 packets unchanged (plan v2.7 §14 B-0c; carried, not closed, per §17); they change no approved plan, prompt or paste anchor
+rule: these clauses enter the named B-1 packets unchanged (plan v2.7 §14 B-0c; carried, not closed, per §17); they change no approved plan, prompt or paste anchor. Nothing enforces this yet — kypacket.py is a B-1 deliverable; until it exists the packet reviewer verifies each clause hash by hand against ku_bindings.json
 ---
 
 # Astra KU-01…KU-03 — exact replacements for the B-1 packets
 
 ## KU-01 — HIGH before conductor paste: audit disagrees with typed completion
 
-**Packets (B-1 components):** `tracker-semantics`, `preflight-v3`  
+**Packets (B-1 components):** `tracker-semantics`, `preflight-v3`, `kyverdicts`  
 **Also binds:** B-2 preflight acceptance: remaining legacy claim/verdict findings are reconciled explicitly first
 
 > Audit and guarded completion shall share the same normalized, typed evidence requirements. Data-writing code requires ACCEPTED post_deploy evidence at the observed squash merge commit. Code-only completion requires verified successful deployment containment of its mapped merge commit, without inventing a post_deploy obligation. Artifact and operation completion retain their digest-bound acceptance requirements. Apply the shared reviewed-patch inheritance predicate wherever reviewed-head validity is evaluated.
@@ -19,7 +19,7 @@ rule: these clauses enter the named B-1 packets unchanged (plan v2.7 §14 B-0c; 
 
 ## KU-02 — HIGH before conductor paste: DB storage and cleanup lack executable acceptance
 
-**Packets (B-1 components):** `local-db`, `kylock`, `finalize-v3`  
+**Packets (B-1 components):** `local-db`, `kylock`, `finalize-v3`, `kyloop-crash-cleanup`, `dispatcher-ready-receipts`  
 **Also binds:** every session that starts a test database: session-close / lock-release path and finalisation
 
 > Every v3 test database shall record its originating session and use PostgreSQL data storage explicitly bind-mounted beneath that session’s dated KY_SCRATCH realpath. Record container identity, mount source, database ownership and seed hashes in its receipt; reject an anonymous volume, an out-of-root mount or an ownership mismatch. Preserve incompatible pre-existing containers and report them; do not repurpose or delete them automatically.

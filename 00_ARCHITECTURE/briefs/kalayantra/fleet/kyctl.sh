@@ -16,11 +16,24 @@
 #           owner-decisions blob in), rendered from $KY_SOURCE_REPO, default the campaign checkout B-2 creates.
 # start     idempotent. Each guard refuses by name (stderr `kyctl: REFUSED <loop>: <reason> — …`, exit 2).
 #           --clear-stop removes ONLY that loop's STOP file, and only once every other guard has passed.
+#           The veto loop is admitted like the model loops: an installation receipt of mode bootstrap or final
+#           AND a passing kyversion.sh in the matching mode (`--bootstrap` for a bootstrap receipt, none for a
+#           final one); a receipt of any other mode, an unreadable one, and a missing or failing kyversion.sh
+#           refuse. (kyloop.py repeats the same gate itself, at start-up and whenever the receipt changes.)
 # stop      creates STOP_<loop>, turns the switch off, boots the job out and confirms it is gone (else exit 1).
+#           "Gone" includes the child its controller recorded: while that child is alive, pending or cannot be
+#           judged, the stop is NOT reported as confirmed — a loaded-or-not launchd job is not the whole loop.
 # restart   stop + start; refuses when a STOP file it did not create is present (unless --clear-stop).
 # status    one line per loop from what was observed; `running` only when launchctl reported a pid and that
-#           pid is alive; anything not observed is `unknown`. Always exits 0. The veto line also carries what its
-#           controller recorded at its last tick (veto_pending, veto_next_deadline, veto_last_tick).
+#           pid is alive; anything not observed is `unknown`. Always exits 0. Per loop it also reports
+#             child=<none|pending|alive|survivors|gone|unknown> child_pid=<pid|->   the child its controller
+#                       recorded, judged by pid + process-start identity and its process group (expected-child
+#                       liveness; `waiting=` is the legitimate waiting state when there is none)
+#             bundle=<receipt mode>:<manifest digest or receipt-<sha>, 12 hex> bundle_age_s=<n>   the authorised
+#                       bundle the controller last VERIFIED (kyversion.sh passed), or `unknown`
+#             test_hooks=<none|active>   whether that controller runs with a test hook set
+#           The veto line also carries what its controller recorded at its last tick (veto_pending,
+#           veto_next_deadline, veto_last_tick).
 #
 # The veto loop is stopped and observed HERE only (`kyctl.sh stop veto`, `kyctl.sh status`): of the owner's queued
 # commands the veto role takes `veto <decision-id>` alone — a queued `status` or `loops stop` addressed to it is
@@ -101,21 +114,33 @@ elif op == "last-run":
 elif op == "loop-state":
     p = os.path.join(args[0], "loops", args[1] + ".json")
     if not os.path.exists(p):
-        print("unset - - - - -")
+        print("unset - - - - - unknown - -")
     else:
         d = load(p)
         en = d.get("enabled")
         br = d.get("breaker") if isinstance(d.get("breaker"), dict) else None
         ctl = d.get("controller") if isinstance(d.get("controller"), dict) else {}
-        try:
-            age = int(time.time() - calendar.timegm(time.strptime(d["last_iteration_at"], "%Y-%m-%dT%H:%M:%SZ")))
-        except Exception:
-            age = "-"
+        def age_of(text):
+            try:
+                return int(time.time() - calendar.timegm(time.strptime(text, "%Y-%m-%dT%H:%M:%SZ")))
+            except Exception:
+                return "-"
         np = d.get("no_progress_count")
+        b = d.get("bundle") if isinstance(d.get("bundle"), dict) else {}
+        hexes = lambda v: isinstance(v, str) and len(v) >= 12 and all(c in "0123456789abcdef" for c in v)
+        mode = b.get("receipt_mode") if b.get("receipt_mode") in ("bootstrap", "final") else None
+        if mode and hexes(b.get("manifest_digest")):
+            bundle = "%s:%s" % (mode, b["manifest_digest"][:12])
+        elif mode and hexes(b.get("receipt_sha256")):
+            bundle = "%s:receipt-%s" % (mode, b["receipt_sha256"][:12])
+        else:
+            bundle = "unknown"
         print("true" if en is True else "false" if en is False else "unset",
-              np if isinstance(np, int) else "-",
+              np if isinstance(np, int) and not isinstance(np, bool) else "-",
               "-" if br is None else ("open" if br.get("open") else "closed"),
-              str(d.get("waiting") or "-").replace(" ", "_"), age, ctl.get("pid") or "-")
+              str(d.get("waiting") or "-").replace(" ", "_"), age_of(d.get("last_iteration_at")), ctl.get("pid") or "-",
+              bundle, age_of(b.get("verified_at")) if bundle != "unknown" else "-",
+              "active" if d.get("test_hooks") else "none")
 elif op == "veto-state":
     p = os.path.join(args[0], "loops", "veto.json")
     v = load(p).get("veto") if os.path.exists(p) else None
@@ -158,6 +183,14 @@ lc_query() {
   return 0
 }
 
+# The child a loop's controller recorded → "<state> <pid|-> <run id|->" (state: none|pending|alive|survivors|gone|
+# unknown). kyloop.py judges it (pid + process-start identity, process group); without kyloop.py it is unknown.
+child_of() {
+  if [ "$1" = dispatcher ]; then echo "none - -"; return 0; fi     # kydispatch.py owns its own jobs
+  if [ ! -f "$KY_FLEET/kyloop.py" ]; then echo "unknown - -"; return 0; fi
+  "$PY" "$KY_FLEET/kyloop.py" admin child "$1" 2>/dev/null || echo "unknown - -"
+}
+
 cmd_install() {
   local loop label src dst tmp v
   if [ ! -d "$TEMPLATES" ]; then echo "kyctl: install failed: no templates at $TEMPLATES" >&2; return 1; fi
@@ -196,7 +229,7 @@ PYEOF
 }
 
 start_one() {   # start_one <loop> <clear-stop 0|1> → 0 started/already running · 1 failed · 2 refused
-  local loop="$1" clear="$2" label plist stop mode logp verb rc m repo
+  local loop="$1" clear="$2" label plist stop mode logp verb rc m repo varg
   label="$(label_of "$loop")"; plist="$(plist_of "$loop")"; stop="$KY_RUN/STOP_$loop"
   if [ ! -f "$plist" ]; then refuse "$loop" plist-not-installed "$plist (run: kyctl.sh install)"; return 2; fi
   lc_query "$loop"
@@ -223,10 +256,22 @@ start_one() {   # start_one <loop> <clear-stop 0|1> → 0 started/already runnin
       if [ "$mode" != final ]; then refuse "$loop" install-receipt-not-final "INSTALL_RECEIPT.json mode is $mode; the conductor needs final"; return 2; fi
       if [ ! -f "$KY_RUN/OWNER_RESUME.json" ]; then refuse "$loop" owner-resume-missing "$KY_RUN/OWNER_RESUME.json"; return 2; fi ;;
     veto)
+      # the same gate as the model loops: a receipt of mode bootstrap|final AND a passing kyversion.sh in that mode
       case "$mode" in
+        bootstrap) varg="--bootstrap" ;;
+        final) varg="" ;;
         missing) refuse "$loop" install-receipt-missing "$KY_RUN/INSTALL_RECEIPT.json (the veto handler runs only from an accepted installation)"; return 2 ;;
-        unknown) refuse "$loop" install-receipt-unreadable "$KY_RUN/INSTALL_RECEIPT.json cannot be read"; return 2 ;;
+        unknown|unreadable) refuse "$loop" install-receipt-unreadable "$KY_RUN/INSTALL_RECEIPT.json cannot be read, or states no usable mode"; return 2 ;;
+        *) refuse "$loop" install-receipt-mode "mode is $mode; need bootstrap or final"; return 2 ;;
       esac
+      if [ ! -f "$KY_FLEET/kyversion.sh" ]; then refuse "$loop" kyversion-missing "$KY_FLEET/kyversion.sh (the installed bundle cannot be verified)"; return 2; fi
+      rc=0
+      if [ -n "$varg" ]; then
+        /bin/bash "$KY_FLEET/kyversion.sh" "$varg" >/dev/null 2>&1 || rc=$?
+      else
+        /bin/bash "$KY_FLEET/kyversion.sh" >/dev/null 2>&1 || rc=$?
+      fi
+      if [ "$rc" -ne 0 ]; then refuse "$loop" kyversion-failed "kyversion.sh $varg exited $rc for a $mode receipt"; return 2; fi
       # what the job will really be given: the KY_SOURCE_REPO of the INSTALLED plist, not this shell's variable
       repo="$(/usr/bin/plutil -extract EnvironmentVariables.KY_SOURCE_REPO raw -o - "$plist" 2>/dev/null || true)"
       if [ -z "$repo" ]; then refuse "$loop" source-repo-missing "the installed plist carries no KY_SOURCE_REPO (run: kyctl.sh install)"; return 2; fi
@@ -264,7 +309,7 @@ start_one() {   # start_one <loop> <clear-stop 0|1> → 0 started/already runnin
 }
 
 stop_one() {    # stop_one <loop> → 0 confirmed gone · 1 unconfirmed
-  local loop="$1" label stop i
+  local loop="$1" label stop i child cpid rest
   label="$(label_of "$loop")"; stop="$KY_RUN/STOP_$loop"
   if [ ! -d "$KY_RUN" ]; then echo "kyctl: stop $loop: no run directory $KY_RUN" >&2; return 1; fi
   if [ ! -e "$stop" ]; then
@@ -279,13 +324,23 @@ stop_one() {    # stop_one <loop> → 0 confirmed gone · 1 unconfirmed
     echo "kyctl: stop $loop: warning — kyloop.py unavailable, enabled switch not written (the STOP file still stops the loop)" >&2
   fi
   if [ -x "$LAUNCHCTL" ]; then "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true; fi
-  i=0
+  i=0; child=unknown; cpid=-
   while [ "$i" -lt 40 ]; do
     lc_query "$loop"
-    if [ "$Q_LOADED" = no ]; then echo "kyctl: stop $loop: STOP file present, job not loaded (confirmed)"; return 0; fi
+    if [ "$Q_LOADED" = no ]; then
+      # the launchd job is gone — but a loop is stopped only when the child its controller recorded is gone too
+      read -r child cpid rest <<<"$(child_of "$loop") - -"
+      case "$child" in
+        none|gone) echo "kyctl: stop $loop: STOP file present, job not loaded, no recorded child left (confirmed)"; return 0 ;;
+      esac
+    fi
     i=$((i + 1)); /bin/sleep "$CONFIRM_SLEEP"
   done
-  echo "kyctl: stop $loop: stop-unconfirmed — launchd still reports the job (loaded=$Q_LOADED state=$Q_STATE); STOP file left in place" >&2
+  if [ "$Q_LOADED" = no ]; then
+    echo "kyctl: stop $loop: stop-unconfirmed — the job is not loaded, but the child its controller recorded is $child (pid $cpid); STOP file left in place" >&2
+  else
+    echo "kyctl: stop $loop: stop-unconfirmed — launchd still reports the job (loaded=$Q_LOADED state=$Q_STATE); STOP file left in place" >&2
+  fi
   return 1
 }
 
@@ -314,6 +369,7 @@ cmd_uninstall() {
 
 cmd_status() {
   local loop plist pl state enabled np breaker waiting age cpid last progressed stop ctl n f rest extra vp vd vt m answered helpers
+  local bundle bage hooks child childpid
   for loop in $LOOPS; do
     plist="$(plist_of "$loop")"
     lc_query "$loop"
@@ -321,7 +377,8 @@ cmd_status() {
     if [ "$Q_LOADED" = unknown ]; then state=unknown
     elif [ "$pl" = missing ] && [ "$Q_LOADED" = no ]; then state=not-installed
     else state="$Q_STATE"; fi
-    read -r enabled np breaker waiting age cpid rest <<<"$(kyjson loop-state "$KY_RUN" "$loop") - - - - - -"
+    read -r enabled np breaker waiting age cpid bundle bage hooks rest <<<"$(kyjson loop-state "$KY_RUN" "$loop") - - - - - unknown - -"
+    read -r child childpid rest <<<"$(child_of "$loop") - -"
     extra=""
     if [ "$loop" = dispatcher ]; then
       last=n/a; progressed=n/a; ctl=n/a
@@ -338,7 +395,7 @@ cmd_status() {
       else ctl=mismatch; fi
     fi
     if [ -e "$KY_RUN/STOP_$loop" ]; then stop=yes; else stop=no; fi
-    echo "$loop state=$state pid=$Q_PID last_exit=$Q_LAST_EXIT loaded=$Q_LOADED plist=$pl enabled=$enabled stop=$stop controller=$ctl waiting=$waiting last_iteration_age_s=$age last_run=$last progressed=$progressed no_progress=$np breaker=$breaker$extra"
+    echo "$loop state=$state pid=$Q_PID last_exit=$Q_LAST_EXIT loaded=$Q_LOADED plist=$pl enabled=$enabled stop=$stop controller=$ctl waiting=$waiting last_iteration_age_s=$age last_run=$last progressed=$progressed no_progress=$np breaker=$breaker child=$child child_pid=$childpid bundle=$bundle bundle_age_s=$bage test_hooks=$hooks$extra"
   done
   n=0; answered=0
   if [ -d "$KY_RUN/awaiting" ]; then

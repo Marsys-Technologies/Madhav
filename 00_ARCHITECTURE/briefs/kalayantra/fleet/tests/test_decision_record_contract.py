@@ -51,23 +51,37 @@ def test_routine_targets_stay_free_form_and_unknown_keys_are_refused():
     assert kyschema.validate(SCHEMA, proposal(detail=5))
 
 
-def test_lines_the_veto_handler_really_appends_validate(tmp_path):
+def test_lines_the_veto_handler_really_appends_validate(tmp_path, monkeypatch):
+    """A real tick, in-process, at a patched wall clock (the effecting path takes no clock argument)."""
+    import calendar
+    import time
+
+    import kyveto
     root = tmp_path / "ky"
     run = root / "run"
     (run / "awaiting").mkdir(parents=True)
     (run / "awaiting" / "AW-20261011T220000Z-capacity.json").write_text(json.dumps({"id": "AW-20261011T220000Z-capacity"}))
     log = run / "DECISIONS_SURROGATE.jsonl"
     log.write_text(json.dumps(proposal()) + "\n")
-    env = {"KY_ROOT": str(root), "KY_RUN": str(run), "KY_FLEET": str(root / "fleet_live"), "PATH": "/usr/bin:/bin",
-           "KY_BIN": "/usr/bin/false", "HOME": str(tmp_path)}
-    r = subprocess.run([sys.executable, str(FLEET / "kyveto.py"), "tick", "--now", "2026-10-11T23:00:00Z",
-                        "--authorised-commit", C, "--entrypoints-digest", D], env=env, capture_output=True, text=True, timeout=60)
+    env = kyveto.Env({"KY_ROOT": str(root), "KY_RUN": str(run), "KY_FLEET": str(root / "fleet_live"),
+                      "KY_BIN": "/usr/bin/false", "KY_SOURCE_REPO": "", "HOME": str(tmp_path), "PATH": "/usr/bin:/bin"})
+    monkeypatch.setattr(kyveto, "wall_clock", lambda: calendar.timegm(time.strptime("2026-10-11T23:00:00Z", "%Y-%m-%dT%H:%M:%SZ")))
+    report = kyveto.tick(env, authorised={"source_commit": C, "entrypoints_digest": D})
     lines = [json.loads(x) for x in log.read_text().splitlines()]
-    assert len(lines) >= 2, (r.returncode, r.stdout, r.stderr)        # the handler appended a transition
+    assert len(lines) >= 2, report                                   # the handler appended a transition
     handler = [x for x in lines if x.get("by") == "kyveto"]
-    assert handler and handler[-1]["state"] == "FAILED" and handler[-1]["reason"]  # notification was not submitted
+    assert handler and handler[-1]["state"] == "FAILED" and handler[-1]["reason"]  # the record says it was not submitted
     for line in lines:
         assert kyschema.validate(SCHEMA, line) == [], line
+
+
+def test_the_effecting_path_takes_no_clock_from_its_caller(tmp_path):
+    run = tmp_path / "ky" / "run"
+    run.mkdir(parents=True)
+    r = subprocess.run([sys.executable, "-B", str(FLEET / "kyveto.py"), "tick", "--now", "2099-01-01T00:00:00Z"],
+                       env={"KY_ROOT": str(tmp_path / "ky"), "KY_RUN": str(run), "PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 64, (r.returncode, r.stderr)              # usage error: `tick --now` does not exist
 
 
 def test_the_card_states_the_same_record_keys():

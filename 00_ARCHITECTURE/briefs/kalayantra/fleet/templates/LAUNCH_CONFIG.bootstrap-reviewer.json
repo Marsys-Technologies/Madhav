@@ -9,7 +9,7 @@
  "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
  "claude_bin": "/Users/Dev/.local/bin/claude",
  "mcp_config": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json",
- "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md",
  "env_names": [
   "HOME",
   "USER",
@@ -20,12 +20,14 @@
   "ZDOTDIR",
   "KY_ROOT",
   "KY_RUN",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
   "KY_ITEM",
   "KY_PY"
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
  "extra_flags": [
-  "--allowedTools=Bash(shasum:*),Bash(wc:*),Bash(ls:*),Bash(plutil:*),Bash(python3:*),Bash(git show:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*)"
+  "--allowedTools=Bash(shasum:*),Bash(wc:*),Bash(ls:*),Bash(plutil -lint*),Bash(python3:*),Bash(git show:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*)"
  ],
  "disallowed_tools": [
   "Edit",
@@ -44,7 +46,29 @@
   "WebFetch",
   "WebSearch",
   "DesignSync",
-  "Skill"
+  "Skill",
+  "Bash(git add*)",
+  "Bash(git commit*)",
+  "Bash(git push*)",
+  "Bash(git merge*)",
+  "Bash(git switch*)",
+  "Bash(git checkout*)",
+  "Bash(git worktree*)",
+  "Bash(git branch*)",
+  "Bash(git reset*)",
+  "Bash(git rebase*)",
+  "Bash(git stash*)",
+  "Bash(git tag*)",
+  "Bash(git fetch*)",
+  "Bash(git pull*)",
+  "Bash(git config*)",
+  "Bash(git remote*)",
+  "Bash(*--output*)",
+  "Bash(gh *)",
+  "Bash(npm *)",
+  "Bash(psql*)",
+  "Bash(launchctl*)",
+  "Bash(curl*)"
  ],
  "add_dirs": [
   "/Users/Dev/kalayantra"
@@ -58,5 +82,11 @@
   "Edit"
  ],
  "bash_canary": "readonly",
- "_note": "prompt_path is a placeholder (the fixture verifier card) until a bootstrap reviewer card exists; the receipt binds its hash, so requalify when the reviewer card replaces it."
+ "shell_canary": "python3",
+ "denied_bash": [
+  "touch DENIED_CANARY.txt",
+  "git add -A",
+  "git commit --allow-empty -m canary"
+ ],
+ "_note": "Not read-only and not sandboxed: Bash(python3:*) permits writes, the network and subprocesses. It stays because the reviews depend on executed probes, and is recorded for an owner-surrogate decision. What this configuration does refuse (Edit and Write, the git write verbs, --output, gh, npm, psql, launchctl, curl) it refuses by rule; the enforced verifier boundary is a B-1 deliverable. prompt_path is the bootstrap reviewer card; the receipt binds its hash."
 }
