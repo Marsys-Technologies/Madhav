@@ -55,7 +55,8 @@ N235_IDS = frozenset(f"Carr.D{i}#measured:ratified_judgment" for i in (1, 2, 3))
 N283_IDS = frozenset(f"Carr.D{i}#measured:no-table-no-prose" for i in (1, 2, 3))      # SS N-283: a table-less service probe stores no value; declaration-keyed (no_table), checked
 N430_IDS = frozenset({"Idem.pattern#measured:passive-projection", "Build.count_integrity#measured:passive-projection-constant-count"})      # SS N-430 (views): a declared passive_projection, CHECKED against the writer scan and the live catalog
 N431_IDS = frozenset(f"{c}#measured:corpus-derived" for c in ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Null.schema_default", "Null.blank_rows"))      # SS N-431 (R1/R3, revision 28): a corpus_derived table, declaration-keyed and CHECKED by regeneration
-DECLARED_IDS = N431_IDS | N430_IDS | N283_IDS | N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
+N514_IDS = frozenset({"Cost.baseline#measured:no-writer-registry-agrees"})      # SS N-514 (revision 29): a writer-less asset has no build-cost baseline; keyed on the SAME released no-writer N/A as Earn.build_record, checked against the registry row, the scan and the attempts
+DECLARED_IDS = N514_IDS | N431_IDS | N430_IDS | N283_IDS | N235_IDS | N65_IDS | PIN10_IDS | S2_IDS | S3_IDS | N151_IDS | N150_IDS | N156_IDS | SS_BUILD_RECORD_IDS | SS_IDEM_UPDATE_ONLY_IDS | SS_NO_TABLE_IDS | SS_R_IDS | N176_IDS | N177_IDS | N211_IDS | N270_IDS     # the exact production table since REGISTRY_REVISION 26
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -93,6 +94,9 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
             continue
         if rid in N431_IDS:
             assert "N-431" in why, (rid, why)                                                                                    # SS N-431: cites its own ruling
+            continue
+        if rid in N514_IDS:
+            assert "N-514" in why, (rid, why)                                                                                    # SS N-514: cites its own ruling
             continue
         if rid in N270_IDS:
             assert "N-270" in why, (rid, why)                                                                                    # SS N-270: cites its own ruling

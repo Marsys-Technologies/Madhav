@@ -102,6 +102,7 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
     reg["Earn.build_record"] = dict(reg["Earn.build_record"], revision=1, applicability="has a build/attempt record to grade")      # SS 2026-10-05 (build_record no-writer/static) re-worded and bumped it
+    reg["Cost.baseline"] = dict(reg["Cost.baseline"], revision=1, applicability="has a build/attempt record to grade")      # registry revision 29 (SS N-514) added the no-writer N/A and the sibling credit clauses and bumped it
     reg["Vocab.identity"] = dict(reg["Vocab.identity"], revision=1,      # SS 2026-10-05 (no-table-no-prose) bumped it, no re-wording; registry revision 28 (ONE bump, SS N-431) inserted the view `logical_key` parenthetical, undone here
                                  applicability=re.sub(r" \(a table.s unique or primary constraint, or, for a view, a declared `logical_key`.*?no duplicate group in the measured chart\)", "", reg["Vocab.identity"]["applicability"]))
     reg["Build.dag"] = dict(reg["Build.dag"], revision=2, applicability=re.sub(r"; SS 2026-10-05 R-d.*$", "", reg["Build.dag"]["applicability"]))     # revision 26 (residual detector D1: annotated constants / conditional SQL names) bumped it, no re-wording; SS R-d appended its clause (and bumped it again)
@@ -120,6 +121,7 @@ def _restore_pre_retirement(monkeypatch):
         if causes[_c] is None:
             causes.pop(_c)
     causes["Idem.pattern"] = ("no-writer-registry-agrees",)      # SS 2026-10-05 added `update-only-by-intent`
+    causes.pop("Cost.baseline", None)                      # registry revision 29 (SS N-514) added `no-writer-registry-agrees`; revision 7 had no cause there
     causes["Earn.build_record"] = ("never-attempted", "healthy-non-execution", "no-registered-writer", "before-completion-write")      # SS 2026-10-05 added `no-writer-registry-agrees`
     causes["Dens.served"] = ("no-served-surface",)          # SS N-211 added `dens-not-served` / `dens-owned-by-sibling`
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there

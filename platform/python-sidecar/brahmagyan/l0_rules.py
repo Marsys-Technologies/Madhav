@@ -1414,6 +1414,14 @@ def extract_rules_from_chunk(
             antecedent = result["antecedent"]
             prediction = result["prediction"]
 
+            # A rule with no consequence is not a rule: when the trigger word ends the chunk
+            # (the sentence continues in the next chunk), or the clause is only punctuation or
+            # dashes, `_extract_result_clause` returns "" / "." / a dash run. Such a result has no
+            # word character; keep nothing rather than a rule that predicts nothing (census run A,
+            # Narr.agree: 8 stored rows read blank). Counted as a raw match, never as a yield.
+            if not re.search(r"\w", str(prediction.get("result") or "")):
+                continue
+
             # Within-chunk dedup key: use antecedent+prediction only (not pattern name)
             # so that two patterns producing the same antecedent+prediction → 1 rule
             dedup_key = f"{json.dumps(antecedent, sort_keys=True)}|{json.dumps(prediction, sort_keys=True)}"
