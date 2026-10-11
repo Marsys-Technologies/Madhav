@@ -229,7 +229,9 @@ ENTITIES += [
     _e("dasha_system", "yogini", "Yogini Dasha", "Yogini",
        ["yogini", "yogini_dasha"],
        "36-year dasha system; eight yoginis"),
-    _e("dasha_system", "jaimini_chara", "Jaimini Chara Dasha", "Chara",
+    # canonical id is the catalog owner's (l0_dasha_systems.py DASHA_SYSTEMS): `chara_jaimini`. The bootstrap row used to be seeded as `jaimini_chara`,
+    # a 21st dasha_system id that bg_dasha_systems then deleted (census run A: bg_ontology wrote 729, live is 728). `jaimini_chara` stays a synonym.
+    _e("dasha_system", "chara_jaimini", "Jaimini Chara Dasha", "Chara",
        ["chara", "jaimini_chara", "char_dasha"],
        "Sign-based Jaimini dasha system"),
     _e("dasha_system", "kalachakra", "Kalachakra Dasha", "Kalachakra",
