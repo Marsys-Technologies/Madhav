@@ -267,15 +267,20 @@ def test_an_unbound_parameter_is_an_error_as_in_the_engine(pg, monkeypatch, tmp_
 
 
 def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_path):
-    """The claim is that the SERVER-side budget bounds the declared statement. That is measured on the statement itself (its own elapsed seconds,
-    recorded around psql_read_only), not on the wall time of the whole census run, which also holds setup, the layer stub and a second asset and so
-    varies by seconds on a loaded CI runner (an 18 s run was seen on a shared runner while the cancel itself fired at ~1 s locally). The unbounded
-    statement (2 billion rows) would run until the client kill, budget + 30 s; the budget here is 1 s, so a statement that ends well before 30 s was
-    cancelled by the budget. Mutation (checked by hand): budget 10 instead of 1 -> the statement takes ~10 s -> this assertion fails; the server
-    statement_timeout removed from psql_read_only -> it runs to the client kill (~31 s) -> fails."""
+    """The claim: the SERVER-side budget (SET LOCAL statement_timeout of the integrity transaction) cancels the declared statement, so it never runs to the
+    client kill (budget + 30 s) and the census continues. Three independent, wall-clock-free or wall-clock-loose proofs (a tight wall-clock margin lost this
+    test to loaded CI runners three times: 7.2 s, 18 s, 6.0 s):
+      1. WHAT WAS SENT: the integrity transaction carries `SET LOCAL statement_timeout = 1000` (budget 1 s x 1000), recorded at the psql runner: a wrong
+         multiplier or a missing SET is caught deterministically, with no clock;
+      2. WHO CANCELLED IT: the cell text carries the SERVER's `57014: canceling statement due to statement timeout` and the `cut off at the budget` mark;
+         a client kill (CheckTimeout) carries neither;
+      3. A LOOSE CLOCK BOUND: the statement ended before the client kill (budget + 30 s) minus a wide margin (< 20 s): this alone would not tell a 6 s
+         cancel from a 10 s one, which is exactly why (1) exists.
+    Mutations (checked by hand): `SET LOCAL statement_timeout` removed -> the statement runs to the client kill (~31 s): (1), (2) and (3) all fail;
+    the budget multiplier changed (x10000) -> the server cancels at 10 s: (1) fails; the budget not applied -> same as the first."""
     monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
-    seen = []
-    real = ac.psql_read_only
+    seen, sent = [], []
+    real, real_run = ac.psql_read_only, ac._psql_run
 
     def timed(sql, *a, **k):
         t = time.time()
@@ -283,16 +288,22 @@ def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_p
             return real(sql, *a, **k)
         finally:
             seen.append((str(sql), time.time() - t))
+
+    def spy_run(cmds, *a, **k):
+        sent.append(list(cmds))
+        return real_run(cmds, *a, **k)
     monkeypatch.setattr(ac, "psql_read_only", timed)
-    t0 = time.time()
+    monkeypatch.setattr(ac, "_psql_run", spy_run)
     census = _run(monkeypatch, tmp_path, "SELECT count(*) > 0 FROM generate_series(1, 2000000000)", extra={"ph_y": _reg_row("ph_y", "SELECT true")})
-    wall = time.time() - t0
     slow = [sec for sql, sec in seen if "generate_series" in sql]
     assert len(slow) == 1, seen
-    assert slow[0] < 1 + 5, f"the 1 s budget did not cancel the declared statement (it ran {slow[0]:.1f} s)"
-    assert wall < 25, f"the whole run took {wall:.1f} s: the statement was bounded but something else is slow"
+    txs = [cmds for cmds in sent if any("generate_series" in c for c in cmds)]
+    assert len(txs) == 1 and "SET LOCAL statement_timeout = 1000" in txs[0], txs                                    # (1) what was sent
     c = _cell(census, "ph_x")
-    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and ("timeout" in c["measured"].lower() or "canceling" in c["measured"]), c
+    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"], c
+    assert "57014" in c["measured"] and "canceling statement due to statement timeout" in c["measured"], c            # (2) the server cancelled it
+    assert "cut off at the budget" in c["measured"], c
+    assert slow[0] < 20, f"the statement ran {slow[0]:.1f} s: it was not cancelled by the 1 s budget (the client kill is ~31 s)"          # (3) loose clock bound
     assert _cell(census, "ph_y")["v"] == ac.PASS
 
 
