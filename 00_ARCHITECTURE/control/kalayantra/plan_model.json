@@ -5870,6 +5870,117 @@
         ]
       },
       "join": false
+    },
+    {
+      "id": "K-CERT",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-cert-tier"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa FINAL/strict FIX_LIST: bg_gochara_citation_resolution Dens.served PARTIAL",
+          "CLAUDE.md §N.6 Serving Density Principle",
+          "owner approval of the compressed certification plan (SS N-431), relayed 2026-10-10"
+        ],
+        "owns": [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          "its test file",
+          "platform/src/generated/capability_estate_census.json (canonical regeneration only)"
+        ],
+        "tests": [
+          "a test that fails on base (no tier column in the served select) and passes after",
+          "Dens.served for bg_gochara_citation_resolution reads PASS on the census of the branch"
+        ],
+        "compat": "additive response field only; no migration; no other file",
+        "notes": "Branch work during the Kāla merge hold. The PR is labelled DO NOT MERGE; Suvarṇa's Engine reviews it and SS arms it in the Suvarṇa window. Completion = branch merged by Suvarṇa."
+      }
+    },
+    {
+      "id": "K-CERT-2",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-cert-citation-resolution"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa SS N-443",
+          "PR #3055 (branch suvarna/land/TI-l0data-20-001, head 0dd4b6e59): the bg_gochara_citation_resolution half only",
+          "CLAUDE.md §N.2 frozen WriterBase contract, §N.3 L0 idempotency, §N.4 cockpit truth (count_sql)"
+        ],
+        "owns": [
+          "platform/python-sidecar/brahmagyan/l0_gochara_citation_resolution.py",
+          "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_citation_resolution.py",
+          "platform/python-sidecar/pipeline/orchestrator/writers/_l0_static_gate.py",
+          "platform/python-sidecar/tests/fixtures/gochara_citation_resolution_live.json",
+          "its tests incl. test_has_writer_completeness",
+          "one surgical data-only asset_registry migration if #3055 lacks the has_writer/count_sql flip (number claimed on CAMPAIGN_COORDINATION §2)",
+          "generated digests + census (canonical regeneration only)"
+        ],
+        "tests": [
+          "writer conforms to WriterBase (@register, run(ctx), never commits ctx.db_conn)",
+          "the 14 rows equal the live fixture; the migration-631 digest recomputes TRUE inside PostgreSQL after a damaged table is replaced",
+          "asset_registry has_writer true and count_sql returns 14 on a disposable DB"
+        ],
+        "compat": "new writer + registry flip; no serving change; Suvarṇa builds the asset once in its run",
+        "notes": "Branch work during the Kāla merge hold; DO NOT MERGE label; go/no-go to SS by 2026-10-11T12:00Z; hard deadline 2026-10-11T18:00Z, after which it stays out with a named reason."
+      }
+    },
+    {
+      "id": "K-AVADHI-C",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa SS N-450 item (3)",
+          "production asset_throughput ka_avadhi: state=error since 2026-09-10T19:10Z, 'post-write integrity check failed: integrity_check_sql → False' (conjunct (c) lord_condition_fact_refs)",
+          "asset_registry.integrity_check_sql for ka_avadhi; W2 M4 ruling on lord_condition_fact_refs",
+          "CLAUDE.md §N.5 (L1 is the authority; fact refs must resolve), §N.7.6 (honest null over invented value), §N.8 (a check must measure what it claims)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py",
+          "platform/python-sidecar/services/ka_avadhi/**",
+          "one surgical data-only migration on asset_registry.integrity_check_sql for ka_avadhi IF the conjunct itself is wrong (number claimed on CAMPAIGN_COORDINATION §2)",
+          "platform/python-sidecar/tests/l3/ka_avadhi/**",
+          "generated digests + census (canonical regeneration only)"
+        ],
+        "tests": [
+          "on a disposable DB seeded with the canonical chart's L1/L2 inputs, the writer's rows satisfy integrity_check_sql → True",
+          "a fail-on-base test that reproduces today's False",
+          "no lord_condition_fact_ref is invented: every ref resolves to chart_facts.fact_id or the row carries an honest null with a reason"
+        ],
+        "compat": "first decide from evidence whether the WRITER is wrong (refs missing) or the CHECK is wrong (asserts something W2 M4 declared out of scope); fix the one that is wrong, never both, and never relax the check to pass",
+        "notes": "Branch work under the Kāla merge hold; DO NOT MERGE label; Suvarṇa merges in its window. Deadline 2026-10-12T18:00Z with a go/no-go to SS by 12:00Z; if not ready, ka_avadhi stays out of the tail with a named reason."
+      }
     }
   ],
   "decisions": [
