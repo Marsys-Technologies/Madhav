@@ -43,9 +43,11 @@ tool-heavy turn and check thresholds before the next unit of work. Read the newe
 
 **Read, in this order, nothing else until a task needs it**
 1. `$D/KALAYANTRA_RELAUNCH_PLAN_v2_2.md` — version must be 2.2.
-2. `$D/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_1.md` §3 (KT-01…KT-08) and
-   `$D/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_0.md` §3 (KS-01…KS-12); the plan §17
-   maps each to a section — your deliverables must keep every closure true.
+2. `$D/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_2.md` §3 (KU-01…KU-03: PROCEED-WITH-FIXES —
+   these three replacements enter your B-0c deliverables and their independent review
+   before any job runs), `$D/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_1.md` §3
+   (KT-01…KT-08) and `_v2_0.md` §3 (KS-01…KS-12); the plan §17 maps each to a section —
+   your deliverables must keep every closure true.
 3. `/Users/Dev/worktrees.noindex/madhav/claude/audit-token-economy/00_ARCHITECTURE/TOKEN_ECONOMY_AUDIT_v1_0.md`
    §4 F-3/F-5/F-6 and §7, at commit `758e0dbb4` (verify with `git -C … rev-parse --short HEAD`).
 4. Per task, by section: the five hash-pinned specification documents (hash-check their
