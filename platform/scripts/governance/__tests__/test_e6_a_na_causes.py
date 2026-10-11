@@ -261,6 +261,9 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
     rec = ac.earn_build_record_no_writer(dict(v="N/A", cause="never-attempted", measured="m"), {}, _blk)        # SS 2026-10-05: the no-writer / static release
     assert rec["v"] == NA, rec
     observed.add(("Earn.build_record", rec["cause"]))
+    _cb = ac.cost_baseline_no_writer(dict(v=ac.FAIL, measured=ac.NO_SANCTIONED_BASELINE), rec)          # SS N-514: Cost.baseline reads the same released no-writer N/A (tested in test_n514_cost_baseline)
+    assert _cb["v"] == NA, _cb
+    observed.add(("Cost.baseline", _cb["cause"]))
     for _c in ac.NO_TABLE_CRITERIA:                          # SS 2026-10-05 no-table-no-prose: emitted by `no_table_records` (tested in test_ss_default_rulings)
         _nt = ac.no_table_records("bg_x", dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")),
                                    ac.no_table_block(dict(kind="service", has_writer=False, prose_fields=None, no_table=dict(why="the service owns no table here at all", evidence="platform/scripts/seed/asset_registry_seed.ts:465")), "service", False, None, [], 0, []))

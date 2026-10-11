@@ -1,8 +1,8 @@
 {
  "schema": 2,
- "registry_revision": 28,
- "registry_fingerprint": "a8e18168b71510ea3ff87a1fa7bdeaf1673a8f0df57ca22e34fbca3959b76386",
- "inspector_commit": "5e7a360a4408807bf2a816bbc5804146dbe721cf",
+ "registry_revision": 29,
+ "registry_fingerprint": "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
+ "inspector_commit": "829d8db1df1005e414623cf21b7e0999a6f9bf31",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -175,6 +175,7 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "cost_baseline_no_writer",
     "measure"
    ]
   },
@@ -458,6 +459,10 @@
   {
    "rule_id": "Carr.D3#measured:single-derivation",
    "decision": "N-156 (C1 declared ceiling): single-derivation, declaration-keyed; refused for an asset a reviewed D3 method serves"
+  },
+  {
+   "rule_id": "Cost.baseline#measured:no-writer-registry-agrees",
+   "decision": "SS N-514 Cost.baseline no-writer: no writer, so no build and no build-cost baseline to hold; keyed on the same release as Earn.build_record (declaration has_writer: false, checked against the registry row, the @register scan and the asset's build_run_assets attempts: a contradicted declaration or an unreadable attempt log is not released); a measured baseline is never replaced"
   },
   {
    "rule_id": "Dens.served#measured:dens-not-served",

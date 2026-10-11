@@ -19,7 +19,7 @@ REV28 = {"Vocab.identity": 3, "Idem.pattern": 5, "Build.count_integrity": 4, "Nu
 
 
 def test_the_registry_revision_is_28_and_each_bumped_criterion_moved_by_exactly_one():
-    assert ac.REGISTRY_REVISION == 28
+    assert ac.REGISTRY_REVISION >= 28       # revision 29 (SS N-514) bumped only Cost.baseline: the nine criteria below keep the revision they carried at 28
     for crit, rev in REV28.items():
         assert ac.CRITERION_REGISTRY[crit]["revision"] == rev, crit
 
