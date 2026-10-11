@@ -1,7 +1,7 @@
 ---
-artifact: KALAYANTRA_RELAUNCH_STRATEGY_v1_1.md
-status: APPROVED IN PRINCIPLE by the native 2026-10-11 (six decisions below); plan built as KALAYANTRA_RELAUNCH_PLAN_v2_0.md (v1.0 withdrawn after Astra review v1.0)
-version: 1.1
+artifact: KALAYANTRA_RELAUNCH_STRATEGY_v1_2.md
+status: APPROVED IN PRINCIPLE by the native 2026-10-11 (six decisions below); HISTORICAL RATIONALE ONLY after plan v2.1 (Astra KS-11): execution, routing, review, regeneration, measurement and hand-off rules are exclusively those of the approved relaunch plan and its paired prompts
+version: 1.2
 authored_by: Claude Code (Fable 5.1), token-economy audit session, worktree audit/token-economy
 authored_on: 2026-10-11
 audience: native (approver); the planning session that will build the relaunch plan and the two paired prompts
@@ -29,7 +29,7 @@ owner_decisions_applied:
 
 | fact | value | source |
 |---|---|---|
-| items done | 46 / 148 = 31.1 % plain count (37.6 % is the tracker's weighted progress); K-track 24/85, J 2/32, V 2/15 | `ky status` |
+| items done | 46 / 148 = 31.1 % plain (39 guarded completions + 1 join + 6 decisions; 37.6 % is the tracker's weighted progress); K-track 24/85, J 2/32, V 2/15 | `ky status` |
 | real engine items merged | 20 (K0a-*, K0-SV, K1-*, K2-*, KA-*, K4-1, L0-K-RUNNER; PRs #3245–#3365) | EVENTS, gh |
 | open Kāla PRs frozen by the hold | 15; 11 ACCEPTED (6 at exact head), 4 rejected/stale | gh, VERDICTS |
 | unstarted | J lane after J-0c (30 items, 37 inherited Pravāha PRs), 21 K items, 4 READY exits never claimed, close C-1..C-4 | plan model vs EVENTS |
@@ -46,7 +46,16 @@ owner_decisions_applied:
 
 **Reading.** The astronomy was never the bottleneck. The campaign's own words: "the slowness is machinery, not computation"; "~4 rejections found a real defect" among the first 27 (amendment §0); of 74 total, the share is not measured; 83 of 93 new-item reports were about tooling. The relaunch therefore changes the machinery, not the plan documents.
 
-## 2. Strategic pillars
+## 2–4. Strategic pillars, risks, deliverables — HISTORICAL RATIONALE ONLY
+
+> **Operative rules are not here.** Execution, routing, review, regeneration,
+> measurement and hand-off rules are exclusively those of the approved relaunch plan
+> (KALAYANTRA_RELAUNCH_PLAN_v2_1.md or later) and its paired prompts. Where the text
+> below differs (for example rebasing, verdict de-duplication, frozen-file routing,
+> capacity, budgets, liveness, context thresholds), the plan governs. The owner
+> decisions in §5 and the evidence in §1 remain valid.
+
+### (historical) Strategic pillars
 
 ### P1 — Suvarṇa wrap-up is a gate with a written exit, not a background condition
 - Let Suvarṇa run its single rebuild under its lease; Kāla makes no merge, DB write or
@@ -148,7 +157,7 @@ owner_decisions_applied:
 - Bootstrap (worktrees under the policy root, lane DB baseline, fixtures, pins,
   dispatcher dry-run) is done **during the hold**, so launch day builds.
 
-## 3. Risks
+### (historical) Risks
 - **Quota concentration.** Everything on one Claude Max subscription whose headroom
   is unmeasured; the audit shows Claude already carried 81 % of tokens. Mitigation:
   P7 cap and pause rule; no second coordinator.
@@ -159,7 +168,7 @@ owner_decisions_applied:
 - **Dispatcher bugs starve lanes.** Decision log per tick; a forced liveness job per
   lane every 2 h.
 
-## 4. What the plan will produce
+### (historical) What the plan will produce
 1. The relaunch plan (waves, packets with tests, DAG, budget, exit signal).
 2. Two pasteable prompts, version-paired to the plan: the **planning-session
    prompt** (builds packets and tests) and the **conductor prompt** (runs the
