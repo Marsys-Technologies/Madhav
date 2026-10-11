@@ -51,5 +51,7 @@
   "Edit",
   "Bash"
  ],
- "denied_tools": []
+ "denied_tools": [],
+ "shell_canary": "python3",
+ "_note": "shell_canary is python3 because the program's Bash tool refuses a standalone `sleep` (observed in the real qualification of 2026-10-11): the kill probes need a long-running command the tool will actually run."
 }

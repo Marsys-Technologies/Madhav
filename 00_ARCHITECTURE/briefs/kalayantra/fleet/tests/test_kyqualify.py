@@ -2083,12 +2083,12 @@ def test_schemas_use_only_the_supported_keywords():
 TEMPLATE_FACTS = {
     # role: (permission mode, max turns, deadline, env names, extra flags, disallowed, intended, denied, card, optional keys)
     "bootstrap-builder": ("bypassPermissions", 150, 14400, BOOT_ENV, [], BUILDER_OFF, ["Read", "Write", "Edit", "Bash"], [],
-                          "BOOTSTRAP.md", {}),
+                          "BOOTSTRAP.md", {"shell_canary": "python3"}),
     "bootstrap-reviewer": ("default", 60, 3600, BOOT_ENV, [ALLOW], REVIEWER_OFF + BASH_DENY, ["Read", "Bash"], ["Write", "Edit"],
                            "BOOTSTRAP_REVIEWER.md", {"bash_canary": "readonly", "shell_canary": "python3",
                                                      "denied_bash": DENIED_BASH}),
     "surrogate": ("bypassPermissions", 30, 1800, SURROGATE_ENV, [], BUILDER_OFF, ["Read", "Write", "Bash"], [],
-                  "OWNER_SURROGATE.md", {}),
+                  "OWNER_SURROGATE.md", {"shell_canary": "python3"}),
 }
 
 
@@ -2109,7 +2109,7 @@ def test_wave_b_templates_are_valid_launch_configurations(role, tmp_path):
         "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin", "extra_flags": extra,
         "disallowed_tools": disallowed, "add_dirs": ["/Users/Dev/kalayantra"], "intended_tools": intended,
         "denied_tools": denied}, **optional)
-    assert ("_note" in doc) == (role == "bootstrap-reviewer")
+    assert "_note" in doc      # every template says why it is shaped as it is (reviewer: boundary; all: the python3 canary)
     names = [t for t in disallowed if "(" not in t]
     assert all(t in REAL_TOOLS for t in names) and "Agent" not in names                 # real tool names only
     # rework ruling R1: every job carries its own scratch directory and the campaign scratch root
