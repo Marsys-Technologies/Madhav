@@ -86,3 +86,8 @@ instruction: "take a call on my behalf" on the planner's four questions.
 - **Veto-class decisions** become effective only when the `veto` controller publishes them
   at the window's expiry after rechecking the unchanged target (KV-05); nothing is published
   at proposal time.
+- **Bundle-change authorisation (KW-04, clarifying D-4).** A change to the plan/prompt/card
+  bundle takes effect only through an activation record chaining to the previous one, with
+  independently reviewed immutable source and either the owner's authorisation (commit id)
+  or an effective D-4 surrogate decision after its veto window. Changes to the owner
+  decisions themselves remain owner-only.
