@@ -1,0 +1,7 @@
+{
+  "asset": "bg_concordance",
+  "expected_post_row_count": 721,
+  "why": "bg_concordance lists, per (topic, school), every rule id of the source texts; the rules table dropped 8 consequence-less rules (3,002 -> 2,994, migration 1368), so 357 of the 721 rows lose rule ids (991 ids in total) and nothing else changes: 721 rows, same topics and schools. Real-writer replay over the live corpus, seeds 0 and 3, digest a19bebde...2525; migration 1370 re-seals the check.",
+  "decision": "N-523",
+  "evidence": "migration 1370; census/run 966719ef bg_concordance post-write check; replay artefacts in 20261011-rulesreplay/conc; the Engine's independent recompute (N431/bg_concordance_reseal_analysis.md)."
+}
