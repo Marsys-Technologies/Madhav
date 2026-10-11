@@ -5,7 +5,7 @@
  "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 (closure procedure step 1; retained acceptance set, owner decision §15.4)",
  "canonical_path": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_1.json",
  "compatibility_copy": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_2.json (identical bytes; Astra review v2.2 KU-03)",
- "model": "00_ARCHITECTURE/control/kalayantra/plan_model.json (148 items; every brief_spec and detector below is copied from it and re-checked by fleet/kyclosure.py)",
+ "model": "00_ARCHITECTURE/control/kalayantra/plan_model.json (151 items; every brief_spec and detector below is copied from it and re-checked by fleet/kyclosure.py)",
  "acceptances": [
   {
    "id": "i",

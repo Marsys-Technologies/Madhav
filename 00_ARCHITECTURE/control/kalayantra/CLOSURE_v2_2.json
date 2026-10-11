@@ -436,6 +436,7 @@
     "KA-4b",
     "KR-1",
     "KR-2",
+    "KV3-SCHEMA-1",
     "L0-M",
     "V-J6",
     "V-K0a",
@@ -451,7 +452,7 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 123,
+   "closure_count": 124,
    "gap_candidates": [
     {
      "absorbed_by": "K9-5",
@@ -662,6 +663,7 @@
   "KA-4b",
   "KR-1",
   "KR-2",
+  "KV3-SCHEMA-1",
   "L0-M",
   "V-J6",
   "V-K0a",
@@ -678,13 +680,13 @@
   "VC-1",
   "VC-2"
  ],
- "closure_count": 125,
- "closure_sha256": "5d86f2bba1c848edba9f16c7638991ea87bab9d6aca718ce5825f49153989c21",
+ "closure_count": 126,
+ "closure_sha256": "697be104c803c5d5d2c62979f4a73b1f40007850700caccde3c912b0dd281f30",
  "inputs": {
-  "model_canonical_sha256": "fba94b41cc26c257c1cadd742e08812fa99b116675a82adb7d401c67cd6a1017",
-  "model_items": 148,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008",
-  "roots_canonical_sha256": "841eee4b3a192d4d99b5c8ed1266af2bde0b59fa9c5299462155dd63e695a844"
+  "model_canonical_sha256": "8d93ca5be3ab0f11f60253b8b509b622440d092706477328d2c10e26d95eaf5e",
+  "model_items": 151,
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011",
+  "roots_canonical_sha256": "46ae5d177ce2320c17dd0e444512cdb130f27ba7a58af993e43409512ada53dd"
  },
  "mechanical_close_chain_excluded_as_roots": [
   "C-1",
@@ -992,6 +994,7 @@
     "K0a-1a",
     "K0a-1b",
     "K8-R26",
+    "KV3-SCHEMA-1",
     "L0-M"
    ],
    "skip_capable": []
@@ -1772,6 +1775,9 @@
     ],
     "K0-SV": [
      "item"
+    ],
+    "KV3-SCHEMA-1": [
+     "item"
     ]
    },
    "required_by": [],
@@ -1809,7 +1815,8 @@
     "K-CERT",
     "K-CERT-2",
     "K1-1a",
-    "K8-R26"
+    "K8-R26",
+    "KV3-SCHEMA-1"
    ],
    "skip_capable": []
   },
@@ -2934,6 +2941,23 @@
     "input:K9-6"
    ]
   },
+  "KV3-SCHEMA-1": {
+   "acceptances": [
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K-CERT"
+   ],
+   "skip_capable": []
+  },
   "L0-M": {
    "acceptances": [
     "i",
@@ -3229,6 +3253,8 @@
   "D-GOCHARA-TIMEOUT",
   "D-R5",
   "D-R9",
+  "D-RETIRE-B-CLAIM-RECOVERY",
+  "D-RETIRE-B-K-INBOX",
   "D-T2",
   "J-7",
   "J-7a",
@@ -3240,7 +3266,7 @@
   "L0-K",
   "L0-K-RUNNER"
  ],
- "outside_count": 23,
+ "outside_count": 25,
  "plan_version": "2.2",
  "schema": "kalayantra.closure/1"
 }
