@@ -1,13 +1,15 @@
 ---
-artifact: KALAYANTRA_RELAUNCH_PLAN_v2_2.md
-status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.1 (ASTRA_REVIEW v2.1: REWORK, KT-01…KT-08, all applied here with Astra's replacement text; v2.0 KS-01…KS-12 applied in v2.1). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
-version: 2.2
+artifact: KALAYANTRA_RELAUNCH_PLAN_v2_3.md
+status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.2 (ASTRA_REVIEW v2.2: PROCEED-WITH-FIXES, KU-01…KU-03 → B-0c). v2.3 adds the autonomy model the owner directed on 2026-10-11 (resume-anywhere sessions, a persistent owner surrogate, headless loops under launchd, zero-idle scheduling) and the two launch defects the planner proved by execution (P-1 `--bare` cannot sign in; P-2 program version). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
+version: 2.3
 authored_by: Claude Code (Fable 5.1), worktree kalayantra/relaunch-plan
 authored_on: 2026-10-11
 audience: Astra (reviewer); native (approver); the planning session (KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md); the conductor session (KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md)
 paired_prompts:
-  - KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md
-  - KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md
+  - KALAYANTRA_V3_COCKPIT_PROMPT_v2_3.md        # the ONE prompt the owner pastes into any new session (resume-anywhere)
+  - fleet/prompts/CONDUCTOR_LOOP_v2_3.md         # headless conductor loop prompt (B-0c deliverable; never pasted)
+  - fleet/prompts/PLANNER_LOOP_v2_3.md           # headless planner loop prompt (B-0c deliverable; never pasted)
+owner_decisions_file: KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md
 pairing_rule: >
   Plan, prompts, cards, schemas and manifests carry one version. Two non-circular
   trust anchors (KT-01): (1) the PLANNING paste supplies <APPROVED_SOURCE_COMMIT>, the
@@ -24,14 +26,14 @@ pairing_rule: >
   <APPROVED_MANIFEST_DIGEST>` before acquiring the conductor lock;
   `OWNER_RESUME.approved_bundle_digest` must equal the supplied digest. `kyversion.sh
   --bootstrap` (KT-03) validates `VERSIONS.bootstrap.json` plus a `mode: bootstrap`
-  installation receipt and can never authorise campaign admission or READY_TO_PASTE;
+  installation receipt and can never authorise campaign admission or READY_TO_START;
   normal `kyversion.sh` accepts only the final manifest and the final installation
   receipt.
 authority_precedence: root CLAUDE.md (§I, §N; read first, as always) > owner decisions (§15) > this plan > cards > packets > anything a job infers
 evidence: 00_ARCHITECTURE/TOKEN_ECONOMY_AUDIT_v1_0.md (audit worktree, 758e0dbb4); reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v1_0.md and _v2_0.md; scratch notes_ky_state.md, notes_suvarna_state.md, notes_workflow.md, KY_MECHANICS_CATALOGUE.md (2026-10-11)
 ---
 
-# KĀLA-YANTRA v3 — relaunch plan v2.2 (Claude, event-driven, essential governance only)
+# KĀLA-YANTRA v3 — relaunch plan v2.3 (Claude, event-driven, fully autonomous, essential governance only)
 
 ## 0. Goal, definition of done, scope (KS-01)
 
@@ -155,12 +157,63 @@ DB/worktree proof was unsupported — admission checks replace it, §6).
 | KĀRAKA | Sonnet 5.5 high | BUILD / REWORK |
 | KĀRAKA-escalated | Opus 5.5 high | BUILD / REWORK (routing or escalation) |
 | PARĪKṢAKA | Opus 5.5 high | VERIFY / PRE-ACCEPT / POST-READBACK / ARTIFACT, source-read-only |
-| ADHIKĀRIN | Opus 5.5 high | RULING on demand |
+| ADHIKĀRIN (doctrine rulings) | Opus 5.5 high | RULING on demand |
+| **OWNER SURROGATE** (§4a) | Opus 5.5 high | SURROGATE job on demand: resolves every owner-wait within its charter; the dispatcher launches it whenever an `awaiting` condition arises |
 | Bootstrap builder (Wave B) | Opus 5.5 high | control-plane packets under D-1 |
+| **COCKPIT** (the owner's interactive session) | Opus 5.5 high (xhigh during Wave B) | any new session the owner opens with the COCKPIT prompt; resumes from state; observes, steers, vetoes; may do planning work; never required for progress |
 
 Capacity `KY_BUILDERS_MIN=3 / MAX=6`, `KY_VERIFIERS_MIN=2 / MAX=4`; `min(max, demand)`
-per kind. No token caps (§15.6). Backoff 30 min only on a subscription refusal
-(structured error in the stream **or** terminal log text), reported to the conductor.
+per kind; the surrogate may raise the maxima when ready work exceeds live builders. No
+token caps (§15.6). On a subscription refusal (structured error in the stream **or**
+terminal log text) the dispatcher backs off adaptively (5 → 10 → 20 → 30 min), reports it,
+and resumes automatically; nothing else is ever idle by design (§4a).
+
+## 4a. Autonomy model (owner direction 2026-10-11; delegated calls D-4…D-8 in §15)
+
+**Principle.** The campaign runs **headless under launchd** and needs no open session to
+make progress. The owner's interactive session is a **cockpit**, opened whenever the
+owner wishes (for example when its context has grown), with one prompt that always
+resumes from persisted state.
+
+1. **Resume-anywhere sessions.** No role has an automatic hand-off threshold. Every role
+   checkpoints after each completed step (`run/<ROLE>_STATE.json` + an appended
+   `run/JOURNAL_<ROLE>.md` line: step id, evidence sha256, next step). A new session with
+   the same prompt validates checkpoints and continues; a hand-off note is optional. The
+   only forced checkpoint-and-stop is a harness context warning.
+2. **Headless loops (launchd user agents, `KeepAlive`, installed by `kyctl.sh`):**
+   `in.marsys.kalayantra.dispatcher` (the dispatcher, 30 s tick), `…planner` (Wave B: runs
+   `PLANNER_LOOP` as successive `claude -p` jobs — each resumes from `PLANNER_STATE.json`,
+   works to a step boundary or `--max-turns`, checkpoints, exits; the loop restarts it until
+   `run/WAVE_B_DONE` or `run/STOP_planner`), `…conductor` (after the gate: the conductor's
+   wait/act cycle as successive `claude -p` jobs; same restart rule). Loops never sleep on
+   a timer while work exists; a loop whose last three runs made no checkpoint progress
+   stops itself and raises an `awaiting` condition instead of spinning. B-0c probes must
+   prove that `claude -p` signs in and runs under launchd (environment, keychain).
+3. **Owner surrogate first.** Any point where a role would wait for the owner writes
+   `run/awaiting/<id>.json` (question, options, evidence, deadline). The dispatcher launches
+   a SURROGATE job (Opus 5.5 high, charter `fleet/cards/OWNER_SURROGATE.md`, agent
+   `.claude/agents/kalayantra-owner-surrogate.md`) which decides within its authority,
+   records `ky decide … --as steward --delegated` and `run/DECISIONS_SURROGATE.jsonl`, and
+   notifies the owner (`kynotify.sh`: macOS notification + journal line). The owner may
+   veto in the cockpit; decisions in the **veto classes** (protected-window approval,
+   campaign start/resume, plan-bundle changes, capacity above the maxima) take effect only
+   after a 30-minute veto window; all other decisions take effect at once.
+   **Owner-only (hard stops, never delegated):** FROZEN-contract changes (§N.2); changes to
+   the owner decisions themselves (§15.1–8, D-1…D-8); production data deletion or restore;
+   anything touching Suvarṇa's integration branch or `ri02` before certification-done;
+   credentials. A hard stop pauses that item only, never the campaign, and notifies the
+   owner.
+4. **Zero idle, parallel by default.** The dispatcher launches the moment a job exists
+   (VERIFY when checks turn green, REWORK on rejection, MERGE on acceptance, COMPLETE on
+   merge). Planning work (B-0c…B-5 and PLAN jobs) is parallelised across bounded subagents
+   or headless jobs — cards, schemas, packets, reviews concurrently — the planner
+   orchestrates and never serialises what is independent. Accuracy is kept by the unchanged
+   acceptance machinery (§6–§9, independent review, enforced verifier boundary).
+5. **Cockpit commands** (chat, applied immediately): `status` · `veto <decision-id>` ·
+   `decide <awaiting-id>: <answer>` · `pause` / `resume` · `priority <item>` · `builders <n>` /
+   `verifiers <n>` · `loops start|stop|status` · anything the plan allows.
+6. **Double-action guard.** The cockpit and the loops act on the same state; every message,
+   awaiting item and job carries a lock keyed by its id; the second actor skips and logs.
 
 ## 5. Topology, paths, allocation (KS-02, KS-06)
 
@@ -178,7 +231,9 @@ per kind. No token caps (§15.6). Backoff 30 min only on a subscription refusal
   required by retained receipts is preserved; at session close finished scratch is
   removed and unfinished material is reported with its reason.
 - `CLAUDE_BIN=/Users/Dev/.local/bin/claude` (resolved on this host before any scrub,
-  asserted executable, recorded in `run/INSTALL_RECEIPT.json`).
+  asserted executable and **version ≥ 2.1.296** — 2.1.239 refused `claude-opus-5-5`
+  (P-2, resolved by the owner's `claude update` on 2026-10-11) — recorded in
+  `run/INSTALL_RECEIPT.json`; a version below the pin refuses launch).
 - **Campaign checkout:** branch `kalayantra/campaign` (upstream `origin/main`) at
   `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign`, created in B-2;
   fast-forwarded each tick.
@@ -214,8 +269,9 @@ per kind. No token caps (§15.6). Backoff 30 min only on a subscription refusal
 
 ## 6. Dispatcher — full lifecycle (KS-05, KS-08)
 
-`$KY_FLEET/kydispatch.py`; atomic instance lock via `kylock.sh` (session identity +
-PID/PGID + process-start identity); `--dry`, `--once`; fixtures under
+`$KY_FLEET/kydispatch.py` (launchd `KeepAlive`, 30 s tick); atomic instance lock via
+`kylock.sh` (session identity + PID/PGID + process-start identity); `--dry`, `--once`;
+fixtures under
 `fleet/tests/dispatch/` with checked-in expected job lists.
 
 **Precedence each tick:** `run/STOP_dispatcher` → exit. `$KY_ROOT/HOLD` → no admissions
@@ -250,7 +306,8 @@ detector and required step evidence (B-0 adds the fields).
 | EXECUTE | pre-accepted request | script (`executor.py`, authority boundary unchanged) | — | receipt in `run/ops/receipts/`; GitHub protected-window dispatch stays an owner-approved workflow action |
 | POST-READBACK | (a) deployed `writes_data` code item; (b) receipted operation item | Opus after a readback request | (a) job lock (item, post_deploy, squash merge sha, evidence-fp); (b) job lock (item, operation id, receipt sha256, evidence-fp) | two typed exits: (a) propose `--phase post_deploy` at the squash merge commit; (b) review the completed executor receipt, operation/request identity, measured readback and quiescence evidence and propose `--phase artifact --artifact-digest <receipt sha256>`; the controller publishes only after independence, boundary and unchanged-evidence checks; operation COMPLETE then uses `--operation-receipt <that receipt> --operation-id <that id>` under the existing typed guard; negative fixtures: script-head verdict, pre-acceptance record, wrong receipt digest, executor exit without semantic readback — none completes the operation |
 | MODEL | S-owned model/close work (triage, joins, PRIORITY, C-1/C-2 artifacts, REPIN) | Opus PLAN job | S actor | artifact + ARTIFACT review where required |
-| RULING | `ky request D-…` pending or N inbox unread | Opus | N actor | `ky decide … --as steward --delegated …`; `ky ack` |
+| RULING | `ky request D-…` pending (doctrine/charter) or N inbox unread | Opus | N actor | `ky decide … --as steward --delegated …`; `ky ack` |
+| SURROGATE | any `run/awaiting/<id>.json` (owner-wait) not in a hard-stop class | Opus (owner-surrogate charter) | steward actor; lock on the awaiting id | decision recorded (`ky decide --as steward --delegated`, `DECISIONS_SURROGATE.jsonl`), `kynotify.sh`; veto-class decisions take effect after the 30-min window; hard-stop classes → owner notification, item paused |
 | PLAN | wave boundary or `run/REPACKET.txt` | Opus **xhigh** | S actor | packets + tests; ARTIFACT review of the packet set |
 
 **Claims, locks, renewals.** Only the owning stream claims; the dispatcher renews only
@@ -288,8 +345,9 @@ head change the owning stream registers `ky review <ID> --detail "PR #<n> @ <new
 retries, escalation, restart and repacketisation; the third identical failure blocks
 automatic attempts until a recorded changed condition permits retry.
 
-**Messaging:** the dispatcher messages the conductor only for escalation failure,
-block/park, verdict invalidation, gate change, wave complete, quota backoff,
+**Messaging:** the dispatcher routes every owner-wait to a SURROGATE job first; it
+writes to the conductor/cockpit journal (and notifies the owner) only for surrogate
+decisions, hard stops, verdict invalidation, gate change, wave complete, quota backoff,
 dispatcher error, ceiling hit, unclassifiable CI failure.
 
 **Tests (B-1):** fixtures for every kind and transition, recovery, timeout reaping, hold
@@ -307,13 +365,22 @@ exec env -i HOME="$HOME" PATH="$KY_ROOT/bin:$NODE_BIN:/opt/homebrew/bin:/usr/bin
   ZDOTDIR="$KY_ROOT/zdotdir" KY_ROOT="$KY_ROOT" KY_RUN="$KY_RUN" KY_FLEET="$KY_FLEET" \
   KY_STREAM="$STREAM" KY_LANE="$SLOT" KY_ITEM="$ITEM" KY_PY="$KY_ROOT/venv/bin/python" \
   SE_EPHE_PATH="$SE_EPHE_PATH" SWE_EPHE_PATH="$SWE_EPHE_PATH" TESTS="$TESTS_NEWLINE_LIST" \
-  "$CLAUDE_BIN" -p --bare --permission-mode bypassPermissions \
-    --model "$MODEL" --effort "$EFFORT" --max-turns "$MAX_TURNS" \
+  "$CLAUDE_BIN" -p --setting-sources project --permission-mode "$PERMISSION_MODE" \
+    --model "$MODEL" --effort "$EFFORT" --max-turns "$MAX_TURNS" $EXTRA_LEAN_FLAGS \
     --strict-mcp-config --mcp-config "$MCP_CONFIG" $DISALLOWED \
     --output-format stream-json --verbose --add-dir "$KY_ROOT" \
     < "$PROMPT_PATH" > "$STDOUT_PATH" 2> "$STDERR_PATH"
 ```
-- `EFFORT` is role-specific: `xhigh` for PLAN, `high` otherwise.
+- `EFFORT` is role-specific: `xhigh` for PLAN, `high` otherwise. `PERMISSION_MODE` is always
+  passed explicitly (`bypassPermissions` for builders and bootstrap jobs; never inherited —
+  the host's user settings default to it). **P-1:** `--bare` never reads the stored sign-in
+  and accepts only an API key, which §7 forbids, so no `--bare` job can start; measured
+  fixed start-up context without it is ≈ 31 K input tokens (probe, Sonnet 5.5, empty
+  directory). `EXTRA_LEAN_FLAGS` (e.g. `--disable-slash-commands`) are chosen by the B-0c
+  probe jobs (one per roster model) that record: sign-in works (also under launchd); the
+  project CLAUDE.md is in context; no user-level hook, plugin, skill or MCP server is
+  active; the fixed input-token overhead of an empty job. A probe that cannot show an item
+  reports it as unknown.
 - `kyjob.sh` exits 78 if `DATABASE_URL|*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY` is set
   in its own environment; `no_wrappers` behaviour preserved (tested). For fixture runs it
   forwards the validated `PRAVAHA_*` fixture configuration (§14 B-3).
@@ -327,9 +394,10 @@ exec env -i HOME="$HOME" PATH="$KY_ROOT/bin:$NODE_BIN:/opt/homebrew/bin:/usr/bin
   prompt, job state, scratch input/output/TMPDIR paths, environment values and deadline
   (missing inputs refuse launch), launches and supervises the process directly, records
   its process-group identity and termination result, and obtains independent review.
-- CLAUDE.md under `--bare` is unknown: cards carry the applicable §I/§N rules per
-  COVERAGE; B-3 includes a fixture job that reports whether the project CLAUDE.md is in
-  context; the result is recorded in the install receipt.
+- Without `--bare` the project `CLAUDE.md` of the job's worktree loads automatically;
+  cards still carry the applicable §I/§N rules per COVERAGE and never rely on that load;
+  B-3's visibility fixture repeats the probe on the installed bundle and records the result
+  in the install receipt.
 - `precheck.sh` is fixture-aware through `KY_RUN`; the launcher writes the manifest
   precheck actually consumes **or** passes newline-delimited test paths in `TESTS`.
 - **Verifier boundary** (enforced, not claimed): the launcher provides a read-only
@@ -436,21 +504,23 @@ Both gate modes also require **final Wave B acceptance** (KT-03): the final
 tracker revision, B-3's tested component hashes and measured rehearsal results, B-4's
 independently accepted coverage and admitted packet hashes, and the validated B-5
 governance backfill. `kygate.sh --pre-resume` validates the five release conditions and
-that acceptance, and prints `READY_TO_PASTE` only when every prerequisite is satisfied
+that acceptance, and prints `READY_TO_START` only when every prerequisite is satisfied
 and the sole missing launch authorisation is the matching N-467 resume record; it
 authorises no campaign job. Negative fixtures: bootstrap-only installation, absent
-rehearsal, stale tested hashes, missing coverage, changed final manifest. The owner pastes the conductor after Wave B installation and
-`READY_TO_PASTE`. The conductor, after version validation and exclusive instance
-acquisition, writes `run/OWNER_RESUME.json` binding `N-467`, the release-receipt digest,
-`approved_bundle_digest` (= the supplied <APPROVED_MANIFEST_DIGEST>), its session id and
-timestamp, then runs the full gate. That
-is the D-3 owner act; nothing further is required. The recorded certification-hold owner
+rehearsal, stale tested hashes, missing coverage, changed final manifest. **Start (D-7):** when `READY_TO_START` holds, the SURROGATE schedules the N-467 resume as a
+veto-class decision (30-minute window, owner notified); on expiry it writes
+`run/OWNER_RESUME.json` (binding `N-467`, the release-receipt digest,
+`approved_bundle_digest` = the final manifest digest, the deciding identity — owner or
+surrogate decision id — and timestamp) and `kyctl.sh` starts the conductor loop. The owner's
+cockpit `resume` writes the same record at once. The conductor loop's first job, after
+version validation and exclusive instance acquisition, verifies that record and runs the
+full gate. D-3 is thereby an explicit, recorded act; nothing further is required. The recorded certification-hold owner
 releases `HOLD_MERGES` when its documented condition is met; the conductor never removes
 a hold it did not set. STOP and global HOLD dominate bootstrap and campaign admission;
 HOLD_MERGES blocks every queue submission. Negative fixtures: stale resume, mixed
 release ids, each surviving hold, each missing field.
 
-## 11. Conductor (KS-11) — see the paired prompt
+## 11. Conductor (KS-11) — headless loop; the cockpit is the owner's view
 
 Setup only exports paths and changes directory — **no checkout mutation** (`git pull`)
 before verification and locking; campaign refresh belongs to the dispatcher under its
@@ -468,9 +538,12 @@ fingerprints and attempt counts are never reset by rollover (the same rule gover
 (detached stdin, managed logs; no extra owner question — the paste authorises it);
 reconcile **both** inboxes (`ky ack <id>` for S, `ky ack <id> --steward` for steward,
 after action or durable deferral). Wait: `ky inbox --stream S --wait 540 --json`;
-`wakeups` incremented after **every** return; elapsed time and thresholds checked before
-waiting again. Hand-off at 60 wake-ups, 8 h, `handoff`, or a harness context warning:
-`run/HANDOFF_CONDUCTOR_<ts>.md` + `_latest`, release the lock, stop.
+`wakeups` incremented after **every** return (measurement only). **No hand-off thresholds
+(§4a.1):** the conductor runs as successive headless jobs under the `…conductor` launchd
+loop; each job checkpoints after every handled message (`CONDUCTOR_STATE.json`,
+`JOURNAL_CONDUCTOR.md`) and exits at `--max-turns` or on a harness context warning; the
+loop restarts it from the checkpoint. The cockpit session, when open, reads the same state
+and may act with the same commands; two actors never act on one message (lock on `msg_id`).
 
 ## 12. Finalisation (KS-09) — outside the ordinary dispatcher
 
@@ -517,14 +590,14 @@ owner's merge).** Order is mandatory.
 |---|---|---|---|
 | B-0a | **Capacity inventory**: `git worktree list --porcelain` → `WORKTREE_DISPOSITIONS_v2_1.md` (keep / remove / archive per copy, dirty and unpushed state noted); **owner disposes**; no new copy before the count is ≤ 14 | planner → owner | registration count ≤ 14 before B-1 |
 | B-0b | **Reconcile the model** per §0: commit the mirror edits; `ACCEPTANCE_ROOTS`; `CLOSURE`; triage; completion_kind/producer/reviewer/step fields; namespaced bootstrap ids; D-RETIRE decisions registered (staged refusal); `streams[].worktrees[]`, detector and executor paths migrated; schema receipt admitted; joins regenerated; both reconciliation tests | planner (in the relaunch-plan checkout, branch switch) | validator green; path-only test identical; triage test equals the reviewed expected delta; closure hash reproducible |
-| B-0c | **Bootstrap prerequisites**: BOOTSTRAP card, fixture builder/verifier cards, `fleet/schemas/packet.json` (bootstrap kind), `fleet/schemas/release_receipt.json`, the staged empty MCP configuration `fleet/mcp.none.json` (`{"mcpServers":{}}`), the bootstrap launch-input template (worktree, `CLAUDE_BIN`, prompt, job state, scratch paths, environment, deadline), and the bootstrap version manifest `run/VERSIONS.bootstrap.json` recording <APPROVED_SOURCE_COMMIT>; one independent review | planner + reviewer session | reviewed; hashes recorded |
+| B-0c | **Bootstrap prerequisites**: BOOTSTRAP card, fixture builder/verifier cards, `fleet/schemas/packet.json` (bootstrap kind), `fleet/schemas/release_receipt.json`, the staged empty MCP configuration `fleet/mcp.none.json` (`{"mcpServers":{}}`), the bootstrap launch-input template (worktree, `CLAUDE_BIN` ≥ 2.1.296, prompt, job state, scratch paths, environment, `PERMISSION_MODE`, deadline), the **probe jobs** (one per roster model, interactive and under launchd: sign-in, CLAUDE.md visibility, no user-level hooks/plugins/MCP, fixed overhead → `run/PROBES.json`), the **owner-surrogate charter** `fleet/cards/OWNER_SURROGATE.md` + `.claude/agents/kalayantra-owner-surrogate.md`, `kynotify.sh`, `kyctl.sh` + the three launchd plists under `fleet/launchd/`, the loop prompts `fleet/prompts/{PLANNER_LOOP,CONDUCTOR_LOOP}_v2_3.md`, Astra KU-01…KU-03 replacements, and the bootstrap version manifest `run/VERSIONS.bootstrap.json` recording <APPROVED_SOURCE_COMMIT>; one independent review (parallel subagents may draft; one reviewer accepts) | cockpit/planner + reviewer | reviewed; hashes recorded; probes recorded |
 | B-1 | **Implement, one packet each** (bootstrap kind; release pins `not_applicable`; enumerated D-1 paths): `kydispatch.py`, `kyjob.sh` (+ verifier boundary), `kylock.sh`, `kyalloc.py`, `kyverdicts.py` (+ the shared inheritance predicate, also applied to the tracker), `kyroute.py` + `FROZEN_PATHS.txt`, `kypacket.py`, `kygate.sh` (+ `--pre-resume`), `kyregen.sh`, `kyreport.py` + baseline import, `kyversion.sh`, override-preserving `ky`/`kybrief` wrappers, `local_db.sh` (repository, registry seed, slots), `preflight.sh` v3, `finalize.sh` v3, `install.sh`, tracker semantic changes (declaration fields, inheritance predicate, decision staging), executor table additions (incl. K9-23's), `precheck.sh` fixture-awareness | Opus bootstrap jobs launched and supervised **directly** by the planner (CLAUDE_BIN, cwd = bootstrap worktree, `--mcp-config` = the staged `mcp.none.json`; process-group identity and termination recorded; no `kyjob.sh`, no dispatcher) | each packet names its command, expected result and negative cases; fixtures per §5–§12; tests and review independent of the not-yet-built dispatcher |
-| B-2 | **Review → owner merge → install**: independent review per PR in a separate session; owner merges; `install.sh` installs only reviewed, owner-merged source (fleet, tracker, wrappers, **and** the approved plan, prompts, cards, manifest) → `run/INSTALL_RECEIPT.json` (installed hashes, merge commit, `CLAUDE_BIN`, the running tracker's loaded revision); proves the old supervisor/sweep cannot dispatch (`STOP_*` + process absence); creates the campaign checkout; publishes the staged D-RETIRE decisions; reconciles legacy claims/PRs/checkpoints into job state; the receipt is marked `mode: bootstrap` | Opus job + owner | receipt hashes equal the merged tree; `preflight.sh launch` green; `kyversion.sh --bootstrap` green |
+| B-2 | **Review → merge → install**: independent review per PR in a separate session; the SURROGATE merges reviewed PRs (D-5; during the certification hold only PRs matching D-6); `install.sh` installs only reviewed, owner-merged source (fleet, tracker, wrappers, **and** the approved plan, prompts, cards, manifest) → `run/INSTALL_RECEIPT.json` (installed hashes, merge commit, `CLAUDE_BIN`, the running tracker's loaded revision); proves the old supervisor/sweep cannot dispatch (`STOP_*` + process absence); creates the campaign checkout; publishes the staged D-RETIRE decisions; reconciles legacy claims/PRs/checkpoints into job state; the receipt is marked `mode: bootstrap` | Opus job + surrogate | receipt hashes equal the merged tree; `preflight.sh launch` green; `kyversion.sh --bootstrap` green |
 | B-3 | **Isolated rehearsal** on the installed, version-checked bundle: fixture wrapper preserving validated `PRAVAHA_HOME/EVENTS/PLAN_MODEL/REPO/HOLD/URL/TRACKER_PORT`; a **second tracker** on a reserved unused loopback port with HOME, model, EVENTS, claims, snapshots and backups under `$KY_SCRATCH/fixture/`; no production DB configuration; fixture-local detectors only (`/api/verify` included); a fixture backend for Git pushes, PR creation/read/checks/merge, deploy observations and executor submission (local fixture remotes; production executor and credentials denied); the real CLI, claim, verdict and typed completion paths against the fixture tracker; includes the CLAUDE.md-visibility fixture and the verifier-boundary fixtures | dispatcher + jobs | live EVENTS size/hash unchanged; no fixture connection to port 8767; zero external PR/queue/production requests; expected fixture transitions; fixture server, DBs and worktrees cleaned up; **tested component hashes and measured rehearsal results recorded** for the final receipt |
 | B-4 | **Cards + packets**: KARAKA, PARIKSAKA, ADHIKARIN cards with `COVERAGE.md` (§I + §N + charter §0 + retained acceptance contracts); one independent card-coverage review; packets + tests for Wave 0 and Wave 1, `kypacket.py check` green | planner | coverage review ACCEPTED; packets admitted; **accepted coverage and admitted packet hashes recorded** for the final receipt |
 | B-5 | **Governance backfill and final acceptance**: CURRENT_STATE §2 banner + SESSION_LOG entry (validated); the campaign handshake from Codex to Claude; the final `run/VERSIONS.json`; a **final installation receipt** binding that manifest, the loaded tracker revision, B-3 evidence, B-4 evidence and the validated backfill. Any changed component afterwards requires reviewed installation and the affected acceptance checks before a new final receipt | planner | `schema_validator.py` green; normal `kyversion.sh` green against the final manifest and receipt |
 
-**Wave 0 — after `READY_TO_PASTE` and the conductor's resume.** In order: the necessary
+**Wave 0 — after `READY_TO_START` and the conductor's resume.** In order: the necessary
 `J-0c → J-0d → J-0 → J-0m` chain (artifact BUILD exits + ARTIFACT reviews, respecting
 earned completions); `J-4p` after `K0-SV`; then pin-consuming work: the 11 ACCEPTED PRs
 under the inheritance predicate (K4-2a #3379 [PW] → K4-2aw → K4-2b → K4-3 → K6-5a [PW] →
@@ -548,20 +621,40 @@ ARTIFACT jobs, N decisions, `finalize.sh` v3 (§12), SESSION_CLOSE validated.
 1 planner xhigh · 2 3+2 scaling on demand · 3 re-scope to the critical path · 4 the
 five-part gate · 5 no token caps · 6 ADHIKĀRIN on demand · 7 all Claude · 8 launch by
 paste. **D-1** control-plane changes in Wave B under review + install receipt (campaign
-builders keep the prohibition). **D-2** rework from scratch, then Astra. **D-3** the
-owner's paste of the conductor prompt is the N-467 resume, recorded by the conductor
-(§10) — no further approval.
+builders keep the prohibition). **D-2** rework from scratch, then Astra. **D-3** the N-467
+resume is an explicit recorded act — the owner's `resume` in the cockpit, or the
+surrogate's decision after the veto window (§10) — no further approval.
 
-## 16. Owner steps
+**Delegated calls of 2026-10-11 (evening), recorded in KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md:**
+**D-4** owner-surrogate authority and hard-stop list as in §4a.3. **D-5** the surrogate
+merges independently reviewed PRs (the owner no longer merges by hand). **D-6** during the
+certification hold, only PRs confined to `00_ARCHITECTURE/**`, `fleet/**`,
+`scripts/token_economy/**`, `platform/scripts/governance/pravaha_tracker/**` and
+`.claude/agents/**` — never `platform/src/generated/**`, writers, migrations or app code —
+may merge, batched, with a coordination note to Strategic Suvarṇa 30 min before (SS may
+object). **D-7** campaign start/resume by the surrogate after the veto window (§10).
+**D-8** sessions are resume-anywhere with no automatic hand-off (§4a.1).
+**Q1** P-1/P-2 adopted (§7, §5). **Q2** KV3-SCHEMA-1 (tier column on
+`bg_gochara_citation_resolution`): Kāla builds it as an Opus schema-prerequisite packet
+with a coordination note to SS; SS may object within 24 h, in which case it reverts to
+Suvarṇa's custodian; K-CERT stays blocked until the column lands. **Q3** PR #3441 is safe
+for the running tracker (it reads the detached mirror) but is a Kāla main merge under
+`HOLD_MERGES`; it merges under D-6 (docs/control-plane only). **Q4** the eight orphaned
+pytest processes (PGID 13606) were terminated on 2026-10-11.
 
-1. Now: new Antigravity session in
-   `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan`, Opus 5.5 /
-   xhigh → paste **KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md**. Dispose of worktrees when it
-   asks (B-0a); merge its PRs when their independent reviews are green (B-2).
-2. After `kygate.sh --pre-resume` prints `READY_TO_PASTE`: new Antigravity session in
-   `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign`, Opus 5.5 / high →
-   paste **KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md**. The paste is the N-467 resume.
-   Restart with the same prompt whenever it posts a hand-off.
+## 16. Owner steps (one prompt, any time)
+
+1. Open a new Claude Code session (Claude Desktop app, macOS) in
+   `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan`, Opus 5.5
+   (xhigh during Wave B, high afterwards) → paste **KALAYANTRA_V3_COCKPIT_PROMPT_v2_3.md**
+   with the approved source commit. The session verifies the bundle, resumes from
+   checkpoints, makes sure the launchd loops are installed and running (installing them is
+   itself B-0c work on the first run), and shows status. Close it whenever you like; open a
+   new one whenever you like; progress does not depend on it.
+2. You are asked for nothing routine. Hard stops (§4a.3) and veto-class decisions reach you
+   as macOS notifications and in the cockpit `status`; `veto <id>` within 30 min reverses a
+   veto-class decision.
+3. Bundle changes (plan/prompt/card versions) remain yours to approve by commit id.
 
 ## 17. Closure maps
 
@@ -572,7 +665,7 @@ owner's paste of the conductor prompt is the N-467 resume, recorded by the condu
 | KS-01 | §0 closure procedure (roots first; field semantics; two tests; D-RETIRE decisions; namespaced ids); Wave 0 J-chain → J-4p after K0-SV |
 | KS-02 | §5 capacity (33 > 15 → owner dispositions first; planner works by branch switch); B-0c prerequisites before B-1; bootstrap packets with `release_pins: not_applicable` and enumerated D-1 paths; `CLAUDE_BIN` + `cd "$WORKTREE"` in §7; implementation packets incl. `install.sh`, allocator, tracker changes; B-2 installs plan/prompts/cards/manifest and records the loaded tracker revision; B-3 on the installed bundle; new receipt after any change |
 | KS-03 | B-3 isolation contract (override-preserving wrapper; second tracker on a reserved port under the dated scratch root; fixture detectors; fixture backend for git/PR/deploy/executor; acceptance incl. live EVENTS hash unchanged) |
-| KS-04 | §10 (`--pre-resume` → `READY_TO_PASTE`; release_id/digest binding; resume written after version validation + lock, then full gate; hold ownership; negative fixtures); §11 and §16 ordering |
+| KS-04 | §10 (`--pre-resume` → `READY_TO_START`; release_id/digest binding; resume written after version validation + lock, then full gate; hold ownership; negative fixtures); §11 and §16 ordering |
 | KS-05 | §6 (completion_kind declarations; artifact BUILD; STEP; author identity; REQUEST-PREP / PRE-ACCEPT / EXECUTE / POST-READBACK; K9-23 → B-1; legacy reconciliation; renew only claim holders; item lock) |
 | KS-06 | §5 (base contains prerequisite heads; `kyalloc.py`; dated scratch root; registry seed; slots everywhere); §7 (`CLAUDE_BIN`, cwd, role-specific `--effort`, precheck via `KY_RUN`, `TESTS` newline list) |
 | KS-07 | §8 (original failing base; admission classification incl. already-green assessment; artifact/operation semantic acceptance; schema-prerequisite dual declaration; `brief.migration`/`op` consistency; canonical `packet_sha256`; reasons on admission failure) |
@@ -595,6 +688,10 @@ owner's paste of the conductor prompt is the N-467 resume, recorded by the condu
 | KT-07 | §6 terminal release bound to item/worker/claim id; serialised with slot reuse; renewal stops at termination |
 | KT-08 | §5 job scratch paths and dispatcher log under the dated scratch root; §7 launch I/O paths; cleanup rules |
 
+**P-1/P-2 (planner's v2.3 proposal, proven by execution):** §7 launch line and probes; §5
+`CLAUDE_BIN` version pin. **Owner direction 2026-10-11 (resume-anywhere, surrogate,
+autonomy, zero idle):** §4a, §6 SURROGATE, §10 D-7, §11, §14 B-0c, §15 D-4…D-8, §16.
+
 **KR-01…KR-12 (review v1.0):** KR-01/03/08/10 closed directly; KR-02/04/05/06/07/09/11/12
 closed through the KS and KT replacements above (Astra v2.1 Part 1).
 
@@ -607,6 +704,10 @@ scope creep (closure committed; additions need a MODEL job) · worktree ceiling 
 dispositions precede any copy).
 
 ## Changelog
+- v2.3 (2026-10-11): autonomy model (§4a) — resume-anywhere sessions, owner surrogate,
+  headless launchd loops, zero-idle scheduling, cockpit prompt; P-1/P-2 launch fixes;
+  delegated calls D-4…D-8 and Q1–Q4; `READY_TO_START` → `READY_TO_START`. Supersedes the
+  planner's `KALAYANTRA_RELAUNCH_PLAN_v2_3_PROPOSED.md`.
 - v2.2 (2026-10-11): KT-01…KT-08 applied (non-circular paste anchors; staged MCP config and
   direct B-1 supervision; bootstrap vs final version modes; squash-aware prerequisite
   containment and head-bound queueing; typed operation readback; session-state rollover;
