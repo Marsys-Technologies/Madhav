@@ -175,9 +175,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
-      // KP-frame labelling is applied to the query result IN PLACE (a 1:1 map: same length, same order, `frame_label` added to the KP rows), so the served `rows` below is still the
-      // unfiltered query result (`rows: result.rows ?? []`, the form the density harness's DENSITY-4 reads) and nothing derived from it can see unlabelled rows.
-      result.rows = kp.label(result.rows ?? [])
+      result.rows = kp.label(result.rows ?? [])   // KP frame labelling in place (1:1: same length and order): `rows` below stays the unfiltered query result
       const doshaLabelGatedTotal = Number(doshaGatedCountResult.rows[0]?.total ?? 0)
       const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
       const firingsPointer = {
