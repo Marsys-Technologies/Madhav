@@ -1,7 +1,7 @@
 ---
 artifact: WORKTREE_DISPOSITIONS (KĀLA-YANTRA v3, Wave B, step B-0a)
 content_version: 2.2
-status: AWAITING OWNER DISPOSITION — recommendations only; nothing has been removed
+status: OWNER APPROVED 2026-10-11 (in chat with the planner) — execution pending in the next planner session; nothing has been removed yet
 canonical_path: 00_ARCHITECTURE/briefs/kalayantra/WORKTREE_DISPOSITIONS_v2_1.md
 compatibility_copy: 00_ARCHITECTURE/briefs/kalayantra/WORKTREE_DISPOSITIONS_v2_2.md (identical bytes; never edited on its own — Astra v2.2 KU-03)
 authored_by: Claude Code (Opus 5.5, xhigh) — KĀLA-YANTRA v3 Planner, session local_ec1c912e-e039-4666-abc3-a815f9c4a2d1
@@ -149,7 +149,9 @@ They belong to Suvarṇa; the planner has not touched them.
 
 | decision | owner's answer | date |
 |---|---|---|
-| Groups C and D (26 copies): remove | | |
-| Group E (8 copies): archive, then remove | | |
-| Group B (4 copies): keep until Suvarṇa releases them | | |
-| Share of the 15 places between KĀLA-YANTRA v3 and Suvarṇa | | |
+| Groups C and D (26 copies): remove | APPROVED as recommended | 2026-10-11 |
+| Group E (8 copies): archive, then remove | APPROVED as recommended | 2026-10-11 |
+| Group B (4 copies): keep until Suvarṇa releases them | APPROVED as recommended | 2026-10-11 |
+| Share of the 15 places between KĀLA-YANTRA v3 and Suvarṇa | 8 for KĀLA-YANTRA v3, 7 for Suvarṇa. Rule when Suvarṇa overruns (owner-surrogate ruling, adopted by the owner): KĀLA-YANTRA creates a copy only when its own count is under 8 and the total is ≤ 14 before creation (a batch of n needs ≤ 15 − n); otherwise it waits, works by branch switch and reports once | 2026-10-11 |
+| Who runs the disposal | the next planner session, with the helper in §4; copies the helper skips are left alone and reported; never forced | 2026-10-11 |
+| The 8 stray Suvarṇa test processes (§5) | left alone; reported to Suvarṇa on the coordination log; KĀLA-YANTRA does not stop them (owner-surrogate ruling) | 2026-10-11 |
