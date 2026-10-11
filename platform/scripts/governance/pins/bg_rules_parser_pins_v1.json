@@ -10,7 +10,7 @@
     },
     {
       "path": "platform/python-sidecar/brahmagyan/l0_rules.py",
-      "sha256": "ac9b258ba9004eb135f3e118c75acbfe3ae4205c6e1cbd9bd13f95eef06335fc"
+      "sha256": "805e79673158ce820abe048543207c240e0bcb64973e32fb0b956f0f7613d2a0"
     },
     {
       "path": "platform/python-sidecar/brahmagyan/l0_semantic_release.py",
