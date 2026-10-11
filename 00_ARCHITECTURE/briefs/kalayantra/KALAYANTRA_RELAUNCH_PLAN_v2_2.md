@@ -1,24 +1,37 @@
 ---
-artifact: KALAYANTRA_RELAUNCH_PLAN_v2_1.md
-status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.0 (ASTRA_REVIEW v2.0: REWORK, KS-01…KS-12, all applied here with Astra's replacement text). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
-version: 2.1
+artifact: KALAYANTRA_RELAUNCH_PLAN_v2_2.md
+status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.1 (ASTRA_REVIEW v2.1: REWORK, KT-01…KT-08, all applied here with Astra's replacement text; v2.0 KS-01…KS-12 applied in v2.1). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
+version: 2.2
 authored_by: Claude Code (Fable 5.1), worktree kalayantra/relaunch-plan
 authored_on: 2026-10-11
-audience: Astra (reviewer); native (approver); the planning session (KALAYANTRA_V3_PLANNING_PROMPT_v2_1.md); the conductor session (KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_1.md)
+audience: Astra (reviewer); native (approver); the planning session (KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md); the conductor session (KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md)
 paired_prompts:
-  - KALAYANTRA_V3_PLANNING_PROMPT_v2_1.md
-  - KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_1.md
+  - KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md
+  - KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md
 pairing_rule: >
-  Plan, prompts, cards, packet schema and the bootstrap/version manifest carry one
-  version. `kyversion.sh` verifies file pairing (sha256 recorded in run/VERSIONS.json)
-  and installed-component hashes (run/INSTALL_RECEIPT.json). It cannot attest the
-  bytes the owner pasted: each paste therefore names the approved manifest digest and
-  loads its authoritative instructions from the verified prompt file (KS-11).
+  Plan, prompts, cards, schemas and manifests carry one version. Two non-circular
+  trust anchors (KT-01): (1) the PLANNING paste supplies <APPROVED_SOURCE_COMMIT>, the
+  full commit id the native approved; before writing any state the session verifies that
+  the checked-out plan, both paired prompts and the strategy are byte-identical to their
+  tracked blobs at that commit (`git cat-file -e <commit>:<path>` and `git diff --quiet
+  <commit> -- <paths>`); any missing object, missing file or difference is STOP; it then
+  loads the verified prompt and plan (a version label alone is insufficient) and records
+  the commit in `run/VERSIONS.bootstrap.json`, which is a B-0c deliverable, never a paste
+  prerequisite. (2) The CONDUCTOR paste supplies <APPROVED_MANIFEST_DIGEST>, the SHA-256
+  of the approved final `run/VERSIONS.json` (not a prompt-file digest); the session
+  verifies that manifest digest, verifies the prompt against its manifest entry, loads
+  the verified prompt, and runs `kyversion.sh --expected-manifest-digest
+  <APPROVED_MANIFEST_DIGEST>` before acquiring the conductor lock;
+  `OWNER_RESUME.approved_bundle_digest` must equal the supplied digest. `kyversion.sh
+  --bootstrap` (KT-03) validates `VERSIONS.bootstrap.json` plus a `mode: bootstrap`
+  installation receipt and can never authorise campaign admission or READY_TO_PASTE;
+  normal `kyversion.sh` accepts only the final manifest and the final installation
+  receipt.
 authority_precedence: root CLAUDE.md (§I, §N; read first, as always) > owner decisions (§15) > this plan > cards > packets > anything a job infers
 evidence: 00_ARCHITECTURE/TOKEN_ECONOMY_AUDIT_v1_0.md (audit worktree, 758e0dbb4); reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v1_0.md and _v2_0.md; scratch notes_ky_state.md, notes_suvarna_state.md, notes_workflow.md, KY_MECHANICS_CATALOGUE.md (2026-10-11)
 ---
 
-# KĀLA-YANTRA v3 — relaunch plan v2.1 (Claude, event-driven, essential governance only)
+# KĀLA-YANTRA v3 — relaunch plan v2.2 (Claude, event-driven, essential governance only)
 
 ## 0. Goal, definition of done, scope (KS-01)
 
@@ -156,6 +169,14 @@ per kind. No token caps (§15.6). Backoff 30 min only on a subscription refusal
   (dated per owner policy; temporary files, job logs, DB dumps, fixture trackers). Every
   path in scripts, prompts, cards and packets is absolute; persistent job records store
   the absolute paths they used.
+- **Job and dispatcher I/O (KT-08):** each job records `JOB_SCRATCH=$KY_SCRATCH/jobs/$JOB_ID`
+  and absolute `prompt_path`, `stdout_path`, `stderr_path`, `tmp_path` beneath it, created
+  before launch and used for stdin, logs and `TMPDIR`. The dispatcher log lives under
+  `$KY_SCRATCH/dispatcher/`, its absolute path recorded in persistent dispatcher state.
+  `run/` keeps only durable control state, compact measured receipts and evidence
+  references. Before removing finished session scratch, usage is reconciled and evidence
+  required by retained receipts is preserved; at session close finished scratch is
+  removed and unfinished material is reported with its reason.
 - `CLAUDE_BIN=/Users/Dev/.local/bin/claude` (resolved on this host before any scrub,
   asserted executable, recorded in `run/INSTALL_RECEIPT.json`).
 - **Campaign checkout:** branch `kalayantra/campaign` (upstream `origin/main`) at
@@ -169,11 +190,14 @@ per kind. No token caps (§15.6). Backoff 30 min only on a subscription refusal
 - **Work worktrees:** `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-<item-id-lower>/`,
   one per item branch, created at claim; **one item lock** serialises every author and
   reviewer access to it; removed after guarded completion once pushed.
-- **Base contract:** each job record carries worktree, branch, `base_sha`, the
-  prerequisite heads it requires and its test digests. A BUILD is runnable only when its
-  base contains the accepted prerequisite heads (reuse a valid existing stack/checkpoint;
-  otherwise wait for those heads to reach main). Tracker readiness alone does not prove
-  code availability.
+- **Base contract (KT-04):** each job record carries worktree, branch, `base_sha`, its test
+  digests and, for each code prerequisite, the accepted final PR head and — once merged —
+  the observed mapping from that head to `mergeCommit.oid` (squash). Admission requires
+  either the accepted head or the verified corresponding merge commit to be contained in
+  the job base; missing, changed or unverified mappings refuse admission. Artifact and
+  schema prerequisites use their typed acceptance receipts, never invented Git heads.
+  Tracker readiness alone does not prove code availability. Tests: accepted unmerged
+  stacks, squash-landed prerequisites, missing code, incorrect head→merge mappings.
 - **Migration allocator** (`kyalloc.py`): an atomic, persistent reservation keyed by
   item/branch against the repository-wide migration namespace and active reservations;
   all concurrent migration writers observe the same authority; until it is installed,
@@ -219,12 +243,12 @@ detector and required step evidence (B-0 adds the fields).
 | VERIFY | item in review; PR head without a verdict at (item, pre_merge, head, evidence-fp); required checks green; `Kāla DB Tests` green where the diff is relevant | Opus | **no item claim**; job lock (item, phase, head); item lock | verifier writes a **proposed** result; controller publishes (below) |
 | ARTIFACT | artifact/packet item registered by its author, or a MODEL artifact | Opus | reviewer slot ≠ author identity; V claim only for V-owned items; S-owned artifacts get no V claim | `KY_STREAM=V … ky verdict <ID> --artifact-digest <sha256> --phase artifact …` (external review binding where the V-owned item requires it) |
 | REGEN | PR DIRTY/CONFLICTING confined to declared generated outputs | script, pinned generator | item lock | merge base; regenerate only declared outputs; run applicable tests; record hashes; push; **register `ky review … @ <new head>`**; inheritance only by the patch predicate (below), else VERIFY |
-| MERGE | ACCEPTED at the **registered** head (head-match guard), required checks + DB job success, base correct, protected-window listing satisfied, no hold | script | — | `gh pr merge <n> --auto --squash`; retain branch/ref evidence until guarded completion |
+| MERGE | ACCEPTED at the **registered** head (head-match guard), required checks + DB job success, base correct, protected-window listing satisfied, no hold | script | — | `gh pr merge "$PR" --auto --squash --match-head-commit "$REGISTERED_HEAD"` after the checks; a head mismatch refuses submission; once queued, any head change cancels the queue/auto-merge authorisation and requires fresh admission; workers never push under an outstanding queue authorisation; branch/ref evidence retained until guarded completion |
 | COMPLETE | merged (code) / accepted artifact / receipted operation | script | K completes K items; S completes S items and independently accepted N/V items | typed `ky done` (`--pr n --reviewed-head <final PR head>` \| `--artifact-path` \| `--operation-receipt … --operation-id …` \| `--packet-verdict`); deployment containment and post-deploy use the **squash merge commit**; refusals logged by code; `deps_open_strict` → wait |
 | REQUEST-PREP | ready N-owned operation | script + PLAN where the request needs authoring | N actor | request binds the reviewed merged script, request digest, lease, expiry, backup/restore/dry-run evidence per `executor.py` and the approved operation table |
 | PRE-ACCEPT | prepared request | Opus (independent V slot) | job lock | acceptance record the executor requires |
 | EXECUTE | pre-accepted request | script (`executor.py`, authority boundary unchanged) | — | receipt in `run/ops/receipts/`; GitHub protected-window dispatch stays an owner-approved workflow action |
-| POST-READBACK | receipted operation / deployed `writes_data` item | Opus after a readback request | job lock (item, post_deploy, merge_sha, evidence-fp) | `ky verdict … --phase post_deploy`; quiescence evidence; re-review on evidence change |
+| POST-READBACK | (a) deployed `writes_data` code item; (b) receipted operation item | Opus after a readback request | (a) job lock (item, post_deploy, squash merge sha, evidence-fp); (b) job lock (item, operation id, receipt sha256, evidence-fp) | two typed exits: (a) propose `--phase post_deploy` at the squash merge commit; (b) review the completed executor receipt, operation/request identity, measured readback and quiescence evidence and propose `--phase artifact --artifact-digest <receipt sha256>`; the controller publishes only after independence, boundary and unchanged-evidence checks; operation COMPLETE then uses `--operation-receipt <that receipt> --operation-id <that id>` under the existing typed guard; negative fixtures: script-head verdict, pre-acceptance record, wrong receipt digest, executor exit without semantic readback — none completes the operation |
 | MODEL | S-owned model/close work (triage, joins, PRIORITY, C-1/C-2 artifacts, REPIN) | Opus PLAN job | S actor | artifact + ARTIFACT review where required |
 | RULING | `ky request D-…` pending or N inbox unread | Opus | N actor | `ky decide … --as steward --delegated …`; `ky ack` |
 | PLAN | wave boundary or `run/REPACKET.txt` | Opus **xhigh** | S actor | packets + tests; ARTIFACT review of the packet set |
@@ -236,6 +260,16 @@ reap the process group (PID/PGID + start identity) → release → `timed_out`. 
 kind, slot, head/digest, evidence-fp, failure-class fingerprint and attempt count) is
 persisted in `run/jobs/<job_id>/state.json`. On adoption, legacy claims, PRs and
 checkpoints are reconciled into job state (B-2).
+**Terminal release (KT-07):** every terminal job path (success, blocked exit, timeout,
+interruption) persists its result and checkpoint, confirms the recorded process group has
+exited, and releases any held tracker claim **before** freeing the slot; successful
+`ky review` registration is not claim release. Release is bound to the job's persisted
+item, worker and `claim_id`: the controller verifies that `run/claims/<slot>.json`
+matches the job before `KY_LANE="$SLOT" ky release`, serialises release with slot reuse,
+and on mismatch keeps the slot unavailable and reports "reconciliation required".
+Renewal stops once termination begins. Claimless verifiers release only their job/item
+locks. Tests: three successive successful BUILD jobs on one slot; immediate REWORK after
+review; blocked exit; restart between checkpoint persistence and claim release.
 
 **Verdict publication (controller-owned).** After a VERIFY/ARTIFACT job exits the
 controller checks: exit status, reviewed HEAD unchanged, `git status --porcelain` clean,
@@ -269,21 +303,30 @@ resolution fixture), failure fingerprint persistence.
 # all values from $KY_RUN/jobs/<job_id>/state.json; every path absolute
 cd "$WORKTREE" || exit 70
 exec env -i HOME="$HOME" PATH="$KY_ROOT/bin:$NODE_BIN:/opt/homebrew/bin:/usr/bin:/bin" \
-  LANG=en_US.UTF-8 TERM=dumb USER="$USER" TMPDIR="$KY_SCRATCH/tmp/$JOB_ID" \
+  LANG=en_US.UTF-8 TERM=dumb USER="$USER" TMPDIR="$TMP_PATH" \
   ZDOTDIR="$KY_ROOT/zdotdir" KY_ROOT="$KY_ROOT" KY_RUN="$KY_RUN" KY_FLEET="$KY_FLEET" \
   KY_STREAM="$STREAM" KY_LANE="$SLOT" KY_ITEM="$ITEM" KY_PY="$KY_ROOT/venv/bin/python" \
   SE_EPHE_PATH="$SE_EPHE_PATH" SWE_EPHE_PATH="$SWE_EPHE_PATH" TESTS="$TESTS_NEWLINE_LIST" \
   "$CLAUDE_BIN" -p --bare --permission-mode bypassPermissions \
     --model "$MODEL" --effort "$EFFORT" --max-turns "$MAX_TURNS" \
-    --strict-mcp-config --mcp-config "$KY_FLEET/mcp.$MCP_PROFILE.json" $DISALLOWED \
+    --strict-mcp-config --mcp-config "$MCP_CONFIG" $DISALLOWED \
     --output-format stream-json --verbose --add-dir "$KY_ROOT" \
-    < "$KY_RUN/jobs/$JOB_ID/prompt.md" > "$KY_RUN/jobs/$JOB_ID/stream.jsonl"
+    < "$PROMPT_PATH" > "$STDOUT_PATH" 2> "$STDERR_PATH"
 ```
 - `EFFORT` is role-specific: `xhigh` for PLAN, `high` otherwise.
 - `kyjob.sh` exits 78 if `DATABASE_URL|*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY` is set
   in its own environment; `no_wrappers` behaviour preserved (tested). For fixture runs it
   forwards the validated `PRAVAHA_*` fixture configuration (§14 B-3).
-- `MCP_PROFILE` is `none` unless the packet declares `needs_chart_data: true`.
+- `MCP_CONFIG` (KT-02): bootstrap jobs use the independently reviewed, manifest-hashed
+  empty configuration `{"mcpServers":{}}` staged in the bootstrap source tree
+  (`fleet/mcp.none.json`), recorded per job as an absolute path; campaign jobs use the
+  installed configuration whose hash is in the installation receipt (`mcp.none.json`
+  unless the packet declares `needs_chart_data: true` → `mcp.marsys-only.json`).
+- Bootstrap (B-1) launches do **not** go through `kyjob.sh` or the dispatcher: the planner
+  prepares and validates the absolute worktree, executable `CLAUDE_BIN`, admitted bootstrap
+  prompt, job state, scratch input/output/TMPDIR paths, environment values and deadline
+  (missing inputs refuse launch), launches and supervises the process directly, records
+  its process-group identity and termination result, and obtains independent review.
 - CLAUDE.md under `--bare` is unknown: cards carry the applicable §I/§N rules per
   COVERAGE; B-3 includes a fixture job that reports whether the project CLAUDE.md is in
   context; the result is recorded in the install receipt.
@@ -388,12 +431,19 @@ exhausted paginated API traversal with `{merged|parked|closed, owner, re_entry}`
 coordinator closure → SS's enumerated hand-off records. Missing or inconsistent evidence
 is WAIT. Condition 5 has no producer today and stays WAIT until SS publishes it.
 
-`kygate.sh --pre-resume` validates the five conditions and prints `READY_TO_PASTE` only
-when the sole missing launch authorisation is the N-467 resume record; it authorises no
-campaign job. The owner pastes the conductor after Wave B installation and
+Both gate modes also require **final Wave B acceptance** (KT-03): the final
+`run/VERSIONS.json` and a final installation receipt binding that manifest, the loaded
+tracker revision, B-3's tested component hashes and measured rehearsal results, B-4's
+independently accepted coverage and admitted packet hashes, and the validated B-5
+governance backfill. `kygate.sh --pre-resume` validates the five release conditions and
+that acceptance, and prints `READY_TO_PASTE` only when every prerequisite is satisfied
+and the sole missing launch authorisation is the matching N-467 resume record; it
+authorises no campaign job. Negative fixtures: bootstrap-only installation, absent
+rehearsal, stale tested hashes, missing coverage, changed final manifest. The owner pastes the conductor after Wave B installation and
 `READY_TO_PASTE`. The conductor, after version validation and exclusive instance
 acquisition, writes `run/OWNER_RESUME.json` binding `N-467`, the release-receipt digest,
-the approved bundle digest, its session id and timestamp, then runs the full gate. That
+`approved_bundle_digest` (= the supplied <APPROVED_MANIFEST_DIGEST>), its session id and
+timestamp, then runs the full gate. That
 is the D-3 owner act; nothing further is required. The recorded certification-hold owner
 releases `HOLD_MERGES` when its documented condition is met; the conductor never removes
 a hold it did not set. STOP and global HOLD dominate bootstrap and campaign admission;
@@ -402,11 +452,19 @@ release ids, each surviving hold, each missing field.
 
 ## 11. Conductor (KS-11) — see the paired prompt
 
-Atomic instance acquisition (`kylock.sh acquire conductor <session_id>`: `mkdir`-atomic,
-records session identity, PID/PGID and process-start identity; a transient tool-shell
-PID is never the identity). Start-up: `kyversion.sh`; install receipt present; lock;
-`OWNER_RESUME.json`; full gate; `CONDUCTOR_STATE.json` initialised on first entry
-(`started_at, wakeups=0, session_id`); idempotent dispatcher start by the same helper
+Setup only exports paths and changes directory — **no checkout mutation** (`git pull`)
+before verification and locking; campaign refresh belongs to the dispatcher under its
+serialised checkout ownership (KT-01). Atomic instance acquisition (`kylock.sh acquire
+conductor <session_id>`: `mkdir`-atomic, records session identity, PID/PGID and
+process-start identity; a transient tool-shell PID is never the identity). Start-up:
+manifest digest → `kyversion.sh --expected-manifest-digest` → lock → session state →
+`OWNER_RESUME.json` → full gate. **Session state (KT-06):** on entry compare the observed
+session identity with `CONDUCTOR_STATE.json`; re-entry into the same session preserves
+`started_at` and counters; a different session preserves validated checkpoints,
+deferred messages and campaign decisions, archives the previous session summary, and
+initialises the new session's `started_at` and counters to zero; campaign failure
+fingerprints and attempt counts are never reset by rollover (the same rule governs
+`PLANNER_STATE.json`). Idempotent dispatcher start by the same helper
 (detached stdin, managed logs; no extra owner question — the paste authorises it);
 reconcile **both** inboxes (`ky ack <id>` for S, `ky ack <id> --steward` for steward,
 after action or durable deferral). Wait: `ky inbox --stream S --wait 540 --json`;
@@ -459,12 +517,12 @@ owner's merge).** Order is mandatory.
 |---|---|---|---|
 | B-0a | **Capacity inventory**: `git worktree list --porcelain` → `WORKTREE_DISPOSITIONS_v2_1.md` (keep / remove / archive per copy, dirty and unpushed state noted); **owner disposes**; no new copy before the count is ≤ 14 | planner → owner | registration count ≤ 14 before B-1 |
 | B-0b | **Reconcile the model** per §0: commit the mirror edits; `ACCEPTANCE_ROOTS`; `CLOSURE`; triage; completion_kind/producer/reviewer/step fields; namespaced bootstrap ids; D-RETIRE decisions registered (staged refusal); `streams[].worktrees[]`, detector and executor paths migrated; schema receipt admitted; joins regenerated; both reconciliation tests | planner (in the relaunch-plan checkout, branch switch) | validator green; path-only test identical; triage test equals the reviewed expected delta; closure hash reproducible |
-| B-0c | **Bootstrap prerequisites**: BOOTSTRAP card, fixture builder/verifier cards, `fleet/schemas/packet.json` (bootstrap kind), `fleet/schemas/release_receipt.json`, bootstrap version manifest `run/VERSIONS.bootstrap.json`; one independent review | planner + reviewer session | reviewed; hashes recorded |
-| B-1 | **Implement, one packet each** (bootstrap kind; release pins `not_applicable`; enumerated D-1 paths): `kydispatch.py`, `kyjob.sh` (+ verifier boundary), `kylock.sh`, `kyalloc.py`, `kyverdicts.py` (+ the shared inheritance predicate, also applied to the tracker), `kyroute.py` + `FROZEN_PATHS.txt`, `kypacket.py`, `kygate.sh` (+ `--pre-resume`), `kyregen.sh`, `kyreport.py` + baseline import, `kyversion.sh`, override-preserving `ky`/`kybrief` wrappers, `local_db.sh` (repository, registry seed, slots), `preflight.sh` v3, `finalize.sh` v3, `install.sh`, tracker semantic changes (declaration fields, inheritance predicate, decision staging), executor table additions (incl. K9-23's), `precheck.sh` fixture-awareness | Opus bootstrap jobs launched by the planner (CLAUDE_BIN, cwd = bootstrap worktree) | each packet names its command, expected result and negative cases; fixtures per §5–§12; tests and review independent of the not-yet-built dispatcher |
-| B-2 | **Review → owner merge → install**: independent review per PR in a separate session; owner merges; `install.sh` installs only reviewed, owner-merged source (fleet, tracker, wrappers, **and** the approved plan, prompts, cards, manifest) → `run/INSTALL_RECEIPT.json` (installed hashes, merge commit, `CLAUDE_BIN`, the running tracker's loaded revision); proves the old supervisor/sweep cannot dispatch (`STOP_*` + process absence); creates the campaign checkout; publishes the staged D-RETIRE decisions; reconciles legacy claims/PRs/checkpoints into job state | Opus job + owner | receipt hashes equal the merged tree; `preflight.sh launch` green; `kyversion.sh` green |
-| B-3 | **Isolated rehearsal** on the installed, version-checked bundle: fixture wrapper preserving validated `PRAVAHA_HOME/EVENTS/PLAN_MODEL/REPO/HOLD/URL/TRACKER_PORT`; a **second tracker** on a reserved unused loopback port with HOME, model, EVENTS, claims, snapshots and backups under `$KY_SCRATCH/fixture/`; no production DB configuration; fixture-local detectors only (`/api/verify` included); a fixture backend for Git pushes, PR creation/read/checks/merge, deploy observations and executor submission (local fixture remotes; production executor and credentials denied); the real CLI, claim, verdict and typed completion paths against the fixture tracker; includes the CLAUDE.md-visibility fixture and the verifier-boundary fixtures | dispatcher + jobs | live EVENTS size/hash unchanged; no fixture connection to port 8767; zero external PR/queue/production requests; expected fixture transitions; fixture server, DBs and worktrees cleaned up |
-| B-4 | **Cards + packets**: KARAKA, PARIKSAKA, ADHIKARIN cards with `COVERAGE.md` (§I + §N + charter §0 + retained acceptance contracts); one independent card-coverage review; packets + tests for Wave 0 and Wave 1, `kypacket.py check` green | planner | coverage review ACCEPTED; packets admitted |
-| B-5 | **Governance backfill**: CURRENT_STATE §2 banner + SESSION_LOG entry (validated); the campaign handshake from Codex to Claude; `run/VERSIONS.json`. Any later card/script change requires a new reviewed installation receipt before launch | planner | `schema_validator.py` green; `kyversion.sh` green |
+| B-0c | **Bootstrap prerequisites**: BOOTSTRAP card, fixture builder/verifier cards, `fleet/schemas/packet.json` (bootstrap kind), `fleet/schemas/release_receipt.json`, the staged empty MCP configuration `fleet/mcp.none.json` (`{"mcpServers":{}}`), the bootstrap launch-input template (worktree, `CLAUDE_BIN`, prompt, job state, scratch paths, environment, deadline), and the bootstrap version manifest `run/VERSIONS.bootstrap.json` recording <APPROVED_SOURCE_COMMIT>; one independent review | planner + reviewer session | reviewed; hashes recorded |
+| B-1 | **Implement, one packet each** (bootstrap kind; release pins `not_applicable`; enumerated D-1 paths): `kydispatch.py`, `kyjob.sh` (+ verifier boundary), `kylock.sh`, `kyalloc.py`, `kyverdicts.py` (+ the shared inheritance predicate, also applied to the tracker), `kyroute.py` + `FROZEN_PATHS.txt`, `kypacket.py`, `kygate.sh` (+ `--pre-resume`), `kyregen.sh`, `kyreport.py` + baseline import, `kyversion.sh`, override-preserving `ky`/`kybrief` wrappers, `local_db.sh` (repository, registry seed, slots), `preflight.sh` v3, `finalize.sh` v3, `install.sh`, tracker semantic changes (declaration fields, inheritance predicate, decision staging), executor table additions (incl. K9-23's), `precheck.sh` fixture-awareness | Opus bootstrap jobs launched and supervised **directly** by the planner (CLAUDE_BIN, cwd = bootstrap worktree, `--mcp-config` = the staged `mcp.none.json`; process-group identity and termination recorded; no `kyjob.sh`, no dispatcher) | each packet names its command, expected result and negative cases; fixtures per §5–§12; tests and review independent of the not-yet-built dispatcher |
+| B-2 | **Review → owner merge → install**: independent review per PR in a separate session; owner merges; `install.sh` installs only reviewed, owner-merged source (fleet, tracker, wrappers, **and** the approved plan, prompts, cards, manifest) → `run/INSTALL_RECEIPT.json` (installed hashes, merge commit, `CLAUDE_BIN`, the running tracker's loaded revision); proves the old supervisor/sweep cannot dispatch (`STOP_*` + process absence); creates the campaign checkout; publishes the staged D-RETIRE decisions; reconciles legacy claims/PRs/checkpoints into job state; the receipt is marked `mode: bootstrap` | Opus job + owner | receipt hashes equal the merged tree; `preflight.sh launch` green; `kyversion.sh --bootstrap` green |
+| B-3 | **Isolated rehearsal** on the installed, version-checked bundle: fixture wrapper preserving validated `PRAVAHA_HOME/EVENTS/PLAN_MODEL/REPO/HOLD/URL/TRACKER_PORT`; a **second tracker** on a reserved unused loopback port with HOME, model, EVENTS, claims, snapshots and backups under `$KY_SCRATCH/fixture/`; no production DB configuration; fixture-local detectors only (`/api/verify` included); a fixture backend for Git pushes, PR creation/read/checks/merge, deploy observations and executor submission (local fixture remotes; production executor and credentials denied); the real CLI, claim, verdict and typed completion paths against the fixture tracker; includes the CLAUDE.md-visibility fixture and the verifier-boundary fixtures | dispatcher + jobs | live EVENTS size/hash unchanged; no fixture connection to port 8767; zero external PR/queue/production requests; expected fixture transitions; fixture server, DBs and worktrees cleaned up; **tested component hashes and measured rehearsal results recorded** for the final receipt |
+| B-4 | **Cards + packets**: KARAKA, PARIKSAKA, ADHIKARIN cards with `COVERAGE.md` (§I + §N + charter §0 + retained acceptance contracts); one independent card-coverage review; packets + tests for Wave 0 and Wave 1, `kypacket.py check` green | planner | coverage review ACCEPTED; packets admitted; **accepted coverage and admitted packet hashes recorded** for the final receipt |
+| B-5 | **Governance backfill and final acceptance**: CURRENT_STATE §2 banner + SESSION_LOG entry (validated); the campaign handshake from Codex to Claude; the final `run/VERSIONS.json`; a **final installation receipt** binding that manifest, the loaded tracker revision, B-3 evidence, B-4 evidence and the validated backfill. Any changed component afterwards requires reviewed installation and the affected acceptance checks before a new final receipt | planner | `schema_validator.py` green; normal `kyversion.sh` green against the final manifest and receipt |
 
 **Wave 0 — after `READY_TO_PASTE` and the conductor's resume.** In order: the necessary
 `J-0c → J-0d → J-0 → J-0m` chain (artifact BUILD exits + ARTIFACT reviews, respecting
@@ -498,11 +556,11 @@ owner's paste of the conductor prompt is the N-467 resume, recorded by the condu
 
 1. Now: new Antigravity session in
    `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan`, Opus 5.5 /
-   xhigh → paste **KALAYANTRA_V3_PLANNING_PROMPT_v2_1.md**. Dispose of worktrees when it
+   xhigh → paste **KALAYANTRA_V3_PLANNING_PROMPT_v2_2.md**. Dispose of worktrees when it
    asks (B-0a); merge its PRs when their independent reviews are green (B-2).
 2. After `kygate.sh --pre-resume` prints `READY_TO_PASTE`: new Antigravity session in
    `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign`, Opus 5.5 / high →
-   paste **KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_1.md**. The paste is the N-467 resume.
+   paste **KALAYANTRA_V3_CONDUCTOR_PROMPT_v2_2.md**. The paste is the N-467 resume.
    Restart with the same prompt whenever it posts a hand-off.
 
 ## 17. Closure maps
@@ -524,7 +582,21 @@ owner's paste of the conductor prompt is the N-467 resume, recorded by the condu
 | KS-11 | pairing rule (manifest digest named in each paste; `kyversion.sh` scope stated); `kylock.sh`; idempotent detached dispatcher start without an extra question; state init and all-return counting; planner checkpoints; `ky ack --steward`; strategy v1.2 §§2–4 made historical |
 | KS-12 | §13 (baseline import before totals; session/child ownership and fixtures; separate completion measures with denominators; failure fingerprints; structured quota errors; Sonnet diff preserved on reroute) |
 
-**KR-01…KR-12 (review v1.0)** remain closed as mapped in v2.0 §17, as amended above.
+**KT-01…KT-08 (review v2.1) → v2.2**
+
+| finding | closed by |
+|---|---|
+| KT-01 | pairing rule (source-commit anchor for planning; final-manifest digest for the conductor); planning read item 2 qualified; conductor setup has no `git pull` (§11); `OWNER_RESUME.approved_bundle_digest` = supplied digest (§10) |
+| KT-02 | B-0c staged `fleet/mcp.none.json` + launch-input template; §7 `MCP_CONFIG` per job; planner launches/supervises B-1 directly |
+| KT-03 | `kyversion.sh --bootstrap` for B-2/B-3; B-3/B-4 evidence recorded; B-5 final manifest + final receipt; both gate modes require final Wave B acceptance; negative fixtures (§10, §14) |
+| KT-04 | §5 base contract with head→merge-commit mapping; §6 MERGE with `--match-head-commit`, queue cancellation on head change, no pushes under queue authorisation |
+| KT-05 | §6 POST-READBACK two typed exits; operation COMPLETE via receipt + operation id; identity and negative fixtures |
+| KT-06 | §11 session-state rule (same-session re-entry vs new-session reset; fingerprints never reset); applied to planner state; acceptance with consecutive hand-offs (B-1 tests) |
+| KT-07 | §6 terminal release bound to item/worker/claim id; serialised with slot reuse; renewal stops at termination |
+| KT-08 | §5 job scratch paths and dispatcher log under the dated scratch root; §7 launch I/O paths; cleanup rules |
+
+**KR-01…KR-12 (review v1.0):** KR-01/03/08/10 closed directly; KR-02/04/05/06/07/09/11/12
+closed through the KS and KT replacements above (Astra v2.1 Part 1).
 
 ## 18. Risks
 One subscription, headroom unreadable (backoff-and-report; one conductor; owner checks
@@ -535,6 +607,10 @@ scope creep (closure committed; additions need a MODEL job) · worktree ceiling 
 dispositions precede any copy).
 
 ## Changelog
+- v2.2 (2026-10-11): KT-01…KT-08 applied (non-circular paste anchors; staged MCP config and
+  direct B-1 supervision; bootstrap vs final version modes; squash-aware prerequisite
+  containment and head-bound queueing; typed operation readback; session-state rollover;
+  terminal claim release; scratch-root I/O).
 - v2.1 (2026-10-11): all KS-01…KS-12 replacements applied; LIVENESS removed; verifier
   boundary made enforceable; finalisation moved outside the dispatcher; gate pre-resume
   mode; closure procedure made reproducible.
