@@ -1,7 +1,7 @@
 ---
-artifact: KALAYANTRA_RELAUNCH_STRATEGY_v1_0.md
-status: APPROVED IN PRINCIPLE by the native 2026-10-11 (six decisions below); plan built as KALAYANTRA_RELAUNCH_PLAN_v1_0.md
-version: 1.0
+artifact: KALAYANTRA_RELAUNCH_STRATEGY_v1_1.md
+status: APPROVED IN PRINCIPLE by the native 2026-10-11 (six decisions below); plan built as KALAYANTRA_RELAUNCH_PLAN_v2_0.md (v1.0 withdrawn after Astra review v1.0)
+version: 1.1
 authored_by: Claude Code (Fable 5.1), token-economy audit session, worktree audit/token-economy
 authored_on: 2026-10-11
 audience: native (approver); the planning session that will build the relaunch plan and the two paired prompts
@@ -29,7 +29,7 @@ owner_decisions_applied:
 
 | fact | value | source |
 |---|---|---|
-| items done | 46 / 148 (37.6 %); K-track 24/85, J 2/32, V 2/15 | `ky status` |
+| items done | 46 / 148 = 31.1 % plain count (37.6 % is the tracker's weighted progress); K-track 24/85, J 2/32, V 2/15 | `ky status` |
 | real engine items merged | 20 (K0a-*, K0-SV, K1-*, K2-*, KA-*, K4-1, L0-K-RUNNER; PRs #3245–#3365) | EVENTS, gh |
 | open Kāla PRs frozen by the hold | 15; 11 ACCEPTED (6 at exact head), 4 rejected/stale | gh, VERDICTS |
 | unstarted | J lane after J-0c (30 items, 37 inherited Pravāha PRs), 21 K items, 4 READY exits never claimed, close C-1..C-4 | plan model vs EVENTS |
@@ -44,7 +44,7 @@ owner_decisions_applied:
 | Suvarṇa state | certification closed 51/83 on 10-10; reopened for ONE rebuild 12–13 Oct, exclusive lease 13–19 h; 105 open PRs (74 draft, 52 held), 68 worktrees | OWNER_SUMMARY, RUNBOOK_SINGLE_REBUILD, gh |
 | Token audit | interactive coordinators 34 B / 30 d; median 251 K context per call; fleet 50–60 % idle; 97 % of all tokens are cache re-reads | AUDIT F-1, F-3, B-1 |
 
-**Reading.** The astronomy was never the bottleneck. The campaign's own words: "the slowness is machinery, not computation"; only ~4 of 74 rejections found a real defect; 83 of 93 new-item reports were about tooling. The relaunch therefore changes the machinery, not the plan documents.
+**Reading.** The astronomy was never the bottleneck. The campaign's own words: "the slowness is machinery, not computation"; "~4 rejections found a real defect" among the first 27 (amendment §0); of 74 total, the share is not measured; 83 of 93 new-item reports were about tooling. The relaunch therefore changes the machinery, not the plan documents.
 
 ## 2. Strategic pillars
 
@@ -71,9 +71,9 @@ owner_decisions_applied:
   (`--bare`, explicit `--effort`, no MCP/plugins unless the job needs chart data),
   run to completion, write their result to the tracker, exit. No lane "wakes up to
   look around". Claim renewal and heartbeats are dispatcher actions, not model turns.
-- Size: **2 builders + 1 verifier** standing capacity, +1 builder when the ready
-  queue holds ≥ 4 items. Basis: 8 builders + 3 verifiers delivered ≤ 10 items/day
-  while 57 % idle; two always-working builders match that output. Estimate.
+- Size (owner decision): **3 builders + 2 verifiers** standing, scaling up on demand
+  whenever ready work exceeds live builders. Basis for expecting no loss of output:
+  8 builders + 3 verifiers delivered ≤ 10 items/day while 57 % idle. Estimate.
 - Idle-share target < 10 % of worker tokens; it is measured daily (P6).
 
 ### P3 — Thin conductor, launched by you from a prompt, restarted by design
@@ -81,7 +81,8 @@ owner_decisions_applied:
   routine blockers, and reports. It never builds, never verifies, never holds tool
   output, and never runs for days.
 - Rules in its prompt: state lives in the tracker and files; bounded subagents
-  return conclusions only; **hand-off at 250 K context** — it writes a ≤ 5 K
+  return conclusions only; **hand-off on persisted counters** (60 wake-ups, 8 h, or the
+  owner's word — a model cannot read its own context size) — it writes a ≤ 5 K
   hand-off note and you restart it with the same prompt (the paired-prompt rule:
   prompt and plan carry the same version stamp).
 - This is the direct answer to F-1: the three coordinator sessions that ate 34 B
@@ -90,7 +91,7 @@ owner_decisions_applied:
 ### P4 — All-Claude roster
 | role | model / effort | mode | note |
 |---|---|---|---|
-| Planner / brief author (one-time plan build, then per-wave packets) | Opus 5.5 high (xhigh for the plan build if you prefer) | interactive or on-demand job | writes acceptance tests first |
+| Planner / brief author (one-time plan build, then per-wave packets) | Opus 5.5 **xhigh** (owner decision) | interactive or on-demand job | writes acceptance tests first |
 | SŪTRADHĀRA (conductor) | Opus 5.5 high | interactive, you launch | thin, restartable |
 | ADHIKĀRIN (rulings) | Opus 5.5 high | **on-demand job**, not a standing lane | last time 75 % idle; 98 of 147 rulings came on day one |
 | KĀRAKA (builders) | Sonnet 5.5 high | headless job per item | replaces the local model |
@@ -166,6 +167,9 @@ owner_decisions_applied:
 3. The dispatcher script and the daily token report.
 
 ## 5. Owner decisions (2026-10-11)
+
+v1.1 note: operative passages corrected to the owner's decisions (3+2, xhigh, no
+budgets, counter-based hand-off) and the progress figures corrected per Astra KR-12.
 1. Roster as in P4; **planner at xhigh**.
 2. **3 builders + 2 verifiers**, scaling up on demand whenever there is work.
 3. **Re-scope approved:** critical path first, defer (b), disposition (c).
