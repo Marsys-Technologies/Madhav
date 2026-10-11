@@ -1,12 +1,12 @@
 ---
-artifact: KALAYANTRA_RELAUNCH_PLAN_v2_6.md
-status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.2 (ASTRA_REVIEW v2.2: PROCEED-WITH-FIXES, KU-01…KU-03 → B-0c). v2.6 applies Astra's confirmation review of v2.5 (PROCEED-WITH-FIXES, KX-01…KX-03); v2.5 applied KW-01…KW-06; v2.4 applied the delta review of v2.3 (KV-01…KV-08) to the autonomy model the owner directed on 2026-10-11 (resume-anywhere sessions, a persistent owner surrogate, headless loops under launchd, zero-idle scheduling) and the two launch defects the planner proved by execution (P-1 `--bare` cannot sign in; P-2 program version). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
-version: 2.6
+artifact: KALAYANTRA_RELAUNCH_PLAN_v2_7.md
+status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.2 (ASTRA_REVIEW v2.2: PROCEED-WITH-FIXES, KU-01…KU-03 → B-0c). v2.7 applies Astra's confirmation review of v2.6 (PROCEED-WITH-FIXES, KY-01); v2.6 applied KX-01…KX-03; v2.5 applied KW-01…KW-06; v2.4 applied the delta review of v2.3 (KV-01…KV-08) to the autonomy model the owner directed on 2026-10-11 (resume-anywhere sessions, a persistent owner surrogate, headless loops under launchd, zero-idle scheduling) and the two launch defects the planner proved by execution (P-1 `--bare` cannot sign in; P-2 program version). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
+version: 2.7
 authored_by: Claude Code (Fable 5.1), worktree kalayantra/relaunch-plan
 authored_on: 2026-10-11
-audience: Astra (reviewer); native (approver); the cockpit session (KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md); the headless loop controllers and their jobs
+audience: Astra (reviewer); native (approver); the cockpit session (KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md); the headless loop controllers and their jobs
 paired_prompts:
-  - KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md        # the ONE prompt the owner pastes into any new session (resume-anywhere)
+  - KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md        # the ONE prompt the owner pastes into any new session (resume-anywhere)
   - fleet/prompts/CONDUCTOR_LOOP_v2_4.md         # headless conductor loop prompt (B-0c deliverable; never pasted)
   - fleet/prompts/PLANNER_LOOP_v2_4.md           # headless planner loop prompt (B-0c deliverable; never pasted)
 owner_decisions_file: KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md
@@ -52,7 +52,7 @@ authority_precedence: root CLAUDE.md (§I, §N; read first, as always) > owner d
 evidence: 00_ARCHITECTURE/TOKEN_ECONOMY_AUDIT_v1_0.md (audit worktree, 758e0dbb4); reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v1_0.md and _v2_0.md; scratch notes_ky_state.md, notes_suvarna_state.md, notes_workflow.md, KY_MECHANICS_CATALOGUE.md (2026-10-11)
 ---
 
-# KĀLA-YANTRA v3 — relaunch plan v2.6 (Claude, event-driven, fully autonomous, essential governance only)
+# KĀLA-YANTRA v3 — relaunch plan v2.7 (Claude, event-driven, fully autonomous, essential governance only)
 
 ## 0. Goal, definition of done, scope (KS-01)
 
@@ -318,7 +318,8 @@ resumes from persisted state.
 - **Campaign checkout:** branch `kalayantra/campaign` (upstream `origin/main`) at
   `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign`, created in B-2;
   fast-forwarded each tick.
-- **Capacity reality:** 33 worktrees are registered under the Claude/Madhav policy root
+- **Capacity reality:** the registration count under the Claude/Madhav policy root is a
+  measured value reported by `status` (33 on 2026-10-11 morning, 41 by the evening review)
   against a ceiling of 15. **No new copy is created until the owner has disposed of
   enough existing ones** (B-0 inventory → owner dispositions → `git worktree remove` +
   `prune`, preserving dirty/unpushed work by push or bundle). The planner works in the
@@ -769,7 +770,7 @@ pytest processes (PGID 13606) were terminated on 2026-10-11.
 
 1. Open a new Claude Code session (Claude Desktop app, macOS) in
    `/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan`, Opus 5.5
-   (xhigh during Wave B, high afterwards) → paste **KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md**
+   (xhigh during Wave B, high afterwards) → paste **KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md**
    with the approved source commit. The session verifies the bundle, resumes from
    checkpoints, performs or supervises the remaining bootstrap (the campaign dispatcher is
    activated only after B-2's accepted receipt), and shows status. Close it whenever you like; open a
@@ -832,6 +833,11 @@ heading and B-2 (no main merge required; receipt-bound installation), §2/§13 b
 prerequisite; KW-04 pairing rule successor chain + §16.3; KW-05 §6 SURROGATE trigger and
 post-action; KW-06 §13 loop-health and platform-approval detectors, cockpit `approve-window`.
 
+**KY-01 (Astra v2.6 confirmation) → v2.7:** cockpit step 7 write-scope clause replaced by
+the scoped file-placement rule with the plan's authorised lifecycle exceptions (B-0a
+disposals/archives, B-0c launch actions, B-2 installation paths, Git metadata), all via
+action records; §5 capacity figure made a measured value.
+
 **KX-01…KX-03 (Astra v2.5 confirmation) → v2.6:** KX-01 cockpit step 1 rewritten as
 sequential phases (root prompt displayed, `C` assigned, no temp file); KX-02 B-2 row
 replaced (no merge prerequisite anywhere); KX-03 entrypoints mapping for successor
@@ -853,6 +859,7 @@ scope creep (closure committed; additions need a MODEL job) · worktree ceiling 
 dispositions precede any copy).
 
 ## Changelog
+- v2.7 (2026-10-11): Astra v2.6 finding KY-01 applied; capacity figure measured, not fixed.
 - v2.6 (2026-10-11): Astra v2.5 confirmation findings KX-01…KX-03 applied.
 - v2.5 (2026-10-11): Astra v2.4 confirmation findings KW-01…KW-06 applied (see §17).
 - v2.4 (2026-10-11): Astra v2.3 delta findings KV-01…KV-08 applied (see §17); D-4 amended,

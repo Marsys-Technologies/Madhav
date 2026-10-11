@@ -1,7 +1,7 @@
 ---
-artifact: KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md
-version: 2.6
-paired_plan: KALAYANTRA_RELAUNCH_PLAN_v2_6.md (v2.6)
+artifact: KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md
+version: 2.7
+paired_plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md (v2.7)
 status: READY TO PASTE after the native approves a source commit. The ONE prompt for every session, in every phase; paste it whenever you open a new session.
 owner_steps: |
   1. Claude Desktop app → Claude Code → new session in
@@ -27,8 +27,8 @@ C0=<APPROVED_SOURCE_COMMIT>
 C="$C0"
 D=00_ARCHITECTURE/briefs/kalayantra
 R=/Users/Dev/kalayantra/run
-git cat-file -e "$C0:$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md" || exit 1
-git show "$C0:$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md" || exit 1
+git cat-file -e "$C0:$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md" || exit 1
+git show "$C0:$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md" || exit 1
 ```
 From here on, obey the displayed root-commit instructions, not this pasted text. Keep
 `C0`, `C`, `D` and `R` together in every later command; never rely on an inherited shell
@@ -50,10 +50,10 @@ bound path `f`:
 ```bash
 git cat-file -e "$C:$f" && git diff --quiet "$C" -- "$f" || { echo "STOP: $f differs from $C"; exit 1; }
 ```
-Root files: `$D/KALAYANTRA_RELAUNCH_PLAN_v2_6.md`, `$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_6.md`,
+Root files: `$D/KALAYANTRA_RELAUNCH_PLAN_v2_7.md`, `$D/KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md`,
 `$D/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md`, `$D/KALAYANTRA_RELAUNCH_STRATEGY_v1_2.md`,
 `.claude/agents/kalayantra-owner-surrogate.md`. Then load the bound cockpit prompt and plan
-from `C`. A needed plan change goes to `$D/KALAYANTRA_RELAUNCH_PLAN_v2_7_PROPOSED.md` and
+from `C`. A needed plan change goes to `$D/KALAYANTRA_RELAUNCH_PLAN_v2_8_PROPOSED.md` and
 becomes a veto-class surrogate decision whose activation record extends the chain; continue
 within the active version meanwhile.
 
@@ -88,8 +88,7 @@ the lock, tell the owner to open a new session.
   bounded subagents, invoking the `kalayantra-owner-surrogate` agent with the authorised
   source commit `C` and the verified entrypoint binding in its job input, plus its reviewed
   staged card, for every owner-wait that is not a hard stop. **Run B-0a's approved
-  disposals first, subject to their coordination conditions** (41 copies are registered
-  against a ceiling of 15); no new copy before the count is ≤ 14.
+  disposals first, subject to their coordination conditions** (the measured registration count is reported in `status`; it was 41 against a ceiling of 15 on 2026-10-11); no new copy before the count is ≤ 14.
 - After `kyboot.py` is qualified (own instance lock, qualification receipts PASS): it
   directly supervises B-1 jobs from the immutable staged source bundle; it may also run the
   `veto` handler; it never starts the campaign dispatcher.
@@ -133,8 +132,21 @@ plan allows, else one line why not. An owner `pause` is never undone by the surr
 `tracker_live` or packets outside a reviewed packet; merge to main during the hold; merge by
 hand at any time; remove a hold you did not set; touch the Suvarṇa integration branch,
 `ri02` or production; read or print a credential; write a role-state file whose lock you do
-not hold; reacquire a lock a controller holds; write anywhere outside the repository
-checkout, `$R`, and the dated scratch root `/Users/Dev/scratch.noindex/claude/madhav/<YYYYMMDD>-kalayantra-v3/`.
+not hold; reacquire a lock a controller holds.
+
+**File placement and scoped lifecycle actions (KY-01):** ordinary cockpit-authored files
+stay within the active repository checkout, `$R` under the applicable ownership fence, and
+`/Users/Dev/scratch.noindex/claude/madhav/<YYYYMMDD>-kalayantra-v3/`. The plan's
+already-authorised lifecycle actions are explicit exceptions: B-0a may archive approved
+work to `/Users/Dev/Archives/` and remove only the approved worktrees through
+`git worktree remove` and `git worktree prune`, after satisfying preservation and
+coordination conditions; worktree creation must satisfy the owner's location, reuse and
+capacity rules. Reviewed B-0c launch actions and B-2 installation may modify only their
+explicitly enumerated runtime and launchd paths, including `/Users/Dev/kalayantra/bin`,
+`fleet_live` and `tracker_live`. Normal Git operations may update the repository's
+associated Git metadata. Record these side effects through action records; retain all
+qualification, review, hold, receipt and independent-acceptance requirements. These
+exceptions permit no ad hoc installed-file edits or additional authority.
 
 **8. On exit** (owner closes, `handoff`, context warning): if you hold the role lock,
 checkpoint and release it; if you are an observer, submit any hand-off request through the
