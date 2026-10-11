@@ -175,7 +175,9 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
-      const servedRows = kp.label(result.rows ?? [])
+      // KP-frame labelling is applied to the query result IN PLACE (a 1:1 map: same length, same order, `frame_label` added to the KP rows), so the served `rows` below is still the
+      // unfiltered query result (`rows: result.rows ?? []`, the form the density harness's DENSITY-4 reads) and nothing derived from it can see unlabelled rows.
+      result.rows = kp.label(result.rows ?? [])
       const doshaLabelGatedTotal = Number(doshaGatedCountResult.rows[0]?.total ?? 0)
       const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
       const firingsPointer = {
@@ -290,7 +292,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, ...kp.echo(servedRows), categories, rows: servedRows, total,
+          chart_id: chartId, ...kp.echo(result.rows ?? []), categories, rows: result.rows ?? [], total,
           ...(empty_reason ? { empty_reason } : {}),
           firings_pointer: firingsPointer,
           catalog_only_rows_in_page: catalogOnlyCount,
