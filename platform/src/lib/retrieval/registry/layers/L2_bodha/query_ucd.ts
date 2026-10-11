@@ -37,7 +37,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { resolveHandlerAyanamsha, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, collapseSignalFamilies } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
@@ -352,13 +352,25 @@ export const queryUcdCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required for query_ucd' }, is_error: true }
     }
     const chart_id       = String(args.chart_id)
-    const ayanamsha_id   = String(args.ayanamsha_id  ?? DEFAULT_AYANAMSHA)
+    // SS N-339/N-342 (PR-2): Lahiri-primary (omitted => lahiri_chitrapaksha); short ids normalise; an unknown
+    // id is an is_error result. query_ucd is a SINGLE-ayanamsha orientation digest (one vw_chart_digest row, one
+    // L1 context, one Shadbala read, entity profiles aggregated per graha) — pooling five ayanamshas would
+    // multiply every count and blend contexts, so the explicit 'all' opt-out is NOT served pooled: it is served
+    // at the primary ayanamsha and says so (`ayanamsha_scope_requested` + note) rather than claiming 'all'.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id   = aya.id ?? PRIMARY_AYANAMSHA
+    const allRequested   = aya.all
 
     const response_format = (['digest', 'summary', 'full'].includes(String(args.response_format))
       ? String(args.response_format) : 'summary') as 'digest' | 'summary' | 'full'
 
     // H-11: cache check
-    const _cacheKey = cacheKey('query_ucd', { chart_id, ayanamsha_id,
+    const _cacheKey = cacheKey('query_ucd', { chart_id, ayanamsha_id, all_requested: allRequested,
       top_k_signals: args.top_k_signals, top_k_entities: args.top_k_entities,
       signal_class: args.signal_class, min_salience: args.min_salience,
       response_format, priors_version: PRIORS_VERSION })
@@ -552,6 +564,12 @@ export const queryUcdCapability: CapabilityDescriptor = {
         content: {
           chart_id,
           ayanamsha_id,
+          ...(allRequested
+            ? {
+                ayanamsha_scope_requested: 'all',
+                ayanamsha_scope_note: `query_ucd is a single-ayanamsha orientation digest and cannot be pooled across ayanamshas; served at '${ayanamsha_id}'. Call it once per ayanamsha_id for a cross-ayanamsha comparison.`,
+              }
+            : {}),
           response_format,
           digest: {
             msr_signal_count:     digest.msr_signal_count,

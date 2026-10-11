@@ -27,7 +27,6 @@ TOKENS = {
     "bg_concordance": (["classical_attributions", "bg_concordance"], "classical_attributions", "data"),
     "bo_samskara": (["bodha_signal_embeddings", "bo_samskara"], "bodha_signal_embeddings", "data"),
     "bg_reference": (["reference_planets", "bg_reference"], "reference_planets", "data"),
-    "bg_sarvatobhadra_grid": (["bg_sarvatobhadra_grid"], "bg_sarvatobhadra_grid", "data"),
     "bg_vidhi_floors": (["vidhi_floor_items", "bg_vidhi_floors"], "vidhi_floor_items", "data"),
     "bg_vidhi_primitives": (["vidhi_primitives", "bg_vidhi_primitives"], "vidhi_primitives", "data"),
     "ga_fact_identity": (["chart_fact_identity", "ga_fact_identity"], "chart_fact_identity", "data"),

@@ -31,6 +31,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { YOGA_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
@@ -127,7 +128,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
     fired:             { type: 'boolean', description: 'Filter by fired status (default: true — only fired yogas). Pass false for non-firings, omit-as-null via all=true.' },
     all:               { type: 'boolean', description: 'If true, ignore the fired filter and return fired + non-fired rows.' },
-    ayanamsha_id:      { type: 'string',  description: "Filter by ayanamsha. Omit for all." },
+    ayanamsha_id:      { type: 'string',  description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     bhanga_active:     { type: 'boolean', description: 'Filter to firings with an active bhanga (cancellation) rule.' },
     is_partial:        { type: 'boolean', description: 'Filter to partially-formed yogas.' },
     yoga_canonical_id: { type: 'string',  description: 'Filter to a specific yoga by canonical id.' },
@@ -168,7 +169,10 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
 
     const all               = args['all'] === true
     const fired             = args['fired'] === undefined ? true : args['fired'] === true
-    const ayanamsha_id      = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id      = aya.id
     const bhanga_active     = typeof args['bhanga_active'] === 'boolean' ? (args['bhanga_active'] as boolean) : null
     const is_partial        = typeof args['is_partial'] === 'boolean' ? (args['is_partial'] as boolean) : null
     const yoga_canonical_id = args['yoga_canonical_id'] ? String(args['yoga_canonical_id']) : null
@@ -194,13 +198,13 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     // citation_human on ga_yoga_firings are DELIBERATELY the strength-derivation citation
     // (ga_yoga_writer.py:1210-1213: "the formation citation is authoritative on the catalog
     // row itself") — not a writer defect, just never previously projected onto this surface.
-    const baseCols = `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
-             f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
-             f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
-             f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
-             c.classical_citations AS catalog_classical_citations`
+    // The select lists are the string-literal map YOGA_FIRING_SELECT at the bottom of this module
+    // ('with_grounds' = 'base' + f.grounds_jsonb), so the served columns, `f.fired` (the row's
+    // verification tier) among them, are statically readable. Not a run-time column list.
+    // The pre-Lane-3 fallback drops exactly one column, grounds_jsonb, and nothing else.
+    // citation_human sits in the map below (the strength-derivation citation, F-D1).
 
-    async function runQueries(cols: string) {
+    async function runQueries(mode: keyof typeof YOGA_FIRING_SELECT) {
       // F-D5 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `strength, yoga_canonical_id`
       // alone — a non-total order. The same yoga_canonical_id at the same strength can
       // legitimately repeat across all 5 stored ayanamshas (e.g. a firing rule that never
@@ -209,11 +213,11 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       // this a genuine total order — deterministic pagination, same D1-defect-class fix
       // migration 814/817 already applied to their own tautology-adjacent tiebreaks.
       const sql = `
-        SELECT ${cols}
+        SELECT ${YOGA_FIRING_SELECT[mode]}
         FROM ga_yoga_firings f
         LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
         WHERE ${where}
-        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
+        ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, ${ayanamshaServeOrderBy('f.ayanamsha_id')}, f.id
         LIMIT $${p} OFFSET $${p + 1}`
       return Promise.all([
         query(sql, [...params, limit, offset]),
@@ -226,13 +230,13 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       let rowsRes: Awaited<ReturnType<typeof query>>
       let countRes: Awaited<ReturnType<typeof query<{ total: string }>>>
       try {
-        [rowsRes, countRes] = await runQueries(`${baseCols}, f.grounds_jsonb`)
+        [rowsRes, countRes] = await runQueries('with_grounds')
       } catch (e) {
         // grounds_jsonb not migrated yet in this environment — fall back, never hard-fail
         // the whole tool over one additive column (Lane 3's migration may be unmerged here).
         if (/column .*grounds_jsonb.* does not exist/i.test(e instanceof Error ? e.message : String(e))) {
           groundsIncluded = false
-          ;[rowsRes, countRes] = await runQueries(baseCols)
+          ;[rowsRes, countRes] = await runQueries('base')
         } else {
           throw e
         }
@@ -245,14 +249,19 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
       const rows = groundsIncluded
         ? (rowsRes.rows as Array<Record<string, unknown>>).map(withRoleSplit)
         : rowsRes.rows
+      // §N.6.1: `fired` is the row's verification tier (true = a confirmed firing, false = a catalog row whose formation conditions did not hold). Default fired=true never serves a
+      // catalog-only row; with all=true / fired=false they are served (never dropped, B.10) but counted separately, so a caller cannot read the row count as "N confirmed yogas".
+      const catalog_only_rows_in_page = (rowsRes.rows as Array<Record<string, unknown>>).filter(r => r['fired'] === false).length
       return {
         content: {
           chart_id,
           build_id,
           rows,
           count: rowsRes.rows.length,
+          catalog_only_rows_in_page,
           total_matching,
           more_available: total_matching > offset + rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { fired: all ? null : fired, all, ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id, limit, offset },
           ...(total_matching === 0
             ? { empty_reason: `No ga_yoga_firings rows for chart ${chart_id} matching fired=${all ? 'any' : fired}${yoga_canonical_id ? ` yoga_canonical_id='${yoga_canonical_id}'` : ''}. Pass all=true to see catalog rows that have not fired.` }
@@ -274,3 +283,17 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     }
   },
 }
+
+// Select lists of the firing rows by mode, each a string LITERAL (no run-time column list). `fired` is the row's verification tier. `with_grounds` adds grounds_jsonb (Lane 3 CR-59).
+const YOGA_FIRING_SELECT = {
+  base: `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
+         f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
+         f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
+         f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
+         c.classical_citations AS catalog_classical_citations`,
+  with_grounds: `f.id, f.yoga_canonical_id, f.ayanamsha_id, f.fired, f.strength, f.strength_label,
+         f.partial_formation_pct, f.is_partial, f.bhanga_active, f.bhanga_rule_fired, f.bhanga_na_reason,
+         f.constituent_planets, f.constituent_houses, f.constituent_fact_ids, f.family_ids,
+         f.activation_dasha_periods, f.derivation, f.citation_ref, f.citation_human,
+         c.classical_citations AS catalog_classical_citations, f.grounds_jsonb`,
+} as const

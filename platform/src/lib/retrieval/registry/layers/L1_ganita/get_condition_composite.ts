@@ -15,6 +15,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -38,7 +39,7 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     graha:        { type: 'string', description: 'Filter by graha. Omit for all.' },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 
@@ -70,7 +71,10 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
     const graha        = args['graha'] ? String(args['graha']) : null
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id = aya.id
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
@@ -90,7 +94,7 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
              condition_score_breakdown, peak_dasha_periods, weak_dasha_periods, computed_at
       FROM ga_condition_composite
       WHERE ${where}
-      ORDER BY graha, ayanamsha_id
+      ORDER BY graha, ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -106,6 +110,7 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
+          ...ayanamshaScopeEcho(aya),
           filters: { graha, ayanamsha_id, limit },
           ...(rowsRes.rows.length === 0
             ? { empty_reason: `No condition-composite rows matched (graha=${graha ?? 'any'}, ayanamsha_id=${ayanamsha_id ?? 'any'}).` }

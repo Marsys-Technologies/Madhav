@@ -133,7 +133,7 @@ NAK_DATA = [
     (20, "Purva Ashadha", "Purva Ashadha", ["purva_ashadha", "poorva_ashadha", "pooradam"]),
     (21, "Uttara Ashadha", "Uttara Ashadha", ["uttara_ashadha", "uttarashadha", "uttaradam"]),
     (22, "Shravana", "Shravana", ["shravana", "sravana", "thiruvonam"]),
-    (23, "Dhanishtha", "Dhanishtha", ["dhanishtha", "dhanistha", "sravishtha", "avittam"]),
+    (23, "Dhanishtha", "Dhanishtha", ["dhanishtha", "dhanistha", "sravishtha", "avittam", "dhanishta"]),
     (24, "Shatabhisha", "Shatabhisha", ["shatabhisha", "shatabhisaj", "shatabhisak", "sadayam"]),
     (25, "Purva Bhadrapada", "Purva Bhadrapada", ["purva_bhadrapada", "purvabhadra", "poorattadhi"]),
     (26, "Uttara Bhadrapada", "Uttara Bhadrapada", ["uttara_bhadrapada", "uttarabhadra", "uttarattadhi"]),

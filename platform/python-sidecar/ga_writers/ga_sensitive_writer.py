@@ -15,6 +15,11 @@ Per A5_SENSITIVE_POINTS_SPEC_v1_0.md + GA5 brief §4–§8:
       tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag,
       vargottama_flag_at_point, formula_provenance_text,
       cross_ayanamsha_divergence_arcsec
+    cross_ayanamsha_divergence_arcsec is NOT MEASURED by this writer (SS N-341/N-347,
+    CLAUDE.md N.8): each row is built for one ayanamsha at a time and nothing here compares
+    the same point across the five ayanamshas, so the column is written as NULL (never a
+    stored 0.0, which would read as "measured zero"). The INSERT still names the column so
+    the DB default 0.0 cannot fill it. Same convention as ga_vargas_writer.
   - Atomic grain: Hadda=60, Swamsa=12, Midpoints=54, Arudha=19, etc.
   - Prerequisite check: G14 Saham library, G44 Nadi tables, G41 Lal Kitab corpus
     → absent prerequisites floor dependent categories to null+marked (no fabrication)
@@ -420,9 +425,13 @@ def _make_row(
     near_nakshatra_boundary_flag: bool = False,
     vargottama_flag_at_point: bool = False,
     formula_provenance_text: str = "",
-    cross_ayanamsha_divergence_arcsec: float = 0.0,
+    cross_ayanamsha_divergence_arcsec: float | None = None,
 ) -> dict[str, Any]:
-    """Build a single chart_facts row dict, including Section-B enrichment."""
+    """Build a single chart_facts row dict, including Section-B enrichment.
+
+    cross_ayanamsha_divergence_arcsec defaults to None (stored NULL): the cross-ayanamsha
+    spread is not measured here, and 0.0 would falsely read as a measured zero.
+    """
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id, formula_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver)
     value_for_human = value_num if value_num is not None else value_text
@@ -477,7 +486,7 @@ def _long_rows(
     *,
     formula_id: str = "",
     formula_provenance_text: str = "",
-    cross_ayanamsha_divergence_arcsec: float = 0.0,
+    cross_ayanamsha_divergence_arcsec: float | None = None,
     tolerance_arcsec: float = 0.0,
     include_nakshatra: bool = True,
     include_house: bool = True,
@@ -1364,7 +1373,7 @@ def _build_karaka_rows(
                 near_nakshatra_boundary_flag=near_nak,
                 vargottama_flag_at_point=varg,
                 formula_provenance_text=f"{scheme_text}, {school} reckoning",
-                cross_ayanamsha_divergence_arcsec=0.0,
+                cross_ayanamsha_divergence_arcsec=None,
             )
 
             rows.extend([
@@ -1971,7 +1980,7 @@ def _build_kp_cuspal_rows(
                 "near_nakshatra_boundary_flag": False,
                 "vargottama_flag_at_point": False,
                 "formula_provenance_text": f"KP cusp {cusp_num}: EXTERNAL_COMPUTATION_REQUIRED",
-                "cross_ayanamsha_divergence_arcsec": 0.0,
+                "cross_ayanamsha_divergence_arcsec": None,
             })
         return rows
 
@@ -1999,7 +2008,7 @@ def _build_kp_cuspal_rows(
                 near_nakshatra_boundary_flag=near_nak,
                 vargottama_flag_at_point=False,
                 formula_provenance_text=f"KP Cuspal system: Cusp {cusp_num} at {cusp_long:.4f}°",
-                cross_ayanamsha_divergence_arcsec=0.0,
+                cross_ayanamsha_divergence_arcsec=None,
             )
 
             rows.extend([
@@ -2048,7 +2057,7 @@ def _build_kp_cuspal_rows(
                 "near_nakshatra_boundary_flag": False,
                 "vargottama_flag_at_point": False,
                 "formula_provenance_text": f"KP_PARSE_ERROR: cusp {cusp_num} — {exc}",
-                "cross_ayanamsha_divergence_arcsec": 0.0,
+                "cross_ayanamsha_divergence_arcsec": None,
             })
     return rows
 
@@ -2171,7 +2180,7 @@ def _build_hadda_rows(
                 near_nakshatra_boundary_flag=False,
                 vargottama_flag_at_point=False,
                 formula_provenance_text=f"Tajik Neelakanthi Hadda table: {sign_name} {start}°-{end}°",
-                cross_ayanamsha_divergence_arcsec=0.0,
+                cross_ayanamsha_divergence_arcsec=None,
             )
             rows.extend([
                 _make_row("tajik_hadda_lord", subj, "lord",
@@ -2390,7 +2399,7 @@ def _build_nakshatra_pada_sensitive_rows(
             near_nakshatra_boundary_flag=near_nak,
             vargottama_flag_at_point=_is_vargottama(long_val),
             formula_provenance_text=f"Nakshatra pada derivation: {subj} at {long_val:.4f}°",
-            cross_ayanamsha_divergence_arcsec=0.0,
+            cross_ayanamsha_divergence_arcsec=None,
         )
 
         rows.extend([
