@@ -267,10 +267,30 @@ def test_an_unbound_parameter_is_an_error_as_in_the_engine(pg, monkeypatch, tmp_
 
 
 def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_path):
+    """The claim is that the SERVER-side budget bounds the declared statement. That is measured on the statement itself (its own elapsed seconds,
+    recorded around psql_read_only), not on the wall time of the whole census run, which also holds setup, the layer stub and a second asset and so
+    varies by seconds on a loaded CI runner (an 18 s run was seen on a shared runner while the cancel itself fired at ~1 s locally). The unbounded
+    statement (2 billion rows) would run until the client kill, budget + 30 s; the budget here is 1 s, so a statement that ends well before 30 s was
+    cancelled by the budget. Mutation (checked by hand): budget 10 instead of 1 -> the statement takes ~10 s -> this assertion fails; the server
+    statement_timeout removed from psql_read_only -> it runs to the client kill (~31 s) -> fails."""
     monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
+    seen = []
+    real = ac.psql_read_only
+
+    def timed(sql, *a, **k):
+        t = time.time()
+        try:
+            return real(sql, *a, **k)
+        finally:
+            seen.append((str(sql), time.time() - t))
+    monkeypatch.setattr(ac, "psql_read_only", timed)
     t0 = time.time()
     census = _run(monkeypatch, tmp_path, "SELECT count(*) > 0 FROM generate_series(1, 2000000000)", extra={"ph_y": _reg_row("ph_y", "SELECT true")})
-    assert time.time() - t0 < 7, "the timeout did not bound the run"
+    wall = time.time() - t0
+    slow = [sec for sql, sec in seen if "generate_series" in sql]
+    assert len(slow) == 1, seen
+    assert slow[0] < 1 + 5, f"the 1 s budget did not cancel the declared statement (it ran {slow[0]:.1f} s)"
+    assert wall < 25, f"the whole run took {wall:.1f} s: the statement was bounded but something else is slow"
     c = _cell(census, "ph_x")
     assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and ("timeout" in c["measured"].lower() or "canceling" in c["measured"]), c
     assert _cell(census, "ph_y")["v"] == ac.PASS
