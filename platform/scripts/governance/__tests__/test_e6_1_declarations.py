@@ -32,7 +32,8 @@ FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_t
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
 SNAPSHOT_N = len(REGISTRY_IDS)                         # the 2026-09-30 census snapshot: 127 assets
 POST_SNAPSHOT_REGISTERED = ["ga_fact_identity"]        # registered by migration 1262 AFTER the snapshot and declared (kind only, 1.37.0) so Earn.service_state reads N/A
-REGISTRY_IDS = sorted(REGISTRY_IDS + POST_SNAPSHOT_REGISTERED)
+RETIRED_INACTIVE = ["bg_sarvatobhadra_grid"]           # retired by #3414 / migration 1360 (SS N-430): no longer an active asset, so no declaration
+REGISTRY_IDS = sorted(a for a in REGISTRY_IDS + POST_SNAPSHOT_REGISTERED if a not in RETIRED_INACTIVE)
 
 
 PEV = dict(prose_fields="writer file.py:1: composed / stores source text")   # a non-blank evidence pointer
@@ -69,8 +70,19 @@ def _fixture_census():
 
 def test_committed_file_loads_and_covers_exactly_the_127_census_assets():
     decl = ac.load_asset_declarations(registry_ids=REGISTRY_IDS)
-    assert SNAPSHOT_N == 127 and len(REGISTRY_IDS) == 128      # the 127 snapshot assets + ga_fact_identity (registered by migration 1262)
+    assert SNAPSHOT_N == 127 and len(REGISTRY_IDS) == 127      # the 127 snapshot assets + ga_fact_identity (registered by migration 1262) - bg_sarvatobhadra_grid (retired by migration 1360)
     assert sorted(decl) == REGISTRY_IDS
+
+
+def test_no_declaration_names_an_inactive_asset():
+    """SS N-431 ruling (item from N-438): a declaration of an inactive (retired) asset is a stale entry. No validator change - this test is the guard. The inactive list is offline: the assets
+    retired by migration 1360 (is_active = false, catalog_status RETIRED); the test also reads the migration, so the list cannot drift from it."""
+    mig = (REPO_ROOT / "platform/migrations/1360_retire_bg_sarvatobhadra_grid.sql").read_text(encoding="utf-8")
+    for a in RETIRED_INACTIVE:
+        assert f"asset_id = '{a}'" in mig and "is_active = false" in mig and "'RETIRED'" in mig, a
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
+    assert [a for a in RETIRED_INACTIVE if a in raw["assets"]] == []
+    assert [a for a in RETIRED_INACTIVE if a in ac.load_asset_declarations(registry_ids=REGISTRY_IDS)] == []
 
 
 def test_committed_file_kinds_are_in_the_enum_and_multi_table_is_not_a_kind():
@@ -84,7 +96,7 @@ def test_committed_file_pins_the_ruled_kinds():
     decl = _decl()
     assert decl["lel_events"]["kind"] == "user_data"          # ruling, principle 6
     assert decl["bo_samvada"]["kind"] == "view"
-    assert {a for a, e in decl.items() if e["kind"] == "static"} == {"bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
+    assert {a for a, e in decl.items() if e["kind"] == "static"} == {"bg_gochara_citation_resolution"}
     assert {a for a, e in decl.items() if e["kind"] == "rider"} == {"bg_sign_medical", "bg_transit_engine", "bg_nakshatra_medical"}
     # the two user-table services: neither writes a table of its own (code evidence in the evidence pointer)
     assert decl["mi_abhilekha"]["kind"] == "service" and decl["mi_seva"]["kind"] == "service"
@@ -115,7 +127,7 @@ def test_parse_prose_field_splits_a_column_from_its_json_path():
     assert ac.parse_prose_field("_c1.$._k") == ("_c1", ("_k",))
 
 
-@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.*", "n.$.1a",
+@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.a*", "n.$.1a",
                                  "1n", "n n", "n-n", "t.n", "n\n", ".n", "n.$.x\n", "n.$.$.x", "n.$.", None, 1, ["n"]])
 def test_parse_prose_field_rejects_malformed_entries(bad):
     with pytest.raises(ac.DeclarationsError):
@@ -139,7 +151,7 @@ def test_parse_prose_field_accepts_an_array_element_segment_after_an_identifier_
     "d.$.a[-1].b", "d.$.a[ * ].b", "d.$.a[**].b", "d.$.a[*.b", "d.$.a*].b", "d.$.a[].b", "d.$.a[*]b", "d.$.a[*]x.b",
     "d.$.a[*]..b", "d.$.a[*].", "d.$.a[*]\n", "d.$.a[*].b\n", "d.$.a.[*].b", "d.$.[*].b", "d.$.a[*] .b", "d.$.a [*].b",
     "d.$.a[\uff0a].b", "d.$.a[*]\u200b.b", "d.$.a[*].b[*", "d.$.a[n].b", "d.$.a['x'].b", "d.$.a[*:].b", "d.$.a[?(@.x)].b",
-    "d.$.*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
+    "d.$.a*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
 def test_parse_prose_field_rejects_malformed_wildcards(bad):
     with pytest.raises(ac.DeclarationsError):
         ac.parse_prose_field(bad)
@@ -277,9 +289,10 @@ CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_
                 **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
                                                    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
                                                    "ga_vargas", "ga_yoga")}}
-L2_FILL_DECLARED = {"bo_samskara": ["embedding_input_summary"], "bo_chart_gestalt": ["defining_threads_jsonb.$.note", "domain_verdict_map_jsonb", "headline_jsonb.$.note", "watch_list_jsonb.$.note", "central_question_jsonb.$.note", "outliers_jsonb.$.note", "contested_areas_jsonb.$.note", "zoom_spine_jsonb.$.note", "headline_epistemic_jsonb.$.note"], "bo_grounding": ["derivation_chain", "grounding_evidence_jsonb.$.reason"], "bo_pramana_mapa": ["notes"]}     # E5.7 L2 fill: prose_fields declared with a golden test, a lint_none and (samskara) a K3 source
+L2_FILL_DECLARED = {"bo_samskara": ["embedding_input_summary"], "bo_chart_gestalt": ["defining_threads_jsonb.$.note", "domain_verdict_map_jsonb.$.*.verdict_note", "headline_jsonb.$.note", "watch_list_jsonb.$.note", "central_question_jsonb.$.note", "outliers_jsonb.$.note", "contested_areas_jsonb.$.note", "zoom_spine_jsonb.$.note", "headline_epistemic_jsonb.$.note"], "bo_grounding": ["derivation_chain", "grounding_evidence_jsonb.$.reason"], "bo_pramana_mapa": ["notes"]}     # E5.7 L2 fill: prose_fields declared with a golden test, a lint_none and (samskara) a K3 source
 L2_FILL_EMPTY = ("bo_samvada", "bo_drishti")     # E5.7 L2 fill: a checked prose_none over the view vw_chart_digest
 VEDHA_DECLARED = {"bg_vedha_malefic_scale": ["effect_description"]}     # SS 2026-10-05: the seeded effect sentence of the PG353 scale is the asset's prose (golden test declared)
+BG_RULES_DECLARED = {"bg_rules": ["predicate_jsonb.$.description"]}     # SS N-455/N-457: the f-string description of all 27 extractors is writer-composed text, declared beside corpus_derived with two golden fidelity_tests (Exec #3433)
 CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
@@ -325,8 +338,8 @@ NARR_CITES = {
     "ph_rectification": [(_SC + "services/ph_rectification/engine.py", 555, "firewall_note = ("),
                          (_WR + "ph_rectification/__init__.py", 74, 'flags["load_bearing_note"] = ('),
                          (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+                         (_L + "L4_phala/query_phala_calibration.ts", 648, "judgment_flags"),
+                         (_L + "L4_phala/query_phala_calibration.ts", 650, "leakage_firewall_note")],
     "bo_pratijna": [(_WR + "bo_pratijna_v4_engine.py", 310, 'f"sign={sign_number} matches exaltation_sign"'),
                     (_WR + "bo_pratijna_v4_engine.py", 410, "naisargika-only (tatkalika unavailable)"),
                     (_WR + "bo_pratijna_v4_engine.py", 425, "naisargika({graha}->{need.sign_lord})"),
@@ -345,7 +358,7 @@ NARR_CITES = {
                     (_WR + "bo_pratijna.py", 428, '"derivation": json.dumps(derivation)'),
                     (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
                     (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
-                    (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
+                    (_L + "L2_bodha/query_pratijna.ts", 185, "derivation, formula_version")],
     "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2408, 'return "Structured formation rule: " + json.dumps('), (_BG + "l0_yogas.py", 2411, "def _signification_text("),
                  (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
                  (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
@@ -360,7 +373,7 @@ NARR_CITES = {
                           (_WR + "bo_laksana.py", 4032, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4091, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4146, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4149, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4213, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4224, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 527, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 546, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -413,7 +426,7 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.40.0 / 1.41.0): prose_fields [] with a checked prose_none (SS audit 2026-10-06 removed prose_none from bg_dasha_systems, bg_nakshatra, bg_reference; all three are back through the FORM-GAP forms: bg_nakshatra 1.45.0, bg_reference 1.51.0, bg_dasha_systems 1.52.0)
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.40.0 / 1.41.0): prose_fields [] with a checked prose_none (SS audit 2026-10-06 removed prose_none from bg_dasha_systems, bg_nakshatra, bg_reference; all three are back through the FORM-GAP forms: bg_nakshatra 1.45.0, bg_reference 1.51.0, bg_dasha_systems 1.52.0)
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
@@ -425,18 +438,20 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
         assert got[a] == v, a
     for a, v in VEDHA_DECLARED.items():
         assert got[a] == v, a
+    for a, v in BG_RULES_DECLARED.items():
+        assert got[a] == v, a
     PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}      # prose batch 2 (literal pins of what it declares; not imported from its own test file)
     PROSE2_NONE = ("ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
     for a, v in PROSE2_FIELDS.items():
         assert got[a] == v, a
     assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY, *PROSE2_NONE])
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED) | set(PROSE2_NONE) | set(PROSE2_FIELDS)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED) | set(BG_RULES_DECLARED) | set(PROSE2_NONE) | set(PROSE2_FIELDS)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED) + len(PROSE2_NONE) + len(PROSE2_FIELDS)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
-    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 128 - n
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED) + len(BG_RULES_DECLARED) + len(PROSE2_NONE) + len(PROSE2_FIELDS)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
+    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
 def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
@@ -1260,7 +1275,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1299,7 +1314,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1344,7 +1359,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1534,7 +1549,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-   52,
+   53,
    "citation_ref, citation_human"
   ],
   "fields": [
@@ -1588,7 +1603,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   81,
+   89,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1621,7 +1636,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   83,
+   91,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -1716,7 +1731,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-   78,
+   86,
    "verification_pass_status, ci"
   ],
   "fields": [
@@ -1759,7 +1774,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-   1498,
+   1499,
    "`SELECT mechanism_name, mech"
   ],
   "fields": [
@@ -1932,12 +1947,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    371,
+    399,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    539,
+    567,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -2003,12 +2018,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    952,
+    979,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1310,
+    1298,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2063,7 +2078,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    274,
+    279,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2169,7 +2184,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-   902,
+   905,
    "applicable_tajik_yogas_array"
   ],
   "fields": [
@@ -2243,7 +2258,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-   200,
+   292,
    "f.activation_dasha_periods, "
   ],
   "fields": [
@@ -2803,7 +2818,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 399, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4757, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
@@ -2964,7 +2979,7 @@ def test_citation_sites_scanner_classifies_dicts_keywords_helpers_names_and_call
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
     bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
-    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
+    bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
     bo_samskara bg_ephemeris_engine bg_panchanga ka_dasha_kala ka_graha_sancara ka_muhurta_seva ka_tulana""".split())
 
 
@@ -2975,7 +2990,7 @@ def test_committed_file_declares_no_negative_served_surface_and_nulls_the_unprov
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
-    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 26      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows) + ga_fact_identity (1.37.0, kind-only declaration)
+    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 25      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows) + ga_fact_identity (1.37.0, kind-only declaration)
 
 
 RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_prashna_rules bg_rules ga_prashna
@@ -3197,7 +3212,7 @@ BAD_DOCS = [
     ("prose-path-trailing-segment-dot", _doc(a=dict(prose_fields=["narrative.$.a."], evidence=PEV))),
     ("prose-path-space-in-key", _doc(a=dict(prose_fields=["narrative.$.head line"], evidence=PEV))),
     ("prose-path-array-index", _doc(a=dict(prose_fields=["narrative.$.items[0]"], evidence=PEV))),
-    ("prose-path-wildcard", _doc(a=dict(prose_fields=["narrative.$.*"], evidence=PEV))),
+    ("prose-path-star-inside-a-key", _doc(a=dict(prose_fields=["narrative.$.a*"], evidence=PEV))),
     ("prose-path-digit-key", _doc(a=dict(prose_fields=["narrative.$.1a"], evidence=PEV))),
     ("prose-path-trailing-newline", _doc(a=dict(prose_fields=["narrative.$.headline\n"], evidence=PEV))),
     ("prose-path-leading-dot", _doc(a=dict(prose_fields=[".narrative.$.headline"], evidence=PEV))),

@@ -38,6 +38,7 @@
  */
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
@@ -325,7 +326,10 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : 'lahiri_chitrapaksha'
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    // Single-ayanamsha surface: normalised (aliases, unknown => error); "all" serves the primary reading and the echoed ayanamsha_id says so.
+    const ayanamsha_id = ayaTry.aya.id ?? PRIMARY_AYANAMSHA
     const mode = (args['mode'] ? String(args['mode']) : 'sav_bav_gating') as 'sav_bav_gating' | 'kakshya_windows'
 
     if (mode === 'kakshya_windows') {

@@ -26,6 +26,7 @@ import re
 import uuid
 
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.l0_semantic_release import graha_subject_code
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Generator
@@ -356,6 +357,22 @@ def _canon_planet(name: str) -> str | None:
     return PLANET_CANONICAL.get(name.lower().strip())
 
 
+def _graha_label(token: str) -> str:
+    """Canonical Title-case graha spelling for a composed description.
+
+    Description text only (never antecedent keys or rule ids): a recognised
+    graha token (``jupiter`` / ``guru`` / ``Lagna`` / ``ascendant`` ...) is
+    rendered with the L1 convention (``Jupiter``). An unrecognised token is
+    returned unchanged -- never title-cased -- so the description cannot read
+    as a canonical graha it is not.
+    """
+    try:
+        graha_subject_code(token)
+    except ValueError:
+        return token
+    return to_title(token)
+
+
 def _canon_house(token: str) -> int | None:
     t = token.lower().strip()
     if t in ORDINAL_TO_NUM:
@@ -410,7 +427,7 @@ def _p1_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, result_start)
     return {
         "antecedent": [{"planet": planet, "house": house, "relation": "occupies"}],
-        "predicate": {"type": "planet_in_house", "description": f"{planet} in house {house}"},
+        "predicate": {"type": "planet_in_house", "description": f"{_graha_label(planet)} in house {house}"},
         "prediction": {"result": result, "domain": "house_signification"},
         "pattern": "planet_in_house",
         "match_text": m.group(0)[:120],
@@ -437,7 +454,7 @@ def _p2_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "sign": sign_num, "relation": "in_sign"}],
-        "predicate": {"type": "planet_in_sign", "description": f"{planet} in sign {m.group(2)}"},
+        "predicate": {"type": "planet_in_sign", "description": f"{_graha_label(planet)} in sign {m.group(2)}"},
         "prediction": {"result": result, "domain": "sign_placement"},
         "pattern": "planet_in_sign",
         "match_text": m.group(0)[:120],
@@ -493,7 +510,7 @@ def _p4_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": p1, "relation": "conjunction"}, {"planet": p2, "relation": "conjunction"}],
-        "predicate": {"type": "conjunction", "description": f"{p1} conjunct {p2}"},
+        "predicate": {"type": "conjunction", "description": f"{_graha_label(p1)} conjunct {_graha_label(p2)}"},
         "prediction": {"result": result, "domain": "conjunction"},
         "pattern": "conjunction",
         "match_text": m.group(0)[:120],
@@ -519,7 +536,13 @@ def _p5_extract(m: re.Match, full_text: str) -> dict | None:
         return None
     aspected_planet = _canon_planet(m.group(2)) if m.group(2) else None
     aspected_house = _canon_house(m.group(3)) if m.group(3) else None
-    target_desc = aspected_planet or (f"house {aspected_house}" if aspected_house else "subject")
+    if aspected_planet:
+        target_desc = _graha_label(aspected_planet)
+    elif aspected_house:
+        target_desc = f"house {aspected_house}"
+    else:
+        # Unresolved target: say so explicitly, never a word that reads like a value.
+        target_desc = "target unresolved"
     result = _extract_result_clause(full_text, m.end())
     ant: list[dict] = [{"planet": p1, "relation": "aspects"}]
     if aspected_planet:
@@ -528,7 +551,7 @@ def _p5_extract(m: re.Match, full_text: str) -> dict | None:
         ant.append({"house": aspected_house, "relation": "aspected"})
     return {
         "antecedent": ant,
-        "predicate": {"type": "aspect", "description": f"{p1} aspects {target_desc}"},
+        "predicate": {"type": "aspect", "description": f"{_graha_label(p1)} aspects {target_desc}"},
         "prediction": {"result": result, "domain": "aspect"},
         "pattern": "aspect",
         "match_text": m.group(0)[:120],
@@ -556,7 +579,7 @@ def _p6_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "dignity": dignity, "relation": "dignity_state"}],
-        "predicate": {"type": "dignity_placement", "description": f"{planet} in {dignity}"},
+        "predicate": {"type": "dignity_placement", "description": f"{_graha_label(planet)} in {dignity}"},
         "prediction": {"result": result, "domain": "dignity"},
         "pattern": "dignity_placement",
         "match_text": m.group(0)[:120],
@@ -583,7 +606,7 @@ def _p7_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "relation": "dasha_lord"}],
-        "predicate": {"type": "dasha_rule", "description": f"{planet} mahadasha period"},
+        "predicate": {"type": "dasha_rule", "description": f"{_graha_label(planet)} mahadasha period"},
         "prediction": {"result": result, "domain": "dasha_timing"},
         "pattern": "dasha_rule",
         "match_text": m.group(0)[:120],
@@ -618,7 +641,7 @@ def _p8_extract(m: re.Match, full_text: str) -> dict | None:
         ant.append({"house": house_num, "relation": "transit_target"})
     return {
         "antecedent": ant,
-        "predicate": {"type": "transit_rule", "description": f"{planet} transits"},
+        "predicate": {"type": "transit_rule", "description": f"{_graha_label(planet)} transits"},
         "prediction": {"result": result, "domain": "transit"},
         "pattern": "transit_rule",
         "match_text": m.group(0)[:120],
@@ -647,7 +670,7 @@ def _p9_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "house": house, "reference": ref, "relation": "house_from"}],
-        "predicate": {"type": "house_from_reference", "description": f"{planet} in {house}th from {ref}"},
+        "predicate": {"type": "house_from_reference", "description": f"{_graha_label(planet)} in {house}th from {_graha_label(ref)}"},
         "prediction": {"result": result, "domain": "house_from_reference"},
         "pattern": "house_from_reference",
         "match_text": m.group(0)[:120],
@@ -707,7 +730,7 @@ def _p11_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "relation": "kartari"}],
-        "predicate": {"type": "kartari", "description": f"{planet} in kartari"},
+        "predicate": {"type": "kartari", "description": f"{_graha_label(planet)} in kartari"},
         "prediction": {"result": result, "domain": "kartari_affliction"},
         "pattern": "kartari",
         "match_text": m.group(0)[:120],
@@ -734,7 +757,7 @@ def _p12_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "motion": "retrograde", "relation": "retrograde"}],
-        "predicate": {"type": "retrograde", "description": f"{planet} retrograde"},
+        "predicate": {"type": "retrograde", "description": f"{_graha_label(planet)} retrograde"},
         "prediction": {"result": result, "domain": "planetary_motion"},
         "pattern": "retrograde",
         "match_text": m.group(0)[:120],
@@ -761,7 +784,7 @@ def _p13_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "state": "combust", "relation": "combustion"}],
-        "predicate": {"type": "combustion", "description": f"{planet} combust"},
+        "predicate": {"type": "combustion", "description": f"{_graha_label(planet)} combust"},
         "prediction": {"result": result, "domain": "combustion_effect"},
         "pattern": "combustion",
         "match_text": m.group(0)[:120],
@@ -791,7 +814,7 @@ def _p14_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "house": house, "relation": "occupies"}],
-        "predicate": {"type": "planet_in_house", "description": f"{planet} in house {house} (direct)"},
+        "predicate": {"type": "planet_in_house", "description": f"{_graha_label(planet)} in house {house} (direct)"},
         "prediction": {"result": result, "domain": "house_signification"},
         "pattern": "planet_in_house_direct",
         "match_text": m.group(0)[:120],
@@ -829,7 +852,7 @@ def _p15_extract(m: re.Match, full_text: str) -> dict | None:
     loc_desc = f"house {house}" if house else f"sign {m.group(3)}"
     return {
         "antecedent": ant,
-        "predicate": {"type": "conditional_placement", "description": f"if {planet} in {loc_desc}"},
+        "predicate": {"type": "conditional_placement", "description": f"if {_graha_label(planet)} in {loc_desc}"},
         "prediction": {"result": result, "domain": "natal_effect"},
         "pattern": "conditional_if",
         "match_text": m.group(0)[:120],
@@ -861,7 +884,7 @@ def _p16_extract(m: re.Match, full_text: str) -> dict | None:
             {"planet": subject, "relation": "aspected"},
             {"planet": aspector, "relation": "aspecting"},
         ],
-        "predicate": {"type": "aspected_by", "description": f"{subject} aspected by {aspector}"},
+        "predicate": {"type": "aspected_by", "description": f"{_graha_label(subject)} aspected by {_graha_label(aspector)}"},
         "prediction": {"result": result, "domain": "aspect_effect"},
         "pattern": "aspected_by",
         "match_text": m.group(0)[:120],
@@ -899,7 +922,7 @@ def _p17_extract(m: re.Match, full_text: str) -> dict | None:
     loc_desc = f"house {house}" if house else f"sign {m.group(3)}"
     return {
         "antecedent": ant,
-        "predicate": {"type": "conditional_should", "description": f"should {planet} be in {loc_desc}"},
+        "predicate": {"type": "conditional_should", "description": f"should {_graha_label(planet)} be in {loc_desc}"},
         "prediction": {"result": result, "domain": "natal_effect"},
         "pattern": "conditional_should",
         "match_text": m.group(0)[:120],
@@ -931,7 +954,7 @@ def _p18_extract(m: re.Match, full_text: str) -> dict | None:
             {"planet": p1, "house": house, "relation": "occupies"},
             {"planet": p2, "house": house, "relation": "occupies"},
         ],
-        "predicate": {"type": "dual_planet_in_house", "description": f"{p1} and {p2} in house {house}"},
+        "predicate": {"type": "dual_planet_in_house", "description": f"{_graha_label(p1)} and {_graha_label(p2)} in house {house}"},
         "prediction": {"result": result, "domain": "combination_effect"},
         "pattern": "dual_planet_in_house",
         "match_text": m.group(0)[:120],
@@ -966,7 +989,7 @@ def _p19_extract(m: re.Match, full_text: str) -> dict | None:
             {"planet": planet, "sign": sign_num, "relation": "in_sign"},
             {"planet": aspector, "relation": "aspecting"},
         ],
-        "predicate": {"type": "planet_in_sign_aspected", "description": f"{planet} in {m.group(2)} aspected by {aspector}"},
+        "predicate": {"type": "planet_in_sign_aspected", "description": f"{_graha_label(planet)} in {m.group(2)} aspected by {_graha_label(aspector)}"},
         "prediction": {"result": result, "domain": "sign_aspect_effect"},
         "pattern": "planet_in_sign_aspected",
         "match_text": m.group(0)[:120],
@@ -993,7 +1016,7 @@ def _p20_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "strength": strength_word, "relation": "strength_state"}],
-        "predicate": {"type": "strength_state", "description": f"{strength_word} {planet}"},
+        "predicate": {"type": "strength_state", "description": f"{strength_word} {_graha_label(planet)}"},
         "prediction": {"result": result, "domain": "strength_effect"},
         "pattern": "strength_state",
         "match_text": m.group(0)[:120],
@@ -1022,17 +1045,24 @@ def _p21_extract(m: re.Match, full_text: str) -> dict | None:
     sign_num = _canon_sign(m.group(3)) if m.group(3) else None
     if not planet:
         return None
-    # Accept even if house/sign is vague (e.g. "that bhava") — predicate carries context
+    # Accept even if house/sign is vague (e.g. "that bhava"): the antecedent
+    # carries no location and the description says so explicitly.
     result = _extract_result_clause(full_text, m.end())
     ant: list[dict] = [{"planet": planet, "relation": "occupies"}]
     if house:
         ant[0]["house"] = house
     if sign_num:
         ant[0]["sign"] = sign_num
-    loc_desc = f"house {house}" if house else (f"sign {m.group(3)}" if sign_num else "bhava")
+    if house:
+        loc_desc = f"house {house}"
+    elif sign_num:
+        loc_desc = f"sign {m.group(3)}"
+    else:
+        # Unresolved location: say so explicitly, never a word that reads like a value.
+        loc_desc = "house or sign unresolved"
     return {
         "antecedent": ant,
-        "predicate": {"type": "when_conditional", "description": f"when {planet} in {loc_desc}"},
+        "predicate": {"type": "when_conditional", "description": f"when {_graha_label(planet)} in {loc_desc}"},
         "prediction": {"result": result, "domain": "natal_effect"},
         "pattern": "conditional_when",
         "match_text": m.group(0)[:120],
@@ -1071,7 +1101,7 @@ def _p22_extract(m: re.Match, full_text: str) -> dict | None:
     loc_desc = f"house {house}" if house else f"sign {m.group(3)}"
     return {
         "antecedent": ant,
-        "predicate": {"type": "person_born_will", "description": f"{planet} in {loc_desc} — person born will"},
+        "predicate": {"type": "person_born_will", "description": f"{_graha_label(planet)} in {loc_desc} — person born will"},
         "prediction": {"result": result, "domain": "natal_effect"},
         "pattern": "person_born_will",
         "match_text": m.group(0)[:120],
@@ -1100,7 +1130,7 @@ def _p23_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "house": house, "relation": "occupies"}],
-        "predicate": {"type": "planet_in_bhava", "description": f"{planet} in {house}th bhava"},
+        "predicate": {"type": "planet_in_bhava", "description": f"{_graha_label(planet)} in {house}th bhava"},
         "prediction": {"result": result, "domain": "house_signification"},
         "pattern": "planet_in_bhava",
         "match_text": m.group(0)[:120],
@@ -1129,7 +1159,7 @@ def _p24_extract(m: re.Match, full_text: str) -> dict | None:
     result = _extract_result_clause(full_text, m.end())
     return {
         "antecedent": [{"planet": planet, "sign": sign_num, "relation": "occupies"}],
-        "predicate": {"type": "when_planet_in_sign", "description": f"when {planet} occupies {sign_name}"},
+        "predicate": {"type": "when_planet_in_sign", "description": f"when {_graha_label(planet)} occupies {sign_name}"},
         "prediction": {"result": result, "domain": "sign_placement"},
         "pattern": "when_planet_in_sign",
         "match_text": m.group(0)[:120],
@@ -1168,7 +1198,7 @@ def _p25_extract(m: re.Match, full_text: str) -> dict | None:
         ],
         "predicate": {
             "type": "nadi_planet_pair_in_sign",
-            "description": f"Nadi: {p1} and {p2} in sign {sign_num}",
+            "description": f"Nadi: {_graha_label(p1)} and {_graha_label(p2)} in sign {sign_num}",
         },
         "prediction": {"result": result, "domain": "nadi_compound_placement"},
         "pattern": "nadi_planet_pair_in_sign",
@@ -1208,7 +1238,7 @@ def _p26_extract(m: re.Match, full_text: str) -> dict | None:
         "antecedent": ant,
         "predicate": {
             "type": "nadi_navamsa_placement",
-            "description": f"Nadi Navamsa: {planet} in {loc} (D9)",
+            "description": f"Nadi Navamsa: {_graha_label(planet)} in {loc} (D9)",
         },
         "prediction": {"result": result, "domain": "nadi_navamsa"},
         "pattern": "nadi_navamsa_placement",
@@ -1255,7 +1285,7 @@ def _p27_extract(m: re.Match, full_text: str) -> dict | None:
         ],
         "predicate": {
             "type": "nadi_triple_conjunction_in_sign",
-            "description": f"Nadi triple: {'+'.join(planets)} in sign {sign_num}",
+            "description": f"Nadi triple: {'+'.join(_graha_label(p) for p in planets)} in sign {sign_num}",
         },
         "prediction": {"result": result, "domain": "nadi_compound_placement"},
         "pattern": "nadi_triple_conjunction_in_sign",

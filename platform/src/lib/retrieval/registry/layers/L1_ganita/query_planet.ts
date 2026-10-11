@@ -35,6 +35,8 @@ import {
   componentFailures,
   isChartUuid,
 } from '../../generation/composite_fence'
+import { tryResolveHandlerAyanamsha, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
+import { AYANAMSHA_ALL } from '../../constants'
 import { getPositionsCapability } from './get_positions'
 import { getDignityCapability } from './get_dignity'
 import { getStrengthCapability } from './get_strength'
@@ -114,7 +116,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID', required: true },
     planet: { type: 'string', description: 'Graha name (English, Sanskrit, or 2-3 letter code), e.g. "Saturn", "shani", "SAT".', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for default.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
   },
   required_inputs: ['chart_id', 'planet'],
   scope: 'per_chart',
@@ -156,7 +158,14 @@ export const queryPlanetCapability: CapabilityDescriptor = {
         }
       }
       const name = GRAHA_CODE_TO_NAME[code] ?? planetInput
-      const baseArgs: FactRow = { chart_id: chartId, ...(args.ayanamsha_id ? { ayanamsha_id: args.ayanamsha_id } : {}) }
+      // PR-2 (N-339/N-342): omitted -> Lahiri, resolved ONCE and forwarded to EVERY leg (the yoga
+      // firings leg used to get no ayanamsha at all, so a caller-supplied id never reached it).
+      // "all" -> the old pooled shape on every leg, marked ayanamsha_scope:'all'.
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id: chartId })
+      if (!ayaTry.ok) return ayaTry.result
+      const aya = ayaTry.aya
+      const ayanamshaArgs: FactRow = aya.id === null ? { ayanamsha_scope: AYANAMSHA_ALL } : { ayanamsha_id: aya.id }
+      const baseArgs: FactRow = { chart_id: chartId, ...ayanamshaArgs }
 
       // Packet A: resolve the served generation once. Without one, nothing generation-sensitive is
       // read at all — no fallback to the chart's current rows — and the response is the base output
@@ -183,7 +192,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
         callHandler(getAvasthsCapability, { ...baseArgs, ...fenced }),
         callHandler(getAspectsCapability, { ...baseArgs, ...fenced }),
         callHandler(getYogaDoshaCapability, { ...baseArgs, ...fenced, type: 'yoga' }),
-        callHandler(getYogaFiringsCapability, { chart_id: chartId, fired: true, ...fenced }),
+        callHandler(getYogaFiringsCapability, { chart_id: chartId, ...ayanamshaArgs, fired: true, ...fenced }),
         callHandler(getDispositorsCapability, { ...baseArgs, ...fenced }),
       ])
 
@@ -210,6 +219,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           planet: { input: planetInput, code, name },
           position: {
             rows: positions.rows,

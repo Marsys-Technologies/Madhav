@@ -28,6 +28,10 @@ import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 import { configService } from '@/lib/config/index'
 import { getOrComputeCapability } from '@/lib/cache/capability_dispatch_cache'
+import {
+  applyAyanamshaContractForCapability,
+  InvalidAyanamshaError,
+} from '@/lib/retrieval/chart_facts_helpers'
 
 // ── Per-call chart entitlement gate (R5.2 A1) ─────────────────────────────────
 //
@@ -260,25 +264,49 @@ export async function POST(request: Request) {
     }
   }
 
+  // SS N-339 / N-342 — this route reaches handlers DIRECTLY (it does NOT go through
+  // tool_name_bridge), so it applies the same ayanamsha boundary contract: aliases -> stored id,
+  // "all" -> unfiltered opt-out, unknown -> a validation error listing the stored ids (never a
+  // silent zero-row query). It deliberately does NOT default an OMITTED id to Lahiri
+  // (`inject: false`): platform-mcp callers already pin it, and direct callers (the kala views
+  // among them) keep their handler's own default until the PR-2 handler change. Capabilities
+  // without an `ayanamsha_id` input are left as they were.
+  let dispatchArgs: Record<string, unknown>
+  try {
+    dispatchArgs = applyAyanamshaContractForCapability(capability, safeArgs, { inject: false })
+  } catch (err) {
+    if (err instanceof InvalidAyanamshaError) {
+      return NextResponse.json(
+        buildErrorEnvelope({
+          error_class: 'validation',
+          message: err.message,
+          remediation: `Use one of: ${err.stored_ids.join(', ')} (or omit ayanamsha_id for the primary, "all" for raw multi-ayanamsha rows).`,
+        }),
+        { status: 400 }
+      )
+    }
+    throw err
+  }
+
   try {
     // W5 L6 — memoize the handler call when the capability self-declares
     // llm_hints.agentic.cacheable === true (99 descriptors already carry this
     // field; this route is the first consumer of it). Everything else
     // (the default) dispatches exactly as before — a direct, uncached call.
     const cacheable = capability.llm_hints?.agentic?.cacheable === true
-    // Cache-key args: safeArgs plus the header-resolved chart_id folded in
-    // for per_chart capabilities (see the comment above headerChartId) —
-    // does NOT change what the handler itself receives (still safeArgs,
-    // unchanged from pre-lane behavior).
+    // Cache-key args: dispatchArgs (safeArgs after the ayanamsha contract above, which
+    // is the same object when the capability has no ayanamsha_id input) plus the
+    // header-resolved chart_id folded in for per_chart capabilities (see the comment
+    // above headerChartId) — does NOT change what the handler itself receives.
     const cacheKeyArgs =
       capability.scope === 'per_chart' && headerChartId && typeof safeArgs['chart_id'] !== 'string'
-        ? { ...safeArgs, chart_id: headerChartId }
-        : safeArgs
+        ? { ...dispatchArgs, chart_id: headerChartId }
+        : dispatchArgs
     const content = await getOrComputeCapability(
       uri,
       cacheKeyArgs,
       cacheable,
-      () => capability.handler(safeArgs),
+      () => capability.handler(dispatchArgs),
     )
     return NextResponse.json({ ok: true, content })
   } catch (err) {

@@ -49,9 +49,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "houses": [1, 2, 4, 7, 8, 12],
-            "reference": ["lagna", "moon", "venus"],
+            "reference": ["Lagna", "Moon", "Venus"],
         },
         "formation_text": (
             "Mars in the 1st, 2nd, 4th, 7th, 8th or 12th house from lagna "
@@ -360,7 +360,7 @@ DOSHAS: list[dict] = [
         "name_en": "Vish Dosha",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["moon", "saturn"]},
+        "formation_rule_jsonb": {"conjunction": ["Moon", "Saturn"]},
         "formation_text": "Moon conjunct Saturn (poison combination).",
         "effects_text": "Emotional heaviness, depression, chronic worry.",
         "severity_grades": {
@@ -398,7 +398,7 @@ DOSHAS: list[dict] = [
         "name_en": "Guru Chandal Dosha",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["jupiter", "rahu"]},
+        "formation_rule_jsonb": {"conjunction": ["Jupiter", "Rahu"]},
         "formation_text": "Jupiter conjunct Rahu (wisdom-corruption combination).",
         "effects_text": (
             "Distorted judgment, unorthodox beliefs, guru-related issues; "
@@ -420,7 +420,7 @@ DOSHAS: list[dict] = [
         "name_en": "Angarak Dosha",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["mars", "rahu"]},
+        "formation_rule_jsonb": {"conjunction": ["Mars", "Rahu"]},
         "formation_text": "Mars conjunct Rahu (fire-poison combination).",
         "effects_text": "Anger, accidents, impulsive conflict, blood/inflammation issues.",
         "severity_grades": {
@@ -441,10 +441,10 @@ DOSHAS: list[dict] = [
         "school": "parashari",
         "formation_rule_jsonb": {
             "conjunction": [
-                ["sun", "rahu"],
-                ["sun", "ketu"],
-                ["moon", "rahu"],
-                ["moon", "ketu"],
+                ["Sun", "Rahu"],
+                ["Sun", "Ketu"],
+                ["Moon", "Rahu"],
+                ["Moon", "Ketu"],
             ]
         },
         "formation_text": "Sun or Moon conjunct Rahu or Ketu (natal eclipse combination).",
@@ -777,7 +777,7 @@ DOSHAS: list[dict] = [
         "name_en": "Shrapit Dosha",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["saturn", "rahu"]},
+        "formation_rule_jsonb": {"conjunction": ["Saturn", "Rahu"]},
         "formation_text": "Saturn conjunct Rahu (the 'cursed' combination).",
         "effects_text": "Accumulated karmic burden, chronic obstruction, ancestral curse themes.",
         "severity_grades": {
@@ -821,9 +821,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "houses": [1, 2, 4, 7, 8, 12],
-            "reference": ["venus"],
+            "reference": ["Venus"],
         },
         "formation_text": (
             "Mars in the 1/2/4/7/8/12 reckoned FROM Venus (the kalatra-karaka) "
@@ -869,9 +869,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "houses": [1, 2, 4, 7, 8, 12],
-            "reference": ["moon"],
+            "reference": ["Moon"],
         },
         "formation_text": "Mars in the 1/2/4/7/8/12 reckoned FROM the Moon — the Moon-referenced Manglik check.",
         "effects_text": (
@@ -1113,9 +1113,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 1,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": "Mars in the 1st house from lagna — the mildest Kuja Dosha house placement.",
         "effects_text": (
@@ -1140,9 +1140,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 4,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": "Mars in the 4th house from lagna — disrupts domestic happiness and property.",
         "effects_text": (
@@ -1166,9 +1166,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 7,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": (
             "Mars in the 7th from lagna — the classic kalatra-house placement; "
@@ -1197,9 +1197,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 8,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": "Mars in the 8th from lagna — longevity house; severe affliction.",
         "effects_text": (
@@ -1224,9 +1224,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 12,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": "Mars in the 12th from lagna — loss house; bedroom/expense affliction.",
         "effects_text": (
@@ -1250,9 +1250,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "house": 2,
-            "reference": "lagna",
+            "reference": "Lagna",
         },
         "formation_text": (
             "Mars in the 2nd from lagna — family/speech house; "
@@ -1281,9 +1281,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "houses": [1, 2, 4, 7, 8, 12],
-            "reference": "lagna",
+            "reference": "Lagna",
             "cancellation_condition": "mars_in_own_sign_aries_or_scorpio",
         },
         "formation_text": (
@@ -1306,9 +1306,9 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "mars",
+            "planet": "Mars",
             "houses": [1, 2, 4, 7, 8, 12],
-            "reference": "lagna",
+            "reference": "Lagna",
             "cancellation_condition": "mars_in_exaltation_capricorn",
         },
         "formation_text": "Mars in a Kuja Dosha house in Capricorn (exaltation) — Kuja Dosha cancelled.",
@@ -1327,8 +1327,8 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "conjunction": ["sun", "rahu"],
-            "or": {"conjunction": ["sun", "ketu"]},
+            "conjunction": ["Sun", "Rahu"],
+            "or": {"conjunction": ["Sun", "Ketu"]},
         },
         "formation_text": "Sun conjunct Rahu or Ketu — natal solar eclipse combination.",
         "effects_text": (
@@ -1353,8 +1353,8 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "conjunction": ["moon", "rahu"],
-            "or": {"conjunction": ["moon", "ketu"]},
+            "conjunction": ["Moon", "Rahu"],
+            "or": {"conjunction": ["Moon", "Ketu"]},
         },
         "formation_text": "Moon conjunct Rahu or Ketu — natal lunar eclipse combination.",
         "effects_text": (
@@ -1405,7 +1405,7 @@ DOSHAS: list[dict] = [
         "name_en": "Pitra Dosha (Sun-Rahu conjunction)",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["sun", "rahu"]},
+        "formation_rule_jsonb": {"conjunction": ["Sun", "Rahu"]},
         "formation_text": "Sun conjunct Rahu — the primary Pitra Dosha indicator.",
         "effects_text": (
             "Ancestral karmic debt; father-related affliction; obstacles in dharmic path "
@@ -1429,7 +1429,7 @@ DOSHAS: list[dict] = [
         "school": "parashari",
         "formation_rule_jsonb": {
             "planet": "9th_lord",
-            "affliction": ["rahu", "ketu", "saturn"],
+            "affliction": ["Rahu", "Ketu", "Saturn"],
             "mode": "conjunction_or_aspect",
         },
         "formation_text": "The 9th lord afflicted by Rahu, Ketu or Saturn through conjunction or aspect.",
@@ -1453,7 +1453,7 @@ DOSHAS: list[dict] = [
         "category": "graha_placement",
         "school": "parashari",
         "formation_rule_jsonb": {
-            "planet": "sun",
+            "planet": "Sun",
             "house": 12,
             "malefic_aspect": True,
         },
@@ -1477,7 +1477,7 @@ DOSHAS: list[dict] = [
         "name_en": "Pitra Dosha (Sun-Saturn Conjunction)",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["sun", "saturn"]},
+        "formation_rule_jsonb": {"conjunction": ["Sun", "Saturn"]},
         "formation_text": "Sun conjunct Saturn — father-enemy combination; ancestral karmic debt.",
         "effects_text": (
             "Father-related karma; separation from or conflict with father; "
@@ -1527,7 +1527,7 @@ DOSHAS: list[dict] = [
         "name_en": "Naga Dosha (Rahu in Lagna)",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"planet": "rahu", "house": 1},
+        "formation_rule_jsonb": {"planet": "Rahu", "house": 1},
         "formation_text": "Rahu in the 1st house (lagna) — serpent in self.",
         "effects_text": (
             "Identity and body affliction; obsessive personality; karmic patterns "
@@ -1578,7 +1578,7 @@ DOSHAS: list[dict] = [
         "name_en": "Chandal Yoga Dosha (Moon-Rahu)",
         "category": "graha_placement",
         "school": "parashari",
-        "formation_rule_jsonb": {"conjunction": ["moon", "rahu"]},
+        "formation_rule_jsonb": {"conjunction": ["Moon", "Rahu"]},
         "formation_text": "Moon conjunct Rahu — Chandal yoga; the intellect and emotions corrupted.",
         "effects_text": (
             "Mental distortions, deceptive tendencies, unconventional behaviour; "

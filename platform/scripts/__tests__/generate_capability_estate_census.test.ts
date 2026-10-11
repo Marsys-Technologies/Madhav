@@ -53,12 +53,16 @@ describe('capability estate census', () => {
       // Migration 1333 (ga_fact_identity): the Fact Identity Index becomes a registered writer. Its writer digest is admitted to
       // nirmana-writer-digests.json (writer identities 125 -> 126), it gains a seed row (the writer/seed three-way guard requires one),
       // and a reviewed output-digest spec is inserted by the migration (reviewed spec rows 119 -> 120).
+      // K-CERT-2: the existing citation identity becomes dispatchable; its paired
+      // seed/migration/digest move one non-writer into the writer denominator.
       total: 132,
       active: 129,
       retired: 3,
-      writer_identities: 126,
-      non_writer_identities: 6,
+      writer_identities: 127,
+      non_writer_identities: 5,
     })
+    expect(census.details.producer_assets.writer_identity_ids).toContain('bg_gochara_citation_resolution')
+    expect(census.details.producer_assets.non_writer_identity_ids).not.toContain('bg_gochara_citation_resolution')
     expect(
       census.denominators.producer_assets.active + census.denominators.producer_assets.retired,
     ).toBe(census.denominators.producer_assets.total)

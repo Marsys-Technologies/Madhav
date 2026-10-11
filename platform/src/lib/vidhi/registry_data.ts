@@ -354,8 +354,8 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     tool_args: {
       chart_id: '{chart_id}',
       about: '{point}',
-      // 5 REAL ayanamshas (mirror of ayanamsha_variation.REAL_AYANAMSHAS). NOT six — INVARIANT excluded.
-      ayanamsha_axis: ['krishnamurti', 'lahiri_chitrapaksha', 'raman', 'surya_siddhanta_classical', 'true_chitra'],
+      // 5 REAL ayanamshas in SERVE ORDER (mirror of ayanamsha_variation.REAL_AYANAMSHAS = AYANAMSHA_SERVE_ORDER). NOT six — INVARIANT excluded.
+      ayanamsha_axis: ['lahiri_chitrapaksha', 'true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical'],
     },
     fallback_face: 'ganita_chart_facts_get(ayanamsha_id={ayanamsha})',
     known_gap: null,

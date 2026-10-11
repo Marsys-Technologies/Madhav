@@ -267,10 +267,30 @@ def test_an_unbound_parameter_is_an_error_as_in_the_engine(pg, monkeypatch, tmp_
 
 
 def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_path):
-    monkeypatch.setattr(ac, "INTEGRITY_TIMEOUT_SECONDS", 1)
+    """The claim is that the SERVER-side budget bounds the declared statement. That is measured on the statement itself (its own elapsed seconds,
+    recorded around psql_read_only), not on the wall time of the whole census run, which also holds setup, the layer stub and a second asset and so
+    varies by seconds on a loaded CI runner (an 18 s run was seen on a shared runner while the cancel itself fired at ~1 s locally). The unbounded
+    statement (2 billion rows) would run until the client kill, budget + 30 s; the budget here is 1 s, so a statement that ends well before 30 s was
+    cancelled by the budget. Mutation (checked by hand): budget 10 instead of 1 -> the statement takes ~10 s -> this assertion fails; the server
+    statement_timeout removed from psql_read_only -> it runs to the client kill (~31 s) -> fails."""
+    monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
+    seen = []
+    real = ac.psql_read_only
+
+    def timed(sql, *a, **k):
+        t = time.time()
+        try:
+            return real(sql, *a, **k)
+        finally:
+            seen.append((str(sql), time.time() - t))
+    monkeypatch.setattr(ac, "psql_read_only", timed)
     t0 = time.time()
     census = _run(monkeypatch, tmp_path, "SELECT count(*) > 0 FROM generate_series(1, 2000000000)", extra={"ph_y": _reg_row("ph_y", "SELECT true")})
-    assert time.time() - t0 < 7, "the timeout did not bound the run"
+    wall = time.time() - t0
+    slow = [sec for sql, sec in seen if "generate_series" in sql]
+    assert len(slow) == 1, seen
+    assert slow[0] < 1 + 5, f"the 1 s budget did not cancel the declared statement (it ran {slow[0]:.1f} s)"
+    assert wall < 25, f"the whole run took {wall:.1f} s: the statement was bounded but something else is slow"
     c = _cell(census, "ph_x")
     assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and ("timeout" in c["measured"].lower() or "canceling" in c["measured"]), c
     assert _cell(census, "ph_y")["v"] == ac.PASS
@@ -479,7 +499,7 @@ def test_count_integrity_stays_a_presence_check_and_does_not_double_define():
     e = ac.CRITERION_REGISTRY["Build.count_integrity"]
     assert e["revision"] == 1 and "present" in e["applicability"] or "always" in e["applicability"]
     src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
-    assert src.count("psql_read_only(_stmt)") == 1, "the integrity SQL must be run from ONE helper"
+    assert src.count("psql_read_only(_stmt, timeout=budget)") == 1, "the integrity SQL must be run from ONE helper"
 
 
 def test_consumers_read_the_census_cell_not_a_second_count_equality():
@@ -1255,12 +1275,13 @@ def test_mutation_final_write_removed_a_forger_can_forge_holds(pg_np, monkeypatc
 def test_both_the_server_and_the_client_timeout_are_in_what_is_sent(monkeypatch):
     sent = {}
     monkeypatch.setattr(ac, "_psql_run", lambda cmds, sep, limit, *a, **k: sent.update(cmds=cmds, limit=limit) or [["none"]])
-    ac.psql_read_only("SELECT true", timeout=7)
-    assert sent["limit"] == 7 and "SET LOCAL statement_timeout = 6300" in sent["cmds"], sent
-    assert sent["cmds"][:3] == ["SET default_transaction_read_only = on", "BEGIN READ ONLY", "SET LOCAL statement_timeout = 6300"] and sent["cmds"][-1] == "ROLLBACK"
+    ac.psql_read_only("SELECT true", timeout=7)                  # N-431: `timeout` is the BUDGET: the server timeout is exactly it, the client kill is budget + margin
+    assert sent["limit"] == 7 + ac.INTEGRITY_CLIENT_MARGIN_SECS and "SET LOCAL statement_timeout = 7000" in sent["cmds"], sent
+    assert sent["cmds"][:3] == ["SET default_transaction_read_only = on", "BEGIN READ ONLY", "SET LOCAL statement_timeout = 7000"] and sent["cmds"][-1] == "ROLLBACK"
 
 
 def test_the_client_side_kill_is_the_backstop_when_the_server_timeout_is_gone(pg, monkeypatch):
+    monkeypatch.setattr(ac, "INTEGRITY_CLIENT_MARGIN_SECS", 0)                      # N-431: no margin, so the 1 s budget is also the client kill
     src = textwrap.dedent(inspect.getsource(ac.psql_read_only))
     old = 'f"SET LOCAL statement_timeout = {ms}"'
     assert old in src

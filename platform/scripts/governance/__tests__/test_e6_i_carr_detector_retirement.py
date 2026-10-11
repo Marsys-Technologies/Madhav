@@ -102,7 +102,8 @@ def _restore_pre_retirement(monkeypatch):
     reg["Build.dep_liveness"] = dict(reg["Build.dep_liveness"], revision=1, applicability="declares at least one depends_on")     # revision 26 (cause text) re-worded and bumped it
     reg["Build.history"] = dict(reg["Build.history"], revision=1, applicability="has been exercised at least once")     # revision 26 (SS Build.history window) re-worded and bumped it
     reg["Earn.build_record"] = dict(reg["Earn.build_record"], revision=1, applicability="has a build/attempt record to grade")      # SS 2026-10-05 (build_record no-writer/static) re-worded and bumped it
-    reg["Vocab.identity"] = dict(reg["Vocab.identity"], revision=1)      # SS 2026-10-05 (no-table-no-prose) bumped it, no re-wording
+    reg["Vocab.identity"] = dict(reg["Vocab.identity"], revision=1,      # SS 2026-10-05 (no-table-no-prose) bumped it, no re-wording; registry revision 28 (ONE bump, SS N-431) inserted the view `logical_key` parenthetical, undone here
+                                 applicability=re.sub(r" \(a table.s unique or primary constraint, or, for a view, a declared `logical_key`.*?no duplicate group in the measured chart\)", "", reg["Vocab.identity"]["applicability"]))
     reg["Build.dag"] = dict(reg["Build.dag"], revision=2, applicability=re.sub(r"; SS 2026-10-05 R-d.*$", "", reg["Build.dag"]["applicability"]))     # revision 26 (residual detector D1: annotated constants / conditional SQL names) bumped it, no re-wording; SS R-d appended its clause (and bumped it again)
     for crit, rev in (("Build.registered", 1), ("Build.contract", 1), ("Build.exercised", 1), ("Idem.pattern", 2)):     # pin 26 (N-150 R5) appended its clause last and bumped each
         reg[crit] = dict(reg[crit], revision=rev, applicability=re.sub(r"; N-150 R5.*$", "", reg[crit]["applicability"]))
@@ -115,7 +116,7 @@ def _restore_pre_retirement(monkeypatch):
     causes["Build.exercised"] = ("never-run-no-writer", "never-executed-no-writer")                        # SS R-c added `legacy-attempts-no-writer`
     causes["Narr.lint"] = ("no-prose",)                    # pin 26 (N-150 R2) added `lint-not-applicable`
     for _c in ac.NO_TABLE_CRITERIA:                          # SS 2026-10-05 added `no-table-no-prose` to the six Narr / Null checks and to Vocab.identity (which had no cause at revision 7)
-        causes[_c] = tuple(x for x in causes.get(_c, ()) if x != "no-table-no-prose") or None
+        causes[_c] = tuple(x for x in causes.get(_c, ()) if x not in ("no-table-no-prose", "corpus-derived")) or None      # registry revision 28 (SS N-431) added `corpus-derived` to the three Narr and the two Null checks
         if causes[_c] is None:
             causes.pop(_c)
     causes["Idem.pattern"] = ("no-writer-registry-agrees",)      # SS 2026-10-05 added `update-only-by-intent`

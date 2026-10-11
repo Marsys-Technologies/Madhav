@@ -89,13 +89,46 @@ def _plural(n: int, w: str) -> str:
 
 # (a) Vocab.alias: every whole value found is canonical; the only caveats are embedded text / a bounded sample / unread columns (leaf cap, statement timeout)
 _V_PRE = re.compile(r"vocabulary values found by value in (\d+) column\(s\): (.+?); every whole value found is canonical(?:, but: (.+))?", re.S)
-_V_ITEM = r"[\w.]+ \([a-z]+(?:/[a-z]+)*: (?:short aliases only|[^;()]+)(?:; registered bg_ontology aliases, counted canonical: [^;()]+)?\)"
-_V_FOUND = re.compile(rf"{_V_ITEM}(?:, {_V_ITEM})*")
+_V_ITEM_HEAD = r"[\w.]+ \([a-z]+(?:/[a-z]+)*: (?:short aliases only|[^;()]+)(?:; registered bg_ontology aliases, counted canonical: [^;()]+)?"
+_V_FOUND_CACHE: list = []
+
+
+def _v_multi_kind_part() -> str:
+    """The regex for the label the engine appends to a Vocab.alias column item whose multi-kind declaration was verified (asset_census.vocab_multi_kind_label), built from the engine's OWN wording constants
+    (VOCAB_MULTI_KIND_LABEL, VOCAB_MULTI_KIND_NOT_GRADED, VOCAB_MULTI_KIND_FAMILIES, loaded offline like the lexicon) so the two cannot drift: '; MULTI-KIND, verified over the whole column: <class>/<family>, ...; <n> value(s)
+    outside the vocabulary, not graded[: <quoted values>[ (+<n> more)]]'. Optional on the item. If the engine cannot be loaded the label is not accepted (fail closed: a MULTI-KIND item then stays a blocker)."""
+    try:
+        mod = _engine_module()
+        label, not_graded, fams = mod.VOCAB_MULTI_KIND_LABEL, mod.VOCAB_MULTI_KIND_NOT_GRADED, tuple(mod.VOCAB_MULTI_KIND_FAMILIES)
+    except Exception:
+        return ""
+    kind = r"[a-z_]+/(?:" + "|".join(re.escape(f) for f in fams) + ")"
+    lit = r"(?:'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")"
+    return "(?:" + re.escape(label) + kind + "(?:, " + kind + r")*; \d+" + re.escape(not_graded) + "(?:: " + lit + "(?:, " + lit + r")*(?: \(\+\d+ more\))?)?)?"
+
+
+def _v_found_re():
+    """The compiled item-list matcher (built once, on first use: the engine module is loaded by file path, which is defined further down this file)."""
+    if not _V_FOUND_CACHE:
+        item = _V_ITEM_HEAD + _v_multi_kind_part() + r"\)"
+        _V_FOUND_CACHE.append(re.compile(rf"{item}(?:, {item})*"))
+    return _V_FOUND_CACHE[0]
+
+
 _V_BAD_WORDS = re.compile(r"non-canonical|not canonical|MIXED|mixed|unregistered|variant|FAIL|short alias only|one short alias|NO rows|vacuous", re.I)
 _V_SAMPLE = re.compile(r"([\w.]+) was read by a bounded sample only")
 _V_EMB_ITEM = re.compile(r"([\w.]+) \(<S>(?:, <S>)*\)")
+# the first stderr line psql prints when the connection is lost, refused or cut: (a) "server closed the connection unexpectedly", (b) "connection to server [at ...] failed[: ...]", (c) "could not receive data from server[: ...]",
+# (d) "terminating connection due to administrator command"; each optionally behind psql's own "psql: error: " / "FATAL:  " prefix, and never containing "; " (the segment separator). (a) and (d) take no tail.
+_V_CONN_LOST = (r"(?:(?:psql: error|FATAL): +)?(?:server closed the connection unexpectedly|terminating connection due to administrator command"
+                r"|connection to server[^;]*? failed(?:: [^;]*)?|could not receive data from server(?:: [^;]*)?)")
+_V_CONN_PROBE = re.compile(rf"([\w.]+): the rest of the column was not read \(the existence probe failed: {_V_CONN_LOST}\)")
+_V_CONN_SAMPLE = re.compile(rf"([\w.]+): the bounded sample failed: {_V_CONN_LOST}")
 _V_UNREAD = (re.compile(r"([\w.]+): part of the column could not be sampled \(leaf cap \d+ reached\)"),
-             re.compile(r"([\w.]+): the rest of the column was not read \(the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout\)"))
+             re.compile(r"([\w.]+): the rest of the column was not read \(the existence probe exceeded the statement timeout: ERROR: canceling statement due to statement timeout\)"),
+             # a LOST DATABASE CONNECTION is a probe failure, not a defect of the part (N-431): asset_census.vocab_fetch_probe / vocab_fetch_sample print psql's FIRST stderr line after "failed: ". Only the connection-loss
+             # messages psql prints are named (anchored at the START of the message, after an optional psql prefix); an ordinary SQL error ("syntax error", "does not exist", "permission denied" ...) is NOT recognised
+             _V_CONN_PROBE, _V_CONN_SAMPLE)
 
 
 def m_vocab(aid: str, text: str):
@@ -104,7 +137,7 @@ def m_vocab(aid: str, text: str):
     if not m or m.group(3) is None:
         return None
     n, found, tail = int(m.group(1)), m.group(2), m.group(3)
-    if _V_BAD_WORDS.search(found) or not _V_FOUND.fullmatch(found) or len(re.findall(r"(?:^|, )[\w.]+ \(", found)) != n:
+    if _V_BAD_WORDS.search(found) or not _v_found_re().fullmatch(found) or len(re.findall(r"(?:^|, )[\w.]+ \(", _strip_lits(found))) != n:     # items counted outside the quoted values a MULTI-KIND label lists
         return None
     emb, samp, unread, mode = [], [], [], None
     for seg in _strip_lits(tail).split("; "):
@@ -141,7 +174,8 @@ _V_SENTINEL = "no whole value is a term, so the spelling cannot be graded: PARTI
 
 
 def m_vocab_embedded_only(aid: str, text: str):
-    if not text.startswith("embedded vocabulary, spelling unchecked: ") or "every whole value found is canonical" in text or _V_BAD_WORDS.search(text.replace(_V_SENTINEL, "")):
+    # the bad-word scan skips the sentinel and the connection-lost unread segments (their psql wording holds "failed", which is no finding of the part; the segment itself is still matched whole below)
+    if not text.startswith("embedded vocabulary, spelling unchecked: ") or "every whole value found is canonical" in text or _V_BAD_WORDS.search(_V_CONN_SAMPLE.sub("", _V_CONN_PROBE.sub("", text.replace(_V_SENTINEL, "")))):
         return None
     segs = _strip_lits(text.replace("bytes not traversed; leaf cap", "bytes not traversed, leaf cap")).split("; ")
     emb, unread, mode, sentinel_at = [], [], "emb", None
@@ -335,7 +369,7 @@ def m_null_default(aid: str, text: str):
 _NM = (
     ("Build.completion", "census-role-denied", "the integrity SQL needs an object the census role may not read (measured at build time under the runner role)",
      re.compile(r"NO_DETECTOR — integrity not measurable under the census role: ERROR: \d+: permission denied for function \w+; denied object: function \w+; the asset's integrity SQL needs objects the census role may not read\. "
-                r"Declared way to measure it: .*do NOT widen the census role \(it is NOT widened, and this is not a verdict on the data\) \[integrity_check_sql sha256:[0-9a-f]+, [\d.]+s\]; counts: rows_written=(\d+) = live=\1 \([^()]*\)", re.S)),
+                r"Declared way to measure it: .*do NOT widen the census role \(it is NOT widened, and this is not a verdict on the data\) \[integrity_check_sql sha256:[0-9a-f]+, [\d.]+s\](?: \[integrity budget \d+s; ran [\d.]+s(?:; cut off at the budget)?\])?; counts: rows_written=(\d+) = live=\1 \([^()]*\)", re.S)),
     ("Build.completion", "view-object", "a view: completion consistency is not measurable for a view",
      re.compile(r"NO_DETECTOR — view: live=\d+ \(counted by the census from the view \w+ \(chart-scoped\); the registry count_sql is a constant \(SELECT \d+ AS count\); chart [0-9a-f]{8}\); "
                 r"build record rows_written=\d+ counts the view object, not rows — completion consistency is not measurable for a view")),

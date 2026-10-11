@@ -66,9 +66,9 @@ export type DataDependency =
 
 /**
  * Ayanamsha role — engine-isolation contract from Unit 1.1.
- *  - `canonical`  Parashari / varga / dasha / MSR — uses the canonical ayanamsha (Lahiri default)
- *  - `kp`         KP system — uses the KP ayanamsha
- *  - `reference`  Pure ephemeris / observatory — accepts any ayanamsha as a reference frame
+ *  - `canonical`  Parashari / varga / dasha / MSR — uses the canonical ayanamsha (Lahiri, `lahiri_chitrapaksha`, PRIMARY)
+ *  - `kp`         KP system — uses the KP frame (Krishnamurti ayanamsha), labelled as such
+ *  - `reference`  Pure ephemeris / observatory — accepts any ayanamsha as a reference frame (default Lahiri)
  *
  * Tools that are not chart-binding (text, asset, observability, write) MAY
  * declare `null` to opt out of the ayanamsha dimension.
@@ -134,16 +134,18 @@ export interface ToolContract<TInput = unknown> {
 }
 
 /**
- * Default ayanamsha ids per role. Lahiri remains the canonical/Parashari default
- * to preserve current native chart parity (Unit 1.1 jh_oracle uses True Chitra
- * but Lahiri is the contract-level canonical id for the existing chart facts).
- * The contract simply declares the default — the engine may override.
+ * Default ayanamsha ids per role, as STORED ids (the values of `chart_facts.ayanamsha_id`).
+ * Lahiri-primary (SS N-339 / N-348): `lahiri_chitrapaksha` is the contract canonical id and
+ * the PRIMARY reading for every chart; the other four stored ayanamshas are a labelled
+ * cross-check set. The `kp` role keeps the Krishnamurti ayanamsha (the "KP frame"). The old
+ * `kp_newcomb` id was never a stored ayanamsha and is removed; the old short `lahiri` is
+ * replaced by the stored long id. The contract declares the default; the engine may override.
  */
 export const DEFAULT_AYANAMSHA_BY_ROLE: Record<
   Exclude<AyanamshaRole, null>,
   string
 > = {
-  canonical: 'lahiri',
-  kp: 'kp_newcomb',
-  reference: 'lahiri',
+  canonical: 'lahiri_chitrapaksha',
+  kp: 'krishnamurti',
+  reference: 'lahiri_chitrapaksha',
 }
