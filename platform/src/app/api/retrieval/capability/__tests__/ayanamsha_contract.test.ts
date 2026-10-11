@@ -27,6 +27,8 @@ function makeReq(body: unknown): NextRequest {
       'content-type': 'application/json',
       'x-mcp-internal-token': 'test-token',
       'x-mcp-user': 'test-user-uid',
+      // #3410 (principal headers on every scope): the route 401s without BOTH principal headers.
+      'x-mcp-key-id': 'mcp_test_KEY001',
     },
     body: JSON.stringify(body),
   })
