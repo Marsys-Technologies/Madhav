@@ -69,3 +69,20 @@ instruction: "take a call on my behalf" on the planner's four questions.
   `wt/campaign`), but it is a Kāla main merge under `HOLD_MERGES`; it merges under D-6.
 - **Q4** The eight orphaned pytest processes (PGID 13606, PPID 1, ~15 h) were terminated
   with SIGTERM on 2026-10-11 (all exited; no SIGKILL needed).
+
+## 2026-10-11 (night) — amendments after Astra's delta review of v2.3 (delegate: Claude Code, Fable 5.1)
+- **D-4 amended.** The GitHub protected-environment reviewer approval is a human act that no
+  surrogate can supply (KV-08). The surrogate's effective decision authorises the bounded
+  campaign request; the approval click stays with the owner, batched (≤ 2 windows per wave),
+  recorded as an external approval dependency while independent work continues.
+- **D-6 revised.** No PR merges to main during the certification hold: Astra showed that
+  every successful main CI run deploys the web app and can run routine migrations, so the
+  "docs-only no-op deploy" rationale was false. Main merges are queued and executed by the
+  surrogate after certification-done, each recorded with its actual workflow outcome.
+- **D-9 (new).** Bootstrap and campaign installation use the independently accepted,
+  immutable branch head bound in the installation receipt (never an unreviewed or
+  assumed-merged tree). PR #3441 therefore stays open under the hold; B-0/B-1 install from
+  its reviewed head.
+- **Veto-class decisions** become effective only when the `veto` controller publishes them
+  at the window's expiry after rechecking the unchanged target (KV-05); nothing is published
+  at proposal time.
