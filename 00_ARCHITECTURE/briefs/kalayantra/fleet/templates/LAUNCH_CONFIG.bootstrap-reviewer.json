@@ -1,0 +1,62 @@
+{
+ "schema": "ky.launch_config/1",
+ "role": "bootstrap-reviewer",
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "permission_mode": "default",
+ "max_turns": 60,
+ "deadline_seconds": 3600,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
+ "claude_bin": "/Users/Dev/.local/bin/claude",
+ "mcp_config": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md",
+ "env_names": [
+  "HOME",
+  "USER",
+  "LANG",
+  "TERM",
+  "PATH",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_ITEM",
+  "KY_PY"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "extra_flags": [
+  "--allowedTools=Bash(shasum:*),Bash(wc:*),Bash(ls:*),Bash(plutil:*),Bash(python3:*),Bash(git show:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*)"
+ ],
+ "disallowed_tools": [
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "Task",
+  "Workflow",
+  "CronCreate",
+  "CronDelete",
+  "RemoteTrigger",
+  "ScheduleWakeup",
+  "PushNotification",
+  "SendMessage",
+  "EnterWorktree",
+  "ExitWorktree",
+  "WebFetch",
+  "WebSearch",
+  "DesignSync",
+  "Skill"
+ ],
+ "add_dirs": [
+  "/Users/Dev/kalayantra"
+ ],
+ "intended_tools": [
+  "Read",
+  "Bash"
+ ],
+ "denied_tools": [
+  "Write",
+  "Edit"
+ ],
+ "bash_canary": "readonly",
+ "_note": "prompt_path is a placeholder (the fixture verifier card) until a bootstrap reviewer card exists; the receipt binds its hash, so requalify when the reviewer card replaces it."
+}

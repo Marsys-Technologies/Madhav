@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""Test double for $KY_ROOT/bin/ky (B-0c control tests: kyveto's `ky decide … --as steward --delegated`).
+
+Every call appends one JSON line to <root>/fake_ky/calls.jsonl: its argv and the NAMES (never the values) of
+the environment variables it was given. It can be told to fail or to stall:
+  <root>/fake_ky/rc      an integer exit status to return instead of 0
+  <root>/fake_ky/sleep   seconds to sleep before exiting (to exercise the caller's timeout)
+It contacts nothing: no tracker, no network, no real `ky`.
+"""
+import json
+import os
+import sys
+import time
+
+d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fake_ky")
+os.makedirs(d, exist_ok=True)
+with open(os.path.join(d, "calls.jsonl"), "a", encoding="utf-8") as f:
+    f.write(json.dumps({"argv": sys.argv[1:], "env_names": sorted(os.environ)}) + "\n")
+try:
+    time.sleep(float(open(os.path.join(d, "sleep")).read()))
+except (OSError, ValueError):
+    pass
+try:
+    sys.exit(int(open(os.path.join(d, "rc")).read()))
+except (OSError, ValueError):
+    sys.exit(0)

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.activation_record/1",
+  "title": "KĀLA-YANTRA v3 bundle activation record, run/ACTIVATION_RECORD.<n>.json (relaunch plan v2.7 pairing rule, KW-04)",
+  "description": "One immutable link of the authorisation chain from the owner-pasted source commit to the active bundle: the preceding record (by file name and sha256), the old and new source commits, the old and new manifest digests, the independent review receipts and the authorising act (the owner's authorisation, or a D-4 surrogate decision made effective by kyveto.py after its veto window). A bundle change never admits the campaign: campaign_admission is always false here; campaign start is a separate recorded act (plan §10, OWNER_RESUME.json). Shape only: that the chain is unbroken, that each receipt is ACCEPTED for new_commit, that the owner-decisions blob is unchanged for a surrogate-authorised link and that the authorising decision is effective is verified by kyveto.py and by the cockpit's chain validation, not by this schema. This schema does not describe B-5's un-numbered final activation record (run/ACTIVATION_RECORD.json). Timestamps are UTC ISO-8601 ('Z' or '+00:00').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "n", "previous", "old_commit", "new_commit", "old_manifest_digest", "new_manifest_digest",
+    "review_receipts", "owner_decisions", "authorising_act", "campaign_admission", "created_at", "created_by"
+  ],
+  "properties": {
+    "schema": {"const": "ky.activation_record/1"},
+    "n": {"description": "Position in the chain; equals the <n> of the file name.", "type": "integer", "minimum": 1},
+    "previous": {
+      "description": "The preceding record; null only for the first link after the trust root.",
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "sha256"],
+          "properties": {
+            "file": {"type": "string", "pattern": "^ACTIVATION_RECORD(\\.[1-9][0-9]{0,5})?\\.json$"},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      ]
+    },
+    "old_commit": {"$ref": "#/$defs/commit"},
+    "new_commit": {"$ref": "#/$defs/commit"},
+    "old_manifest_digest": {"$ref": "#/$defs/sha256"},
+    "new_manifest_digest": {"$ref": "#/$defs/sha256"},
+    "review_receipts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "verdict", "reviewer_session_id"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"},
+          "verdict": {"const": "ACCEPTED"},
+          "reviewer_session_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "owner_decisions": {
+      "description": "The owner-decisions file's blob at both commits. A surrogate-authorised link requires them equal; a change is owner-only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "old_blob", "new_blob"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "old_blob": {"$ref": "#/$defs/commit"},
+        "new_blob": {"$ref": "#/$defs/commit"}
+      }
+    },
+    "authorising_act": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"enum": ["surrogate_decision", "owner"]},
+        "id": {"type": "string", "minLength": 1}
+      }
+    },
+    "campaign_admission": {"const": false},
+    "created_at": {"$ref": "#/$defs/utc"},
+    "created_by": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"authorising_act": {"properties": {"kind": {"const": "surrogate_decision"}}, "required": ["kind"]}},
+        "required": ["authorising_act"]
+      },
+      "then": {
+        "properties": {
+          "authorising_act": {"properties": {"id": {"type": "string", "pattern": "^SD-[0-9]{8}T[0-9]{6}Z-[0-9]+$"}}}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {
+      "description": "A full git object id (sha1 or sha256 repositories).",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+    }
+  }
+}

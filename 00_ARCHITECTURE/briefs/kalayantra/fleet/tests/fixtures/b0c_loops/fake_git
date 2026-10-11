@@ -1,0 +1,11 @@
+#!/bin/bash
+# Test double for git (B-0c kyctl tests): understands exactly `git -C <dir> rev-parse --is-inside-work-tree`.
+# Answers "true" iff <dir>/.git exists; otherwise exits 128 with git's message on stderr. Any other invocation
+# exits 64, so that an unexpected call fails loudly. Touches nothing.
+set -u
+if [ "$#" -ne 4 ] || [ "$1" != "-C" ] || [ "$3" != "rev-parse" ] || [ "$4" != "--is-inside-work-tree" ]; then
+  echo "fake_git: unsupported invocation: $*" >&2; exit 64
+fi
+if [ -e "$2/.git" ]; then echo true; exit 0; fi
+echo "fatal: not a git repository (or any of the parent directories): .git" >&2
+exit 128
