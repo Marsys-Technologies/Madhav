@@ -12551,8 +12551,8 @@ _ES_APPLIC_HEAD = ("; SS N-431/N-545 (opt-in): an asset that DECLARES `empty_sli
                    "emitter, the entries the slice alone holds, a cross-check table) has that slice read as EMPTY BY A VERIFIED CONDITIONAL, never as vacuous, ONLY when the census EARNS it by a detector over the writer's own "
                    "evidence records (one record per chart, ayanamsha partition and build in orchestrator_event_register, event writer.post_pass_evaluated, schema post_pass_evidence/1): ALL of: the measured chart's NEWEST "
                    "complete build run (no later attempt that errored, aborted, is queued, running or cascade-blocked, ordered by run creation with never-started attempts included) lies inside the Build.history window "
-                   "of the current writer code; exactly ONE record per partition of the declared partition constant for THAT run and chart, each naming the declared post-pass and slice, with entries_evaluated >= 1, "
-                   "formed false and rows_written 0; every record inside its run's start..end time bracket; the asset's own build record for the chart reads lit (a stale record means an upstream was rebuilt after the evidenced build); the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
+                   "of the current writer code; at least one record for every partition of the declared partition constant for THAT run and chart (the latest, by time then id, is read; every record of the run for the partition must agree), each naming the declared post-pass and slice, with entries_evaluated >= 1, "
+                   "formed false and rows_written 0; the latest record of each partition inside the final attempt's start..end time bracket (a retry of the run resets its start; earlier records are checked for agreement only); the asset's own build record for the chart reads lit (a stale record means an upstream was rebuilt after the evidenced build); the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
                    "declaration names an emitter and a caller that exist in the writer's code, the caller reaching the emitter on every return path, and the event type and partition constant in the writer source; a register "
                    "the census role cannot read, an unreadable attempt log or an unknown window reads NO_DETECTOR for the claim and never earns it. ")
 ES_APPLICABILITY_ADDITIONS = {
@@ -12818,13 +12818,13 @@ def empty_slice_conditional_outcome(decl: dict, aid: str, chart_id: str, *, wind
     chart (a real, non-phantom chart) · declaration (the pointers hold in the code tree) · closure (emitter and caller are in the writer closure the window dates) · window (known) · attempts (readable) ·
     latest-build (a complete `build` attempt exists; R = the newest) · newer-attempt (nothing later errored, aborted, is queued, running, blocked) · in-window (R is inside the window) · register-read ·
     evidence-present (records exist for R, this chart, this asset) · record-shape (every record is the contract shape and agrees with its register columns) · partition-complete (exactly the declared
-    partitions) · single-record (one per partition) · evaluated (entries_evaluated >= 1) · not-formed (formed false, rows_written 0) · time-bracket (inside R's start..end) · slice-empty (the live slice holds no
+    partitions) · latest-record (>= 1 record per partition: the LATEST by occurred_at then id is the credited one) · evaluated / not-formed (EVERY record of the run for the partition agrees: entries_evaluated >= 1, formed false, rows_written 0; a repeat is a retry of the same run, the register is append-only) · bracket-missing / bracket-lower / bracket-upper (the LATEST record of each partition lies inside the FINAL attempt's start..end with the +-2 s skew: the lower bound refuses a retried run whose final attempt emitted nothing; earlier records of the same run are checked for agreement and binding only, because a retry resets started_at) · slice-empty (the live slice holds no
     row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees) · fresh-build (the asset's own asset_throughput record for
     the chart is `lit`: a `stale` record means an upstream was rebuilt after R; no other census cell grades the asset's OWN staleness, Build.dep_liveness reads the staleness of its DEPENDENCIES).
 
     SUPERSET RULE: the contract names the 8 frozen keys of post_pass_evidence/1, but the register stores the whole flat event (`persist_event`, the only writer channel of pr #3448: the frozen keys plus type,
     chart_id, asset_id, run_id, rows_present), so a record is read as a SUBSET check: every frozen key present with its exact type and value, extra keys tolerated, the event's own keys cross-checked against
-    the register columns. A missing or mistyped frozen key is never tolerated; duplicates are never tolerated either (one record per chart, partition and run)."""
+    the register columns. A missing or mistyped frozen key is never tolerated. Repeats (SS N-562): several records of the SAME run for a partition are read, the latest credited, all required to agree; a record of another run is never read."""
     try:
         bad = _es_decl_problem(decl, aid)
         if bad:                                                 # every identifier that reaches a statement is checked HERE, whatever built the declaration (the validator, a test, a caller)
@@ -12965,34 +12965,52 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
         if r_rows != "" and r_rows != str(body["rows_written"]):
             return _es_res("does_not_hold", "record-shape", f"evidence record {rid}: the register column rows_present {r_rows} differs from the record's rows_written {body['rows_written']}")
         #</clause record-shape>
-        recs.setdefault(body["ayanamsha_id"], []).append(dict(id=rid, body=body, at=_epoch(r_at)))
+        recs.setdefault(body["ayanamsha_id"], []).append(dict(id=rid, idn=(int(rid) if rid.isdigit() else -1), body=body, at=_epoch(r_at)))
     #<clause partition-complete>
     if set(recs) != set(partitions):
         return _es_res("does_not_hold", "partition-complete", f"the evidence covers partition(s) {sorted(recs)} but the writer plans {sorted(partitions)}: missing {sorted(set(partitions) - set(recs))}, unplanned {sorted(set(recs) - set(partitions))} "
                                                               f"({len(set(recs) & set(partitions))}/{len(partitions)} partitions)")
     #</clause partition-complete>
-    #<clause single-record>
-    dup = sorted(a for a, v in recs.items() if len(v) != 1)
-    if dup:
-        return _es_res("does_not_hold", "single-record", f"more than one evidence record for partition(s) {dup} of run {run_id[:8]}: duplicate or conflicting records are not credited")
-    #</clause single-record>
-    one = {a: v[0] for a, v in recs.items()}
+    # SS N-562 (repeats): a retried run leaves a SECOND pass of records beside the first (the register is append-only). >= 1 record per partition is required; the LATEST (occurred_at, then id) is the credited one;
+    # EVERY record of this run for the partition must agree (and keep the frozen keys valid, above); a record of ANOTHER run never enters (run-binding). The time bracket applies to the latest record only (below).
+    one = {a: v[0] for a, v in recs.items()}                                        # default: the highest register id
+    #<clause latest-record>
+    one = {a: max(v, key=lambda r: (r["at"], r["idn"])) for a, v in recs.items()}
+    #</clause latest-record>
+    allrecs = [r for a in sorted(recs) for r in sorted(recs[a], key=lambda r: (r["at"], r["idn"]))]
     #<clause evaluated>
-    zero = sorted(a for a, v in one.items() if v["body"]["entries_evaluated"] < 1)
+    zero = [r for r in allrecs if r["body"]["entries_evaluated"] < 1]
     if zero:
-        return _es_res("does_not_hold", "evaluated", f"entries_evaluated is 0 in partition(s) {zero}: the post-pass evaluated nothing (a catalog without the entry is `not evaluated`, never `does not form`)")
+        return _es_res("does_not_hold", "evaluated", f"evidence record {zero[0]['id']} (partition {zero[0]['body']['ayanamsha_id']}) says entries_evaluated {zero[0]['body']['entries_evaluated']} "
+                                                      f"({len(zero)} such record(s)): the post-pass evaluated nothing (a catalog without the entry is `not evaluated`, never `does not form`)")
     #</clause evaluated>
     #<clause not-formed>
-    formed = sorted(a for a, v in one.items() if v["body"]["formed"] is not False or v["body"]["rows_written"] != 0)
+    formed = [r for r in allrecs if r["body"]["formed"] is not False or r["body"]["rows_written"] != 0]
     if formed:
-        return _es_res("does_not_hold", "not-formed", f"the post-pass reports formed or rows written in partition(s) {formed}: the slice is not empty by its own account")
+        return _es_res("does_not_hold", "not-formed", f"evidence record {formed[0]['id']} (partition {formed[0]['body']['ayanamsha_id']}) says formed {formed[0]['body']['formed']} and rows_written "
+                                                      f"{formed[0]['body']['rows_written']} ({len(formed)} such record(s) of run {run_id[:8]}): the records of one run must ALL agree that the post-pass found nothing")
     #</clause not-formed>
     lo, hi = run["started_at"], run["ended_at"]
-    #<clause time-bracket>
-    if lo is None or hi is None or any(not (lo - ES_CLOCK_SKEW_S <= v["at"] <= hi + ES_CLOCK_SKEW_S) for v in one.values()):
-        return _es_res("does_not_hold", "time-bracket", f"an evidence record lies outside the run {run_id[:8]} attempt's start..end bracket (started {lo}, ended {hi}, +-{ES_CLOCK_SKEW_S:g}s): "
+    checked = list(allrecs)                                                          # default: every record
+    #<clause bracket-latest-only>
+    checked = list(one.values())                                                     # a retry resets started_at: earlier records of the run are checked for agreement only, not for time
+    #</clause bracket-latest-only>
+    #<clause bracket-missing>
+    if lo is None or hi is None:
+        return _es_res("does_not_hold", "time-bracket", f"the build attempt {run_id[:8]} has no start or no end time (started {lo}, ended {hi}): the evidence cannot be placed inside the run")
+    #</clause bracket-missing>
+    #<clause bracket-lower>
+    early = sorted(r["body"]["ayanamsha_id"] for r in checked if r["at"] < lo - ES_CLOCK_SKEW_S)
+    if early:                                                                       # the LOWER bound: a retried run whose final attempt emitted nothing (an early return) leaves only first-pass records
+        return _es_res("does_not_hold", "time-bracket", f"the latest evidence record of partition(s) {early} of run {run_id[:8]} predates the final attempt's start (started {lo}, -{ES_CLOCK_SKEW_S:g}s): "
+                                                         "the final attempt did not emit it (an early return, a dry run or a partial retry): only a record of the final attempt describes its output")
+    #</clause bracket-lower>
+    #<clause bracket-upper>
+    late = sorted(r["body"]["ayanamsha_id"] for r in checked if r["at"] > hi + ES_CLOCK_SKEW_S)
+    if late:
+        return _es_res("does_not_hold", "time-bracket", f"the latest evidence record of partition(s) {late} of run {run_id[:8]} lies after the attempt's end (ended {hi}, +{ES_CLOCK_SKEW_S:g}s): "
                                                          "a record planted or replayed outside the run is not evidence of it")
-    #</clause time-bracket>
+    #</clause bracket-upper>
     try:
         n = scalar(f"SELECT count(*)::text FROM \"{sl['table']}\" WHERE chart_id::text = '{chart_id}' AND fact_subject = '{sl['fact_subject']}'")
     except Unknown as exc:
@@ -13026,7 +13044,8 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
                  entries=list(decl["entries"]), criteria=list(decl["criteria"]), entries_evaluated={a: one[a]["body"]["entries_evaluated"] for a in sorted(one)}, formed=False, rows_written=0,
                  window_opens=window.get("opens"), window_inclusive=bool(window.get("inclusive")), live_slice_rows=0,
                  cross_check=dict(table=cc["table"], partitions=len(by), rows=sum(int(x[1]) for x in by.values()), row_count_hardening=hard),
-                 source=dict(table=ES_SOURCE_TABLE, event_type=ES_EVENT_TYPE, schema=ES_EVIDENCE_SCHEMA), records=len(one))
+                 source=dict(table=ES_SOURCE_TABLE, event_type=ES_EVENT_TYPE, schema=ES_EVIDENCE_SCHEMA), records=len(allrecs),
+                 repeated_partitions=sorted(a for a, v in recs.items() if len(v) > 1), latest_records={a: one[a]["id"] for a in sorted(one)})
     return dict(state="holds", clause=None, detail=empty_slice_text(block), evidence=block)
 
 
