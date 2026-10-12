@@ -25,13 +25,13 @@ from services.ka_sangam.engine import (
     relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
-    _NAK_NAME_TO_IDX,
     _SIGN_NAME_TO_IDX,
     EnrichmentContext,
     NativeChartContext,
     derive_sade_sati_signs,
     derive_sade_sati_severity,
 )
+from brahmagyan.nakshatra_vocabulary import nakshatra_index, nakshatra_number  # SS N-548: ONE normaliser for the Moon's stored nakshatra name
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
@@ -783,7 +783,7 @@ class _LegacyKaSangamWriter(WriterBase):
                 elif fact_key == 'sign':
                     moon_sign = fact_value_text
 
-        if not moon_nakshatra or moon_nakshatra not in _NAK_NAME_TO_IDX:
+        if not moon_nakshatra or nakshatra_number(moon_nakshatra) is None:  # SS N-548: canonical, legacy-L1 (Mula) and lexicon aliases all resolve; anything else raises below
             raise RuntimeError(
                 f"ka_sangam: could not resolve Moon nakshatra for chart {chart_id} "
                 f"from chart_facts (fact_subject='MOON', fact_key='nakshatra', "
@@ -798,7 +798,7 @@ class _LegacyKaSangamWriter(WriterBase):
                 "Refusing to fall back to another chart's Moon sign (CR-87)."
             )
 
-        janma_nakshatra_idx = _NAK_NAME_TO_IDX[moon_nakshatra]
+        janma_nakshatra_idx = nakshatra_index(moon_nakshatra) - 1  # 0-based into _NAKSHATRAS_ORDERED; 'Mula' and 'Moola' both -> 18
         sade_sati_signs    = derive_sade_sati_signs(moon_sign)
         sade_sati_severity = derive_sade_sati_severity(sade_sati_signs)
 

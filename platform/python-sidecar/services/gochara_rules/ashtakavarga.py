@@ -38,14 +38,14 @@ SHODHYA_PINDA: dict[str, int] = {
 }
 PINDA_SOURCE = "design/L1_ASHTAKAVARGA_EXTRACT_v1_1.json (tier single_pass verbatim)"
 
-NAKSHATRAS: tuple[str, ...] = (
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
-    "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
-    "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada",
-    "Revati",
-)
+# The 27 names derive from the L0 lexicon (canonical_name_en, via brahmagyan.nakshatra_vocabulary)
+# and are never retyped (Ashwini = 1 ... Revati = 27). Nakshatra 5/19/23 are Mrigasira / Moola /
+# Dhanishtha (this list used to say Mrigashira / Mula / Dhanishta). p6.nakshatra_index() reads
+# stored names through the TOLERANT vocabulary helper, so the legacy spellings still resolve.
+# The import sits beside the list it replaces, so this module's line numbers stay put.
+# (Abhijit, the seed's 28th row, is not among the 27.)
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # noqa: E402
+NAKSHATRAS: tuple[str, ...] = CANONICAL_NAKSHATRA_NAMES
 
 P5C_DISABLED_REASON = ("donor rows pending the native-authorised ga_strength "
                        "rebuild (#2731)")
