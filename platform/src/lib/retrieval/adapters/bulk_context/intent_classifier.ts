@@ -27,7 +27,7 @@ const INTENT_PATTERNS: Array<{ pattern: RegExp; tag: IntentTag }> = [
   // Entity lookup
   { pattern: /\b(sun|moon|mars|mercury|jupiter|venus|saturn|rahu|ketu|graha|nakshatra|rasi|sign|ascendant|lagna)\b/i, tag: 'entity_lookup' },
   { pattern: /\b(aries|taurus|gemini|cancer|leo|virgo|libra|scorpio|sagittarius|capricorn|aquarius|pisces)\b/i, tag: 'entity_lookup' },
-  { pattern: /\b(ashwini|bharani|krittika|rohini|mrigashira|ardra|punarvasu|pushya|ashlesha|magha|purva|uttara|hasta|chitra|swati|vishakha|anuradha|jyeshtha|mula|purvashadha|uttarashadha|shravana|dhanishtha|shatabhisha|purvabhadra|uttarabhadra|revati)\b/i, tag: 'entity_lookup' },
+  { pattern: /\b(ashwini|bharani|krittika|rohini|mrigashira|mrigasira|ardra|punarvasu|pushya|ashlesha|magha|purva|uttara|hasta|chitra|swati|vishakha|anuradha|jyeshtha|mula|moola|purvashadha|uttarashadha|shravana|dhanishtha|dhanishta|shatabhisha|purvabhadra|uttarabhadra|revati)\b/i, tag: 'entity_lookup' },
 
   // Rule query
   { pattern: /\b(rule|sutra|shloka|verse|principle|classical|parashara|jaimini|brihat|phaladeepika|saravali)\b/i, tag: 'rule_query' },

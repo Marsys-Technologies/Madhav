@@ -322,15 +322,13 @@ def _house_from_moon(
 # ── Nakshatra / tara helpers (C5 nakshatra_subsystem, C_tara_bala) ────────────
 
 # 27 nakshatras in sidereal order (0-indexed, matches pipeline.transit_search.NAKSHATRAS)
-_NAKSHATRAS_ORDERED = (
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
-    "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-    "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
-    "Chitra", "Swati", "Vishakha", "Anuradha",
-    "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha",
-    "Shravana", "Dhanishta", "Shatabhisha",
-    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-)
+# Derived from the L0 lexicon (canonical_name_en) -- never retyped (CLAUDE.md §N.7 item 3).
+# Every lookup BY NAME goes through the vocabulary's ONE normaliser (SS N-548): `nakshatra_number`
+# resolves the canonical names, the legacy-L1 spellings (Mrigashira/Mula/Dhanishta) and the
+# lexicon / ontology aliases, and is None for anything else (tara score 0.0 below; the writer raises
+# its CR-87 RuntimeError). _NAK_NAME_TO_IDX holds the canonical names only (index = nakshatra no. - 1).
+from brahmagyan.nakshatra_vocabulary import (  # noqa: E402
+    CANONICAL_NAKSHATRA_NAMES as _NAKSHATRAS_ORDERED, nakshatra_number)
 _NAK_NAME_TO_IDX: dict[str, int] = {n: i for i, n in enumerate(_NAKSHATRAS_ORDERED)}
 
 # CR-87 fix: the module-level native janma-nakshatra constant (formerly
@@ -402,7 +400,7 @@ def _tara_score_for_nakshatra(nakshatra_name: str, janma_nakshatra_idx: int) -> 
     """Return Tara Bala score (0–1) for a nakshatra relative to the chart's
     own janma nakshatra (CR-87: janma_nakshatra_idx is a REQUIRED per-chart
     value — 0-based index into _NAKSHATRAS_ORDERED — never a native default)."""
-    idx = _NAK_NAME_TO_IDX.get(nakshatra_name, -1)
+    idx = (nakshatra_number(nakshatra_name) or 0) - 1  # ONE normaliser (SS N-548): -1 for an unregistered name, never a default star
     if idx < 0:
         return 0.0
     tara_pos = ((idx - janma_nakshatra_idx) % 9) + 1  # 1–9

@@ -89,7 +89,11 @@ def test_the_vocabularies_cover_an_independent_sweep_of_the_pure_builders():
             if r["fact_value_jsonb"] is not None:
                 seen["leaf"].update(leaves(json.loads(r["fact_value_jsonb"])))
     for key, col in (("fact_subject", "fact_subject"), ("fact_key", "fact_key"), ("fact_value_text", "fact_value_text"), ("leaf", "fact_value_jsonb"), ("verification_pass_status", "verification_pass_status"), ("unit", "unit")):
-        assert seen[key] <= set(_closed(col)["values"]), (col, sorted(seen[key] - set(_closed(col)["values"])))
+        declared = set(_closed(col)["values"])
+        if key in ("fact_value_text", "leaf"):      # SS N-548: the builders emit the L0 lexicon's nakshatra spellings (Mrigasira/Moola/Dhanishtha); asset_declarations.json (the Engine's file) still
+            from brahmagyan.nakshatra_vocabulary import canonical_nakshatra   # declares the adapter's (Mrigashira/Mula/Dhanishta) until the Engine re-seals it with the rebuild (PR body §8.2)
+            declared |= {c for c in (canonical_nakshatra(v) for v in declared) if c}
+        assert seen[key] <= declared, (col, sorted(seen[key] - declared))
     assert seen["fact_key"] == set(_closed("fact_key")["values"]) and seen["unit"] == {"deg"}
 
 
