@@ -402,11 +402,15 @@ def test_the_allow_list_refuses_everything_else(sql, frag):
     assert why is not None and frag in why, (sql, why)
 
 
+_CONCATENATION = r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*\|\|"
+
+
 def _dollar_blobs(text):
-    """Every dollar-quoted body in `text`, recursing into each (a `DO $$ ... dasha_check := $check$ SELECT ... $check$ ... $$` nests)."""
+    """Complete dollar-quoted bodies, including nested DO queries; omit concatenated prefixes."""
     import re
     for m in re.finditer(r"(\$[A-Za-z_]*\$)(.*?)\1", text, re.S):
-        yield m.group(2)
+        if not re.match(_CONCATENATION, text[m.end():], re.S):
+            yield m.group(2)
         yield from _dollar_blobs(m.group(2))
 
 
@@ -428,9 +432,8 @@ def _migration_literals(migration_dir=None):
         got = [b for b in _dollar_blobs(t) if _SELECTISH.match(b)]
         # A concatenated prefix is not the complete registered query. Its
         # read/modify/write result is validated by the stored-SQL DB tests.
-        concatenation = r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*\|\|"
         got += [m.group(1).replace("''", "'") for m in re.finditer(r"integrity_check_sql\s*=\s*'((?:[^']|'')*)'", t)
-                if not re.match(concatenation, t[m.end():], re.S)]
+                if not re.match(_CONCATENATION, t[m.end():], re.S)]
         lits += [(f.name, b) for b in got]
         if not got and re.search(r"\bintegrity_check_sql\s*=(?!=)", re.sub(r"--[^\n]*", "", t)):
             unresolved.append(f.name)
@@ -438,16 +441,35 @@ def _migration_literals(migration_dir=None):
 
 
 @pytest.mark.parametrize("separator", [" || ", "\n  || ", " /* retained contract */ || "])
-def test_concatenated_integrity_prefix_is_derived_not_a_complete_sql_literal(tmp_path, separator):
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_concatenated_integrity_prefix_is_derived_not_a_complete_sql_literal(tmp_path, separator, quote):
     migration = tmp_path / "9999_derived_check.sql"
     migration.write_text("UPDATE asset_registry SET integrity_check_sql = "
-                         "'WITH retained AS (SELECT 1)'" + separator + "old_check;")
+                         + quote + "WITH retained AS (SELECT 1) SELECT (" + quote + separator + "old_check;")
     assert _migration_literals(tmp_path) == ([], [migration.name])
 
 
-def test_complete_integrity_sql_literal_remains_subject_to_validation(tmp_path):
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_complete_integrity_sql_literal_remains_subject_to_validation(tmp_path, quote):
     migration = tmp_path / "9999_complete_check.sql"
-    migration.write_text("UPDATE asset_registry SET integrity_check_sql = 'SELECT true';")
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = " + quote + "SELECT true" + quote + ";")
+    assert _migration_literals(tmp_path) == ([(migration.name, "SELECT true")], [])
+
+
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_incomplete_standalone_integrity_literal_is_still_validated(tmp_path, quote):
+    migration = tmp_path / "9999_incomplete_check.sql"
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = " + quote + "SELECT (" + quote + ";")
+    literals, unresolved = _migration_literals(tmp_path)
+    assert literals == [(migration.name, "SELECT (")] and unresolved == []
+    assert "unbalanced" in ac.integrity_sql_problem(literals[0][1])
+
+
+def test_nested_do_block_retains_complete_dollar_sql_and_skips_derived_prefix(tmp_path):
+    migration = tmp_path / "9999_nested_check.sql"
+    migration.write_text("DO $$ BEGIN UPDATE asset_registry SET integrity_check_sql = "
+                         "$target$WITH retained AS (SELECT 1) SELECT ($target$ || old_check; "
+                         "UPDATE asset_registry SET integrity_check_sql = $check$SELECT true$check$; END $$;")
     assert _migration_literals(tmp_path) == ([(migration.name, "SELECT true")], [])
 
 

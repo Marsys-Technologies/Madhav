@@ -23,6 +23,10 @@ from services.ka_temporal import (
 @register('ka_kalasutra')
 class KaKalasutraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        # KYD-140 fixture preparation only; the default legacy path is retained.
+        if 'kala_read_model_fixture' in ctx.config:
+            from pipeline.orchestrator.writers.k6_candidate import run_candidate
+            return run_candidate(ctx, 'ka_kalasutra')
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
 

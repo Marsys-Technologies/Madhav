@@ -49,7 +49,7 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput, round3 } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
-
+import { kalaViewAlias } from './registry_alias.js'
 // ── W2.7: kala_field_salience DB read (item 25) ──────────────────────────────
 // Reads the NEWEST field_snapshot's salience rows for a chart via the whitelisted
 // read-only DB proxy (platform/src/app/api/mcp/db/query/route.ts — kala_field_salience
@@ -355,7 +355,7 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         'Filter to ANY of these life domains (OR/overlap match), case-insensitive. Ignored if `domain` is also given.'),
       question_frame: QuestionFrameSchema,
     },
-    async (params) => {
+    kalaViewAlias(principal, 'priority', async (params) => {
       const {
         chart_id, ayanamsha_id, date_from, date_to, top_k, domain, domains, question_frame,
       } = params as Record<string, unknown>
@@ -520,6 +520,6 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
       } catch (err) {
         return kalaErrorOutput(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id })
       }
-    },
+    }),
   )
 }
