@@ -21,7 +21,11 @@ REV28 = {"Vocab.identity": 3, "Idem.pattern": 5, "Build.count_integrity": 4, "Nu
 def test_the_registry_revision_is_28_and_each_bumped_criterion_moved_by_exactly_one():
     assert ac.REGISTRY_REVISION >= 28       # revision 29 (SS N-514) bumped only Cost.baseline: the nine criteria below keep the revision they carried at 28
     for crit, rev in REV28.items():
-        assert ac.CRITERION_REGISTRY[crit]["revision"] == rev, crit
+        # revision 30 (SS N-431/N-545, empty_slice_by_conditional) moved four of them by exactly one more (ES_REVISION_BUMPS); the rest keep the revision they carried at 28
+        want = ac.ES_REVISION_BUMPS[crit][1] if crit in ac.ES_REVISION_BUMPS else rev
+        if crit in ac.ES_REVISION_BUMPS:
+            assert ac.ES_REVISION_BUMPS[crit][0] == rev, crit
+        assert ac.CRITERION_REGISTRY[crit]["revision"] == want, crit
 
 
 def test_the_corpus_derived_cause_is_registered_for_exactly_the_five_criteria():
@@ -39,7 +43,8 @@ def test_the_corpus_derived_rule_decisions_are_declared_verbatim():
 
 def test_the_corpus_derived_applicability_text_is_appended_verbatim_to_each_criterion():
     for crit, tail in ac.CORPUS_DERIVED_APPLICABILITY_ADDITIONS.items():
-        assert ac.CRITERION_REGISTRY[crit]["applicability"].endswith(tail), crit
+        later = ac.ES_APPLICABILITY_ADDITIONS.get(crit, "")           # revision 30 appended the empty_slice_by_conditional sentence AFTER the corpus-derived one
+        assert ac.CRITERION_REGISTRY[crit]["applicability"].endswith(tail + later), crit
         assert ac.CRITERION_REGISTRY[crit]["applicability"].count("corpus-derived") >= 1
 
 
