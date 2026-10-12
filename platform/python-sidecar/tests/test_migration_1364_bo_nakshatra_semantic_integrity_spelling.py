@@ -141,12 +141,24 @@ def test_static_one_guarded_update_of_integrity_check_sql_only_lock_timeout_firs
     assert not re.search(r"\b(COMMIT|ROLLBACK|CREATE|ALTER|DROP|INSERT|DELETE|TRUNCATE)\b", outside)
 
 
-def test_static_noop_notices_come_before_the_update_and_the_raise_after_it():
+def test_static_the_three_guard_states_new_noop_unknown_raises_old_updates_then_postcheck():
+    """SS N-583: (1) OLD text -> UPDATE; (2) NEW text -> NOTICE no-op; (3) ANY OTHER text -> RAISE EXCEPTION naming the md5 found (abort the
+    deploy; never a silent no-op that leaves the old vocabulary live). The post-check RAISE after the UPDATE stays."""
     code = _code(_M1364)
-    i_new, i_old, i_upd, i_raise = (code.index("v_md5 = c_new_md5"), code.index("IS DISTINCT FROM c_old_md5"),
-                                    code.index("UPDATE asset_registry"), code.index("RAISE EXCEPTION"))
-    assert i_new < i_upd and i_old < i_upd < i_raise
-    assert code.count("RAISE EXCEPTION") == 1 and "IS DISTINCT FROM c_new_md5" in code.split("RAISE EXCEPTION")[0].split("UPDATE asset_registry")[1]
+    i_new, i_old, i_upd = code.index("v_md5 = c_new_md5"), code.index("IS DISTINCT FROM c_old_md5"), code.index("UPDATE asset_registry")
+    raises = [m.start() for m in re.finditer("RAISE EXCEPTION", code)]
+    assert len(raises) == 2 and i_new < i_old < raises[0] < i_upd < raises[1]
+    new_branch, unknown_branch = code[i_new:i_old], code[i_old:i_upd]
+    assert "RAISE NOTICE" in new_branch and "RETURN" in new_branch and "RAISE EXCEPTION" not in new_branch
+    assert "RAISE EXCEPTION" in unknown_branch and "v_md5" in unknown_branch and "c_old_md5" in unknown_branch and "c_new_md5" in unknown_branch
+    assert "NO-OP" not in unknown_branch and "RETURN" not in unknown_branch and "RAISE NOTICE" not in unknown_branch
+    assert "AND md5(integrity_check_sql) = c_old_md5" in code[i_upd:] and "IS DISTINCT FROM c_new_md5" in code[i_upd:]
+
+
+def test_static_the_guard_tightening_did_not_move_the_pin():
+    """N-583 changes guard code only; the md5'd $nt$ body (and so the registry pin) is exactly the N-570 value."""
+    assert (NEW_MD5, NEW_LEN) == ("8eb1ce3b7599ab32a547c919c2ca1ea9", 2882)
+    assert _md5(NEW_TEXT) == NEW_MD5 and len(NEW_TEXT) == NEW_LEN
 
 
 def test_static_header_states_why_what_guard_trigger_effect_verification_rollback():
@@ -386,13 +398,16 @@ def test_live_idempotent_second_run_rewrites_nothing_and_does_not_fire_the_trigg
     assert {s for (_, s) in _q(db, "SELECT asset_id, freshness_state FROM asset_freshness")} == {"fresh"}
 
 
-def test_live_foreign_text_is_left_untouched_notice_and_no_failure(db):
+def test_live_unknown_text_raises_naming_the_md5_found_and_leaves_the_text_untouched(db):
+    """State (3) of SS N-583: production holds some other check text -> the deploy aborts, the message names the md5 found and the
+    two expected, and the stored text is untouched (nothing half-applied)."""
     foreign = OLD_TEXT + "\n-- hand edit\n"
     _setup(db, foreign)
-    notes: list[str] = []
-    _apply(db, notes)
+    with pytest.raises(Exception) as ei:
+        _apply(db)
+    msg = str(ei.value)
+    assert "neither migration 669" in msg and _md5(foreign) in msg and OLD_MD5 in msg and NEW_MD5 in msg
     assert _txt(db) == foreign
-    assert any("not the text this migration was written against" in n and "NO-OP" in n for n in notes)
 
 
 def test_live_empty_registry_is_a_noop(db):
