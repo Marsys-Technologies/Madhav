@@ -6,7 +6,10 @@
 #   local_db.sh up --session S             start, or reuse after validating it, the container ky-pg (pgvector/pgvector:pg16,
 #                                          labels campaign=kalayantra + ky.session=S, 127.0.0.1:${KY_PG_PORT:-55433}, PGDATA
 #                                          bind-mounted from R/db/S/pgdata). Anything else called ky-pg is reported and left
-#                                          alone — no stop, rm or rename — exit 2
+#                                          alone — no stop, rm or rename — exit 2. With no container, a hand-over record
+#                                          whose storage still exists is kept: storage on record as another session's (or
+#                                          an unreadable record) refuses, exit 2; storage on record as S's is removed and
+#                                          seen gone before the record goes, else exit 1
 #   local_db.sh db <slot> --session S      create ky_<slot> (seed + the project's migration runner) or RE-VALIDATE it; the
 #                                          answer is READY (every condition observed in THIS invocation, receipt written) or
 #                                          FAILED — never just 'exists'. Another session's database: exit 2, nothing changed
@@ -20,7 +23,11 @@
 #                                          gone) | incompatible (untouched) | removed (S's databases and receipts gone,
 #                                          no other session's database left: container and its storage directory gone too)
 #                                          | handed_over (another session's database remains: container and storage pass to
-#                                          it, on record in $KY_RUN/local_db/container.json). Exit 1 with c =
+#                                          it, on record in $KY_RUN/local_db/container.json). With a container present,
+#                                          removed and handed_over also mean R/db/S, when the container does not mount it
+#                                          and it is not on record as another session's, and storage on record as S's,
+#                                          removed and seen gone; a record of another session's storage that still
+#                                          exists is never overwritten (handover_unrecorded). Exit 1 with c =
 #                                          unmarked_database (a foreign database: nothing removed) | unobservable |
 #                                          databases_remain | receipts_remain | not_removed | storage_remains |
 #                                          record_remains | handover_unrecorded
@@ -43,6 +50,9 @@
 #   registry-mandatory seed, no url command; lanes and KY_REPO retired. v1.1 lane databases (charter §7).
 #   v2.0 review round 1 (2026-10-12, B-01): close without a container removes S's receipts and storage and observes
 #   their absence before it exits 0.
+#   v2.0 review round 2 (2026-10-12, B-01, B-02): close with a container present also removes S's storage outside the
+#   container's store and observes its absence; up no longer discards a hand-over record while the storage it names
+#   exists (refused for another session's, removed and seen gone for S's own).
 set -uo pipefail
 export LC_ALL=C
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; KY_RUN="${KY_RUN:-$KY_ROOT/run}"
@@ -249,6 +259,16 @@ def record_held(path, session):
     out(r["storage"])
 
 
+def record_read(path):
+    """Owner and storage of a well-formed hand-over record, whatever storage it names."""
+    r = load(path)
+    if (not isinstance(r, dict) or set(r) != {"owner", "storage", "from"} or not isinstance(r["owner"], str)
+            or not SESSION.match(r["owner"]) or ".." in r["owner"] or not isinstance(r["storage"], str)
+            or not os.path.isabs(r["storage"])):
+        sys.exit(1)
+    out(r["owner"], r["storage"])
+
+
 def record_write(path, owner, storage, source):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic(path, {"owner": owner, "storage": storage, "from": source})
@@ -275,7 +295,8 @@ def realpath(path):
 
 
 COMMANDS = {"judge": judge, "sha": sha, "receipt": receipt, "receipt-read": receipt_read, "forget": forget,
-            "unlink": unlink, "record-owner": record_owner, "record-held": record_held, "record-write": record_write,
+            "unlink": unlink, "record-owner": record_owner, "record-held": record_held, "record-read": record_read,
+            "record-write": record_write,
             "restore-errors": restore_errors, "scrub": scrub, "realpath": realpath}
 try:
     COMMANDS[sys.argv[1]](*sys.argv[2:])
@@ -352,16 +373,39 @@ EOF
   [ -z "$OTHERS" ] || OTHERS="$(printf '%s' "$OTHERS" | sort -u)$NL"
 }
 
+present_path() { [ -e "$1" ] || [ -L "$1" ]; }
+read_record() {   # REC_OWNER REC_STORAGE from a well-formed hand-over record; 1 when there is none to read
+  local out; REC_OWNER=""; REC_STORAGE=""
+  out="$(py record-read "$1" 2>/dev/null)" || return 1
+  { IFS= read -r REC_OWNER; IFS= read -r REC_STORAGE; } <<EOF
+$out
+EOF
+  return 0
+}
+
 ensure_up() {   # 0 = a compatible ky-pg is running and its server answers; 1 = not observed; 2 = refused, nothing changed
-  local want="$R/db/$S/pgdata" p err
+  local want="$R/db/$S/pgdata" rec="$KY_RUN/local_db/container.json" held="" p err
   observe
   if [ "$C_STATE" = unobservable ]; then note "docker cannot be observed"; return 1; fi
   if [ "$C_STATE" = absent ]; then
+    # a hand-over record outlives its container while the storage it names exists: that storage is its owner's to remove
+    if present_path "$rec"; then
+      read_record "$rec" || { note "refused: the hand-over record $rec cannot be read — whose storage it names cannot be known; nothing changed"; return 2; }
+      if present_path "$REC_STORAGE"; then
+        [ "$REC_OWNER" = "$S" ] || { note "refused: $REC_STORAGE is on record as session $REC_OWNER's storage (handed over from a container that is gone); close --session $REC_OWNER removes it; nothing changed"; return 2; }
+        held="$REC_STORAGE"
+      fi
+    fi
     for p in "$R/db" "$R/db/$S" "$want"; do
       if [ -L "$p" ] || { [ -e "$p" ] && [ ! -d "$p" ]; }; then note "refused: $p is not a plain directory under the scratch root"; return 2; fi
     done
+    if [ -n "$held" ]; then
+      remove_storage "$held"
+      ! present_path "$held" || { note "the storage $held on record as this session's could not be removed"; return 1; }
+    fi
+    py unlink "$rec"                                      # its container is gone and so is the storage it names
+    ! present_path "$rec" || { note "the hand-over record $rec could not be removed"; return 1; }
     mkdir -p "$want" || return 1
-    py unlink "$KY_RUN/local_db/container.json"          # a hand-over record describes a container that no longer exists
     err="$("$DOCKER" run -d --name "$CONT" --label campaign=kalayantra --label "ky.session=$S" -e "POSTGRES_PASSWORD=$PW" \
            -p "127.0.0.1:$PORT:5432" --mount "type=bind,source=$want,target=$PGDATA_DIR" "$IMAGE" 2>&1 >/dev/null </dev/null)" \
       || { note "docker run failed: $(printf '%s' "$err" | head -1)"; return 1; }
@@ -531,8 +575,25 @@ close_absent() {   # close_absent <record>: no container — what is left of S i
   said 0 absent; return 0
 }
 
+settle_outside() {   # settle_outside <store>: with a container present, what S holds outside its store — R/db/S unless it is on
+  # record as another session's, and storage on record as S's — removed and seen gone; a record whose storage is gone is
+  # discarded. Prints what remains (storage_remains | record_remains) and returns 1, else nothing.
+  local store="$1" rec="$KY_RUN/local_db/container.json" own="$R/db/$S" ro="" rs=""
+  if read_record "$rec" && [ "$REC_STORAGE" != "$store" ]; then ro="$REC_OWNER"; rs="$REC_STORAGE"; fi
+  if [ -n "$rs" ]; then                                 # the record of a container that is gone
+    [ "$ro" != "$S" ] || remove_storage "$rs"
+    if [ "$ro" = "$S" ] && present_path "$rs"; then echo storage_remains; return 1; fi
+    if ! present_path "$rs"; then py unlink "$rec"; ! present_path "$rec" || { echo record_remains; return 1; }; fi
+  fi
+  if [ "$own" != "$store" ] && { [ "$rs" != "$own" ] || [ "$ro" = "$S" ]; }; then
+    remove_storage "$own"
+    ! present_path "$own" || { echo storage_remains; return 1; }
+  fi
+  return 0
+}
+
 cmd_close() {
-  local n=0 before left id0 store owner back t="" db q='"' rec="$KY_RUN/local_db/container.json"
+  local n=0 before left id0 store owner back why t="" db q='"' rec="$KY_RUN/local_db/container.json"
   said() { echo "close session=$S dropped=$1 container=$2"; }
   observe
   if [ "$C_STATE" = unobservable ]; then note "docker cannot be observed"; said 0 unobservable; return 1; fi
@@ -563,9 +624,18 @@ EOF
     [ "$C_STATE" = absent ] || { said "$n" not_removed; return 1; }
     remove_storage "$store"
     if [ -e "$store" ] || [ -L "$store" ] || [ -z "$store" ]; then said "$n" storage_remains; return 1; fi
-    py unlink "$rec"
-    [ ! -e "$rec" ] || { said "$n" record_remains; return 1; }
+    why="$(settle_outside "$store")" || { said "$n" "$why"; return 1; }
+    # a record still naming storage that exists is another session's obligation and stays; any other record goes
+    if ! { read_record "$rec" && [ "$REC_OWNER" != "$S" ] && present_path "$REC_STORAGE"; }; then
+      py unlink "$rec"
+      [ ! -e "$rec" ] || { said "$n" record_remains; return 1; }
+    fi
     said "$n" removed; return 0
+  fi
+  why="$(settle_outside "$store")" || { said "$n" "$why"; return 1; }
+  if read_record "$rec" && [ "$REC_STORAGE" != "$store" ]; then   # never overwrite another session's record of storage still there
+    note "$rec records $REC_STORAGE as session $REC_OWNER's storage: the hand-over cannot be recorded until $REC_OWNER closes"
+    said "$n" handover_unrecorded; return 1
   fi
   # both pass to a remaining session: the present owner if it is one of them, else the first
   owner="$(py record-owner "$rec" "$store" 2>/dev/null)" || owner="$C_LABEL"
