@@ -4,6 +4,7 @@ packet KV3-B-KYDISPATCH v1).
 
 version: 1.0 · status: DRAFT (built under the hold; not installed, not merged by its job)
 changelog: 1.0 (2026-10-12) first version, packet PACKET_KV3-B-KYDISPATCH_v1.
+           1.0 rework (2026-10-13) re-read admission controls, refuse ambiguous PR checks and unknown interfaces.
 
     /opt/homebrew/bin/python3 -u $KY_FLEET/kydispatch.py            launchd KeepAlive: a tick every 30 s
     … --once                                                         one tick
@@ -53,8 +54,8 @@ INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each er
   * --dry reads the run directory as the controller the loop file names (slot databases and jobs are that
     controller's), computes also under a hold (every job `wait:hold`) and performs no step that writes: no
     command, recovery, fetch, provisioning, parking, journal, notification or owner-wait.
-  * A job of the intent's key that has not ended, or its handled record, is `refused:open` without calling J.open
-    (J.open's own fresh look would refuse it; nothing is claimed for it).
+  * A job of the intent's key that has not ended, or its handled record backed by its ended done job, is
+    `refused:open` without calling J.open. An unreadable or unbacked handled record is unknown (`wait:stale`).
   * Pool sizes: the integer 1–8 in $KY_RUN/KY_WORKERS / KY_VERIFIERS; absent → 6 / 4; anything else → 0 (no
     capacity is never guessed). limits.copies = 10. Ready work that finds every slot of its pool in use raises
     ctx.awaiting("capacity-above-max", …) while the pool is below 8.
@@ -63,20 +64,29 @@ INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each er
   * Fresh on the first reading of a run directory (no `tracker` record yet): there is nothing to compare with.
   * ctx.pr: `gh pr list --head kalayantra/<item>` lists open pull requests (gh's default), so "no open PR" is None.
     A check's `attempt` is the number in its detailsUrl and null when the URL names none (never assumed 1). Two
-    entries of one name: the later one stands.
+    entries of one name: disagreement is unknown; list order never makes a failing check green.
   * ctx.verify: GET <tracker>/api/verify?id=<item>&step=<step> on loopback (KY_TRACKER_URL, default
     http://127.0.0.1:8767). True only for a reply that names this item AND this step with detector.status `done`;
     False for another status of that step; None for anything else — a reply that does not name the step is a
     tracker answering for the item's own detector, and None never permits `ky step`.
   * ctx.events: the item's lines of EVENTS.jsonl; a line that is not a JSON object makes the whole log unknown
-    (None) for this reading — it may be anybody's review or verdict.
+    (None) for this reading — it may be anybody's review or verdict. Objects must also carry the producer's
+    required fields; duplicate JSON keys are unknown, never a later value hiding a failure.
   * ctx.act: kyaction's record around one effect. effect() may answer (done | failed | unknown, result) — then
     that is recorded — or a plain result object (kyd_kinds_land, kyd_kinds_ops): then the observer says whether
     it is done; an effect that raises is recorded failed.
   * Journal lines and their notifications are written once per changed condition: a line identical to one of the
     previous tick is not repeated.
-  * `surrogate decision` is journalled when a SURROGATE model job ends done; `wave complete` when the PLAN kind
-    intends the wave boundary; `gate change` when kygate.sh's answer differs from the last tick's.
+  * `surrogate decision` is journalled when a SURROGATE model job's validated proposal is recorded; claimed
+    EFFECTIVE/EXECUTED states need the handler's own record. A boundary PLAN intent is logged as waiting for
+    planning, never as wave completion. `gate change` is journalled when kygate.sh's answer changes.
+  * STOP, global HOLD, enabled and the owner pause are re-read at admission boundaries, before J.open,
+    before kind.start and before J.launch. A newly detected control latches `wait:hold` for the remaining
+    intents; a job already opened is closed refused before any start or launch.
+  * kynotify.sh exit 0 proves its journal append, not notification submission: only its exact
+    `notify=submitted` reply completes the notification action. Failed/dry/unknown replies never read done.
+  * Corrupt persisted quota/freshness state never becomes a fresh start. An unknown backoff waits; an unknown
+    previous tracker version prevents admissions until reconciled. Ambiguous loop JSON is a reported stop.
   * What the modules' contracts do not agree on, bridged here without touching them (each is named in the PR):
       - kyd_kinds_ops lists the job lock first in an intent's locks[]; kyd_jobs.open takes job.<key> itself and
         then every name of locks[]. The job lock is left out of the locks[] handed to J.open and A.precheck.
@@ -87,6 +97,9 @@ INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each er
         "<controller_id>:job.<key>". A.admit is handed a ctx whose controller_id is that owner id.
       - ctx.now(): kyd_admit wants a time it can add seconds to, kyd_kinds_ops writes it as a record's `ts`.
         A gets epoch seconds; everyone else UTC text YYYY-MM-DDTHH:MM:SSZ.
+      - tracker state.py emits status/steps, not completion_kind or step_evidence. The engine joins those
+        declarations from ctx.model for kyd_kinds_build, which reads them from rows; missing or contradictory
+        declarations make the tracker context unknown. They are declarations, never detector results.
     A refusal after J.open carries a failure class (`admit_<code>`, the kind's own, `launch`), so that the third
     identical one blocks automatic attempts (kyd_jobs' failure accounting) instead of claiming every tick.
 Python >= 3.9, standard library only.
@@ -94,6 +107,7 @@ Python >= 3.9, standard library only.
 from __future__ import annotations
 
 import hashlib
+import datetime as dt
 import json
 import os
 import re
@@ -117,6 +131,7 @@ import kyd_kinds_build as B  # noqa: E402
 import kyd_kinds_land as L  # noqa: E402
 import kyd_kinds_ops as O  # noqa: E402
 import kyloop  # noqa: E402
+import kyschema  # noqa: E402
 
 VERSION = "1.0"
 PLAN_SCHEMA = "ky.dispatch_plan/1"
@@ -156,6 +171,84 @@ CAPACITY_OPTIONS = [{"id": "raise", "text": "Raise the pool's maximum (kyveto ca
 
 def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _json(text):
+    """Reject duplicate keys and non-JSON constants: a second key must never hide a failure."""
+    return kyschema.load_json_text(text)
+
+
+def read_loop(run):
+    """kyloop's state, with ambiguous JSON refused rather than selecting the last enabled/backoff value."""
+    doc, err = kyloop.loop_state(run, ROLE)
+    if err:
+        return None, err
+    try:
+        checked = kyschema.load_json(Path(run) / "loops" / (ROLE + ".json"))
+    except FileNotFoundError:
+        return ({}, None) if doc == {} else (None, "loop file disappeared")
+    except (OSError, ValueError):
+        return None, "loop file unreadable or ambiguous"
+    return (doc, None) if isinstance(checked, dict) and checked == doc else (None, "loop file changed while reading")
+
+
+def next_known(nxt):
+    """The unfiltered /api/next shape produced by pravaha_tracker/server.py, not a snapshot or a guessed bucket."""
+    if not isinstance(nxt, dict) or nxt.get("stream") != "" or not _is_int(nxt.get("version")) or nxt["version"] < 0:
+        return False
+    ids = set()
+    for bucket, states in O.NEXT_BUCKETS:
+        rows = nxt.get(bucket)
+        if not isinstance(rows, list):
+            return False
+        for row in rows:
+            if (not isinstance(row, dict) or not isinstance(row.get("id"), str) or not A.ITEM_RE.fullmatch(row["id"])
+                    or not isinstance(row.get("owner"), str) or not row["owner"] or row.get("status") not in states
+                    or row["id"] in ids):
+                return False
+            ids.add(row["id"])
+    return True
+
+
+def event_known(event):
+    """Required fields of the records events.py validate/append actually emits (including normalized ts).
+    A malformed object may conceal a verdict or a review; it makes the whole reading unknown."""
+    if not isinstance(event, dict) or event.get("kind") not in O.EVENT_KINDS \
+            or not isinstance(event.get("actor"), str) or not event["actor"]:
+        return False
+    try:
+        dt.datetime.fromisoformat(event["ts"].replace("Z", "+00:00"))
+    except (KeyError, AttributeError, TypeError, ValueError):
+        return False
+    kind = event["kind"]
+    if kind in ("item", "claim", "verdict") and not isinstance(event.get("item"), str):
+        return False
+    if kind == "item":
+        return (bool(event["item"]) and event.get("state") in ("ready", "running", "review", "blocked", "parked", "failed", "done")
+                and (event["state"] != "done" or bool(event.get("evidence")))
+                and (event["state"] not in ("blocked", "failed", "parked") or bool(event.get("detail"))))
+    if kind == "claim":
+        try:
+            dt.datetime.fromisoformat(event["expires_at"].replace("Z", "+00:00"))
+        except (KeyError, AttributeError, TypeError, ValueError):
+            return False
+        return (event.get("state") in ("acquired", "renewed", "released", "expired")
+                and all(isinstance(event.get(k), str) and event[k] for k in ("item", "worker_id", "claim_id")))
+    if kind == "verdict":
+        head, digest = event.get("head"), event.get("artifact_digest")
+        return (bool(event["item"]) and event.get("result") in ("ACCEPTED", "REJECTED") and bool(event.get("detail"))
+                and ((event.get("phase") == "artifact" and not head and isinstance(digest, str) and kyloop.SHA_RE.fullmatch(digest))
+                     or (event.get("phase") in ("pre_merge", "post_deploy") and not digest
+                         and isinstance(head, str) and HEAD_RE.fullmatch(head))))
+    if kind == "decision":
+        return (bool(event.get("decision")) and event.get("state") in ("pending", "requested", "decided", "delegated")
+                and (event["state"] not in ("decided", "delegated") or bool(event.get("detail"))))
+    if kind == "message":
+        return (isinstance(event.get("to"), str) and bool(re.fullmatch(r"[A-Z][A-Z0-9_-]*|steward", event["to"]))
+                and bool(event.get("msg_id")) and bool(event.get("detail")))
+    if kind == "ack":
+        return bool(event.get("msg_id"))
+    return kind != "metric" or bool(event.get("name"))
 
 
 def pool_size(path, default):
@@ -201,14 +294,24 @@ def map_pr(doc):
             return "unknown"
         if "state" in entry and "status" not in entry:                    # a StatusContext
             status, url = entry.get("state"), entry.get("targetUrl")
+            if status not in ("ERROR", "FAILURE", "PENDING", "SUCCESS"):
+                return "unknown"
         else:                                                              # a CheckRun
             status, url = entry.get("status"), entry.get("detailsUrl")
-            if status == "COMPLETED" and isinstance(entry.get("conclusion"), str) and entry["conclusion"]:
+            if status not in ("QUEUED", "IN_PROGRESS", "COMPLETED", "WAITING", "REQUESTED", "PENDING") or "state" in entry:
+                return "unknown"
+            if status == "COMPLETED":
+                if entry.get("conclusion") not in ("ACTION_REQUIRED", "CANCELLED", "FAILURE", "NEUTRAL", "SKIPPED", "STALE",
+                                                    "STARTUP_FAILURE", "SUCCESS", "TIMED_OUT"):
+                    return "unknown"
                 status = entry["conclusion"]
         found = RUN_URL.search(url) if isinstance(url, str) else None
-        checks[name] = {"status": status.upper() if isinstance(status, str) else None,
-                        "run_id": int(found.group(1)) if found else None,
-                        "attempt": int(found.group(2)) if found and found.group(2) else None}
+        check = {"status": status.upper() if isinstance(status, str) else None,
+                 "run_id": int(found.group(1)) if found else None,
+                 "attempt": int(found.group(2)) if found and found.group(2) else None}
+        if name in checks and checks[name] != check:
+            return "unknown"
+        checks[name] = check
     files = doc.get("files")
     if files is not None:
         if not isinstance(files, list) or not all(isinstance(f, dict) and isinstance(f.get("path"), str) for f in files):
@@ -301,7 +404,7 @@ class Engine:
         self.clock = time.time
         self.stopping = False
         self.controller_id = "CTL-%s-%s-%d" % (ROLE, ka.utc(fmt="%Y%m%dT%H%M%SZ"), os.getpid())
-        loop, _ = kyloop.loop_state(self.run, ROLE)
+        loop, _ = read_loop(self.run)
         loop = loop or {}
         if dry:                                          # read the run directory as the controller that runs it
             named = loop.get("controller") if isinstance(loop.get("controller"), dict) else {}
@@ -323,12 +426,19 @@ class Engine:
     def _adopt(self, loop):
         """This engine's own keys of the loop file, as an earlier controller left them."""
         backoff = loop.get("backoff")
-        if isinstance(backoff, dict) and _is_int(backoff.get("level")) and 0 <= backoff["level"] <= len(BACKOFF_MINUTES):
+        if (isinstance(backoff, dict) and _is_int(backoff.get("level")) and 0 <= backoff["level"] <= len(BACKOFF_MINUTES)
+                and ((backoff["level"] == 0 and backoff.get("until") is None and backoff.get("job") is None)
+                     or (backoff["level"] > 0 and ka.parse_utc(backoff.get("until")) is not None
+                         and isinstance(backoff.get("job"), str) and backoff["job"]))):
             self.backoff = {"level": backoff["level"], "until": backoff.get("until"), "job": backoff.get("job")}
+        elif "backoff" in loop:
+            self.backoff = {"level": None, "until": None, "job": None}
         priority = loop.get("priority")
         self.priority_cmd = [p for p in priority if isinstance(p, str) and p] if isinstance(priority, list) else []
         tracker = loop.get("tracker")
-        self.tracker_seen = tracker if isinstance(tracker, dict) and _is_int(tracker.get("version")) else None
+        self._tracker_unknown = tracker is not None and (not isinstance(tracker, dict) or not _is_int(tracker.get("version"))
+                                                         or tracker["version"] < 0)
+        self.tracker_seen = tracker
         conditions = loop.get("conditions") if isinstance(loop.get("conditions"), dict) else {}
         self.gate_seen = conditions.get("gate") if conditions.get("gate") in ("OPEN", "WAIT") else None
         seen = conditions.get("seen")
@@ -374,6 +484,9 @@ class Engine:
                 return "done", after.get("result")
             if outcome != "not_done":
                 return "unknown", {"reason": "reconciliation: %s" % outcome}
+        elif status != "new":
+            self._unknown("action", "begin returned an unrecognised status")
+            return "unknown", {"reason": "action status unknown"}
         try:
             answer = effect()
         except Exception as e:                           # the observed failure of the effect is the record
@@ -392,7 +505,8 @@ class Engine:
         try:
             json.loads(ka.canonical(result).decode("utf-8"))
         except (TypeError, ValueError, RecursionError):
-            result = {"result": ka.flat(result, 300)}
+            self._unknown("action", "effect returned a result that is not JSON")
+            return "unknown", {"reason": "action result is not JSON"}
         if outcome == "done":
             ka.complete(self.run, action_id, result)
         elif outcome == "failed":
@@ -422,7 +536,9 @@ class Engine:
 
         def effect():
             rc, out, err = self.sh(["bash", self._script("kynotify.sh"), message, "--level", level])
-            return ("done" if rc == 0 else "unknown" if rc is None else "failed"), \
+            outcome = ("done" if rc == 0 and out in ("notify=submitted", "notify=submitted\n") else
+                       "failed" if rc is not None and (rc != 0 or out in ("notify=failed\n", "notify=dry\n")) else "unknown")
+            return outcome, \
                 {"rc": rc, "notify": ka.flat(out, 40), "err": ka.flat(err, 200)}
 
         try:
@@ -446,9 +562,15 @@ class Engine:
         directory = Path(self.run) / "awaiting"
         os.makedirs(directory, exist_ok=True)
         for path in sorted(directory.glob("AW-*-%s.json" % slug)):
-            doc, _ = ka.read_json(path)
-            if isinstance(doc, dict) and doc.get("id") == path.stem and doc.get("question") == question \
-                    and not path.with_name(path.stem + kyloop.OWNER_DECISION_SUFFIX).exists():
+            try:
+                doc = kyschema.load_json(path)
+                valid = (isinstance(doc, dict) and doc.get("id") == path.stem
+                         and not kyschema.validate(kyschema.load_json(HERE / "schemas" / "awaiting.json"), doc))
+            except (OSError, ValueError):
+                valid = False
+            if not valid:
+                return self._unknown("awaiting", "%s is not a readable awaiting record" % path)
+            if doc.get("question") == question and self._owner_answered(path.stem) is not True:
                 return doc["id"]
         t = int(time.time())
         while True:
@@ -468,6 +590,27 @@ class Engine:
             "blocks": "item" if isinstance(item, str) and item else "none"})
         return aid
 
+    def _owner_answered(self, aid):
+        """kyloop.owner_answers' predicate: the owner's record AND its acceptable cockpit decide command."""
+        path = Path(self.run) / "awaiting" / (aid + kyloop.OWNER_DECISION_SUFFIX)
+        if not os.path.lexists(path):
+            return False
+        try:
+            rec = kyschema.load_json(path)
+            entries, problems = kc.scan(self.run)
+            if problems:
+                return self._unknown("owner answer", "the command queue cannot be read")
+            if isinstance(rec, dict) and rec.get("schema") == kyloop.OWNER_DECISION_SCHEMA and rec.get("awaiting_id") == aid:
+                for entry in entries:
+                    cmd = entry["doc"]
+                    if (not entry["invalid"] and cmd["id"] == rec.get("command_id") and cmd["command"] == "decide"
+                            and cmd["state"] in ("QUEUED", "APPLIED") and cmd["args"].get("awaiting_id") == aid
+                            and cmd["args"].get("answer") == rec.get("answer")):
+                        return True
+        except (OSError, ValueError, kc.CommandError):
+            pass
+        return self._unknown("owner answer", "%s has no matching owner command" % path)
+
     def log(self, text):
         if self.dry:
             return
@@ -479,6 +622,10 @@ class Engine:
             pass
 
     # ── what the tracker, GitHub and the event log say ──
+    def _unknown(self, interface, reason):
+        self.journal("dispatcher error", "%s unknown: %s" % (interface, reason))
+        return None
+
     def _events_signature(self):
         path = os.path.join(self.run, "EVENTS.jsonl")
         try:
@@ -493,39 +640,69 @@ class Engine:
         read, value = self._next
         if read:
             return value
+        if self._tracker_unknown:
+            self._next = (True, None)
+            return self._unknown("tracker checkpoint", "the previous version is unreadable; it cannot be reset to a first tick")
         rc, out, _ = self.ky("next", "--json")
         try:
-            nxt = json.loads(out) if rc == 0 else None
+            nxt = _json(out) if rc == 0 else None
         except (ValueError, RecursionError):
             nxt = None
         now = self._events_signature()
-        value = nxt if fresh(nxt, self.tracker_seen, now) else None
+        value = self._declarations(nxt) if next_known(nxt) and fresh(nxt, self.tracker_seen, now) else None
+        if value is None:
+            self._unknown("tracker", "ky next has no recognisable fresh unfiltered live answer (exit %s)" % rc)
         if value is not None:
             self.tracker_seen = dict(now or {"events_size": None, "events_sha256": None}, version=nxt["version"])
         self._next = (True, value)
         return value
 
+    def _declarations(self, nxt):
+        """Bridge actual tracker rows to the build module using the real plan model's declared fields."""
+        try:
+            doc = kyschema.load_json(self.ctx.model)
+            items = doc.get("items") if isinstance(doc, dict) else None
+            if (not isinstance(items, list) or any(not isinstance(i, dict) or not isinstance(i.get("id"), str) for i in items)
+                    or len({i["id"] for i in items}) != len(items)):
+                raise ValueError("model has no unique items list")
+            declared = {i["id"]: i for i in items}
+            result = dict(nxt)
+            for bucket, _ in O.NEXT_BUCKETS:
+                result[bucket] = []
+                for row in nxt[bucket]:
+                    item = declared.get(row["id"])
+                    if (item is None or item.get("owner") != row["owner"]
+                            or item.get("completion_kind") not in ("code", "artifact", "packet", "operation")
+                            or item.get("step_evidence") is not None and not isinstance(item["step_evidence"], dict)):
+                        raise ValueError("%s lacks a usable declaration" % row["id"])
+                    fields = {key: item.get(key) for key in ("completion_kind", "step_evidence")}
+                    if any(key in row and row[key] != value for key, value in fields.items()):
+                        raise ValueError("%s contradicts its declaration" % row["id"])
+                    result[bucket].append(dict(row, **fields))
+            return result
+        except (OSError, ValueError) as e:
+            return self._unknown("tracker declaration", "%s: %s" % (self.ctx.model, ka.flat(e, 200)))
+
     def _all_events(self):
         path = os.path.join(self.run, "EVENTS.jsonl")
         try:
-            st = os.stat(path)
+            data = Path(path).read_bytes()
         except OSError:
-            return None
-        signature = (st.st_size, st.st_mtime_ns)
+            return self._unknown("events", "EVENTS.jsonl cannot be read")
+        signature = hashlib.sha256(data).hexdigest()
         if self._events_cache[0] == signature:
             return self._events_cache[1]
         events = []
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    event = json.loads(line)
-                    if not isinstance(event, dict):
-                        raise ValueError("not an object")
-                    events.append(event)
+            for line in data.decode("utf-8").splitlines():
+                if not line.strip():
+                    continue
+                event = _json(line)
+                if not event_known(event):
+                    raise ValueError("unrecognised event record")
+                events.append(event)
         except (OSError, ValueError, RecursionError):
-            events = None
+            events = self._unknown("events", "EVENTS.jsonl has an unreadable or unrecognised record")
         self._events_cache = (signature, events)
         return events
 
@@ -540,9 +717,13 @@ class Engine:
         return found
 
     def _pr(self, item):
+        def unknown(reason):
+            self._unknown("PR", "%s: %s" % (item, reason))
+            return "unknown"
+
         events = self.events(item)
         if events is None or not isinstance(item, str):
-            return "unknown"
+            return unknown("events or item cannot be read")
         number = None
         for event in reversed(events):
             if event.get("kind") == "item" and event.get("state") == "review" and not event.get("step"):
@@ -553,40 +734,61 @@ class Engine:
             ["gh", "pr", "list", "--head", "kalayantra/" + item.lower(), "--json", PR_FIELDS]
         rc, out, _ = self.sh(argv, cwd=self.repo)
         if rc != 0:
-            return "unknown"
+            return unknown("gh did not answer (exit %s)" % rc)
         try:
-            doc = json.loads(out)
+            doc = _json(out)
         except (ValueError, RecursionError):
-            return "unknown"
+            return unknown("gh answered invalid JSON")
         if number is None:
             if not isinstance(doc, list):
-                return "unknown"
+                return unknown("gh pr list did not answer a list")
             if not doc:
                 return None
+            if len(doc) != 1:
+                return unknown("gh pr list answered more than one PR for this branch")
             doc = doc[0]
-        return map_pr(doc)
+        if number is not None and (not isinstance(doc, dict) or doc.get("number") != number):
+            return unknown("gh pr view answered for another PR")
+        mapped = map_pr(doc)
+        return unknown("PR fields or checks are unrecognised or ambiguous") if mapped == "unknown" else mapped
 
     def verify(self, item, step):
         base = self.environ.get("KY_TRACKER_URL") or TRACKER_URL
         if not LOOPBACK.match(base) or not isinstance(item, str) or not isinstance(step, str):
-            return None
+            return self._unknown("step detector", "no usable loopback tracker or step identity")
         url = "%s/api/verify?id=%s&step=%s" % (base, urllib.parse.quote(item, safe=""), urllib.parse.quote(step, safe=""))
         try:
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
             with opener.open(url, timeout=90) as reply:
-                doc = json.loads(reply.read(1 << 20).decode("utf-8"))
+                doc = _json(reply.read(1 << 20).decode("utf-8"))
         except Exception:                                # unreachable, 404 (a null detector), not JSON
-            return None
+            return self._unknown("step detector", "%s/%s: tracker unavailable or detector null" % (item, step))
         detector = doc.get("detector") if isinstance(doc, dict) else None
         if not isinstance(detector, dict) or doc.get("item") != item or doc.get("step") != step \
-                or not isinstance(detector.get("status"), str):
-            return None
+                or detector.get("status") not in ("done", "blocked", "pending", "running"):
+            return self._unknown("step detector", "%s/%s: no recognised detector bound to this step; an item detector is insufficient"
+                                 % (item, step))
         return detector["status"] == "done"
 
     def veto_status(self):
         import kyveto
-        return kyveto.status(kyveto.Env({"KY_ROOT": self.root, "KY_RUN": self.run, "KY_FLEET": self.fleet,
-                                         "KY_SOURCE_REPO": self.repo, "PATH": "/usr/bin:/bin"}))
+        try:
+            log = Path(self.run) / "DECISIONS_SURROGATE.jsonl"
+            if os.path.lexists(log):
+                schema = kyschema.load_json(HERE / "schemas" / "surrogate_decision.json")
+                for raw in log.read_text(encoding="utf-8").splitlines():
+                    if raw.strip() and kyschema.validate(schema, _json(raw)):
+                        return self._unknown("veto status", "the decision log has an unrecognised proposal shape")
+            status = kyveto.status(kyveto.Env({"KY_ROOT": self.root, "KY_RUN": self.run, "KY_FLEET": self.fleet,
+                                               "KY_SOURCE_REPO": self.repo, "PATH": "/usr/bin:/bin"}))
+        except Exception as e:
+            return self._unknown("veto status", "producer raised %s" % type(e).__name__)
+        if (not isinstance(status, dict) or status.get("schema") != "ky.veto_status/1"
+                or not isinstance(status.get("problems"), list) or status["problems"]
+                or not isinstance(status.get("decisions"), list)
+                or any(not isinstance(r, dict) or not isinstance(r.get("id"), str) or not r["id"] for r in status["decisions"])):
+            return self._unknown("veto status", "producer reports unreadable or unrecognised decision records")
+        return status
 
     # ── the instance ──
     def acquire(self):
@@ -649,7 +851,10 @@ class Engine:
     def _stopped(self):
         if os.path.lexists(os.path.join(self.run, "STOP_dispatcher")):
             return True
-        loop, _ = kyloop.loop_state(self.run, ROLE)
+        loop, err = read_loop(self.run)
+        if err:
+            self._unknown("loop", err)
+            return True
         return not isinstance(loop, dict) or loop.get("enabled") is not True
 
     def _tick(self):
@@ -670,6 +875,10 @@ class Engine:
         hold_merges = os.path.lexists(os.path.join(self.run, "HOLD_MERGES"))
         if not self.dry:                                                       # 6
             self._refresh_checkout(hold_merges)
+            # Refresh may have moved the model. A changed declaration cannot inherit the earlier reading.
+            if nxt is not None:
+                self._next = (True, self._declarations(nxt))
+                nxt = ctx.next
         rc, _, _ = self.sh(["bash", self._script("kygate.sh")], env={"KY_SOURCE_REPO": self.repo}, timeout=600)
         gate = "OPEN" if rc == 0 else "WAIT"                                   # 7
         if gate != self.gate_seen:
@@ -693,8 +902,7 @@ class Engine:
                 self.journal("dispatcher error", "%s.intents: %s: %s" % (module.__name__, type(e).__name__, ka.flat(e, 400)))
         for intent in intents:
             if intent["kind"] == "PLAN" and intent["item"] == "WAVE-BOUNDARY":
-                self.journal("wave complete", "no item is ready, in review or running admitted; a PLAN job is "
-                                              "intended for the boundary (%s)" % intent["key"])
+                self.log("wave boundary awaiting PLAN job (%s); this intent does not prove wave completion" % intent["key"])
         state = {"hold": hold, "gate": gate, "hold_merges": hold_merges, "sizes": sizes, "provisioned": False,
                  "short": set(), "busy": {j["slot"] for j in J.load(ctx) if j["phase"] != "ended" and j.get("slot")},
                  "open_keys": {j["key"] for j in J.load(ctx) if j["phase"] != "ended"}}
@@ -772,7 +980,10 @@ class Engine:
         """What an application that died inside its handler left (kyaction.reconcile's form)."""
         name = command.get("command")
         args = command.get("args") if isinstance(command.get("args"), dict) else {}
-        loop, _ = kyloop.loop_state(self.run, ROLE)
+        loop, err = read_loop(self.run)
+        if err:
+            self._unknown("command observation", "loop state cannot be read: %s" % err)
+            return "unknown", {"reason": "loop state unknown"}
         loop = loop or {}
         if name in ("builders", "verifiers"):
             ok = pool_size(self._pool_file(name), None) == args.get("n")
@@ -811,12 +1022,43 @@ class Engine:
         if finish is None:
             return None
         try:
+            if job.get("kind") == "SURROGATE" and _is_int(job.get("pid")) and not self._surrogate_proposal_known(job):
+                return {"outcome": "interrupted", "detail": "surrogate proposal or its claimed state is unknown",
+                        "failure_fp": "surrogate_state_unknown"}
             return finish(self.ctx, job)
         except Exception as e:                           # what the job did is then not known: never done
             self.journal("dispatcher error", "finish of %s (%s %s): %s: %s" % (
                 job["job_id"], job.get("kind"), job.get("item"), type(e).__name__, ka.flat(e, 300)))
             return {"outcome": "interrupted", "detail": "its kind's finish raised %s" % type(e).__name__,
                     "failure_fp": "finish_error"}
+
+    def _surrogate_proposal_known(self, job):
+        """A proposal can be recorded; model-written EFFECTIVE/EXECUTED never stands in for the handler's action.
+        Check before the kind can write a handled marker from that line."""
+        import kyveto
+        status = self.veto_status()
+        if status is None:
+            return False
+        history, problems, unusable = kyveto.load_decisions(Path(self.run) / "DECISIONS_SURROGATE.jsonl")
+        mine = [line for lines in history.values() for line in lines if line.get("awaiting") == job.get("item")
+                and line.get("session") == job.get("provider_session_id")]
+        if problems or unusable or not mine:
+            self._unknown("surrogate proposal", "no recognised decision from the job's provider session")
+            return False
+        line = mine[-1]
+        row = next((r for r in status["decisions"] if r["id"] == line["id"] and r.get("awaiting") == job["item"]), None)
+        state = line["state"]
+        known = row is not None
+        if state in ("EFFECTIVE", "EXECUTED", "VETOED", "FAILED"):
+            known = (known and row.get("state") == state and not row.get("anomaly") and not row.get("unresolved")
+                     and not row.get("refused") and not row.get("hard_stop"))
+            if state in ("EFFECTIVE", "EXECUTED"):
+                known = known and row.get("made_effective_by_handler" if state == "EFFECTIVE" else "executed_by_handler") is True
+            elif state == "VETOED":
+                known = known and bool(row.get("veto_command"))
+        if not known:
+            self._unknown("surrogate state", "%s claims %s without the handler or owner's matching record" % (line["id"], state))
+        return bool(known)
 
     def _account(self, job, result):
         """Backoff and the surrogate's journal line, for a job that has ended."""
@@ -840,15 +1082,33 @@ class Engine:
             self.journal("surrogate decision", "%s: %s (job %s)" % (job.get("item"), ka.flat(detail, 400), job["job_id"]))
 
     def _in_backoff(self):
+        if not _is_int(self.backoff.get("level")):
+            self._unknown("backoff", "the persisted quota state cannot be read; no model launch")
+            return True
         until = ka.parse_utc(self.backoff.get("until"))
         return until is not None and self.clock() < until
 
     # 4 ── holds
     def _owner_paused(self):
         try:
-            return kc.owner_paused(self.run) is True
-        except Exception:                                # unknown counts
+            paused = kc.owner_paused(self.run)
+            if paused not in (True, False) or not isinstance(paused, bool):
+                self.journal("dispatcher error", "owner pause unknown: kycommands.owner_paused gave no boolean")
+            return paused is not False
+        except Exception as e:                           # unknown counts
+            self.journal("dispatcher error", "owner pause unknown: %s" % type(e).__name__)
             return True
+
+    def _admission_held(self, state, job=None):
+        """Re-read the owner's controls at each admission boundary; a hold latches for the rest of the tick."""
+        state["hold"] = (state["hold"] or self.stopping or self._stopped()
+                         or os.path.lexists(os.path.join(self.root, "HOLD")) or self._owner_paused())
+        if not state["hold"]:
+            return False
+        self._waiting = "hold"
+        if job is not None:
+            self._refuse(job, state, "hold", "owner control changed during admission: no start or launch")
+        return True
 
     # 6 ── the campaign checkout
     def _refresh_checkout(self, hold_merges):
@@ -856,7 +1116,7 @@ class Engine:
         if rc != 0:
             self.journal("dispatcher error", "git fetch in %s: exit %s %s" % (self.repo, rc, ka.flat(err, 200)))
             return
-        if hold_merges:
+        if hold_merges or os.path.lexists(os.path.join(self.run, "HOLD_MERGES")):
             return
         rc, _, err = self.sh(["git", "-C", self.repo, "merge", "--ff-only", "--quiet", "origin/main"], timeout=300)
         if rc != 0:
@@ -887,7 +1147,13 @@ class Engine:
         if not free and not [s for s in names if s not in state["busy"]]:
             state["short"].add(pool)                     # the pool itself is used up
         rank = {"own_ready": 0, "absent": 1, "own_not_ready": 1}
-        return min(free, key=lambda s: (rank.get(A.slot_state(self.admit_ctx, s)[0], 2), names.index(s))) if free else None
+        states = {}
+        for slot in free:
+            status, detail, _ = A.slot_state(self.admit_ctx, slot)
+            states[slot] = status
+            if status in ("unreadable", "invalid") or status not in ("own_ready", "absent", "own_not_ready", "foreign"):
+                self._unknown("slot readiness", "%s: %s" % (slot, ka.flat(detail, 200)))
+        return min(free, key=lambda s: (rank.get(states[s], 2), names.index(s))) if free else None
 
     def _plain(self, intent, for_admit):
         """The intent as kyd_jobs.open and kyd_admit.precheck read it (see INTERPRETATION)."""
@@ -906,9 +1172,29 @@ class Engine:
             state["busy"].discard(job.get("slot"))
             state["open_keys"].discard(job.get("key"))
 
+    def _handled(self, intent):
+        """The kyd_jobs handled record counts only with its ended, done job returned by kyd_jobs.load."""
+        path = Path(self.run) / "handled" / ("job.%s.json" % intent["key"])
+        if not os.path.lexists(path):
+            return False
+        try:
+            doc = kyschema.load_json(path)
+            checkpoint = doc.get("checkpoint") if isinstance(doc, dict) else None
+            if (isinstance(doc, dict) and doc.get("schema") == J.HANDLED_SCHEMA and doc.get("id") == "job." + intent["key"]
+                    and isinstance(checkpoint, dict) and checkpoint.get("outcome") == "done"):
+                for job in J.load(self.ctx):
+                    if (job["job_id"] == checkpoint.get("job_id") and job["key"] == intent["key"] and job["phase"] == "ended"
+                            and job.get("outcome") == "done" and job["kind"] == intent["kind"] and job["item"] == intent["item"]
+                            and all(checkpoint.get(k) == job.get(k) and k in checkpoint for k in
+                                    ("item", "kind", "outcome", "head", "digest", "evidence_fp", "result_path"))):
+                        return True
+        except (OSError, ValueError, J.JobsUnreadable):
+            pass
+        return self._unknown("handled job", "%s has no matching ended, done job record" % path)
+
     def _admit(self, intent, state):
         ctx, kind, item, key, pool = self.ctx, intent["kind"], intent["item"], intent["key"], intent.get("pool")
-        if state["hold"]:
+        if self._admission_held(state):
             return "wait:hold"
         if state["gate"] != "OPEN" and not str(item).startswith(BOOTSTRAP_PREFIX):
             return "wait:gate"
@@ -921,7 +1207,12 @@ class Engine:
             return "park" if parked.get("parked") else "refused:park"
         if ctx.next is None:
             return "wait:stale"
-        if key in state["open_keys"] or os.path.lexists(os.path.join(self.run, "handled", "job.%s.json" % key)):
+        if key in state["open_keys"]:
+            return "refused:open"
+        handled = self._handled(intent)
+        if handled is None:
+            return "wait:stale"
+        if handled:
             return "refused:open"
         if J.attempts(ctx, intent)["blocked"]:
             return "refused:attempts"
@@ -934,6 +1225,8 @@ class Engine:
             if slot is None:
                 return "wait:slot"
         check = A.precheck(self.admit_ctx, self._plain(intent, True), slot)
+        if self._admission_held(state):
+            return "wait:hold"
         if not check["admitted"]:
             codes = [r["code"] for r in check["refusals"]]
             for refusal in check["refusals"]:
@@ -944,6 +1237,8 @@ class Engine:
                 if not self.dry and not state["provisioned"]:
                     state["provisioned"] = True                                # one slot a tick
                     A.provision(self.admit_ctx, slot)
+                    if self._admission_held(state):
+                        return "wait:hold"
                 return "wait:slot"
             code = next(c for c in codes if c not in SLOT_CODES)
             return "wait:stale" if code == "stale" else "refused:%s" % code
@@ -951,13 +1246,19 @@ class Engine:
             if slot is not None:
                 state["busy"].add(slot)
             return "launch"
+        if self._admission_held(state):
+            return "wait:hold"
         job = J.open(ctx, self._plain(intent, False), slot, check["facts"])
         if job is None:
             return "refused:open"
         state["open_keys"].add(key)
         if slot is not None:
             state["busy"].add(slot)
+        if self._admission_held(state, job):
+            return "wait:hold"
         admitted = A.admit(_View(self.admit_ctx, controller_id=job_lock_owner(self.controller_id, key)), job)
+        if self._admission_held(state, job):
+            return "wait:hold"
         if not admitted["admitted"]:
             first = admitted["refusals"][0]
             self._refuse(job, state, "admit_%s" % first["code"], "admit: %s: %s" % (first["code"], first["detail"]))
@@ -971,6 +1272,8 @@ class Engine:
             result = {"outcome": "refused", "detail": "its kind's start raised %s" % type(e).__name__,
                       "failure_fp": "start_error"}
         if result is None and model:
+            if self._admission_held(state, job):
+                return "wait:hold"
             job = J.launch(ctx, job)
             if job["phase"] == "live":
                 return "launch"

@@ -12,9 +12,9 @@ Real modules, fake commands. The engine runs as its own process against a world 
                                 kyboundary.sh, kyregen.sh, local_db.sh, precheck.sh, kyalloc.py; cards; and the REAL
                                 kylock.sh (a copy): the instance lock is never faked
     scratch/         $KY_SCRATCH
-    repo/            $KY_SOURCE_REPO  a throwaway git repository with a bare `origin` beside it (no network)
+    repo/            $KY_SOURCE_REPO  fixture files; Git replies and registrations are fake (no Git writes)
     worktrees/       where the patched driver lets kyd_jobs and kyd_admit put item worktrees
-    bin/             first on PATH: fake gh; git (answers from the case's replies, else the real /usr/bin/git)
+    bin/             first on PATH: fake gh and git (never forwards to a real executable)
 
 The five kyd_*.py modules, kyaction, kycommands and kyloop are the real ones beside kydispatch.py. Nothing here runs
 the real claude, ky, gh, launchctl, docker or a database, and nothing is written under /Users/Dev/kalayantra. The
@@ -44,6 +44,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -61,7 +62,6 @@ import kyschema  # noqa: E402
 DOC = json.loads((HERE / "engine.json").read_text(encoding="utf-8"))
 CASES = DOC["cases"]
 CTL = "CTL-dispatcher-20261012T000000Z-1"       # the controller a --dry reads the run directory as (loop file)
-GIT = "/usr/bin/git"
 KEY_RE = re.compile(r"^[A-Z][A-Z-]*\.[A-Za-z0-9._:-]+\.[0-9a-f]{12}\Z")
 PLAN_MODEL = "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 PACKETS = "00_ARCHITECTURE/briefs/kalayantra/packets"
@@ -73,11 +73,13 @@ OPS_TABLE = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
 # containing that text has been made}); otherwise the name's built-in behaviour below.
 
 FAKECMD = r'''
-import json, os, sys, time, hashlib
+import json, os, sys, time, hashlib, shutil
 
 FAKE = %(fake)r
 RUN = %(run)r
 SCRATCH = %(scratch)r
+REPO = %(repo)r
+HEAD = %(head)r
 
 
 def load(name, default):
@@ -152,12 +154,15 @@ def ky(argv):
         item, worker = argv[1], opt(argv, "--worker")
         n = load("claims_n.json", 0) + 1
         save("claims_n.json", n)
-        claim = {"item": item, "worker_id": worker, "claim_id": "CL-%%04d" %% n, "state": "acquired"}
+        claim = {"kind": "claim", "item": item, "worker_id": worker, "claim_id": "CL-%%04d" %% n,
+                 "state": "acquired", "actor": actor, "lease_s": int(opt(argv, "--lease", "10800")),
+                 "expires_at": time.strftime("%%Y-%%m-%%dT%%H:%%M:%%SZ", time.gmtime(time.time() + 10800)),
+                 "branch": None, "head": None, "step": None}
+        claim = event(claim)
         os.makedirs(os.path.join(RUN, "claims"), exist_ok=True)
         with open(os.path.join(RUN, "claims", worker + ".json"), "w", encoding="utf-8") as f:
             json.dump(claim, f)
-        return out(0, json.dumps(event({"kind": "claim", "item": item, "claim_id": claim["claim_id"],
-                                        "state": "acquired", "actor": actor})))
+        return out(0, claim)
     if verb in ("release", "renew"):
         path = os.path.join(RUN, "claims", lane + ".json")
         try:
@@ -168,14 +173,14 @@ def ky(argv):
         claim["state"] = "released" if verb == "release" else "renewed"
         with open(path, "w", encoding="utf-8") as f:
             json.dump(claim, f)
-        return out(0, json.dumps(event({"kind": "claim", "item": claim["item"], "claim_id": claim["claim_id"],
-                                        "state": claim["state"], "actor": actor})))
+        return out(0, event(claim))
     if verb == "step":
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "step": argv[2], "state": "done",
                                         "evidence": opt(argv, "--evidence"), "actor": actor})))
     if verb in ("block", "done"):
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "detail": opt(argv, "--detail", ""),
-                                        "state": "blocked" if verb == "block" else "done", "actor": actor})))
+                                        "state": "blocked" if verb == "block" else "done", "actor": actor,
+                                        "evidence": "fixture typed completion" if verb == "done" else None})))
     return out(64, err="fake ky: no verb %%r" %% verb)
 
 
@@ -216,8 +221,11 @@ def kyjob(argv):
     elif do == "decide":
         append(os.path.join(RUN, "DECISIONS_SURROGATE.jsonl"), json.dumps({
             "id": how.get("id", "SD-20261012T000000Z-1"), "awaiting": job["item"], "session": session,
-            "class": how.get("class", "routine"), "state": how.get("state", "EFFECTIVE"),
-            "decision": how.get("decision", "reconciled")}) + "\n")
+            "class": how.get("class", "routine"), "state": how.get("state", "PROPOSED"),
+            "decision": how.get("decision", "reconciled"), "rationale": "fixture proposal", "evidence": [],
+            "target": {}, "authority": {"source_commit": "a" * 40, "entrypoints_digest": "b" * 64},
+            "notification": {"submitted": False, "ts": None}, "veto_deadline": None, "effective_at": None,
+            "by": "kalayantra-owner-surrogate"}) + "\n")
     if how.get("result", True):
         with open(os.path.join(job["job_scratch"], "result.json"), "w", encoding="utf-8") as f:
             json.dump(result, f)
@@ -235,7 +243,38 @@ def packet_front(path):
 
 def builtin(name, argv):
     if name == "git":
-        os.execv("/usr/bin/git", ["/usr/bin/git"] + argv)
+        args = argv[2:] if argv[:1] == ["-C"] else argv
+        entries = load("git_worktrees.json", [{"path": REPO, "head": HEAD, "branch": "refs/heads/main"}])
+        if args[:2] == ["worktree", "list"]:
+            return out(0, "\n\n".join("worktree %%s\nHEAD %%s\nbranch %%s" %%
+                                      (e["path"], e["head"], e["branch"]) for e in entries) + "\n")
+        if args[:2] == ["worktree", "add"]:
+            branch, path, head = (args[3], args[4], args[5]) if args[2] == "-b" else (args[3], args[2], HEAD)
+            shutil.copytree(REPO, path)
+            entries.append({"path": path, "head": head, "branch": "refs/heads/" + branch})
+            save("git_worktrees.json", entries)
+            return out(0)
+        if args[:2] == ["worktree", "remove"]:
+            shutil.rmtree(args[2])
+            save("git_worktrees.json", [e for e in entries if e["path"] != args[2]])
+            return out(0)
+        if args[:1] == ["rev-parse"]:
+            if args[-1].startswith("refs/heads/"):
+                return out(0 if any(e["branch"] == args[-1] for e in entries) else 1)
+            return out(0, HEAD)
+        if args[:1] == ["merge-base"]:
+            return out(0, HEAD)
+        if args[:1] == ["merge-tree"]:
+            return out(0, HEAD)
+        if args[:1] == ["show"]:
+            path = os.path.join(REPO, args[1].split(":", 1)[-1])
+            if not os.path.isfile(path):
+                return out(1, err="fixture has no blob")
+            with open(path, encoding="utf-8") as f:
+                return out(0, f.read())
+        if args[:1] in (["fetch"], ["merge"], ["status"]) or args[:2] == ["worktree", "prune"]:
+            return out(0)
+        return out(97, err="fake git: no reply for %%r" %% args)
     if name == "ky":
         return ky(argv)
     if name == "kyjob.sh":
@@ -276,7 +315,7 @@ def builtin(name, argv):
         if argv[:1] == ["publish"]:
             event({"kind": "verdict", "item": opt(argv, "--item"), "phase": opt(argv, "--phase"), "head": opt(argv, "--head"),
                    "artifact_digest": opt(argv, "--artifact-digest"), "result": "ACCEPTED",
-                   "actor": "stream-V:%%s" %% opt(argv, "--vslot")})
+                   "actor": "stream-V:%%s" %% opt(argv, "--vslot"), "detail": "fixture measured review"})
             return out(0, {"published": True})
         if argv[:1] == ["invalidate"]:
             event({"kind": "verdict", "item": opt(argv, "--item"), "phase": opt(argv, "--phase"), "head": opt(argv, "--head"),
@@ -314,6 +353,12 @@ def main(name, argv):
             save("used.json", used + [n])
         if rule.get("sleep"):
             time.sleep(rule["sleep"])
+        for path, content in rule.get("write_files", {}).items():
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+        if rule.get("builtin"):
+            return builtin(name, argv)
         return out(rule.get("rc", 0), rule.get("out", ""), rule.get("err", ""))
     return builtin(name, argv)
 
@@ -331,6 +376,7 @@ import kyd_admit, kyd_jobs, kyloop
 import kydispatch
 
 kyd_jobs.WORKTREES = kyd_admit.WORKTREE_ROOT = %(worktrees)r
+kyd_admit.GIT = %(git)r
 plan = json.loads(sys.argv[1])
 if "argv" in plan:
     sys.exit(kydispatch.main(plan["argv"]))
@@ -380,10 +426,11 @@ class _Verify(http.server.BaseHTTPRequestHandler):
         how = self.table.get("%s/%s" % (item, step))
         if url.path != "/api/verify" or how is None:
             body, code = {"error": "unknown item or no detector"}, 404
-        elif how == "no_echo":                          # a tracker that ignores &step= answers for the ITEM's detector
-            body, code = {"item": item, "detector": {"status": "done"}}, 200
         else:
-            body, code = {"item": item, "step": step, "detector": {"status": how}}, 200
+            # server.py:368-376 ignores step and verifies the ITEM. Never invent a step-specific success.
+            body, code = {"item": item, "detector": {"status": "done" if how == "no_echo" else how,
+                "detail": "fixture detector", "checked_at": "2026-10-12T10:00:00+00:00",
+                "source": "fixture", "progress": None}}, 200
         data = json.dumps(body).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
@@ -406,27 +453,14 @@ def tracker():
 
 @pytest.fixture(scope="session")
 def template(tmp_path_factory):
-    """A committed repository with a bare origin: copied per case (cheaper than building it each time)."""
+    """Fixture files only: no repository, branch, worktree, commit or push is created by the tests."""
     base = tmp_path_factory.mktemp("template")
-    repo, origin = base / "repo", base / "origin.git"
-    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid", GIT_COMMITTER_NAME="t",
-               GIT_COMMITTER_EMAIL="t@example.invalid", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
-
-    def git(*argv, cwd=repo):
-        subprocess.run([GIT] + list(argv), cwd=cwd, env=env, check=True, capture_output=True)
-
+    repo = base / "repo"
     repo.mkdir()
-    git("init", "-q", "-b", "main")
     table = json.loads((HERE / "kinds_ops.json").read_text(encoding="utf-8"))["table"]    # one production kind enabled
     (repo / OPS_TABLE).parent.mkdir(parents=True)
     (repo / OPS_TABLE).write_text(json.dumps({"ops": table}), encoding="utf-8")
     (repo / "README").write_text("throwaway\n", encoding="utf-8")
-    git("add", "-A")
-    git("-c", "commit.gpgsign=false", "commit", "-q", "-m", "base")
-    subprocess.run([GIT, "init", "-q", "--bare", "-b", "main", str(origin)], check=True, capture_output=True, env=env)
-    git("remote", "add", "origin", str(origin))
-    git("push", "-q", "origin", "main")
-    git("fetch", "-q", "origin")
     return base
 
 
@@ -459,13 +493,12 @@ class World:
                   self.worktrees):
             d.mkdir(parents=True)
         shutil.copytree(template / "repo", self.repo, symlinks=True)
-        shutil.copytree(template / "origin.git", self.tmp / "origin.git", symlinks=True)
-        subprocess.run([GIT, "remote", "set-url", "origin", str(self.tmp / "origin.git")], cwd=self.repo, check=True)
-        self.head = subprocess.run([GIT, "rev-parse", "HEAD"], cwd=self.repo, check=True, capture_output=True,
-                                   text=True).stdout.strip()
+        self.head = "1" * 40                                               # synthetic Git reply, never a measured head
         (self.fake / "fakecmd.py").write_text(FAKECMD % {"fake": str(self.fake), "run": str(self.run),
-                                                         "scratch": str(self.scratch)}, encoding="utf-8")
-        (self.tmp / "driver.py").write_text(DRIVER % {"fleet": str(FLEET), "worktrees": str(self.worktrees)},
+                                                         "scratch": str(self.scratch), "repo": str(self.repo),
+                                                         "head": self.head}, encoding="utf-8")
+        (self.tmp / "driver.py").write_text(DRIVER % {"fleet": str(FLEET), "worktrees": str(self.worktrees),
+                                                     "git": str(self.bin / "git")},
                                             encoding="utf-8")
         for name in ("kygate.sh", "kynotify.sh", "kyjob.sh", "local_db.sh", "kyboundary.sh", "kyregen.sh", "precheck.sh"):
             self._stub(self.fleet / name, name, shell=True)
@@ -628,10 +661,11 @@ class World:
                                            applied_by={"holder_kind": "controller", "controller_id": "CTL-campaign-1",
                                                        "role": "campaign"}))
             assert kc.owner_paused(self.run) is True
-        for n in range(setup.get("worktrees", 0)):                         # registered copies under the patched root
-            subprocess.run([GIT, "worktree", "add", "-q", "-b", "kalayantra/old-%d" % n,
-                            str(self.worktrees / ("kalayantra-old-%d" % n)), "HEAD"], cwd=self.repo, check=True,
-                           capture_output=True)
+        if "worktrees" in setup:                                           # fake registrations, no real Git command
+            self.write(self.fake / "git_worktrees.json", [{"path": str(self.repo), "head": self.head,
+                                                            "branch": "refs/heads/main"}] + [
+                {"path": str(self.worktrees / ("kalayantra-old-%d" % n)), "head": self.head,
+                 "branch": "refs/heads/kalayantra/old-%d" % n} for n in range(setup["worktrees"])])
         for name in setup.get("plain_dirs", []):
             Path(name).mkdir(parents=True, exist_ok=True)
         _Verify.table = setup.get("verify", _Verify.table if not first else {})
@@ -642,8 +676,7 @@ class World:
                "PATH": "%s:/usr/bin:/bin:/usr/sbin:/sbin" % self.bin, "TMPDIR": os.environ.get("TMPDIR", str(self.tmp)),
                "KY_ROOT": str(self.root), "KY_RUN": str(self.run), "KY_FLEET": str(self.fleet),
                "KY_SCRATCH": str(self.scratch), "KY_SOURCE_REPO": str(self.repo), "KY_TRACKER_URL": self.tracker_url,
-               "GIT_CONFIG_GLOBAL": os.devnull, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+               "GIT_OPTIONAL_LOCKS": "0",
                "PYTHONPYCACHEPREFIX": str(self.tmp.parent / "pycache")}        # bytecode beside the worlds, never in the repo
         (self.tmp / "home").mkdir(exist_ok=True)
         env.update(extra or {})
@@ -661,8 +694,7 @@ class World:
         return done
 
     def cli(self, argv, patched=False, extra=None):
-        return self._run([sys.executable, str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else
-                         [sys.executable, "-u", str(ENGINE)] + argv, extra)
+        return self._run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"argv": argv})], extra)
 
     def session(self, steps):
         return self._run([sys.executable, str(self.tmp / "driver.py"), json.dumps({"session": steps})])
@@ -933,7 +965,77 @@ def test_pr_is_mapped_to_the_shape_the_modules_document():
     for broken in ({}, dict(doc, number="7"), dict(doc, headRefOid=None), dict(doc, statusCheckRollup="x"),
                    dict(doc, statusCheckRollup=[{"name": None}]), dict(doc, files=[{"nopath": 1}]), [], None):
         assert kydispatch.map_pr(broken) == "unknown"
+    failure = {"__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "FAILURE",
+               "detailsUrl": "https://github.com/o/r/actions/runs/1/job/9"}
+    success = dict(failure, conclusion="SUCCESS", detailsUrl="https://github.com/o/r/actions/runs/2/job/9")
+    for entries in ([failure, success], [success, failure]):
+        assert kydispatch.map_pr(dict(doc, statusCheckRollup=entries)) == "unknown"
     assert kydispatch.map_pr(dict(doc, mergeCommit=None, statusCheckRollup=None, files=None))["checks"] == {}
+
+
+@pytest.mark.parametrize("control", ["HOLD", "STOP_dispatcher", "pause", "unknown", "disabled"])
+@pytest.mark.parametrize("during", ["precheck", "admit", "start"])
+def test_control_changes_during_admission_hold_every_remaining_intent(world, monkeypatch, control, during):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    e = d.Engine(world.env(), dry=True)
+    e.ctx.priority = ["K-1"]
+    intent = d.B.intents(e.ctx)[0]
+    e.dry = False
+    e.journal = lambda *args: None
+    state = {"hold": False, "gate": "OPEN", "hold_merges": False, "open_keys": set(), "busy": set(),
+             "short": set(), "sizes": {"builder": 6, "verifier": 4}, "provisioned": False}
+    calls, closed = [], []
+
+    def activate():
+        if control == "HOLD":
+            (world.root / "HOLD").touch()
+        elif control == "STOP_dispatcher":
+            (world.run / control).touch()
+        elif control == "disabled":
+            world.loop(enabled=False)
+        else:
+            monkeypatch.setattr(d.kc, "owner_paused", lambda run: True if control == "pause" else None)
+
+    def check(*args):
+        if during == "precheck":
+            activate()
+        return {"admitted": True, "refusals": [], "facts": {}}
+
+    def opened(*args):
+        calls.append("open")
+        return dict(intent, job_id="J-test", slot="b1", phase="prepared", pid=None)
+
+    def admitted(*args):
+        if during == "admit":
+            activate()
+        return {"admitted": True, "refusals": [], "facts": {}}
+
+    def started(*args):
+        if during == "start":
+            activate()
+        return None
+
+    def close(ctx, job, result):
+        closed.append(result)
+        return dict(job, phase="ended", **result)
+
+    monkeypatch.setattr(d.A, "precheck", check)
+    monkeypatch.setattr(d.A, "admit", admitted)
+    monkeypatch.setattr(d.J, "open", opened)
+    monkeypatch.setattr(d.J, "close", close)
+    monkeypatch.setattr(d.B, "start", started)
+    def launch(ctx, job):
+        calls.append("launch")
+        return dict(job, phase="live")
+
+    monkeypatch.setattr(d.J, "launch", launch)
+    assert e._admit(intent, state) == "wait:hold"
+    assert e._admit(dict(intent, key="another-key"), state) == "wait:hold"
+    assert "launch" not in calls
+    assert calls == ([] if during == "precheck" else ["open"])
+    assert [r["outcome"] for r in closed] == ([] if during == "precheck" else ["refused"])
+    assert not state["busy"] and not state["open_keys"]
 
 
 def test_pool_sizes_and_backoff_steps(tmp_path):
@@ -962,3 +1064,363 @@ def test_fresh_is_only_a_live_version_that_advanced_or_stands_on_unchanged_event
     for not_live in ({k: v for k, v in live.items() if k != "version"}, dict(live, version=True),
                      dict(live, version="5"), dict(live, version=None), [], None, "x"):
         assert kydispatch.fresh(not_live, None, now) is False              # the snapshot fallback carries no version
+
+
+@pytest.mark.parametrize("reply", ["notify=failed\n", "notify=dry\n", "", "notify=submitted\nextra\n"])
+def test_notification_zero_exit_is_not_submission(world, monkeypatch, reply):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    monkeypatch.setattr(e, "sh", lambda *args, **kwargs: (0, reply, ""))
+    e.journal("dispatcher error", "fixture failure")
+    actions, problems = ka.scan(world.run)
+    assert not problems and len(actions) == 1
+    assert actions[0]["state"] != "DONE"
+
+
+@pytest.mark.parametrize("mutation", [
+    {"stream": "K"}, {"ready": None}, {"running": {}}, {"blocked": "unknown"}, {"version": -1},
+    {"ready": [{"id": "K-1", "owner": "K", "status": "done"}]},
+    {"ready": [{"id": "K-1", "status": "ready"}]},
+])
+def test_tracker_shape_unknown_is_journalled(world, monkeypatch, mutation):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    reply = dict(stream="", version=5, running=[], ready=[], blocked=[], **{})
+    reply.update(mutation)
+    monkeypatch.setattr(e, "ky", lambda *args: (0, json.dumps(reply), ""))
+    assert e.tracker_next() is None
+    assert "tracker" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+@pytest.mark.parametrize("event", [
+    {}, {"kind": "guess", "actor": "steward"},
+    {"kind": "item", "item": "K-1", "state": "review", "detail": "PR #7 @ " + "a" * 40},
+    {"kind": "item", "item": "K-1", "actor": "stream-K:b1", "state": "done"},
+    {"kind": "claim", "item": "K-1", "actor": "stream-K:b1", "state": "acquired", "claim_id": "c"},
+    {"kind": "verdict", "item": "K-1", "actor": "stream-V:v1", "phase": "pre_merge",
+     "head": "a" * 40, "result": "ACCEPTED"},
+])
+def test_event_objects_must_be_producer_records(world, event):
+    import kydispatch as d
+    event = dict(event, ts="2026-10-12T00:00:00Z")
+    (world.run / "EVENTS.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+    e = d.Engine(world.env())
+    assert e.events("K-1") is None
+    assert "events" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+def test_duplicate_json_keys_do_not_turn_failure_into_success(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    doc = json.dumps(gh_pr({"number": 7, "head": "a" * 40, "checks": {"test": "SUCCESS"}}))
+    doc = doc.replace('"conclusion": "SUCCESS"', '"conclusion": "FAILURE", "conclusion": "SUCCESS"')
+    monkeypatch.setattr(e, "sh", lambda *args, **kwargs: (0, "[" + doc + "]", ""))
+    assert e.pr("K-1") == "unknown"
+    assert "unknown" in world.journal().lower()
+
+
+def test_unknown_check_shapes_cannot_read_success():
+    import kydispatch as d
+    doc = gh_pr({"number": 7, "head": "a" * 40, "checks": {"test": "SUCCESS"}})
+    for check in ({"name": "test", "status": "SUCCESS"},
+                  {"name": "test", "state": "SUCCESS", "status": "SUCCESS"},
+                  {"name": "test", "status": "COMPLETED", "conclusion": "UNRECOGNISED"}):
+        assert d.map_pr(dict(doc, statusCheckRollup=[check])) == "unknown"
+
+
+def test_pr_ambiguity_is_unknown_and_journalled(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    replies = [gh_pr({"number": n, "head": "a" * 40}) for n in (7, 8)]
+    monkeypatch.setattr(e, "sh", lambda *args, **kwargs: (0, json.dumps(replies), ""))
+    assert e.pr("K-1") == "unknown"
+    assert "unknown" in world.journal().lower()
+
+
+def test_awaiting_answer_needs_owner_command(world):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    args = ("fixture", "The question", [{"id": "leave", "text": "leave it"}], [], None, "unknown")
+    aid = e.awaiting(*args)
+    world.write(world.run / "awaiting" / (aid + kyloop.OWNER_DECISION_SUFFIX),
+                {"schema": kyloop.OWNER_DECISION_SCHEMA, "awaiting_id": aid, "command_id": "not-owner", "answer": "leave"})
+    assert e.awaiting(*args) == aid
+    assert "owner" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+def test_unreadable_awaiting_does_not_create_a_second_wait(world):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    world.write(world.run / "awaiting" / "AW-20261012T000000Z-fixture.json", "{broken")
+    assert e.awaiting("fixture", "q", [], [], None, "unknown") is None
+    assert "unknown" in world.journal().lower()
+    assert len(list((world.run / "awaiting").glob("AW-*-fixture.json"))) == 1
+
+
+def test_handled_job_marker_requires_closed_backing_job(world, capsys):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    e = d.Engine(world.env(), dry=True)
+    e.ctx.priority = ["K-1"]
+    intent = d.B.intents(e.ctx)[0]
+    world.write(world.run / "handled" / ("job." + intent["key"] + ".json"),
+                {"schema": "ky.handled/1", "id": "job." + intent["key"],
+                 "checkpoint": {"job_id": "J-invented", "outcome": "done"}})
+    state = {"hold": False, "gate": "OPEN", "hold_merges": False, "open_keys": set(), "busy": set(),
+             "short": set(), "sizes": {"builder": 6, "verifier": 4}, "provisioned": False}
+    assert e._admit(intent, state) == "wait:stale"
+    assert "unknown" in capsys.readouterr().err.lower()
+
+
+def test_item_detector_never_verifies_a_step_and_is_journalled(world):
+    import kydispatch as d
+    world.apply({"verify": {"K-1/tests": "no_echo"}}, first=True)
+    e = d.Engine(world.env())
+    assert e.verify("K-1", "tests") is None
+    assert "unknown" in world.journal().lower() and "step" in world.journal().lower()
+
+
+def test_veto_status_problems_are_unknown(world):
+    import kydispatch as d
+    world.write(world.run / "DECISIONS_SURROGATE.jsonl", "{broken\n")
+    e = d.Engine(world.env())
+    assert e.veto_status() is None
+    assert "veto" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+def test_unknown_action_status_runs_no_effect(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    begin = ka.begin
+    monkeypatch.setattr(ka, "begin", lambda *args: ("unknown", begin(*args)[1]))
+    effects = []
+    status, result = e.act("TEST", "effect", {}, {}, lambda: effects.append("ran"), lambda r: ("done", {}))
+    assert status == "unknown" and not effects
+
+
+def test_nonserializable_action_result_is_unknown(world):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    status, result = e.act("TEST", "effect", {}, {}, lambda: ("done", {"bad": {1, 2}}), lambda r: ("done", {}))
+    assert status == "unknown"
+    actions, problems = ka.scan(world.run)
+    assert not problems and next(a for a in actions if a["action_id"] == "TEST")["state"] == "INTENDED"
+
+
+def test_hold_merges_during_fetch_prevents_fast_forward(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    calls = []
+
+    def sh(argv, **kwargs):
+        calls.append(argv)
+        if "fetch" in argv:
+            (world.run / "HOLD_MERGES").touch()
+        return 0, "", ""
+
+    monkeypatch.setattr(e, "sh", sh)
+    e._refresh_checkout(False)
+    assert not any("merge" in argv for argv in calls)
+
+
+@pytest.mark.parametrize("backoff", [{}, {"level": 2, "until": "not a time", "job": "J-old"},
+                                      {"level": "2", "until": "2026-10-12T23:00:00Z", "job": "J-old"}])
+def test_unreadable_backoff_never_means_launch_now(world, backoff):
+    import kydispatch as d
+    world.loop(enabled=True, backoff=backoff)
+    e = d.Engine(world.env())
+    assert e._in_backoff() is True
+    assert "unknown" in world.journal().lower()
+
+
+def test_unreadable_tracker_checkpoint_cannot_reset_freshness(world, monkeypatch):
+    import kydispatch as d
+    world.loop(enabled=True, tracker={"version": "99"})
+    e = d.Engine(world.env())
+    monkeypatch.setattr(e, "ky", lambda *args: (0, json.dumps(
+        {"stream": "", "version": 5, "running": [], "ready": [], "blocked": []}), ""))
+    assert e.tracker_next() is None
+    assert "unknown" in world.journal().lower()
+
+
+def test_unknown_loop_file_is_a_reported_stop(world):
+    import kydispatch as d
+    world.write(world.run / "loops" / "dispatcher.json", '{"enabled": false, "enabled": true}')
+    e = d.Engine(world.env())
+    assert e._stopped() is True
+    assert "loop" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+def test_boundary_intent_is_not_wave_completion(world, capsys):
+    import kydispatch as d
+    world.apply({"next": {"blocked": [{"id": "K-1", "owner": "K", "status": "blocked"}]},
+                 "gate": "OPEN", "slots": ["b1"]}, first=True)
+    e = d.Engine(world.env(), dry=True)
+    jobs = e.tick()["jobs"]
+    assert any(j["kind"] == "PLAN" and j["item"] == "WAVE-BOUNDARY" for j in jobs)
+    assert "[wave complete]" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("state", ["EFFECTIVE", "EXECUTED"])
+def test_model_written_surrogate_state_needs_handler_record(world, monkeypatch, state):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    aid = "AW-20261012T100000Z-check"
+    session = "fixture-session"
+    world.write(world.run / "DECISIONS_SURROGATE.jsonl", json.dumps({
+        "id": "SD-20261012T000000Z-1", "awaiting": aid, "class": "routine", "state": state,
+        "decision": "reconciled", "rationale": "fixture proposal", "evidence": [],
+        "target": {"kind": "capacity", "builders": 6}, "authority": {"source_commit": "a" * 40,
+        "entrypoints_digest": "b" * 64}, "notification": {"submitted": False, "ts": None},
+        "veto_deadline": None, "effective_at": "2026-10-12T10:00:00Z",
+        "by": "kalayantra-owner-surrogate", "session": session}) + "\n")
+    job = {"kind": "SURROGATE", "item": aid, "job_id": "J-test", "digest": "c" * 64,
+           "provider_session_id": session, "pid": 123}
+    result = e._finish(job)
+    assert result["outcome"] == "interrupted"
+    assert not (world.run / "handled" / ("awaiting." + aid + ".json")).exists()
+    assert "unknown" in world.journal().lower()
+
+
+def test_real_tracker_producers_match_the_next_inbox_and_event_fixtures(world, monkeypatch, capsys):
+    import kydispatch as d
+    monkeypatch.syspath_prepend(str(FLEET.parents[3] / "platform/scripts/governance"))
+    from pravaha_tracker import cli, events
+
+    live = {"stream": "", "version": 5, "running": [], "ready": [], "blocked": []}
+    monkeypatch.setenv("PRAVAHA_STREAM", "")
+    monkeypatch.setattr(cli, "get", lambda *args: (live, "live"))
+    assert cli.cmd_next(SimpleNamespace(stream="", json=True)) == 0
+    assert d.next_known(json.loads(capsys.readouterr().out))
+    monkeypatch.setattr(cli, "get", lambda *args: ({"_snapshot": {"tracks": []}}, "stale-snapshot"))
+    assert cli.cmd_next(SimpleNamespace(stream="", json=True)) == 0
+    assert not d.next_known(json.loads(capsys.readouterr().out))
+    message = events.validate({"kind": "message", "msg_id": "M-1", "to": "N", "actor": "steward",
+                               "detail": "ruling", "ts": "2026-10-12T10:00:00+00:00"}, allow_model_party=True)
+    monkeypatch.setattr(cli, "_read_events", lambda: [message])
+    args = SimpleNamespace(stream="N", json=True, steward=False, wait=0)
+    assert cli.cmd_inbox(args) == 0
+    assert json.loads(capsys.readouterr().out) == [message]
+    assert d.event_known(message)
+    monkeypatch.setattr(cli, "_read_events", lambda: [message, {"kind": "ack", "actor": "stream-N:b1", "msg_id": "M-1"}])
+    assert cli.cmd_inbox(args) == 1
+    assert json.loads(capsys.readouterr().out) == []
+
+
+def test_real_tracker_http_producer_has_no_step_detector(world, monkeypatch):
+    import kydispatch as d
+    monkeypatch.syspath_prepend(str(FLEET.parents[3] / "platform/scripts/governance"))
+    from pravaha_tracker import server, detectors
+
+    row = {"id": "K-1", "owner": "K", "status": "ready"}
+    producer = SimpleNamespace(cond=threading.Condition(), snapshot={"version": 5, "tracks": [{"items": [row]}]},
+        model={"items": [{"id": "K-1", "detector": {"type": "file_exists", "path": str(world.tmp / "fixture")}}]},
+        det=SimpleNamespace(verify=lambda spec: detectors.DetectorResult("done", "fixture", "2026-10-12T10:00:00Z", "fixture")))
+    listener = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.make_handler(producer))
+    worker = threading.Thread(target=listener.serve_forever, daemon=True)
+    worker.start()
+    try:
+        e = d.Engine(world.env({"KY_TRACKER_URL": "http://127.0.0.1:%d" % listener.server_address[1]}))
+        assert e.verify("K-1", "tests") is None
+        assert "step detector unknown" in world.journal()
+    finally:
+        listener.shutdown()
+        listener.server_close()
+        worker.join(timeout=5)
+
+
+def test_executor_receipt_matches_the_real_producer_and_requires_measured_output(world, monkeypatch):
+    import executor
+    receipts = world.run / "ops/receipts"
+    receipts.mkdir(parents=True)
+    monkeypatch.setattr(executor, "REC", receipts)
+    monkeypatch.setattr(executor, "log", lambda text: None)
+    request = {"operation_id": "OP-test", "kind": "readback_sql", "item_id": "N-OP-1", "requested_by": "adhikarin",
+               "kyd": "K-1", "args": {}, "idempotency_key": "OP-test"}
+    executor.receipt(request, "COMPLETED", rc=0, out="rows=12\n")
+    path = receipts / "OP-test.json"
+    receipt = json.loads(path.read_text())
+    assert receipt["request_sha256"] == ops.request_digest(request)
+    assert ops._measured_receipt(path, receipt) is True
+    Path(receipt["output_file"]).write_text("changed output\n")
+    assert ops._measured_receipt(path, receipt) is False
+    executor.receipt(request, "COMPLETED", rc=None, out="rows=12\n")
+    assert ops._measured_receipt(path, json.loads(path.read_text())) is False
+
+
+@pytest.mark.parametrize("producer", ["kyboundary.sh", "kyverdicts.py"])
+def test_absent_boundary_or_verdict_producer_never_succeeds(world, producer):
+    import kydispatch as d
+    case = next(c for c in CASES if c["name"] == "verify_of_a_registered_green_head_runs_and_publishes")
+    world.apply(case["setup"], first=True)
+    (world.fleet / producer).unlink()
+    e = d.Engine(world.env())
+    job = {"kind": "VERIFY", "item": "K-1", "job_id": "J-20261012T100000Z-verify", "head": "a" * 40,
+           "job_scratch": str(world.scratch), "worktree": str(world.repo), "slot": "v1", "exit_code": 0,
+           "result_path": str(world.scratch / "result.json"), "controller_id": e.controller_id, "verdict_phase": "pre_merge"}
+    result = e._finish(job)
+    assert result["outcome"] != "done"
+    assert not any(ev.get("kind") == "verdict" and ev.get("result") == "ACCEPTED" for ev in e.events("K-1"))
+
+
+def test_legacy_local_db_receipt_is_unknown_and_journalled(world, capsys, monkeypatch):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    # The producer in this checkout is local_db.sh v1.1: lane/result/seed_sha256, no session or v3 bound hashes.
+    world.write(world.run / "local_db/b1.json", {"lane": "k1", "result": "READY", "tables": 500,
+        "kala_tables": 100, "ledger": 900, "unexpected_restore_errors": 0, "runner_rc": 0,
+        "seed_sha256": "a" * 64, "ts": "2026-10-12T10:00:00Z"})
+    e = d.Engine(world.env(), dry=True)
+    monkeypatch.setattr(d.A, "GIT", str(world.bin / "git"))
+    e.ctx.priority = ["K-1"]
+    intent = d.B.intents(e.ctx)[0]
+    state = {"hold": False, "gate": "OPEN", "hold_merges": False, "open_keys": set(), "busy": set(),
+             "short": set(), "sizes": {"builder": 1, "verifier": 1}, "provisioned": False}
+    assert e._admit(intent, state) == "wait:slot"
+    assert "slot readiness unknown" in capsys.readouterr().err
+    assert not world.jobs()
+
+
+def test_ambiguous_command_observation_never_acks_the_command(world):
+    import kydispatch as d
+    world.loop(enabled=True)
+    e = d.Engine(world.env())
+    world.write(world.run / "loops/dispatcher.json", '{"priority": ["K-2"], "priority": ["K-1"]}')
+    status, result = e._observe_command({"command": "priority", "args": {"item": "K-1"}})
+    assert status == "unknown"
+    assert "unknown" in world.journal().lower()
+
+
+def test_event_cache_compares_bytes_not_only_metadata(world):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    path = world.run / "EVENTS.jsonl"
+    event = {"kind": "item", "item": "K-1", "state": "review", "actor": "stream-K:b1",
+             "ts": "2026-10-12T10:00:00Z", "detail": "PR #7 @ " + "a" * 40}
+    path.write_text(json.dumps(event) + "\n")
+    before = path.stat()
+    assert e.events("K-1")[0]["detail"] == event["detail"]
+    event["detail"] = "PR #7 @ " + "b" * 40
+    path.write_text(json.dumps(event) + "\n")
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    assert path.stat().st_size == before.st_size
+    assert e.events("K-1")[0]["detail"] == event["detail"]
+
+
+def test_real_tracker_rows_get_declarations_from_the_plan_model(world):
+    import kydispatch as d
+    # state.py:304-310 emits status/steps, but no completion_kind or step_evidence declaration.
+    world.apply({"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready"}]},
+                 "gate": "OPEN"}, first=True)
+    e = d.Engine(world.env(), dry=True)
+    e.ctx.priority = ["K-1"]
+    assert e.ctx.next["ready"][0]["completion_kind"] == "code"
+    assert [i["kind"] for i in d.B.intents(e.ctx)] == ["BUILD"]
+
+
+def test_tracker_cannot_override_the_declared_completion_kind(world):
+    import kydispatch as d
+    world.apply({"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready", "completion_kind": "artifact"}]}}, first=True)
+    e = d.Engine(world.env())
+    assert e.ctx.next is None
+    assert "declaration" in world.journal().lower() and "unknown" in world.journal().lower()

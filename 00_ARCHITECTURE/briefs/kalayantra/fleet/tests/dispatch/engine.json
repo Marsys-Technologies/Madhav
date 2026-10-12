@@ -1,6 +1,6 @@
 {
  "schema": "ky.dispatch_cases/1",
- "note": "Cases of test_kydispatch.py (packet KV3-B-KYDISPATCH v1). $RUN $ROOT $REPO $FLEET $SCRATCH $WT are the world's paths, $CTL the controller a --dry reads the run directory as, $HEAD the repository's commit, $Ha…$Hf 40-hex heads. `dry` and `ticks` are the checked-in job lists: [{kind, item, pool, decision}] in order.",
+ "note": "Cases of test_kydispatch.py (packet KV3-B-KYDISPATCH v1). $RUN $ROOT $REPO $FLEET $SCRATCH $WT are the world's paths, $CTL the controller a --dry reads the run directory as, $HEAD the synthetic repository head reply, $Ha…$Hf 40-hex heads. `dry` and `ticks` are the checked-in job lists: [{kind, item, pool, decision}] in order.",
  "defaults": {
   "model": [
    {
@@ -8,7 +8,13 @@
     "owner": "K",
     "completion_kind": "code",
     "depends_on": [],
-    "brief": {}
+    "brief": {},
+    "step_evidence": {
+     "tests": {
+      "type": "file_exists"
+     },
+     "docs": null
+    }
    },
    {
     "id": "K-2",
@@ -120,7 +126,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -267,7 +272,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -343,10 +347,9 @@
    "note": "the fixture tracker goes on showing K-1 ready, so the engine intends it again: the tracker's `blocked` row is what ends that"
   },
   {
-   "name": "step_whose_detector_passes_is_recorded",
+   "name": "item_detector_success_is_not_a_verified_step",
    "covers": [
-    "STEP",
-    "done"
+    "STEP"
    ],
    "setup": {
     "next": {
@@ -355,7 +358,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": [],
        "steps": [
@@ -367,13 +369,7 @@
          "name": "docs",
          "done": false
         }
-       ],
-       "step_evidence": {
-        "tests": {
-         "type": "file_exists"
-        },
-        "docs": null
-       }
+       ]
       }
      ]
     },
@@ -385,14 +381,7 @@
    },
    "steps": [
     {
-     "dry": [
-      {
-       "kind": "STEP",
-       "item": "K-1",
-       "pool": null,
-       "decision": "launch"
-      }
-     ]
+     "dry": []
     },
     {
      "session": [
@@ -401,45 +390,22 @@
       "stop"
      ],
      "ticks": [
-      [
-       {
-        "kind": "STEP",
-        "item": "K-1",
-        "pool": null,
-        "decision": "launch"
-       }
-      ],
-      [
-       {
-        "kind": "STEP",
-        "item": "K-1",
-        "pool": null,
-        "decision": "refused:open"
-       }
-      ]
+      [],
+      []
      ]
     }
    ],
    "expect": {
-    "calls": [
-     "ky step K-1 tests --evidence $RUN/jobs/J-"
+    "no_calls": [
+     "ky step"
     ],
-    "call_counts": {
-     "ky step": 1
-    },
-    "jobs": [
-     {
-      "kind": "STEP",
-      "item": "K-1",
-      "slot": null,
-      "phase": "ended",
-      "outcome": "done",
-      "stream": "K"
-     }
-    ],
-    "lock": false
+    "jobs": [],
+    "lock": false,
+    "journal": [
+     "step detector unknown"
+    ]
    },
-   "note": "a null detector (docs) is never stepped (ruling P18); the handled key refuses a second STEP while the fixture row stays undone"
+   "note": "Actual server.py /api/verify returns an item detector with no step identity. STEP remains unknown until its producer supports a named step detector; no invented step response earns done."
   },
   {
    "name": "step_is_never_taken_on_an_unverified_detector",
@@ -453,7 +419,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": [],
        "steps": [
@@ -465,13 +430,7 @@
          "name": "docs",
          "done": false
         }
-       ],
-       "step_evidence": {
-        "tests": {
-         "type": "file_exists"
-        },
-        "docs": null
-       }
+       ]
       }
      ]
     },
@@ -517,7 +476,7 @@
      "ky step"
     ]
    },
-   "note": "pending is False; a reply that does not name the step (a tracker that ignores &step=) and 404 are None: none permits ky step"
+   "note": "Actual producer returns an item detector (pending/done) or 404. None is evidence for the requested step."
   },
   {
    "name": "verify_of_a_registered_green_head_runs_and_publishes",
@@ -533,7 +492,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -705,7 +663,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -730,7 +687,8 @@
       "head": "$Ha",
       "artifact_digest": null,
       "result": "REJECTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      }
     ],
     "prs": [
@@ -826,7 +784,6 @@
        "id": "A-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "artifact",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -895,7 +852,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -920,7 +876,8 @@
       "head": "$Ha",
       "artifact_digest": null,
       "result": "ACCEPTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      }
     ],
     "prs": [
@@ -1036,7 +993,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1061,7 +1017,8 @@
       "head": "$Ha",
       "artifact_digest": null,
       "result": "ACCEPTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      }
     ],
     "prs": [
@@ -1154,7 +1111,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1179,7 +1135,8 @@
       "head": "$Ha",
       "artifact_digest": null,
       "result": "ACCEPTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      },
      {
       "kind": "item",
@@ -1355,7 +1312,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1386,7 +1342,8 @@
       "head": "$Ha",
       "artifact_digest": null,
       "result": "ACCEPTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      }
     ],
     "prs": [
@@ -1494,7 +1451,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1590,7 +1546,6 @@
        "id": "R-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1708,7 +1663,6 @@
        "id": "N-OP-1",
        "owner": "N",
        "status": "ready",
-       "completion_kind": "operation",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -1908,7 +1862,6 @@
        "id": "S-1",
        "owner": "S",
        "status": "ready",
-       "completion_kind": "artifact",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2206,7 +2159,6 @@
          "id": "K-1",
          "owner": "K",
          "status": "blocked",
-         "completion_kind": "code",
          "deps_open": [],
          "deps_open_strict": []
         }
@@ -2242,16 +2194,14 @@
     }
    ],
    "expect": {
-    "journal": [
-     "[wave complete]"
-    ],
-    "notify": [
-     "wave complete"
-    ],
     "no_calls": [
      "kyjob.sh"
+    ],
+    "no_journal": [
+     "[wave complete]"
     ]
-   }
+   },
+   "note": "A boundary PLAN intent while K-1 is blocked is not a detector of wave completion."
   },
   {
    "name": "stop_dispatcher_ends_the_tick_before_anything",
@@ -2266,7 +2216,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2274,7 +2223,6 @@
        "id": "KV3-B-X",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2329,7 +2277,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2337,7 +2284,6 @@
        "id": "KV3-B-X",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2399,7 +2345,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2407,7 +2352,6 @@
        "id": "KV3-B-X",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2491,7 +2435,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2499,7 +2442,6 @@
        "id": "KV3-B-X",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2597,7 +2539,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2605,7 +2546,6 @@
        "id": "KV3-B-X",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2615,7 +2555,6 @@
        "id": "K-2",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2651,7 +2590,8 @@
       "head": "$Hb",
       "artifact_digest": null,
       "result": "ACCEPTED",
-      "actor": "stream-V:v1"
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
      }
     ],
     "prs": [
@@ -2814,7 +2754,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -2897,7 +2836,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -2905,7 +2843,6 @@
        "id": "K-2",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3040,7 +2977,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3138,7 +3074,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3176,7 +3111,8 @@
        {
         "kind": "note",
         "item": "K-9",
-        "detail": "something the tracker has not read yet"
+        "detail": "something the tracker has not read yet",
+        "actor": "steward"
        }
       ]
      }
@@ -3193,7 +3129,6 @@
          "id": "K-1",
          "owner": "K",
          "status": "ready",
-         "completion_kind": "code",
          "deps_open": [],
          "deps_open_strict": []
         }
@@ -3220,7 +3155,6 @@
          "id": "K-1",
          "owner": "K",
          "status": "ready",
-         "completion_kind": "code",
          "deps_open": [],
          "deps_open_strict": []
         }
@@ -3245,7 +3179,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3281,7 +3214,6 @@
          "id": "K-2",
          "owner": "K",
          "status": "ready",
-         "completion_kind": "code",
          "deps_open": [],
          "deps_open_strict": []
         }
@@ -3308,7 +3240,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3477,7 +3408,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3577,7 +3507,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3680,7 +3609,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       },
@@ -3688,7 +3616,6 @@
        "id": "K-2",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -3829,7 +3756,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -4009,7 +3935,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -4304,7 +4229,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "review",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -4379,7 +4303,6 @@
        "id": "K-1",
        "owner": "K",
        "status": "ready",
-       "completion_kind": "code",
        "deps_open": [],
        "deps_open_strict": []
       }
@@ -4409,6 +4332,616 @@
     "lock": true
    },
    "note": "a job state that cannot be read: nothing is decided on top of it, and the instance lock is kept (a job may be live)"
+  },
+  {
+   "name": "hold_appears_while_the_gate_is_running",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "replies": [
+     {
+      "cmd": "kygate.sh",
+      "sleep": 0.05,
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "rc": 0,
+      "out": "OPEN\n"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "stop_dispatcher_appears_while_the_gate_is_running",
+   "covers": [
+    "hold precedence",
+    "STOP_dispatcher"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "replies": [
+     {
+      "cmd": "kygate.sh",
+      "sleep": 0.05,
+      "write_files": {
+       "$RUN/STOP_dispatcher": "owner stop\n"
+      },
+      "rc": 0,
+      "out": "OPEN\n"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "hold_appears_during_provisioning",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "replies": [
+     {
+      "cmd": "local_db.sh",
+      "args": [
+       "db"
+      ],
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "builtin": true,
+      "once": true
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "hold_appears_after_open_before_launch",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "worktree",
+       "list",
+       "--porcelain"
+      ],
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "builtin": true,
+      "once": true,
+      "after": "worktree add"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "kyjob.sh"
+    ],
+    "jobs": [
+     {
+      "kind": "BUILD",
+      "item": "K-1",
+      "phase": "ended",
+      "outcome": "refused",
+      "failure_fp": "hold"
+     }
+    ],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    },
+    "call_counts": {
+     "ky claim": 1,
+     "ky release": 1,
+     "kyjob.sh": 0
+    },
+    "files": {
+     "$RUN/locks/slot.b1": false,
+     "$RUN/locks/item.K-1": false,
+     "$RUN/claims/b1.json": {
+      "state": "released"
+     }
+    }
+   }
+  },
+  {
+   "name": "duplicate_check_failure_then_success_never_queues",
+   "covers": [
+    "MERGE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "view",
+       "7"
+      ],
+      "out": {
+       "number": 7,
+       "headRefOid": "$Ha",
+       "state": "OPEN",
+       "baseRefName": "main",
+       "title": "fixture",
+       "statusCheckRollup": [
+        {
+         "__typename": "CheckRun",
+         "name": "Kāla DB Tests (throwaway Postgres)",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": ""
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/1/job/9"
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/2/job/9"
+        }
+       ],
+       "files": []
+      }
+     },
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7"
+      ],
+      "rc": 0
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "gh pr merge",
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "journal": [
+     "PR unknown"
+    ]
+   }
+  },
+  {
+   "name": "duplicate_check_success_then_failure_never_queues",
+   "covers": [
+    "MERGE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "view",
+       "7"
+      ],
+      "out": {
+       "number": 7,
+       "headRefOid": "$Ha",
+       "state": "OPEN",
+       "baseRefName": "main",
+       "title": "fixture",
+       "statusCheckRollup": [
+        {
+         "__typename": "CheckRun",
+         "name": "Kāla DB Tests (throwaway Postgres)",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": ""
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/2/job/9"
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/1/job/9"
+        }
+       ],
+       "files": []
+      }
+     },
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7"
+      ],
+      "rc": 0
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "gh pr merge",
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "journal": [
+     "PR unknown"
+    ]
+   }
   }
  ]
 }
