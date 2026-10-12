@@ -2,8 +2,11 @@
 """kyd_admit.py — dispatcher admission for KĀLA-YANTRA v3 (KV3-B-KYDADMIT; relaunch plan v2.7 §5 "Base contract
 (KT-04)", §6 "Admission checks", §8.6 "At admission"; KU-02 `dispatcher-ready-receipts`).
 
-version: 1.0 · status: DRAFT (built under the hold; not installed, not merged by its job)
-changelog: 1.0 (2026-10-12) first version, packet PACKET_KV3-B-KYDADMIT_v1.
+version: 1.1 · status: DRAFT (built under the hold; not installed, not merged by its job)
+changelog: 1.1 (2026-10-12) review round 1: code prerequisites are resolved through joins and decisions, an unknown
+           dependency or completion_kind refuses (B1); every reported merge commit is verified before it is used or
+           recorded, also when the accepted head is in the base (B2).
+           1.0 (2026-10-12) first version, packet PACKET_KV3-B-KYDADMIT_v1.
 
 A module of the dispatcher engine (kydispatch.py): no command line, no state of its own. Three calls, each
 returning {"admitted": bool, "refusals": [{"code", "detail"}], "facts": {...}}; admitted is true only with no
@@ -30,14 +33,17 @@ What an admission here is NOT (each is another component's detector, named so th
   - the qualification receipt is read, not re-earned: `result`, `context`, role, model and the binds this module
     hands on are compared, and the MCP configuration is hashed now against the bound sha256; the receipt's checks,
     probes, launchd receipt and remaining binds are re-judged by `kyqualify.py check` (install) and kyjob.sh;
-  - a non-code prerequisite (artifact, packet, operation, decision) is listed without a Git head: its typed
-    acceptance receipt is the tracker's guard, not judged here (plan §5: "never invented Git heads");
+  - a non-code prerequisite (artifact, packet, operation) is listed without a Git head: its typed acceptance receipt
+    is the tracker's guard, not judged here (plan §5: "never invented Git heads"); a join or decision is listed
+    without one too, but the code items beneath it are judged;
   - "verified corresponding merge commit" is: the PR whose head IS the accepted head reports MERGED with a 40-hex
     merge commit that is a single-parent commit of this repository and equals every mapping earlier job states
     recorded for that head. The squash's content is not compared with the head's.
 
 INTERPRETATION (plan and packet silent; each errs to refusal):
-  - code prerequisites are the plan-model item's `depends_on` entries whose own item has completion_kind "code";
+  - code prerequisites are the items of completion_kind "code" reached from the plan-model item's `depends_on`,
+    resolving through items without a completion_kind (joins, decisions) and stopping at code, artifact, operation
+    and packet items; a dependency absent from the model or of another completion_kind refuses as unknown;
   - the item worktree is <WORKTREE_ROOT>/kalayantra-<item, lower case> (kyd_jobs.open's path); "own copies" are
     the registered worktrees under WORKTREE_ROOT named kalayantra-*, "in all" every registered one under it;
   - a slot receipt's mount_source must resolve beneath realpath(scratch), besides `local_db.sh check`;
@@ -68,6 +74,7 @@ MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
 TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "PRE-ACCEPT": 40, "POST-READBACK": 40, "RULING": 30, "PLAN": 300,
              "ARTIFACT": 60, "SURROGATE": 30, "MODEL": 300, "REQUEST-PREP": 300}
 NO_MIGRATION = (None, "", "NONE")           # kyroute.py's NONE_METADATA
+RESOLVED_KINDS = ("code", "artifact", "operation", "packet")    # completion kinds a prerequisite resolution stops at
 PRECHECK_CODES = ("stale", "packet", "routing", "freeze", "launch", "base", "slot_not_ready", "slot_foreign", "ceiling")
 ADMIT_CODES = ("worktree", "lock", "tests", "already_green", "unclassified")
 RESULTS = ("expected_red", "already_green", "unclassified")
@@ -411,6 +418,10 @@ def _judge_prerequisite(ctx, dep, base, recorded):
         merge = pr.get("merge_commit")
         if not isinstance(merge, str) or not SHA1_RE.match(merge):
             return None, "unverified: the PR of %s is MERGED and reports no merge commit" % dep
+        # verified before it is used or recorded, whether or not the head itself is in the base
+        if not _is_squash(ctx, merge):
+            return None, ("unverified: the merge commit %s reported for %s is not a single-parent commit of this "
+                          "repository" % (merge, dep))
     earlier = recorded.get((dep, head), set())
     if earlier and merge is None:
         return None, ("missing: an earlier job recorded %s → %s for %s and no such mapping is observed now"
@@ -427,9 +438,6 @@ def _judge_prerequisite(ctx, dep, base, recorded):
         return dict(entry, contained_by="head"), None
     if merge is None:
         return None, "missing: the accepted head %s of %s is not contained in the base %s and it has not merged" % (head, dep, base)
-    if not _is_squash(ctx, merge):
-        return None, ("unverified: the merge commit %s reported for %s is not a single-parent commit of this "
-                      "repository" % (merge, dep))
     inside = _contained(ctx, merge, base)
     if inside is None:
         return None, "unknown: whether the merge commit %s (%s) is in the base %s could not be asked" % (merge, dep, base)
@@ -437,6 +445,38 @@ def _judge_prerequisite(ctx, dep, base, recorded):
         return None, ("missing: neither the accepted head %s of %s nor its merge commit %s is contained in the base %s"
                       % (head, dep, merge, base))
     return dict(entry, contained_by="merge_commit"), None
+
+
+def resolve_prerequisites(items, item, deps):
+    """([(id, completion_kind)] in depth-first order, each id once; [reasons]) for the dependencies of `item`.
+    An item without a completion_kind (a join or a decision) stands for what lies beneath it and is resolved through;
+    the resolution stops at code (judged by the base contract) and at artifact, operation and packet items (their
+    typed receipts govern). An id absent from the plan model or an unrecognised completion_kind is unknown."""
+    reached, reasons, seen = [], [], set()
+    stack = [(d, item) for d in reversed(deps)]
+    while stack:
+        dep, parent = stack.pop()
+        if dep in seen:
+            continue
+        seen.add(dep)
+        node = items.get(dep)
+        if node is None:
+            reasons.append("unknown: %s (a dependency of %s) is absent from the plan model" % (dep, parent))
+            continue
+        kind = node.get("completion_kind")
+        if kind is None:
+            below = node.get("depends_on")
+            below = [] if below is None else below
+            if not _strings(below):
+                reasons.append("unknown: depends_on of %s (a dependency of %s) is not a list of item ids" % (dep, parent))
+                continue
+            reached.append((dep, None))
+            stack.extend((d, dep) for d in reversed(below))
+        elif kind in RESOLVED_KINDS:
+            reached.append((dep, kind))
+        else:
+            reasons.append("unknown: %s (a dependency of %s) has the unrecognised completion_kind %r" % (dep, parent, kind))
+    return reached, reasons
 
 
 def _check_base(ctx, intent, entries, items, items_reason, refusals, facts):
@@ -461,16 +501,20 @@ def _check_base(ctx, intent, entries, items, items_reason, refusals, facts):
     if not _strings(deps):
         _refuse(refusals, "base", "unknown: depends_on of %s is not a list of item ids" % item)
         return
-    code = [d for d in deps if (items.get(d) or {}).get("completion_kind") == "code"]
+    reached, reasons = resolve_prerequisites(items, item, deps)
+    for reason in reasons:
+        _refuse(refusals, "base", reason)
+    if reasons:
+        return
+    code = [d for d, kind in reached if kind == "code"]
     recorded, reason = recorded_mappings(ctx) if code else ({}, None)
     if reason:
         _refuse(refusals, "base", "unknown: %s, so a changed head→merge mapping could not be ruled out" % reason)
         return
     out, before = [], len(refusals)
-    for dep in deps:
-        if dep not in code:
-            out.append({"item": dep, "kind": (items.get(dep) or {}).get("completion_kind"), "head": None, "via": None,
-                        "merge_commit": None, "contained_by": None})
+    for dep, kind in reached:
+        if kind != "code":
+            out.append({"item": dep, "kind": kind, "head": None, "via": None, "merge_commit": None, "contained_by": None})
             continue
         entry, reason = _judge_prerequisite(ctx, dep, base, recorded)
         if reason:

@@ -155,7 +155,17 @@ class World:
             {"id": "K9-1", "depends_on": s.get("depends_on", []), "completion_kind": "code",
              "brief": merged({"owns": ["platform/x.py"]}, {"migration": s["migration"]} if "migration" in s else {})},
             {"id": "K8-1", "depends_on": [], "completion_kind": "code", "brief": {}},
-            {"id": "A-1", "depends_on": [], "completion_kind": "artifact", "brief": {}}])
+            {"id": "A-1", "depends_on": [], "completion_kind": "artifact", "brief": {}},
+            # the plan model's joins and decisions carry no completion_kind; they stand for what lies beneath them
+            {"id": "J-1", "depends_on": ["K8-1"], "join": True, "done_by": "join"},
+            {"id": "D-2", "depends_on": ["K8-1"], "done_by": "decision", "decision": "D-2"},
+            {"id": "D-1", "depends_on": ["J-1"], "done_by": "decision", "decision": "D-1"},
+            {"id": "A-2", "depends_on": ["K8-1"], "completion_kind": "artifact", "brief": {}},
+            {"id": "X-1", "depends_on": [], "completion_kind": "magic", "brief": {}},
+            {"id": "J-U", "depends_on": ["NOPE-1"], "join": True, "done_by": "join"},
+            {"id": "J-B", "depends_on": "K8-1", "join": True, "done_by": "join"},
+            {"id": "J-C1", "depends_on": ["J-C2"], "join": True, "done_by": "join"},
+            {"id": "J-C2", "depends_on": ["J-C1", "K8-1"], "join": True, "done_by": "join"}])
         self.model = self.tmp / "plan_model.json"
         self.model.write_text("{" if s.get("model_broken") else json.dumps({"items": items}))
 
@@ -407,7 +417,8 @@ def test_fixture_covers_the_acceptance():
     for needle in ("accepted unmerged stack", "squash-landed prerequisite", "missing code", "incorrect mapping",
                    "changed mapping", "KU-02 wrong mount", "KU-02 stale READY receipt", "KU-02 ownership conflict",
                    "expected-red", "already-green", "unclassified", "migration present", "migration NONE",
-                   "tests and digests absent"):
+                   "tests and digests absent", "join over code", "decision over code", "unknown dependency",
+                   "head in base, PR MERGED, merge commit not a commit here"):
         assert needle in names, needle
     stale = [c for c in CASES if c["expect"]["codes"] == ["stale"]]
     assert {(c["setup"].get("intent") or {}).get("pool", "builder") for c in stale} >= {"builder", "verifier", None}
