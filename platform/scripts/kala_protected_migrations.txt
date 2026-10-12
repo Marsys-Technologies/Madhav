@@ -17,3 +17,7 @@
 1341_k1_2_avadhi_candidate_dossiers.sql
 1342_k2_2_f1_relationships.sql
 1350_kala_jury_candidate.sql
+1353_k6_kalasutra_candidate.sql
+1354_k6_darshana_candidate.sql
+1355_k6_jivana_candidate.sql
+1356_k6_read_model_build_scoped_detectors.sql
