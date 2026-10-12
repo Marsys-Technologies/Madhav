@@ -684,6 +684,27 @@ def test_process_matches_has_three_answers(monkeypatch):
     assert kyaction.process_matches(dead_pid(), me["process_start"]) is None               # … so nothing is "gone"
 
 
+def test_a_zombie_is_positively_gone_even_with_its_own_start_identity(monkeypatch):
+    """C2-08: an exited process nobody has reaped still answers `ps` under its pid and its start identity."""
+    p = subprocess.Popen([PY, "-c", "pass"])              # exits at once; not reaped until wait() below
+    try:
+        probe, deadline = None, time.time() + 30
+        while time.time() < deadline:
+            probe = kyaction.ps_probe(p.pid)
+            if probe and probe[0] == "alive" and probe[1].startswith("Z"):
+                break
+            time.sleep(0.02)
+        assert probe and probe[0] == "alive" and probe[1].startswith("Z"), probe       # ps still lists it …
+        assert kyaction.process_matches(p.pid, probe[2]) is False                      # … and it is gone all the same
+    finally:
+        p.wait()
+    me = kyaction.self_identity()                         # the same rule on a ps answer written out here
+    monkeypatch.setattr(kyaction, "_ps", lambda pid, columns: (0, "Z+ " + me["process_start"], ""))
+    assert kyaction.process_matches(me["pid"], me["process_start"]) is False
+    monkeypatch.setattr(kyaction, "_ps", lambda pid, columns: (0, "S+ " + me["process_start"], ""))
+    assert kyaction.process_matches(me["pid"], me["process_start"]) is True
+
+
 @pytest.mark.parametrize("answer", ["timeout", "garbage", "error-text", "rc2"])
 def test_a_ps_that_does_not_answer_properly_is_unknown_never_gone(monkeypatch, answer):
     class Result:
@@ -1315,6 +1336,28 @@ def test_a_cockpit_holding_the_role_lock_may_apply(tmp_path):
     assert_schema("command", doc)
 
 
+@pytest.mark.parametrize("applier", [
+    {"holder_kind": "job", "controller_id": "sess-1"}, {"holder_kind": "job", "session_id": "sess-1"},
+    {"holder_kind": "job", "controller_id": "sess-1", "run_id": "PLANNER-20261011T220000Z"},
+    {"holder_kind": "robot", "controller_id": "sess-1"}, {"controller_id": "sess-1"}, "", None,
+])
+def test_a_job_or_an_unknown_kind_of_holder_never_applies_a_command(tmp_path, applier):
+    """C2-09: schemas/command.json admits cockpit | controller | supervisor as `applied_by`; a job actor used to
+    pass here and then fail inside kyaction with an error that is not a CommandError."""
+    run = mkrun(tmp_path)
+    cid = kycommands.submit(run, "planner", "handoff", {}, COCKPIT)
+    hold(run, "planner", "sess-1")
+    seen = []
+    with pytest.raises(kycommands.CommandInvalid, match="applier must be"):
+        kycommands.apply(run, cid, applier, lambda c: seen.append(c) or {})
+    with pytest.raises(kycommands.CommandInvalid):
+        kycommands.applier_identity(applier)
+    assert seen == [] and kycommands.find(run, cid)["doc"]["state"] == "QUEUED"
+    assert not (run / "actions").exists() and not (run / "locks" / ("command." + cid)).exists()
+    assert set(kycommands.APPLIER_KINDS) == set(
+        json.loads((SCHEMAS / "command.json").read_text())["$defs"]["actor"]["properties"]["holder_kind"]["enum"])
+
+
 @pytest.mark.parametrize("lock,reason", [
     ("none", "role_lock_not_held"), ("other", "role_lock_held_by_another"), ("dead", "role_lock_stale"),
     ("unverifiable", "role_lock_owner_unverifiable"), ("wrong-role", "role_lock_not_held"),
@@ -1835,7 +1878,11 @@ class World:
         if seen is not None and line["state"] == "PENDING_VETO":
             self.see(sid, seen)
         if awaiting_open and isinstance(line["awaiting"], str):
-            (self.run / "awaiting" / (line["awaiting"] + ".json")).write_text(json.dumps({"id": line["awaiting"]}))
+            item = {"id": line["awaiting"]}
+            td = target.get("tracker_decision") if isinstance(target, dict) else None
+            if isinstance(td, dict) and isinstance(td.get("id"), str):
+                item["item"] = td["id"]                    # C2-02: the item names the tracker decision it is about
+            (self.run / "awaiting" / (line["awaiting"] + ".json")).write_text(json.dumps(item))
         return sid
 
     def notify(self, sid, at=T_NOTIFY, result="submitted", text="raise capacity", level="decision"):
@@ -2249,6 +2296,10 @@ def test_an_action_record_the_veto_role_did_not_write_is_not_the_handlers_memory
     d = one(report, sid)
     assert d["outcome"] == "blocked" and "Foreign" in d["reason"] and d["attention"] is True
     assert w.states(sid) == ["PENDING_VETO"] and w.ky_calls() == [] and w.capacity() == ("3\n", "2\n")
+    status = kyveto.status(w.env, now=BEFORE)             # C2-01: what somebody else did under that id is not known
+    (row,) = status["decisions"]
+    assert row["published"] == "unknown" and row["unresolved"] is True and row["made_effective_by_handler"] is False
+    assert status["publication_unknown"] == [sid] and status["attention"] is True
 
 
 def test_a_first_seen_stamp_that_cannot_be_read_blocks(tmp_path):
@@ -2434,13 +2485,14 @@ def test_a_veto_of_a_decision_not_yet_in_its_window_waits_for_it(tmp_path):
     assert w.command(cid)["state"] == "APPLIED" and w.capacity() == ("3\n", "2\n")
 
 
-def test_other_commands_addressed_to_the_veto_role_are_rejected_not_left_to_block(tmp_path):
+def test_other_commands_addressed_to_the_veto_role_are_left_queued_for_the_controller(tmp_path):
     w = World(tmp_path)
     cid = kycommands.submit(w.run, "veto", "status", {}, COCKPIT)
-    report = w.tick(BEFORE)
-    assert w.command(cid)["state"] == "REJECTED"
-    assert w.command(cid)["result"]["reason"] == "unsupported_by_veto_handler: status"
-    assert report["commands"][0]["status"] == "rejected"
+    sid = w.propose(cap())
+    vid = w.veto(sid)
+    report = w.tick(AFTER)
+    assert w.command(cid)["state"] == "QUEUED"            # the veto controller applies or rejects it, never the handler
+    assert one(report, sid)["outcome"] == "vetoed" and w.command(vid)["state"] == "APPLIED"   # and it blocks no veto
 
 
 def test_a_named_holder_settles_the_veto_under_its_own_identity(tmp_path):
@@ -2912,22 +2964,81 @@ def test_authority_given_as_arguments_takes_precedence_over_the_state_file(tmp_p
 
 # ── publication ──
 
-def test_a_failed_publication_is_failed_never_executed(tmp_path):
+READBACKS = {"done": lambda record: ("done", {"observed": "tracker readback"}),
+             "not_done": lambda record: ("not_done", "no such tracker event")}
+
+
+def status_row(w, sid):
+    """→ (exit status, report, the decision's row) of the real `kyveto.py status`."""
+    r = w.cli("status")
+    report = json.loads(r.stdout)
+    (row,) = [x for x in report["decisions"] if x["id"] == sid]
+    return r.returncode, report, row
+
+
+@pytest.mark.parametrize("record,answer", [
+    (None, False),                                                                   # the handler never began
+    ({"state": "DONE", "target": {"tracker_decision": None}}, False),                # nothing was to be published
+    ({"state": "DONE", "target": {"tracker_decision": "D-41", "outcome": "approved"}}, True),
+    ({"state": "INTENDED", "target": {"tracker_decision": "D-41"}, "result": None}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"exit_status": 3}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": "unknown"}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": None}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": False}}, False),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": None}, "unknown"),
+    ({"state": "DONE", "target": {}}, "unknown"), ({"state": "DONE", "target": None}, "unknown"),
+])
+def test_publication_has_three_answers(record, answer):
+    """C2-01: published / not published / unknown — and unknown is whatever is not proven either way."""
+    got = kyveto.publication(record)
+    assert got == answer and type(got) is type(answer)
+
+
+def test_a_publication_ky_refused_is_failed_never_executed_and_not_called_unpublished(tmp_path):
+    """C2-06: a non-zero exit of `ky decide` proves nothing about the tracker. Without a readback the decision is
+    FAILED (nothing is executed, nothing retried) and its publication is UNKNOWN — said in the line, the row and
+    `status`, never "not published"."""
     w = World(tmp_path)
     w.ky_says("rc", 3)
     sid = w.propose(cap(tracker_decision=TD))
     report = w.tick(AT)
     d = one(report, sid)
     assert d["outcome"] == "failed" and d["reason"] == "publication_failed: rc=3"
-    assert d["attention"] is True and "published" not in d            # CT-11: the owner is told; it was not read back
+    assert d["attention"] is True and d["published"] == "unknown" and report["attention"] is True
     assert w.states(sid) == ["PENDING_VETO", "FAILED"]                 # never EFFECTIVE, never EXECUTED
+    assert w.history(sid)[-1]["detail"] == {"published": "unknown"}
     assert w.capacity() == ("3\n", "2\n")
     publish = w.action(sid + ".publish")
-    assert publish["state"] == "FAILED" and publish["result"]["exit_status"] == 3
+    assert publish["state"] == "INTENDED" and len(publish["reconciliations"]) == 1     # unfinished: nothing is known
+    seen = publish["reconciliations"][-1]
+    assert seen["outcome"] == "unknown" and seen["detail"]["ky_exit_status"] == 3
+    assert_schema("action", publish)
     assert w.actions() == [sid + ".publish.json"]                      # the executor was never begun
     w.ky_says("rc", 0)
     assert w.tick(AFTER)["decisions"] == []                            # a failed proposal is not retried
     assert len(w.ky_calls()) == 1 and w.states(sid) == ["PENDING_VETO", "FAILED"]
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True
+    assert status["publication_unknown"] == [sid] and status["attention"] is True
+
+
+def test_a_readback_decides_what_a_refusing_ky_left_behind(tmp_path):
+    """C2-06: "unless a readback proves otherwise" — in both directions."""
+    w = World(tmp_path)
+    w.ky_says("rc", 3)
+    sid = w.propose(cap(tracker_decision=TD))
+    d = one(w.tick(AT, publish_observer=READBACKS["not_done"]), sid)
+    assert d["outcome"] == "failed" and d["reason"] == "publication_failed: rc=3" and "published" not in d
+    assert "detail" not in w.history(sid)[-1] and w.capacity() == ("3\n", "2\n")
+    publish = w.action(sid + ".publish")
+    assert publish["state"] == "FAILED" and publish["result"]["exit_status"] == 3
+    assert publish["result"]["published"] is False
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is False and "unresolved" not in row and status["publication_unknown"] == []
+    other = w.propose(cap(builders=5, tracker_decision=TD))            # the tracker did record it: carried out
+    assert one(w.tick(AT, publish_observer=READBACKS["done"]), other)["outcome"] == "executed"
+    assert w.states(other) == ["PENDING_VETO", "EFFECTIVE", "EXECUTED"] and w.capacity() == ("5\n", "4\n")
+    assert w.action(other + ".publish")["state"] == "DONE" and len(w.ky_calls()) == 2   # one call each, no retry
 
 
 def test_a_missing_ky_is_refused_before_anything_is_recorded(tmp_path):
@@ -2947,20 +3058,152 @@ def test_a_tracker_decision_the_handler_cannot_publish_exactly_is_refused(tmp_pa
     assert w.ky_calls() == []
 
 
-def test_ky_that_does_not_answer_leaves_the_publication_unknown_and_is_not_repeated(tmp_path):
-    w = World(tmp_path)
-    w.ky_says("sleep", 5)
+def ky_never_answers(w, monkeypatch):
+    """`ky decide` is started, records its call and then gives no exit status within the handler's timeout.
+
+    C2-07: the handler's timeout runs from the moment the child is spawned, so on a loaded machine a 0.5 s
+    timeout could expire before the double had even recorded its call. Here the very same real process is run
+    under the very same timeout, and kyveto still meets a real subprocess.TimeoutExpired — only the timeout's
+    clock starts once the double's call is on record. Nothing else that calls subprocess.run is changed."""
+    w.ky_says("sleep", 600)
     w.environ["KYVETO_KY_TIMEOUT_S"] = "0.5"
-    sid = w.propose(cap(tracker_decision=TD))
+    real, ky, calls = subprocess.run, str(w.root / "bin" / "ky"), w.root / "fake_ky" / "calls.jsonl"
+
+    def run(argv, **kw):
+        if not (isinstance(argv, list) and argv and argv[0] == ky and kw.get("timeout")):
+            return real(argv, **kw)
+        before = len(w.ky_calls())
+        p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=kw.get("env"),
+                             stdin=kw.get("stdin"))
+        try:
+            deadline = time.time() + 120
+            while (not calls.exists() or len(w.ky_calls()) <= before) and p.poll() is None:
+                assert time.time() < deadline, "the ky double never recorded its call"
+                time.sleep(0.01)
+            out, err = p.communicate(timeout=kw["timeout"])
+        except BaseException:                             # TimeoutExpired included: as subprocess.run does
+            p.kill()
+            p.communicate()
+            raise
+        return subprocess.CompletedProcess(argv, p.returncode, out, err)
+
+    monkeypatch.setattr(kyveto.subprocess, "run", run)
+
+
+def unknown_publication(w, monkeypatch, **target):
+    """A decision whose `ky decide` timed out: `<id>.publish` INTENDED, the tick blocked. → its id."""
+    ky_never_answers(w, monkeypatch)
+    sid = w.propose(cap(tracker_decision=TD, **target))
     report = w.tick(AT)
     d = one(report, sid)
     assert (d["outcome"], d["reason"]) == ("blocked", "publication_unreconciled")
     assert report["attention"] is True and w.states(sid) == ["PENDING_VETO"]
     assert w.action(sid + ".publish")["state"] == "INTENDED" and w.capacity() == ("3\n", "2\n")
+    assert len(w.ky_calls()) == 1                                       # it was really started, once
+    return sid
+
+
+def test_ky_that_does_not_answer_leaves_the_publication_unknown_and_is_not_repeated(tmp_path, monkeypatch):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
     (w.root / "fake_ky" / "sleep").unlink()
     assert one(w.tick(AFTER), sid)["reason"] == "publication_unreconciled"
     assert len(w.ky_calls()) == 1                                       # unknown never permits a blind retry
     assert w.action(sid + ".publish")["reconciliations"][-1]["outcome"] == "unknown"
+    rc, status, row = status_row(w, sid)                                # C2-01: and `status` does not call it unpublished
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True
+    assert status["publication_unknown"] == [sid]
+
+
+# ── C2-01: publication has three answers; unknown is never reported as "not published" ──
+
+def test_a_veto_after_ky_timed_out_says_the_publication_is_unknown_until_it_is_reconciled(tmp_path, monkeypatch):
+    """The reviewer's probe: `ky decide` gave no exit status, the owner then vetoed — the line said
+    published:false, the row carried no attention and nothing ever mentioned it again, while the tracker may hold
+    a delegated approval the owner vetoed."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["published"], d["attention"]) == ("vetoed", "unknown", True)
+    assert report["attention"] is True
+    assert w.states(sid) == ["PENDING_VETO", "VETOED"] and w.capacity() == ("3\n", "2\n")
+    assert w.history(sid)[-1]["detail"] == {"command": cid, "published": "unknown"}
+    assert w.command(cid)["state"] == "APPLIED" and len(w.ky_calls()) == 1
+    assert w.action(sid + ".publish")["state"] == "INTENDED"            # never closed as "not published"
+    for _ in range(2):                                                  # final for the tick; unresolved for `status`
+        assert w.tick(LATER)["decisions"] == []
+        rc, status, row = status_row(w, sid)
+        assert rc == 3 and status["attention"] is True and status["publication_unknown"] == [sid]
+        assert (row["state"], row["published"], row["unresolved"]) == ("VETOED", "unknown", True)
+    # … until the publish record is reconciled: the tracker does hold the approval the owner vetoed
+    report = w.tick(LATER, publish_observer=READBACKS["done"])
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == (
+        "vetoed", "publication_reconciled", True, True)
+    assert report["attention"] is True and w.states(sid) == ["PENDING_VETO", "VETOED"]
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n")   # reconciled, never re-published or executed
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is True and "unresolved" not in row and status["publication_unknown"] == []
+    assert w.tick(LATER, publish_observer=READBACKS["done"])["decisions"] == []          # reported once
+
+
+def test_a_failed_recheck_after_ky_timed_out_says_the_publication_is_unknown(tmp_path, monkeypatch):
+    """The same probe through the recheck: FAILED target_changed carried no publication flag at all."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    (w.run / "KY_WORKERS").write_text("5\n")                           # the target changed while nobody knew
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == ("failed", "target_changed", "unknown", True)
+    assert w.states(sid) == ["PENDING_VETO", "FAILED"] and w.history(sid)[-1]["detail"] == {"published": "unknown"}
+    assert w.capacity() == ("5\n", "2\n") and len(w.ky_calls()) == 1 and sid + ".execute.json" not in w.actions()
+    assert w.action(sid + ".publish")["state"] == "INTENDED"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["published"], row["unresolved"]) == ("FAILED", "unknown", True)
+    # a readback that proves the tracker holds nothing closes it without an alarm
+    report = w.tick(LATER, publish_observer=READBACKS["not_done"])
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"]) == ("failed", "publication_reconciled", False)
+    assert "attention" not in d and report["attention"] is False
+    publish = w.action(sid + ".publish")
+    assert publish["state"] == "FAILED" and publish["result"]["published"] is False
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is False and "unresolved" not in row
+    assert w.tick(LATER, publish_observer=READBACKS["not_done"])["decisions"] == []
+
+
+@pytest.mark.parametrize("readback,published", [("done", True), ("not_done", False), ("unknown", "unknown"),
+                                                ("raises", "unknown")])
+def test_a_veto_reads_the_unknown_publication_back_before_it_answers(tmp_path, monkeypatch, readback, published):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    cid = w.veto(sid)
+    observer = READBACKS.get(readback) or (lambda record: ("unknown", "tracker unreachable") if readback == "unknown"
+                                           else 1 / 0)
+    report = w.tick(AFTER, publish_observer=observer)
+    d = one(report, sid)
+    assert d["outcome"] == "vetoed" and w.history(sid)[-1]["detail"] == {"command": cid, "published": published}
+    assert d.get("published", False) == published and d.get("attention", False) is (published is not False)
+    assert report["attention"] is (published is not False)
+    assert w.action(sid + ".publish")["state"] == {True: "DONE", False: "FAILED", "unknown": "INTENDED"}[published]
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n") and sid + ".execute.json" not in w.actions()
+
+
+def test_a_refused_record_carries_the_unknown_publication_too(tmp_path, monkeypatch):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    w.append(dict(w.history(sid)[-1], rationale=""))                    # a line the handler cannot answer validly
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["published"], d["attention"]) == ("refused", "unknown", True)
+    assert w.refusal(sid)["published"] == "unknown"
+    # the readback pass settles FINISHED decisions only: a refused record stays the owner's, unresolved in `status`
+    assert w.tick(LATER, publish_observer=READBACKS["done"])["decisions"] == []
+    assert w.action(sid + ".publish")["state"] == "INTENDED"
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True and row["refused"]
 
 
 # ── crashes: a real SIGKILL in a real process (the real clock), recovered by the next tick ──
@@ -3335,8 +3578,10 @@ def test_an_awaiting_item_that_cannot_be_read_as_this_item_fails_the_decision(tm
     ({"tracker_decision": {"id": "D-41"}}, {"id": "D-42", "outcome": "approved"}, False),
     ({"tracker_decision": {"id": "D-41"}, "item": "K7-3"}, {"id": "D-41", "outcome": "approved"}, True),
     ({"item": "D-41"}, None, True),                                             # nothing is published at all
-    ({"item": "K7-3"}, {"id": "D-42", "outcome": "approved"}, True),            # the item names no tracker decision
-    ({}, {"id": "D-42", "outcome": "approved"}, True),
+    ({"item": "K7-3"}, {"id": "D-42", "outcome": "approved"}, False),           # C2-02: the item names no tracker
+    ({}, {"id": "D-42", "outcome": "approved"}, False),                         # decision: nothing binds D-42 to it
+    ({"tracker_decision": {"outcome": "approved"}}, {"id": "D-42", "outcome": "approved"}, False),
+    ({"item": "K7-3"}, None, True),                                             # … and nothing is published: fine
 ])
 def test_the_published_tracker_decision_is_the_one_the_awaiting_item_names(tmp_path, names, published, ok):
     w = World(tmp_path)
@@ -3348,7 +3593,9 @@ def test_the_published_tracker_decision_is_the_one_the_awaiting_item_names(tmp_p
         assert [c["argv"][1] for c in w.ky_calls()] == ([published["id"]] if published else [])
     else:
         d = failed(w, sid, "tracker_decision_not_the_awaiting_items")
-        assert "D-42" in d["reason"] and "D-41" in d["reason"] and w.ky_calls() == [] and w.actions() == []
+        named = kyveto.named_tracker_decision(names)
+        assert "D-42" in d["reason"] and (named or "the item names no tracker decision") in d["reason"]
+        assert named in ("D-41", None) and w.ky_calls() == [] and w.actions() == []
 
 
 def test_the_owners_own_decision_supersedes_the_pending_proposal(tmp_path):
@@ -3584,6 +3831,9 @@ def test_a_bundle_change_without_a_manifest_path_is_malformed(tmp_path):
     ("four-roles", "manifest_entrypoints_missing"), ("six-roles", "manifest_entrypoints_missing"),
     ("entry-without-blob", "manifest_entrypoints_missing"), ("entry-with-absolute-path", "manifest_entrypoints_missing"),
     ("another-commit", "manifest_not_for_new_commit"), ("owner-decisions-blob", "manifest_entrypoint_mismatch"),
+    ("no-source-commit", "manifest_not_for_new_commit"), ("source-commit-null", "manifest_not_for_new_commit"),
+    ("another-entrypoints-digest", "manifest_entrypoints_digest_mismatch"),
+    ("entrypoints-digest-null", "manifest_entrypoints_digest_mismatch"),
 ])
 def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
     """The reviewer's finding: new_manifest_digest and the KX-03 entrypoints mapping were never checked against
@@ -3609,8 +3859,17 @@ def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
             doc["approved_source_commit"] = C3
         elif how == "owner-decisions-blob":
             doc["entrypoints"]["owner_decisions"]["git_blob"] = "9" * 40      # git says d…d at new_commit
+        elif how == "no-source-commit":                   # C2-03: a manifest of no commit in particular
+            del doc["approved_source_commit"]
+        elif how == "source-commit-null":
+            doc["approved_source_commit"] = None
+        elif how == "another-entrypoints-digest":         # C2-03: kyloop refuses this manifest for the next authority
+            doc["entrypoints_digest"] = E2
+        elif how == "entrypoints-digest-null":
+            doc["entrypoints_digest"] = None
         if how in ("no-entrypoints", "four-roles", "six-roles", "entry-without-blob", "entry-with-absolute-path",
-                   "another-commit", "owner-decisions-blob"):
+                   "another-commit", "owner-decisions-blob", "no-source-commit", "source-commit-null",
+                   "another-entrypoints-digest", "entrypoints-digest-null"):
             target["new_manifest_path"], target["new_manifest_digest"] = write_manifest(w, C2, doc=doc, name="m.json")
         elif how == "stored-digest-wrong":
             write_manifest(w, C2, name=Path(target["new_manifest_path"]).name, stored=M3)
@@ -3625,6 +3884,38 @@ def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
             doc["components"].append({"path": "something/slipped/in.py", "sha256": "8" * 64})
             path.write_text(json.dumps(doc))
     chain_refusal(tmp_path, reason, prepare=prepare)
+
+
+@pytest.mark.parametrize("key", ["approved_source_commit", "source_commit"])
+def test_a_manifest_that_states_its_commit_and_its_own_entrypoints_digest_is_accepted(tmp_path, key):
+    """C2-03, the passing side: the source commit under either name, and the digest of the manifest's own mapping."""
+    w = World(tmp_path)
+    doc = manifest_doc(C2)
+    doc[key] = doc.pop("approved_source_commit")
+    doc["entrypoints_digest"] = kyaction.sha_bytes(kyaction.canonical(
+        {role: {"path": e["path"], "git_blob": e["git_blob"]} for role, e in doc["entrypoints"].items()}))
+    path, digest = write_manifest(w, C2, doc=doc, name="stated.json")
+    target = bundle(w, new_manifest_path=path, new_manifest_digest=digest)
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert rec["new_manifest"]["entrypoints_digest"] == doc["entrypoints_digest"]
+
+
+def test_the_activation_record_names_the_manifest_by_its_absolute_path(tmp_path):
+    """C2-04: a target may name the manifest relative to the run directory; the immutable record may not."""
+    w = World(tmp_path)
+    path, digest = write_manifest(w, C2)
+    relative = os.path.relpath(path, w.run)
+    assert not os.path.isabs(relative) and not relative.startswith("..")
+    target = bundle(w, new_manifest_path=relative, new_manifest_digest=digest)
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert_schema("activation_record", rec)
+    assert os.path.isabs(rec["new_manifest"]["path"]) and rec["new_manifest"]["path"] == os.path.abspath(path)
+    assert rec["new_manifest"]["sha256"] == sha(rec["new_manifest"]["path"])
+    assert all(os.path.isabs(r["path"]) for r in rec["review_receipts"])
 
 
 def test_a_manifest_changed_during_the_window_is_a_changed_target(tmp_path):
@@ -4170,3 +4461,835 @@ def test_usage_errors(tmp_path):
     gone = dict(w.environ, KY_RUN=str(tmp_path / "no-such-run"))
     r = subprocess.run([PY, str(FLEET / "kyveto.py"), "tick"], capture_output=True, text=True, env=gone)
     assert r.returncode == 66 and not (tmp_path / "no-such-run").exists()       # never creates a run tree
+
+
+# ── C3-01 (review round 3): the capacity pair is one effect that can be told apart from nothing ──
+
+def effect_of(w, sid, **params):
+    rec = w.action(sid + ".execute")
+    ctx = kyveto.Ctx(w.env, sid, None, None)
+    return kyveto.REGISTRY["capacity"].effect(cap(**params), ctx, rec["inputs"].get("before"))
+
+
+def test_the_before_values_are_recorded_with_the_intended_record(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "INTENDED" and rec["inputs"]["before"] == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    assert_schema("action", rec)
+    answer, detail = effect_of(w, sid)                    # half the pair is NOT nothing
+    assert answer == "partial" and detail["in_place"] == ["KY_WORKERS"] and detail["foreign"] == []
+    assert one(w.tick(AFTER), sid)["outcome"] == "executed" and w.capacity() == ("6\n", "4\n")
+    done = w.action(sid + ".execute")                     # finished under the same record, the same before values
+    assert done["state"] == "DONE" and done["inputs"] == rec["inputs"]
+
+
+def test_the_effect_in_place_has_three_answers_and_absent_is_observed(tmp_path):
+    w = World(tmp_path)
+    capacity, ctx = kyveto.REGISTRY["capacity"], kyveto.Ctx(World(tmp_path / "w2").env, "SD-1", None, None)
+    run = ctx.env.run
+    before = capacity.before(cap(), ctx)
+    assert before == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    assert capacity.effect(cap(), ctx, before)[0] == "absent"
+    (run / "KY_VERIFIERS").write_text("4\n")
+    assert capacity.effect(cap(), ctx, before) == ("partial", {
+        "before": {"KY_WORKERS": "3", "KY_VERIFIERS": "2"}, "observed": {"KY_WORKERS": "3", "KY_VERIFIERS": "4"},
+        "in_place": ["KY_VERIFIERS"], "foreign": []})
+    (run / "KY_WORKERS").write_text("7\n")                # somebody else's value: neither before nor this change's
+    answer, detail = capacity.effect(cap(), ctx, before)
+    assert answer == "partial" and detail["foreign"] == ["KY_WORKERS"] and detail["in_place"] == ["KY_VERIFIERS"]
+    (run / "KY_WORKERS").unlink()                         # a file that vanished is not "nothing in place" either
+    assert capacity.effect(cap(), ctx, before)[1]["foreign"] == ["KY_WORKERS"]
+    for unrecorded in (None, {}, {"KY_WORKERS": "3\n"}, {"KY_WORKERS": 3, "KY_VERIFIERS": "2\n"}):
+        assert capacity.effect(cap(), ctx, unrecorded) == ("unknown", {"error": "before_values_not_recorded"})
+    (run / "KY_WORKERS").write_bytes(b"\xff\xfe")
+    assert capacity.effect(cap(), ctx, before)[0] == "unknown"
+    (run / "KY_WORKERS").write_text("6" * 5000)
+    with pytest.raises(ValueError):
+        capacity.before(cap(), ctx)                       # what could not be put back exactly is not recorded
+    capacity.restore(cap(), ctx, {"KY_WORKERS": None, "KY_VERIFIERS": "2\n"}, ["KY_WORKERS", "KY_VERIFIERS"])
+    assert not (run / "KY_WORKERS").exists() and (run / "KY_VERIFIERS").read_text() == "2\n"
+    assert w.capacity() == ("3\n", "2\n")                 # the other world was never touched
+
+
+def test_a_veto_after_a_crash_between_the_two_capacity_files_puts_the_written_half_back(tmp_path):
+    """The reviewer's probe: KY_WORKERS already 6, KY_VERIFIERS still 2, the record INTENDED, then the veto."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "2\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("vetoed", "restored", True)
+    assert report["attention"] is True                    # the vetoed value was in force for a while: said, not hidden
+    assert w.capacity() == ("3\n", "2\n")                 # … and the dispatcher no longer reads it
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "vetoed_partial_effect_restored"
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == "restored" and partial["restored"] == ["KY_WORKERS"]
+    assert partial["was"] == {"KY_WORKERS": "6", "KY_VERIFIERS": "2"}
+    assert partial["observed"] == partial["before"] == {"KY_WORKERS": "3", "KY_VERIFIERS": "2"}
+    assert rec["reconciliations"][0]["detail"]["incomplete"] == ["KY_VERIFIERS"]
+    line = w.history(sid)[-1]
+    assert line["state"] == "VETOED" and line["detail"]["partial_effect"] == partial
+    assert w.command(cid)["state"] == "APPLIED"
+    rc, status, row = status_row(w, sid)                  # put back and verified: nothing left to attend to
+    assert rc == 0 and row["partial_effect"] == "restored" and "unresolved" not in row
+    assert status["partial_effects"] == [] and w.tick(LATER)["decisions"] == []
+
+
+@pytest.mark.parametrize("why", ["foreign-value", "restore-raises", "restore-does-nothing"])
+def test_a_partial_effect_that_is_not_put_back_is_reported_never_called_unexecuted(tmp_path, monkeypatch, why):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    capacity = kyveto.REGISTRY["capacity"]
+    if why == "foreign-value":
+        (w.run / "KY_VERIFIERS").write_text("5\n")        # not the before value, not this change's: not ours to undo
+    elif why == "restore-raises":
+        def broken(p, ctx, before, names):
+            raise OSError("read-only file system")
+        monkeypatch.setattr(capacity, "restore", broken)
+    else:
+        monkeypatch.setattr(capacity, "restore", lambda p, ctx, before, names: None)
+    left = w.capacity()
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("vetoed", "in_place", True)
+    assert report["attention"] is True and w.capacity() == left and left[0] == "6\n"
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "vetoed_with_partial_effect"
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == "in_place" and partial["in_place"] == ["KY_WORKERS"]
+    assert partial["foreign"] == (["KY_VERIFIERS"] if why == "foreign-value" else [])
+    assert ("restore_error" in partial) == (why == "restore-raises")
+    line = w.history(sid)[-1]
+    assert line["state"] == "VETOED" and line["detail"]["partial_effect"]["state"] == "in_place"
+    assert w.command(cid)["state"] == "APPLIED"
+    monkeypatch.undo()
+    rc, status, row = status_row(w, sid)                  # still in place: unresolved for as long as that is so
+    assert rc == 3 and row["partial_effect"] == "in_place" and row["unresolved"] is True
+    assert status["partial_effects"] == [sid] and status["attention"] is True
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == left         # final for the handler; nothing retried
+    (w.run / "KY_WORKERS").write_text("3\n")              # the owner puts the pair back
+    (w.run / "KY_VERIFIERS").write_text("2\n")
+    rc, status, row = status_row(w, sid)                  # … and a FRESH look, not the record, says so
+    assert rc == 0 and row["partial_effect"] == "no_longer_in_place" and "unresolved" not in row
+    assert status["partial_effects"] == []
+
+
+def test_vetoed_before_execution_is_recorded_only_after_nothing_was_observed_in_place(tmp_path):
+    w = World(tmp_path)
+    clean, unknown = w.propose(cap()), None
+    w.crash("before-execute", "tick")
+    w.veto(clean)
+    d = one(w.tick(AFTER), clean)
+    assert d["outcome"] == "vetoed" and "partial_effect" not in d and "attention" not in d
+    rec = w.action(clean + ".execute")
+    assert rec["result"] == {"command": d["command"], "reason": "vetoed_before_execution"}
+    assert "partial_effect" not in w.history(clean)[-1]["detail"]
+    # a record that holds no before values (written before this rule): "nothing happened" cannot be observed
+    w2 = World(tmp_path / "w2")
+    unknown = w2.propose(cap())
+    w2.crash("before-execute", "tick")
+    path = w2.run / "actions" / (unknown + ".execute.json")
+    doc = json.loads(path.read_text())
+    del doc["inputs"]["before"]
+    path.write_text(json.dumps(doc))
+    cid = w2.veto(unknown)
+    for now in (AFTER, LATER):                            # on every tick, until somebody has looked
+        report = w2.tick(now)
+        d = one(report, unknown)
+        assert (d["outcome"], d["reason"], d["attention"]) == (
+            "blocked", "execution_unreconciled: before_values_not_recorded", True)
+        assert report["attention"] is True
+    assert w2.action(unknown + ".execute")["state"] == "INTENDED" and w2.command(cid)["state"] == "QUEUED"
+    assert w2.states(unknown) == ["PENDING_VETO", "EFFECTIVE"]
+
+
+@pytest.mark.parametrize("restorable", [True, False])
+def test_an_executor_error_on_the_second_capacity_file_is_put_back_or_reported(tmp_path, monkeypatch, restorable):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real, pool = kyaction.write_atomic, []
+
+    def flaky(path, data, mode=None):                     # the first pool file is written, then the disk gives up
+        if Path(path).name in ("KY_WORKERS", "KY_VERIFIERS"):
+            pool.append(Path(path).name)
+            if len(pool) == 2 or (len(pool) > 2 and not restorable):
+                raise OSError("disk full")
+        return real(path, data, mode)
+
+    monkeypatch.setattr(kyaction, "write_atomic", flaky)
+    report = w.tick(AT)
+    monkeypatch.undo()
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "execution_failed: executor_error: OSError")
+    assert d["attention"] is True and d["published"] is True and pool[:3] == ["KY_WORKERS", "KY_VERIFIERS", "KY_WORKERS"]
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state
+    assert w.capacity() == (("3\n", "2\n") if restorable else ("6\n", "2\n"))
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "executor_error: OSError"
+    assert rec["result"]["partial_effect"]["state"] == state
+    assert rec["inputs"]["before"] == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    line = w.history(sid)[-1]
+    assert line["state"] == "FAILED" and line["detail"]["published"] is True
+    assert line["detail"]["partial_effect"] == rec["result"]["partial_effect"]
+    rc, status, row = status_row(w, sid)
+    assert row["partial_effect"] == state and status["partial_effects"] == ([] if restorable else [sid])
+    assert (rc, row.get("unresolved")) == ((0, None) if restorable else (3, True))
+    left = w.capacity()
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == left and len(w.ky_calls()) == 1      # never retried
+
+
+def test_a_failed_execution_found_after_a_restart_still_names_its_partial_effect(tmp_path, monkeypatch):
+    """The handler died between closing `<id>.execute` FAILED and its FAILED line: the next tick says both."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.crash("between-files", "tick")
+    (w.run / "KY_VERIFIERS").write_text("5\n")
+    partial = {"state": "in_place", "in_place": ["KY_WORKERS"], "foreign": ["KY_VERIFIERS"]}
+    kyaction.fail(w.run, sid + ".execute", {"reason": "executor_error: OSError", "partial_effect": partial})
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("failed", "in_place", True)
+    assert w.history(sid)[-1]["detail"] == {"partial_effect": partial}
+    assert status_row(w, sid)[2]["unresolved"] is True
+
+
+# ── C3-02 (review round 3): a line that steps back takes a decision out of nothing ──
+
+def step_back(w, sid, state="PROPOSED", **over):
+    """The surrogate re-rules an unchanged item under the same id: one more line, an earlier state."""
+    w.append(dict(w.history(sid)[0], state=state, **over))
+
+
+def test_needs_handler_once_in_the_window_whatever_the_latest_line_says():
+    veto = {"class": "veto"}
+    lines = [dict(veto, state="PENDING_VETO"), dict(veto, state="PROPOSED")]
+    assert kyveto.needs_handler(lines, False) is True and kyveto.regressed(lines) is True
+    assert kyveto.needs_handler([dict(veto, state="PROPOSED")], False) is False          # not yet in its window
+    assert kyveto.needs_handler([dict(veto, state="PROPOSED")], False, begun=True) is True
+    assert kyveto.needs_handler([{"class": "routine", "state": "EXECUTED"}], False) is False
+    assert kyveto.needs_handler(lines + [dict(veto, state="VETOED")], False) is False    # an accepted terminal state
+    assert kyveto.regressed([dict(veto, state="PROPOSED"), dict(veto, state="PENDING_VETO")]) is False
+    assert kyveto.regressed([dict(veto, state="PENDING_VETO"), dict(veto, state="EFFECTIVE"),
+                             dict(veto, state="PENDING_VETO")]) is True
+    assert kyveto.accepted_state(lines, False, False) == "PENDING_VETO"
+    assert kyveto.accepted_state(lines, True, False) == "EFFECTIVE"
+
+
+def test_a_proposed_line_after_pending_veto_does_not_take_the_decision_out_of_the_handler(tmp_path):
+    """Probe 1: PENDING_VETO, then PROPOSED under the same id. The decision carries on from the handler's memory
+    (the proposal and its stamp); the step back is an anomaly somebody is told about."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid)
+    report = w.tick(BEFORE)
+    d = one(report, sid)
+    assert (d["outcome"], d["seconds_remaining"]) == ("pending", 1200)
+    assert d["anomaly"] == "line_regressed_before_terminal_state" and d["attention"] is True
+    assert report["attention"] is True and w.untouched()
+    r = w.cli("status", "--now", BEFORE)
+    (row,) = json.loads(r.stdout)["decisions"]
+    assert r.returncode == 3 and (row["state"], row["latest_line_state"]) == ("PENDING_VETO", "PROPOSED")
+    assert row["unresolved"] is True and row["anomaly"] == "line_regressed_before_terminal_state"
+    assert row["seconds_remaining"] == 1200
+    report = w.tick(AT)                                   # at expiry the owner's notification IS answered
+    d = one(report, sid)
+    assert d["outcome"] == "executed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert report["attention"] is True and w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "EFFECTIVE", "EXECUTED"]
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # answered by the handler's own lines
+    assert rc == 0 and row["state"] == "EXECUTED" and "anomaly" not in row and "unresolved" not in row
+
+
+def test_an_owner_veto_is_still_answered_after_a_line_stepped_back(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid)
+    cid = w.veto(sid)
+    d = one(w.tick(BEFORE), sid)
+    assert d["outcome"] == "vetoed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "VETOED"] and w.command(cid)["state"] == "APPLIED"
+    assert w.tick(AT)["decisions"] == [] and w.ky_calls() == [] and w.capacity() == ("3\n", "2\n")
+
+
+def test_a_step_back_that_changes_what_the_owner_was_told_fails_by_name(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid, decision="raise capacity and merge PR 1")
+    d = one(w.tick(AT), sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("failed", "decision_record_mutated: decision", True)
+    assert "published" not in d and w.untouched()         # three-valued: here positively nothing was published
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "FAILED"]
+
+
+def test_a_proposed_line_after_publication_does_not_strand_the_execution(tmp_path):
+    """Probe 2: the handler has published (`ky decide` ran, EFFECTIVE, `<id>.execute` INTENDED), then PROPOSED is
+    appended. Before: no tick ever looked again and status said PROPOSED, exit 0, with a delegated approval in
+    the tracker that nobody executed."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert w.crash("before-execute", "tick").returncode == -signal.SIGKILL
+    assert len(w.ky_calls()) == 1 and w.action(sid + ".execute")["state"] == "INTENDED"
+    step_back(w, sid)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"]) == ("EFFECTIVE", "PROPOSED")
+    assert row["unresolved"] is True and row["published"] is True and row["made_effective_by_handler"] is True
+    assert row["anomaly"] == "line_regressed_before_terminal_state"
+    assert status["unfinished_actions"] == [sid + ".execute"]
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert d["outcome"] == "executed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert report["attention"] is True and w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE", "PROPOSED", "EXECUTED"]
+    assert w.action(sid + ".execute")["state"] == "DONE"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "EXECUTED" and status["unfinished_actions"] == []
+
+
+def test_handler_records_without_a_proposal_in_the_log_are_answered_not_ignored(tmp_path):
+    """The log was rewritten to a lone PROPOSED line while the handler holds action records for the id."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    w.crash("before-execute", "tick")
+    w.log.write_text(json.dumps(dict(w.history(sid)[0], state="PROPOSED")) + "\n")
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["anomaly"] == "proposal_missing" and row["unresolved"] is True
+    assert row["state"] == "EFFECTIVE"                    # the handler's own publication record says so
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == ("failed", "proposal_missing", True, True)
+    assert w.capacity() == ("3\n", "2\n") and w.states(sid) == ["PROPOSED", "FAILED"]
+
+
+# ── C3-06 (review round 3): an EXECUTED line carries effective_at, as the decision schema requires ──
+
+def test_an_executed_line_must_carry_effective_at(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.tick(AT)
+    proposal, effective, executed = w.history(sid)
+    assert executed["state"] == "EXECUTED" and executed["effective_at"] == AT
+    assert kyveto.line_problem(executed) is None and kyveto.line_problem(effective) is None
+    for line in (effective, executed):
+        assert kyveto.line_problem(dict(line, effective_at=None)) == (
+            "line_malformed: an %s line carries effective_at" % line["state"])
+        assert schema_errors("surrogate_decision", dict(line, effective_at=None))      # the schema agrees
+    assert kyveto.line_problem(dict(executed, state="VETOED", effective_at=None)) is None
+    handler = kyveto.Handler(w.env, kyaction.parse_utc(AT), None, "ctl-veto", "controller", None, None)
+    before = w.log.read_bytes()
+    with pytest.raises(kyveto.Unwritable):
+        handler.append(executed, "EXECUTED", "executed", None)
+    assert w.log.read_bytes() == before                   # nothing was written
+
+
+# ── C4-01 (review round 4, ruling R14): VETOED / FAILED is final by the handler's own records, never by a line ──
+
+TERMINAL_CLAIM = "terminal_line_not_the_handlers"
+
+
+def surrogate_line(w, sid, state, **over):
+    """One more line under a decision's id as the surrogate writes it when it re-rules a blocked item."""
+    line = dict(w.history(sid)[0], state=state, by=kyveto.SURROGATE, session="surrogate-2", reason="re-ruled")
+    line.update(over)
+    w.append(line)
+
+
+def half_executed(w, **target):
+    """The reviewer's half state: the handler was killed between the two capacity files. → the decision id."""
+    sid = w.propose(cap(**target))
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "2\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+    return sid
+
+
+def test_a_terminal_line_is_final_by_the_handlers_records_not_by_its_author():
+    """The state rule itself: `held` — the handler holds an action record for the decision; `closed` — the state
+    the handler closed it with itself (its own marker), which the caller withholds while `<id>.execute` is
+    INTENDED or DONE."""
+    veto = {"class": "veto"}
+    lines = [dict(veto, state="PENDING_VETO"), dict(veto, state="EFFECTIVE")]
+    for claim in ("FAILED", "VETOED"):
+        for by in ("kyveto", kyveto.SURROGATE):                       # who a line says wrote it plays no part
+            claimed = lines + [dict(veto, state=claim, by=by)]
+            assert kyveto.first_terminal(claimed, False) == claim     # no record of the handler's: nothing is out
+            assert kyveto.first_terminal(claimed, False, held=True) is None
+            assert kyveto.first_terminal(claimed, False, held=True, closed=claim) == claim
+            assert kyveto.first_terminal(claimed, True, held=True, closed=claim) is None      # executed: EXECUTED only
+            assert kyveto.first_terminal(claimed + [dict(veto, state="EXECUTED")], True, held=True) == "EXECUTED"
+            assert kyveto.first_terminal(claimed + [dict(veto, state="EXECUTED")], False, held=True) is None
+            assert kyveto.needs_handler(claimed, False, begun=True) is True
+            assert kyveto.needs_handler(claimed, False, begun=True, closed=claim) is False
+            assert kyveto.needs_handler(claimed, True, begun=True, closed=claim) is True
+            assert kyveto.needs_handler(claimed, False) is False
+            assert kyveto.accepted_state(claimed, True, False) == "EFFECTIVE"
+            assert kyveto.accepted_state(claimed, True, False, closed=claim) == claim
+            assert kyveto.accepted_state(claimed, True, True, closed=claim) == "EFFECTIVE"
+            assert kyveto.accepted_state(claimed, False, False, begun=True) == "PENDING_VETO"
+            assert kyveto.accepted_state(claimed, False, False) == claim
+    other = lines + [dict(veto, state="VETOED"), dict(veto, state="FAILED")]
+    assert kyveto.first_terminal(other, False, held=True, closed="FAILED") == "FAILED"         # the handler's own word
+    assert kyveto.first_terminal(other, False, held=True, closed="EXECUTED") is None
+    assert kyveto.first_terminal(other, False) == "VETOED"
+
+
+@pytest.mark.parametrize("restorable", [True, False])
+def test_an_executed_claim_over_a_half_written_effect_is_undone_not_only_failed(tmp_path, restorable):
+    """Probe (a): the handler was killed between the two capacity files (KY_WORKERS 6, KY_VERIFIERS 2, execute
+    INTENDED), then an EXECUTED line appears in the log. Before: FAILED log_claims_executed_without_action_record
+    without a look at what was in place — the record stayed INTENDED, KY_WORKERS kept 6, the next tick reported
+    nothing and `status` read FAILED, attention false, partial_effects empty."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    if not restorable:
+        (w.run / "KY_VERIFIERS").write_text("5\n")        # not the before value, not this change's: not ours to undo
+    left = w.capacity()
+    surrogate_line(w, sid, "EXECUTED", effective_at=AT)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "log_claims_executed_without_action_record")
+    assert d["anomaly"] == "log_claim_without_action_record" and d["attention"] is True and report["attention"] is True
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state and d["published"] is True
+    assert w.capacity() == (("3\n", "2\n") if restorable else left)
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["because"] == "log_claims_executed_without_action_record"
+    assert rec["result"]["reason"] == ("given_up_partial_effect_restored" if restorable else "given_up_with_partial_effect")
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == state and partial["in_place" if not restorable else "restored"] == ["KY_WORKERS"]
+    assert rec["reconciliations"][0]["detail"]["incomplete"] == ["KY_VERIFIERS"]
+    assert_schema("action", rec)
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["reason"]) == ("FAILED", "kyveto", d["reason"])
+    assert line["detail"] == {"published": True, "partial_effect": partial}
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == (("3\n", "2\n") if restorable else left)
+    rc, status, row = status_row(w, sid)
+    assert row["state"] == "FAILED" and row["partial_effect"] == state and status["unfinished_actions"] == []
+    assert (rc, row.get("unresolved"), status["partial_effects"]) == ((0, None, []) if restorable else (3, True, [sid]))
+
+
+@pytest.mark.parametrize("exit_", ["proposal_missing", "decision_record_mutated: proposal",
+                                   "log_claims_effective_without_action_record"])
+def test_every_exit_that_gives_a_decision_up_closes_its_unfinished_execution(tmp_path, exit_):
+    """Probe (a), "the same exit serves decision_record_mutated: proposal and proposal_missing": every FAILED the
+    handler writes while `<id>.execute` is INTENDED first looks at what is in place, as an owner veto does."""
+    w = World(tmp_path)
+    sid = half_executed(w)
+    lines = w.history(sid)
+    if exit_ == "proposal_missing":
+        w.log.write_text(json.dumps(dict(lines[0], state="PROPOSED")) + "\n")
+    elif exit_.startswith("decision_record_mutated"):
+        w.log.write_text("".join(json.dumps(x) + "\n" for x in [dict(lines[0], rationale="a different story")] + lines[1:]))
+    else:
+        (w.run / "actions" / (sid + ".publish.json")).unlink()         # the EFFECTIVE line is a claim nothing backs
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("failed", exit_, True)
+    assert d["partial_effect"] == "restored" and w.capacity() == ("3\n", "2\n")
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["because"] == exit_
+    assert rec["result"]["partial_effect"]["restored"] == ["KY_WORKERS"]
+    assert w.history(sid)[-1]["detail"]["partial_effect"] == rec["result"]["partial_effect"]
+    assert w.tick(LATER)["decisions"] == [] and kyveto.status(w.env)["unfinished_actions"] == []
+
+
+def test_an_executed_claim_over_a_complete_effect_is_answered_from_the_disk(tmp_path):
+    """The same exit with both files written (killed before the result was recorded): the record is reconciled
+    to DONE, so the decision IS executed — the handler says so itself instead of resting FAILED on 6/4."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert w.crash("after-execute", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "4\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    surrogate_line(w, sid, "EXECUTED", effective_at=AT)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("executed", "already_executed", True)
+    assert d["instead_of"] == "log_claims_executed_without_action_record" and d["executed"] is True
+    assert d["anomaly"] == "log_claim_without_action_record" and d["published"] is True
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "DONE" and [r["outcome"] for r in rec["reconciliations"]] == ["done"]
+    last = w.history(sid)[-1]
+    assert (last["state"], last["by"], last["detail"]["already_executed"]) == ("EXECUTED", "kyveto", d["instead_of"])
+    assert w.capacity() == ("6\n", "4\n") and w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "EXECUTED" and row["executed_by_handler"] is True
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+@pytest.mark.parametrize("restorable", [True, False])
+def test_a_terminal_line_over_a_half_written_effect_does_not_end_the_handlers_custody(tmp_path, claim, restorable):
+    """Probe (b), first half: the half state, then a FAILED or VETOED line written by the surrogate. Before:
+    first_terminal accepted the line, the decision left the handler for good, no tick row, `status` FAILED with
+    attention false, the record INTENDED and KY_WORKERS 6."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    if not restorable:
+        (w.run / "KY_VERIFIERS").write_text("5\n")
+    left = w.capacity()
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)                  # not final — and somebody is told before any tick ran
+    assert rc == 3 and (row["state"], row["latest_line_state"]) == ("EFFECTIVE", claim)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    assert status["unfinished_actions"] == [sid + ".execute"]
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: " + claim)
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True and report["attention"] is True
+    assert d["published"] is True and d["executed"] is False
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state and w.capacity() == (("3\n", "2\n") if restorable else left)
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["partial_effect"]["state"] == state
+    assert rec["result"]["because"] == d["reason"]
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["reason"]) == ("FAILED", "kyveto", d["reason"])
+    assert line["detail"] == {"published": True, "partial_effect": rec["result"]["partial_effect"]}
+    assert w.tick(LATER)["decisions"] == []               # answered once: the handler has closed it itself now
+    rc, status, row = status_row(w, sid)
+    assert row["state"] == "FAILED" and "anomaly" not in row and status["unfinished_actions"] == []
+    assert (rc, row.get("unresolved"), status["partial_effects"]) == ((0, None, []) if restorable else (3, True, [sid]))
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+def test_a_terminal_line_beside_an_executed_effect_is_overruled_by_the_execution_record(tmp_path, monkeypatch, claim):
+    """Probe (b), second half: fully executed (`<id>.execute` DONE, capacity 6/4), the EXECUTED line lost, then
+    a FAILED or VETOED line written by the surrogate. Before: `status` FAILED with executed_by_handler true and
+    attention false, and no tick ever said a word."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real = kyveto.Handler.append
+
+    def lose_the_executed_line(self, latest, state, *a, **k):
+        if state == "EXECUTED":
+            raise OSError("no space left on device")
+        return real(self, latest, state, *a, **k)
+
+    with monkeypatch.context() as m:
+        m.setattr(kyveto.Handler, "append", lose_the_executed_line)
+        assert one(w.tick(AT), sid)["outcome"] == "blocked"
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"] and w.action(sid + ".execute")["state"] == "DONE"
+    assert w.capacity() == ("6\n", "4\n")
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"], row["executed_by_handler"]) == ("EFFECTIVE", claim, True)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("executed", "already_executed", True)
+    assert d["instead_of"] == "closed_by_log_line: " + claim and d["anomaly"] == TERMINAL_CLAIM
+    assert d["executed"] is True and d["published"] is True and report["attention"] is True
+    last = w.history(sid)[-1]
+    assert (last["state"], last["by"], last["effective_at"]) == ("EXECUTED", "kyveto", AT)
+    assert w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.tick(LATER)["decisions"] == []               # the log says the truth again: reported once
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and (row["state"], row["latest_line_state"]) == ("EXECUTED", "EXECUTED")
+    assert "unresolved" not in row and "anomaly" not in row
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+def test_a_terminal_line_after_publication_is_answered_when_the_handler_closed_nothing(tmp_path, monkeypatch, claim):
+    """Probe (c): published, the execution blocked with attention on every tick, then a surrogate FAILED line.
+    Before: the blocked row disappeared, the delegated approval stayed in the tracker and nobody was told."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    with monkeypatch.context() as m:
+        m.setattr(kyveto.Handler, "execute", lambda self, *a, **k: {
+            "outcome": "blocked", "reason": "simulated stop before the execution", "attention": True})
+        for now in (AT, AFTER):
+            report = w.tick(now)
+            assert one(report, sid)["outcome"] == "blocked" and report["attention"] is True
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"] and len(w.ky_calls()) == 1
+    assert w.actions() == [sid + ".publish.json"]
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"], row["published"]) == ("EFFECTIVE", claim, True)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    report = w.tick(LATER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: " + claim)
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True and report["attention"] is True
+    assert d["published"] is True and d["executed"] is False and "partial_effect" not in d
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["detail"]) == ("FAILED", "kyveto", {"published": True})
+    assert w.capacity() == ("3\n", "2\n") and w.actions() == [sid + ".publish.json"] and len(w.ky_calls()) == 1
+    for _ in range(2):                                    # once: the handler has closed it itself now
+        assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "FAILED" and "unresolved" not in row and "anomaly" not in row
+    assert row["published"] is True and row["executed_by_handler"] is False
+
+
+def test_a_terminal_line_over_an_unknown_publication_is_answered_with_the_unknown(tmp_path, monkeypatch):
+    """Probe (c) with `ky decide` unanswered: blocked publication_unreconciled on every tick, then FAILED."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    surrogate_line(w, sid, "FAILED")
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: FAILED")
+    assert (d["published"], d["executed"], d["attention"], d["anomaly"]) == ("unknown", False, True, TERMINAL_CLAIM)
+    assert w.history(sid)[-1]["detail"] == {"published": "unknown"} and len(w.ky_calls()) == 1
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # the unknown publication stays the owner's to settle
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True and "anomaly" not in row
+
+
+def test_a_terminal_line_never_silences_an_execution_that_cannot_be_reconciled(tmp_path, monkeypatch):
+    """Probe (c) with the record begun: blocked execution_unreconciled on every tick stays exactly that."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    capacity = kyveto.REGISTRY["capacity"]
+    with monkeypatch.context() as m:
+        m.setattr(capacity, "observer", lambda p, ctx: ("unknown", {"error": "the pool files cannot be read"}))
+        assert one(w.tick(AFTER), sid)["reason"] == "execution_unreconciled"
+        surrogate_line(w, sid, "FAILED")
+        for now in (AFTER, LATER):
+            report = w.tick(now)
+            d = one(report, sid)
+            assert (d["outcome"], d["attention"], d["anomaly"]) == ("blocked", True, TERMINAL_CLAIM)
+            assert d["reason"] == "execution_unreconciled" and d["giving_up"] == "closed_by_log_line: FAILED"
+            assert report["attention"] is True
+    assert w.action(sid + ".execute")["state"] == "INTENDED" and w.capacity() == ("6\n", "2\n")
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["unresolved"] is True and row["state"] == "EFFECTIVE"
+    d = one(w.tick(LATER), sid)                           # the files can be read again: closed, put back, said
+    assert (d["outcome"], d["partial_effect"]) == ("failed", "restored") and w.capacity() == ("3\n", "2\n")
+
+
+def test_an_owner_veto_is_still_the_answer_to_a_decision_a_line_claims_closed(tmp_path):
+    w = World(tmp_path)
+    sid = half_executed(w)
+    surrogate_line(w, sid, "FAILED")
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["command"], d["partial_effect"]) == ("vetoed", cid, "restored")
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True
+    assert d["executed"] is False and d["published"] is False
+    assert w.capacity() == ("3\n", "2\n") and w.command(cid)["state"] == "APPLIED"
+    assert w.command(cid)["result"]["outcome"] == "VETOED" and report["commands"][0]["status"] == "applied"
+    assert w.states(sid)[-2:] == ["FAILED", "VETOED"] and w.history(sid)[-1]["by"] == "kyveto"
+    assert w.action(sid + ".execute")["result"]["reason"] == "vetoed_partial_effect_restored"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # the handler's own closing is what the state is
+    assert rc == 0 and (row["state"], row["latest_line_state"]) == ("VETOED", "VETOED")
+
+
+def test_the_handler_remembers_which_decisions_it_closed_itself(tmp_path):
+    """R14, "a state rule, not an authorship rule": a line's `by` is whatever the model wrote. What ends the
+    handler's custody of a decision it had begun to act on is its own closing marker beside the action records."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    w.crash("before-execute", "tick")                     # published; `<id>.execute` INTENDED, nothing written
+    w.veto(sid)
+    assert one(w.tick(AFTER), sid)["outcome"] == "vetoed"
+    path = kyveto.stamp_path(w.run, sid, "closed")
+    marker = json.loads(path.read_text())
+    assert (marker["state"], marker["reason"], marker["closed_at"]) == ("VETOED", "owner_veto", AFTER)
+    assert kyveto.closed_as(w.run, sid) == "VETOED" and kyveto.closed_as(w.run, sid, {"state": "FAILED"}) == "VETOED"
+    for state in ("INTENDED", "DONE"):                    # such an execution record overrules any closing
+        assert kyveto.closed_as(w.run, sid, {"state": state}) is None
+    assert w.tick(LATER)["decisions"] == []
+    path.unlink()                                         # without it the very same lines are a claim again
+    assert kyveto.closed_as(w.run, sid) is None and status_row(w, sid)[2]["anomaly"] == TERMINAL_CLAIM
+    d = one(w.tick(LATER), sid)
+    assert (d["outcome"], d["anomaly"], d["attention"], d["published"]) == ("vetoed", TERMINAL_CLAIM, True, True)
+    assert kyveto.closed_as(w.run, sid) == "VETOED" and w.tick(LATER)["decisions"] == []
+    path.unlink()
+    path.write_text("{")                                  # a marker that cannot be read closes nothing
+    assert kyveto.closed_as(w.run, sid) is None
+    path.write_text(json.dumps({"state": "EXECUTED"}))    # … nor does one that names no closing state
+    assert kyveto.closed_as(w.run, sid) is None
+    # a decision the handler never began to act on needs none: nothing of its own is out, the line is final
+    other = w.propose(cap(builders=5), notification={"submitted": False, "ts": T_NOTIFY})
+    report = w.tick(AT)
+    assert one(report, other)["reason"] == "notification_not_submitted"
+    assert one(report, sid)["anomaly"] == TERMINAL_CLAIM  # (the first one's marker was spoilt above: answered again)
+    assert not kyveto.stamp_path(w.run, other, "closed").exists() and kyveto.closed_as(w.run, sid) == "VETOED"
+    assert w.tick(LATER)["decisions"] == []
+
+
+# ── C4-02 (review round 4): a veto that arrives after EXECUTED carries attention in the later tick too ──
+
+def test_a_veto_one_tick_after_the_execution_is_reported_with_attention(tmp_path):
+    """The reviewer's probe: settled REJECTED too_late with no attention and exit 0, while the same veto inside
+    the executing tick carries attention."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert one(w.tick(AT), sid)["outcome"] == "executed"
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"], d["command"]) == ("executed", "veto_too_late", True, cid)
+    assert report["attention"] is True and [c["id"] for c in report["commands"]] == [cid]
+    cmd = w.command(cid)
+    assert cmd["state"] == "REJECTED" and cmd["result"]["reason"].startswith("too_late")
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE", "EXECUTED"] and w.capacity() == ("6\n", "4\n")
+    again = w.tick(LATER)                                 # said once
+    assert again["decisions"] == [] and again["commands"] == [] and again["attention"] is False
+    other = w.propose(cap(builders=5))                    # … and the real program exits 3 on it
+    assert w.cli("tick").returncode == 0 and w.states(other)[-1] == "EXECUTED"
+    w.veto(other)
+    r = w.cli("tick")
+    assert r.returncode == 3, r.stderr
+    assert one(json.loads(r.stdout), other)["reason"] == "veto_too_late"
+    assert w.cli("tick").returncode == 0
+
+
+# ── ruling R16: nothing comes to rest wrong, and no wait goes on, with nobody told ──
+
+@pytest.mark.parametrize("executed", [False, True])
+def test_a_record_refused_while_its_execution_is_open_is_not_left_as_it_is(tmp_path, executed):
+    """`refuse` is an exit that gives a decision up too: with `<id>.execute` INTENDED it left the half in place
+    and the record unfinished behind a refusal that said nothing about either."""
+    w = World(tmp_path)
+    if executed:
+        sid = w.propose(cap())
+        assert w.crash("after-execute", "tick").returncode == -signal.SIGKILL
+    else:
+        sid = half_executed(w)
+    w.append(dict(w.history(sid)[0], rationale=""))       # a line the handler cannot answer with a valid one
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert d["outcome"] == "refused" and d["reason"] == "record_malformed: rationale" and d["attention"] is True
+    rec, marker = w.action(sid + ".execute"), w.refusal(sid)
+    if executed:
+        assert d["executed"] is True and marker["executed"] is True and "partial_effect" not in d
+        assert rec["state"] == "DONE" and w.capacity() == ("6\n", "4\n")
+    else:
+        assert d["partial_effect"] == "restored" and "executed" not in d and w.capacity() == ("3\n", "2\n")
+        assert rec["state"] == "FAILED" and rec["result"]["reason"] == "given_up_partial_effect_restored"
+        assert rec["result"]["because"] == "refused: record_malformed: rationale"
+        assert marker["partial_effect"] == rec["result"]["partial_effect"]
+    assert w.tick(LATER)["decisions"] == [] and kyveto.status(w.env)["unfinished_actions"] == []
+
+
+def test_a_record_that_turns_out_unanswerable_after_publication_says_what_was_published(tmp_path, monkeypatch):
+    """The refusal written when a line could not be appended after all was marked `published: false` whatever
+    the tracker held."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real = kyveto.line_problem
+    monkeypatch.setattr(kyveto, "line_problem", lambda line: (
+        "line_malformed: by_test" if line.get("state") == "EFFECTIVE" else real(line)))
+    report = w.tick(AT)
+    d = one(report, sid)
+    assert d["outcome"] == "refused" and d["reason"].startswith("record_unanswerable") and d["attention"] is True
+    assert d["published"] is True and w.refusal(sid)["published"] is True
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n") and w.states(sid) == ["PENDING_VETO"]
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] is True and row["refused"] and row["unresolved"] is True
+
+
+def test_an_action_whose_first_actor_cannot_be_told_alive_or_gone_is_not_waited_for_in_silence(tmp_path, monkeypatch):
+    """`locked … in_progress` means "come back later". When the process that began the action cannot be judged
+    at all (`ps` does not answer), later may never come: the row then carries attention."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.crash("before-execute", "tick")
+    shutil.rmtree(w.run / "locks")                        # (the dead handler's own locks are another test's subject)
+    path = w.run / "actions" / (sid + ".execute.json")
+    with bystander() as (pid, start):
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), process={"pid": pid, "process_start": start})))
+        quiet = w.tick(AFTER)                             # alive elsewhere: nobody needs to do anything
+        assert one(quiet, sid) == {"id": sid, "outcome": "locked", "reason": "execution_in_progress"}
+        assert quiet["attention"] is False
+        with monkeypatch.context() as m:
+            no_ps(m)
+            for path_taken in ("executing", "giving up"):
+                report = w.tick(AFTER)
+                d = one(report, sid)
+                assert (d["outcome"], d["reason"], d["attention"]) == ("locked", "execution_in_progress", True), path_taken
+                assert d["owner"] == "unknown" and report["attention"] is True
+                cid = w.veto(sid) if path_taken == "executing" else cid       # the second pass meets it in `vetoed`
+        assert w.capacity() == ("3\n", "2\n") and "reconciliations" not in w.action(sid + ".execute")
+        assert w.command(cid)["state"] == "QUEUED" and w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+
+
+def test_status_does_not_read_normal_over_an_execution_nobody_is_carrying_out(tmp_path):
+    """`<id>.execute` INTENDED after a crash: until a tick has completed or closed it, part of the effect may be
+    in force. `status` listed the record and said nothing needed anybody."""
+    w = World(tmp_path)
+    sid = half_executed(w)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["execution_unfinished"] is True and row["unresolved"] is True
+    assert status["unfinished_actions"] == [sid + ".execute"] and row["state"] == "EFFECTIVE"
+    path = w.run / "actions" / (sid + ".execute.json")
+    doc = json.loads(path.read_text())
+    with bystander() as (pid, start):                     # a live process is carrying it out: nothing to attend to
+        path.write_text(json.dumps(dict(doc, process={"pid": pid, "process_start": start})))
+        rc, status, row = status_row(w, sid)
+        assert rc == 0 and "execution_unfinished" not in row and "unresolved" not in row
+    path.write_text(json.dumps(doc))
+    assert one(w.tick(AFTER), sid)["outcome"] == "executed"
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and "execution_unfinished" not in row and status["unfinished_actions"] == []
+
+
+# ── C4-05 (review round 4): the holds are looked at again wherever the veto is ──
+
+@pytest.mark.parametrize("hold_", ["HOLD", "owner_pause_pending"])
+@pytest.mark.parametrize("during", ["recheck", "publication"])
+def test_a_hold_placed_while_the_pass_is_under_way_stops_what_has_not_happened_yet(tmp_path, monkeypatch, during, hold_):
+    """Holds and the owner pause were read once, before the recheck; a HOLD or pause placed while `ky decide`
+    ran (up to 120 s) did not stop that pass from executing."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    placed = []
+
+    def place():
+        if hold_ == "HOLD":
+            (w.root / "HOLD").write_text("x\n")
+        elif not placed:
+            placed.append(kycommands.submit(w.run, "campaign", "pause", {}, COCKPIT))
+
+    real_ky = kyveto.run_ky
+    with monkeypatch.context() as m:
+        if during == "recheck":
+            m.setattr(kyveto.REGISTRY["capacity"], "precheck", lambda params, ctx: place())
+        else:
+            m.setattr(kyveto, "run_ky", lambda argv, env: (place(), real_ky(argv, env))[1])
+        report = w.tick(AT)
+    d = one(report, sid)
+    assert (d["outcome"], d["reasons"]) == ("held", [hold_]) and report["attention"] is False
+    assert w.capacity() == ("3\n", "2\n") and sid + ".execute.json" not in w.actions()
+    if during == "recheck":                               # nothing was published either
+        assert w.ky_calls() == [] and w.states(sid) == ["PENDING_VETO"]
+        assert sid + ".publish.json" not in w.actions()
+    else:                                                 # published and effective; the execution waits for the hold
+        assert len(w.ky_calls()) == 1 and w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+    assert one(w.tick(AFTER), sid)["outcome"] == "held"
+    if hold_ == "HOLD":
+        (w.root / "HOLD").unlink()
+    else:
+        kycommands.submit(w.run, "campaign", "resume", {}, COCKPIT)
+    assert one(w.tick(LATER), sid)["outcome"] == "executed"
+    assert w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+
+
+# ── C4-04 (review round 4): the immutable activation record names its receipts absolutely, whatever KY_RUN is ──
+
+def test_the_activation_record_names_its_receipts_absolutely_under_a_relative_run_directory(tmp_path, monkeypatch):
+    """KY_RUN need not be absolute; only the manifest path was made absolute, the receipt paths were stored as
+    they came — relative to wherever the handler happened to run."""
+    w = World(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    target = bundle(w)
+    target["review_receipts"] = [os.path.relpath(p, w.run) for p in target["review_receipts"]]
+    w.environ["KY_RUN"] = os.path.relpath(w.run, tmp_path)
+    assert not os.path.isabs(str(w.env.run)) and not os.path.isabs(target["review_receipts"][0])
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert_schema("activation_record", rec)
+    (r1,) = rec["review_receipts"]
+    assert os.path.isabs(r1["path"]) and r1["sha256"] == sha(r1["path"])
+    assert os.path.isabs(rec["new_manifest"]["path"])

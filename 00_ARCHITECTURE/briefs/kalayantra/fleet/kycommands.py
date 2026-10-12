@@ -282,15 +282,20 @@ def _dump(doc):
 
 # ───────────────────────────────────────── applying ─────────────────────────────────────────
 
+APPLIER_KINDS = tuple(kind for kind in kyaction.HOLDER_KINDS if kind != "job")     # as schemas/command.json
+
+
 def applier_identity(applier):
-    """(id, {"holder_kind", "session_id" | "controller_id"}) from a controller id string or an actor-like dict."""
+    """(id, {"holder_kind", "session_id" | "controller_id"}) from a controller id string or an actor-like dict.
+    A job never applies a command (holder_kind "job" is refused here as in schemas/command.json)."""
     if isinstance(applier, str) and applier:
         return applier, {"holder_kind": "controller", "controller_id": applier}
-    if isinstance(applier, dict) and applier.get("holder_kind") in kyaction.HOLDER_KINDS:
+    if isinstance(applier, dict) and applier.get("holder_kind") in APPLIER_KINDS:
         keys = [k for k in ("session_id", "controller_id") if k in applier]
         if len(keys) == 1 and set(applier) == {"holder_kind", keys[0]} and _text(applier[keys[0]]):
             return applier[keys[0]], dict(applier)
-    raise CommandInvalid("applier must be a controller id or {holder_kind, session_id | controller_id}")
+    raise CommandInvalid("applier must be a controller id or {holder_kind: %s, session_id | controller_id}"
+                         % " | ".join(APPLIER_KINDS))
 
 
 def holds_role_lock(run_dir, role, applier_id):
