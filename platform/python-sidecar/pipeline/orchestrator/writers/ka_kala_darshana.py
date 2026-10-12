@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 # Legacy implementation retained until the qualified K9-4b cutover.
 class _LegacyKaKalaDarshanaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        # KYD-140 fixture preparation only; the default legacy path is retained.
+        if 'kala_read_model_fixture' in ctx.config:
+            from pipeline.orchestrator.writers.k6_candidate import run_candidate
+            return run_candidate(ctx, 'ka_kala_darshana')
         if 'kala_assertion_fixture' in ctx.config:
             from services.kala_core.assertion.slice import run_fixture_slice
             return WriterResult(asset_id='ka_kala_darshana', rows_inserted=run_fixture_slice(ctx),
