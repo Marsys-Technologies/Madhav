@@ -1122,3 +1122,16 @@ def test_the_ga_vichara_patch_applies_its_guards_and_validates_once_the_writer_s
     # ... and, with only the pointer check stood in for, every other rule of the form holds
     monkeypatch.setattr(ac, "empty_slice_static_problem", lambda d: (None, list(PARTS)))
     ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", es, e)
+
+
+def test_a_writer_that_inserts_the_evidence_record_does_not_write_an_undeclared_table(monkeypatch):
+    """Build.completion FAILs a table the writer writes that the declared set does not name -- except the orchestrator's bookkeeping tables: the evidence register is one of them."""
+    import ast as _ast
+    src = ('def f(conn):\n    conn.execute("INSERT INTO chart_vichara (a) VALUES (1)")\n'
+           '    conn.execute("INSERT INTO orchestrator_event_register (event_type, payload) VALUES (%s, %s)", [1, 2])\n'
+           '    conn.execute("INSERT INTO some_other_table (a) VALUES (1)")\n')
+    tree = _ast.parse(src)
+    units = [dict(rel="w.py", path=pathlib.Path("w.py"), tree=tree, nodes=[tree], hop=0, via="w.py")]
+    monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: (units, []))
+    got = ac.produced_set_written("ga_vichara", ["w.py"])
+    assert "orchestrator_event_register" not in got["written"] and got["written"] == ["chart_vichara", "some_other_table"]
