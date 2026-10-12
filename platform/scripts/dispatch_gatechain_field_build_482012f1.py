@@ -19,7 +19,7 @@ precondition checklist in this directory's sibling doc,
 
 WHAT IT BUILDS: `ka_kshetra` (W2 stages 0–8, the temporal field) then
 `mi_bhara` (stage 9 — weight fit, skill score, GOF, weights-version write),
-in that dependency order, for chart 482012f1 (Abhisek Mohanty, native,
+in that dependency order, for chart 482012f1 (native,
 primary canonical chart) ONLY. `mi_bhara.depends_on = ['ka_kshetra']` and
 NOTHING ELSE (the weights-version acyclicity rule, brief §2.5 item 4) — this
 script's TARGET_ASSETS order respects that directly; it does not attempt to

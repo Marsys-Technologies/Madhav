@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { SHARE_DEFAULT_TTL_DAYS } from '@/lib/share/constants'
 
 interface Props {
   conversationId?: string
@@ -22,6 +23,9 @@ export function ShareButton({ conversationId }: Props) {
   // X-S8: selective share checkboxes — default true = "show" (hide_* = false)
   const [showReasoning, setShowReasoning] = useState(true)
   const [showMethodology, setShowMethodology] = useState(true)
+  // SS N-379: R10_SELECTIVE_SHARE only controls whether the options are OFFERED on
+  // a NEW share. The GET below reports it; absent (older server) = offered.
+  const [selectiveShareEnabled, setSelectiveShareEnabled] = useState(true)
 
   // Fetch existing share state when the dropdown is opened the first time.
   const refresh = useCallback(async () => {
@@ -29,8 +33,12 @@ export function ShareButton({ conversationId }: Props) {
     try {
       const res = await fetch(`/api/conversations/${conversationId}/share`, { cache: 'no-store' })
       if (!res.ok) return
-      const data = (await res.json()) as { share: { slug: string } | null }
+      const data = (await res.json()) as {
+        share: { slug: string } | null
+        selective_share_enabled?: boolean
+      }
       setSlug(data.share?.slug ?? null)
+      setSelectiveShareEnabled(data.selective_share_enabled !== false)
     } catch {}
   }, [conversationId])
 
@@ -48,10 +56,11 @@ export function ShareButton({ conversationId }: Props) {
       const res = await fetch(`/api/conversations/${conversationId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hide_reasoning: !showReasoning,
-          hide_methodology: !showMethodology,
-        }),
+        body: JSON.stringify(
+          selectiveShareEnabled
+            ? { hide_reasoning: !showReasoning, hide_methodology: !showMethodology }
+            : {},
+        ),
       })
       if (!res.ok) return
       const data = (await res.json()) as { slug: string }
@@ -98,7 +107,8 @@ export function ShareButton({ conversationId }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Share conversation</h3>
             <p className="text-[11px] text-muted-foreground">
-              Anyone with the link will see a read-only copy of this chat.
+              Signed-in MARSYS-JIS users with the link will see a read-only copy of this chat.
+              The link expires after {SHARE_DEFAULT_TTL_DAYS} days.
             </p>
           </div>
           {slug && shareUrl ? (
@@ -156,7 +166,8 @@ export function ShareButton({ conversationId }: Props) {
             </>
           ) : (
             <div className="space-y-2">
-              {/* X-S8: selective share checkboxes */}
+              {/* X-S8: selective share checkboxes (offered only while R10_SELECTIVE_SHARE is on) */}
+              {selectiveShareEnabled && (
               <div className="space-y-1 rounded-md border border-border bg-muted/20 px-3 py-2">
                 <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
                   <input
@@ -179,6 +190,7 @@ export function ShareButton({ conversationId }: Props) {
                   Show methodology
                 </label>
               </div>
+              )}
               <button
                 type="button"
                 onClick={createShare}

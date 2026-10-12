@@ -1,6 +1,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { safeEqual } from '@/lib/security/safe_equal'
 
 // Auth: MARSYS_CRON_SECRET, checked via the x-marsys-cron-secret header before
 // any work happens — NOT the Authorization header. R6 0a-envauth (O-2), same
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   const expected = process.env.MARSYS_CRON_SECRET
   const auth = request.headers.get('x-marsys-cron-secret')
 
-  if (!expected || auth !== expected) {
+  if (!safeEqual(auth, expected)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

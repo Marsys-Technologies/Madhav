@@ -28,7 +28,7 @@ LONG-RUNNING connections, not a single fast insert); the actual rebuild
 execution happens entirely inside the Cloud Run job
 (brahma-build-pipeline-job), dispatched separately via
 `gcloud run jobs execute ... --args=--run-id,<id>` after this script prints
-the run_id. Abhisek's chart (482012f1) ONLY; Abhinandan is never rebuilt.
+the run_id. The native's chart (482012f1) ONLY; Abhinandan is never rebuilt.
 
 Prints ONLY the run_id (UUID) to stdout on success, for shell capture.
 

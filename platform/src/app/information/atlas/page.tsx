@@ -1,11 +1,16 @@
 import { query } from '@/lib/db/client'
 import { AtlasView, type AtlasAsset } from '@/components/build/AtlasView'
+import { requireSuperAdminPage } from '@/lib/auth/super-admin-page-guard'
 
 export const dynamic = 'force-dynamic'
 
 const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
 export default async function AtlasPage() {
+  // Guard INSIDE the page: it reads asset_registry (count_sql / size_sql /
+  // clear_tables), and the layout guard alone can be skipped by a crafted RSC
+  // request (SS N-373).
+  await requireSuperAdminPage()
   const result = await query<AtlasAsset>(`
     SELECT
       asset_id, layer, sort_order, sanskrit_name, english_name,

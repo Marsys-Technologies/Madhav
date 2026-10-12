@@ -1,19 +1,17 @@
 /**
  * CHART-GENERALITY GATE fixture (D28).
  *
- * A deliberately DIFFERENT chart than Abhisek Mohanty's natal chart.
- * Purpose: prove that the school engines read live ChartData, not hardcoded presets.
- * If runFullTriangulation(SYNTHETIC_CHART) == runFullTriangulation(ABHISEK_CHART), the
- * engines are still reading defaultSignals (presets). That would be a GATE FAILURE.
+ * A FICTIONAL, test-only chart: it does not describe any real person. No real birth or
+ * chart data of any native may appear in this package (guarded by
+ * tests/schools/no_native_data_guard.test.ts).
  *
- * Fixture facts (NOT a real chart — test-only):
- *   Ascendant: Cancer (vs ABHISEK: Capricorn)
- *   Moon sign: Scorpio (vs ABHISEK: Virgo)
- *   Sun sign: Leo (vs ABHISEK: Capricorn)
- *   Saturn: debilitated in Aries (vs ABHISEK: exalted in Libra)
- *   Jupiter: Cancer (exalted) in 1H (vs ABHISEK: Sagittarius 12H)
- *   No Saturn exaltation in 10H — ABHISEK's dominant career yoga is absent.
- *   Yogini dasha: Mangala (vs ABHISEK: Bhramari)
+ * Purpose: prove that the school engines read the live ChartData and live signals that are
+ * passed in, never a hardcoded preset.
+ *
+ * Fixture facts (NOT a real chart):
+ *   Ascendant: Cancer, Moon sign: Scorpio, Sun sign: Leo
+ *   Saturn: debilitated in Aries (10H); Jupiter: Cancer (exalted) in 1H
+ *   Yogini dasha: Mangala (fixture value)
  */
 import type { ChartData } from '../types'
 
@@ -42,7 +40,7 @@ export const SYNTHETIC_CHART: ChartData = {
     end: '2026-09-15',
   },
   yoginiDasha: {
-    yogini: 'mangala',    // lord = Mars; different from ABHISEK's Bhramari/Mars
+    yogini: 'mangala',    // fixture value (fictional)
     lord: 'mars',
     yearsElapsed: 1.5,
     yearsRemaining: 2.5,
@@ -62,4 +60,55 @@ export const SYNTHETIC_CHART: ChartData = {
     sun: 'venus',
   },
   pendingFlags: [],
+}
+
+/**
+ * Second FICTIONAL chart (test-only), deliberately different from SYNTHETIC_CHART in every
+ * headline field, with pending flags set. Used to prove that scores depend on the signals
+ * passed in, not on which chart is passed.
+ */
+export const SYNTHETIC_CHART_B: ChartData = {
+  chartId: 'synthetic-gate-fixture-b',
+  chartType: 'natal',
+  ascendant: 'libra',
+  moonSign: 'pisces',
+  sunSign: 'taurus',
+  planets: [
+    { planet: 'sun',     sign: 'taurus',      house: 8,  degree: 3.3,  isRetrograde: false, isExalted: false, isDebilitated: false },
+    { planet: 'moon',    sign: 'pisces',      house: 6,  degree: 16.0, isRetrograde: false, isExalted: false, isDebilitated: false },
+    { planet: 'mars',    sign: 'leo',         house: 11, degree: 9.9,  isRetrograde: false, isExalted: false, isDebilitated: false },
+    { planet: 'mercury', sign: 'aries',       house: 7,  degree: 25.5, isRetrograde: false, isExalted: false, isDebilitated: false },
+    { planet: 'jupiter', sign: 'capricorn',   house: 4,  degree: 11.1, isRetrograde: false, isExalted: false, isDebilitated: true  },
+    { planet: 'venus',   sign: 'virgo',       house: 12, degree: 20.2, isRetrograde: false, isExalted: false, isDebilitated: true  },
+    { planet: 'saturn',  sign: 'libra',       house: 1,  degree: 1.7,  isRetrograde: true,  isExalted: true,  isDebilitated: false },
+    { planet: 'rahu',    sign: 'gemini',      house: 9,  degree: 6.6,  isRetrograde: true,  isExalted: false, isDebilitated: false },
+    { planet: 'ketu',    sign: 'sagittarius', house: 3,  degree: 6.6,  isRetrograde: true,  isExalted: false, isDebilitated: false },
+  ],
+  activeDasha: {
+    mahadasha: 'mercury',
+    antardasha: 'ketu',
+    start: '2025-01-01',
+    end: '2026-01-01',
+  },
+  yoginiDasha: {
+    yogini: 'dhanya',
+    lord: 'jupiter',
+    yearsElapsed: 2.0,
+    yearsRemaining: 1.0,
+  },
+  charaPadas: {
+    atmakaraka: 'saturn',
+    amatyakaraka: 'moon',
+    bhratrikaraka: 'venus',
+    matrikaraka: 'sun',
+    putrakaraka: 'mercury',
+    gnatikaraka: 'mars',
+    darakaraka: 'jupiter',
+  },
+  kpSubLords: {
+    ascendant: 'venus',
+    moon: 'saturn',
+    sun: 'moon',
+  },
+  pendingFlags: ['VARSHA_KUNDALI_PENDING', 'TRANSIT_DATA_PENDING'],
 }

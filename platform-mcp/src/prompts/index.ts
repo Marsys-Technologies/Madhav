@@ -23,6 +23,7 @@ import { z } from 'zod'
 // D-2 Lane V-2 — compiled vidhi plans as an MCP prompt
 import { registerVidhiPlanPrompt } from './vidhi_plan.js'
 import type { Principal } from '../types.js'
+import { PRIMARY_AYANAMSHA } from '../lib/ayanamsha.js'
 
 // S-3 (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §1.5, GT-35): `principal` is threaded through
 // here solely so registerVidhiPlanPrompt can run its M0 entitlement gate before compiling a
@@ -52,7 +53,7 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
         'UUID of the chart to orient. Required — no default chart.'
       ),
       ayanamsha_id: z.string().optional().describe(
-        "Ayanamsha for signal computation (default: 'LAHIRI'). Parashara tradition uses Lahiri."
+        "Ayanamsha for signal computation (default: 'lahiri_chitrapaksha', the primary reading)."
       ),
     },
     async ({ chart_id, ayanamsha_id }) => ({
@@ -64,10 +65,10 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
             text: [
               `Orient me to chart ${chart_id} before any domain analysis.`,
               '',
-              'Step 1 — Call get_chart_orientation with:',
+              'Step 1 — Call bodha_chart_digest_get with:',
               `  chart_id: "${chart_id}"`,
-              `  ayanamsha_id: "${ayanamsha_id ?? 'LAHIRI'}"`,
-              '  response_format: "summary"',
+              `  ayanamsha_id: "${ayanamsha_id ?? PRIMARY_AYANAMSHA}"`,
+              '  mode: "summary"',
               '',
               'Step 2 — From the orientation result, explain in teaching language:',
               '  (a) The Lagna (Ascendant) sign and its lord — which planet rules the chart, where it sits, and what that means for the native\'s primary life direction (dharma karaka).',
@@ -102,7 +103,7 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
         'Life domain to assess. Classical Jyotish domains: career (10th/6th/2nd), relationship (7th/5th/2nd), health (1st/6th/8th), wealth (2nd/11th/5th/9th), spirituality (9th/12th/5th), character (1st/Lagna lord/Moon).'
       ),
       ayanamsha_id: z.string().optional().describe(
-        "Ayanamsha (default: 'LAHIRI')."
+        "Ayanamsha (default: 'lahiri_chitrapaksha')."
       ),
     },
     async ({ chart_id, domain, ayanamsha_id }) => ({
@@ -115,14 +116,14 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
               `Assess the "${domain}" domain for chart ${chart_id}.`,
               '',
               'Step 1 — Orientation (mandatory B.11 floor):',
-              `  Call get_chart_orientation(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}", response_format="digest")`,
+              `  Call bodha_chart_digest_get(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}", mode="summary")`,
               '  This ensures the domain reading is grounded in the full chart context.',
               '',
               `Step 2 — Domain drill:`,
-              `  Call get_domain_reading(chart_id="${chart_id}", domain="${domain}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}")`,
+              `  Call bodha_domain_reading_get(chart_id="${chart_id}", domain="${domain}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}")`,
               '',
               'Step 3 — Classical citations:',
-              `  Call get_classical_citation(query="${domain} bhava lord placement", limit=3)`,
+              `  Call ref_classical_citation_get(keyword="${domain} bhava lord placement", limit=3)`,
               '  These locate the classical śāstric basis for the signals surfaced in Step 2.',
               '',
               'Step 4 — Teaching synthesis (3 most important signals):',
@@ -155,7 +156,7 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
         'UUID of the chart. Required.'
       ),
       ayanamsha_id: z.string().optional().describe(
-        "Ayanamsha (default: 'LAHIRI')."
+        "Ayanamsha (default: 'lahiri_chitrapaksha')."
       ),
       horizon_months: z.number().int().min(1).max(60).optional().describe(
         'How many months forward to check for yoga activation (default: 24).'
@@ -175,14 +176,14 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
                 `Find which yogas are actively firing for chart ${chart_id} over the next ${months} months.`,
                 '',
                 'Step 1 — Orientation (B.11 floor):',
-                `  Call get_chart_orientation(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}", response_format="digest")`,
+                `  Call bodha_chart_digest_get(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}", mode="summary")`,
                 '',
                 'Step 2 — Structural yoga inventory:',
-                `  Call get_signals(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}", min_salience=0.6, limit=30)`,
+                `  Call bodha_signals_get(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}", min_weight=0.6, top_k=30)`,
                 '  Filter for signals whose signal_type contains "yoga" or whose tag_labels mention Raja, Dhana, Viparita, Pancha Mahapurusha, or other yoga categories.',
                 '',
                 'Step 3 — Temporal activation (dasha gate):',
-                `  Call get_temporal_windows(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}", date_from="${today}", date_to="${future}", include_convergence=true)`,
+                `  Call kala_windows_get(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}", start_date="${today}", end_date="${future}")`,
                 '  This surfaces which planetary lords are running their dasha/antardasha in the window.',
                 '',
                 'Step 4 — Cross-reference: a yoga is "actively firing" when:',
@@ -195,7 +196,7 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
                 '  (b) Explain the classical rule that forms it (which planets, which houses/signs).',
                 '  (c) State the temporal activation: which dasha lord triggers it and when the period runs.',
                 '  (d) State the expected life-domain result in plain language.',
-                `  (e) Call get_classical_citation(query="<yoga_name> results", limit=2) for each yoga to anchor the teaching in śāstra.`,
+                `  (e) Call ref_classical_citation_get(keyword="<yoga_name> results", limit=2) for each yoga to anchor the teaching in śāstra.`,
                 '',
                 'Yogas without temporal activation are structurally present but not ripe — do not conflate them with active ones.',
               ].join('\n'),
@@ -220,7 +221,7 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       question: z.string().describe('The question to answer (narrow or broad). The expected-evidence set scales to its scope.'),
       domain: z.string().optional().describe('Optional domain hint (marriage/career/health/wealth/progeny/education/spirituality) to shape the classical expected set.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')."),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
     },
     async ({ chart_id, question, domain, ayanamsha_id }) => ({
       messages: [
@@ -248,10 +249,10 @@ export function registerPrompts(server: McpServer, principal: Principal): void {
               '  needed / received / exhausted. Keep it current as evidence arrives.',
               '',
               'MOVE 3 — CHASE across ALL appropriate tools. For each needed item, call its route(s).',
-              `  Start with orientation: get_chart_orientation(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}").`,
+              `  Start with orientation: bodha_chart_digest_get(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? PRIMARY_AYANAMSHA}").`,
               domain
-                ? `  Then the domain drill: judgment_query(chart_id="${chart_id}", domain="${domain}") and get_domain_reading(...).`
-                : '  Then judgment_query / get_domain_reading / graha_portrait / query_signals as the question requires.',
+                ? `  Then the domain drill: judgment_query(chart_id="${chart_id}", domain="${domain}") and bodha_domain_reading_get(...).`
+                : '  Then judgment_query / bodha_domain_reading_get / graha_portrait / bodha_signals_get as the question requires.',
               '  Follow drill_pointers that advance an outstanding item. Continue until each item is',
               '  received or honestly exhausted.',
               '',

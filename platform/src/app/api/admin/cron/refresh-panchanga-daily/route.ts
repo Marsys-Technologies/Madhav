@@ -27,12 +27,13 @@
  */
 import 'server-only'
 import { NextResponse } from 'next/server'
+import { safeEqual } from '@/lib/security/safe_equal'
 
 export async function POST(request: Request) {
   const expected = process.env.MARSYS_CRON_SECRET
   const auth = request.headers.get('x-marsys-cron-secret')
 
-  if (!expected || auth !== expected) {
+  if (!safeEqual(auth, expected)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

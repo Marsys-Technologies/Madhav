@@ -224,6 +224,39 @@ def test_finding9_a_jsx_file_outside_the_roots_that_names_the_table_is_named(tre
 
 # ───────────────────────── 8: every credited module is in the vitest CASES ─────────────────────────
 
+def dens_claims_gap(credited, vitest_text: str, repo_root: pathlib.Path) -> list[str]:
+    """The credited modules whose contract claims no test checks. A platform module (under the layers root) must be imported by dens_served_contracts.test.ts (a `'../'` import: a layer-root
+    module is `'../name'`, a layer module `'../L0_x/name'`). A platform-mcp module (`platform-mcp/...`, which the platform vitest cannot import) must have its OWN claims test, the sibling
+    `<module>_dens_served.test.ts`, which imports the module by its relative path (`'./<module>'` or `'./<module>.js'`): the one narrowing of the rule, not an exemption by package
+    (a platform-mcp module without that sibling file, or whose sibling does not import it, is still reported)."""
+    imported = set(re.findall(r"from '\.\./(?:L\d_[a-z]+/)?([a-z_0-9]+)'", vitest_text))      # a layer-root module (register_d9_judgment) is imported as '../name'
+
+    def claimed(m: str) -> bool:
+        stem = pathlib.PurePosixPath(m).stem
+        if m.startswith("platform-mcp/"):
+            t = (repo_root / m).with_name(f"{stem}_dens_served.test.ts")
+            return t.is_file() and re.search(r"from '\./" + re.escape(stem) + r"(?:\.js)?'", t.read_text(encoding="utf-8")) is not None
+        return stem in imported
+
+    return sorted(m for m in credited if not claimed(m))
+
+
+def test_finding8b_a_platform_mcp_module_needs_its_own_sibling_claims_test(tmp_path):
+    """Sensitivity of the narrowing in finding8: a credited platform-mcp module is covered ONLY by a sibling `<module>_dens_served.test.ts` that imports it relatively."""
+    mod = "platform-mcp/src/tools/retrieval/register_x.ts"
+    d = tmp_path / "platform-mcp/src/tools/retrieval"
+    d.mkdir(parents=True)
+    (d / "register_x.ts").write_text("export {}\n", encoding="utf-8")
+    vitest = "import { a } from '../L0_brahmagyan/query_a'\n"
+    assert dens_claims_gap([mod, "L0_brahmagyan/query_a.ts"], vitest, tmp_path) == [mod]                               # no sibling test: reported
+    (d / "register_x_dens_served.test.ts").write_text("import { y } from './other.js'\n", encoding="utf-8")
+    assert dens_claims_gap([mod], vitest, tmp_path) == [mod]                                                           # a sibling that does not import the module: reported
+    (d / "register_x_dens_served.test.ts").write_text("import { x } from './register_x.js'\n", encoding="utf-8")
+    assert dens_claims_gap([mod], vitest, tmp_path) == []                                                              # the sibling imports it: covered
+    assert dens_claims_gap([mod, "L0_brahmagyan/query_b.ts"], vitest, tmp_path) == ["L0_brahmagyan/query_b.ts"]        # a platform module is never covered by an mcp sibling
+    assert dens_claims_gap(["platform-mcp/src/tools/retrieval/register_x.ts"], "import { x } from '../register_x'\n", tmp_path) == []   # (and the sibling rule is the one that applies, not the import list)
+
+
 def test_finding8_every_module_a_dens_pass_credits_is_in_the_vitest_cases():
     """The committed scan inputs (127 assets, tokens / shared tables / catalog columns) run through the same scan measure() runs, with the committed declarations' facets and tier columns:
     every capability module that EARNS a PASS must be imported by dens_served_contracts.test.ts, which checks its contract claims against its handler. The modules collected are
@@ -246,8 +279,7 @@ def test_finding8_every_module_a_dens_pass_credits_is_in_the_vitest_cases():
                 credited.update(n for n, _c in (cap.get("dense") or []))
                 credited.update(cap.get("facet_dense") or [])
     vitest = (HERE.parents[2] / "src/lib/retrieval/registry/layers/__tests__/dens_served_contracts.test.ts").read_text(encoding="utf-8")
-    imported = set(re.findall(r"from '\.\./(?:L\d_[a-z]+/)?([a-z_0-9]+)'", vitest))      # a layer-root module (register_d9_judgment) is imported as '../name'
-    missing = sorted(m for m in credited if pathlib.PurePosixPath(m).stem not in imported)
+    missing = dens_claims_gap(credited, vitest, HERE.parents[3])
     assert credited, "the committed inputs credit no PASS at all: the check would be vacuous"
     assert missing == [], f"modules credited by a Dens PASS but absent from dens_served_contracts.test.ts: {missing}"
 

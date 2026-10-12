@@ -1,10 +1,29 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { query } from '@/lib/db/client'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
+import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
+import { buildShareViewMessages } from '@/lib/share/shareView'
 import { SharedConversation } from './SharedConversation'
 
 export const dynamic = 'force-dynamic'
+
+// SS N-376 / PR-S4: a shared conversation is never indexed and never leaks its URL
+// (the slug) through a Referer header. next.config.ts sends the matching
+// X-Robots-Tag / Referrer-Policy / Cache-Control response headers.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  referrer: 'no-referrer',
+}
+
+const SLUG_SHAPE = /^[A-Za-z0-9]{10}$/
+
+function loginPathFor(slug: string): string {
+  return SLUG_SHAPE.test(slug)
+    ? `/login?next=${encodeURIComponent(`/share/${slug}`)}`
+    : '/login'
+}
 
 export default async function SharedConversationPage({
   params,
@@ -12,6 +31,16 @@ export default async function SharedConversationPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+
+  // SS N-376 / PR-S4: share links are authenticated BY DESIGN. proxy.ts only checks
+  // the cookie's shape, so verify the session here (firebase-admin
+  // verifySessionCookie with revocation check + an ACTIVE profile) before ANY read
+  // of the share, conversation, chart or messages. Any verified, active user who
+  // holds the slug may view: no owner check, that is the point of a share link.
+  // SS N-379: a refused visitor goes to /login?next=/share/<slug> so the login page
+  // can bring them back (it re-validates `next` with safeNextPath). The slug is
+  // only echoed when it has the exact minted shape; otherwise plain /login.
+  await requireActiveUserPage(loginPathFor(slug))
 
   const shareResult = await query<{
     conversation_id: string
@@ -27,27 +56,37 @@ export default async function SharedConversationPage({
 
   if (!share) notFound()
 
+  // SS N-379: read only what the page renders (no SELECT *).
   const conversationResult = await query<{
-    id: string
-    title: string
+    title: string | null
     chart_id: string
-    created_at: string
-  }>('SELECT * FROM conversations WHERE id=$1', [share.conversation_id])
+  }>('SELECT title, chart_id FROM conversations WHERE id=$1', [share.conversation_id])
   const conversation = conversationResult.rows[0] ?? null
   if (!conversation) notFound()
 
-  const chartResult = await query<{ name: string; birth_date: string; birth_place: string }>(
-    'SELECT name, birth_date, birth_place FROM charts WHERE id=$1',
+  const chartResult = await query<{ name: string }>(
+    'SELECT name FROM charts WHERE id=$1',
     [conversation.chart_id]
   )
   const chart = chartResult.rows[0] ?? null
 
-  const messages = await loadConversationMessagesV2(conversation.id)
+  const messages = await loadConversationMessagesV2(share.conversation_id)
 
-  // X-S8: selective share — only apply when flag is enabled
-  const selectiveShareEnabled = process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE === 'true'
-  const hideReasoning = selectiveShareEnabled && (share.hide_reasoning ?? false)
-  const hideMethodology = selectiveShareEnabled && (share.hide_methodology ?? false)
+  // X-S8 / SS N-379: the STORED hide options of the share row are ALWAYS applied,
+  // whatever R10_SELECTIVE_SHARE says. The flag only controls whether the options
+  // are OFFERED on NEW shares (the dialog control and the POST body parsing): a
+  // switch must never un-hide content someone chose to hide.
+  //
+  // The reduction happens HERE, on the server: SharedConversation is a client
+  // component, so anything passed to it is in the RSC payload the viewer's browser
+  // receives. buildShareViewMessages applies the hide options and then builds a NEW
+  // minimal message per turn (text only, opaque display role); tool-call parts,
+  // data-* parts and message metadata never leave the server.
+  const visibleMessages = buildShareViewMessages(
+    messages,
+    share.hide_reasoning === true,
+    share.hide_methodology === true,
+  )
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-4 py-6 print:max-w-none print:px-0 print:py-0">
@@ -67,11 +106,7 @@ export default async function SharedConversationPage({
         )}
       </header>
       <main className="flex-1 print:text-black">
-        <SharedConversation
-          messages={messages}
-          hideReasoning={hideReasoning}
-          hideMethodology={hideMethodology}
-        />
+        <SharedConversation messages={visibleMessages} />
       </main>
       {/* Footer is navigation chrome — hidden in print */}
       <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground print:hidden">

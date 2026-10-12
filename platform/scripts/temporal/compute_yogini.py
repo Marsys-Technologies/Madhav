@@ -12,9 +12,9 @@ Yogini scheme:
 
 Sequence-start formula (classical, with the +3 offset on the 1-indexed Janma
 Nakshatra count). The session brief proposed `(nak_idx_0 mod 8)` mapping starting
-at Mangala -> for the native (PurvaBhadrapada, nak_idx_0 = 24) this yields
-Mangala. FORENSIC v8.0 §5.2 records the native's first Yogini as **Bhramari**
-(DSH.Y.001 1984-02-05 -> 1985-12-22). The classical formula
+at Mangala -> for a Moon in Purva Bhadrapada (nak_idx_0 = 24, worked example) this
+yields Mangala. FORENSIC v8.0 §5.2 records **Bhramari** as the canonical chart's first
+Yogini (DSH.Y.001). The classical formula
 `((Janma Nakshatra count, 1-indexed) + 3) mod 8` (with 0 -> 8) yields:
     (25 + 3) mod 8 = 4 -> 4th in [Mangala, Pingala, Dhanya, Bhramari, ...] = Bhramari.
 Equivalently, in 0-indexed lord indices: `(nak_idx_0 + 3) mod 8`. This engine
@@ -28,8 +28,8 @@ if pyswisseph is unavailable.
 Per PROJECT_ARCHITECTURE §B.1 (Facts/Interpretation separation): outputs are
 L1.5 (computed from L1 chart inputs); they are not L2.5 interpretations.
 
-Run direct (defaults to native chart, horizon 2061-01-01):
-    python3 platform/scripts/temporal/compute_yogini.py
+Run direct (chart id and birth datetime are required; horizon defaults to 2061-01-01):
+    python3 platform/scripts/temporal/compute_yogini.py --chart-id <chart-uuid> --birth <ISO8601-birth-datetime-with-offset>
 """
 from __future__ import annotations
 
@@ -283,10 +283,11 @@ def compute_yogini(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--chart-id", default="abhisek_mohanty_primary")
+    parser.add_argument("--chart-id", required=True,
+                        help="Chart UUID (the charts.chart_id of the chart under test). REQUIRED.")
     parser.add_argument(
-        "--birth", default="1984-02-05T10:43:00+05:30",
-        help="ISO8601 birth datetime (timezone-aware).",
+        "--birth", required=True,
+        help="ISO8601 birth datetime of the chart under test (timezone-aware), from its `charts` row. REQUIRED: no birth datetime is embedded in this script.",
     )
     parser.add_argument("--ayanamsha", default="lahiri")
     parser.add_argument(

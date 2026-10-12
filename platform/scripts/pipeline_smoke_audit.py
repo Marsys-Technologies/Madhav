@@ -47,6 +47,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# The canonical chart (CLAUDE.md section B): the only default where a chart selector is needed.
+CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
 # ── Colours ───────────────────────────────────────────────────────────────────
 
 RESET = "\033[0m"
@@ -584,7 +587,7 @@ def audit_vertex_ai() -> None:
 # SECTION 5 — Python sidecar health + endpoints
 # ═════════════════════════════════════════════════════════════════════════════
 
-def audit_sidecar() -> None:
+def audit_sidecar(chart_id: str = CANONICAL_CHART_ID) -> None:
     print(head_("SECTION 5 — Python sidecar (PYTHON_SIDECAR_URL)"))
 
     sidecar_url = os.environ.get("PYTHON_SIDECAR_URL", "http://localhost:8000").rstrip("/")
@@ -638,7 +641,7 @@ def audit_sidecar() -> None:
         r.fail(f"HTTP {status}: {body}", latency=lat).print()
 
     today = datetime.now(timezone.utc).date().isoformat()
-    native_payload = {"native_id": "abhisek_mohanty", "date": today}
+    native_payload = {"chart_id": chart_id, "date": today}
 
     sidecar_endpoints = [
         ("5.2", "/transits",           native_payload,  "Transits (temporal tool → /transits)"),
@@ -1003,6 +1006,8 @@ def main() -> None:
                         help="Path to repo root (default: auto-detect from script location)")
     parser.add_argument("--skip-vertex", action="store_true", help="Skip Vertex AI embed call (saves ~2s)")
     parser.add_argument("--skip-sidecar", action="store_true", help="Skip sidecar checks")
+    parser.add_argument("--chart-id", default=CANONICAL_CHART_ID,
+                        help="Chart UUID used for the sidecar probes (default: the canonical chart)")
     args = parser.parse_args()
 
     # Detect repo root from script location: scripts/ is 2 levels down from platform/, 3 from root
@@ -1031,7 +1036,7 @@ def main() -> None:
         check("4.1","vertex_ai","Vertex AI ADC").skip("--skip-vertex flag").print()
         check("4.2","vertex_ai","Vertex AI embed call").skip("--skip-vertex flag").print()
     if not args.skip_sidecar:
-        audit_sidecar()
+        audit_sidecar(args.chart_id)
     else:
         for i in range(1,7):
             check(f"5.{i}","sidecar","sidecar check").skip("--skip-sidecar flag").print()

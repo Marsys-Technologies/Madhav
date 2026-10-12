@@ -3,7 +3,7 @@ dispatch_utkarsha_w02_ka_assets.py — GOCHARA-UTKARṢA W0.2 baseline builds.
 
 Dispatches the six W0.2 ka_* (plus bg_gochara_arcs check) baseline builds
 for BOTH canonical charts:
-  - 482012f1-710e-4a25-994a-93821f5871aa (native, Abhisek Mohanty)
+  - 482012f1-710e-4a25-994a-93821f5871aa (native)
   - 1c826d5a-41cb-4450-b4dc-59d440e5f75a (Abhinandan Mohanty)
 
 TARGET ASSETS (per chart):

@@ -18,7 +18,7 @@ native's Stage-2/Stage-4 split — this is deliberately the SMALL rebuild, not t
 Follows the D-1.5b/D-2/D-3 precedent scripts in this directory: a brief local
 Cloud SQL Auth Proxy session for the quick multi-row INSERT ONLY, then dispatch via
 `gcloud run jobs execute brahma-build-pipeline-job --args=--run-id,<id>` separately.
-Abhisek's chart (482012f1) ONLY.
+The native's chart (482012f1) ONLY.
 
 Prints ONLY the run_id (UUID) to stdout on success, for shell capture.
 

@@ -2399,7 +2399,13 @@ jobs:
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.
-        run: bash platform/scripts/governance/assert_no_native_literal.sh
+        # SS N-384 (PR-S6): the second command is the python-sidecar ratchet (routers/services/
+        # brahmagyan): self-test, then a repo scan against native_literal_sidecar_allowlist.json
+        # (per-file counts that can only shrink; stale entries fail). Kept inside this step so
+        # the job's step list (pinned by test_ci_sidecar_shard.py) is unchanged.
+        run: |
+          bash platform/scripts/governance/assert_no_native_literal.sh
+          bash platform/scripts/governance/assert_no_native_literal_sidecar.sh
 
       - name: dag_edge_guard — self-test (§N.8 / SAMĀPTI F-02)
         # Hard gate. Before this step existed, dag_edge_guard's docstring claimed it ran
