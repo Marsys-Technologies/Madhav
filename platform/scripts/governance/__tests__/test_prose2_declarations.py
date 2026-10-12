@@ -164,17 +164,26 @@ def _all_na(got):
 CHART_POS = {"Lagna": (0, 12.5, 1), "Sun": (9, 21.8, 10), "Moon": (10, 5.0, 11), "Mars": (7, 3.0, 8), "Mercury": (9, 10.0, 10), "Jupiter": (5, 2.0, 6),
              "Venus": (9, 2.0, 10), "Saturn": (6, 28.0, 7), "Rahu": (3, 5.0, 4), "Ketu": (9, 5.0, 10)}
 SUBJECT = {"Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER", "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA"}
-NAKSHATRA27 = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
-               "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+# SS N-471 / N-548 (one canonical nakshatra spelling, narrow shape): the emitting ga_* writers fold the adapter's names to the L0 lexicon's spellings at emission, so the fixture's names are the lexicon's.
+NAKSHATRA27 = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigasira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+               "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha", "Shatabhisha", "Purva Bhadrapada",
                "Uttara Bhadrapada", "Revati"]
+# The spellings the L1 adapter wrote before; the DECLARED closed vocabularies in asset_declarations.json (the Engine's file) still hold them until the Engine re-seals them with the rebuild.
+NAKSHATRA27_LEGACY = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+                      "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+                      "Uttara Bhadrapada", "Revati"]
 
 
-def _seed_positions(conn, pos=CHART_POS, ayanamshas=AYANAMSHAS):
-    """The graha_position / graha_sign_attributes facts the real ga_positions writer stores (categories, keys and the sign / nakshatra names of the pyjhora adapter)."""
+STORED_NAKSHATRA27 = NAKSHATRA27_LEGACY   # what chart_facts holds TODAY (the adapter's spellings); after the SS N-548 rebuild ga_positions stores NAKSHATRA27 (see the strict-xfail "after-rebuild" case below)
+
+
+def _seed_positions(conn, pos=CHART_POS, ayanamshas=AYANAMSHAS, names=None):
+    """The graha_position / graha_sign_attributes facts the real ga_positions writer stores (categories, keys and the sign / nakshatra names AS STORED: `names`, default STORED_NAKSHATRA27)."""
+    names = STORED_NAKSHATRA27 if names is None else names
     for aya in ayanamshas:
         for g, (sn, deg, house) in pos.items():
             lon = sn * 30 + deg
-            nak = NAKSHATRA27[int(lon // (360 / 27)) % 27]
+            nak = names[int(lon // (360 / 27)) % 27]
             for cat, key, vtxt, vnum in (("graha_position", "longitude_sidereal", None, lon), ("graha_position", "sign", SIGNS[sn], None), ("graha_position", "nakshatra", nak, None),
                                          ("graha_position", "house_d1", None, house), ("graha_sign_attributes", "sign_num", None, sn + 1),
                                          ("graha_sign_attributes", "degree_in_sign", None, deg)):
@@ -308,6 +317,8 @@ def test_ga_medical_declaration_is_the_checked_none_form_with_the_stated_vocabul
     pn = e["prose_none"]
     assert pn.get("column_scope") is None and e.get("produced_tables") is None            # one table, every text column judged
     cc = {c["column"]: c["values"] for c in pn["closed_columns"]}
+    assert cc.pop("natal_nakshatra") in (NAKSHATRA27, NAKSHATRA27_LEGACY)       # declared: the legacy list until the Engine re-seals it canonical (listed in the PR body); never any other list
+    cc["natal_nakshatra"] = NAKSHATRA27
     assert cc == {"natal_sign": SIGNS, "natal_nakshatra": NAKSHATRA27, "indication_strength": ["strong", "moderate", "mild", "unknown"], "dosha_aggravated": MED_DOSHA,
                   "organ_watch": MED_ORGANS, "body_part_watch": MED_PARTS, "nakshatra_body_part": MED_NAK_PARTS, "indication_tier": ["jyotish_indication"]}
     assert [i["column"] for i in pn["identifier_columns"]] == ["ayanamsha_id", "graha"]
@@ -319,7 +330,8 @@ def test_ga_medical_the_forwarded_vocabularies_are_the_upstream_tables_complete_
     _need(*RUNTIME)
     from brahmagyan import l0_medical as l0
     from pyjhora_adapter import _names
-    assert SIGNS == _names.SIGN_NAMES and NAKSHATRA27 == _names.NAKSHATRA_NAMES[1:]
+    from brahmagyan.nakshatra_vocabulary import normalize_nakshatra
+    assert SIGNS == _names.SIGN_NAMES and NAKSHATRA27 == [normalize_nakshatra(n) for n in _names.NAKSHATRA_NAMES[1:]]   # the adapter's table is unchanged (SS N-548); the writer folds it
     rows = {r["graha"]: r for r in l0.MEDICAL_MAPPINGS if r["graha"] in NINE}
     assert sorted(rows) == sorted(NINE)
     for col, declared in (("dosha", MED_DOSHA), ("organ_systems", MED_ORGANS), ("body_part", MED_PARTS)):
@@ -329,7 +341,13 @@ def test_ga_medical_the_forwarded_vocabularies_are_the_upstream_tables_complete_
     assert sorted(set(w.INDICATION_STRENGTH_BY_BAND.values()) | {w.INDICATION_STRENGTH_UNKNOWN}) == sorted(["strong", "moderate", "mild", "unknown"])
 
 
-def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_the_engine_reads_na(db, monkeypatch):
+@pytest.mark.parametrize("names", [
+    pytest.param(NAKSHATRA27_LEGACY, id="stored-today"),
+    pytest.param(NAKSHATRA27, id="after-rebuild", marks=pytest.mark.xfail(strict=True, reason=(
+        "SS N-548: ga_positions now stores the L0 lexicon's nakshatra spellings, but asset_declarations.json (the Engine's file) still declares the "
+        "adapter's for ga_medical.natal_nakshatra; the Engine re-seals it with the rebuild (PR body §8.2). When it does, this XPASSes: drop the marker."))),
+])
+def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_the_engine_reads_na(db, monkeypatch, names):
     from brahmagyan import l0_medical as l0
     from ga_writers import ga_medical_writer as w
     conn = _conn(db)
@@ -343,8 +361,8 @@ def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_
         _psql(db, "DELETE FROM chart_facts")
         pos = dict(CHART_POS)
         pos["Moon"] = (10, 5.0 + 0.001 * k, 11)
-        _seed_positions(conn, pos, AYANAMSHAS[:1])
-        _psql(db, f"UPDATE chart_facts SET fact_value_text = '{NAKSHATRA27[nak_i]}' WHERE fact_subject = 'MOON' AND fact_key = 'nakshatra'")
+        _seed_positions(conn, pos, AYANAMSHAS[:1], names=names)
+        _psql(db, f"UPDATE chart_facts SET fact_value_text = '{names[nak_i]}' WHERE fact_subject = 'MOON' AND fact_key = 'nakshatra'")
         _psql(db, "DELETE FROM ga_condition_composite")
         band = list(scores.values())[k % 4]
         for g in NINE:
@@ -355,12 +373,12 @@ def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_
     moon = {r[2]: r[4] for r in rows_seen if r[0] == "Moon"}
     assert moon["Purva Bhadrapada"] == "left_side"                                              # the FORENSIC native Moon nakshatra maps to the seeded body part
     assert sorted(v for v in moon.values() if v) == sorted(r["body_part"] for r in l0.NAKSHATRA_MEDICAL)       # all 27 nakshatras find their seeded body part since the writer's 23rd-nakshatra spelling fix (Exec 1e5d1b894)
-    assert moon["Dhanishta"] == "back/knees"                                                                    # the adapter's 'Dhanishta' now resolves to the L0 table's Dhanishtha row (it used to find nothing)
+    assert moon[names[22]] == "back/knees"                                                                   # the adapter's 'Dhanishtha' resolves to the L0 table's Dhanishtha row (its pre-rebuild 'Dhanishta' is folded to it too)
     # keep one chart of every ayanamsha in the table for the engine reading
     _psql(db, "DELETE FROM ga_medical")
     for aya in AYANAMSHAS:
         _psql(db, "DELETE FROM chart_facts")
-        _seed_positions(conn, CHART_POS, [aya])
+        _seed_positions(conn, CHART_POS, [aya], names=names)
         _psql(db, "DELETE FROM ga_condition_composite")
         for g in NINE:
             conn.execute("INSERT INTO ga_condition_composite (chart_id, ayanamsha_id, graha, condition_score) VALUES (%s, %s, %s, %s)", (CHART, aya, g, 0.5))
@@ -941,7 +959,7 @@ def test_bg_sky_calendar_mutations_flip_the_reading(db, monkeypatch):
     got = _measure(*args)
     assert got["Narr.agree"]["v"] == FAIL and "detail" in got["Narr.agree"]["measured"]
     _psql(db, "UPDATE bg_sky_calendar SET detail = '{}'::jsonb WHERE detail ? 'note'")
-    _psql(db, "UPDATE bg_sky_calendar SET nakshatra = 'Mrigasira' WHERE id = (SELECT min(id) FROM bg_sky_calendar WHERE nakshatra IS NOT NULL)")                # the cohort spelling, not the sky calendar's
+    _psql(db, "UPDATE bg_sky_calendar SET nakshatra = 'Mrigashirsha' WHERE id = (SELECT min(id) FROM bg_sky_calendar WHERE nakshatra IS NOT NULL)")                # a spelling no producer uses
     got = _measure(*args)
     assert got["Narr.agree"]["v"] == FAIL and "nakshatra" in got["Narr.agree"]["measured"]
 
