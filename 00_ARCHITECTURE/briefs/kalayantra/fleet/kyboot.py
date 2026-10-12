@@ -118,7 +118,13 @@ codex_min_version), sandbox, network, writable_dirs, the disabled features, --ig
 --ignore-rules, persistent_mode false (the effort is high or xhigh, never "persistent"), output_schema_sha256, and the sha256 (or "absent") of <worktree>/AGENTS.md, $HOME/.codex/AGENTS.md
 and $HOME/.codex/hooks.json; the provider session id is the stream's thread.started thread_id; the final result
 event is the last turn.completed / turn.failed; and a job with an output_schema that leaves no result.json is
-judged on its final message (final_message.txt) by the same rules — a read-only job cannot write result.json.
+judged on its final message (final_message.txt) by the same rules when it left no result.json. A launch input
+with "work_root": "job" (the reviewers, cockpit ruling E1) runs with -C <job_scratch> — the only writable root —
+and --skip-git-repo-check; it names the item's working copy in item_worktree (= worktree) and its prompt carries
+the line ITEM_WORKTREE=<item_worktree>; after the job that copy's HEAD and `git status` must be what they were
+before. After every Codex job the common git directory (derived with `git rev-parse --git-common-dir`) must have
+the config and hooks it had before (cockpit ruling E2). A guard that changed, or cannot be read, fails the job
+(exit 3; state.json `guard_failures`); one that cannot be read before the job refuses the launch.
 
 What `check` passing means: the reviewed source, the manifest, the qualification and the launch input agreed
 and the facts they name were true when checked. It is not a review of the prompt or the packet, and `run`
@@ -269,13 +275,16 @@ CODEX_MANIFEST_BOUND_FILES = (("card_path", "card_sha256"),)
 OUTPUT_SCHEMA_FILE = ("output_schema", "output_schema_sha256")   # optional; hashed and manifest-bound when given
 # byte for byte kyqualify.py's CODEX_DISABLED_FEATURES: the receipt binds the tuple and the line carries it
 CODEX_DISABLED_FEATURES = ("memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin",
-                           "browser_use", "browser_use_external", "in_app_browser", "computer_use", "hooks")
+                           "browser_use", "browser_use_external", "in_app_browser", "computer_use", "hooks",
+                           "daemon_auto_start", "goals", "tool_suggest", "worktrees", "image_generation",
+                           "in_app_local_automation", "chronicle")
 CODEX_BOUND_FACTS = ("engine", "codex_bin", "codex_bin_sha256", "model", "effort", "sandbox", "network",
-                     "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
+                     "work_root", "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
                      "ignore_user_config", "ignore_rules", "persistent_mode", "project_agents_md_sha256",
                      "user_codex_agents_md_sha256",
                      "user_codex_hooks_sha256", "zdotdir_sha256", "harness_sha256")
 FINAL_MESSAGE = "final_message.txt"                        # codex exec -o, in the job's own folder
+ITEM_LINE = "ITEM_WORKTREE="                               # + item_worktree: the prompt line of a job-rooted run
 JOB_DIR = "<JOB_DIR>"                                      # the job folder in a receipt's bound launch line
 _CODEX_VERSION = re.compile(r"^codex-cli ((\d+)\.(\d+)\.(\d+)[0-9A-Za-z.+-]*)\s*\Z")
 
@@ -312,7 +321,69 @@ def program_field(launch) -> str:
 def path_fields(launch) -> tuple:
     if not is_codex(launch):
         return PATH_FIELDS
-    return CODEX_PATH_FIELDS + (("output_schema",) if "output_schema" in launch else ())
+    return CODEX_PATH_FIELDS + tuple(field for field in ("output_schema", "item_worktree") if field in launch)
+
+
+def job_rooted(launch) -> bool:
+    """a Codex run whose -C is its own job folder (work_root "job": the reviewers, cockpit ruling E1)"""
+    return is_codex(launch) and launch.get("work_root") == "job"
+
+
+def tree_digest(directory):
+    """sha256 over the relative path, then the content (for a link: its target) of every file under `directory`,
+    walked in sorted order · "absent" when there is no such directory · None when it cannot be read — byte for byte
+    kyqualify.py's `tree_digest`"""
+    if not os.path.lexists(directory):
+        return "absent"
+    if os.path.islink(directory) or not os.path.isdir(directory):
+        return None
+    digest = hashlib.sha256()
+    try:
+        for base, dirs, files in os.walk(directory):
+            dirs.sort()
+            for name in sorted(files + [d for d in dirs if os.path.islink(os.path.join(base, d))]):
+                path = os.path.join(base, name)
+                digest.update(os.path.relpath(path, directory).encode("utf-8") + b"\0")
+                if os.path.islink(path):
+                    digest.update(b"link:" + os.readlink(path).encode("utf-8"))
+                else:
+                    with open(path, "rb") as handle:
+                        digest.update(handle.read())
+                digest.update(b"\0")
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
+def git_guard(worktree, environ):
+    """{common_dir, config_sha256, hooks_digest} of the worktree's common git directory, derived with `git rev-parse
+    --git-common-dir` (cockpit ruling E2: a builder may write it for its commits, no job may change its config or
+    hooks), or None when it cannot be read"""
+    code, common = _git(worktree, environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if code != 0 or not os.path.isabs(common):
+        return None
+    common = os.path.realpath(common)
+    return {"common_dir": common, "config_sha256": file_digest(os.path.join(common, "config")),
+            "hooks_digest": tree_digest(os.path.join(common, "hooks"))}
+
+
+def worktree_guard(worktree, environ):
+    """{head, status_sha256} of a worktree (cockpit ruling E1: HEAD and `git status`, untracked files included),
+    or None when git cannot say"""
+    code, head = _git(worktree, environ, "rev-parse", "HEAD")
+    status_code, status = _git(worktree, environ, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    if code != 0 or status_code != 0 or not _HEX40.match(head):
+        return None
+    return {"head": head, "status_sha256": hashlib.sha256(status.encode("utf-8")).hexdigest()}
+
+
+def codex_guards(launch, environ) -> dict:
+    """what must be the same after a Codex job: the common git directory's config and hooks (every Codex job) and,
+    for a job-rooted one, the item's working copy (HEAD and status)"""
+    guards = {"git": git_guard(launch["worktree"], environ)}
+    if job_rooted(launch):
+        guards["worktree"] = worktree_guard(launch["worktree"], environ)
+    return guards
 
 
 def hashed_files(launch) -> tuple:
@@ -767,12 +838,26 @@ def _codex_findings(launch, environ, facts) -> list:
             out.append(f"writable_dirs: {directory!r} is not an absolute, normalised path")
         elif not os.path.isdir(directory):
             out.append(f"writable_dirs: {directory} is not an existing directory")
+    if job_rooted(launch):
+        item = launch.get("item_worktree")
+        if not isinstance(item, str) or os.path.realpath(item) != os.path.realpath(launch["worktree"]):
+            out.append("item_worktree: a job-rooted run names the item's working copy, which is its worktree")
+        else:
+            try:
+                prompt = read_bounded(launch["prompt_path"], FILE_MAX_BYTES) or b""
+            except OSError:
+                prompt = b""
+            if (ITEM_LINE + item + "\n").encode("utf-8") not in prompt:
+                out.append(f"prompt_path: the prompt does not tell the job its item's working copy (a line "
+                           f"{ITEM_LINE}{item})")
+        if dirs:
+            out.append("writable_dirs: a job-rooted run's only writable root is its own folder")
     if launch["sandbox"] == "read-only":
         if dirs:
             out.append("writable_dirs: a read-only job writes nowhere; writable_dirs must be empty")
         if launch["network"] is not False:
             out.append("network: a read-only sandbox has no network setting; network must be false")
-    elif os.path.isdir(launch["worktree"]):
+    elif os.path.isdir(launch["worktree"]) and not job_rooted(launch):
         code, common = _git(launch["worktree"], environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
         if code != 0 or not os.path.isabs(common):
             out.append("worktree: its common git directory cannot be read")
@@ -1135,7 +1220,8 @@ def expected_codex_binds(launch, components, facts) -> dict:
     harness = os.path.relpath(os.path.join(FLEET, HARNESS_FILE), facts["source_repo"])
     return {"engine": "codex", "codex_bin": launch["codex_bin"], "codex_bin_sha256": facts.get("codex_bin_sha256"),
             "model": launch["model"], "effort": launch["effort"], "sandbox": launch["sandbox"],
-            "network": launch["network"], "writable_dirs": list(launch["writable_dirs"]),
+            "network": launch["network"], "work_root": launch.get("work_root", "worktree"),
+            "writable_dirs": list(launch["writable_dirs"]),
             "env_names": sorted(launch["env"]), "child_path": launch["env"]["PATH"],
             "output_schema_sha256": launch.get(OUTPUT_SCHEMA_FILE[1], "absent"),
             "codex_disabled_features": list(CODEX_DISABLED_FEATURES), "ignore_user_config": True,
@@ -1340,8 +1426,12 @@ def build_codex_launch(launch) -> dict:
     """the Codex launch line for a checked launch input — kyqualify.py's build_codex_argv with the job folder
     filled in; a pure function of the launch input. The prompt is stdin (`-`)."""
     job = launch["job_scratch"]
-    argv = [launch["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json",
-            "-o", job + "/" + FINAL_MESSAGE, "-C", launch["worktree"], "-s", launch["sandbox"], "-m", launch["model"],
+    rooted = job_rooted(launch)
+    argv = [launch["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json"]
+    if rooted:
+        argv.append("--skip-git-repo-check")
+    argv += ["-o", job + "/" + FINAL_MESSAGE, "-C", job if rooted else launch["worktree"], "-s", launch["sandbox"],
+             "-m", launch["model"],
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=" + ("true" if launch["network"] is True else "false")]
@@ -1349,11 +1439,11 @@ def build_codex_launch(launch) -> dict:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:
         argv += ["--add-dir", directory]
-    if launch["sandbox"] == "workspace-write":
+    if launch["sandbox"] == "workspace-write" and not rooted:
         argv += ["--add-dir", job]
     if launch.get("output_schema"):
         argv += ["--output-schema", launch["output_schema"]]
-    return {"cwd": launch["worktree"], "env": clean_env(launch), "argv": argv + ["-"]}
+    return {"cwd": job if rooted else launch["worktree"], "env": clean_env(launch), "argv": argv + ["-"]}
 
 
 def build_launch(launch) -> dict:
@@ -1907,6 +1997,14 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
         _refuse(launch_path, occupied)
         return EXIT_REFUSED
 
+    guards = None
+    if is_codex(launch):                             # what the job must leave as it was (cockpit rulings E1, E2)
+        guards = {"before": codex_guards(launch, environ), "after": None}
+        unseen = sorted(name for name, value in guards["before"].items() if value is None)
+        if unseen:
+            _refuse(launch_path, [f"guards: git cannot read {', '.join(unseen)} before the job, so a change could "
+                                  f"not be detected after it"])
+            return EXIT_REFUSED
     run_id = f"kyboot-{_dt.datetime.now(_dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
     lock, held, taken_over = acquire_item_lock(ky_run, launch["item"], run_id)
     if lock is None:
@@ -1977,7 +2075,8 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
                          codex_bin_sha256=facts.get("codex_bin_sha256"), codex_version=facts.get("codex_version"),
                          sandbox=launch["sandbox"], network=launch["network"],
                          writable_dirs=list(launch["writable_dirs"]), git_common_dir=facts.get("git_common_dir"),
-                         final_message_path=os.path.join(scratch, FINAL_MESSAGE), result_source=None)
+                         final_message_path=os.path.join(scratch, FINAL_MESSAGE), result_source=None,
+                         work_root=launch.get("work_root", "worktree"), guards=guards, guard_failures=[])
         try:
             os.makedirs(os.path.dirname(state_path), exist_ok=True)
             write_state(state_path, state, exclusive=True)
@@ -1994,10 +2093,12 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
 
         # from here on a process may exist: nothing below answers 1, and nothing below raises past the job
         code, started = _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id, checked.schema_tool)
+        if guards is not None and state["phase"] == "ended":
+            code = _check_guards(launch, environ, state, code)
         launched = state["phase"] == "ended"
         keep_lock = launched and state["group_gone"] is not True    # a job that may still be alive stays locked
         done = launched and state["group_gone"] is True and state["job_result_valid"] is True \
-            and not state.get("supervisor_error")
+            and not state.get("supervisor_error") and not state.get("guard_failures")
         try:
             complete_action(act_path, action, done, {
                 "phase": state["phase"], "termination": state["termination"],
@@ -2006,7 +2107,7 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
                 "pgid": state["pgid"], "process_start": state["process_start"],
                 "job_result_valid": state["job_result_valid"], "launch_error": state.get("launch_error"),
                 "supervisor_error": state.get("supervisor_error"), "state_path": state_path,
-                "supervisor_exit": code})
+                "supervisor_exit": code, **({"guard_failures": state["guard_failures"]} if guards else {})})
         except Exception as failed:
             print(f"ACTION NOT COMPLETED {act_path}: {type(failed).__name__}: {failed} (it may still say INTENDED; "
                   f"state.json and this exit status say what happened)", file=sys.stderr)
@@ -2021,6 +2122,28 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
         if not keep_lock and not release_item_lock(lock, run_id):
             print(f"item lock: {lock} was not released by this run (it is not this run's any more, or it could "
                   f"not be removed)", file=sys.stderr)
+
+
+def _check_guards(launch, environ, state, code) -> int:
+    """after a Codex job: its guards again; any difference (or one that cannot be read) fails the job"""
+    after = codex_guards(launch, environ)
+    state["guards"]["after"] = after
+    before = state["guards"]["before"]
+    failures = []
+    for name in sorted(before):
+        if after.get(name) is None:
+            failures.append(f"{name}: cannot be read after the job")
+        elif after[name] != before[name]:
+            what = "the item's working copy (HEAD or git status)" if name == "worktree" else \
+                "the common git directory's config or hooks"
+            failures.append(f"{name}: {what} changed during the job")
+    state["guard_failures"] = failures
+    _record(state["state_path"], state)
+    if failures:
+        print(f"GUARD FAILED {launch['job_id']}: " + "; ".join(failures), file=sys.stderr)
+        if code == EXIT_OK:
+            return EXIT_JOB_FAILED
+    return code
 
 
 def _launch_and_supervise(launch, plan, facts, state, grace, lock, run_id, schema_tool):

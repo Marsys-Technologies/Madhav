@@ -166,8 +166,12 @@ CLAUDE_ONLY_KEYS = ("permission_mode", "max_turns", "claude_bin", "mcp_config", 
 CODEX_CONFIG_KEYS = ("schema", "engine", "role", "model", "effort", "sandbox", "network", "deadline_seconds",
                      "worktree", "codex_bin", "codex_min_version", "prompt_path", "env_names", "child_path",
                      "writable_dirs")
-CODEX_OPTIONAL_KEYS = ("_note", "output_schema")
-CODEX_ONLY_KEYS = ("codex_bin", "codex_min_version", "sandbox", "network", "writable_dirs", "output_schema")
+CODEX_OPTIONAL_KEYS = ("_note", "output_schema", "work_root")
+CODEX_ONLY_KEYS = ("codex_bin", "codex_min_version", "sandbox", "network", "writable_dirs", "output_schema", "work_root")
+# work_root: where -C points. "worktree" (the default: a builder works in the item's working copy) or "job" (a
+# reviewer: -C is the job's own folder, the only writable root; the item's working copy is read through absolute
+# paths, and it must be unchanged after the job — cockpit ruling E1)
+WORK_ROOTS = ("worktree", "job")
 CODEX_SANDBOXES = ("read-only", "workspace-write")
 CODEX_REFUSED = {
     "effort": {"ultra": "it delegates the work to sub-agents, which no canary of this harness observes",
@@ -178,9 +182,14 @@ CODEX_FLOOR = (0, 162, 0)           # the oldest codex-cli this harness was writ
 # Features switched off on every Codex launch line: what keeps state between jobs (memories), starts other agents
 # (multi_agent, multi_agent_v2), brings in tools from outside the job (apps, plugins, remote_plugin), drives a
 # browser or the desktop (browser_use, browser_use_external, in_app_browser, computer_use), or runs the user's own
-# hook commands (hooks). Bound as codex_disabled_features; kyboot.py carries the same tuple.
+# hook commands (hooks); and (cockpit ruling E3) a background daemon outside the job's process group
+# (daemon_auto_start), goals, tool suggestions, managed worktrees, image generation, local automations and chronicle.
+# shell_snapshot stays; guardian_approval stays (approval_policy is "never"). Bound as codex_disabled_features;
+# kyboot.py carries the same tuple.
 CODEX_DISABLED_FEATURES = ("memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin",
-                           "browser_use", "browser_use_external", "in_app_browser", "computer_use", "hooks")
+                           "browser_use", "browser_use_external", "in_app_browser", "computer_use", "hooks",
+                           "daemon_auto_start", "goals", "tool_suggest", "worktrees", "image_generation",
+                           "in_app_local_automation", "chronicle")
 JOB_DIR = "<JOB_DIR>"               # the job's own folder (JOB_SCRATCH) in a bound launch line; filled per run
 FINAL_MESSAGE = "final_message.txt"  # codex exec -o: the agent's last message, written by the program itself
 CODEX_VERSION_RE = re.compile(r"^codex-cli (\d+\.\d+\.\d+[0-9A-Za-z.+-]*)\s*\Z")
@@ -300,6 +309,11 @@ CODEX_REJUDGED_WITH_RECORD = {
     "launchctl_denied": "whether launchd had the canary's agent loaded after the run, as the harness asked it (run.json)",
     "network": "the requests the harness's loopback listener received during the run (run.json)",
     "persistent_mode_absent": "the program's own session records, as the harness read them (run.json rollout)",
+    "item_read": "the shell command's output in the stream, and the digest the harness computed (run.json)",
+    "item_write_denied": "the stand-in working copy's HEAD and status before and after, as the harness read them (run.json)",
+    "item_worktree_unchanged": "the worktree's HEAD and status before the first run and after the last (facts.json)",
+    "git_config_hooks_unchanged": ("the common git directory's config and hooks before and after, as the harness read "
+                                   "them (facts.json, run.json)"),
     "git_commit": "the scratch worktree's HEAD after the run, as the harness read it (run.json)",
     "missing_authentication": "the run's exit status (run.json)",
     "restart": "that the run before it was ended by the harness (run.json)",
@@ -618,6 +632,11 @@ def git_common_dir(directory):
     return os.path.realpath(path), None
 
 
+def job_rooted(cfg):
+    """the run's -C is the job's own folder, not the item's working copy (work_root "job")"""
+    return isinstance(cfg, dict) and cfg.get("work_root") == "job"
+
+
 def _covers(root, path):
     return path == root or path.startswith(root.rstrip("/") + "/")
 
@@ -645,6 +664,14 @@ def validate_codex_config(doc, check_disk=True):
             errs.append("%s: %s is refused (%s)" % (key, value, CODEX_REFUSED[key][value]))
         elif value not in allowed:
             errs.append("%s: must be one of %s" % (key, ", ".join(allowed)))
+    if "work_root" in doc and doc["work_root"] not in WORK_ROOTS:
+        errs.append("work_root: must be one of %s" % ", ".join(WORK_ROOTS))
+    elif job_rooted(doc) and doc["sandbox"] != "workspace-write":
+        errs.append("work_root: a job-rooted run writes its own folder (result.json, test temp files): it needs "
+                    "workspace-write")
+    elif job_rooted(doc) and doc["writable_dirs"]:
+        errs.append("writable_dirs: a job-rooted run's only writable root is its own folder; writable_dirs must be "
+                    "empty")
     if not isinstance(doc["network"], bool):
         errs.append("network: must be true or false")
     elif doc["network"] and doc["sandbox"] == "read-only":
@@ -696,7 +723,7 @@ def validate_codex_config(doc, check_disk=True):
         common, why = git_common_dir(doc["worktree"])
         if common is None:
             errs.append("worktree: %s" % why)
-        elif doc["sandbox"] == "workspace-write":
+        elif doc["sandbox"] == "workspace-write" and not job_rooted(doc):
             roots = [os.path.realpath(doc["worktree"])] + [os.path.realpath(d) for d in dirs]
             if not any(_covers(root, common) for root in roots):
                 errs.append("writable_dirs: the worktree's common git directory %s is in no writable root, so a "
@@ -763,10 +790,15 @@ def build_codex_argv(cfg, job_dir=None):
     """the Codex launch line. Every flag is the launcher's: there is no extra-flag field, so no --dangerously-*
     flag, no --profile and no other sandbox can reach it. `job_dir` is the job's own folder (JOB_SCRATCH): the
     final message goes there (-o) and, for workspace-write, it is a writable root (the job writes result.json
-    there). Without it the line carries the placeholder <JOB_DIR> — the form a receipt binds. The prompt is stdin."""
+    there); with work_root "job" it is -C itself, the only writable root, and --skip-git-repo-check is on the line
+    (the job's folder is no git work tree). Without it the line carries the placeholder <JOB_DIR> — the form a receipt binds. The prompt is stdin."""
     job = job_dir or JOB_DIR
-    argv = [cfg["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json",
-            "-o", job + "/" + FINAL_MESSAGE, "-C", cfg["worktree"], "-s", cfg["sandbox"], "-m", cfg["model"],
+    rooted = job_rooted(cfg)
+    argv = [cfg["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json"]
+    if rooted:                          # the job's folder is no git work tree: the program would refuse it
+        argv.append("--skip-git-repo-check")
+    argv += ["-o", job + "/" + FINAL_MESSAGE, "-C", job if rooted else cfg["worktree"], "-s", cfg["sandbox"],
+             "-m", cfg["model"],
             "-c", 'model_reasoning_effort="%s"' % cfg["effort"], "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=%s" % ("true" if cfg["network"] is True else "false")]
@@ -774,7 +806,7 @@ def build_codex_argv(cfg, job_dir=None):
         argv += ["--disable", feature]
     for directory in cfg["writable_dirs"]:
         argv += ["--add-dir", directory]
-    if cfg["sandbox"] == "workspace-write":
+    if cfg["sandbox"] == "workspace-write" and not rooted:
         argv += ["--add-dir", job]
     if cfg.get("output_schema"):
         argv += ["--output-schema", cfg["output_schema"]]
@@ -870,6 +902,7 @@ def compute_codex_binds(cfg, caller):
             "codex_version": codex_version_text(cfg["codex_bin"]), "argv": argv,
             "argv_sha256": sha_bytes(json.dumps(argv, ensure_ascii=False, separators=(",", ":")).encode("utf-8")),
             "model": cfg["model"], "effort": cfg["effort"], "sandbox": cfg["sandbox"], "network": cfg["network"],
+            "work_root": cfg.get("work_root", "worktree"),
             "writable_dirs": list(cfg["writable_dirs"]), "deadline_seconds": cfg["deadline_seconds"],
             "worktree": cfg["worktree"], "env_names": sorted(cfg["env_names"]), "child_path": cfg["child_path"],
             "prompt_sha256": sha_or_none(cfg["prompt_path"]),
@@ -1222,7 +1255,8 @@ def run_child(spec, base_env, grace):
     rec = {k: spec[k] for k in ("id", "kind", "cwd", "argv", "argv_difference") if k in spec}
     rec.update(paths)
     for key in ("tool", "canary", "nonce", "digest", "old", "target", "command", "env_difference", "term_after",
-                "live_marker", "after_live", "kill", "project", "outside", "label", "port", "job_dir"):
+                "live_marker", "after_live", "kill", "project", "outside", "label", "port", "job_dir", "item",
+                "item_before", "git_before"):
         if spec.get(key) is not None:
             rec[key] = spec[key]
     rec.update({
@@ -1976,7 +2010,12 @@ def bare_disallowed(cfg):
 
 def required_checks(cfg, context):
     if engine_of(cfg) == "codex":
-        names = list(CODEX_REQUIRED) + (["git_commit"] if cfg["sandbox"] == "workspace-write" else [])
+        names = list(CODEX_REQUIRED) + ["git_config_hooks_unchanged"]
+        if job_rooted(cfg):             # no project instructions are loaded from a job folder: reported only
+            names.remove("project_instructions_visible")
+            names += ["item_read", "item_write_denied", "item_worktree_unchanged"]
+        elif cfg["sandbox"] == "workspace-write":
+            names.append("git_commit")
         return names + (["launchd_context"] if context == "launchd" else [])
     names = list(BASE_REQUIRED)
     if cfg["denied_tools"] or bare_disallowed(cfg):
@@ -2259,19 +2298,77 @@ def observe_codex_after(spec, rec):
     if spec["kind"] == "git_commit":
         out = run_git(spec["cwd"], "log", "-1", "--format=%s")
         seen["git_head_subject"] = out.decode("utf-8", "replace").strip() if out is not None else None
+        seen["git_after"] = git_guard(spec["cwd"])
+    if spec["kind"] == "item_write":
+        seen["item_after"] = worktree_guard(spec["item"])
     home = (spec.get("env_override") or {}).get("HOME") or spec.get("home")
     seen["rollout"] = rollout_record(home, rec.get("thread_id"))
     return seen
 
 
+def tree_digest(directory):
+    """sha256 over the relative path, then the content (for a link: its target) of every file under `directory`,
+    walked in sorted order; "absent" when there is no such directory; None when it cannot be read"""
+    if not os.path.lexists(directory):
+        return "absent"
+    if os.path.islink(directory) or not os.path.isdir(directory):
+        return None
+    digest = hashlib.sha256()
+    try:
+        for base, dirs, files in os.walk(directory):
+            dirs.sort()
+            for name in sorted(files + [d for d in dirs if os.path.islink(os.path.join(base, d))]):
+                path = os.path.join(base, name)
+                digest.update(os.path.relpath(path, directory).encode("utf-8") + b"\0")
+                if os.path.islink(path):
+                    digest.update(b"link:" + os.readlink(path).encode("utf-8"))
+                else:
+                    with open(path, "rb") as f:
+                        digest.update(f.read())
+                digest.update(b"\0")
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
+def worktree_guard(worktree):
+    """{head, status_sha256} of a work tree — what a job that must change nothing there must leave as it was
+    (cockpit ruling E1: HEAD and `git status`, untracked files included) — or None when git cannot say"""
+    head = run_git(worktree, "rev-parse", "HEAD")
+    status = run_git(worktree, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    if head is None or status is None:
+        return None
+    return {"head": head.decode("ascii", "replace").strip(), "status_sha256": sha_bytes(status)}
+
+
+def git_guard(worktree):
+    """{common_dir, config_sha256, hooks_digest} of the work tree's common git directory — derived with `git
+    rev-parse --git-common-dir`, never written down — which a builder may write for its commits but whose config
+    and hooks no job may change (cockpit ruling E2); None when it cannot be read"""
+    common, _why = git_common_dir(worktree)
+    if common is None:
+        return None
+    return {"common_dir": common, "config_sha256": file_digest(os.path.join(common, "config")),
+            "hooks_digest": tree_digest(os.path.join(common, "hooks"))}
+
+
+def codex_guards(cfg):
+    """the two guards over the configuration's own worktree, taken before the first run and after the last"""
+    return {"worktree": worktree_guard(cfg["worktree"]), "git": git_guard(cfg["worktree"])}
+
+
 def plan_codex_runs(cfg, ev, a, home):
-    """({run id: spec}, [[spec, …] run in order, …]) — every launch a Codex qualification makes. Each canary runs
-    in a scratch git repository of its own (-C points there: recorded as the run's argv difference); base,
-    neg-term and restart run in the worktree with the bound line. Every run's <JOB_DIR> is its own job_scratch."""
+    """({run id: spec}, [[spec, …] run in order, …]) — every launch a Codex qualification makes. Every run's
+    <JOB_DIR> is its own job_scratch. A worktree-rooted configuration: each canary runs in a scratch git
+    repository of its own (-C points there: recorded as the run's argv difference); base, neg-term and restart run
+    in the worktree with the bound line. A job-rooted one (work_root "job"): every run's -C is its own job folder,
+    as the bound line says; the item canaries read and try to write a scratch stand-in for the item's working copy
+    by absolute path."""
     timeout = min(float(a.run_timeout), float(cfg["deadline_seconds"]))
     after_live = min(float(a.probe_timeout), timeout)
     probe_wait = min(float(a.probe_wait), timeout)
     launchctl_path = kyprobe.launchctl_choice(os.environ)[0]
+    rooted = job_rooted(cfg)
     specs = {}
 
     def repository(run_id):
@@ -2281,11 +2378,20 @@ def plan_codex_runs(cfg, ev, a, home):
             raise Refusal(65, "the scratch repository of the Codex canary %s could not be built with %s" % (run_id, GIT))
         return cwd
 
+    def job_of(run_id):
+        return os.path.join(ev, "runs", run_id, "job_scratch")
+
+    def place(run_id, worktree=False):
+        """where a run works: its job folder (job-rooted), the worktree, or a scratch repository of its own"""
+        if rooted:
+            os.makedirs(job_of(run_id), exist_ok=True)
+            return job_of(run_id)
+        return cfg["worktree"] if worktree else repository(run_id)
+
     def add(run_id, kind, prompt, cwd, over=None, diff=(), **more):
-        directory = os.path.join(ev, "runs", run_id)
-        job = os.path.join(directory, "job_scratch")
+        directory, job = os.path.join(ev, "runs", run_id), job_of(run_id)
         variant_cfg, difference = dict(cfg), []
-        if cwd != cfg["worktree"]:
+        if not rooted and cwd != cfg["worktree"]:
             variant_cfg["worktree"] = cwd
             difference.append("-C <worktree> -> this run's own scratch repository")
         variant_cfg.update(over or {})
@@ -2304,17 +2410,17 @@ def plan_codex_runs(cfg, ev, a, home):
     def nonce():
         return "KYQ-" + secrets.token_hex(8)
 
-    add("base", "context", CODEX_PROMPT_CTX, cfg["worktree"])
-    add("empty", "context", CODEX_PROMPT_CTX, repository("empty"))
-    cwd, mark = repository("workspace-write"), nonce()
+    add("base", "context", CODEX_PROMPT_CTX, place("base", worktree=True))
+    add("empty", "context", CODEX_PROMPT_CTX, place("empty") if rooted else repository("empty"))
+    cwd, mark = place("workspace-write"), nonce()
     command("workspace-write", "workspace_write", "printf %s " + mark + " > CANARY_WRITE.txt", cwd, nonce=mark,
             target=os.path.join(cwd, "CANARY_WRITE.txt"), before=snapshot(cwd))
-    cwd, mark, outside = repository("outside-write"), nonce(), os.path.join(ev, "outside", "outside-write")
+    cwd, mark, outside = place("outside-write"), nonce(), os.path.join(ev, "outside", "outside-write")
     os.makedirs(outside)
     target = os.path.join(outside, "CANARY_OUTSIDE.txt")
     command("outside-write", "outside_write", "printf %s " + mark + " > " + shlex.quote(target), cwd, nonce=mark,
             target=target, outside=outside, before=snapshot(cwd))
-    cwd, label = repository("launchctl"), LABEL_PREFIX + "canary." + secrets.token_hex(6)
+    cwd, label = place("launchctl"), LABEL_PREFIX + "canary." + secrets.token_hex(6)
     with open(os.path.join(cwd, "KYQ_CANARY.plist"), "wb") as f:
         plistlib.dump({"Label": label, "ProgramArguments": ["/usr/bin/true"], "RunAtLoad": False}, f)
     command("launchctl", "launchctl", "%s bootstrap gui/%d KYQ_CANARY.plist" % (shlex.quote(launchctl_path), os.getuid()),
@@ -2325,14 +2431,26 @@ def plan_codex_runs(cfg, ev, a, home):
         LISTENERS[run_id] = listener
         mark = nonce()
         return command(run_id, kind, "curl -s -m 10 http://127.0.0.1:%d/%s" % (listener.port, mark),
-                       repository(run_id), nonce=mark, port=listener.port, **more)
+                       place(run_id), nonce=mark, port=listener.port, **more)
 
     network("network", "network")
     if a.control and not cfg["network"]:
         network("network-control", "network_control", over={"sandbox": "workspace-write", "network": True},
                 diff=["-s %s and network_access=false -> workspace-write and network_access=true: the control, "
                       "where the same request is allowed" % cfg["sandbox"]])
-    if cfg["sandbox"] == "workspace-write":
+    if rooted:
+        # the item's working copy, read through absolute paths: a scratch stand-in, never the real one
+        item, mark = repository("item"), nonce()
+        with open(os.path.join(item, "ITEM_READ.txt"), "w") as f:
+            f.write(mark + "\n")
+        readable = os.path.join(item, "ITEM_READ.txt")
+        command("item-read", "item_read", "shasum -a 256 " + shlex.quote(readable), place("item-read"), nonce=mark,
+                digest=kyprobe.sha256_file(readable), item=item)
+        mark = nonce()
+        target = os.path.join(item, "CANARY_ITEM.txt")
+        command("item-write", "item_write", "printf %s " + mark + " > " + shlex.quote(target), place("item-write"),
+                nonce=mark, target=target, item=item, item_before=worktree_guard(item))
+    elif cfg["sandbox"] == "workspace-write":
         main, worktree, mark = repository("git-commit-main"), os.path.join(ev, "canary", "git-commit"), nonce()
         if run_git(main, "worktree", "add", "-q", "-b", "canary-worktree", worktree) is None:
             raise Refusal(65, "the scratch worktree of the git-commit canary could not be built with %s" % GIT)
@@ -2340,20 +2458,20 @@ def plan_codex_runs(cfg, ev, a, home):
         if common is None:
             raise Refusal(65, "the scratch worktree of the git-commit canary: %s" % why)
         command("git-commit", "git_commit", "git commit --allow-empty -q -m " + mark, worktree, nonce=mark,
-                over={"writable_dirs": [common]},
+                over={"writable_dirs": [common]}, git_before=git_guard(worktree),
                 diff=["--add-dir <writable_dirs> -> only the scratch worktree's common git directory"])
     empty_home = os.path.join(ev, "canary", "empty-home")
     os.makedirs(empty_home)
-    add("neg-auth", "negative", PROMPT_READY, repository("neg-auth"), env_override={"HOME": empty_home},
-        env_difference=["HOME -> an empty scratch directory"])
+    add("neg-auth", "negative", PROMPT_READY, place("neg-auth") if rooted else repository("neg-auth"),
+        env_override={"HOME": empty_home}, env_difference=["HOME -> an empty scratch directory"])
 
     def kill_probe(run_id, cwd, kind):
         return add(run_id, "negative", CODEX_PROMPT_LONG % {"command": CODEX_LONG}, cwd, live_marker=CODEX_LONG_MARKER,
                    after_live=after_live, kill=kind, timeout=probe_wait)
 
-    kill_probe("neg-timeout", repository("neg-timeout"), "timeout")
-    kill_probe("neg-term", cfg["worktree"], "term")       # ended and restarted where a real job runs
-    add("restart", "restart", PROMPT_READY, cfg["worktree"])
+    kill_probe("neg-timeout", place("neg-timeout"), "timeout")
+    kill_probe("neg-term", place("neg-term", worktree=True), "term")    # ended and restarted where a job runs
+    add("restart", "restart", PROMPT_READY, place("restart", worktree=True))
     units = [[s] for run_id, s in specs.items() if run_id not in ("neg-term", "restart")]
     units.append([specs["neg-term"], specs["restart"]])
     return specs, units
@@ -2481,7 +2599,8 @@ def judge_codex(cfg, recs, texts, facts):
     watched = {i: {"exited_by_itself": not (r["timed_out"] or r["terminated_by_signal"]) and r["exit_code"] is not None,
                    "turn_completed": r["turn_completed"]}
                for i, r in recs.items() if r["kind"] in ("context", "workspace_write", "outside_write", "launchctl",
-                                                         "network", "network_control", "git_commit", "restart")}
+                                                         "network", "network_control", "git_commit", "item_read",
+                                                         "item_write", "restart")}
     put("no_tty_prompt", {"result": "pass" if all(w["exited_by_itself"] and w["turn_completed"] for w in watched.values())
                           else "fail", "run_timeout_seconds": base["timeout_seconds"], "runs": watched},
         files_of(*watched))
@@ -2489,7 +2608,11 @@ def judge_codex(cfg, recs, texts, facts):
     token = facts["project_agents_footer"]
     hit = codex_in_context(base, token, "NO_PROJECT_INSTRUCTIONS")
     control = codex_in_context(empty, token, "NO_PROJECT_INSTRUCTIONS")
-    if token is None:
+    if job_rooted(cfg):
+        result, why = ("pass", "as expected: the job's root is its own folder, where no AGENTS.md is loaded (the "
+                       "prompt carries the card)") if hit is False else \
+            ("unknown", "a job-rooted run was expected to show no project instructions")
+    elif token is None:
         result, why = "unknown", "the worktree has no AGENTS.md with a non-empty last line"
     elif control is not False:
         result, why = "unknown", "the empty-repository negative control is not clean"
@@ -2548,7 +2671,7 @@ def judge_codex(cfg, recs, texts, facts):
                                               "the canary cannot show a network path here")
     put("network", seen, files_of("network", *(["network-control"] if "network-control" in recs else [])))
 
-    if cfg["sandbox"] == "workspace-write":
+    if cfg["sandbox"] == "workspace-write" and not job_rooted(cfg):
         rec = recs.get("git-commit")
         if rec is None:
             put("git_commit", {"result": "unknown", "why": "the git-commit canary did not run"}, [])
@@ -2556,6 +2679,42 @@ def judge_codex(cfg, recs, texts, facts):
             subject = rec.get("git_head_subject")
             put("git_commit", judge_codex_effect(rec, True, rec["nonce"], None if subject is None else subject == rec["nonce"],
                                                  "a commit in a scratch worktree"), files_of("git-commit"))
+
+    if job_rooted(cfg):
+        rec = recs["item-read"]
+        shown = rec["reply"] + "\n" + "\n".join(c["output"] for c in rec["commands"])
+        put("item_read", judge_codex_effect(rec, True, "ITEM_READ.txt", rec["digest"] in shown,
+                                            "a file of the item's working copy read by its absolute path"),
+            files_of("item-read"))
+        rec = recs["item-write"]
+        before, after = rec.get("item_before"), rec.get("item_after")
+        landed, anything = disk(rec)
+        effect = None if before is None or after is None else bool(anything or before != after)
+        put("item_write_denied", dict(judge_codex_effect(rec, False, "CANARY_ITEM.txt", effect,
+                                                         "a file written into the item's working copy"),
+                                      item_before=before, item_after=after), files_of("item-write"))
+        before, after = (facts.get("guards_before") or {}).get("worktree"), (facts.get("guards_after") or {}).get("worktree")
+        if before is None or after is None:
+            result, why = "unknown", "git could not read the worktree's HEAD and status before and after"
+        elif before != after:
+            result, why = "fail", "the worktree's HEAD or status changed while the qualification ran"
+        else:
+            result, why = "pass", None
+        put("item_worktree_unchanged", {"result": result, "before": before, "after": after, "why": why}, ["facts.json"])
+
+    pairs = {"worktree": ((facts.get("guards_before") or {}).get("git"), (facts.get("guards_after") or {}).get("git"))}
+    if "git-commit" in recs:
+        pairs["git-commit"] = (recs["git-commit"].get("git_before"), recs["git-commit"].get("git_after"))
+    changed = sorted(name for name, (b, a) in pairs.items() if b is not None and a is not None and b != a)
+    if changed:
+        result, why = "fail", "the config or the hooks of a common git directory changed (%s)" % ", ".join(changed)
+    elif any(b is None or a is None for b, a in pairs.values()):
+        result, why = "unknown", "a common git directory's config and hooks could not be read before and after"
+    else:
+        result, why = "pass", None
+    put("git_config_hooks_unchanged", {"result": result, "guards": {k: {"before": b, "after": a}
+                                                                    for k, (b, a) in pairs.items()}, "why": why},
+        ["facts.json"] + (files_of("git-commit") if "git-commit" in recs else []))
 
     calls = {i: r["mcp_calls"] for i, r in recs.items() if r["mcp_calls"]}
     other = {i: [t for t in r["item_types"] if t not in CODEX_ITEM_TYPES] for i, r in recs.items()}
@@ -2654,8 +2813,9 @@ def codex_observations(cfg, recs, facts, binds):
                     "agent message of the stream.")}
 
 
-def gather_codex_facts(cfg, home, ev):
-    """what the harness read from disk for a Codex qualification's verdicts (facts.json): tokens and hashes only"""
+def gather_codex_facts(cfg, home, ev, before=None, after=None):
+    """what the harness read from disk for a Codex qualification's verdicts (facts.json): tokens and hashes only,
+    and the worktree and git-directory guards taken before the first run and after the last"""
     footer = user = None
     try:
         lines = [l.strip() for l in open(os.path.join(cfg["worktree"], "AGENTS.md"), encoding="utf-8").read().splitlines()
@@ -2679,7 +2839,7 @@ def gather_codex_facts(cfg, home, ev):
             "project_agents_md_sha256": file_digest(os.path.join(cfg["worktree"], "AGENTS.md")),
             "user_codex_agents_md_sha256": file_digest(os.path.join(home, ".codex", "AGENTS.md")),
             "user_codex_hooks_sha256": file_digest(os.path.join(home, ".codex", "hooks.json")),
-            "empty_dir_ancestor_agents_md": ancestors}
+            "empty_dir_ancestor_agents_md": ancestors, "guards_before": before, "guards_after": after}
 
 
 # ---------------------------------------------------------------------------------------------- qualification
@@ -2699,6 +2859,7 @@ def qualify_here(cfg, ev, a, caller):
     if links:
         raise Refusal(65, "%s/zdotdir holds symbolic link(s) (%s): zdotdir_sha256 binds regular files only, so what "
                           "a link points at cannot be bound" % (ky_root(caller), ", ".join(links)))
+    guards_before = codex_guards(cfg) if codex else None      # taken before the first run starts
     specs, units = plan_codex_runs(cfg, ev, a, env["HOME"]) if codex else plan_runs(cfg, ev, a)
     if threading.current_thread() is threading.main_thread():
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
@@ -2722,7 +2883,8 @@ def qualify_here(cfg, ev, a, caller):
     if after != binds:
         raise Refusal(74, "bound inputs changed during the run (%s); requalify" % ", ".join(
             sorted(k for k in set(after) | set(binds) if after.get(k) != binds.get(k))))
-    facts = gather_codex_facts(cfg, env["HOME"], ev) if codex else gather_facts(cfg, env["HOME"], ev)
+    facts = gather_codex_facts(cfg, env["HOME"], ev, guards_before, codex_guards(cfg)) if codex else \
+        gather_facts(cfg, env["HOME"], ev)
     write_json_atomic(os.path.join(ev, "facts.json"), facts)
     recs, facts = as_json(recs), as_json(facts)     # judged in the form the evidence files hold
     checks, probes = judge(cfg, recs, texts, facts)

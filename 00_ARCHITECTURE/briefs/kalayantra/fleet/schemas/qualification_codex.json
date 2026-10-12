@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ky.qualification/1#codex",
   "title": "KĀLA-YANTRA v3 launch qualification receipt of the OpenAI Codex CLI engine, run/QUALIFICATIONS/<role>-<model>.json, written by fleet/kyqualify.py (relaunch plan v2.7 §7 KV-06)",
-  "description": "What one Codex launch configuration was observed to do, bound to the exact program, launch line, model/effort, sandbox and network, writable roots, disabled features, environment names, prompt/output-schema hashes, the instruction and hook files Codex may still read and the harness itself (binds). The same schema id as a Claude Code receipt (qualification.json), told apart by engine = \"codex\" (a receipt without engine is Claude Code's). Shape only. Not checked by this schema, and recomputed by `kyqualify.py check`: result is PASS only when every required check (sign_in, model_identity, no_tty_prompt, project_instructions_visible, workspace_write, outside_write_denied, launchctl_denied, network, foreign_tools_absent, persistent_mode_absent, and git_commit for workspace-write, launchd_context for launchd) is 'pass' and every negative probe is 'pass' — none may be 'not_simulated'; binds equal the binds recomputed from the configuration and the files on disk; a launchd context is backed by its launchd receipt, earned with /bin/launchctl. sandbox_observed and input_overhead_worktree are reported, never required. `boundary` says what a PASS is not.",
+  "description": "What one Codex launch configuration was observed to do, bound to the exact program, launch line, model/effort, sandbox and network, writable roots, disabled features, environment names, prompt/output-schema hashes, the instruction and hook files Codex may still read and the harness itself (binds). The same schema id as a Claude Code receipt (qualification.json), told apart by engine = \"codex\" (a receipt without engine is Claude Code's). Shape only. Not checked by this schema, and recomputed by `kyqualify.py check`: result is PASS only when every required check (sign_in, model_identity, no_tty_prompt, project_instructions_visible, workspace_write, outside_write_denied, launchctl_denied, network, foreign_tools_absent, persistent_mode_absent, git_config_hooks_unchanged; git_commit for a worktree-rooted workspace-write configuration; item_read, item_write_denied and item_worktree_unchanged — instead of project_instructions_visible — for a job-rooted one;, launchd_context for launchd) is 'pass' and every negative probe is 'pass' — none may be 'not_simulated'; binds equal the binds recomputed from the configuration and the files on disk; a launchd context is backed by its launchd receipt, earned with /bin/launchctl. sandbox_observed and input_overhead_worktree are reported, never required. `boundary` says what a PASS is not.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -71,6 +71,7 @@
         "effort",
         "sandbox",
         "network",
+        "work_root",
         "writable_dirs",
         "deadline_seconds",
         "worktree",
@@ -138,6 +139,13 @@
         },
         "network": {
           "type": "boolean"
+        },
+        "work_root": {
+          "description": "Where -C points: the item's worktree, or the job's own folder (a reviewer).",
+          "enum": [
+            "worktree",
+            "job"
+          ]
         },
         "writable_dirs": {
           "type": "array",
@@ -251,7 +259,8 @@
         "network",
         "foreign_tools_absent",
         "input_overhead_worktree",
-        "persistent_mode_absent"
+        "persistent_mode_absent",
+        "git_config_hooks_unchanged"
       ],
       "properties": {
         "sign_in": {
@@ -294,6 +303,18 @@
           "$ref": "#/$defs/check"
         },
         "persistent_mode_absent": {
+          "$ref": "#/$defs/check"
+        },
+        "item_read": {
+          "$ref": "#/$defs/check"
+        },
+        "item_write_denied": {
+          "$ref": "#/$defs/check"
+        },
+        "item_worktree_unchanged": {
+          "$ref": "#/$defs/check"
+        },
+        "git_config_hooks_unchanged": {
           "$ref": "#/$defs/check"
         }
       }

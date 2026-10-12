@@ -4,8 +4,9 @@
  "role": "area-reviewer",
  "model": "gpt-6.1-sol",
  "effort": "high",
- "sandbox": "read-only",
+ "sandbox": "workspace-write",
  "network": false,
+ "work_root": "job",
  "deadline_seconds": 7200,
  "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
  "codex_bin": "/opt/homebrew/bin/codex",
@@ -29,5 +30,5 @@
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
  "writable_dirs": [],
- "_note": "The Codex area reviewer (the bootstrap reviewer with twice the time, for the B-0c area reviews): read-only sandbox, no network, no writable root — the job's commands cannot write anywhere, not even JOB_SCRATCH or TMPDIR, so the card's pytest runs (--basetemp under JOB_SCRATCH) and its result.json write (BR-07, BR-12) cannot happen as written; the final message, held to codex_reviewer_output.json by the program, is the job's result (kyboot.py judges final_message.txt when no result.json is left). Recorded for an owner-surrogate decision: a reviewer that must run tests needs workspace-write with network false instead. Model gpt-6.1-sol at effort high (owner decision 2026-10-12)."
+ "_note": "The Codex area reviewer (the bootstrap reviewer with twice the time, for the B-0c area reviews) (cockpit ruling E1): workspace-write rooted in its own job folder (-C <JOB_DIR>, the only writable root, network off) — it writes result.json and its test temp files there, as the card says; final_message.txt (held to codex_reviewer_output.json) is a fallback only. The item's working copy is read by absolute path (ITEM_WORKTREE=<path> in the prompt) and kyboot.py fails the job if its HEAD or git status changed. Reviewers' test runs: `python3 -B -m pytest -p no:cacheprovider --basetemp=$JOB_SCRATCH/pytest …` (the item's working copy is read-only to the job: no compiled cache, no pytest cache there). Model gpt-6.1-sol at effort high (owner decision 2026-10-12)."
 }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ky.bootstrap_launch_input/1#codex",
   "title": "KĀLA-YANTRA v3 bootstrap launch input of the OpenAI Codex CLI engine (relaunch plan v2.7 §7 bootstrap launches and launch qualification, §14 B-0c / B-1)",
-  "description": "A bootstrap launch input with \"engine\": \"codex\": everything bootstrap_launch_input.json requires of a Claude Code launch except its Claude-only fields (claude_bin, claude_min_version, permission_mode, max_turns, mcp_config, mcp_config_sha256, extra_lean_flags, disallowed_tools — any of them refuses), plus codex_bin, codex_min_version, sandbox, network, writable_dirs and, optionally together, output_schema and output_schema_sha256. Shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: every rule listed for a Claude launch input that applies (manifest and supervisor first; paths; worktree and branch policy; hashes; card and packet in the prompt; scratch and state locations; environment allowlist; effort per kind; deadline; card_path and output_schema as manifest components; the item lock) and, for Codex: writable dirs exist; read-only has none and no network; for workspace-write the worktree's common git directory lies in a writable root; the receipt <role>-<model> says engine codex and binds program path, sha256 and version, model, effort, sandbox, network, writable_dirs, disabled features, --ignore-user-config / --ignore-rules, output schema hash, AGENTS.md / ~/.codex/AGENTS.md / ~/.codex/hooks.json hashes, environment names, child PATH, zdotdir, harness and the launch line flag for flag; the program's version against codex_min_version (run only for the program that receipt binds). There is no turn cap: Codex has no turn limit, so the deadline is the only one.",
+  "description": "A bootstrap launch input with \"engine\": \"codex\": everything bootstrap_launch_input.json requires of a Claude Code launch except its Claude-only fields (claude_bin, claude_min_version, permission_mode, max_turns, mcp_config, mcp_config_sha256, extra_lean_flags, disallowed_tools — any of them refuses), plus codex_bin, codex_min_version, sandbox, network, writable_dirs and, optionally: output_schema with output_schema_sha256; work_root (\"job\" for a reviewer) with item_worktree. Shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: every rule listed for a Claude launch input that applies (manifest and supervisor first; paths; worktree and branch policy; hashes; card and packet in the prompt; scratch and state locations; environment allowlist; effort per kind; deadline; card_path and output_schema as manifest components; the item lock) and, for Codex: writable dirs exist; read-only has none and no network; for workspace-write the worktree's common git directory lies in a writable root; the receipt <role>-<model> says engine codex and binds program path, sha256 and version, model, effort, sandbox, network, writable_dirs, disabled features, --ignore-user-config / --ignore-rules, output schema hash, AGENTS.md / ~/.codex/AGENTS.md / ~/.codex/hooks.json hashes, environment names, child PATH, zdotdir, harness and the launch line flag for flag; the program's version against codex_min_version (run only for the program that receipt binds). After every Codex job kyboot.py reads the common git directory's config and hooks again (and, for a job-rooted run, the item working copy's HEAD and status): any change fails the job. There is no turn cap: Codex has no turn limit, so the deadline is the only one.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -115,6 +115,17 @@
       "description": "sandbox_workspace_write.network_access; false for read-only.",
       "type": "boolean"
     },
+    "work_root": {
+      "description": "Where -C points (default \"worktree\"). \"job\": the job_scratch is -C and the only writable root (workspace-write, no writable_dirs, --skip-git-repo-check); the item's working copy is read by absolute path, named by item_worktree and in the prompt as a line ITEM_WORKTREE=<item_worktree>, and its HEAD and git status must be the same after the job (cockpit ruling E1: the reviewers).",
+      "enum": [
+        "worktree",
+        "job"
+      ]
+    },
+    "item_worktree": {
+      "description": "work_root \"job\" only, and then required: the item's working copy, read by absolute path — the same directory as worktree, which the branch, base and policy checks hold to.",
+      "$ref": "#/$defs/text"
+    },
     "writable_dirs": {
       "description": "--add-dir roots besides the worktree and job_scratch; empty for read-only. For workspace-write the worktree's common git directory must lie in one of them (or in the worktree); kyboot.py derives and checks it.",
       "type": "array",
@@ -224,6 +235,48 @@
         "required": [
           "output_schema"
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "work_root": {
+            "const": "job"
+          }
+        },
+        "required": [
+          "work_root"
+        ]
+      },
+      "then": {
+        "required": [
+          "item_worktree"
+        ],
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "item_worktree"
+        ]
+      },
+      "then": {
+        "required": [
+          "work_root"
+        ],
+        "properties": {
+          "work_root": {
+            "const": "job"
+          }
+        }
       }
     }
   ],

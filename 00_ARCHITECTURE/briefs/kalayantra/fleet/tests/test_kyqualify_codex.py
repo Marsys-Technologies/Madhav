@@ -53,6 +53,9 @@ sandbox, model, workdir = opt("-s"), opt("-m"), opt("-C")
 network = sandbox == "workspace-write" and conf.get("sandbox_workspace_write.network_access") == "true"
 roots = [workdir] + every("--add-dir") + ([os.environ["TMPDIR"]] if sandbox == "workspace-write" else [])
 roots = [os.path.realpath(r) for r in roots if r]
+for path in cfg["touch"]:                     # a job that changes what it must leave alone
+    with open(path, "a") as f:
+        f.write("# changed by a job\n")
 prompt = sys.stdin.read()
 cm = re.search(r"(?:with your shell tool|wait for it to finish): (.*)\n", prompt)
 command = cm.group(1) if cm else None
@@ -192,20 +195,24 @@ DEFAULT = {"version": "codex-cli 0.162.0-alpha.17.2", "logged_in": True, "auth_i
            "serve_sandbox": None, "rollout": True, "hang_on": [], "mcp_call": False, "extra_item": None,
            "sandbox_leaks": False, "launchctl_blocked": True, "network_leaks": False, "never_attempt": False,
            "report_success": False, "load_project_md": True, "load_user_md": False, "git_blocked": False,
-           "persistent": False}
+           "persistent": False, "touch": []}
 ENV_NAMES = ["HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_SCRATCH",
              "JOB_SCRATCH", "KY_ITEM", "KY_PY"]
 FOOTER = "Use the governed documents as the shared project state."
 REQUIRED = ["sign_in", "model_identity", "no_tty_prompt", "project_instructions_visible", "workspace_write",
-            "outside_write_denied", "launchctl_denied", "network", "foreign_tools_absent", "persistent_mode_absent"]
+            "outside_write_denied", "launchctl_denied", "network", "foreign_tools_absent", "persistent_mode_absent",
+            "git_config_hooks_unchanged"]
+REVIEWER_REQUIRED = [n for n in REQUIRED if n != "project_instructions_visible"] + \
+    ["item_read", "item_write_denied", "item_worktree_unchanged"]
 BIND_KEYS = {"engine", "codex_bin", "codex_bin_sha256", "codex_version", "argv", "argv_sha256", "model", "effort",
              "sandbox", "network", "writable_dirs", "deadline_seconds", "worktree", "env_names", "child_path",
              "prompt_sha256", "output_schema_sha256", "codex_disabled_features", "ignore_user_config", "ignore_rules",
-             "persistent_mode",
+             "persistent_mode", "work_root",
              "project_agents_md_sha256", "user_codex_agents_md_sha256", "user_codex_hooks_sha256", "zdotdir_sha256",
              "harness_sha256"}
 FEATURES = ["memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin", "browser_use",
-            "browser_use_external", "in_app_browser", "computer_use", "hooks"]
+            "browser_use_external", "in_app_browser", "computer_use", "hooks", "daemon_auto_start", "goals",
+            "tool_suggest", "worktrees", "image_generation", "in_app_local_automation", "chronicle"]
 PASS, FAIL, UNKNOWN = 0, 1, 3
 GIT_ENV = {"PATH": "/usr/bin:/bin", "HOME": "/var/empty", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t",
@@ -268,8 +275,8 @@ def make_rig(tmp):
         return {k: v for k, v in base.items() if v is not None}
 
     def reviewer(**over):
-        return doc(**dict({"role": "bootstrap-reviewer", "model": "gpt-6.1-sol", "sandbox": "read-only",
-                           "network": False, "deadline_seconds": 3600, "writable_dirs": [],
+        return doc(**dict({"role": "bootstrap-reviewer", "model": "gpt-6.1-sol", "sandbox": "workspace-write",
+                           "network": False, "work_root": "job", "deadline_seconds": 3600, "writable_dirs": [],
                            "output_schema": str(SCHEMAS / "codex_reviewer_output.json")}, **over))
 
     def config(document=None, name=None):
@@ -344,9 +351,13 @@ def rc_checks_persistent(rig):
 
 
 def expected_argv(cfg, job="<JOB_DIR>"):
-    """the Codex launch line, stated independently of kyqualify (the brief's line, flag for flag)"""
-    argv = [cfg["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json", "-o",
-            job + "/final_message.txt", "-C", cfg["worktree"], "-s", cfg["sandbox"], "-m", cfg["model"],
+    """the Codex launch line, stated independently of kyqualify (the brief's line, flag for flag; a job-rooted
+    reviewer per cockpit ruling E1)"""
+    rooted = cfg.get("work_root") == "job"
+    argv = [cfg["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json"] + \
+        (["--skip-git-repo-check"] if rooted else []) + [
+            "-o", job + "/final_message.txt", "-C", job if rooted else cfg["worktree"], "-s", cfg["sandbox"],
+            "-m", cfg["model"],
             "-c", 'model_reasoning_effort="%s"' % cfg["effort"], "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=%s" % str(cfg["network"]).lower()]
@@ -354,7 +365,7 @@ def expected_argv(cfg, job="<JOB_DIR>"):
         argv += ["--disable", feature]
     for directory in cfg["writable_dirs"]:
         argv += ["--add-dir", directory]
-    if cfg["sandbox"] == "workspace-write":
+    if cfg["sandbox"] == "workspace-write" and not rooted:
         argv += ["--add-dir", job]
     if cfg.get("output_schema"):
         argv += ["--output-schema", cfg["output_schema"]]
@@ -383,14 +394,20 @@ def test_a_clean_codex_builder_earns_pass_with_every_detector_exercised(builder)
     assert kyschema.validate(kyschema.load_json(SCHEMAS / "qualification.json"), rc) != []   # not a Claude receipt
 
 
-def test_a_clean_codex_reviewer_earns_pass_and_its_sandbox_refuses_every_write(reviewer):
+def test_a_clean_codex_reviewer_earns_pass_writing_only_its_job_folder(reviewer):
     rc = reviewer.receipt
     assert reviewer.done.returncode == PASS, reviewer.done.stderr
-    assert results(rc) == dict({name: "pass" for name in REQUIRED}, sandbox_observed="pass",
-                               input_overhead_worktree="pass")
-    assert "git_commit" not in rc["checks"]                                    # nothing to commit read-only
+    assert results(rc) == dict({name: "pass" for name in REVIEWER_REQUIRED}, sandbox_observed="pass",
+                               input_overhead_worktree="pass", project_instructions_visible="pass")
+    assert sorted(n for n, c in rc["checks"].items() if c["required"]) == sorted(REVIEWER_REQUIRED)
+    assert "git_commit" not in rc["checks"]                                    # a reviewer commits nothing
     write = rc["checks"]["workspace_write"]["observed"]
-    assert write["expected_effect"] is False and write["effect"] is False and write["attempts"][0]["refused"]
+    assert write["expected_effect"] is True and write["effect"] is True        # its own job folder (result.json)
+    item = rc["checks"]["item_write_denied"]["observed"]
+    assert item["effect"] is False and item["attempts"][0]["refused"] and item["item_before"] == item["item_after"]
+    assert rc["checks"]["item_read"]["observed"]["effect"] is True              # read by its absolute path
+    assert rc["checks"]["item_worktree_unchanged"]["observed"]["before"]["head"]
+    assert rc["binds"]["work_root"] == "job" and rc["binds"]["sandbox"] == "workspace-write"
     net = rc["checks"]["network"]["observed"]
     assert net["expected_effect"] is False and net["effect"] is False and net["control_reached"] is True
     assert rc["binds"]["output_schema_sha256"] == sha(SCHEMAS / "codex_reviewer_output.json")
@@ -532,13 +549,27 @@ def test_every_codex_only_field_refuses_a_claude_configuration():
 
 
 def test_read_only_means_no_writable_root_and_no_network(rig):
-    assert refusals(rig, rig.reviewer()) == []
-    found = refusals(rig, rig.reviewer(network=True), check_disk=False)
+    read_only = rig.doc(sandbox="read-only", network=False, writable_dirs=[])
+    assert refusals(rig, read_only) == []
+    found = refusals(rig, dict(read_only, network=True), check_disk=False)
     assert any("network true needs workspace-write" in f for f in found)
-    found = refusals(rig, rig.reviewer(writable_dirs=[rig.common]), check_disk=False)
+    found = refusals(rig, dict(read_only, writable_dirs=[rig.common]), check_disk=False)
     assert any("a read-only sandbox writes nowhere" in f for f in found)
-    for bad in (rig.reviewer(network=True), rig.reviewer(writable_dirs=[rig.common])):
+    for bad in (dict(read_only, network=True), dict(read_only, writable_dirs=[rig.common])):
         assert kyschema.validate(CODEX_SCHEMA, bad) != []
+
+
+def test_a_job_rooted_run_writes_only_its_own_folder(rig):
+    assert refusals(rig, rig.reviewer()) == [] and kyschema.validate(CODEX_SCHEMA, rig.reviewer()) == []
+    for over, needle in (({"sandbox": "read-only"}, "work_root: a job-rooted run writes its own folder"),
+                         ({"writable_dirs": [rig.common]}, "writable_dirs: a job-rooted run's only writable root"),
+                         ({"work_root": "home"}, "work_root: must be one of worktree, job")):
+        bad = rig.reviewer(**over)
+        assert any(needle in f for f in refusals(rig, bad, check_disk=False)), over
+        assert kyschema.validate(CODEX_SCHEMA, bad) != [], over
+    argv = kyqualify.build_argv(rig.reviewer(), "/j")
+    assert argv[argv.index("-C") + 1] == "/j" and "--skip-git-repo-check" in argv and "--add-dir" not in argv
+    assert argv == expected_argv(rig.reviewer(), "/j")
 
 
 def test_a_builder_must_be_able_to_write_its_worktrees_common_git_directory(rig):
@@ -631,10 +662,10 @@ def test_a_launchd_agent_the_canary_loaded_is_booted_out_again(rig):
 
 
 @pytest.mark.parametrize("over,check,result,why", [
-    ({"sandbox_leaks": True}, "workspace_write", "fail", "the refused action took effect"),
+    ({"sandbox_leaks": True}, "item_write_denied", "fail", "the refused action took effect"),
     ({"network_leaks": True}, "network", "fail", "the refused action took effect"),
-    ({"report_success": True}, "workspace_write", "unknown", "the attempt is reported as succeeding"),
-], ids=["reviewer-writes", "reviewer-reaches-network", "reviewer-silent"])
+    ({"report_success": True}, "item_write_denied", "unknown", "the attempt is reported as succeeding"),
+], ids=["reviewer-writes-the-item", "reviewer-reaches-network", "reviewer-silent"])
 def test_a_reviewer_detector_reads_no_when_the_sandbox_lets_it_through(rig, over, check, result, why):
     rig.configure(**over)
     r, receipt, _, _ = rig.qualify(rig.config(rig.reviewer()))
@@ -748,9 +779,9 @@ def test_check_refuses_a_changed_program_or_an_older_one(builder):
 CODEX_TEMPLATES = {
     "bootstrap-builder": ("gpt-6.1-sol", "workspace-write", True, ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"], None,
                           14400, "BOOTSTRAP.md"),
-    "bootstrap-reviewer": ("gpt-6.1-sol", "read-only", False, [], "codex_reviewer_output.json", 3600,
+    "bootstrap-reviewer": ("gpt-6.1-sol", "workspace-write", False, [], "codex_reviewer_output.json", 3600,
                            "BOOTSTRAP_REVIEWER.md"),
-    "area-reviewer": ("gpt-6.1-sol", "read-only", False, [], "codex_reviewer_output.json", 7200,
+    "area-reviewer": ("gpt-6.1-sol", "workspace-write", False, [], "codex_reviewer_output.json", 7200,
                       "BOOTSTRAP_REVIEWER.md"),
 }
 SOURCE = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan"
@@ -768,6 +799,7 @@ def test_the_codex_templates_are_valid_codex_configurations_with_the_briefs_line
     assert doc["codex_bin"] == "/opt/homebrew/bin/codex" and doc["codex_min_version"] == "0.162.0"
     assert doc["worktree"] == SOURCE and doc["prompt_path"] == FLEET_SOURCE + "/cards/" + card
     assert doc.get("output_schema") == (FLEET_SOURCE + "/schemas/" + schema if schema else None)
+    assert doc.get("work_root", "worktree") == ("job" if schema else "worktree")       # cockpit ruling E1
     claude = kyschema.load_json(TEMPLATES / ("LAUNCH_CONFIG.%s.json" % role))
     assert (doc["env_names"], doc["child_path"]) == (claude["env_names"], claude["child_path"])
     assert kyqualify.build_argv(doc) == expected_argv(doc)
@@ -827,3 +859,39 @@ def test_the_codex_schemas_use_only_the_supported_keywords():
 def test_the_disabled_features_are_one_tuple_in_harness_and_supervisor():
     import kyboot  # noqa: E402  (this checkout's file, read only)
     assert list(kyqualify.CODEX_DISABLED_FEATURES) == list(kyboot.CODEX_DISABLED_FEATURES) == FEATURES
+
+
+# ------------------------------------------------------------- cockpit rulings E1, E2: what a job leaves alone
+
+def test_a_reviewer_that_changes_the_items_working_copy_fails(rig):
+    rig.configure(touch=[str(rig.proj / "STRAY_FROM_A_JOB.txt")])
+    r, receipt, _, _ = rig.qualify(rig.config(rig.reviewer()))
+    got = receipt["checks"]["item_worktree_unchanged"]
+    assert got["result"] == "fail" and got["required"] and receipt["result"] == "FAIL", got
+    assert got["observed"]["before"]["status_sha256"] != got["observed"]["after"]["status_sha256"]
+
+
+@pytest.mark.parametrize("where", ["config", "hooks/post-checkout"])
+def test_a_job_that_changes_the_common_git_directorys_config_or_hooks_fails(rig, where):
+    path = Path(rig.common) / where
+    path.parent.mkdir(exist_ok=True)
+    rig.configure(touch=[str(path)])
+    for cfg in (rig.doc(), rig.reviewer()):
+        r, receipt, _, _ = rig.qualify(rig.config(cfg))
+        got = receipt["checks"]["git_config_hooks_unchanged"]
+        assert got["result"] == "fail" and got["required"] and receipt["result"] == "FAIL", got
+        assert "worktree" in got["observed"]["why"]
+        assert got["observed"]["guards"]["worktree"]["before"]["common_dir"] == rig.common   # derived, not written
+
+
+def test_the_git_guards_digest_the_hooks_folder_and_derive_the_common_directory(rig):
+    before = kyqualify.git_guard(str(rig.proj))
+    assert before["common_dir"] == rig.common and before["config_sha256"] == sha(Path(rig.common) / "config")
+    hooks = Path(rig.common) / "hooks"
+    hooks.mkdir(exist_ok=True)
+    (hooks / "pre-commit").write_text("#!/bin/sh\nexit 0\n")
+    assert kyqualify.git_guard(str(rig.proj))["hooks_digest"] != before["hooks_digest"]
+    assert kyqualify.tree_digest(str(rig.tmp / "absent")) == "absent"
+    assert kyqualify.worktree_guard(str(rig.proj))["head"] == git(rig.proj, "rev-parse", "HEAD")
+    import kyboot  # noqa: E402  (this checkout's file, read only: the supervisor digests the same way)
+    assert kyboot.tree_digest(str(hooks)) == kyqualify.tree_digest(str(hooks))

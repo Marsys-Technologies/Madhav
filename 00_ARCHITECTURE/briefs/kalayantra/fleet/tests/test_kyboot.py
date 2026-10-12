@@ -4480,16 +4480,21 @@ def test_the_template_readme_explains_every_field_and_every_gate_within_sixty_li
 # the second engine: a Codex launch ("engine": "codex"; the fake program is fixtures/b0c_engines/fake_codex_ok.sh)
 # --------------------------------------------------------------------------------------------------------------
 CODEX_FEATURES = ["memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin", "browser_use",
-                  "browser_use_external", "in_app_browser", "computer_use", "hooks"]
+                  "browser_use_external", "in_app_browser", "computer_use", "hooks", "daemon_auto_start", "goals",
+                  "tool_suggest", "worktrees", "image_generation", "in_app_local_automation", "chronicle"]
 CLAUDE_ONLY_LAUNCH_FIELDS = ("claude_bin", "claude_min_version", "permission_mode", "max_turns", "mcp_config",
                              "mcp_config_sha256", "extra_lean_flags", "disallowed_tools")
 THREAD = "0199c0de-0000-7000-8000-00000000c0de"
 
 
 def codex_launch_line(launch, job="<JOB_DIR>") -> list:
-    """the Codex launch line, stated independently of kyboot (the brief's line, flag for flag)"""
-    argv = [launch["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json", "-o",
-            job + "/final_message.txt", "-C", launch["worktree"], "-s", launch["sandbox"], "-m", launch["model"],
+    """the Codex launch line, stated independently of kyboot (the brief's line, flag for flag; a job-rooted
+    reviewer per cockpit ruling E1)"""
+    rooted = launch.get("work_root") == "job"
+    argv = [launch["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json"] + \
+        (["--skip-git-repo-check"] if rooted else []) + [
+            "-o", job + "/final_message.txt", "-C", job if rooted else launch["worktree"], "-s", launch["sandbox"],
+            "-m", launch["model"],
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=" + str(launch["network"]).lower()]
@@ -4497,7 +4502,7 @@ def codex_launch_line(launch, job="<JOB_DIR>") -> list:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:
         argv += ["--add-dir", directory]
-    if launch["sandbox"] == "workspace-write":
+    if launch["sandbox"] == "workspace-write" and not rooted:
         argv += ["--add-dir", job]
     if launch.get("output_schema"):
         argv += ["--output-schema", launch["output_schema"]]
@@ -4524,13 +4529,18 @@ class CodexWorld(World):
         (self.home / ".codex" / "AGENTS.md").write_text("user instructions\n", encoding="utf-8")
         self.set_prompt("")
 
-    def as_reviewer(self, final=None):
-        """a read-only reviewer with an output schema; `final` is the final message the fake job leaves"""
+    def as_reviewer(self, final=None, text=""):
+        """a reviewer rooted in its job folder (cockpit ruling E1) with an output schema; `final` is the final
+        message the fake job leaves (and then no result.json); the prompt names the item's working copy"""
         out = self.repo / kymanifest.FLEET / "schemas" / "codex_reviewer_output.json"
-        self.launch.update(role="bootstrap-reviewer", model="gpt-6.1-sol", sandbox="read-only", network=False,
-                           writable_dirs=[], output_schema=str(out), output_schema_sha256=sha(out), kind="VERIFY")
-        if final is not None:
-            self.set_prompt("FAKE_NO_RESULT_JSON\nFAKE_FINAL_MESSAGE:" + final + "\n")
+        self.launch.update(role="bootstrap-reviewer", model="gpt-6.1-sol", sandbox="workspace-write", network=False,
+                           work_root="job", item_worktree=str(self.repo), writable_dirs=[], output_schema=str(out),
+                           output_schema_sha256=sha(out), kind="VERIFY")
+        self.set_prompt(self.item_line() + text +
+                        ("FAKE_NO_RESULT_JSON\nFAKE_FINAL_MESSAGE:" + final + "\n" if final is not None else ""))
+
+    def item_line(self):
+        return f"ITEM_WORKTREE={self.repo}\n"
 
     def receipt(self) -> dict:
         launch, env = self.launch, self.launch["env"]
@@ -4550,6 +4560,7 @@ class CodexWorld(World):
                           "output_schema_sha256": launch.get("output_schema_sha256", "absent"),
                           "codex_disabled_features": list(CODEX_FEATURES), "ignore_user_config": True,
                           "ignore_rules": True, "persistent_mode": False,
+                          "work_root": launch.get("work_root", "worktree"),
                           "project_agents_md_sha256": digest_or_absent(Path(launch["worktree"]) / "AGENTS.md"),
                           "user_codex_agents_md_sha256": digest_or_absent(home / ".codex" / "AGENTS.md"),
                           "user_codex_hooks_sha256": digest_or_absent(home / ".codex" / "hooks.json"),
@@ -4639,8 +4650,7 @@ def test_a_reviewers_final_message_is_held_to_every_rule_of_result_json(codex):
 
 
 def test_a_reviewer_whose_final_message_is_no_json_fails_and_one_that_left_neither_file_has_no_result(codex):
-    codex.as_reviewer()
-    codex.set_prompt("FAKE_NO_RESULT_JSON\n")                # the last message is the word "done"
+    codex.as_reviewer(text="FAKE_NO_RESULT_JSON\n")          # the last message is the word "done"
     assert codex.run() == kyboot.EXIT_JOB_FAILED
     state = codex.state()
     assert state["result_source"] == "final_message.txt" and state["job_result_valid"] is False
@@ -4663,7 +4673,7 @@ CODEX_BIND_CHANGES = [
     ("network", "true"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
     ("env_names", ["HOME", "PATH"]), ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"), ("output_schema_sha256", "9" * 64),
     ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False),
-    ("persistent_mode", True),
+    ("persistent_mode", True), ("work_root", "job"),
     ("project_agents_md_sha256", "9" * 64), ("user_codex_agents_md_sha256", "absent"),
     ("user_codex_hooks_sha256", "9" * 64), ("zdotdir_sha256", "9" * 64), ("harness_sha256", "9" * 64),
 ]
@@ -4808,3 +4818,58 @@ def test_a_codex_launch_by_command_line_passes_the_real_manifest_gate(codex):
         [kymanifest.LAUNCH_CONFIG_CODEX % "bootstrap-builder"]
     argv = codex.cli("argv", codex.launch_path)
     assert argv.returncode == 0 and json.loads(argv.stdout)["argv"] == codex_launch_line(codex.launch, str(codex.job_scratch))
+
+
+# ---- cockpit rulings E1 (a reviewer rooted in its job folder) and E2 (the common git directory's config and hooks)
+def test_a_reviewer_runs_in_its_job_folder_and_writes_its_result_there(codex):
+    codex.as_reviewer()                                       # the default prompt line leaves a valid result.json
+    result = codex.check()
+    assert result.findings == [], result.findings
+    plan = kyboot.build_launch(result.launch)
+    assert plan["cwd"] == str(codex.job_scratch) and plan["argv"][plan["argv"].index("-C") + 1] == str(codex.job_scratch)
+    assert "--skip-git-repo-check" in plan["argv"] and "--add-dir" not in plan["argv"]
+    assert plan["argv"] == codex_launch_line(codex.launch, str(codex.job_scratch))
+    assert codex.run() == 0
+    state = codex.state()
+    assert (codex.job_scratch / "tmp" / "fake_cwd.txt").read_text().strip() == str(codex.job_scratch)
+    assert state["result_source"] == "result.json" and state["work_root"] == "job"
+    assert state["guard_failures"] == [] and state["guards"]["before"] == state["guards"]["after"]
+    assert set(state["guards"]["before"]) == {"git", "worktree"}
+    assert state["guards"]["before"]["git"]["common_dir"] == os.path.realpath(str(codex.repo / ".git"))
+
+
+def test_a_reviewer_that_changes_the_items_working_copy_fails_its_job(codex):
+    codex.as_reviewer(text=f"FAKE_TOUCH:{codex.repo / 'STRAY_FROM_A_REVIEWER.txt'}\n")
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    state = codex.state()
+    assert state["job_result_valid"] is True                  # its own report says done …
+    assert state["guard_failures"] == ["worktree: the item's working copy (HEAD or git status) changed during the job"]
+    assert codex.action()["state"] == "FAILED" and codex.action()["result"]["guard_failures"]
+
+
+@pytest.mark.parametrize("where", ["config", "hooks/post-checkout"])
+def test_a_codex_job_that_changes_the_common_git_directorys_config_or_hooks_fails(codex, where):
+    path = codex.repo / ".git" / where
+    path.parent.mkdir(exist_ok=True)
+    codex.set_prompt(f"FAKE_TOUCH:{path}\n")                  # a builder: it may commit, never reconfigure git
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    state = codex.state()
+    assert state["guard_failures"] == ["git: the common git directory's config or hooks changed during the job"]
+    assert "worktree" not in state["guards"]["before"]        # a builder changes its working copy by design
+    assert codex.action()["state"] == "FAILED"
+
+
+def test_a_reviewer_launch_names_its_items_working_copy_in_the_input_and_in_the_prompt(codex):
+    codex.as_reviewer()
+    assert codex.check().findings == []
+    codex.set_prompt("")                                      # no ITEM_WORKTREE line
+    refused(codex, "prompt_path: the prompt does not tell the job its item's working copy")
+    codex.set_prompt(codex.item_line())
+    codex.launch["item_worktree"] = str(codex.root / "elsewhere")
+    refused(codex, "item_worktree: a job-rooted run names the item's working copy")
+    del codex.launch["item_worktree"]
+    refused(codex, "schema:", "required property 'item_worktree' is missing")
+    codex.launch.update(item_worktree=str(codex.repo), work_root="worktree")
+    refused(codex, "schema:", "$.work_root")
+    codex.launch.update(work_root="job", sandbox="read-only")
+    refused(codex, "schema:", "$.sandbox")

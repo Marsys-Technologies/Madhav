@@ -5,7 +5,8 @@
 # prints a small `codex exec --json` transcript: thread.started carrying a thread_id, turn.started, one
 # agent_message item, turn.completed. Like the real program it writes the last agent message to the -o file.
 # FAKE_RESULT_JSON:<json> makes it leave $JOB_SCRATCH/result.json; FAKE_FINAL_MESSAGE:<text> is the last message
-# (default "done"); FAKE_EXIT:<n>, FAKE_SLEEP:<s>, FAKE_NO_THREAD (no thread.started), FAKE_TURN_FAILED.
+# (default "done"); FAKE_EXIT:<n>, FAKE_SLEEP:<s>, FAKE_NO_THREAD (no thread.started), FAKE_TURN_FAILED;
+# FAKE_TOUCH:<path> appends a line to <path> (a job that changes what it must leave alone).
 if [ "$1" = "--version" ]; then
   echo "codex-cli 0.162.0-alpha.17.2"
   exit 0
@@ -38,6 +39,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     FAKE_NO_THREAD) thread="" ;;
     FAKE_SLEEP:*) nap="${line#FAKE_SLEEP:}" ;;
     FAKE_TURN_FAILED) failed=1 ;;
+    FAKE_TOUCH:*) printf '# changed by a job\n' >> "${line#FAKE_TOUCH:}" ;;
   esac
 done
 if [ -n "$thread" ]; then
