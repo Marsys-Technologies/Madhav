@@ -1,0 +1,9 @@
+# KĀLA-YANTRA v3 — the FROZEN manifest (plan v2.7 §3 Kept; ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2).
+# The one list shared by precheck.sh and kyroute.py: a change to a path below is STOP for native authorisation.
+# Format: UTF-8, LF. Lines starting with # and empty lines are ignored; every other line is one exact
+# repository-relative file path (no glob, no leading /, no . or .. segment, no white space, no duplicate).
+# A reader that finds this file missing, unreadable, without entries or with any other line refuses.
+platform/python-sidecar/pipeline/orchestrator/asset_runner.py
+platform/python-sidecar/pipeline/orchestrator/runner.py
+platform/python-sidecar/pipeline/orchestrator/staleness.py
+platform/python-sidecar/pipeline/orchestrator/writers/__init__.py
