@@ -2,8 +2,10 @@
 """kyd_admit.py — dispatcher admission for KĀLA-YANTRA v3 (KV3-B-KYDADMIT; relaunch plan v2.7 §5 "Base contract
 (KT-04)", §6 "Admission checks", §8.6 "At admission"; KU-02 `dispatcher-ready-receipts`).
 
-version: 1.1 · status: DRAFT (built under the hold; not installed, not merged by its job)
-changelog: 1.1 (2026-10-12) review round 1: code prerequisites are resolved through joins and decisions, an unknown
+version: 1.2 · status: DRAFT (built under the hold; not installed, not merged by its job)
+changelog: 1.2 (2026-10-12) review round 2: an intent naming an item the plan model does not hold refuses base as
+           unknown instead of reading as an item without prerequisites, and its migration is not reported as known (B1).
+           1.1 (2026-10-12) review round 1: code prerequisites are resolved through joins and decisions, an unknown
            dependency or completion_kind refuses (B1); every reported merge commit is verified before it is used or
            recorded, also when the accepted head is in the base (B2).
            1.0 (2026-10-12) first version, packet PACKET_KV3-B-KYDADMIT_v1.
@@ -18,7 +20,8 @@ refusal, and a check that could not be made is a refusal whose detail starts "un
         routing          `python3 -B fleet/kyroute.py packet …` gave no tier, or the plan model is unreadable
         freeze           kyroute.py exit 3: detail "freeze: <path>"
         launch           (model runners) no usable PASS/launchd qualification, turn limit or deadline
-        base             the base contract: a code prerequisite is not shown to be contained in the job base
+        base             the base contract: a code prerequisite is not shown to be contained in the job base, or
+                         the intent's item is absent from the plan model (its prerequisites are unknown)
         slot_not_ready   the slot database has no READY receipt of this session that checks out now (KU-02)
         slot_foreign     the slot's receipt belongs to another session (KU-02 ownership conflict)
         ceiling          a new worktree would exceed limits.copies own copies or 14 in all
@@ -287,9 +290,12 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
     if items is None:
         _refuse(refusals, "routing", "unknown: %s (brief.migration)" % items_reason)
     else:
-        brief = (items.get(intent.get("item")) or {}).get("brief")
+        node = items.get(intent.get("item"))
+        brief = node.get("brief") if isinstance(node, dict) else None
         migration = brief.get("migration") if isinstance(brief, dict) else None
-        if migration in NO_MIGRATION:
+        if node is None:
+            pass        # not known to be null: an item absent from the plan model is refused by the base check
+        elif migration in NO_MIGRATION:
             facts["migration"] = None
         elif isinstance(migration, str):
             facts["migration"] = migration
@@ -495,6 +501,9 @@ def _check_base(ctx, intent, entries, items, items_reason, refusals, facts):
     facts["base_sha"] = base
     if items is None:
         _refuse(refusals, "base", "unknown: %s (prerequisites)" % items_reason)
+        return
+    if item is not None and item not in items:
+        _refuse(refusals, "base", "unknown: %s is absent from the plan model" % item)
         return
     deps = (items.get(item) or {}).get("depends_on")
     deps = [] if deps is None else deps
