@@ -8,7 +8,8 @@ work FROM the tracker, the tracker cannot fall behind the work.
   pravaha next      --stream A                 what A may start now (and what is running/blocked)
   pravaha status   [--stream A]                one-screen summary
   pravaha start     A2.1 --stream A [--detail ..]
-  pravaha step      A2.1 aspect_direction --stream A [--evidence ..]
+  pravaha step      A2.1 aspect_direction --stream A [--evidence ..]   (a declaring model: --evidence <file>,
+                                                                        recorded only once the step's detector passed)
   pravaha progress  A2.1 0.4 --stream A [--detail ..]
   pravaha review    A2.1 --stream A --detail "K3 review requested"
   pravaha done      A2.1 --stream A --evidence "PR #2760"
@@ -289,6 +290,44 @@ def cmd_guarded_done(a, actor: str) -> int:
         return 2
 
 
+def cmd_step(a, actor: str) -> int:
+    """Record a step. In a model that declares its items (relaunch plan v2.7 §6 STEP) only after the step's own
+    named detector passed in the live tracker, with the evidence file's absolute path and SHA-256."""
+    try:
+        model = load_model()
+    except (OSError, ValueError) as exc:
+        print(f"refused: cannot read the plan model ({exc})", file=sys.stderr)
+        return 2
+    if not isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
+                      "detail": a.detail, "evidence": a.evidence or f"step {a.step_name} reported by {actor}"})
+    try:
+        item = next((row for row in model.get("items", []) if row["id"] == a.item), None)
+        if item is None or a.step_name not in item.get("steps", []):
+            raise CompletionError(f"{a.item} declares no step {a.step_name!r}")
+        declared = item.get("step_evidence", {}).get(a.step_name)
+        spec = declared.get("detector") if isinstance(declared, dict) else None
+        if not isinstance(spec, dict) or not spec:
+            raise CompletionError(f"step {a.step_name} has no named detector; it cannot be recorded")
+        if not a.evidence or not os.path.isfile(a.evidence):
+            raise CompletionError("step evidence must be an existing file (--evidence <path>)")
+        observed, via = get("/api/verify?id=" + quote(a.item, safe="") + "&step=" + quote(a.step_name, safe=""),
+                            timeout=90)
+        if (via != "live" or not isinstance(observed, dict) or observed.get("item") != a.item
+                or observed.get("step") != a.step_name or observed.get("spec") != spec):
+            raise CompletionError("live verification of the step detector is unavailable")
+        if (observed.get("detector") or {}).get("status") != "done":
+            raise CompletionError(f"the detector of step {a.step_name} has not passed")
+        path = os.path.abspath(a.evidence)
+        with open(path, "rb") as handle:
+            digest = hashlib.file_digest(handle, "sha256").hexdigest()
+    except (CompletionError, OSError, ValueError, AttributeError) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+    return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
+                  "detail": a.detail, "evidence": path, "evidence_sha256": digest})
+
+
 def _items_from(res) -> list[dict]:
     snap = res.get("_snapshot") if isinstance(res, dict) and "_snapshot" in res else None
     if snap:
@@ -417,7 +456,8 @@ def cmd_audit(a) -> int:
         else:
             since = dt.datetime.fromisoformat(a.since.replace("Z", "+00:00"))
         model = load_model()
-        findings = audit(model, events, os.path.dirname(EVENTS), since=since)
+        findings = audit(model, events, os.path.dirname(EVENTS), since=since,
+                         repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
         snapshot = build_snapshot(model, events, {}, {}, {})
     except (OSError, KeyError, ValueError) as exc:
         print(f"audit unavailable: {exc}", file=sys.stderr)
@@ -584,8 +624,7 @@ def main(argv=None) -> int:
         return write({"kind": "item", "actor": actor, "item": a.item, "state": state_of[a.cmd],
                       "detail": a.detail, "evidence": getattr(a, "evidence", None)})
     if a.cmd == "step":
-        return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
-                      "detail": a.detail, "evidence": a.evidence or f"step {a.step_name} reported by {actor}"})
+        return cmd_step(a, actor)
     if a.cmd == "progress":
         return write({"kind": "item", "actor": actor, "item": a.item, "state": "running",
                       "progress": max(0.0, min(1.0, float(a.value))), "detail": a.detail})
