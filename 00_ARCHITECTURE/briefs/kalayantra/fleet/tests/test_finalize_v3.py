@@ -57,6 +57,15 @@ def kyjob_items(w):
     return [c['item'] for c in w.calls('kyjob')]
 
 
+def claim_record(w, worker='v1'):
+    path = w.run_dir / 'claims' / (worker + '.json')
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def claim_events(w, item):
+    return w.events(kind='claim', item=item)
+
+
 def live_job(w, lane='k1', ignore_term=False, deadline_in=-60, seconds=600, **override):
     group = w.start_group(ignore_term=ignore_term, seconds=seconds)
     fields = dict(group)
@@ -229,16 +238,26 @@ def test_the_wait_is_capped_by_the_drain_knob():
         assert w.drain['jobs'][0]['result'] == 'terminated' and gone(group['pid'])
 
 
-def test_a_job_that_ended_by_itself_is_recorded_ended_and_not_signalled():
-    with World('ended') as w:
+ENDED_BUT = [('alive', {}, 'survivor'), ('identity_unknown', {'process_start': None}, 'unknown')]
+
+
+@pytest.mark.parametrize('name,override,measured', ENDED_BUT, ids=[n for n, *_ in ENDED_BUT])
+def test_a_job_recorded_ended_whose_group_is_not_proven_gone_fails_the_final_receipt(name, override, measured):
+    # B3: the drain does not signal an ended job, but absence is measured for EVERY recorded group, whatever its phase
+    with World('ended-' + name) as w:
         group = live_job(w, deadline_in=3000)
         state = w.run_dir / 'jobs' / 'J-k1' / 'state.json'
         doc = json.loads(state.read_text())
-        doc['phase'] = 'ended'
+        doc.update(phase='ended', **override)
         state.write_text(json.dumps(doc))
         rc, out, err = w.finalize()
-        assert rc == 0 and w.alive(group), 'an ended job is the dispatcher\'s business; its group is not the drain\'s'
-        assert w.drain['jobs'] == []
+        assert rc == 1, (out, err)
+        assert w.alive(group), 'an ended job is never signalled by the finalizer'
+        assert w.drain['jobs'] == [] and w.drain['result'] == 'ACCEPTED'
+        assert w.final['result'] == 'FAILED' and w.final['failed_step'] == 'final_receipt'
+        assert w.final['absence']['processes'] == measured
+        assert {'job_id': 'J-k1', 'group': 'alive' if measured == 'survivor' else 'unknown'} in w.final['absence_detail']['processes']
+        assert not claim_events(w, 'C-4') and kyjob_items(w) == ['C-3'] and not done_events(w, 'C-4')
 
 
 def test_a_loop_that_cannot_be_confirmed_stopped_blocks_every_signal():
@@ -337,7 +356,7 @@ def test_close_review_failures_publish_no_acceptance_and_complete_nothing(name, 
         assert w.final['result'] == 'FAILED' and w.final['failed_step'] == 'close_review'
         assert bool(publishes(w, 'C-4')) == publishes_rejection
         assert ('release', None, 'V', 'v1') in ky_verbs(w), 'the V claim is released when the review does not accept'
-        assert not (w.run_dir / 'claims' / 'v1.json').exists()
+        assert claim_record(w)['state'] == 'released' and claim_events(w, 'C-4')[-1]['state'] == 'released'
 
 
 @pytest.mark.parametrize('code', ['1', '3'])
@@ -362,6 +381,37 @@ def test_publisher_refusal_stops_without_completion():
         w.flag('publish_refuse')
         rc, out, err = w.finalize()
         assert rc == 1 and not w.events(kind='verdict') and not done_events(w, 'C-3')
+
+
+@pytest.mark.parametrize('item,step', [('C-3', 'drain_review'), ('C-4', 'close_review')])
+def test_a_reviewer_under_the_authors_session_is_not_independent(item, step):
+    # B4: independence is measured from the reviewer's own job state: its provider session is the finalizer's
+    with World('indep-session-' + item) as w:
+        w.flag('reviewer_session_' + item, 'sess-author')
+        rc, out, err = w.finalize(KY_SESSION_ID='sess-author')
+        assert rc == 1, (out, err)
+        assert w.final['result'] == 'FAILED' and w.final['failed_step'] == step
+        assert 'reviewer_not_independent' in w.final['reason'], w.final['reason']
+        assert publishes(w, item) == [] and not w.events(kind='verdict', item=item) and not done_events(w, item)
+        assert not done_events(w, 'C-4')
+
+
+def test_a_reviewer_under_its_own_session_is_independent():
+    with World('indep-own') as w:
+        w.flag('reviewer_session_C-3', 'sess-reviewer-1')
+        w.flag('reviewer_session_C-4', 'sess-reviewer-2')
+        rc, out, err = w.finalize(KY_SESSION_ID='sess-author')
+        assert rc == 0, (out, err)
+        assert len(verdicts(w, 'C-3')) == 1 and len(verdicts(w, 'C-4')) == 1
+
+
+def test_a_reviewer_recording_the_authors_process_as_its_own_is_not_independent():
+    with World('indep-process') as w:
+        w.flag('reviewer_is_author_process_C-3')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'drain_review', (out, err)
+        assert 'reviewer_not_independent' in w.final['reason'], w.final['reason']
+        assert publishes(w) == [] and not w.events(kind='verdict') and not done_events(w, 'C-3')
 
 
 def test_reviewer_that_hangs_is_killed_at_its_deadline_and_proven_gone():
@@ -526,6 +576,39 @@ def test_no_v_claim_on_c4_means_no_review_no_verdict_no_completion():
         assert not w.events(kind='claim')
 
 
+def test_a_release_leaves_a_released_record_and_is_observed_as_released():
+    # B1: the tracker keeps claims/<worker>.json after a release, rewritten with state released (claims.py _record)
+    with World('released') as w:
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        record, events = claim_record(w), claim_events(w, 'C-4')
+        assert [e['state'] for e in events] == ['acquired', 'released'] and record == events[-1]
+        assert record['item'] == 'C-4' and record['worker_id'] == 'v1' and record['claim_id'] == events[0]['claim_id']
+        release = [a for k, a in w.actions().items() if k.startswith('FIN-ky-release-C-4-')]
+        assert len(release) == 1 and release[0]['state'] == 'DONE' and release[0]['result']['claim_id'] == record['claim_id']
+        assert release[0]['inputs']['claim_id'] == record['claim_id']
+        assert len(done_events(w, 'C-4')) == 1
+
+
+@pytest.mark.parametrize('state', ['expired', 'released'])
+def test_a_claim_recorded_as_not_active_is_not_held(state):
+    # B1: a claim record that is not acquired/renewed is no claim, whatever item it names
+    with World('claim-' + state) as w:
+        w.flag('ky_claim_records_state', state)
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert w.final['failed_step'] == 'claim_C-4' and claim_record(w)['state'] == state
+        assert kyjob_items(w) == ['C-3'] and publishes(w, 'C-4') == [] and not done_events(w, 'C-4')
+
+
+def test_a_release_that_exits_0_but_records_nothing_is_not_a_release():
+    with World('release-noop') as w:
+        w.flag('ky_release_noop')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'release_C-4', (out, err)
+        assert claim_record(w)['state'] == 'acquired' and not done_events(w, 'C-4')
+
+
 def test_a_failed_release_stops_before_completion():
     with World('norelease') as w:
         w.flag('ky_release_fail')
@@ -590,17 +673,43 @@ def test_crash_after_the_verdict_then_rerun_completes_each_event_once(crash):
         assert done_events(w, 'C-3')[0]['completion']['artifact_digest'] == sha256(w.run_dir / 'DRAIN_RECEIPT.json')
         assert done_events(w, 'C-4')[0]['completion']['artifact_digest'] == sha256(w.run_dir / 'FINAL_RECEIPT.json')
         assert all(a['state'] == 'DONE' for a in w.actions().values())
+        claims = claim_events(w, 'C-4')
+        if crash == 'crash_before_done_C-4':
+            assert [e['state'] for e in claims] == ['acquired', 'released', 'acquired', 'released']
+            assert claims[0]['claim_id'] != claims[2]['claim_id']
+        else:
+            assert [e['state'] for e in claims] == ['acquired', 'released']
+        assert claim_record(w) == claims[-1]
 
 
 def test_rerun_after_success_changes_nothing_and_completes_nothing_twice():
     with World('twice') as w:
         assert w.finalize()[0] == 0
-        digest = sha256(w.run_dir / 'FINAL_RECEIPT.json')
+        final = (w.run_dir / 'FINAL_RECEIPT.json').read_bytes()
+        drain = (w.run_dir / 'DRAIN_RECEIPT.json').read_bytes()
+        before = len(w.calls())
         rc, out, err = w.finalize()
-        # the items are done: the tracker refuses a second completion, so the re-run must not ask for one
+        # B2: C-4 is done, so FINAL is bound to its digest: no claim (the tracker refuses one on a done item), no review,
+        # no publish, no completion, and the receipt keeps its bytes
+        assert rc == 0, (out, err)
+        assert (w.run_dir / 'FINAL_RECEIPT.json').read_bytes() == final and (w.run_dir / 'DRAIN_RECEIPT.json').read_bytes() == drain
+        assert done_events(w, 'C-4')[0]['completion']['artifact_digest'] == sha256(w.run_dir / 'FINAL_RECEIPT.json')
+        assert w.calls()[before:] == [], 'the re-run of a completed finalization called %s' % w.calls()[before:]
         assert len(done_events(w, 'C-3')) == 1 and len(done_events(w, 'C-4')) == 1
-        assert sha256(w.run_dir / 'FINAL_RECEIPT.json') == digest
-        assert kyjob_items(w) == ['C-3', 'C-4'] and rc == 0, (out, err)
+        assert len(claim_events(w, 'C-4')) == 2 and kyjob_items(w) == ['C-3', 'C-4']
+
+
+def test_rerun_after_success_with_the_bound_final_receipt_changed_rewrites_nothing_and_fails():
+    with World('twice-changed') as w:
+        assert w.finalize()[0] == 0
+        path = w.run_dir / 'FINAL_RECEIPT.json'
+        path.write_text(path.read_text() + ' ')                  # changed after C-4 was completed on it
+        changed = path.read_bytes()
+        before = len(w.calls())
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert path.read_bytes() == changed, 'the receipt C-4 is bound to was rewritten'
+        assert w.calls()[before:] == [] and len(done_events(w, 'C-4')) == 1
 
 
 # ───────────────────────────────────────── receipts are written by rename ─────────────────────────────────────────

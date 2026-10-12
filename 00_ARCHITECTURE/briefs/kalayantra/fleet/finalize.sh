@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# External finalizer v3.0 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
+# External finalizer v3.1 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
 # and the close PR merged: ["bash", <temporary copy>], cwd $KY_ROOT, 21600 s. A lone copy: it reads nothing next to itself (no dirname "$0");
 # every collaborator is found under $KY_FLEET / $KY_ROOT. Exit 0 only after C-4's guarded completion, else 1; an argument exits 64.
 # TWO PHASES (v1.2's), and a failure in either is recorded as a failure, never as an accepted receipt:
@@ -21,7 +21,12 @@
 # Knobs (tests shorten them): KY_DRAIN_WAIT_MIN (120) KY_FINAL_WAIT_MIN (180; caps the reviewer's wall clock) KY_FINAL_POLL_S (60)
 # KY_TERM_GRACE_S (20) KY_VERIFIER_SLOTS ("v1 v2 v3 v4") KY_C4_EXTERNAL_REVIEW (path; needed when only one verifier slot exists)
 # KY_FINAL_MODEL KY_FINAL_ROLE KY_SESSION_ID KY_EVENTS KY_GIT.
-# Changelog: v3.0 (2026-10-12, KV3-B-FINALIZE) job-state drain with process-identity rule, reviewer-gated C-3 / C-4, kyaction records, KU-02
+# Re-run after C-4 is done: FINAL_RECEIPT.json is bound to C-4's digest and nothing is run, rewritten, claimed, reviewed or published.
+# Changelog: v3.1 (2026-10-12, KV3-B-FINALIZE loop 2, review b1-builds-r1 B1-B4) the C-4 claim and release are observed from the
+# tracker's claim event and kept record (state + claim_id), not from the record's presence; a done C-4 binds FINAL and ends the run by
+# observation; absence measures every recorded job group whatever its phase; reviewer independence is measured from its job state
+# (job id, provider session, process tree) against the finalizer's identity.
+# v3.0 (2026-10-12, KV3-B-FINALIZE) job-state drain with process-identity rule, reviewer-gated C-3 / C-4, kyaction records, KU-02
 # session-database close and absence recheck; the lane flocks, the OTHERS list and v1's own final review are gone. v1.2: lane-lock drain, v1 review.
 set -u
 if [ "$#" -ne 0 ]; then echo "usage: bash finalize.sh   (no arguments)" >&2; exit 64; fi
@@ -376,10 +381,8 @@ def measure_processes():
     verdict, detail = "unknown" if bad else "absent", [dict(b) for b in bad]
     for path, s in states:
         ours = str(s.get("key", "")).startswith("finalize-")
-        if s.get("phase") == "ended" and not ours:
-            continue
-        if s.get("phase") == "ended" and not posint(s.get("pid")):
-            continue
+        if s.get("phase") == "ended" and not posint(s.get("pid")) and not posint(s.get("pgid")):
+            continue                              # ended without ever recording a process: there is no group to measure
         if identity_ok(s):
             state = group_state(s["pid"], s["pgid"], s["process_start"])
         elif posint(s.get("pgid")) and s["pgid"] > 1 and ours:
@@ -463,19 +466,52 @@ def done_event(item, digest=None):
     return "not_done", {}
 
 
-def claim_file(slot):
-    doc, err = read_json(RUN / "claims" / (slot + ".json"))
-    return doc if isinstance(doc, dict) else None
+ACTIVE_CLAIM = ("acquired", "renewed")
+
+
+def claim_view(item, slot):
+    """The tracker's latest claim event on `item` (its locked event log is the authority) and its copy in
+    claims/<slot>.json, which the tracker keeps after a release with the state rewritten. → (None, error) or (event, record)."""
+    evs = events()
+    if evs is None:
+        return None, "events_unreadable"
+    last = next((e for e in reversed(evs) if e.get("kind") == "claim" and e.get("item") == item), None)
+    record, _ = read_json(EVENTS.parent / "claims" / (slot + ".json"))
+    return last, (record if isinstance(record, dict) else None)
+
+
+def claim_brief(e):
+    return {k: e.get(k) for k in ("item", "worker_id", "claim_id", "state", "expires_at")} if isinstance(e, dict) else None
 
 
 def observe_claim(item, slot):
-    doc = claim_file(slot)
-    return ("done", {"item": item, "worker": slot, "claim_id": doc.get("claim_id")}) if doc and doc.get("item") == item else ("not_done", {})
+    """'done' only while `slot` holds an active (acquired/renewed), unexpired claim on `item`, the same in the event log and in its record."""
+    last, record = claim_view(item, slot)
+    if last is None and isinstance(record, str):
+        return "unknown", {"error": record}
+    if not (last and last.get("worker_id") == slot and last.get("state") in ACTIVE_CLAIM
+            and isinstance(last.get("claim_id"), str) and last["claim_id"]):
+        return "not_done", {"latest": claim_brief(last)}
+    expires = kyaction.parse_utc(last.get("expires_at")) if isinstance(last.get("expires_at"), str) else None
+    if expires is None:
+        return "unknown", {"latest": claim_brief(last), "error": "expires_at_unreadable"}
+    if time.time() >= expires:
+        return "not_done", {"latest": claim_brief(last), "error": "lease_expired"}
+    if not record or record.get("claim_id") != last["claim_id"] or record.get("state") != last["state"]:
+        return "not_done", {"latest": claim_brief(last), "record": claim_brief(record), "error": "record_differs_from_event_log"}
+    return "done", {"item": item, "worker": slot, "claim_id": last["claim_id"], "state": last["state"], "expires_at": last.get("expires_at")}
 
 
-def observe_release(item, slot):
-    doc = claim_file(slot)
-    return ("not_done", {}) if doc and doc.get("item") == item else ("done", {"item": item, "worker": slot})
+def observe_release(item, slot, claim_id):
+    """'done' only when the latest claim event on `item` is claim `claim_id` of `slot` in state released."""
+    if not (isinstance(claim_id, str) and claim_id):
+        return "unknown", {"error": "claim_id_unknown"}
+    last, record = claim_view(item, slot)
+    if last is None and isinstance(record, str):
+        return "unknown", {"error": record}
+    if last and last.get("claim_id") == claim_id and last.get("worker_id") == slot and last.get("state") == "released":
+        return "done", {"item": item, "worker": slot, "claim_id": claim_id, "state": "released"}
+    return "not_done", {"latest": claim_brief(last)}
 
 
 ACTOR = {"role": "finalizer", "holder_kind": "supervisor", "controller_id": CTRL}
@@ -745,6 +781,23 @@ def review_run(phase, item, receipt_path, claim_slot):
     return status, result, (result.get("vslot") if isinstance(result, dict) and result.get("vslot") else slot), digest
 
 
+def not_independent(state, job_id):
+    """Why the reviewer is NOT independent of the receipt's author, measured from the job state the reviewer left against
+    the finalizer's own recorded identity (its id, its session, its process tree); [] when nothing ties them."""
+    why = []
+    authors = {AUTHOR_ID, CTRL, OWN_SESSION} | ({E["KY_SESSION_ID"]} if E.get("KY_SESSION_ID") else set())
+    if job_id in authors or state.get("job_id") != job_id:
+        why.append("reviewer_id")
+    if state.get("provider_session_id") in authors:
+        why.append("provider_session_is_the_authors")
+    pid, pgid = state.get("pid"), state.get("pgid")
+    if not posint(pid) or not posint(pgid):
+        why.append("process_unrecorded")
+    elif pgid == os.getpgrp() or kyaction.is_self_or_ancestor(pid) is not False:
+        why.append("process_is_the_authors")
+    return why
+
+
 def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, external):
     """Every condition of §6's verdict publication, then kyverdicts.py publish → dict(accepted, reasons, ...)."""
     reasons, published, proposed = [], False, None
@@ -756,8 +809,9 @@ def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, ext
         reasons.append("receipt_changed_after_review")
     if state.get("stream") != "V" or state.get("slot") not in VSLOTS or state.get("item") != item or state.get("key") != "finalize-%s-%s" % (phase, digest[:12]):
         reasons.append("reviewer_not_stream_v_or_not_this_review")
-    if job_id == AUTHOR_ID or state.get("pgid") == os.getpgrp() or state.get("pid") == os.getpid() or not posint(state.get("pid")):
-        reasons.append("reviewer_not_independent")
+    dependent = not_independent(state, job_id)
+    if dependent:
+        reasons.append("reviewer_not_independent(%s)" % "+".join(dependent))
     if res.get("exit_code") != 0 or res.get("timed_out") or res.get("group_gone") is not True:
         reasons.append("reviewer_did_not_exit_cleanly")
     if posint(state.get("pgid")):
@@ -882,6 +936,34 @@ def close_report():
     return None
 
 
+def final_message(ok):
+    if DRAFT_PATH.exists() and DRAFT_PATH.stat().st_size > 0:
+        text = DRAFT_PATH.read_text() + "\n\n---\nPhysical shutdown (measured by the finalizer, not by an agent): %s. Receipt: %s\n" % (
+            "all job groups stopped, their worktrees and test databases removed" if ok else "INCOMPLETE — see the receipt", FINAL_PATH)
+        atomic_write(str(MESSAGE_PATH), text)
+
+
+def phase_completed(c4):
+    """C-4 is done: FINAL_RECEIPT.json is bound to the digest its guarded completion recorded (as the drain receipt is to
+    C-3's) and is never rewritten; nothing is stopped, signalled, removed, claimed, reviewed or published again. An
+    unfinished record of that completion is reconciled by observation. → 0 only when the receipt on disk is the bound one."""
+    PHASE[0] = "completed"
+    bound, on_disk = c4.get("artifact_digest"), sha_file(FINAL_PATH)
+    if not (isinstance(bound, str) and bound) or on_disk != bound:
+        say("C-4 is done on a FINAL_RECEIPT.json with sha256 %s, but the file now has %s — it is not rewritten; exit 1" % (bound, on_disk))
+        return 1
+    action_id = "FIN-ky-done-C-4-%s" % bound[:12]
+    try:
+        record = kyaction.peek(str(RUN), action_id)
+        if record is not None and record.get("state") == "INTENDED":
+            kyaction.reconcile(str(RUN), action_id, lambda rec: done_event("C-4", bound), by=CTRL)
+    except kyaction.ActionError as exc:
+        say("the record of the C-4 completion could not be reconciled (%s); C-4 is done on the bound receipt" % tail(str(exc), 200))
+    final_message(True)
+    say("C-4 is done on FINAL_RECEIPT.json (sha256 %s): the finalization is complete; nothing was changed" % bound)
+    return 0
+
+
 def phase_final(drain_digest):
     PHASE[0] = "final"
     base = {"phase": "final", "drain_sha256": drain_digest, "close_report": None, "absence": None, "absence_detail": None,
@@ -897,14 +979,8 @@ def phase_final(drain_digest):
 
     def fail(step, reason, **updates):
         emit("FAILED", failed_step=step, reason=reason if isinstance(reason, str) else "; ".join(reason), **updates)
-        message(False)
+        final_message(False)
         return 1
-
-    def message(ok):
-        if DRAFT_PATH.exists() and DRAFT_PATH.stat().st_size > 0:
-            text = DRAFT_PATH.read_text() + "\n\n---\nPhysical shutdown (measured by the finalizer, not by an agent): %s. Receipt: %s\n" % (
-                "all job groups stopped, their worktrees and test databases removed" if ok else "INCOMPLETE — see the receipt", FINAL_PATH)
-            atomic_write(str(MESSAGE_PATH), text)
 
     # step 5: the drain receipt's exact digest is accepted by an independent reviewer, then C-3 through the tracker's guard
     status, res, slot, digest = review_run("drain", "C-3", DRAIN_PATH, None)
@@ -944,7 +1020,7 @@ def phase_final(drain_digest):
     if reasons:
         return fail("final_receipt", reasons, **common)
     final_digest = emit("ACCEPTED", **common)
-    message(False)
+    final_message(False)
 
     # step 8: C-4 is V-owned — a V claim, an independent close review outside ordinary dispatch, a recheck, the verdict, the release
     claim_slot = VSLOTS[0] if VSLOTS else None
@@ -965,12 +1041,13 @@ def phase_final(drain_digest):
     if not claimed:
         return fail("claim_C-4", "the V claim on C-4 is not held")
     suffix = "" if gen == 0 else "-r%d" % gen
+    claim_id = observe_claim("C-4", claim_slot)[1].get("claim_id")
 
     def abort(step, reason, **updates):
-        act("FIN-ky-abort-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot, "why": step},
+        act("FIN-ky-abort-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot, "claim_id": claim_id, "why": step},
             {"verb": "release", "item": "C-4", "worker": claim_slot}, "V claim on C-4 released without completion",
-            lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot)),
-            lambda rec: observe_release("C-4", claim_slot))
+            lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot, claim_id)),
+            lambda rec: observe_release("C-4", claim_slot, claim_id))
         return fail(step, reason, **updates)
 
     status, res, slot, digest = review_run("final", "C-4", FINAL_PATH, claim_slot)
@@ -996,16 +1073,16 @@ def phase_final(drain_digest):
         if "external_review_required_no_separate_verifier_lane" in pub["reasons"]:
             reasons += " (external review required: a lone verifier slot has no separate lane)"
         return abort("close_review", "no accepted verdict: %s (proposed %s)" % (reasons, pub.get("proposed")), **recheck)
-    status, rres = act("FIN-ky-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot},
+    status, rres = act("FIN-ky-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot, "claim_id": claim_id},
                        {"verb": "release", "item": "C-4", "worker": claim_slot}, "V claim on C-4 released",
-                       lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot)),
-                       lambda rec: observe_release("C-4", claim_slot))
+                       lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot, claim_id)),
+                       lambda rec: observe_release("C-4", claim_slot, claim_id))
     if status != "done":
         return fail("release_C-4", "the V claim on C-4 was not released: %s" % json.dumps(rres, sort_keys=True)[:300], **recheck)
     status, dres = ky_done("C-4", FINAL_PATH, final_digest)
     if status != "done":
         return fail("done_C-4", "ky done C-4 not observed: %s" % json.dumps(dres, sort_keys=True)[:300], **recheck)
-    message(True)
+    final_message(True)
     return 0
 
 
@@ -1016,6 +1093,13 @@ def main():
                      "branches": "kept", "campaign_worktree": "kept", "phase": "drain", "problems": ["kyaction unavailable: " + KYACTION_ERROR]}, indent=1) + "\n")
         say("DRAIN FAILED — kyaction.py (the process-identity rule) cannot be imported from %s" % FLEET)
         return 1
+    c4_seen, c4 = done_event("C-4")
+    if c4_seen == "unknown":
+        PHASE[0] = "completed"                    # whether FINAL is bound to a completion cannot be told: write nothing
+        say("EVENTS.jsonl is unreadable: whether C-4 is done cannot be observed — nothing is run or rewritten")
+        return 1
+    if c4_seen == "done":
+        return phase_completed(c4)
     rc, digest = phase_drain()
     if rc:
         return rc
@@ -1028,6 +1112,8 @@ if __name__ == "__main__":
     except Exception as exc:      # unknown is FAILED: record it in the receipt of the phase that was running
         traceback.print_exc()
         try:
+            if PHASE[0] == "completed":
+                raise RuntimeError("C-4 is done or cannot be observed: no receipt is rewritten")
             target = DRAIN_PATH if PHASE[0] in ("start", "drain") else FINAL_PATH
             atomic_write(str(target), json.dumps({"schema": "ky.%s_receipt/1" % ("drain" if target == DRAIN_PATH else "final"),
                          "ts": now_iso(), "result": "FAILED", "lanes": {}, "branches": "kept", "campaign_worktree": "kept",

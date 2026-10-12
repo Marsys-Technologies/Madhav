@@ -48,6 +48,9 @@ FAKE_TOOLS = r'''
 import glob, hashlib, json, os, signal, subprocess, sys, time
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import kyaction  # noqa: E402  (copied next to this file by World._fakes)
+
 RUN = Path(os.environ['KY_RUN'])
 ROOT = RUN.parent
 BEH = ROOT / 'behavior'
@@ -98,26 +101,59 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def utc(t=None):
+    return time.strftime('%Y-%m-%dT%H:%M:%S+00:00', time.gmtime(time.time() if t is None else t))
+
+
+def latest_claim(item):
+    return next((e for e in reversed(events()) if e.get('kind') == 'claim' and e.get('item') == item), None)
+
+
+def record_claim(event):
+    """As the tracker does (claims.py _record): claims/<worker>.json is the latest claim event, KEPT after a release."""
+    (RUN / 'claims').mkdir(exist_ok=True)
+    (RUN / 'claims' / (event['worker_id'] + '.json')).write_text(json.dumps(event, indent=2) + '\n')
+
+
 def ky(argv):
     log('ky', argv, stream=os.environ.get('KY_STREAM'), lane=os.environ.get('KY_LANE'))
     verb = argv[0] if argv else ''
     if verb == 'claim':
-        item, worker = argv[1], opt(argv, '--worker')
+        item, worker, lease = argv[1], opt(argv, '--worker'), int(opt(argv, '--lease') or 5400)
         if flag('ky_claim_fail'):
             print('refused: fake claim refusal', file=sys.stderr)
             return 2
-        (RUN / 'claims').mkdir(exist_ok=True)
-        (RUN / 'claims' / (worker + '.json')).write_text(json.dumps({'item': item, 'claim_id': 'c-' + worker}))
-        append({'kind': 'claim', 'item': item, 'worker': worker})
+        if any(e.get('kind') == 'item' and e.get('item') == item and e.get('state') == 'done' for e in events()):
+            print('refused: item is not claimable: done', file=sys.stderr)       # claims.py: a done item is never claimable
+            return 2
+        last = latest_claim(item)
+        if last and last['state'] in ('acquired', 'renewed') and time.time() < kyaction.parse_utc(last['expires_at']):
+            print('refused: item is claimed by %s until %s' % (last['worker_id'], last['expires_at']), file=sys.stderr)
+            return 2
+        claim = {'kind': 'claim', 'actor': 'stream-%s:%s' % (os.environ.get('KY_STREAM'), worker), 'item': item,
+                 'state': text('ky_claim_records_state', 'acquired'), 'worker_id': worker,
+                 'claim_id': hashlib.sha256(os.urandom(16)).hexdigest()[:32], 'lease_s': lease,
+                 'expires_at': utc(time.time() + lease), 'ts': utc(), 'branch': None, 'head': None, 'step': None}
+        append(claim)
+        record_claim(claim)
         return 0
     if verb == 'release':
         worker = os.environ.get('KY_LANE', '')
-        path = RUN / 'claims' / (worker + '.json')
-        if flag('ky_release_fail') or not path.exists():
-            print('refused: fake release refusal', file=sys.stderr)
+        try:
+            current = json.loads((RUN / 'claims' / (worker + '.json')).read_text())
+        except (OSError, ValueError):
+            print('refused: no claim record for this worker', file=sys.stderr)
             return 2
-        path.unlink()
-        append({'kind': 'release', 'worker': worker})
+        last = latest_claim(current.get('item'))
+        if flag('ky_release_fail') or not last or last.get('claim_id') != current.get('claim_id') \
+                or last.get('worker_id') != worker or last['state'] not in ('acquired', 'renewed'):
+            print('refused: claim is not active for this worker', file=sys.stderr)
+            return 2
+        if flag('ky_release_noop'):
+            return 0                                   # exits 0, records nothing: the claim is still held
+        released = dict(last, state='released', ts=utc())
+        append(released)
+        record_claim(released)
         return 0
     if verb == 'done':
         item, path = argv[1], opt(argv, '--artifact-path')
@@ -288,6 +324,14 @@ def kyjob(argv):
         receipt.write_text(receipt.read_text() + ' ')
     if flag('reviewer_tamper_stream_' + item):
         state['stream'] = 'S'
+        state_path.write_text(json.dumps(state))
+    if flag('reviewer_session_' + item):                 # the provider session the model ran under, as kyjob records it
+        state['provider_session_id'] = text('reviewer_session_' + item)
+        state_path.write_text(json.dumps(state))
+    if flag('reviewer_is_author_process_' + item):       # records the process that launched it (the finalizer) as its own
+        parent = os.getppid()
+        start = subprocess.run(['ps', '-o', 'lstart=', '-p', str(parent)], capture_output=True, text=True).stdout.strip()
+        state.update(pid=parent, pgid=os.getpgid(parent), process_start=start)
         state_path.write_text(json.dumps(state))
     verdict = 'REJECTED' if flag('reviewer_reject_' + item) else 'ACCEPTED'
     result = {'schema': 'ky.job_result/1', 'job_id': 'J-other' if flag('reviewer_wrong_job_' + item) else job,
