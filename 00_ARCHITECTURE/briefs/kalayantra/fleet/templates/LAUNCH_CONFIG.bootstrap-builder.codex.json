@@ -1,0 +1,34 @@
+{
+ "schema": "ky.launch_config/1",
+ "engine": "codex",
+ "role": "bootstrap-builder",
+ "model": "gpt-6.1-sol",
+ "effort": "high",
+ "sandbox": "workspace-write",
+ "network": true,
+ "deadline_seconds": 14400,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
+ "codex_bin": "/opt/homebrew/bin/codex",
+ "codex_min_version": "0.162.0",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md",
+ "env_names": [
+  "HOME",
+  "USER",
+  "LANG",
+  "TERM",
+  "PATH",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
+  "KY_ITEM",
+  "KY_PY"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "writable_dirs": [
+  "/Users/Dev/Vibe-Coding/Apps/Madhav/.git"
+ ],
+ "_note": "The Codex builder: workspace-write sandbox (the worktree, the job's JOB_SCRATCH and the writable_dirs are writable; everything else is read-only to the job's commands), network on so the build can push its branch. writable_dirs is the repository's common git directory — this worktree is a linked git worktree, and a commit writes objects and refs there; it also makes that repository's config and hooks writable, which is recorded for an owner-surrogate decision. Codex has no turn limit: deadline_seconds is the only one. Model gpt-6.1-sol at effort high (owner decision 2026-10-12); another model needs its own receipt."
+}

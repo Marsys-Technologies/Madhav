@@ -29,6 +29,10 @@
     "schema": {
       "const": "ky.launch_config/1"
     },
+    "engine": {
+      "description": "Absent (as in every Claude Code configuration written before the second engine) or \"claude\". An OpenAI Codex CLI configuration says \"codex\" and is described by launch_config_codex.json instead.",
+      "const": "claude"
+    },
     "_note": {
       "description": "Free text for people; never read by the harness and never bound.",
       "type": "string",

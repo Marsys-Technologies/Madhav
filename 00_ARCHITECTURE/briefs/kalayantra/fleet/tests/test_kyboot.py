@@ -41,6 +41,7 @@ import pytest
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
 FIX = HERE / "fixtures" / "b0c"
+ENGINES_FIX = HERE / "fixtures" / "b0c_engines"                     # the second engine (OpenAI Codex CLI)
 TEMPLATES = FLEET / "templates"
 sys.path.insert(0, str(FLEET))
 
@@ -49,7 +50,8 @@ import kymanifest  # noqa: E402  — the sibling's tool (read-only here): it say
 import kyschema  # noqa: E402
 
 CHECKOUT_KYBOOT = kyboot
-MY_SCHEMAS = ["awaiting", "bootstrap_launch_input", "job_result", "packet", "release_receipt", "surrogate_decision"]
+MY_SCHEMAS = ["awaiting", "bootstrap_launch_input", "bootstrap_launch_input_codex", "codex_reviewer_output",
+              "job_result", "packet", "release_receipt", "surrogate_decision"]
 BRANCH = "kalayantra/kv3-b-kylock"
 ITEM = "KV3-B-KYLOCK"
 JOB = "J-20261011T215900Z-b1"
@@ -214,6 +216,10 @@ def staged(tmp_path_factory):
     for role in ROLES:                                                              # … and its launch configurations
         (source / (kymanifest.LAUNCH_CONFIG % role)).write_text(
             json.dumps({"schema": "ky.launch_config/1", "role": role, "stand_in": True}) + "\n", encoding="utf-8")
+    for role in ("bootstrap-builder", "bootstrap-reviewer"):                       # … the Codex ones too
+        (source / (kymanifest.LAUNCH_CONFIG_CODEX % role)).write_text(
+            json.dumps({"schema": "ky.launch_config/1", "engine": "codex", "role": role, "stand_in": True}) + "\n",
+            encoding="utf-8")
     for name in MY_SCHEMAS:
         shutil.copyfile(FLEET / "schemas" / f"{name}.json", fleet / "schemas" / f"{name}.json")
     (fleet / "cards" / "BOOTSTRAP.md").write_text("# BOOTSTRAP card (test stand-in)\n", encoding="utf-8")
@@ -274,6 +280,10 @@ def staged(tmp_path_factory):
         shutil.copyfile(script, fakes[script.name])
         fakes[script.name].chmod(0o755)
     assert sorted(fakes) == ["fake_claude_ok.sh", "fake_claude_old.sh", "fake_claude_stubborn.sh"]
+    fakes["codex"] = top / "bin" / "fake_codex" / "codex"              # the second engine's fake program
+    fakes["codex"].parent.mkdir(parents=True)
+    shutil.copyfile(ENGINES_FIX / "fake_codex_ok.sh", fakes["codex"])
+    fakes["codex"].chmod(0o755)
     fakes["launchctl"] = top / "bin" / "fake_launchctl" / "launchctl"   # run by this interpreter, whatever PATH says
     fakes["launchctl"].parent.mkdir(parents=True)
     body = (FIX / "fake_launchctl.py").read_text(encoding="utf-8").split("\n", 1)[1]
@@ -4377,7 +4387,9 @@ def test_launchctl_is_given_a_fixed_minimal_environment(world):
 # --------------------------------------------------------------------------------------------------------------
 VALIDATE = [("packet", "packet_bootstrap.json"), ("release_receipt", "release_receipt_wait.json"),
             ("awaiting", "awaiting.json"), ("surrogate_decision", "surrogate_decision_veto.json"),
-            ("job_result", "job_result_done.json"), ("bootstrap_launch_input", "launch_input.json")]
+            ("job_result", "job_result_done.json"), ("bootstrap_launch_input", "launch_input.json"),
+            ("bootstrap_launch_input_codex", ENGINES_FIX / "launch_input_codex.json"),     # absolute: FIX / it is it
+            ("codex_reviewer_output", ENGINES_FIX / "codex_reviewer_output.json")]
 
 
 def bare_cli(*args):
@@ -4462,3 +4474,337 @@ def test_the_template_readme_explains_every_field_and_every_gate_within_sixty_li
         assert f"`{kind}`" in readme and f"{kind} {cap}" in readme, kind
     for name in kyboot.ENV_ALLOWLIST:
         assert name in readme, name
+
+
+# --------------------------------------------------------------------------------------------------------------
+# the second engine: a Codex launch ("engine": "codex"; the fake program is fixtures/b0c_engines/fake_codex_ok.sh)
+# --------------------------------------------------------------------------------------------------------------
+CODEX_FEATURES = ["memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin", "browser_use",
+                  "browser_use_external", "in_app_browser", "computer_use", "hooks"]
+CLAUDE_ONLY_LAUNCH_FIELDS = ("claude_bin", "claude_min_version", "permission_mode", "max_turns", "mcp_config",
+                             "mcp_config_sha256", "extra_lean_flags", "disallowed_tools")
+THREAD = "0199c0de-0000-7000-8000-00000000c0de"
+
+
+def codex_launch_line(launch, job="<JOB_DIR>") -> list:
+    """the Codex launch line, stated independently of kyboot (the brief's line, flag for flag)"""
+    argv = [launch["codex_bin"], "exec", "--ignore-user-config", "--ignore-rules", "--json", "-o",
+            job + "/final_message.txt", "-C", launch["worktree"], "-s", launch["sandbox"], "-m", launch["model"],
+            "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
+            "-c", 'web_search="disabled"',
+            "-c", "sandbox_workspace_write.network_access=" + str(launch["network"]).lower()]
+    for feature in CODEX_FEATURES:
+        argv += ["--disable", feature]
+    for directory in launch["writable_dirs"]:
+        argv += ["--add-dir", directory]
+    if launch["sandbox"] == "workspace-write":
+        argv += ["--add-dir", job]
+    if launch.get("output_schema"):
+        argv += ["--output-schema", launch["output_schema"]]
+    return argv + ["-"]
+
+
+def digest_or_absent(path) -> str:
+    return sha(path) if Path(path).is_file() else "absent"
+
+
+class CodexWorld(World):
+    """World with a Codex launch input: the Claude-only fields removed, the Codex ones added, the fake codex as the
+    program, and a receipt that says engine codex and binds what kyqualify.py binds for one"""
+
+    def __init__(self, tmp: Path, staged: dict):
+        super().__init__(tmp, staged)
+        self.codex = self.fakes["codex"]
+        self.version_line = "0.162.0-alpha.17.2"
+        for key in CLAUDE_ONLY_LAUNCH_FIELDS:
+            del self.launch[key]
+        self.launch.update(engine="codex", codex_bin=str(self.codex), codex_min_version="0.162.0",
+                           model="gpt-6.1-sol", sandbox="workspace-write", network=True, writable_dirs=[])
+        (self.home / ".codex").mkdir()
+        (self.home / ".codex" / "AGENTS.md").write_text("user instructions\n", encoding="utf-8")
+        self.set_prompt("")
+
+    def as_reviewer(self, final=None):
+        """a read-only reviewer with an output schema; `final` is the final message the fake job leaves"""
+        out = self.repo / kymanifest.FLEET / "schemas" / "codex_reviewer_output.json"
+        self.launch.update(role="bootstrap-reviewer", model="gpt-6.1-sol", sandbox="read-only", network=False,
+                           writable_dirs=[], output_schema=str(out), output_schema_sha256=sha(out), kind="VERIFY")
+        if final is not None:
+            self.set_prompt("FAKE_NO_RESULT_JSON\nFAKE_FINAL_MESSAGE:" + final + "\n")
+
+    def receipt(self) -> dict:
+        launch, env = self.launch, self.launch["env"]
+        binary = os.path.realpath(launch["codex_bin"])
+        home = Path(env["HOME"])
+        return {"schema": "ky.qualification/1", "engine": "codex", "role": launch["role"], "model": launch["model"],
+                "context": self.context, "result": "PASS",
+                "binds": {"engine": "codex", "codex_bin": launch["codex_bin"],
+                          "codex_bin_sha256": sha(binary) if os.path.isfile(binary) and os.access(binary, os.R_OK)
+                          else "0" * 64,
+                          "codex_version": self.version_line, "argv": codex_launch_line(launch),
+                          "model": launch["model"], "effort": launch["effort"], "sandbox": launch["sandbox"],
+                          "network": launch["network"], "writable_dirs": list(launch["writable_dirs"]),
+                          "deadline_seconds": self.deadline_seconds, "worktree": launch["worktree"],
+                          "env_names": sorted(env), "child_path": env.get("PATH"),
+                          "prompt_sha256": launch["prompt_sha256"],
+                          "output_schema_sha256": launch.get("output_schema_sha256", "absent"),
+                          "codex_disabled_features": list(CODEX_FEATURES), "ignore_user_config": True,
+                          "ignore_rules": True, "persistent_mode": False,
+                          "project_agents_md_sha256": digest_or_absent(Path(launch["worktree"]) / "AGENTS.md"),
+                          "user_codex_agents_md_sha256": digest_or_absent(home / ".codex" / "AGENTS.md"),
+                          "user_codex_hooks_sha256": digest_or_absent(home / ".codex" / "hooks.json"),
+                          "zdotdir_sha256": zdotdir_digest(env["KY_ROOT"]),
+                          "harness_sha256": sha(self.staged["harness"])}}
+
+    def sync_manifest(self, change=None):
+        """as World's, with each receipt's configuration named the way kymanifest.py names it (launch_config_of)"""
+        def renamed(manifest):
+            for entry in manifest["qualifications"]:
+                document = json.loads(Path(entry["path"]).read_text())
+                config = kymanifest.launch_config_of(document if isinstance(document, dict) else {})
+                entry["config"] = config
+                entry["config_sha256"] = sha(self.staged["source"] / config) if config and \
+                    (self.staged["source"] / config).is_file() else None
+            if change is not None:
+                change(manifest)
+        super().sync_manifest(renamed)
+
+    def run(self, grace=1.0):
+        return kyboot.run(str(self.write()), self.environ, grace=grace, report=lambda text: None)
+
+
+@pytest.fixture
+def codex(tmp_path, staged):
+    made = CodexWorld(tmp_path, staged)
+    yield made
+    made.reap()
+
+
+def test_a_codex_launch_passes_check_and_its_line_is_the_briefs(codex):
+    result = codex.check()
+    assert result.findings == [], result.findings
+    plan = kyboot.build_launch(result.launch)
+    assert plan["argv"] == codex_launch_line(codex.launch, str(codex.job_scratch))
+    assert plan["cwd"] == str(codex.repo) and plan["env"] == {k: codex.launch["env"][k] for k in sorted(codex.launch["env"])}
+    assert not any(x.startswith("--dangerously") or x in ("--profile", "-p", "--max-turns") for x in plan["argv"])
+    assert result.facts["codex_version"] == "0.162.0-alpha.17.2" and "claude_version" not in result.facts
+    assert result.facts["codex_bin_sha256"] == sha(codex.codex)
+    assert result.facts["git_common_dir"] == os.path.realpath(str(codex.repo / ".git"))
+
+
+def test_a_codex_job_runs_its_line_and_records_the_thread_and_the_turn(codex):
+    code = codex.run()
+    assert code == 0
+    state = codex.state()
+    tmp = codex.job_scratch / "tmp"
+    assert (tmp / "fake_argv.txt").read_text().splitlines() == state["argv"][1:] == \
+        codex_launch_line(codex.launch, str(codex.job_scratch))[1:]
+    assert (tmp / "fake_stdin.txt").read_text() == codex.prompt.read_text()
+    assert (state["engine"], state["codex_version"], state["sandbox"], state["network"]) == \
+        ("codex", "0.162.0-alpha.17.2", "workspace-write", True)
+    assert state["codex_bin_sha256"] == sha(codex.codex) and state["provider_session_id"] == THREAD
+    assert state["result_event"] == {"type": "turn.completed", "error": None,
+                                     "usage": {"input_tokens": 21000, "cached_input_tokens": 0, "output_tokens": 80}}
+    assert state["job_result_valid"] is True and state["result_source"] == "result.json"
+    assert state["final_message_path"] == str(codex.job_scratch / "final_message.txt")
+    assert (codex.job_scratch / "final_message.txt").read_text() == "done"
+    for name in ("claude_bin", "claude_version", "permission_mode", "max_turns"):
+        assert name not in state, name
+    assert codex.action()["inputs"]["argv"] == state["argv"]
+
+
+def test_a_codex_job_without_a_thread_or_with_a_failed_turn_is_recorded_as_such(codex):
+    codex.set_prompt("FAKE_NO_THREAD\nFAKE_TURN_FAILED\nFAKE_EXIT:1\n")
+    assert codex.run() == 3
+    state = codex.state()
+    assert state["provider_session_id"] is None
+    assert state["result_event"]["type"] == "turn.failed" and state["result_event"]["error"] == "stream disconnected"
+
+
+def test_a_read_only_reviewer_is_judged_on_its_final_message_when_it_could_write_no_result(codex):
+    final = (ENGINES_FIX / "codex_reviewer_output.json").read_text().replace("J-20261012T090000Z-r1", JOB)
+    codex.as_reviewer(final=json.dumps(json.loads(final)))
+    assert codex.check().findings == []
+    assert codex.run() == 0
+    state = codex.state()
+    assert state["job_result_valid"] is True and state["result_source"] == "final_message.txt"
+    assert "--output-schema" in state["argv"] and "--add-dir" not in state["argv"]
+
+
+def test_a_reviewers_final_message_is_held_to_every_rule_of_result_json(codex):
+    codex.as_reviewer(final='{"schema": "ky.job_result/1", "job_id": "another-job"}')
+    assert codex.run() == 3
+    errors = codex.state()["job_result_errors"]
+    assert codex.state()["job_result_valid"] is False and any("required property" in e for e in errors), errors
+
+
+def test_a_reviewer_whose_final_message_is_no_json_fails_and_one_that_left_neither_file_has_no_result(codex):
+    codex.as_reviewer()
+    codex.set_prompt("FAKE_NO_RESULT_JSON\n")                # the last message is the word "done"
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    state = codex.state()
+    assert state["result_source"] == "final_message.txt" and state["job_result_valid"] is False
+    assert any("final_message.txt" in e and "is not acceptable JSON" in e for e in state["job_result_errors"])
+    launch = copy.deepcopy(codex.launch)
+    valid, errors, detail = kyboot.job_result(dict(launch, job_scratch=str(codex.root / "empty-job")), None)
+    assert (valid, detail) == (False, "no_result") and "and so is final_message.txt" in errors[0]
+
+
+def test_a_codex_builder_without_result_json_has_no_result_whatever_its_final_message(codex):
+    codex.set_prompt("FAKE_NO_RESULT_JSON\nFAKE_FINAL_MESSAGE:" + result_line()[len("FAKE_RESULT_JSON:"):].strip() + "\n")
+    assert codex.run() == kyboot.EXIT_NO_RESULT
+    state = codex.state()
+    assert state["termination_detail"] == "no_result" and state["result_source"] is None
+
+
+CODEX_BIND_CHANGES = [
+    ("engine", "claude"), ("codex_bin", "/opt/homebrew/bin/codex"), ("codex_bin_sha256", "9" * 64),
+    ("model", "gpt-5.6-sol"), ("effort", "xhigh"), ("sandbox", "read-only"), ("network", False),
+    ("network", "true"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
+    ("env_names", ["HOME", "PATH"]), ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"), ("output_schema_sha256", "9" * 64),
+    ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False),
+    ("persistent_mode", True),
+    ("project_agents_md_sha256", "9" * 64), ("user_codex_agents_md_sha256", "absent"),
+    ("user_codex_hooks_sha256", "9" * 64), ("zdotdir_sha256", "9" * 64), ("harness_sha256", "9" * 64),
+]
+
+
+@pytest.mark.parametrize("name,value", CODEX_BIND_CHANGES, ids=[f"{n}={i}" for i, (n, _) in enumerate(CODEX_BIND_CHANGES)])
+def test_every_codex_bound_fact_must_bind_this_launch(codex, name, value):
+    assert codex.check().findings == []
+    codex.auto_qualify = False
+    codex.qualify(lambda r: r["binds"].update({name: value}))
+    refused(codex, f"qualification: binds.{name}", "does not bind this launch")
+    codex.qualify(lambda r: r["binds"].pop(name))
+    refused(codex, f"qualification: binds.{name} is missing")
+
+
+def test_the_codex_bound_facts_are_the_ones_named_for_the_gate(codex):
+    assert {name for name, _ in CODEX_BIND_CHANGES} == set(kyboot.CODEX_BOUND_FACTS)
+    result = codex.check()
+    observed = kyboot.expected_codex_binds(result.launch, {c["path"]: c["sha256"] for c in
+                                                           codex.staged["manifest"]["components"]}, result.facts)
+    assert tuple(observed) == kyboot.CODEX_BOUND_FACTS and all(value is not None for value in observed.values())
+    receipt = json.loads(codex.receipt_path().read_text())["binds"]
+    assert {name: receipt[name] for name in observed} == observed
+    assert kyboot.CODEX_DISABLED_FEATURES == tuple(CODEX_FEATURES)
+
+
+def test_a_codex_receipt_qualifies_only_a_codex_launch_of_its_own_model(codex, staged):
+    codex.write()
+    codex.auto_qualify = False
+    codex.qualify(lambda r: r.pop("engine"))
+    refused(codex, "qualification: the receipt's engine", "is not the launch input's 'codex'")
+    codex.qualify(lambda r: r.update(model="gpt-5.6-sol"))    # receipts are per role and model
+    refused(codex, "qualification: the receipt's model", "is not the launch input's 'gpt-6.1-sol'")
+    codex.qualify()
+    codex.launch.update(role="bootstrap-reviewer", kind="VERIFY", sandbox="read-only", network=False)
+    refused(codex, "qualification: no receipt at", "bootstrap-reviewer-gpt-6.1-sol.json")
+    world = World(codex.root / "claude-world", staged)        # a Claude launch never takes a Codex receipt
+    try:
+        world.write()
+        world.auto_qualify = False
+        world.qualify(lambda r: r.update(engine="codex"))
+        refused(world, "qualification: the receipt's engine", "is not the launch input's 'claude'")
+    finally:
+        world.reap()
+
+
+def test_the_codex_line_is_compared_flag_for_flag(codex):
+    codex.write()
+    codex.auto_qualify = False
+    codex.qualify(lambda r: r["binds"]["argv"].insert(-1, "--dangerously-bypass-hook-trust"))
+    refused(codex, "qualification: binds.argv is not this launch's line")
+    codex.qualify(lambda r: r["binds"].update(argv=codex_launch_line(dict(codex.launch, worktree="/elsewhere"))))
+    assert codex.check().findings != []
+    codex.qualify()
+    assert codex.check().findings == []
+
+
+def test_the_codex_version_is_compared_whole_and_against_the_minimum(codex):
+    codex.write()
+    codex.auto_qualify = False
+    codex.qualify(lambda r: r["binds"].update(codex_version="0.162.0-alpha.18"))
+    refused(codex, "qualification: binds.codex_version", "does not bind this launch")
+    old = codex.root / "bin" / "codex-old"
+    old.write_text("#!/bin/bash\necho 'codex-cli 0.161.2'\n", encoding="utf-8")
+    old.chmod(0o755)
+    codex.launch["codex_bin"] = str(old)
+    codex.version_line = "0.161.2"
+    codex.auto_qualify = True
+    refused(codex, "codex_bin: version 0.161.2 is below the pinned minimum 0.162.0")
+    old.write_text("#!/bin/bash\necho 'Codex (version unknown)'\n", encoding="utf-8")
+    refused(codex, "codex_bin: version output is not 'codex-cli X.Y.Z'")
+    codex.launch["codex_bin"] = str(codex.root / "bin" / "absent")
+    refused(codex, "codex_bin: does not exist or is not a file")
+
+
+@pytest.mark.parametrize("field", CLAUDE_ONLY_LAUNCH_FIELDS)
+def test_a_claude_only_field_refuses_a_codex_launch_input(codex, field):
+    codex.launch[field] = {"claude_bin": "/x", "claude_min_version": "2.1.296", "permission_mode": "default",
+                           "max_turns": 150, "mcp_config": "/x", "mcp_config_sha256": "9" * 64,
+                           "extra_lean_flags": ["--dangerously-skip-permissions"], "disallowed_tools": ["Task"]}[field]
+    refused(codex, "schema:", field)
+
+
+@pytest.mark.parametrize("edits,needle", [
+    ({"sandbox": "danger-full-access"}, "$.sandbox"), ({"effort": "ultra"}, "$.effort"),
+    ({"effort": "persistent"}, "$.effort"), ({"model": "gpt-5.6-terra"}, "$.model"),
+    ({"model": "claude-opus-5-5"}, "$.model"), ({"codex_min_version": "0.150.0"}, "$.codex_min_version"),
+    ({"network": "yes"}, "$.network"), ({"writable_dirs": "/x"}, "$.writable_dirs"),
+    ({"role": "planner"}, "$.role"), ({"output_schema": "/x"}, "required property 'output_schema_sha256'"),
+    ({"output_schema_sha256": "9" * 64}, "required property 'output_schema'"),
+    ({"sandbox": "read-only", "network": True}, "$.network"),
+    ({"sandbox": "read-only", "network": False, "writable_dirs": ["/x"]}, "$.writable_dirs"),
+], ids=["full-access", "ultra", "persistent", "other-codex-model", "claude-model", "old-minimum", "network-text", "dirs-text", "planner", "schema-no-hash",
+        "hash-no-schema", "read-only-network", "read-only-dirs"])
+def test_a_codex_launch_input_of_the_wrong_shape_refuses(codex, edits, needle):
+    codex.launch.update(edits)
+    refused(codex, "schema:", needle)
+
+
+def test_a_codex_builder_must_be_able_to_write_its_worktrees_common_git_directory(codex):
+    linked = codex.wt_root / "linked"
+    codex.git("worktree", "add", "-q", "-b", "kalayantra/linked", str(linked))
+    codex.launch.update(worktree=str(linked), branch="kalayantra/linked")
+    common = os.path.realpath(str(codex.repo / ".git"))
+    refused(codex, f"writable_dirs: the worktree's common git directory {common} is in no writable root")
+    codex.launch["writable_dirs"] = [common]
+    assert not any("writable_dirs" in line for line in codex.check().findings)
+    codex.launch["writable_dirs"] = [str(codex.root / "absent")]
+    refused(codex, "writable_dirs:", "is not an existing directory")
+
+
+def test_the_codex_instruction_inputs_must_be_the_qualified_ones(codex):
+    assert codex.check().findings == []
+    codex.auto_qualify = False
+    (codex.home / ".codex" / "AGENTS.md").write_text("changed user instructions\n", encoding="utf-8")
+    refused(codex, "qualification: binds.user_codex_agents_md_sha256", "does not bind this launch")
+    (codex.home / ".codex" / "AGENTS.md").unlink()
+    refused(codex, "qualification: binds.user_codex_agents_md_sha256")
+    codex.auto_qualify = True
+    assert codex.check().findings == []
+    codex.auto_qualify = False
+    (codex.home / ".codex" / "hooks.json").write_text("{}", encoding="utf-8")
+    refused(codex, "qualification: binds.user_codex_hooks_sha256")
+
+
+def test_a_codex_launch_needs_no_turn_cap_but_keeps_every_other_gate(codex):
+    codex.launch["kind"] = "PRE-ACCEPT"
+    assert codex.check().findings == []                        # no max_turns: nothing to hold against the cap
+    codex.launch["effort"] = "xhigh"
+    refused(codex, "effort: kind PRE-ACCEPT requires effort high, found xhigh")
+    codex.launch["effort"] = "high"
+    codex.launch["env"]["OPENAI_API_KEY"] = "s3cr3t"
+    refused(codex, "env: OPENAI_API_KEY is not in the plan §7 allowlist")
+
+
+def test_a_codex_launch_by_command_line_passes_the_real_manifest_gate(codex):
+    cli = codex.cli("check", codex.launch_path)
+    assert cli.returncode == 0, cli.stderr
+    assert "CHECK-PASSED" in cli.stdout and "0.162.0-alpha.17.2" in cli.stdout
+    manifest = json.loads(codex.manifest_path.read_text())
+    assert [q["config"] for q in manifest["qualifications"] if q["model"] == "gpt-6.1-sol"] == \
+        [kymanifest.LAUNCH_CONFIG_CODEX % "bootstrap-builder"]
+    argv = codex.cli("argv", codex.launch_path)
+    assert argv.returncode == 0 and json.loads(argv.stdout)["argv"] == codex_launch_line(codex.launch, str(codex.job_scratch))

@@ -1,0 +1,33 @@
+{
+ "schema": "ky.launch_config/1",
+ "engine": "codex",
+ "role": "area-reviewer",
+ "model": "gpt-6.1-sol",
+ "effort": "high",
+ "sandbox": "read-only",
+ "network": false,
+ "deadline_seconds": 7200,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
+ "codex_bin": "/opt/homebrew/bin/codex",
+ "codex_min_version": "0.162.0",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md",
+ "output_schema": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/codex_reviewer_output.json",
+ "env_names": [
+  "HOME",
+  "USER",
+  "LANG",
+  "TERM",
+  "PATH",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
+  "KY_ITEM",
+  "KY_PY"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "writable_dirs": [],
+ "_note": "The Codex area reviewer (the bootstrap reviewer with twice the time, for the B-0c area reviews): read-only sandbox, no network, no writable root — the job's commands cannot write anywhere, not even JOB_SCRATCH or TMPDIR, so the card's pytest runs (--basetemp under JOB_SCRATCH) and its result.json write (BR-07, BR-12) cannot happen as written; the final message, held to codex_reviewer_output.json by the program, is the job's result (kyboot.py judges final_message.txt when no result.json is left). Recorded for an owner-surrogate decision: a reviewer that must run tests needs workspace-write with network false instead. Model gpt-6.1-sol at effort high (owner decision 2026-10-12)."
+}

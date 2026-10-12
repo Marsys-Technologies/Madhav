@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.bootstrap_launch_input/1#codex",
+  "title": "KĀLA-YANTRA v3 bootstrap launch input of the OpenAI Codex CLI engine (relaunch plan v2.7 §7 bootstrap launches and launch qualification, §14 B-0c / B-1)",
+  "description": "A bootstrap launch input with \"engine\": \"codex\": everything bootstrap_launch_input.json requires of a Claude Code launch except its Claude-only fields (claude_bin, claude_min_version, permission_mode, max_turns, mcp_config, mcp_config_sha256, extra_lean_flags, disallowed_tools — any of them refuses), plus codex_bin, codex_min_version, sandbox, network, writable_dirs and, optionally together, output_schema and output_schema_sha256. Shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: every rule listed for a Claude launch input that applies (manifest and supervisor first; paths; worktree and branch policy; hashes; card and packet in the prompt; scratch and state locations; environment allowlist; effort per kind; deadline; card_path and output_schema as manifest components; the item lock) and, for Codex: writable dirs exist; read-only has none and no network; for workspace-write the worktree's common git directory lies in a writable root; the receipt <role>-<model> says engine codex and binds program path, sha256 and version, model, effort, sandbox, network, writable_dirs, disabled features, --ignore-user-config / --ignore-rules, output schema hash, AGENTS.md / ~/.codex/AGENTS.md / ~/.codex/hooks.json hashes, environment names, child PATH, zdotdir, harness and the launch line flag for flag; the program's version against codex_min_version (run only for the program that receipt binds). There is no turn cap: Codex has no turn limit, so the deadline is the only one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "engine",
+    "job_id",
+    "item",
+    "kind",
+    "role",
+    "worktree",
+    "branch",
+    "base_sha",
+    "codex_bin",
+    "codex_min_version",
+    "model",
+    "effort",
+    "sandbox",
+    "network",
+    "writable_dirs",
+    "prompt_path",
+    "prompt_sha256",
+    "card_path",
+    "card_sha256",
+    "packet_path",
+    "packet_sha256",
+    "job_scratch",
+    "stdout_path",
+    "stderr_path",
+    "tmp_path",
+    "state_path",
+    "env",
+    "deadline",
+    "plan_version",
+    "approved_source_commit"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.bootstrap_launch_input/1"
+    },
+    "engine": {
+      "const": "codex"
+    },
+    "job_id": {
+      "description": "One safe path component: it names <KY_SCRATCH>/jobs/<job_id> and <KY_RUN>/jobs/<job_id>. Its action ids ACT-launch-<job_id> and ACT-submit-<job_id> must fit the 160 characters of an action id (schemas/action.json); kyboot.py refuses a job id whose action ids would not.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "item": {
+      "type": "string",
+      "pattern": "^KV3-B-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "kind": {
+      "description": "The job kind; it sets the turn cap kyboot.py enforces (plan §7): BUILD 150, REWORK 100, VERIFY 60, ARTIFACT 60, PRE-ACCEPT 40, RULING 30, SURROGATE 30 (the owner surrogate's ruling job), PLAN 300.",
+      "enum": [
+        "BUILD",
+        "REWORK",
+        "ARTIFACT",
+        "VERIFY",
+        "PRE-ACCEPT",
+        "RULING",
+        "SURROGATE",
+        "PLAN"
+      ]
+    },
+    "role": {
+      "description": "The launch configuration's role: it names the qualification receipt <KY_RUN>/QUALIFICATIONS/<role>-<model>.json, which must be PASS, say engine codex and bind this launch. The planner is Claude Code only (kyloop.py fixes its launch line).",
+      "enum": [
+        "bootstrap-builder",
+        "bootstrap-reviewer",
+        "surrogate"
+      ]
+    },
+    "worktree": {
+      "$ref": "#/$defs/text"
+    },
+    "branch": {
+      "$ref": "#/$defs/text"
+    },
+    "base_sha": {
+      "$ref": "#/$defs/commit"
+    },
+    "codex_bin": {
+      "$ref": "#/$defs/text"
+    },
+    "codex_min_version": {
+      "description": "The lowest `codex --version` (X.Y.Z; a pre-release suffix is not compared) this launch accepts; the receipt's codex_version must equal the program's whole.",
+      "const": "0.162.0"
+    },
+    "model": {
+      "description": "The OpenAI model of the Codex roster: gpt-6.1-sol for every Codex agent (owner decision 2026-10-12). Another model needs a schema change (reviewed), as a Claude model does.",
+      "enum": [
+        "gpt-6.1-sol"
+      ]
+    },
+    "effort": {
+      "enum": [
+        "high",
+        "xhigh"
+      ],
+      "description": "high (xhigh for PLAN, which Codex does not run). Never ultra (sub-agents) nor persistent (persistent mode)."
+    },
+    "sandbox": {
+      "description": "-s: read-only (reviewers) or workspace-write (builders). danger-full-access never.",
+      "enum": [
+        "read-only",
+        "workspace-write"
+      ]
+    },
+    "network": {
+      "description": "sandbox_workspace_write.network_access; false for read-only.",
+      "type": "boolean"
+    },
+    "writable_dirs": {
+      "description": "--add-dir roots besides the worktree and job_scratch; empty for read-only. For workspace-write the worktree's common git directory must lie in one of them (or in the worktree); kyboot.py derives and checks it.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^/[^\\n]*$"
+      }
+    },
+    "prompt_path": {
+      "$ref": "#/$defs/text"
+    },
+    "prompt_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "card_path": {
+      "$ref": "#/$defs/text"
+    },
+    "card_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "packet_path": {
+      "$ref": "#/$defs/text"
+    },
+    "packet_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "job_scratch": {
+      "$ref": "#/$defs/text"
+    },
+    "stdout_path": {
+      "$ref": "#/$defs/text"
+    },
+    "stderr_path": {
+      "$ref": "#/$defs/text"
+    },
+    "tmp_path": {
+      "$ref": "#/$defs/text"
+    },
+    "state_path": {
+      "$ref": "#/$defs/text"
+    },
+    "env": {
+      "description": "The job's whole environment (env -i semantics). Names and values are checked by kyboot.py against the plan §7 allowlist; JOB_SCRATCH (= job_scratch) and KY_SCRATCH (= the supervisor's resolved campaign scratch folder) are required there. This schema cannot type an open map.",
+      "type": "object"
+    },
+    "deadline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_version": {
+      "const": "2.7"
+    },
+    "approved_source_commit": {
+      "$ref": "#/$defs/commit"
+    },
+    "output_schema": {
+      "description": "Optional --output-schema: the JSON schema of the job's final message; a manifest component, hashed. A job with one that leaves no result.json is judged on final_message.txt.",
+      "$ref": "#/$defs/text"
+    },
+    "output_schema_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "sandbox": {
+            "const": "read-only"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      },
+      "then": {
+        "properties": {
+          "network": {
+            "const": false
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "output_schema"
+        ]
+      },
+      "then": {
+        "required": [
+          "output_schema_sha256"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "output_schema_sha256"
+        ]
+      },
+      "then": {
+        "required": [
+          "output_schema"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}
