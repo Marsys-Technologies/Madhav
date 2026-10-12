@@ -13,10 +13,9 @@
  "model": "gpt-6.1-sol",
  "effort": "high",
  "sandbox": "workspace-write",
- "network": true,
- "writable_dirs": [
-  "/Users/Dev/Vibe-Coding/Apps/Madhav/.git"
- ],
+ "network": false,
+ "commit_mode": "launcher",
+ "writable_dirs": [],
  "prompt_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/jobs/J-20261011T215900Z-b1/prompt.md",
  "prompt_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
  "card_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-b-kylock/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md",

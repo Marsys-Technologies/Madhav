@@ -123,7 +123,12 @@ with "work_root": "job" (the reviewers, cockpit ruling E1) runs with -C <job_scr
 and --skip-git-repo-check; it names the item's working copy in item_worktree (= worktree) and its prompt carries
 the line ITEM_WORKTREE=<item_worktree>; after the job that copy's HEAD and `git status` must be what they were
 before. After every Codex job the common git directory (derived with `git rev-parse --git-common-dir`) must have
-the config and hooks it had before (cockpit ruling E2). A guard that changed, or cannot be read, fails the job
+the configuration, hooks and git-directory identity it had before (cockpit ruling E2 as amended: git_guard_record;
+a worktree entry another session created meanwhile is ignored). A Codex builder (cockpit ruling E7) has no write
+access to any git directory and no network: its launch input says commit_mode "launcher", network false, and
+names no writable dir that holds or lies in a git directory; it does not commit — its result.json
+(schemas/job_result_launcher_commit.json) carries status, tests and commit_message, never a head or a PR — and
+kyboot, which never commits or pushes either, records awaiting_launcher_commit for the launcher to act on. A guard that changed, or cannot be read, fails the job
 (exit 3; state.json `guard_failures`); one that cannot be read before the job refuses the launch.
 
 What `check` passing means: the reviewed source, the manifest, the qualification and the launch input agreed
@@ -188,6 +193,8 @@ FLEET = os.path.dirname(os.path.realpath(__file__))
 SCHEMA_DIR = os.path.join(FLEET, "schemas")
 LAUNCH_SCHEMA = "bootstrap_launch_input"
 LAUNCH_SCHEMA_CODEX = "bootstrap_launch_input_codex"        # a launch input with "engine": "codex"
+RESULT_SCHEMA_LAUNCHER = "job_result_launcher_commit"       # result.json of a commit_mode "launcher" job
+GUARD_RETRY_SECONDS = 2.0                                   # one second look before a guard is called changed
 STATE_SCHEMA = "ky.bootstrap_job_state/3"
 MANIFEST_SCHEMA = "ky.versions_bootstrap/1"
 QUALIFICATION_SCHEMA = "ky.qualification/1"
@@ -281,7 +288,7 @@ CODEX_DISABLED_FEATURES = ("memories", "multi_agent", "multi_agent_v2", "apps", 
                            "send_async_message", "web_search_request", "standalone_web_search", "skill_search",
                            "plugin_hooks", "recommended_plugins", "remote_control", "js_repl")
 CODEX_BOUND_FACTS = ("engine", "codex_bin", "codex_bin_sha256", "model", "effort", "sandbox", "network",
-                     "work_root", "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
+                     "work_root", "commit_mode", "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
                      "ignore_user_config", "ignore_rules", "persistent_mode", "exclude_slash_tmp",
                      "exclude_tmpdir_env_var", "project_agents_md_sha256",
                      "user_codex_agents_md_sha256",
@@ -327,6 +334,17 @@ def path_fields(launch) -> tuple:
     return CODEX_PATH_FIELDS + tuple(field for field in ("output_schema", "item_worktree") if field in launch)
 
 
+def codex_builder(launch) -> bool:
+    """a Codex builder: workspace-write, rooted in the item's working copy (cockpit ruling E7 applies to it)"""
+    return is_codex(launch) and launch.get("sandbox") == "workspace-write" \
+        and launch.get("work_root", "worktree") == "worktree"
+
+
+def launcher_commit(launch) -> bool:
+    """the job leaves its changes uncommitted and a proposed commit message; the launcher commits (commit_mode)"""
+    return is_codex(launch) and launch.get("commit_mode") == "launcher"
+
+
 def job_rooted(launch) -> bool:
     """a Codex run whose -C is its own job folder (work_root "job": the reviewers, cockpit ruling E1)"""
     return is_codex(launch) and launch.get("work_root") == "job"
@@ -358,33 +376,88 @@ def tree_digest(directory):
     return digest.hexdigest()
 
 
-def git_guard(worktree, environ):
-    """{common_dir, config_files, hooks} of the worktree's common git directory, derived with `git rev-parse
-    --git-common-dir` (cockpit ruling E2 as amended after review finding B2: a builder may write it for its
-    commits, no job may change its configuration or hooks) — kyqualify.py's `git_guard`: config_files is the
-    sha256 (or "absent") of config, config.worktree and every worktrees/<name>/config.worktree; hooks a tree digest
-    of <common>/hooks and of the effective hooks folder (`git rev-parse --git-path hooks`), by path. None when it
-    cannot be read."""
-    code, common = _git(worktree, environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
-    if code != 0 or not os.path.isabs(common):
-        return None
-    common = os.path.realpath(common)
+def git_guard_record(worktree, common, gitdir, includes, effective_hooks):
+    """the git guard's record (cockpit ruling E2 as amended after reviews r1 and r2) — this function and
+    git_guard_changes are the same text in kyboot.py and kyqualify.py:
+      config_files   sha256 (or "absent") of every configuration file git reads for the common directory: config,
+                     config.worktree, each file an include.path / includeIf.*.path of the common config names
+                     ("include:<path>"), and for every <common>/worktrees/<name> its config.worktree, commondir and
+                     gitdir (a rewritten commondir makes git in that worktree read another folder's config)
+      worktree_entries  the names under <common>/worktrees when the record was taken
+      own            the working copy's own git identity: its absolute git dir, its .git pointer (sha256 of the
+                     file; "directory" for a plain repository), and that git dir's config.worktree and commondir
+      hooks          a tree digest of <common>/hooks and of the effective hooks folder, by path"""
     files = {"config": file_digest(os.path.join(common, "config")),
              "config.worktree": file_digest(os.path.join(common, "config.worktree"))}
     try:
-        names = sorted(os.listdir(os.path.join(common, "worktrees")))
+        entries = sorted(name for name in os.listdir(os.path.join(common, "worktrees"))
+                         if os.path.isdir(os.path.join(common, "worktrees", name)))
     except OSError:
-        names = []
-    for name in names:
-        path = os.path.join(common, "worktrees", name, "config.worktree")
-        if os.path.lexists(path):
-            files[f"worktrees/{name}/config.worktree"] = file_digest(path)
-    code, shown = _git(worktree, environ, "rev-parse", "--git-path", "hooks")
-    if code != 0 or not shown:
+        entries = []
+    for name in entries:
+        for part in ("config.worktree", "commondir", "gitdir"):
+            files["worktrees/%s/%s" % (name, part)] = file_digest(os.path.join(common, "worktrees", name, part))
+    for path in sorted(set(includes)):
+        files["include:" + path] = file_digest(path)
+    pointer = os.path.join(worktree, ".git")
+    own = {"git_dir": gitdir,
+           "pointer": file_digest(pointer) if os.path.isfile(pointer) else "directory" if os.path.isdir(pointer) else "absent",
+           "config.worktree": file_digest(os.path.join(gitdir, "config.worktree")),
+           "commondir": file_digest(os.path.join(gitdir, "commondir"))}
+    hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective_hooks})}
+    return {"common_dir": common, "config_files": files, "worktree_entries": entries, "own": own, "hooks": hooks}
+
+
+def git_guard_changes(before, after):
+    """what differs between two git guard records ([] = nothing). A worktree entry created after `before` was
+    taken (another session adding a working copy) is ignored; one that existed must be unchanged, and so must
+    everything else. A record that could not be read is a difference."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return ["unreadable"]
+    known = set(before["worktree_entries"])
+
+    def kept(files):
+        return {key: value for key, value in files.items()
+                if not key.startswith("worktrees/") or key.split("/")[1] in known}
+
+    out = ["common_dir"] if before["common_dir"] != after["common_dir"] else []
+    old, new = kept(before["config_files"]), kept(after["config_files"])
+    out += sorted(key for key in set(old) | set(new) if old.get(key) != new.get(key))
+    for part in ("own", "hooks"):
+        out += sorted("%s:%s" % (part, key) for key in set(before[part]) | set(after[part])
+                      if before[part].get(key) != after[part].get(key))
+    return out
+
+
+def include_paths(common, lines):
+    """the files an include.path / includeIf.<condition>.path of the common config names, from the lines of `git
+    config --file <common>/config --get-regexp`: absolute, '~/' from the home folder, anything else relative to
+    the common directory (as git resolves them)"""
+    out = []
+    for line in lines:
+        value = line.split(None, 1)[1].strip() if len(line.split(None, 1)) == 2 else ""
+        if value:
+            value = os.path.expanduser(value) if value.startswith("~") else value
+            out.append(os.path.realpath(value if os.path.isabs(value) else os.path.join(common, value)))
+    return out
+
+
+def git_guard(worktree, environ):
+    """the git guard record of a worktree (git_guard_record), everything derived with git — the common directory
+    (`rev-parse --git-common-dir`), the worktree's own git dir (`--absolute-git-dir`), the effective hooks folder
+    (`--git-path hooks`) and the common config's includes; None when git cannot say"""
+    code, common = _git(worktree, environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    own_code, gitdir = _git(worktree, environ, "rev-parse", "--absolute-git-dir")
+    hooks_code, hooks = _git(worktree, environ, "rev-parse", "--git-path", "hooks")
+    if code != 0 or own_code != 0 or hooks_code != 0 or not os.path.isabs(common) or not os.path.isabs(gitdir) \
+            or not hooks:
         return None
-    effective = os.path.realpath(os.path.join(worktree, shown))
-    hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective})}
-    return {"common_dir": common, "config_files": files, "hooks": hooks}
+    common = os.path.realpath(common)
+    listed_code, listed = _git(worktree, environ, "config", "--file", os.path.join(common, "config"), "--get-regexp",
+                               r"^include(if\..*)?\.path$")
+    includes = include_paths(common, listed.splitlines() if listed_code == 0 else [])
+    return git_guard_record(worktree, common, os.path.realpath(gitdir), includes,
+                            os.path.realpath(os.path.join(worktree, hooks)))
 
 
 def worktree_guard(worktree, environ):
@@ -877,17 +950,27 @@ def _codex_findings(launch, environ, facts) -> list:
             out.append("writable_dirs: a read-only job writes nowhere; writable_dirs must be empty")
         if launch["network"] is not False:
             out.append("network: a read-only sandbox has no network setting; network must be false")
-    elif os.path.isdir(launch["worktree"]) and not job_rooted(launch):
+    builder = codex_builder(launch)                  # cockpit ruling E7: no git directory, no network, no commit
+    if builder and launch.get("commit_mode") != "launcher":
+        out.append('commit_mode: a Codex builder says "launcher" (the launcher commits and pushes for it)')
+    if not builder and "commit_mode" in launch:
+        out.append("commit_mode: only a Codex builder (worktree-rooted, workspace-write) has one")
+    if builder and launch["network"] is not False:
+        out.append("network: a Codex builder has no network (the launcher pushes for it); network must be false")
+    if any(".git" in directory.split(os.sep) for directory in dirs):
+        out.append("writable_dirs: no git directory, and nothing inside one, is ever a writable root")
+    if os.path.isdir(launch["worktree"]):
         code, common = _git(launch["worktree"], environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
         if code != 0 or not os.path.isabs(common):
             out.append("worktree: its common git directory cannot be read")
         else:
             common = os.path.realpath(common)
             facts["git_common_dir"] = common
-            roots = [os.path.realpath(launch["worktree"])] + [os.path.realpath(d) for d in dirs if os.path.isabs(d)]
-            if not any(common == root or _is_beneath(common, root) for root in roots):
-                out.append(f"writable_dirs: the worktree's common git directory {common} is in no writable root; "
-                           f"a commit could not be written")
+            roots = [os.path.realpath(d) for d in dirs if os.path.isabs(d)] + \
+                ([os.path.realpath(launch["worktree"])] if builder else [])
+            if any(common == root or _is_beneath(common, root) or _is_beneath(root, common) for root in roots):
+                out.append(f"writable_dirs: the worktree's common git directory {common} would be writable (a "
+                           f"writable root holds it or lies inside it); a Codex job writes no git directory")
     if (OUTPUT_SCHEMA_FILE[0] in launch) != (OUTPUT_SCHEMA_FILE[1] in launch):
         out.append("output_schema: output_schema and output_schema_sha256 are given together or not at all")
     return out
@@ -1241,6 +1324,7 @@ def expected_codex_binds(launch, components, facts) -> dict:
     return {"engine": "codex", "codex_bin": launch["codex_bin"], "codex_bin_sha256": facts.get("codex_bin_sha256"),
             "model": launch["model"], "effort": launch["effort"], "sandbox": launch["sandbox"],
             "network": launch["network"], "work_root": launch.get("work_root", "worktree"),
+            "commit_mode": launch.get("commit_mode", "none"),
             "writable_dirs": list(launch["writable_dirs"]),
             "env_names": sorted(launch["env"]), "child_path": launch["env"]["PATH"],
             "output_schema_sha256": launch.get(OUTPUT_SCHEMA_FILE[1], "absent"),
@@ -1600,7 +1684,8 @@ def _judge_result_file(launch, schema_tool, path, name):
         return False, [f"{name} is larger than {RESULT_MAX_BYTES} bytes: it is refused"], "result_refused"
     try:
         result = load_json_text(data.decode("utf-8"))
-        errors = schema_tool.validate(load_schema("job_result"), result)
+        errors = schema_tool.validate(load_schema(RESULT_SCHEMA_LAUNCHER if launcher_commit(launch) else "job_result"),
+                                      result)
     except (ValueError, UnicodeDecodeError, RecursionError) as bad:
         return False, [f"{path} is not acceptable JSON: {bad}"[:400]], None
     if not errors:
@@ -2098,7 +2183,8 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
                          sandbox=launch["sandbox"], network=launch["network"],
                          writable_dirs=list(launch["writable_dirs"]), git_common_dir=facts.get("git_common_dir"),
                          final_message_path=os.path.join(scratch, FINAL_MESSAGE), result_source=None,
-                         work_root=launch.get("work_root", "worktree"), guards=guards, guard_failures=[])
+                         work_root=launch.get("work_root", "worktree"), guards=guards, guard_failures=[],
+                         commit_mode=launch.get("commit_mode", "none"), awaiting_launcher_commit=False)
         try:
             os.makedirs(os.path.dirname(state_path), exist_ok=True)
             write_state(state_path, state, exclusive=True)
@@ -2146,20 +2232,44 @@ def run(launch_path, environ, grace=DEFAULT_GRACE_SECONDS, report=print, manifes
                   f"not be removed)", file=sys.stderr)
 
 
+def _result_status(launch):
+    """the status the job's own result.json states, or None (read only after job_result found the file valid)"""
+    try:
+        with open(os.path.join(launch["job_scratch"], "result.json"), "rb") as handle:
+            result = load_json_text(handle.read(RESULT_MAX_BYTES).decode("utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError, RecursionError):
+        return None
+    return result.get("status") if type(result) is dict else None
+
+
 def _check_guards(launch, environ, state, code) -> int:
     """after a Codex job: its guards again; any difference (or one that cannot be read) fails the job"""
-    after = codex_guards(launch, environ)
-    state["guards"]["after"] = after
     before = state["guards"]["before"]
-    failures = []
-    for name in sorted(before):
-        if after.get(name) is None:
-            failures.append(f"{name}: cannot be read after the job")
-        elif after[name] != before[name]:
-            what = "the item's working copy (HEAD or git status)" if name == "worktree" else \
-                "the common git directory's config or hooks"
-            failures.append(f"{name}: {what} changed during the job")
+
+    def differences():
+        after = codex_guards(launch, environ)
+        found = []
+        for name in sorted(before):
+            if after.get(name) is None:
+                found.append(f"{name}: cannot be read after the job")
+            elif name == "git":
+                changes = git_guard_changes(before[name], after[name])
+                if changes:
+                    found.append("git: the git configuration, hooks or git-directory identity changed during the "
+                                 f"job ({', '.join(changes)})")
+            elif after[name] != before[name]:
+                found.append(f"{name}: the item's working copy (HEAD or git status) changed during the job")
+        return after, found
+
+    after, failures = differences()
+    if failures:                                     # once more, to rule out a file read while it was being written
+        time.sleep(GUARD_RETRY_SECONDS)
+        after, failures = differences()
+    state["guards"]["after"] = after
     state["guard_failures"] = failures
+    if launcher_commit(launch):                      # kyboot never commits or pushes: the launcher does, afterwards
+        state["awaiting_launcher_commit"] = bool(state["job_result_valid"] is True and not failures
+                                                 and _result_status(launch) == "done")
     _record(state["state_path"], state)
     if failures:
         print(f"GUARD FAILED {launch['job_id']}: " + "; ".join(failures), file=sys.stderr)

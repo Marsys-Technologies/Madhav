@@ -51,7 +51,7 @@ import kyschema  # noqa: E402
 
 CHECKOUT_KYBOOT = kyboot
 MY_SCHEMAS = ["awaiting", "bootstrap_launch_input", "bootstrap_launch_input_codex", "codex_reviewer_output",
-              "job_result", "packet", "release_receipt", "surrogate_decision"]
+              "job_result", "job_result_launcher_commit", "packet", "release_receipt", "surrogate_decision"]
 BRANCH = "kalayantra/kv3-b-kylock"
 ITEM = "KV3-B-KYLOCK"
 JOB = "J-20261011T215900Z-b1"
@@ -4389,7 +4389,8 @@ VALIDATE = [("packet", "packet_bootstrap.json"), ("release_receipt", "release_re
             ("awaiting", "awaiting.json"), ("surrogate_decision", "surrogate_decision_veto.json"),
             ("job_result", "job_result_done.json"), ("bootstrap_launch_input", "launch_input.json"),
             ("bootstrap_launch_input_codex", ENGINES_FIX / "launch_input_codex.json"),     # absolute: FIX / it is it
-            ("codex_reviewer_output", ENGINES_FIX / "codex_reviewer_output.json")]
+            ("codex_reviewer_output", ENGINES_FIX / "codex_reviewer_output.json"),
+            ("job_result_launcher_commit", ENGINES_FIX / "job_result_launcher_commit.json")]
 
 
 def bare_cli(*args):
@@ -4526,8 +4527,17 @@ class CodexWorld(World):
         self.version_line = "0.162.0-alpha.17.2"
         for key in CLAUDE_ONLY_LAUNCH_FIELDS:
             del self.launch[key]
+        # cockpit ruling E7: a Codex job's working copy is a linked worktree — its git directory lies elsewhere
+        self.main_repo = self.repo
+        self.repo = self.wt_root / "kalayantra-kv3-b-kylock-codex"
+        git_in(self.main_repo, "worktree", "add", "-q", "-b", BRANCH + "-codex", str(self.repo), home=self.home)
+        self.common = os.path.realpath(str(self.main_repo / ".git"))
+        self.card = self.repo / kymanifest.FLEET / "cards" / "BOOTSTRAP.md"
+        self.packet = self.repo / kymanifest.K / "packets" / "PACKET_KV3-B-KYLOCK_v1.md"
         self.launch.update(engine="codex", codex_bin=str(self.codex), codex_min_version="0.162.0",
-                           model="gpt-6.1-sol", sandbox="workspace-write", network=True, writable_dirs=[])
+                           model="gpt-6.1-sol", sandbox="workspace-write", network=False, commit_mode="launcher",
+                           writable_dirs=[], worktree=str(self.repo), branch=BRANCH + "-codex",
+                           card_path=str(self.card), packet_path=str(self.packet))
         (self.home / ".codex").mkdir()
         (self.home / ".codex" / "AGENTS.md").write_text("user instructions\n", encoding="utf-8")
         self.set_prompt("")
@@ -4536,6 +4546,7 @@ class CodexWorld(World):
         """a reviewer rooted in its job folder (cockpit ruling E1) with an output schema; `final` is the final
         message the fake job leaves (and then no result.json); the prompt names the item's working copy"""
         out = self.repo / kymanifest.FLEET / "schemas" / "codex_reviewer_output.json"
+        self.launch.pop("commit_mode", None)
         self.launch.update(role="bootstrap-reviewer", model="gpt-6.1-sol", sandbox="workspace-write", network=False,
                            work_root="job", item_worktree=str(self.repo), writable_dirs=[], output_schema=str(out),
                            output_schema_sha256=sha(out), kind="VERIFY")
@@ -4544,6 +4555,21 @@ class CodexWorld(World):
 
     def item_line(self):
         return f"ITEM_WORKTREE={self.repo}\n"
+
+    def launcher_result(self, **changes) -> str:
+        """the prompt line that makes a builder leave the result.json of a commit_mode "launcher" job"""
+        result = {"schema": "ky.job_result/1", "job_id": self.launch["job_id"], "item": self.launch["item"],
+                  "status": "done", "tests": [{"cmd": "pytest", "exit": 0, "summary": "ok"}],
+                  "commit_message": "KV3-B-KYLOCK: the item lock", "blocked_reason": None, "notes": ""}
+        result.update(changes)
+        return "FAKE_RESULT_JSON:" + json.dumps(result) + "\n"
+
+    def prompt_bytes(self, text: str) -> bytes:
+        """as World's; a builder's default result is the launcher-commit one (no head, no PR: it commits nothing)"""
+        if self.launch.get("commit_mode") == "launcher" and "FAKE_RESULT_JSON:" not in text \
+                and "FAKE_NO_RESULT_JSON" not in text:
+            text += self.launcher_result()
+        return super().prompt_bytes(text)
 
     def receipt(self) -> dict:
         launch, env = self.launch, self.launch["env"]
@@ -4565,6 +4591,7 @@ class CodexWorld(World):
                           "ignore_rules": True, "persistent_mode": False, "exclude_slash_tmp": True,
                           "exclude_tmpdir_env_var": False,
                           "work_root": launch.get("work_root", "worktree"),
+                          "commit_mode": launch.get("commit_mode", "none"),
                           "project_agents_md_sha256": digest_or_absent(Path(launch["worktree"]) / "AGENTS.md"),
                           "user_codex_agents_md_sha256": digest_or_absent(home / ".codex" / "AGENTS.md"),
                           "user_codex_hooks_sha256": digest_or_absent(home / ".codex" / "hooks.json"),
@@ -4589,7 +4616,8 @@ class CodexWorld(World):
 
 
 @pytest.fixture
-def codex(tmp_path, staged):
+def codex(tmp_path, staged, monkeypatch):
+    monkeypatch.setattr(kyboot, "GUARD_RETRY_SECONDS", 0.05)       # the second look, without the two-second wait
     made = CodexWorld(tmp_path, staged)
     yield made
     made.reap()
@@ -4604,7 +4632,10 @@ def test_a_codex_launch_passes_check_and_its_line_is_the_briefs(codex):
     assert not any(x.startswith("--dangerously") or x in ("--profile", "-p", "--max-turns") for x in plan["argv"])
     assert result.facts["codex_version"] == "0.162.0-alpha.17.2" and "claude_version" not in result.facts
     assert result.facts["codex_bin_sha256"] == sha(codex.codex)
-    assert result.facts["git_common_dir"] == os.path.realpath(str(codex.repo / ".git"))
+    assert result.facts["git_common_dir"] == codex.common and not codex.common.startswith(str(codex.repo))
+    assert "--add-dir" in plan["argv"] and plan["argv"].count("--add-dir") == 1      # the job folder, no git dir
+    assert plan["argv"][plan["argv"].index("--add-dir") + 1] == str(codex.job_scratch)
+    assert "sandbox_workspace_write.network_access=false" in plan["argv"]
 
 
 def test_a_codex_job_runs_its_line_and_records_the_thread_and_the_turn(codex):
@@ -4616,7 +4647,7 @@ def test_a_codex_job_runs_its_line_and_records_the_thread_and_the_turn(codex):
         codex_launch_line(codex.launch, str(codex.job_scratch))[1:]
     assert (tmp / "fake_stdin.txt").read_text() == codex.prompt.read_text()
     assert (state["engine"], state["codex_version"], state["sandbox"], state["network"]) == \
-        ("codex", "0.162.0-alpha.17.2", "workspace-write", True)
+        ("codex", "0.162.0-alpha.17.2", "workspace-write", False)
     assert state["codex_bin_sha256"] == sha(codex.codex) and state["provider_session_id"] == THREAD
     assert state["result_event"] == {"type": "turn.completed", "error": None,
                                      "usage": {"input_tokens": 21000, "cached_input_tokens": 0, "output_tokens": 80}}
@@ -4673,8 +4704,8 @@ def test_a_codex_builder_without_result_json_has_no_result_whatever_its_final_me
 
 CODEX_BIND_CHANGES = [
     ("engine", "claude"), ("codex_bin", "/opt/homebrew/bin/codex"), ("codex_bin_sha256", "9" * 64),
-    ("model", "gpt-5.6-sol"), ("effort", "xhigh"), ("sandbox", "read-only"), ("network", False),
-    ("network", "true"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
+    ("model", "gpt-5.6-sol"), ("effort", "xhigh"), ("sandbox", "read-only"), ("network", True),
+    ("network", "false"), ("commit_mode", "none"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
     ("env_names", ["HOME", "PATH"]), ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"), ("output_schema_sha256", "9" * 64),
     ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False),
     ("persistent_mode", True), ("work_root", "job"), ("exclude_slash_tmp", False), ("exclude_tmpdir_env_var", True),
@@ -4712,7 +4743,7 @@ def test_a_codex_receipt_qualifies_only_a_codex_launch_of_its_own_model(codex, s
     codex.qualify(lambda r: r.update(model="gpt-5.6-sol"))    # receipts are per role and model
     refused(codex, "qualification: the receipt's model", "is not the launch input's 'gpt-6.1-sol'")
     codex.qualify()
-    codex.launch.update(role="bootstrap-reviewer", kind="VERIFY", sandbox="read-only", network=False)
+    codex.launch.update(role="bootstrap-reviewer", kind="VERIFY")
     refused(codex, "qualification: no receipt at", "bootstrap-reviewer-gpt-6.1-sol.json")
     world = World(codex.root / "claude-world", staged)        # a Claude launch never takes a Codex receipt
     try:
@@ -4777,16 +4808,58 @@ def test_a_codex_launch_input_of_the_wrong_shape_refuses(codex, edits, needle):
     refused(codex, "schema:", needle)
 
 
-def test_a_codex_builder_must_be_able_to_write_its_worktrees_common_git_directory(codex):
-    linked = codex.wt_root / "linked"
-    codex.git("worktree", "add", "-q", "-b", "kalayantra/linked", str(linked))
-    codex.launch.update(worktree=str(linked), branch="kalayantra/linked")
-    common = os.path.realpath(str(codex.repo / ".git"))
-    refused(codex, f"writable_dirs: the worktree's common git directory {common} is in no writable root")
-    codex.launch["writable_dirs"] = [common]
-    assert not any("writable_dirs" in line for line in codex.check().findings)
+def test_a_codex_builder_gets_no_git_directory_no_network_and_commits_nothing(codex):
+    """cockpit ruling E7"""
+    assert codex.check().findings == []
+    codex.launch["writable_dirs"] = [codex.common]
+    refused(codex, "writable_dirs: no git directory, and nothing inside one, is ever a writable root")
+    codex.launch["writable_dirs"] = [str(codex.main_repo)]            # a folder that holds the common git directory
+    refused(codex, f"writable_dirs: the worktree's common git directory {codex.common} would be writable")
+    inside = Path(codex.common) / "objects"
+    codex.launch["writable_dirs"] = [str(inside)]
+    refused(codex, "writable_dirs: no git directory, and nothing inside one")
     codex.launch["writable_dirs"] = [str(codex.root / "absent")]
     refused(codex, "writable_dirs:", "is not an existing directory")
+    codex.launch["writable_dirs"] = []
+    codex.launch["network"] = True
+    refused(codex, "schema:", "$.network")
+    codex.launch["network"] = False
+    del codex.launch["commit_mode"]
+    refused(codex, "schema:", "required property 'commit_mode' is missing")
+    codex.launch["commit_mode"] = "job"
+    refused(codex, "schema:", "$.commit_mode")
+    codex.launch["commit_mode"] = "launcher"
+    # a plain repository as the working copy: its git directory would be inside the writable root
+    codex.launch.update(worktree=str(codex.main_repo), branch=BRANCH)
+    refused(codex, f"writable_dirs: the worktree's common git directory {codex.common} would be writable")
+    for check in (kyboot.codex_builder, kyboot.launcher_commit):
+        assert check(codex.launch) and not check({"engine": "claude"})
+
+
+def test_a_launcher_commit_builder_reports_a_commit_message_and_awaits_the_launcher(codex):
+    assert codex.run() == 0
+    state = codex.state()
+    assert state["commit_mode"] == "launcher" and state["awaiting_launcher_commit"] is True
+    assert state["job_result_valid"] is True and state["guard_failures"] == []
+    assert "head_sha" not in state and "pr_number" not in state
+    assert codex.git("status", "--porcelain") == "" and codex.git("rev-parse", "HEAD") == state["worktree_head"]
+    result = json.loads((codex.job_scratch / "result.json").read_text())
+    assert sorted(result) == ["blocked_reason", "commit_message", "item", "job_id", "notes", "schema", "status", "tests"]
+
+
+@pytest.mark.parametrize("text,valid,needle", [
+    (lambda c: result_line(job_id=JOB, item=ITEM), False, "head_sha"),            # the Claude shape: a head it cannot have
+    (lambda c: c.launcher_result(commit_message=None), False, "commit_message"),
+    (lambda c: c.launcher_result(pr_number=7), False, "pr_number"),
+    (lambda c: c.launcher_result(status="blocked", blocked_reason="no-tests", commit_message=None), True, None),
+], ids=["claude-shape", "no-message", "a-pr-number", "blocked"])
+def test_a_launcher_commit_result_names_no_head_and_only_a_done_one_awaits_the_launcher(codex, text, valid, needle):
+    codex.set_prompt(text(codex))
+    assert codex.run() == (0 if valid else kyboot.EXIT_JOB_FAILED)
+    state = codex.state()
+    assert state["job_result_valid"] is valid and state["awaiting_launcher_commit"] is False
+    if needle:
+        assert any(needle in error for error in state["job_result_errors"]), state["job_result_errors"]
 
 
 def test_the_codex_instruction_inputs_must_be_the_qualified_ones(codex):
@@ -4839,7 +4912,8 @@ def test_a_reviewer_runs_in_its_job_folder_and_writes_its_result_there(codex):
     assert state["result_source"] == "result.json" and state["work_root"] == "job"
     assert state["guard_failures"] == [] and state["guards"]["before"] == state["guards"]["after"]
     assert set(state["guards"]["before"]) == {"git", "worktree"}
-    assert state["guards"]["before"]["git"]["common_dir"] == os.path.realpath(str(codex.repo / ".git"))
+    assert state["guards"]["before"]["git"]["common_dir"] == codex.common
+    assert state["awaiting_launcher_commit"] is False and state["commit_mode"] == "none"     # a reviewer commits nothing
 
 
 def test_a_reviewer_that_changes_the_items_working_copy_fails_its_job(codex):
@@ -4854,14 +4928,72 @@ def test_a_reviewer_that_changes_the_items_working_copy_fails_its_job(codex):
 @pytest.mark.parametrize("where", ["config", "hooks/post-checkout", "config.worktree",
                                    "worktrees/another/config.worktree"])
 def test_a_codex_job_that_changes_the_common_git_directorys_config_or_hooks_fails(codex, where):
-    path = codex.repo / ".git" / where              # review finding B2: every configuration file git reads there
+    path = Path(codex.common) / where               # review finding B2: every configuration file git reads there
     path.parent.mkdir(parents=True, exist_ok=True)
     codex.set_prompt(f"FAKE_TOUCH:{path}\n")                  # a builder: it may commit, never reconfigure git
     assert codex.run() == kyboot.EXIT_JOB_FAILED
     state = codex.state()
-    assert state["guard_failures"] == ["git: the common git directory's config or hooks changed during the job"]
+    assert len(state["guard_failures"]) == 1 and state["guard_failures"][0].startswith(
+        "git: the git configuration, hooks or git-directory identity changed during the job (")
+    assert where.split("/")[0] in state["guard_failures"][0]
     assert "worktree" not in state["guards"]["before"]        # a builder changes its working copy by design
-    assert codex.action()["state"] == "FAILED"
+    assert codex.action()["state"] == "FAILED" and state["awaiting_launcher_commit"] is False
+
+
+def private_git_dir(codex, name="private-git-dir") -> Path:
+    """a git dir of the job's own making whose commondir is the real one and which carries its own config.worktree
+    (review r2, redirect b)"""
+    private = codex.root / name
+    shutil.copytree(Path(codex.common) / "worktrees" / codex.repo.name, private)
+    (private / "commondir").write_text(codex.common + "\n", encoding="utf-8")
+    (private / "config.worktree").write_text("[core]\n\tfsmonitor = /planted/program\n", encoding="utf-8")
+    return private
+
+
+def test_a_job_that_redirects_another_worktrees_commondir_fails(codex):
+    """review r2, redirect a: <common>/worktrees/<other>/commondir pointed at a folder the job controls"""
+    other = codex.wt_root / "another-worktree"
+    git_in(codex.main_repo, "worktree", "add", "-q", "-b", "kalayantra/another", str(other), home=codex.home)
+    planted = codex.root / "planted-common"
+    planted.mkdir()
+    target = Path(codex.common) / "worktrees" / other.name / "commondir"
+    codex.set_prompt(f"FAKE_WRITE:{target}|{planted}\n")
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    state = codex.state()
+    assert f"worktrees/{other.name}/commondir" in state["guard_failures"][0] and state["awaiting_launcher_commit"] is False
+
+
+def test_a_job_that_repoints_its_own_git_pointer_fails(codex):
+    """review r2, redirect b: the working copy's .git pointer rewritten to a private git dir"""
+    private = private_git_dir(codex)
+    codex.set_prompt(f"FAKE_WRITE:{codex.repo / '.git'}|gitdir: {private}\n")
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    failure = codex.state()["guard_failures"][0]
+    assert "own:git_dir" in failure and "own:pointer" in failure and "own:config.worktree" in failure
+
+
+def test_a_worktree_entry_another_session_adds_during_the_job_is_ignored_and_a_removed_one_is_not(codex):
+    fresh = Path(codex.common) / "worktrees" / "added-meanwhile"
+    codex.set_prompt(f"FAKE_WRITE:{fresh / 'commondir'}|../..\nFAKE_WRITE:{fresh / 'config.worktree'}|[core]\n")
+    assert codex.run() == 0 and codex.state()["guard_failures"] == []
+    before = kyboot.git_guard(str(codex.repo), codex.environ)
+    assert "added-meanwhile" in before["worktree_entries"]
+    shutil.rmtree(fresh)
+    changes = kyboot.git_guard_changes(before, kyboot.git_guard(str(codex.repo), codex.environ))
+    assert changes == ["worktrees/added-meanwhile/commondir", "worktrees/added-meanwhile/config.worktree",
+                       "worktrees/added-meanwhile/gitdir"] or "worktrees/added-meanwhile/commondir" in changes
+    assert kyboot.git_guard_changes(before, None) == ["unreadable"]
+
+
+def test_an_included_config_file_is_guarded_too(codex):
+    included = Path(codex.common) / "extra.config"
+    included.write_text("[core]\n\tautocrlf = false\n", encoding="utf-8")
+    git_in(codex.main_repo, "config", "include.path", "extra.config", home=codex.home)
+    record = kyboot.git_guard(str(codex.repo), codex.environ)
+    assert record["config_files"]["include:" + str(included)] == sha(included)
+    codex.set_prompt(f"FAKE_TOUCH:{included}\n")
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    assert "include:" + str(included) in codex.state()["guard_failures"][0]
 
 
 def test_a_reviewer_launch_names_its_items_working_copy_in_the_input_and_in_the_prompt(codex):

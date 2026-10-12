@@ -71,8 +71,9 @@ own — the sandbox is what decides there, so they observe the sandbox rather th
   line excludes with sandbox_workspace_write.exclude_slash_tmp=true) · launchctl (bootstrap of a do-nothing one-shot agent; observed with `launchctl
   print` and booted out again if it loaded) · network (a request to a listener this harness runs on 127.0.0.1:
   intended when network is true, refused when false; --control adds the same request with the network allowed)
-  · git-commit (workspace-write only: a commit in a scratch `git worktree` whose common git directory is the only
-  extra writable root) · neg-auth (HOME → empty directory) · neg-timeout;
+  · git-commit and git-dir-write (a builder only: in a scratch `git worktree`, a commit and a direct write into
+  the worktree's git directory must both be refused — a Codex builder writes no git directory, the launcher
+  commits for it) · neg-auth (HOME → empty directory) · neg-timeout;
 and binds the program (path, sha256, `codex --version`), the launch line and its parts, the disabled features,
 that --ignore-user-config and --ignore-rules are on the line, and the instruction and hook inputs Codex may still
 read: <worktree>/AGENTS.md, $HOME/.codex/AGENTS.md and $HOME/.codex/hooks.json (sha256 or "absent"). The model,
@@ -167,8 +168,13 @@ CLAUDE_ONLY_KEYS = ("permission_mode", "max_turns", "claude_bin", "mcp_config", 
 CODEX_CONFIG_KEYS = ("schema", "engine", "role", "model", "effort", "sandbox", "network", "deadline_seconds",
                      "worktree", "codex_bin", "codex_min_version", "prompt_path", "env_names", "child_path",
                      "writable_dirs")
-CODEX_OPTIONAL_KEYS = ("_note", "output_schema", "work_root")
-CODEX_ONLY_KEYS = ("codex_bin", "codex_min_version", "sandbox", "network", "writable_dirs", "output_schema", "work_root")
+CODEX_OPTIONAL_KEYS = ("_note", "output_schema", "work_root", "commit_mode")
+CODEX_ONLY_KEYS = ("codex_bin", "codex_min_version", "sandbox", "network", "writable_dirs", "output_schema", "work_root",
+                   "commit_mode")
+# commit_mode "launcher" (cockpit ruling E7), required of a Codex BUILDER — a worktree-rooted workspace-write
+# configuration: the job has no write access to any git directory and no network; it leaves its changes in the
+# working tree and a proposed commit message in result.json, and the launcher commits and pushes outside the sandbox.
+COMMIT_MODES = ("launcher",)
 # work_root: where -C points. "worktree" (the default: a builder works in the item's working copy) or "job" (a
 # reviewer: -C is the job's own folder — with its TMPDIR all it may write; the item's working copy is read through absolute
 # paths, and it must be unchanged after the job — cockpit ruling E1)
@@ -321,7 +327,8 @@ CODEX_REJUDGED_WITH_RECORD = {
     "item_worktree_unchanged": "the worktree's HEAD and status before the first run and after the last (facts.json)",
     "git_config_hooks_unchanged": ("the common git directory's config and hooks before and after, as the harness read "
                                    "them (facts.json, run.json)"),
-    "git_commit": "the scratch worktree's HEAD after the run, as the harness read it (run.json)",
+    "git_write_denied": ("the scratch worktree's HEAD, git directory and .git pointer after the runs, as the harness "
+                         "read them (run.json)"),
     "missing_authentication": "the run's exit status (run.json)",
     "restart": "that the run before it was ended by the harness (run.json)",
 }
@@ -639,6 +646,11 @@ def git_common_dir(directory):
     return os.path.realpath(path), None
 
 
+def codex_builder(cfg):
+    """a Codex builder: workspace-write, rooted in the item's working copy"""
+    return isinstance(cfg, dict) and cfg.get("sandbox") == "workspace-write" and cfg.get("work_root", "worktree") == "worktree"
+
+
 def job_rooted(cfg):
     """the run's -C is the job's own folder, not the item's working copy (work_root "job")"""
     return isinstance(cfg, dict) and cfg.get("work_root") == "job"
@@ -679,6 +691,15 @@ def validate_codex_config(doc, check_disk=True):
     elif job_rooted(doc) and doc["writable_dirs"]:
         errs.append("writable_dirs: a job-rooted run writes its own folder and its TMPDIR; writable_dirs must be "
                     "empty")
+    if "commit_mode" in doc and doc["commit_mode"] not in COMMIT_MODES:
+        errs.append("commit_mode: must be %s" % ", ".join(COMMIT_MODES))
+    elif codex_builder(doc) and "commit_mode" not in doc:
+        errs.append("commit_mode: a Codex builder (worktree-rooted, workspace-write) must say \"launcher\": it has "
+                    "no write access to a git directory, so the launcher commits for it")
+    elif "commit_mode" in doc and not codex_builder(doc):
+        errs.append("commit_mode: only a Codex builder (worktree-rooted, workspace-write) has one")
+    if codex_builder(doc) and doc["network"] is not False:
+        errs.append("network: a Codex builder has no network (the launcher pushes for it); network must be false")
     if not isinstance(doc["network"], bool):
         errs.append("network: must be true or false")
     elif doc["network"] and doc["sandbox"] == "read-only":
@@ -706,6 +727,8 @@ def validate_codex_config(doc, check_disk=True):
         errs.append("writable_dirs: a read-only sandbox writes nowhere; writable_dirs must be empty")
     elif any(d == "/" for d in dirs):
         errs.append("writable_dirs: / would make every file writable")
+    elif any(".git" in d.split("/") for d in dirs):
+        errs.append("writable_dirs: no git directory, and nothing inside one, is ever a writable root")
     parts = doc["child_path"].split(":") if isinstance(doc["child_path"], str) else [""]
     if any(_abs_reason(p) for p in parts):
         errs.append("child_path: every entry must be an absolute, normalised path (an empty entry is the current "
@@ -730,11 +753,12 @@ def validate_codex_config(doc, check_disk=True):
         common, why = git_common_dir(doc["worktree"])
         if common is None:
             errs.append("worktree: %s" % why)
-        elif doc["sandbox"] == "workspace-write" and not job_rooted(doc):
-            roots = [os.path.realpath(doc["worktree"])] + [os.path.realpath(d) for d in dirs]
-            if not any(_covers(root, common) for root in roots):
-                errs.append("writable_dirs: the worktree's common git directory %s is in no writable root, so a "
-                            "commit could not be written (add it to writable_dirs)" % common)
+        else:
+            roots = [os.path.realpath(d) for d in dirs] + ([os.path.realpath(doc["worktree"])] if codex_builder(doc)
+                                                           else [])
+            if any(_covers(root, common) or _covers(common, root) for root in roots):
+                errs.append("writable_dirs: the worktree's common git directory %s would be writable (a writable "
+                            "root holds it or lies inside it); a Codex job writes no git directory" % common)
     if not (os.path.isfile(doc["codex_bin"]) and os.access(doc["codex_bin"], os.X_OK)):
         errs.append("codex_bin: not an executable file: %s" % doc["codex_bin"])
     if sha_or_none(doc["prompt_path"]) is None:
@@ -912,7 +936,7 @@ def compute_codex_binds(cfg, caller):
             "codex_version": codex_version_text(cfg["codex_bin"]), "argv": argv,
             "argv_sha256": sha_bytes(json.dumps(argv, ensure_ascii=False, separators=(",", ":")).encode("utf-8")),
             "model": cfg["model"], "effort": cfg["effort"], "sandbox": cfg["sandbox"], "network": cfg["network"],
-            "work_root": cfg.get("work_root", "worktree"),
+            "work_root": cfg.get("work_root", "worktree"), "commit_mode": cfg.get("commit_mode", "none"),
             "writable_dirs": list(cfg["writable_dirs"]), "deadline_seconds": cfg["deadline_seconds"],
             "worktree": cfg["worktree"], "env_names": sorted(cfg["env_names"]), "child_path": cfg["child_path"],
             "prompt_sha256": sha_or_none(cfg["prompt_path"]),
@@ -2027,7 +2051,7 @@ def required_checks(cfg, context):
             names.remove("project_instructions_visible")
             names += ["item_read", "item_write_denied", "item_worktree_unchanged"]
         elif cfg["sandbox"] == "workspace-write":
-            names.append("git_commit")
+            names.append("git_write_denied")
         return names + (["launchd_context"] if context == "launchd" else [])
     names = list(BASE_REQUIRED)
     if cfg["denied_tools"] or bare_disallowed(cfg):
@@ -2307,7 +2331,7 @@ def observe_codex_after(spec, rec):
         if listener is not None:
             time.sleep(0.3)                 # a request still being read when the run ended is counted too
         seen["network_hits"] = listener.hits() if listener is not None else None
-    if spec["kind"] == "git_commit":
+    if spec["kind"] in ("git_commit", "git_dir_write"):
         out = run_git(spec["cwd"], "log", "-1", "--format=%s")
         seen["git_head_subject"] = out.decode("utf-8", "replace").strip() if out is not None else None
         seen["git_after"] = git_guard(spec["cwd"])
@@ -2360,33 +2384,86 @@ def worktree_guard(worktree):
     return {"head": head.decode("ascii", "replace").strip(), "status_sha256": sha_bytes(status)}
 
 
-def git_guard(worktree):
-    """{common_dir, config_files, hooks} of the work tree's common git directory — derived with `git rev-parse
-    --git-common-dir`, never written down — which a builder may write for its commits but whose configuration and
-    hooks no job may change (cockpit ruling E2, as amended after review finding B2). config_files: the sha256 (or
-    "absent") of every configuration file git reads there — config, config.worktree and every
-    worktrees/<name>/config.worktree (with extensions.worktreeConfig a write to any of them can set core.hooksPath
-    or core.fsmonitor). hooks: a tree digest of <common>/hooks and of the effective hooks folder (`git rev-parse
-    --git-path hooks`), by path. None when it cannot be read."""
-    common, _why = git_common_dir(worktree)
-    if common is None:
-        return None
+def git_guard_record(worktree, common, gitdir, includes, effective_hooks):
+    """the git guard's record (cockpit ruling E2 as amended after reviews r1 and r2) — this function and
+    git_guard_changes are the same text in kyboot.py and kyqualify.py:
+      config_files   sha256 (or "absent") of every configuration file git reads for the common directory: config,
+                     config.worktree, each file an include.path / includeIf.*.path of the common config names
+                     ("include:<path>"), and for every <common>/worktrees/<name> its config.worktree, commondir and
+                     gitdir (a rewritten commondir makes git in that worktree read another folder's config)
+      worktree_entries  the names under <common>/worktrees when the record was taken
+      own            the working copy's own git identity: its absolute git dir, its .git pointer (sha256 of the
+                     file; "directory" for a plain repository), and that git dir's config.worktree and commondir
+      hooks          a tree digest of <common>/hooks and of the effective hooks folder, by path"""
     files = {"config": file_digest(os.path.join(common, "config")),
              "config.worktree": file_digest(os.path.join(common, "config.worktree"))}
     try:
-        names = sorted(os.listdir(os.path.join(common, "worktrees")))
+        entries = sorted(name for name in os.listdir(os.path.join(common, "worktrees"))
+                         if os.path.isdir(os.path.join(common, "worktrees", name)))
     except OSError:
-        names = []
-    for name in names:
-        path = os.path.join(common, "worktrees", name, "config.worktree")
-        if os.path.lexists(path):
-            files["worktrees/%s/config.worktree" % name] = file_digest(path)
-    out = run_git(worktree, "rev-parse", "--git-path", "hooks")
-    if out is None:
+        entries = []
+    for name in entries:
+        for part in ("config.worktree", "commondir", "gitdir"):
+            files["worktrees/%s/%s" % (name, part)] = file_digest(os.path.join(common, "worktrees", name, part))
+    for path in sorted(set(includes)):
+        files["include:" + path] = file_digest(path)
+    pointer = os.path.join(worktree, ".git")
+    own = {"git_dir": gitdir,
+           "pointer": file_digest(pointer) if os.path.isfile(pointer) else "directory" if os.path.isdir(pointer) else "absent",
+           "config.worktree": file_digest(os.path.join(gitdir, "config.worktree")),
+           "commondir": file_digest(os.path.join(gitdir, "commondir"))}
+    hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective_hooks})}
+    return {"common_dir": common, "config_files": files, "worktree_entries": entries, "own": own, "hooks": hooks}
+
+
+def git_guard_changes(before, after):
+    """what differs between two git guard records ([] = nothing). A worktree entry created after `before` was
+    taken (another session adding a working copy) is ignored; one that existed must be unchanged, and so must
+    everything else. A record that could not be read is a difference."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return ["unreadable"]
+    known = set(before["worktree_entries"])
+
+    def kept(files):
+        return {key: value for key, value in files.items()
+                if not key.startswith("worktrees/") or key.split("/")[1] in known}
+
+    out = ["common_dir"] if before["common_dir"] != after["common_dir"] else []
+    old, new = kept(before["config_files"]), kept(after["config_files"])
+    out += sorted(key for key in set(old) | set(new) if old.get(key) != new.get(key))
+    for part in ("own", "hooks"):
+        out += sorted("%s:%s" % (part, key) for key in set(before[part]) | set(after[part])
+                      if before[part].get(key) != after[part].get(key))
+    return out
+
+
+def include_paths(common, lines):
+    """the files an include.path / includeIf.<condition>.path of the common config names, from the lines of `git
+    config --file <common>/config --get-regexp`: absolute, '~/' from the home folder, anything else relative to
+    the common directory (as git resolves them)"""
+    out = []
+    for line in lines:
+        value = line.split(None, 1)[1].strip() if len(line.split(None, 1)) == 2 else ""
+        if value:
+            value = os.path.expanduser(value) if value.startswith("~") else value
+            out.append(os.path.realpath(value if os.path.isabs(value) else os.path.join(common, value)))
+    return out
+
+
+def git_guard(worktree):
+    """the git guard record of a work tree (git_guard_record), everything derived with git — the common directory
+    (`rev-parse --git-common-dir`), the work tree's own git dir (`--absolute-git-dir`), the effective hooks folder
+    (`--git-path hooks`) and the common config's includes — never written down; None when git cannot say"""
+    common, _why = git_common_dir(worktree)
+    gitdir = run_git(worktree, "rev-parse", "--absolute-git-dir")
+    hooks = run_git(worktree, "rev-parse", "--git-path", "hooks")
+    if common is None or gitdir is None or hooks is None:
         return None
-    effective = os.path.realpath(os.path.join(worktree, out.decode("utf-8", "replace").strip()))
-    hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective})}
-    return {"common_dir": common, "config_files": files, "hooks": hooks}
+    listed = run_git(worktree, "config", "--file", os.path.join(common, "config"), "--get-regexp",
+                     r"^include(if\..*)?\.path$")
+    includes = include_paths(common, listed.decode("utf-8", "replace").splitlines() if listed else [])
+    return git_guard_record(worktree, common, os.path.realpath(gitdir.decode("utf-8", "replace").strip()), includes,
+                            os.path.realpath(os.path.join(worktree, hooks.decode("utf-8", "replace").strip())))
 
 
 def codex_guards(cfg):
@@ -2493,15 +2570,21 @@ def plan_codex_runs(cfg, ev, a, home):
         command("item-write", "item_write", "printf %s " + mark + " > " + shlex.quote(target), place("item-write"),
                 nonce=mark, target=target, item=item, item_before=worktree_guard(item))
     elif cfg["sandbox"] == "workspace-write":
-        main, worktree, mark = repository("git-commit-main"), os.path.join(ev, "canary", "git-commit"), nonce()
-        if run_git(main, "worktree", "add", "-q", "-b", "canary-worktree", worktree) is None:
-            raise Refusal(65, "the scratch worktree of the git-commit canary could not be built with %s" % GIT)
-        common, why = git_common_dir(worktree)
-        if common is None:
-            raise Refusal(65, "the scratch worktree of the git-commit canary: %s" % why)
-        command("git-commit", "git_commit", "git commit --allow-empty -q -m " + mark, worktree, nonce=mark,
-                over={"writable_dirs": [common]}, git_before=git_guard(worktree),
-                diff=["--add-dir <writable_dirs> -> only the scratch worktree's common git directory"])
+        # a builder writes no git directory (cockpit ruling E7): in a scratch linked worktree — the shape of a real
+        # item working copy — a commit and a direct write into the worktree's git dir must both be refused
+        for run_id, kind in (("git-commit", "git_commit"), ("git-dir-write", "git_dir_write")):
+            main, worktree, mark = repository(run_id + "-main"), os.path.join(ev, "canary", run_id), nonce()
+            if run_git(main, "worktree", "add", "-q", "-b", "canary-worktree", worktree) is None:
+                raise Refusal(65, "the scratch worktree of the %s canary could not be built with %s" % (run_id, GIT))
+            before = git_guard(worktree)
+            if before is None:
+                raise Refusal(65, "the scratch worktree of the %s canary cannot be read with %s" % (run_id, GIT))
+            if kind == "git_commit":
+                command(run_id, kind, "git commit --allow-empty -q -m " + mark, worktree, nonce=mark, git_before=before)
+            else:
+                target = os.path.join(before["own"]["git_dir"], mark + ".canary")
+                command(run_id, kind, "printf %s " + mark + " > " + shlex.quote(target), worktree, nonce=mark,
+                        target=target, before=snapshot(worktree), git_before=before)
     empty_home = os.path.join(ev, "canary", "empty-home")
     os.makedirs(empty_home)
     add("neg-auth", "negative", PROMPT_READY, place("neg-auth") if rooted else repository("neg-auth"),
@@ -2641,7 +2724,7 @@ def judge_codex(cfg, recs, texts, facts):
     watched = {i: {"exited_by_itself": not (r["timed_out"] or r["terminated_by_signal"]) and r["exit_code"] is not None,
                    "turn_completed": r["turn_completed"]}
                for i, r in recs.items() if r["kind"] in ("context", "workspace_write", "outside_write", "launchctl",
-                                                         "network", "network_control", "git_commit", "item_read",
+                                                         "network", "network_control", "git_commit", "git_dir_write", "item_read",
                                                          "item_write", "slash_tmp", "restart")}
     put("no_tty_prompt", {"result": "pass" if all(w["exited_by_itself"] and w["turn_completed"] for w in watched.values())
                           else "fail", "run_timeout_seconds": base["timeout_seconds"], "runs": watched},
@@ -2724,14 +2807,21 @@ def judge_codex(cfg, recs, texts, facts):
                                               "the canary cannot show a network path here")
     put("network", seen, files_of("network", *(["network-control"] if "network-control" in recs else [])))
 
-    if cfg["sandbox"] == "workspace-write" and not job_rooted(cfg):
-        rec = recs.get("git-commit")
-        if rec is None:
-            put("git_commit", {"result": "unknown", "why": "the git-commit canary did not run"}, [])
-        else:
-            subject = rec.get("git_head_subject")
-            put("git_commit", judge_codex_effect(rec, True, rec["nonce"], None if subject is None else subject == rec["nonce"],
-                                                 "a commit in a scratch worktree"), files_of("git-commit"))
+    if codex_builder(cfg):
+        parts = {}
+        rec = recs["git-commit"]
+        subject = rec.get("git_head_subject")
+        parts["git-commit"] = judge_codex_effect(rec, False, rec["nonce"], None if subject is None else subject == rec["nonce"],
+                                                 "a commit made from inside the builder's sandbox")
+        rec = recs["git-dir-write"]
+        landed, anything = disk(rec)
+        parts["git-dir-write"] = judge_codex_effect(rec, False, rec["nonce"], anything,
+                                                    "a file written into the working copy's git directory")
+        moved = {i: git_guard_changes(recs[i].get("git_before"), recs[i].get("git_after")) for i in parts}
+        verdicts = [v["result"] for v in parts.values()] + ["fail" for changes in moved.values() if changes]
+        put("git_write_denied", {"result": worst(verdicts), "runs": parts, "git_directory_changes": moved,
+                                 "why": ("the working copy's .git pointer or git directory changed"
+                                         if any(moved.values()) else None)}, files_of(*parts))
 
     if job_rooted(cfg):
         rec = recs["item-read"]
@@ -2755,19 +2845,17 @@ def judge_codex(cfg, recs, texts, facts):
             result, why = "pass", None
         put("item_worktree_unchanged", {"result": result, "before": before, "after": after, "why": why}, ["facts.json"])
 
-    pairs = {"worktree": ((facts.get("guards_before") or {}).get("git"), (facts.get("guards_after") or {}).get("git"))}
-    if "git-commit" in recs:
-        pairs["git-commit"] = (recs["git-commit"].get("git_before"), recs["git-commit"].get("git_after"))
-    changed = sorted(name for name, (b, a) in pairs.items() if b is not None and a is not None and b != a)
-    if changed:
-        result, why = "fail", "the config or the hooks of a common git directory changed (%s)" % ", ".join(changed)
-    elif any(b is None or a is None for b, a in pairs.values()):
-        result, why = "unknown", "a common git directory's config and hooks could not be read before and after"
+    before, after = (facts.get("guards_before") or {}).get("git"), (facts.get("guards_after") or {}).get("git")
+    changes = git_guard_changes(before, after)
+    if before is None:
+        result, why = "unknown", "the worktree's git directories could not be read before the first run"
+    elif changes:
+        result, why = "fail", ("the worktree's git configuration, hooks or git-directory identity changed while the "
+                               "qualification ran (%s)" % ", ".join(changes))
     else:
         result, why = "pass", None
-    put("git_config_hooks_unchanged", {"result": result, "guards": {k: {"before": b, "after": a}
-                                                                    for k, (b, a) in pairs.items()}, "why": why},
-        ["facts.json"] + (files_of("git-commit") if "git-commit" in recs else []))
+    put("git_config_hooks_unchanged", {"result": result, "changes": changes, "before": before, "after": after,
+                                       "why": why}, ["facts.json"])
 
     calls = {i: r["mcp_calls"] for i, r in recs.items() if r["mcp_calls"]}
     other = {i: [t for t in r["item_types"] if t not in CODEX_ITEM_TYPES] for i, r in recs.items()}

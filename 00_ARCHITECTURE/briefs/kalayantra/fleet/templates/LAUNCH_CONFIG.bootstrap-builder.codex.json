@@ -5,7 +5,8 @@
  "model": "gpt-6.1-sol",
  "effort": "high",
  "sandbox": "workspace-write",
- "network": true,
+ "network": false,
+ "commit_mode": "launcher",
  "deadline_seconds": 14400,
  "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
  "codex_bin": "/opt/homebrew/bin/codex",
@@ -27,8 +28,6 @@
   "KY_PY"
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
- "writable_dirs": [
-  "/Users/Dev/Vibe-Coding/Apps/Madhav/.git"
- ],
- "_note": "The Codex builder: workspace-write sandbox (writable: the worktree, JOB_SCRATCH, TMPDIR and the writable_dirs; /tmp is excluded), network on so the build can push its branch. writable_dirs is the repository's common git directory — this worktree is a linked git worktree, and a commit writes objects and refs there; its configuration files and hooks must be unchanged after every job (cockpit ruling E2: kyboot.py and the qualification check them). Codex has no turn limit: deadline_seconds is the only one. Model gpt-6.1-sol at effort high (owner decision 2026-10-12); another model needs its own receipt."
+ "writable_dirs": [],
+ "_note": "The Codex builder (cockpit ruling E7): workspace-write, no network; writable are the item's working copy, JOB_SCRATCH and TMPDIR — /tmp is excluded and no git directory is writable (the working copy is a linked worktree: its git directory lies elsewhere). The job never commits, pushes or opens a PR: it leaves its changes in the working tree and writes result.json with status, tests and commit_message; the launcher commits and pushes outside the sandbox. For the job's prompt: run no git command that writes (commit, push, config, worktree, stash, add); read-only git only, with GIT_OPTIONAL_LOCKS=0. Codex has no turn limit: deadline_seconds is the only one. Model gpt-6.1-sol at effort high (owner decision 2026-10-12); another model needs its own receipt."
 }
