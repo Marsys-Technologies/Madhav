@@ -1,0 +1,22 @@
+{
+  "contract_version": "k4-2b:reader:v1",
+  "scope": "PLAN section 9 fixture preparation, authorized by KYD-139; no live cutover or Mode A-D retirement",
+  "readers": ["ka_kala_darshana", "ka_bhavishya_lekha", "ka_tulana"],
+  "entry": "reader.read_jury(ctx, generation=None); explicit generation selects private candidate reads only",
+  "legacy": "generation=None reads kala_convergence as stored, with no translation, mutation or candidate fallback; default writer dispatch and existing served values remain unchanged until qualified K9-4b cutover",
+  "candidate": {
+    "binding": "explicit candidate generation, ctx.config.chart_id and ctx.build_id must match kala_layer_candidate; building/complete/verified fixture candidates only; reject published head and non-fixture candidates",
+    "table": "kala_jury_candidate",
+    "grain": "chart_id x generation x event_class x assertion_id",
+    "fields": ["chart_id", "generation", "event_class", "assertion_id", "window_start", "window_end", "conditional_effect", "witness_signature", "conditional_null", "pipeline_null", "pipeline_null_reason", "null_reason", "coverage", "provenance"],
+    "dw": "conditional_effect is observed incremental agreement minus conditional shift-null mean; keep signed values, zero and null, never interpret as probability, confidence or legacy convergence_score",
+    "witness_signature": "stored admitted independent schools G-P/G-J/G-T/G-K; no count-based extra credit",
+    "output": "typed JuryView with D(W), stored null qualification, witness signature, coverage and full provenance; acceptance_scope=fixture_only",
+    "identities": "convergence_id, signal_id, peak_date and issuance_identity remain null with individual stage_to_reader_mapping_unadmitted reasons; assertion_id is a jury identity only",
+    "ranking": "ka_tulana candidate-only ordinal sort by signed D(W) descending, unknown last, ties by event_class/assertion_id; no composite, proximity, confidence or probability conversion",
+    "persistence": "read_jury is read-only; jury_reader_generation opt-in writer dispatch reports preparation only and writes no rows; there is no admitted legacy identity or issuance bridge"
+  },
+  "planning": "legacy and fixture Saṅgam plan_substeps never mutate; changed/first legacy build replacement begins only in execution inside the orchestrator transaction",
+  "deferred": "conductor with k1 must admit producer and exact stage-to-reader identity/field mappings before live integration, deletions or Mode A-D retirement; G-J remains subject to KYD-137 and independent complete-method admission",
+  "other_readers": "platform-mcp kala_temporal, query_convergence_windows, query_phala_calibration, ph_nimitta, ph_rectification, ka_tulana/writer and service_probes remain on the unchanged legacy table; register_d7_channel excluded"
+}
