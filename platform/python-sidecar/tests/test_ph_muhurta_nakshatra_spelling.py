@@ -67,9 +67,9 @@ def test_forensic_anchor_purva_bhadrapada():
     assert w._load_natal_moon_nakshatra_idx(_conn(("Purva Bhadrapada",)), "c") == 24
 
 
-# "Purva" is NOT an unknown name: the L0 lexicon registers it as an alt_name of Purva Phalguni (NAKSHATRAS_ENRICHED[10].alt_names),
-# so the ONE normaliser resolves it (SS N-548); "Purv" is a genuinely unregistered truncation.
-@pytest.mark.parametrize("bad", ["Atlantis", "Abhijit", "Purv", "Mulaa", "Mrigashiraa", "27"])
+# "Purva" is an AMBIGUOUS bare token (three nakshatras own it): the normaliser refuses it with AmbiguousNakshatraError (SS N-561);
+# "Purv" is a genuinely unregistered truncation. Neither may ever become Ashwini.
+@pytest.mark.parametrize("bad", ["Atlantis", "Abhijit", "Purva", "Purv", "Mulaa", "Mrigashiraa", "27"])
 def test_unknown_name_fails_loudly_never_ashwini(bad):
     w = _writer()
     with pytest.raises(ValueError, match="not one of the 27"):

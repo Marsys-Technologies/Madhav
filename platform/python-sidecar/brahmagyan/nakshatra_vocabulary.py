@@ -31,6 +31,17 @@ forms (None instead of raising) for the few readers that must FLAG an unresolved
 abort (e.g. kala_permission's `tara_unresolved`); they are thin wrappers on the normaliser, not a
 second table.
 
+AMBIGUOUS BARE NAMES (SS N-561). A bare token that belongs to more than one nakshatra -- "Purva",
+"Uttara", "Phalguni", "Ashadha", "Bhadrapada", "Bhadra", ... -- names no nakshatra by itself. The set
+`AMBIGUOUS_BARE_TOKENS` is COMPUTED from the same L0 sources (every single word of every registered
+spelling, kept when two or more nakshatras own it) and must contain at least "purva" and "uttara".
+Such a token RAISES `AmbiguousNakshatraError` (a subclass of UnknownNakshatraError, so every
+raising caller still sees a ValueError and every Optional caller still sees None) -- never a
+default. The lexicon registers bare "Purva" / "Uttara" as `alt_names` (and the ontology bare
+"uttara" as a synonym); those registrations are SUPPRESSED here (`SUPPRESSED_AMBIGUOUS_ALIASES`),
+not deleted: the L0 data is the lexicon owner's to change (PR-body follow-up), and editing it would
+reopen L0 windows.
+
 This module imports only pure-data L0 seed modules (no database, no writer).
 """
 from __future__ import annotations
@@ -68,6 +79,10 @@ class UnknownNakshatraError(ValueError):
     """The name is not a registered spelling of any of the 27 nakshatras."""
 
 
+class AmbiguousNakshatraError(UnknownNakshatraError):
+    """The name is a bare token shared by two or more nakshatras (e.g. "Purva", "Phalguni"): it names none of them."""
+
+
 def _fold(name: str) -> str:
     """NFKD-decompose, drop combining marks, case-fold, keep alphanumerics only -- so 'Purva Phalguni',
     'PurvaPhalguni', 'purva_phalguni' and 'Pūrva Phalgunī' share one key."""
@@ -76,48 +91,79 @@ def _fold(name: str) -> str:
     return "".join(c for c in stripped.casefold() if c.isalnum())
 
 
-def _build_synonyms() -> dict[str, str]:
-    """folded spelling -> canonical name, from the lexicon and the ontology; fails loudly on ambiguity."""
-    table: dict[str, str] = {}
-    sources: dict[str, str] = {}
-
-    def add(spelling: object, canonical: str, source: str) -> None:
-        if not isinstance(spelling, str):
-            return
-        key = _fold(spelling)
-        if not key:
-            return
-        if key in table and table[key] != canonical:
-            raise RuntimeError(
-                f"nakshatra spelling {spelling!r} ({source}) would resolve to both {table[key]!r} "
-                f"({sources[key]}) and {canonical!r}: the alias map must be unambiguous")
-        table.setdefault(key, canonical)
-        sources.setdefault(key, source)
-
+def _registered_spellings() -> dict[str, list[tuple[str, str]]]:
+    """canonical name -> [(raw spelling, source)] from the two pure-data L0 seeds (lexicon + ontology)."""
     by_id = {row["nakshatra_id"]: row for row in NAKSHATRAS_ENRICHED if 1 <= row["nakshatra_id"] <= 27}
+    out: dict[str, list[tuple[str, str]]] = {}
     for _nid, row in sorted(by_id.items()):
         canon = row["name_en"]
-        add(canon, canon, "lexicon name_en")
-        add(row.get("name_sa_iast"), canon, "lexicon name_sa_iast")
-        for alt in row.get("alt_names") or ():
-            add(alt, canon, "lexicon alt_names")
+        entries = out.setdefault(canon, [])
+        entries.append((canon, "lexicon name_en"))
+        if isinstance(row.get("name_sa_iast"), str):
+            entries.append((row["name_sa_iast"], "lexicon name_sa_iast"))
+        entries += [(alt, "lexicon alt_names") for alt in (row.get("alt_names") or ()) if isinstance(alt, str)]
     for nid, name_en, name_sa, synonyms in NAK_DATA:
         canon = by_id[nid]["name_en"]
         if name_en != canon:  # pragma: no cover
             raise RuntimeError(f"l0_ontology.NAK_DATA names nakshatra {nid} {name_en!r}; the lexicon says {canon!r}")
-        add(name_sa, canon, "ontology canonical_name_sa")
-        for syn in synonyms:
-            add(syn, canon, "ontology synonym")
+        out[canon].append((name_sa, "ontology canonical_name_sa"))
+        out[canon] += [(syn, "ontology synonym") for syn in synonyms if isinstance(syn, str)]
+    return out
+
+
+def _ambiguous_bare_tokens(registered: dict[str, list[tuple[str, str]]]) -> frozenset[str]:
+    """Every single word (folded) of every registered spelling that two or more nakshatras own."""
+    owners: dict[str, set[str]] = {}
+    for canon, entries in registered.items():
+        for spelling, _source in entries:
+            for word in spelling.replace("_", " ").replace("-", " ").split():
+                key = _fold(word)
+                if key:
+                    owners.setdefault(key, set()).add(canon)
+    return frozenset(token for token, canons in owners.items() if len(canons) > 1)
+
+
+_REGISTERED: dict[str, list[tuple[str, str]]] = _registered_spellings()
+
+#: Folded bare tokens shared by two or more nakshatras (SS N-561): computed, never hand-typed; must hold "purva" and "uttara".
+AMBIGUOUS_BARE_TOKENS: frozenset[str] = _ambiguous_bare_tokens(_REGISTERED)
+if not {"purva", "uttara"} <= AMBIGUOUS_BARE_TOKENS:  # pragma: no cover
+    raise RuntimeError(f"the ambiguity set must contain 'purva' and 'uttara'; got {sorted(AMBIGUOUS_BARE_TOKENS)}")
+
+
+def _build_synonyms() -> tuple[dict[str, str], dict[str, tuple[str, str]]]:
+    """(folded spelling -> canonical name, suppressed ambiguous registrations: raw spelling -> (canonical, source));
+    fails loudly on ambiguity between two canonical names."""
+    table: dict[str, str] = {}
+    sources: dict[str, str] = {}
+    suppressed: dict[str, tuple[str, str]] = {}
+    for canon, entries in _REGISTERED.items():
+        for spelling, source in entries:
+            key = _fold(spelling)
+            if not key:
+                continue
+            if key in AMBIGUOUS_BARE_TOKENS:          # a bare "Purva" / "Uttara" registered to ONE nakshatra names three: refuse it
+                suppressed[spelling] = (canon, source)
+                continue
+            if key in table and table[key] != canon:
+                raise RuntimeError(
+                    f"nakshatra spelling {spelling!r} ({source}) would resolve to both {table[key]!r} "
+                    f"({sources[key]}) and {canon!r}: the alias map must be unambiguous")
+            table.setdefault(key, canon)
+            sources.setdefault(key, source)
     for legacy, canon in LEGACY_L1_SPELLINGS.items():
         if table.get(_fold(legacy)) != canon:  # pragma: no cover
             raise RuntimeError(f"legacy L1 spelling {legacy!r} is not a registered alias of {canon!r} in the lexicon / ontology")
-    return table
+    return table, suppressed
 
 
-_SYNONYMS: dict[str, str] = _build_synonyms()
+_SYNONYMS, _SUPPRESSED = _build_synonyms()
 
 #: Read-only view of the alias map (folded spelling -> canonical name), for tests and reports.
 NAKSHATRA_SYNONYMS: Mapping[str, str] = MappingProxyType(_SYNONYMS)
+#: Registered spellings the normaliser REFUSES because they are ambiguous bare tokens: raw spelling -> (the one nakshatra the
+#: L0 data registers it to, source). Owed to the lexicon / ontology owner as a follow-up; L0 data is not edited here.
+SUPPRESSED_AMBIGUOUS_ALIASES: Mapping[str, tuple[str, str]] = MappingProxyType(_SUPPRESSED)
 
 _INDEX_BY_CANONICAL: dict[str, int] = {n: i + 1 for i, n in enumerate(CANONICAL_NAKSHATRA_NAMES)}
 
@@ -125,11 +171,16 @@ _INDEX_BY_CANONICAL: dict[str, int] = {n: i + 1 for i, n in enumerate(CANONICAL_
 def normalize_nakshatra(name: object) -> str:
     """THE normaliser: the canonical spelling of a registered nakshatra spelling.
 
-    Raises TypeError for a non-string and UnknownNakshatraError (a ValueError) for a string that is
-    not a registered spelling of one of the 27 -- never a default."""
+    Raises TypeError for a non-string, AmbiguousNakshatraError for a bare token shared by several
+    nakshatras, and UnknownNakshatraError (a ValueError; the ambiguous error is its subclass) for a
+    string that is not a registered spelling of one of the 27 -- never a default."""
     if not isinstance(name, str):
         raise TypeError(f"nakshatra name must be a string, got {type(name).__name__}")
-    canon = _SYNONYMS.get(_fold(name))
+    key = _fold(name)
+    if key in AMBIGUOUS_BARE_TOKENS:
+        raise AmbiguousNakshatraError(
+            f"ambiguous nakshatra name {name!r}: the bare token names more than one nakshatra (SS N-561); use the full name")
+    canon = _SYNONYMS.get(key)
     if canon is None:
         raise UnknownNakshatraError(f"unknown nakshatra name {name!r}: not a registered spelling of any of the 27")
     return canon
