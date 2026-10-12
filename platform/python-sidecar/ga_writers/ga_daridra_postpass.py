@@ -275,13 +275,6 @@ def post_pass_evidence_payload(
     }
 
 
-_EVIDENCE_PRIOR_DELETE_SQL = """
-    DELETE FROM orchestrator_event_register
-     WHERE event_type = %s AND chart_id = %s AND asset_id = %s AND run_id = %s
-       AND payload->>'ayanamsha_id' = %s
-"""
-
-
 def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, Any]) -> None:
     """Persist one evidence event through the orchestrator's own audit helper `persist_event`, or raise RuntimeError.
 
@@ -290,17 +283,14 @@ def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, A
     in its own columns).  `persist_event` never raises and returns False for a non-allowlisted type, a missing cursor or a failed
     insert; this seam turns every non-True outcome into a RuntimeError, so a lost record fails the substep (the rows roll back).
 
-    IDEMPOTENT per (event type, chart, asset, run, ayanamsha) (§N.3, delete-then-insert): the orchestrator may retry the SAME run id
-    and ga_vichara commits every substep, so a crashed first pass leaves its records behind; this run's own prior record for the
-    same ayanamsha is deleted first, on the same cursor and in the same transaction.  Other runs' records are never touched.
+    The register is APPEND-ONLY: this writer never deletes or updates a register row (owner approval covered the allowlist line
+    and the designed channel only).  A legitimate re-execution of the same run id (the orchestrator retries a run) appends another
+    record for the same (chart, ayanamsha); the READER decides: the census takes the latest record per (run, chart, ayanamsha) and
+    requires every record of that run for that partition to agree.  A substep that fails rolls its insert back with its savepoint.
     """
     chart_id, ayanamsha_id = event["chart_id"], payload["ayanamsha_id"]
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                _EVIDENCE_PRIOR_DELETE_SQL,
-                (event["type"], str(chart_id), event["asset_id"], str(event["run_id"]), ayanamsha_id),
-            )
             ok = persist_event(cur, event)
     except Exception as exc:
         raise RuntimeError(
