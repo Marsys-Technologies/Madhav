@@ -12,13 +12,15 @@
     "groups": "all five declared schools, coverage, ancestry, source and review references; G-J overridden by complete-method admission; explicit corpus_admitted and kp_ingested gate G-T/G-K; G-A remains testimony",
     "jaimini": "k4-2a:jaimini_method_output:v1, or null with jaimini_output_missing",
     "measure": "explicit alpha and boolean exchangeability; pinned default 1023 non-identity shifts; separate pipeline null is unavailable without a selection producer",
-    "time_axis": "aware UTC Unix seconds; one declared class horizon"
+    "time_axis": "aware UTC Unix seconds; one declared class horizon",
+    "reading_claims": "Optional typed L2 signal mappings with explicit F1 predicate, class, phase, person, objects and episode; nonobservable, unmapped and unmatched claims retained with reasons; never scoring inputs",
+    "event_identity": "Optional explicit class/phase/person/episode plus observable_event_ref; must match anchor class/person. No phase/episode inferred from text, dates or assertion identity"
   },
   "outputs": {
     "kala_jury_candidate": "selection-safe evidence graph, group declarations, D(W), conditional null and explicit missing pipeline-null reason",
     "kala_jury_candidate_segment": "half-open boundaries, group support vectors and allowed source roots",
     "kala_jury_candidate_contest": "opposing typed conclusions kept as separate sides",
-    "provenance": "full input envelope, pinned upstream references, fixture acceptance scope, canonical sequences and joint turning points from the declared class roster"
+    "provenance": "full input envelope, pinned upstream references, fixture acceptance scope, canonical sequences and joint turning points from the declared class roster; reading_attachment_report: canonical event forecasts, deduplicated reading_attachments, unattached claims with reasons, and shared-episode evaluation clusters; preparation only, no issuance identity"
   },
   "compatibility": "default Modes A-D and published readers unchanged; plan is read-only; substep replaces only its own candidate class, child tables first, inside the caller transaction",
   "not_proven": "live judge/F1/F2/negative-space mappings, complete production G-J producer, production output qualification, deployment and publication"
