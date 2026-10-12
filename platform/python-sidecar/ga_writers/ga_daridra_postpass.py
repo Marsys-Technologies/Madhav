@@ -275,6 +275,13 @@ def post_pass_evidence_payload(
     }
 
 
+_EVIDENCE_PRIOR_DELETE_SQL = """
+    DELETE FROM orchestrator_event_register
+     WHERE event_type = %s AND chart_id = %s AND asset_id = %s AND run_id = %s
+       AND payload->>'ayanamsha_id' = %s
+"""
+
+
 def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, Any]) -> None:
     """Persist one evidence event through the orchestrator's own audit helper `persist_event`, or raise RuntimeError.
 
@@ -282,10 +289,19 @@ def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, A
     is that WHOLE dict (a superset of the frozen `post_pass_evidence/1` keys; the register row carries the same type/chart/asset/run
     in its own columns).  `persist_event` never raises and returns False for a non-allowlisted type, a missing cursor or a failed
     insert; this seam turns every non-True outcome into a RuntimeError, so a lost record fails the substep (the rows roll back).
+
+    IDEMPOTENT per (event type, chart, asset, run, ayanamsha) (§N.3, delete-then-insert): the orchestrator may retry the SAME run id
+    and ga_vichara commits every substep, so a crashed first pass leaves its records behind; this run's own prior record for the
+    same ayanamsha is deleted first, on the same cursor and in the same transaction.  Other runs' records are never touched.
     """
     chart_id, ayanamsha_id = event["chart_id"], payload["ayanamsha_id"]
     try:
-        ok = persist_event(conn.cursor(), event)
+        with conn.cursor() as cur:
+            cur.execute(
+                _EVIDENCE_PRIOR_DELETE_SQL,
+                (event["type"], str(chart_id), event["asset_id"], str(event["run_id"]), ayanamsha_id),
+            )
+            ok = persist_event(cur, event)
     except Exception as exc:
         raise RuntimeError(
             f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
@@ -311,6 +327,8 @@ def record_post_pass_evidence(
     prior_rows_deleted: int,
 ) -> None:
     """Write ONE evidence record (see the block comment above).  Raises RuntimeError when the record could not be written."""
+    if not build_id or not str(build_id).strip():
+        raise ValueError("[ga_daridra_postpass] evidence needs a build id (run_id); refusing to write a record for a missing one")
     payload = post_pass_evidence_payload(
         ayanamsha_id, entries_evaluated=entries_evaluated, formed=formed,
         rows_written=rows_written, prior_rows_deleted=prior_rows_deleted,

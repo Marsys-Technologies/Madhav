@@ -223,3 +223,103 @@ def test_an_operator_override_that_drops_the_event_type_fails_the_substep_loudly
     monkeypatch.setenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", "")                             # persistence disabled
     with pytest.raises(RuntimeError, match="persist_event returned False"):
         _emit(_RecConn())
+
+
+# ── idempotence per (chart, ayanamsha, run) and the build-id guard (Engine review of #3448, findings 1 and 4) ──
+
+def test_a_missing_build_id_is_refused_before_anything_is_written():
+    for bad in (None, "", "   "):
+        conn = _RecConn()
+        with pytest.raises(ValueError, match="build id"):
+            pp.record_post_pass_evidence(conn, CHART_ID, bad, AYA, entries_evaluated=1, formed=False, rows_written=0, prior_rows_deleted=0)
+        assert conn.executed == []
+
+
+def test_the_prior_record_is_deleted_first_on_the_same_cursor_scoped_to_this_run_and_ayanamsha(monkeypatch):
+    _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
+    conn = _RecConn()
+    assert _emit(conn) == 0
+    sqls = [s for s, _ in conn.executed]
+    d = next(i for i, s in enumerate(sqls) if s.startswith("DELETE FROM orchestrator_event_register"))
+    i = next(i for i, s in enumerate(sqls) if s.startswith("INSERT INTO orchestrator_event_register"))
+    assert d < i
+    sql, params = conn.executed[d]
+    for col in ("event_type = %s", "chart_id = %s", "asset_id = %s", "run_id = %s", "payload->>'ayanamsha_id' = %s"):
+        assert col in sql
+    assert params == ("writer.post_pass_evaluated", CHART_ID, "ga_vichara", BUILD_ID, AYA)
+
+
+from tests.pg_disposable import HAVE_PG, PG_SKIP_REASON, new_db, psql, q, pg  # noqa: E402,F401
+import pathlib  # noqa: E402
+
+_REGISTER_MIGRATION = pathlib.Path(__file__).resolve().parents[2] / "supabase" / "migrations" / "499_orchestrator_event_register.sql"
+_AYANAMSHAS = ["lahiri_chitrapaksha", "raman", "krishnamurti", "fagan_bradley", "yukteshwar"]
+requires_pg = pytest.mark.skipif(not HAVE_PG, reason="DB-backed test NOT RUN: " + PG_SKIP_REASON)
+
+
+def _live(pg_port):
+    import psycopg
+    db = new_db(pg_port)
+    assert psql(pg_port, db, file=_REGISTER_MIGRATION).returncode == 0
+    return db, psycopg.connect(host="127.0.0.1", port=pg_port, user="postgres", dbname=db)
+
+
+def _emit_live(conn, run, aya, *, formed=False):
+    pp.record_post_pass_evidence(conn, CHART_ID, run, aya, entries_evaluated=1, formed=formed,
+                                 rows_written=1 if formed else 0, prior_rows_deleted=0)
+
+
+@requires_pg
+def test_live_two_emissions_for_the_same_chart_ayanamsha_run_leave_exactly_one_record(pg):
+    db, conn = _live(pg)
+    try:
+        _emit_live(conn, "run-A", AYA)
+        _emit_live(conn, "run-A", AYA)
+        conn.commit()
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register") == "1"
+        assert q(pg, db, "SELECT run_id || '|' || chart_id || '|' || asset_id || '|' || (payload->>'ayanamsha_id') FROM orchestrator_event_register") \
+            == f"run-A|{CHART_ID}|ga_vichara|{AYA}"
+    finally:
+        conn.close()
+
+
+@requires_pg
+def test_live_a_retry_after_a_failed_substep_leaves_five_records_not_ten_and_other_runs_are_untouched(pg):
+    db, conn = _live(pg)
+    try:
+        for aya in _AYANAMSHAS[:3]:                         # first pass: three substeps committed, then the run crashes
+            _emit_live(conn, "run-A", aya)
+            conn.commit()
+        for aya in _AYANAMSHAS:                             # the orchestrator retries the SAME run id: all five substeps again
+            _emit_live(conn, "run-A", aya, formed=(aya == "yukteshwar"))
+            conn.commit()
+        _emit_live(conn, "run-B", AYA)                      # a different run's record must survive a retry of run-A
+        conn.commit()
+        _emit_live(conn, "run-A", AYA)                      # and a further retry of run-A must not touch run-B
+        conn.commit()
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "5"
+        assert q(pg, db, "SELECT count(DISTINCT payload->>'ayanamsha_id') FROM orchestrator_event_register WHERE run_id = 'run-A'") == "5"
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-B'") == "1"
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register") == "6"
+        assert q(pg, db, "SELECT (payload->>'formed') FROM orchestrator_event_register WHERE run_id='run-A' AND payload->>'ayanamsha_id'='yukteshwar'") == "true"
+    finally:
+        conn.close()
+
+
+@requires_pg
+def test_live_a_failing_record_after_the_delete_rolls_the_delete_back_with_the_substep_savepoint(pg, monkeypatch):
+    db, conn = _live(pg)
+    try:
+        _emit_live(conn, "run-A", AYA)
+        conn.commit()
+        monkeypatch.setattr(pp, "persist_event", lambda cur, event: False)
+        with conn.cursor() as cur:
+            cur.execute("SAVEPOINT writer_exec")
+        with pytest.raises(RuntimeError, match="persist_event returned False"):
+            _emit_live(conn, "run-A", AYA)
+        with conn.cursor() as cur:
+            cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
+        conn.commit()
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "1"     # the first-pass record survived
+    finally:
+        conn.close()
