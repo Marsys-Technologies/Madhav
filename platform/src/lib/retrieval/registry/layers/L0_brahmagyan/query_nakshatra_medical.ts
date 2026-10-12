@@ -1,13 +1,13 @@
 /**
  * query_nakshatra_medical — L0 Brahmagyan nakshatra→medical reference
  * =======================================================================
- * W2b dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set,
- * `bg_nakshatra_medical`, 27 rows). Serves the classical 27-nakshatra→
- * body-part correspondence reference (Ashtanga Hridayam / BPHS). Global
- * classical reference — no chart_id needed.
+ * W2b dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set, `bg_nakshatra_medical`, 27 rows).
+ * Classical 27-nakshatra→body-part reference (Ashtanga Hridayam / BPHS); global, no chart_id needed.
+ * The name filter is spelling-tolerant (Mrigasira/Mrigashira, Moola/Mula, Dhanishtha/Dhanishta all match).
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { storedNakshatraSpellings } from '@/lib/nakshatra_spelling'
 
 export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_nakshatra_medical',
@@ -54,7 +54,7 @@ export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
     const filters: string[] = ['1=1']
     const params: unknown[] = []
     let p = 1
-    if (nakshatraName) { filters.push(`LOWER(nakshatra_name) = LOWER($${p++})`); params.push(nakshatraName) }
+    if (nakshatraName) { filters.push(`LOWER(nakshatra_name) = ANY($${p++}::text[])`); params.push((storedNakshatraSpellings(nakshatraName) ?? [nakshatraName]).map((n) => n.toLowerCase())) }
     if (nakshatraNum != null && Number.isInteger(nakshatraNum)) { filters.push(`nakshatra_number = $${p++}`); params.push(nakshatraNum) }
     const where = filters.join(' AND ')
 
