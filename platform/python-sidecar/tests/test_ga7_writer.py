@@ -665,7 +665,7 @@ FORENSIC_NATAL_FIXTURE: dict[str, dict[str, Any]] = {
     "Moon":    {"house_d1": 11, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada", "dignity_d1": "neutral",      "shadbala_total": 2.5607},
     "Mars":    {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Swati",            "dignity_d1": "neutral",      "shadbala_total": 3.106},
     "Mercury": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha",   "dignity_d1": "neutral",      "shadbala_total": 2.5},
-    "Jupiter": {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",             "dignity_d1": "moolatrikona", "shadbala_total": 2.6598},
+    "Jupiter": {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Moola",            "dignity_d1": "moolatrikona", "shadbala_total": 2.6598},
     "Venus":   {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Purva Ashadha",    "dignity_d1": "neutral",      "shadbala_total": 2.3592},
     "Saturn":  {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Vishakha",         "dignity_d1": "exalted",      "shadbala_total": 3.611},
     "Rahu":    {"house_d1": 2,  "sign": "Taurus",      "nakshatra": "Rohini",           "dignity_d1": "exalted",      "shadbala_total": 0.375},
@@ -706,7 +706,7 @@ class TestAdditions(unittest.TestCase):
     def test_47_addition_a_natal_nakshatra(self):
         for r in self._sample_l1(self.vim_rows):
             if r["lord_graha"] == "Jupiter":
-                assert r.get("lord_natal_nakshatra") == "Mula"
+                assert r.get("lord_natal_nakshatra") == "Moola"
 
     def test_48_addition_a_natal_dignity(self):
         for r in self._sample_l1(self.vim_rows):
