@@ -4926,17 +4926,17 @@ def test_a_reviewer_that_changes_the_items_working_copy_fails_its_job(codex):
     assert codex.action()["state"] == "FAILED" and codex.action()["result"]["guard_failures"]
 
 
-@pytest.mark.parametrize("where", ["config", "hooks/post-checkout", "config.worktree",
-                                   "worktrees/another/config.worktree"])
-def test_a_codex_job_that_changes_the_common_git_directorys_config_or_hooks_fails(codex, where):
-    path = Path(codex.common) / where               # review finding B2: every configuration file git reads there
+@pytest.mark.parametrize("where", ["hooks/post-checkout", "own-config.worktree"])
+def test_a_codex_job_that_changes_hooks_or_its_own_git_config_fails(codex, where):
+    where = "worktrees/" + codex.repo.name + "/config.worktree" if where == "own-config.worktree" else where
+    path = Path(codex.common) / where
     path.parent.mkdir(parents=True, exist_ok=True)
     codex.set_prompt(f"FAKE_TOUCH:{path}\n")                  # a builder: it may commit, never reconfigure git
     assert codex.run() == kyboot.EXIT_JOB_FAILED
     state = codex.state()
     assert len(state["guard_failures"]) == 1 and state["guard_failures"][0].startswith(
         "git: the git configuration, hooks or git-directory identity changed during the job (")
-    assert where.split("/")[0] in state["guard_failures"][0]
+    assert ("own:config.worktree" if where.startswith("worktrees/") else "hooks:") in state["guard_failures"][0]
     assert "worktree" not in state["guards"]["before"]        # a builder changes its working copy by design
     assert codex.action()["state"] == "FAILED" and state["awaiting_launcher_commit"] is False
 
@@ -4951,7 +4951,7 @@ def private_git_dir(codex, name="private-git-dir") -> Path:
     return private
 
 
-def test_a_job_that_redirects_another_worktrees_commondir_fails(codex):
+def test_another_worktrees_commondir_change_is_reported(codex):
     """review r2, redirect a: <common>/worktrees/<other>/commondir pointed at a folder the job controls"""
     other = codex.wt_root / "another-worktree"
     git_in(codex.main_repo, "worktree", "add", "-q", "-b", "kalayantra/another", str(other), home=codex.home)
@@ -4959,9 +4959,10 @@ def test_a_job_that_redirects_another_worktrees_commondir_fails(codex):
     planted.mkdir()
     target = Path(codex.common) / "worktrees" / other.name / "commondir"
     codex.set_prompt(f"FAKE_WRITE:{target}|{planted}\n")
-    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    assert codex.run() == 0
     state = codex.state()
-    assert f"worktrees/{other.name}/commondir" in state["guard_failures"][0] and state["awaiting_launcher_commit"] is False
+    assert state["guard_failures"] == [] and state["awaiting_launcher_commit"] is True
+    assert f"worktrees/{other.name}/commondir" in state["guards"]["shared_config_changed_keys"]
 
 
 def test_a_job_that_repoints_its_own_git_pointer_fails(codex):
@@ -4973,7 +4974,7 @@ def test_a_job_that_repoints_its_own_git_pointer_fails(codex):
     assert "own:git_dir" in failure and "own:pointer" in failure and "own:config.worktree" in failure
 
 
-def test_a_worktree_entry_another_session_adds_during_the_job_is_ignored_and_a_removed_one_is_not(codex):
+def test_other_worktree_entries_added_or_removed_are_reported(codex):
     fresh = Path(codex.common) / "worktrees" / "added-meanwhile"
     codex.set_prompt(f"FAKE_WRITE:{fresh / 'commondir'}|../..\nFAKE_WRITE:{fresh / 'config.worktree'}|[core]\n")
     assert codex.run() == 0 and codex.state()["guard_failures"] == []
@@ -4981,20 +4982,22 @@ def test_a_worktree_entry_another_session_adds_during_the_job_is_ignored_and_a_r
     assert "added-meanwhile" in before["worktree_entries"]
     shutil.rmtree(fresh)
     changes = kyboot.git_guard_changes(before, kyboot.git_guard(str(codex.repo), codex.environ))
-    assert changes == ["worktrees/added-meanwhile/commondir", "worktrees/added-meanwhile/config.worktree",
-                       "worktrees/added-meanwhile/gitdir"] or "worktrees/added-meanwhile/commondir" in changes
+    assert changes == []
+    assert "worktrees/added-meanwhile/commondir" in kyboot.git_shared_report(
+        before, kyboot.git_guard(str(codex.repo), codex.environ))["shared_config_changed_keys"]
     assert kyboot.git_guard_changes(before, None) == ["unreadable"]
 
 
-def test_an_included_config_file_is_guarded_too(codex):
+def test_an_included_shared_config_change_is_reported(codex):
     included = Path(codex.common) / "extra.config"
     included.write_text("[core]\n\tautocrlf = false\n", encoding="utf-8")
     git_in(codex.main_repo, "config", "include.path", "extra.config", home=codex.home)
     record = kyboot.git_guard(str(codex.repo), codex.environ)
     assert record["config_files"]["include:" + str(included)] == sha(included)
     codex.set_prompt(f"FAKE_TOUCH:{included}\n")
-    assert codex.run() == kyboot.EXIT_JOB_FAILED
-    assert "include:" + str(included) in codex.state()["guard_failures"][0]
+    assert codex.run() == 0
+    assert codex.state()["guard_failures"] == []
+    assert "include:" + str(included) in codex.state()["guards"]["shared_config_changed_keys"]
 
 
 def test_a_reviewer_launch_names_its_items_working_copy_in_the_input_and_in_the_prompt(codex):
@@ -5011,3 +5014,26 @@ def test_a_reviewer_launch_names_its_items_working_copy_in_the_input_and_in_the_
     refused(codex, "schema:", "$.work_root")
     codex.launch.update(work_root="job", sandbox="read-only")
     refused(codex, "schema:", "$.sandbox")
+
+
+@pytest.mark.parametrize("reviewer", [False, True])
+@pytest.mark.parametrize("where", ["config", "config.worktree", "worktrees/another/config.worktree"])
+def test_shared_config_churn_does_not_fail_codex_job(codex, reviewer, where):
+    path = Path(codex.common) / where
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if reviewer:
+        codex.as_reviewer(text=f"FAKE_TOUCH:{path}\n")
+    else:
+        codex.set_prompt(f"FAKE_TOUCH:{path}\n")
+    assert codex.run() == 0
+    state = codex.state()
+    assert state["guard_failures"] == []
+    assert state["guards"]["shared_config_changed_during_run"] is True
+    assert where in state["guards"]["shared_config_changed_keys"]
+
+
+def test_own_git_directory_extra_file_is_fatal(codex):
+    path = Path(codex.common) / "worktrees" / codex.repo.name / "unexpected"
+    codex.set_prompt(f"FAKE_TOUCH:{path}\n")
+    assert codex.run() == kyboot.EXIT_JOB_FAILED
+    assert "own:tree_sha256" in codex.state()["guard_failures"][0]

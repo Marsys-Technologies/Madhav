@@ -122,9 +122,9 @@ judged on its final message (final_message.txt) by the same rules when it left n
 with "work_root": "job" (the reviewers, cockpit ruling E1) runs with -C <job_scratch> — with its TMPDIR all it may write; /tmp is excluded on every Codex line —
 and --skip-git-repo-check; it names the item's working copy in item_worktree (= worktree) and its prompt carries
 the line ITEM_WORKTREE=<item_worktree>; after the job that copy's HEAD and `git status` must be what they were
-before. After every Codex job the common git directory (derived with `git rev-parse --git-common-dir`) must have
-the configuration, hooks and git-directory identity it had before (cockpit ruling E2 as amended: git_guard_record;
-a worktree entry another session created meanwhile is ignored). A Codex builder (cockpit ruling E7) has no write
+before. After every Codex job the hooks at both locations and this working copy's own git directory,
+.git pointer, config.worktree and commondir must be unchanged (git_guard_record). Shared configuration and
+other worktrees' entries may change concurrently; those differences are recorded, never fatal. A Codex builder (cockpit ruling E7) has no write
 access to any git directory and no network: its launch input says commit_mode "launcher", network false, and
 names no writable dir that holds or lies in a git directory; it does not commit — its result.json
 (schemas/job_result_launcher_commit.json) carries status, tests and commit_message, never a head or a PR — and
@@ -385,7 +385,8 @@ def git_guard_record(worktree, common, gitdir, includes, effective_hooks):
                      gitdir (a rewritten commondir makes git in that worktree read another folder's config)
       worktree_entries  the names under <common>/worktrees when the record was taken
       own            the working copy's own git identity: its absolute git dir, its .git pointer (sha256 of the
-                     file; "directory" for a plain repository), and that git dir's config.worktree and commondir
+                     file; "directory" for a plain repository), its config.worktree and commondir, and a tree
+                     digest of its private git dir (for a plain repo: HEAD and index only; shared files report below)
       hooks          a tree digest of <common>/hooks and of the effective hooks folder, by path"""
     files = {"config": file_digest(os.path.join(common, "config")),
              "config.worktree": file_digest(os.path.join(common, "config.worktree"))}
@@ -403,30 +404,44 @@ def git_guard_record(worktree, common, gitdir, includes, effective_hooks):
     own = {"git_dir": gitdir,
            "pointer": file_digest(pointer) if os.path.isfile(pointer) else "directory" if os.path.isdir(pointer) else "absent",
            "config.worktree": file_digest(os.path.join(gitdir, "config.worktree")),
-           "commondir": file_digest(os.path.join(gitdir, "commondir"))}
+           "commondir": file_digest(os.path.join(gitdir, "commondir")),
+           "tree_sha256": tree_digest(gitdir) if gitdir != common else {
+               name: file_digest(os.path.join(gitdir, name)) for name in ("HEAD", "index")}}
     hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective_hooks})}
     return {"common_dir": common, "config_files": files, "worktree_entries": entries, "own": own, "hooks": hooks}
 
 
 def git_guard_changes(before, after):
-    """what differs between two git guard records ([] = nothing). A worktree entry created after `before` was
-    taken (another session adding a working copy) is ignored; one that existed must be unchanged, and so must
-    everything else. A record that could not be read is a difference."""
+    """Fatal changes: hooks at both locations, common identity, and this job's own git dir / pointer.
+    Shared config and other worktrees are reported separately, since concurrent sessions change them."""
     if not isinstance(before, dict) or not isinstance(after, dict):
         return ["unreadable"]
-    known = set(before["worktree_entries"])
-
-    def kept(files):
-        return {key: value for key, value in files.items()
-                if not key.startswith("worktrees/") or key.split("/")[1] in known}
-
     out = ["common_dir"] if before["common_dir"] != after["common_dir"] else []
-    old, new = kept(before["config_files"]), kept(after["config_files"])
-    out += sorted(key for key in set(old) | set(new) if old.get(key) != new.get(key))
     for part in ("own", "hooks"):
         out += sorted("%s:%s" % (part, key) for key in set(before[part]) | set(after[part])
                       if before[part].get(key) != after[part].get(key))
+        if any(value is None for value in list(before[part].values()) + list(after[part].values())):
+            out.append(part + ":unreadable")
     return out
+
+
+def git_shared_report(before, after):
+    """Reported-only churn. Changed keys name the config_files snapshot entries, never their contents.
+    Missing records yield null, rather than a claim that nothing changed."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return {"shared_config_changed_during_run": None, "shared_config_changed_keys": None}
+
+    own_dirs = {os.path.relpath(record["own"]["git_dir"], record["common_dir"])
+                for record in (before, after)}
+
+    def shared(record):
+        return {key: value for key, value in record["config_files"].items()
+                if not any(own != "." and key.startswith(own + "/") for own in own_dirs)
+                and not ("." in own_dirs and key == "config.worktree")}
+
+    old, new = shared(before), shared(after)
+    changes = sorted(key for key in set(old) | set(new) if old.get(key) != new.get(key))
+    return {"shared_config_changed_during_run": bool(changes), "shared_config_changed_keys": changes}
 
 
 def include_paths(common, lines):
@@ -471,7 +486,7 @@ def worktree_guard(worktree, environ):
 
 
 def codex_guards(launch, environ) -> dict:
-    """what must be the same after a Codex job: the common git directory's config and hooks (every Codex job) and,
+    """what must be the same after a Codex job: hooks and its own git directory (every Codex job) and,
     for a job-rooted one, the item's working copy (HEAD and status)"""
     guards = {"git": git_guard(launch["worktree"], environ)}
     if job_rooted(launch):
@@ -2244,7 +2259,7 @@ def _result_status(launch):
 
 
 def _check_guards(launch, environ, state, code) -> int:
-    """after a Codex job: its guards again; any difference (or one that cannot be read) fails the job"""
+    """After a Codex job, fail on owned git / hooks or item changes; report shared configuration churn."""
     before = state["guards"]["before"]
 
     def differences():
@@ -2267,6 +2282,7 @@ def _check_guards(launch, environ, state, code) -> int:
         time.sleep(GUARD_RETRY_SECONDS)
         after, failures = differences()
     state["guards"]["after"] = after
+    state["guards"].update(git_shared_report(before.get("git"), after.get("git")))
     state["guard_failures"] = failures
     if launcher_commit(launch):                      # kyboot never commits or pushes: the launcher does, afterwards
         state["awaiting_launcher_commit"] = bool(state["job_result_valid"] is True and not failures
