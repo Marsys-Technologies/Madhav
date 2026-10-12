@@ -313,7 +313,6 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
-    "mark_empty_scopes",
     "measure",
     "stamp_read_scope",
     "validate_empty_slice_by_conditional_declaration",

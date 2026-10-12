@@ -2988,8 +2988,8 @@ def mark_empty_scopes(scopes: dict, convention_holds: bool = False, exempt_fn=No
     """Mark (in place, and return) every SCOPED table of `scopes` that holds no row in its scope: `block` says so, and the label carries it. One EXISTS probe per scoped table (`LIMIT 1` inside; a failed or
     cancelled probe marks nothing: the reads then run and answer for themselves). `convention_holds` (a declared zero_row_convention VERIFIED for the measured chart) lifts the guard: zero rows is then the
     by-design reading for this chart. `exempt_fn(table, scope)` (SS N-431/N-545, a declared `empty_slice_by_conditional`) is asked for each table found EMPTY: it answers the detector's outcome for the declared
-    slice table (None for any other table). A `holds` outcome marks the scope `exempt` (the verified evidence block) and, when the declaration names Vocab.alias, lifts its `block` (the table is not read and is
-    not unread); any other outcome keeps the block exactly as before and records `empty_slice_declined` (the clause that decided) beside the label. An exempt_fn that raises never exempts."""
+    slice table (None for any other table). A `holds` outcome marks the scope `exempt` (the verified evidence block); the `block` itself is KEPT for every consumer (only Vocab.alias, when the declaration names it,
+    skips it for its own read); any other outcome keeps the block exactly as before and records `empty_slice_declined` (the clause that decided) beside the label. An exempt_fn that raises never exempts."""
     if convention_holds:
         return scopes
     for t, v in scopes.items():
@@ -3017,8 +3017,8 @@ def mark_empty_scopes(scopes: dict, convention_holds: bool = False, exempt_fn=No
                 v["exempt"] = ev
                 v["label"] = (label0 + f"; EMPTY BY VERIFIED CONDITIONAL (post-pass {ev.get('post_pass')} ran in run {str(ev.get('run_id'))[:8]}, {len(ev.get('entries_evaluated') or {})}/{len(ev.get('partitions') or [])} ayanamsha "
                               f"partitions, entries evaluated {'/'.join(str(n) for n in (ev.get('entries_evaluated') or {}).values())}, formed false)")
-                if "Vocab.alias" in (ev.get("criteria") or ()):
-                    del v["block"]
+                # <keep-block> the scope's `block` STAYS for every other consumer of `_scope_block` (label reads, prose_none closures, forwarded_leaves, corpus_derived ...): an exemption is per criterion, never a lift of the guard.
+                # Only vocab_value_detect (Vocab.alias, when the declaration names it) skips an exempt table's block.
             else:
                 v["empty_slice_declined"] = dict(state=out.get("state"), clause=out.get("clause"), detail=out.get("detail"))
                 v["label"] += f"; empty_slice_by_conditional declared but NOT credited ({out.get('clause')}): {str(out.get('detail'))[:300]}"
@@ -5149,6 +5149,9 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
     if es_exempt:
         cands = [x for x in cands if x[0] not in es_exempt]
     blocked = {t: v["block"] for t, v in scopes.items() if v.get("block") and t in own}
+    #<clause vocab-exempt-skip>
+    blocked = {t: b for t, b in blocked.items() if t not in es_exempt}      # an exempt table's block is not an `unread` finding of THIS criterion only (every other consumer still sees it)
+    #</clause vocab-exempt-skip>
     if blocked:                                              # a table with no rows in the scope (or whose scope is unknown) is not read: nothing to judge
         problems += [f"{t}: {why}" for t, why in sorted(blocked.items())]
         cands = [x for x in cands if x[0] not in blocked]
@@ -12534,7 +12537,8 @@ ES_SOURCE_TABLE = "orchestrator_event_register"
 ES_PAYLOAD_REQUIRED = ("schema", "post_pass", "ayanamsha_id", "slice", "entries_evaluated", "formed", "rows_written", "prior_rows_deleted")
 ES_PAYLOAD_OPTIONAL = ("chart_vichara_rows_inserted",)
 # `persist_event` stores the WHOLE flat event dict as the payload column: beside the frozen keys a record may carry the event's own keys (type, chart_id, asset_id, run_id, rows_present ...), which are
-# cross-checked against the register's columns; extra keys are tolerated, a MISSING or mistyped frozen key never is (pr #3448: direct_insert writes exactly the frozen keys, persist_event the superset)
+# cross-checked against the register's columns. SUPERSET RULE: the contract names the 8 frozen keys, but the register stores the whole flat event (persist_event is the ONLY writer channel of pr #3448), so extra keys
+# are tolerated; a MISSING or mistyped frozen key never is
 ES_CLOCK_SKEW_S = 2.0                          # a record's occurred_at (the register's DEFAULT NOW() = its transaction's start) may precede the attempt's started_at / follow its ended_at by this much
 ES_MAX_RECORDS = 50                            # evidence rows read for ONE run (5 per run is the design: more is a read that cannot be trusted)
 ES_MAX_ATTEMPTS = 200
@@ -12548,7 +12552,7 @@ _ES_APPLIC_HEAD = ("; SS N-431/N-545 (opt-in): an asset that DECLARES `empty_sli
                    "evidence records (one record per chart, ayanamsha partition and build in orchestrator_event_register, event writer.post_pass_evaluated, schema post_pass_evidence/1): ALL of: the measured chart's NEWEST "
                    "complete build run (no later attempt that errored, aborted, is queued, running or cascade-blocked, ordered by run creation with never-started attempts included) lies inside the Build.history window "
                    "of the current writer code; exactly ONE record per partition of the declared partition constant for THAT run and chart, each naming the declared post-pass and slice, with entries_evaluated >= 1, "
-                   "formed false and rows_written 0; every record inside its run's start..end time bracket; the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
+                   "formed false and rows_written 0; every record inside its run's start..end time bracket; the asset's own build record for the chart reads lit (a stale record means an upstream was rebuilt after the evidenced build); the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
                    "declaration names an emitter and a caller that exist in the writer's code, the caller reaching the emitter on every return path, and the event type and partition constant in the writer source; a register "
                    "the census role cannot read, an unreadable attempt log or an unknown window reads NO_DETECTOR for the claim and never earns it. ")
 ES_APPLICABILITY_ADDITIONS = {
@@ -12815,7 +12819,12 @@ def empty_slice_conditional_outcome(decl: dict, aid: str, chart_id: str, *, wind
     latest-build (a complete `build` attempt exists; R = the newest) · newer-attempt (nothing later errored, aborted, is queued, running, blocked) · in-window (R is inside the window) · register-read ·
     evidence-present (records exist for R, this chart, this asset) · record-shape (every record is the contract shape and agrees with its register columns) · partition-complete (exactly the declared
     partitions) · single-record (one per partition) · evaluated (entries_evaluated >= 1) · not-formed (formed false, rows_written 0) · time-bracket (inside R's start..end) · slice-empty (the live slice holds no
-    row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees)."""
+    row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees) · fresh-build (the asset's own asset_throughput record for
+    the chart is `lit`: a `stale` record means an upstream was rebuilt after R; no other census cell grades the asset's OWN staleness, Build.dep_liveness reads the staleness of its DEPENDENCIES).
+
+    SUPERSET RULE: the contract names the 8 frozen keys of post_pass_evidence/1, but the register stores the whole flat event (`persist_event`, the only writer channel of pr #3448: the frozen keys plus type,
+    chart_id, asset_id, run_id, rows_present), so a record is read as a SUBSET check: every frozen key present with its exact type and value, extra keys tolerated, the event's own keys cross-checked against
+    the register columns. A missing or mistyped frozen key is never tolerated; duplicates are never tolerated either (one record per chart, partition and run)."""
     try:
         bad = _es_decl_problem(decl, aid)
         if bad:                                                 # every identifier that reaches a statement is checked HERE, whatever built the declaration (the validator, a test, a caller)
@@ -12889,6 +12898,18 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
                                                      "its evidence describes code that no longer exists")
     #</clause in-window>
     run_id = run["run_id"]
+    #<clause fresh-build>
+    try:
+        trows = psql("SELECT coalesce(state,''), coalesce(extract(epoch FROM last_built_at)::text,'') FROM asset_throughput "
+                     f"WHERE asset_id = '{aid}' AND chart_id::text = '{chart_id}'")
+    except Unknown as exc:
+        return _es_read_failure(exc, "the asset's own build record (asset_throughput)", clause="fresh-build")
+    if any(len(x) != 2 for x in trows):
+        return _es_res("unverified", "fresh-build", "NO_DETECTOR — the asset's build record answered with rows that do not parse: not read", no_detector=True, cause="read-failed")
+    if not trows or any(x[0] != "lit" for x in trows):
+        return _es_res("unverified", "fresh-build", f"the asset's own build record for this chart is {sorted({x[0] or '-' for x in trows}) or 'absent'}, not lit: a `stale` record means an upstream was rebuilt after the build run {run_id[:8]} "
+                                                    "the evidence describes (the post-pass may now find otherwise), so the evidence is not taken for the data as it stands")
+    #</clause fresh-build>
     #<clause register-read>
     try:
         raw = psql("SELECT id::text, coalesce(run_id,''), coalesce(chart_id,''), coalesce(asset_id,''), coalesce(extract(epoch FROM occurred_at)::text,''), coalesce(rows_present::text,''), payload::text "
