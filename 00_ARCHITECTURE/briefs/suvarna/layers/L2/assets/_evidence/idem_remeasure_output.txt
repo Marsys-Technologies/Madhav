@@ -1,0 +1,23 @@
+bo_anveshana PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_discoveries (bo_anveshana.py:821), bodha_anomalies (bo_anveshana.py:822)
+bo_arudha PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_arudha.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_bimba PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_nodes (bodha_writers/_idempotency.py:343 via bo_bimba.py → bodha_writers/_idempotency.py:replace_prior_cgm_nodes), bodha_cgm_nodes (bodha_writers/_idempotency.py:348 via bo_bimba.py → bodha_w
+bo_cdlm_summary PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cdlm_chart_summary (bo_cdlm_summary.py:433)
+bo_cgm_motifs PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_motifs (bo_cgm_motifs.py:913)
+bo_cgm_paths PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_paths (bo_cgm_paths.py:384)
+bo_chart_gestalt PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_chart_gestalt (bo_chart_gestalt.py:685)
+bo_drishti PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_question_lenses (bo_drishti.py:311)
+bo_grounding PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_grounding_matches (bodha_writers/_idempotency.py:232 via bo_grounding.py → bodha_writers/_idempotency.py:replace_prior_grounding_matches)
+bo_karanajala PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_edges (bodha_writers/_idempotency.py:358 via bo_karanajala.py → bodha_writers/_idempotency.py:replace_prior_cgm_edges), bodha_cgm_edges (bodha_writers/_idempotency.py:363 via bo_karanajala.py
+bo_laksana PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_laksana.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_laksana_rerank PARTIAL | the asset's own table(s) are only UPDATEd in place: bodha_msr_signals (bo_laksana.py:3756), bodha_msr_signals (bo_laksana.py:3886), bodha_msr_signals (bo_laksana.py:3948) — update-only:keyed-row-set-unproven update-only:scope-row-set-unproven update-only:state
+bo_nakshatra_semantic PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_nakshatra_semantic.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_pramana_mapa PASS | DELETE FROM the asset's own table(s) (delete-then-insert): synthesis_quality_scorecard (bodha_writers/_idempotency.py:523 via bo_pramana_mapa.py → bodha_writers/_idempotency.py:replace_prior_scorecard)
+bo_pratijna PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_pratijna (bo_pratijna.py:458)
+bo_samskara PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_signal_embeddings (bodha_writers/_idempotency.py:508 via bo_samskara.py → bodha_writers/_idempotency.py:replace_prior_signal_embeddings)
+bo_samvada PARTIAL | no write to the asset's own table(s) ['vw_chart_digest'] anywhere in the resolved scope — nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: bo_samvada.py, bodha_writers/data_plane_contracts.py]
+bo_sangati PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_triangulation (bo_sangati.py:504), bodha_cdlm_cells (bodha_writers/_idempotency.py:248 via bo_sangati.py → bodha_writers/_idempotency.py:replace_prior_cdlm_cells), bodha_cdlm_cells (bodha_writers
+bo_special_lagna PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_special_lagna.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_sudarshana PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_sudarshana.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_upaya PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_rm_resonances (bodha_writers/_idempotency.py:430 via bo_upaya.py → bodha_writers/_idempotency.py:replace_prior_rm_resonances), bodha_rm_resonances (bodha_writers/_idempotency.py:435 via bo_upaya.
+bo_vargottama_dhana PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_vargottama_dhana.py → bodha_writers/_idempotency.py:replace_prior_msr_for_chart)
+bo_yantra_mechanism PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_mechanisms (bo_yantra_mechanism.py:608)
