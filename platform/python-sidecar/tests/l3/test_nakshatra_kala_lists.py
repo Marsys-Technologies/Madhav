@@ -13,7 +13,7 @@ lexicon's. Each of the five lists is exercised through its REAL function (no dat
   2. pipeline.transit_search             NAKSHATRAS via _sign_nak (byte-identical, SS N-548; maps 1:1 through the normaliser)
   3. services.kala_permission.permission period_lord_relation (tara from stored lord nakshatras)
   4. services.ka_graha_sancara.engine    NAKSHATRAS via _compute_live (emit-only, space-less; byte-identical, SS N-548)
-  5. services.gochara_rules              ashtakavarga.NAKSHATRAS via p5d, p6.nakshatra_index
+  5. services.gochara_rules              ashtakavarga.NAKSHATRAS via p5d, p6.nakshatra_index (OUT of this round: byte-identical to main, SS N-593)
 
 Nakshatras under test: 5 (Mrigasira), 19 (Moola), 23 (Dhanishtha), both spellings each.
 """
@@ -341,41 +341,64 @@ class TestGrahaSancaraNakshatras:
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 5. gochara_rules -- ashtakavarga.NAKSHATRAS (p5d) and p6.nakshatra_index
+#    SS N-593: these two files are OUT of this round and BYTE-IDENTICAL to main (reverted). ashtakavarga.NAKSHATRAS is an
+#    EMIT-only literal at the legacy spellings (Mrigashira / Mula / Dhanishta) read by p5d; p6.nakshatra_index matches its
+#    own literal exactly (case / diacritics folded) and has no production caller (P6 is testimony-only). Both go through the
+#    normaliser in Kala's post-round ka_* change, which re-registers the gochara kernel's implementation lock in the same
+#    commit. Pinned here: the literal is unchanged and maps 1:1 onto the lexicon through the normaliser; resolution of the
+#    LEXICON spelling by p6 is a STRICT xfail until that change lands (it XPASSes then: drop the marker).
 # ═══════════════════════════════════════════════════════════════════════════
 
+_DEFERRED_TO_KALA = pytest.mark.xfail(strict=True, reason=(
+    "SS N-593: gochara_rules/p6.py is byte-identical to main in this round; the lexicon spelling resolves only after Kala's "
+    "post-round ka_* change (surrogate re-registration ruling + regenerated implementation lock in the same commit)"))
+
+
 class TestGocharaRulesNakshatras:
+    def test_list_is_the_untouched_legacy_literal_and_maps_one_to_one_onto_the_lexicon(self):
+        from services.gochara_rules.ashtakavarga import NAKSHATRAS
+
+        assert len(NAKSHATRAS) == 27 and (NAKSHATRAS[4], NAKSHATRAS[18], NAKSHATRAS[22]) == ("Mrigashira", "Mula", "Dhanishta")
+        assert [normalize_nakshatra(n) for n in NAKSHATRAS] == list(CANONICAL_NAKSHATRA_NAMES)
+        assert [nakshatra_index(n) for n in NAKSHATRAS] == list(range(1, 28))
+
     @pytest.mark.parametrize("n,canon,legacy", CASES)
-    def test_p5d_names_the_nakshatra_in_the_lexicon_spelling(self, n, canon, legacy):
+    def test_p5d_emits_its_own_legacy_literal_which_the_normaliser_maps_to_the_lexicon(self, n, canon, legacy):
         from services.gochara_rules.ashtakavarga import p5d
 
         out = p5d(n, 1)  # (n * 1) % 27 = n
-        assert out["state"] == "resolved"
-        assert out["nakshatra_index"] == n
-        assert out["nakshatra"] == canon
+        assert out["state"] == "resolved" and out["nakshatra_index"] == n
+        assert out["nakshatra"] == legacy and normalize_nakshatra(out["nakshatra"]) == canon
 
-    @pytest.mark.parametrize("n,spelling", SPELLINGS)
-    def test_nakshatra_index_resolves_either_spelling(self, n, spelling):
-        from services.gochara_rules.p6 import nakshatra_index
+    @pytest.mark.parametrize("n,canon,legacy", CASES)
+    def test_p6_resolves_its_own_legacy_spelling(self, n, canon, legacy):
+        from services.gochara_rules.p6 import nakshatra_index as p6_index
 
-        assert nakshatra_index(spelling) == n
-        assert nakshatra_index(f"  {spelling.upper()} ") == n  # existing normalisation kept
+        assert p6_index(legacy) == n and p6_index(f"  {legacy.upper()} ") == n
 
-    def test_nakshatra_index_roundtrips_every_canonical_name(self):
-        from services.gochara_rules.p6 import nakshatra_index
+    @_DEFERRED_TO_KALA
+    @pytest.mark.parametrize("n,canon,legacy", CASES)
+    def test_DEFERRED_p6_resolves_the_lexicon_spelling(self, n, canon, legacy):
+        from services.gochara_rules.p6 import nakshatra_index as p6_index
 
-        for i, name in enumerate(CANONICAL_NAKSHATRA_NAMES, start=1):
-            assert nakshatra_index(name) == i
-            assert nakshatra_index(name.replace(" ", "")) == i
+        assert p6_index(canon) == n
+
+    def test_p6_roundtrips_every_name_of_its_own_literal(self):
+        from services.gochara_rules.ashtakavarga import NAKSHATRAS
+        from services.gochara_rules.p6 import nakshatra_index as p6_index
+
+        for i, name in enumerate(NAKSHATRAS, start=1):
+            assert p6_index(name) == i and p6_index(name.replace(" ", "")) == i
 
     @pytest.mark.parametrize("name", [n for n in UNKNOWN_NAMES])
     def test_unknown_name_still_raises_value_error(self, name):
-        from services.gochara_rules.p6 import nakshatra_index
+        from services.gochara_rules.p6 import nakshatra_index as p6_index
 
         with pytest.raises(ValueError, match="unknown nak"):
-            nakshatra_index(name)
+            p6_index(name)
 
     def test_non_string_still_raises_type_error(self):
-        from services.gochara_rules.p6 import nakshatra_index
+        from services.gochara_rules.p6 import nakshatra_index as p6_index
 
         with pytest.raises(TypeError):
-            nakshatra_index(5)
+            p6_index(5)
