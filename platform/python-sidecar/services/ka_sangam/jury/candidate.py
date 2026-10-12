@@ -16,6 +16,9 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from services.kala_core.assertion import AssertionEnvelope, Ref, Typed
+from services.kala_core.assertion.attachment import (
+    AttachmentReport, CanonicalForecast, EventIdentity, ReadingClaim, attach_reading_claims,
+)
 from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS, Interval, intersect_intervals
 from .agreement import Agreement, agreement
 from .contests import Contest, Opinion, Sequence, _canonical, contests, sequences, turning_points
@@ -41,6 +44,9 @@ class ClassInput(Typed):
     corpus_admitted: StrictBool = False
     kp_ingested: StrictBool = False
     non_identity_shifts: Annotated[StrictInt, Field(ge=1)] = DEFAULT_NON_IDENTITY_SHIFTS
+    event_identity: EventIdentity | None = None
+    observable_event_ref: Ref | None = None
+    reading_claims: tuple[ReadingClaim, ...] = ()
 
     @property
     def horizon(self):
@@ -52,6 +58,11 @@ class ClassInput(Typed):
 
     @model_validator(mode='after')
     def complete_class(self):
+        if (self.event_identity is None) != (self.observable_event_ref is None):
+            raise ValueError('canonical event identity and observable predicate must be supplied together')
+        if self.event_identity and (self.event_identity.event_class != self.event_class
+                or self.event_identity.affected_person != self.anchor.subject.affected_person):
+            raise ValueError('canonical event identity must match the jury subject')
         if self.anchor.stage != 'judge' or self.anchor.role != 'selects' or self.anchor.operator_role != 'scored':
             raise ValueError('the class anchor must be a selected judge assertion')
         if not self.anchor.generation.startswith('candidate:') or self.anchor.generation == 'candidate:':
@@ -119,6 +130,7 @@ class CandidateResult:
     contests: tuple[Contest, ...]
     sequences: tuple[Sequence, ...]
     support: tuple[Support, ...]
+    attachments: AttachmentReport
 
 
 def _class_evidence(value):
@@ -181,8 +193,13 @@ def compute(value: ClassInput) -> CandidateResult:
     measured = agreement(value.horizon, nodes, uses, roster.values(), alpha=value.alpha,
         exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts)
     identity = json.dumps([value.event_class, value.horizon.start, value.horizon.end], separators=(',', ':'))
-    return CandidateResult('jury:' + hashlib.sha256(identity.encode()).hexdigest(), measured,
-                           contests(opinions), sequences(opinions), support)
+    assertion_id = 'jury:' + hashlib.sha256(identity.encode()).hexdigest()
+    forecasts = () if value.event_identity is None else (CanonicalForecast(
+        chart_id=value.anchor.chart_id, event=value.event_identity,
+        observable_event_ref=value.observable_event_ref, objects=value.anchor.subject.objects,
+        assertion_ids=(assertion_id,)),)
+    attachments = attach_reading_claims(forecasts, value.reading_claims)
+    return CandidateResult(assertion_id, measured, contests(opinions), sequences(opinions), support, attachments)
 
 
 def bind_candidate(ctx, *, lock: bool) -> str:
@@ -240,6 +257,7 @@ def write_candidate(ctx, value: ClassInput, *, joint_points=()) -> int:
     provenance = {'contract_version': VERSION, 'acceptance_scope': 'fixture_only',
         'anchor': value.anchor.model_dump(mode='json'), 'upstream_refs': value.upstream_refs,
         'axis': 'utc_unix_seconds', 'sequences': [asdict(s) for s in result.sequences],
+        'reading_attachment_report': result.attachments.model_dump(mode='json'),
         'turning_points': [asdict(p) for p in joint_points if value.event_class in p.event_classes]}
     with ctx.db_conn.cursor() as cursor:
         # Child-first replacement is restricted to this class. Published and

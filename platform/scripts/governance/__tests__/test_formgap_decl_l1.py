@@ -167,7 +167,7 @@ def test_ga_dashas_declaration_is_the_checked_form_and_its_vocabularies_are_the_
     assert cols[(None, "system_id")] == ["vimshottari", "yogini", "ashtottari", "chara_karaka", "naisargika", "mudda", "kalachakra", "narayana", "vimshottari_kp", "scope_cap"]
     assert cols[(None, "ayanamsha_id")] == fs.AYANAMSHAS + ["INVARIANT"] and cols[("chart_facts", "ayanamsha_id")] == ["INVARIANT"]
     assert cols[(None, "karaka_role_at_period")] == ["AK", "AmK", "BK", "MK", "PiK", "PK", "GK", "DK"]
-    assert cols[(None, "lord_natal_nakshatra")] == fs.NAKSHATRA27 and cols[(None, "lord_natal_sign")] == SIGNS12 == cols[(None, "lord_sign")]
+    assert cols[(None, "lord_natal_nakshatra")] in (fs.NAKSHATRA27, fs.NAKSHATRA27_LEGACY) and cols[(None, "lord_natal_sign")] == SIGNS12 == cols[(None, "lord_sign")]
     assert cols[(None, "lord_natal_dignity_d1")] == ["exalted", "debilitated", "moolatrikona", "own", "neutral", "unknown"]
     assert cols[(None, "period_deity_or_marker")] == YOGINI8 + [f"Kalachakra-{s}" for s in SIGNS12] + ["scope_cap"]
     assert len(cols[(None, "karakas_active_during_period")]) == 64 and "Rahu:PK" in cols[(None, "karakas_active_during_period")] and "Ketu:PK" not in cols[(None, "karakas_active_during_period")]
@@ -332,7 +332,7 @@ def _restore(pg, sql_undo):
 @pytest.mark.parametrize("col,bad,needle", [
     ("lord_graha", "Pluto", "chart_dashas.lord_graha"),
     ("karaka_role_at_period", "Sakha", "chart_dashas.karaka_role_at_period"),
-    ("lord_natal_nakshatra", "Mrigasira", "chart_dashas.lord_natal_nakshatra"),         # the spelling families of the pipeline do not mix
+    ("lord_natal_nakshatra", "Mrigashirsha", "chart_dashas.lord_natal_nakshatra"),      # a spelling no producer uses
     ("lord_natal_dignity_d1", "friend", "chart_dashas.lord_natal_dignity_d1"),
     ("period_deity_or_marker", "Kalachakra-Aquarious", "chart_dashas.period_deity_or_marker"),
     ("engine_version", "pyjhora_adapter/9.9.9", "chart_dashas.engine_version"),

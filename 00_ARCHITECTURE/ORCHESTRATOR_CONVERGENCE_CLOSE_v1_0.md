@@ -248,3 +248,15 @@ present). Full orchestrator suite (1134 tests) re-run clean; the 3 pre-existing 
 independently confirmed present on an unmodified `origin/main` checkout in the same sandbox
 (missing Swiss Ephemeris `.se1` data / a `swisseph` stub gap) — unrelated to this change, not
 introduced by it.
+
+### 7.3 — Post-pass evidence event on the durable-event allowlist (2026-10-12)
+
+**Authorization:** native, direct and verbatim. The native answered "yes" (relayed by the SS session, N-557, 2026-10-12) to this exact question: "Do you approve adding one event name to the build engine's permitted-events list?" One narrow freeze-adjacent change, nothing else in `pipeline/orchestrator/`.
+
+**Change:** the string `writer.post_pass_evaluated` is added to `DEFAULT_DURABLE_EVENT_TYPES` in `pipeline/orchestrator/events.py` (one line). `runner.py`, `asset_runner.py`, `WriterBase`, `plan_substeps`/`run_substep`, `ctx` and `WriterResult` are untouched.
+
+**Why:** ga_vichara Option A (owner ruling). When the daridra dosha does not form, `ga_daridra_postpass.py` writes no `chart_facts` row (an honest absence). The run therefore records, through the orchestrator's own `persist_event`, one `post_pass_evidence/1` event per (chart, ayanamsha, build) saying how many catalog entries it evaluated and that nothing formed, so an empty slice can be told apart from "the post-pass never ran".
+
+**Contract impact:** none. The writer runs on `ctx.db_conn`, never commits or closes it, writes no `asset_throughput`. A failed or refused evidence write RAISES inside the writer (the substep fails and its rows roll back); `persist_event` itself stays never-raising. The register row's payload is the whole event dict (a superset of the frozen `post_pass_evidence/1` keys). Tests: `tests/test_ga_daridra_postpass_evidence.py`.
+
+**Window effect:** `events.py` is in the writer closure of 38 assets, so this line reopens all 38 build windows; the final rebuild forces them (Exec's 41-asset plan, `ka_vighnakara` is Kāla's).

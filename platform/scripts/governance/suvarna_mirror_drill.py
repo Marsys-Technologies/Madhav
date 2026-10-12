@@ -93,7 +93,7 @@ NEEDS = {
 # these statements, and each carries the outcome it produced.
 OWNERSHIP_PROBES = (
     {"asset": "bg_rules", "sql": "SELECT extracted_by, count(*) FROM sutravali_rules GROUP BY 1",
-     "outcome": "only extracted_by = 'python_regex_v2' (3002 rows): bg_rules is DECLARED (key rule_id, a deterministic uuid5)"},
+     "outcome": "only extracted_by = 'python_regex_v2' (2994 rows): bg_rules is DECLARED (key rule_id, a deterministic uuid5)"},
     {"asset": "bg_transit_rules", "sql": "SELECT rule_type, graha, count(*) FROM bg_transit_rules GROUP BY 1, 2",
      "outcome": "7 double_transit rows (Jupiter 5, Saturn 2) from migration 397: bg_transit_rules stays UNDECLARED"},
     {"asset": "bg_gochara_citation_resolution", "sql": "SELECT count(*) FROM bg_gochara_citation_resolution",
