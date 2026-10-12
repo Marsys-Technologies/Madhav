@@ -81,9 +81,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py
 
-# tranche: deferred — second part of step 3 (owner decision 2026-10-12): listed and pinned, reviewed separately,
-#   not bound by the first bootstrap manifest and not used by step 4 (the launcher does not import them).
-# tranche: deferred
 
 # area: loops — headless loop controller, control script, notifier, launchd jobs, loop prompts
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py
@@ -120,9 +117,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json
 
-# (I) INTERPRETATION: newly listed assembly files stay deferred; listing/pinning does not grant
-# review acceptance, installation or activation, and existing bound/deferred classifications stay intact.
-# tranche: deferred
 
 # area: B-4 — campaign cards, coverage and offline packet acceptance with its tests/fixtures
 00_ARCHITECTURE/briefs/kalayantra/fleet/accept/README.md
@@ -217,3 +211,28 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_preflight.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/verify_specs.sh
+
+# area: tracker — the tracker package the installation deploys (non-test files)
+platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md
+platform/scripts/governance/pravaha_tracker/__init__.py
+platform/scripts/governance/pravaha_tracker/audit.py
+platform/scripts/governance/pravaha_tracker/claims.py
+platform/scripts/governance/pravaha_tracker/cli.py
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.A.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.B.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.C.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.tracker.plist
+platform/scripts/governance/pravaha_tracker/completion.py
+platform/scripts/governance/pravaha_tracker/detectors.py
+platform/scripts/governance/pravaha_tracker/events.py
+platform/scripts/governance/pravaha_tracker/install_launchd.sh
+platform/scripts/governance/pravaha_tracker/install_runners.sh
+platform/scripts/governance/pravaha_tracker/kimi_review.py
+platform/scripts/governance/pravaha_tracker/runner.py
+platform/scripts/governance/pravaha_tracker/server.py
+platform/scripts/governance/pravaha_tracker/state.py
+platform/scripts/governance/pravaha_tracker/static/app.css
+platform/scripts/governance/pravaha_tracker/static/app.js
+platform/scripts/governance/pravaha_tracker/static/index.html
+platform/scripts/governance/pravaha_tracker/steward_watch.py
+platform/scripts/governance/pravaha_tracker/verdicts.py
