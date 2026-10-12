@@ -24,7 +24,8 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
-import { grahaCodeOf } from '../../../address_resolver'
+import { grahaCodeOf, ZODIAC_SIGNS } from '../../../address_resolver'
+import { grahaIdentityOf } from '../../../graha_labels'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 import { InvalidAyanamshaError } from '../../../chart_facts_helpers'
@@ -141,6 +142,36 @@ const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
  */
 export function factSubjectForLord(lordGraha: string | undefined): string | undefined {
   return GRAHA_NAME_TO_FACT_SUBJECT[YOGINI_DEITY_TO_GRAHA_NAME[lordGraha ?? ''] ?? lordGraha ?? '']
+}
+
+// `lord_graha` filter. chart_dashas.lord_graha stores Title-case names: the 9 graha names for the graha dasha
+// systems, the 12 sign names for the rashi systems (chara_karaka / kalachakra / narayana) and the 8 deity names
+// for yogini. The caller's string is RESOLVED to that stored form (graha code, alias or name through the shared
+// graha vocabulary; a sign name; a yogini deity name, case-insensitive); it is never applied verbatim and never
+// guessed. An unrecognised value is a structured error, not an empty page.
+const YOGINI_DEITIES = Object.keys(YOGINI_DEITY_TO_GRAHA_NAME)
+export const LORD_GRAHA_STORED_FORMS: readonly string[] = [
+  'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu',
+  ...ZODIAC_SIGNS,
+  ...YOGINI_DEITIES,
+]
+
+export function resolveLordGrahaFilter(input: string): { ok: true; stored: string } | { ok: false } {
+  const raw = String(input ?? '').trim()
+  if (!raw) return { ok: false }
+  const key = raw.toLocaleLowerCase('en-US')
+  const sign = ZODIAC_SIGNS.find(s => s.toLocaleLowerCase('en-US') === key)
+  if (sign) return { ok: true, stored: sign }
+  const deity = YOGINI_DEITIES.find(d => d.toLocaleLowerCase('en-US') === key)
+  if (deity) return { ok: true, stored: deity }
+  try {
+    const identity = grahaIdentityOf(raw)
+    if (!identity.roles.includes('graha')) return { ok: false }
+    const stored = identity.canonical_label.replace(/ \(.*\)$/, '')   // "Rahu (true node)" -> the stored "Rahu"
+    return LORD_GRAHA_STORED_FORMS.includes(stored) ? { ok: true, stored } : { ok: false }
+  } catch {
+    return { ok: false }                                                  // unknown or ambiguous (e.g. "node")
+  }
 }
 
 // ── fields projection (design §3 `select` idiom — "projection, the 63KB killer") ──
@@ -428,7 +459,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     date_contains: { type: 'string', description: 'ISO date (YYYY-MM-DD). Returns dashas active on this date.' },
     date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
     as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins. A date before the chart birth date is served with an explicit structured pre-birth warning.' },
-    lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
+    lord_graha:    { type: 'string', description: 'Filter by dasha lord. Accepts a graha code, alias or name (SU, Sun and sun are the same; MO, MA, Rahu, Ketu ...), a sign name for the rashi dasha systems (chara_karaka, kalachakra, narayana: e.g. Taurus), or a yogini deity name (e.g. Mangala); resolved to the stored form. An unrecognised value returns an invalid_lord_graha error listing the recognised values, never an empty page.' },
     include_cross_check: {
       type: 'boolean',
       description:
@@ -571,9 +602,23 @@ export const getDashasCapability: CapabilityDescriptor = {
         levelApplied = 'cap<=3'
       }
 
+      let lordGrahaApplied: { requested: string; stored: string } | null = null
       if (args.lord_graha) {
+        const lord = resolveLordGrahaFilter(String(args.lord_graha))
+        if (!lord.ok) {
+          return {
+            content: {
+              chart_id: chartId,
+              code: 'invalid_lord_graha',
+              error: `get_dashas: lord_graha "${String(args.lord_graha)}" is not a recognised graha code/name, sign name or yogini deity name.`,
+              recognized_lord_graha: [...LORD_GRAHA_STORED_FORMS],
+            },
+            is_error: true,
+          }
+        }
         pageWhere += ` AND d.lord_graha = $${params.length + 1}`
-        params.push(args.lord_graha as string)
+        params.push(lord.stored)
+        lordGrahaApplied = { requested: String(args.lord_graha), stored: lord.stored }
       }
 
       // ── as-of / containment (P1 W0a fix — UNCHANGED semantics, still wins over window) ──
@@ -651,7 +696,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         system_id: systemApplied,
         ...(kpMixed ? { kp_frame: `${KP_FRAME_DASHA_SYSTEM}@${KP_FRAME_AYANAMSHA}` } : {}), // SS N-368 (2): the cursor covers the KP frame
         level: levelApplied,
-        lord_graha: args.lord_graha ?? null,
+        lord_graha: lordGrahaApplied?.stored ?? null,
         date_contains: containsDate ?? null,
         date_from: args.date_from ?? null,
         window_start: windowApplied?.start ?? null,
@@ -935,6 +980,12 @@ export const getDashasCapability: CapabilityDescriptor = {
       })
 
       const judgment_flags: JudgmentFlagEntry[] = []
+      if (lordGrahaApplied && lordGrahaApplied.requested !== lordGrahaApplied.stored) {
+        judgment_flags.push(judgmentFlag(
+          'lord_graha_resolved',
+          `lord_graha "${lordGrahaApplied.requested}" was resolved to the stored form "${lordGrahaApplied.stored}".`
+        ))
+      }
       if (systemRequestedButUnknown) {
         judgment_flags.push(judgmentFlag(
           'system_facet_unrecognized',
