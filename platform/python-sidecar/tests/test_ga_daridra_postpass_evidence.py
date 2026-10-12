@@ -235,18 +235,16 @@ def test_a_missing_build_id_is_refused_before_anything_is_written():
         assert conn.executed == []
 
 
-def test_the_prior_record_is_deleted_first_on_the_same_cursor_scoped_to_this_run_and_ayanamsha(monkeypatch):
+def test_the_register_is_append_only_this_writer_never_deletes_or_updates_it(monkeypatch):
     _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
     conn = _RecConn()
     assert _emit(conn) == 0
-    sqls = [s for s, _ in conn.executed]
-    d = next(i for i, s in enumerate(sqls) if s.startswith("DELETE FROM orchestrator_event_register"))
-    i = next(i for i, s in enumerate(sqls) if s.startswith("INSERT INTO orchestrator_event_register"))
-    assert d < i
-    sql, params = conn.executed[d]
-    for col in ("event_type = %s", "chart_id = %s", "asset_id = %s", "run_id = %s", "payload->>'ayanamsha_id' = %s"):
-        assert col in sql
-    assert params == ("writer.post_pass_evaluated", CHART_ID, "ga_vichara", BUILD_ID, AYA)
+    dml = [s.split()[0] for s, _ in conn.executed if s.split()[0] in ("INSERT", "DELETE", "UPDATE") and "orchestrator_event_register" in s]
+    assert dml == ["INSERT"]
+    src = (SIDECAR / "ga_writers/ga_daridra_postpass.py").read_text()
+    tree = ast.parse(src)
+    strings = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+    assert not any("orchestrator_event_register" in x for x in strings)           # no SQL naming the register at all: persist_event is the only writer
 
 
 from tests.pg_disposable import HAVE_PG, PG_SKIP_REASON, new_db, psql, q, pg  # noqa: E402,F401
@@ -270,56 +268,53 @@ def _emit_live(conn, run, aya, *, formed=False):
 
 
 @requires_pg
-def test_live_two_emissions_for_the_same_chart_ayanamsha_run_leave_exactly_one_record(pg):
+def test_live_a_repeat_for_the_same_chart_ayanamsha_run_appends_and_never_erases(pg):
     db, conn = _live(pg)
     try:
         _emit_live(conn, "run-A", AYA)
         _emit_live(conn, "run-A", AYA)
         conn.commit()
-        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register") == "1"
-        assert q(pg, db, "SELECT run_id || '|' || chart_id || '|' || asset_id || '|' || (payload->>'ayanamsha_id') FROM orchestrator_event_register") \
-            == f"run-A|{CHART_ID}|ga_vichara|{AYA}"
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register") == "2"                       # append-only: both stay
+        assert q(pg, db, "SELECT count(DISTINCT payload - 'rows_present') FROM orchestrator_event_register") == "1"   # and they agree
     finally:
         conn.close()
 
 
 @requires_pg
-def test_live_a_retry_after_a_failed_substep_leaves_five_records_not_ten_and_other_runs_are_untouched(pg):
+def test_live_a_retry_of_the_same_run_appends_a_second_set_and_other_runs_are_untouched(pg):
     db, conn = _live(pg)
     try:
         for aya in _AYANAMSHAS[:3]:                         # first pass: three substeps committed, then the run crashes
             _emit_live(conn, "run-A", aya)
             conn.commit()
+        first_ids = q(pg, db, "SELECT string_agg(id::text, ',' ORDER BY id) FROM orchestrator_event_register")
         for aya in _AYANAMSHAS:                             # the orchestrator retries the SAME run id: all five substeps again
-            _emit_live(conn, "run-A", aya, formed=(aya == "yukteshwar"))
+            _emit_live(conn, "run-A", aya)
             conn.commit()
-        _emit_live(conn, "run-B", AYA)                      # a different run's record must survive a retry of run-A
+        _emit_live(conn, "run-B", AYA)
         conn.commit()
-        _emit_live(conn, "run-A", AYA)                      # and a further retry of run-A must not touch run-B
-        conn.commit()
-        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "5"
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "8"          # 3 first-pass + 5 retry: nothing erased
         assert q(pg, db, "SELECT count(DISTINCT payload->>'ayanamsha_id') FROM orchestrator_event_register WHERE run_id = 'run-A'") == "5"
         assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-B'") == "1"
-        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register") == "6"
-        assert q(pg, db, "SELECT (payload->>'formed') FROM orchestrator_event_register WHERE run_id='run-A' AND payload->>'ayanamsha_id'='yukteshwar'") == "true"
+        assert q(pg, db, "SELECT string_agg(id::text, ',' ORDER BY id) FROM orchestrator_event_register WHERE id <= 3") == first_ids   # first-pass rows byte-for-byte present
     finally:
         conn.close()
 
 
 @requires_pg
-def test_live_a_failing_record_after_the_delete_rolls_the_delete_back_with_the_substep_savepoint(pg, monkeypatch):
+def test_live_a_failing_record_rolls_back_with_the_substep_savepoint_and_leaves_the_first_pass_record(pg, monkeypatch):
     db, conn = _live(pg)
     try:
         _emit_live(conn, "run-A", AYA)
         conn.commit()
-        monkeypatch.setattr(pp, "persist_event", lambda cur, event: False)
         with conn.cursor() as cur:
             cur.execute("SAVEPOINT writer_exec")
+        monkeypatch.setattr(pp, "persist_event", lambda cur, event: False)
         with pytest.raises(RuntimeError, match="persist_event returned False"):
             _emit_live(conn, "run-A", AYA)
         with conn.cursor() as cur:
             cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
         conn.commit()
-        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "1"     # the first-pass record survived
+        assert q(pg, db, "SELECT count(*) FROM orchestrator_event_register WHERE run_id = 'run-A'") == "1"
     finally:
         conn.close()
