@@ -51,7 +51,7 @@ Predictions without a falsifier are invalid and must be rephrased until they are
 
 **Use `holistic_bundle`** when: you need cross-layer context before synthesizing; the question requires MSR + CGM + vector layers simultaneously; you want cache-backed parallel fan-out with error isolation.
 
-**Use `multi_school_bundle`** when: the question explicitly concerns whether Parashara, Jaimini, KP, and Tajaka agree on a specific astrological rule or claim.
+**For multi-school claims** (do Parashara, Jaimini, KP and Tajaka agree on a specific rule?), read each school through its own face and compare explicitly; there is no merged multi-school tool.
 
 **Use primitives directly** when: you need fresh data bypassing the 5-minute cache; the question is scoped to a single layer; bundle latency is unacceptable.
 

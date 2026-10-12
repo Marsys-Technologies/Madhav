@@ -18,6 +18,26 @@ const fixedNonBuildDispositions = new Map([
   ['bg_sarvatobhadra_grid', 'empty_acceptance'],
   ['lel_events', 'source_acceptance'],
 ])
+/**
+ * SS rulings N-430 / N-438 (migration 1360): bg_sarvatobhadra_grid was an adjudicated `empty_acceptance` (deliberately empty, ADJUDICATION-11) until it was
+ * RETIRED as unbuilt. Its SUCCESSOR state is `retired_with_disposition` (RETAINED_AS_CAPITAL: the table is kept), so a RETIRED row of that id no longer owes the
+ * empty acceptance. The two states are one rule keyed on the row's own `catalog_status`, never on the id alone: an un-retired row keeps the original fixed
+ * `empty_acceptance` (so the immutable T0 definitions that froze it before 1360 stay valid), and the retired state is not a silent exclusion — the row stays in the
+ * frozen population with a formal disposition.
+ */
+const retiredSuccessorDispositions = new Map([
+  ['bg_sarvatobhadra_grid', 'retired_with_disposition'],
+])
+/**
+ * Ids whose retirement has NO successor asset (`superseded_by` NULL is the declared shape; their `data_disposition` is still mandatory). Every other
+ * `retired_with_disposition` asset must name a successor. Closed list: adding an id needs its own ruling.
+ */
+const retiredWithoutSuccessor: ReadonlySet<string> = new Set(['bg_sarvatobhadra_grid'])
+function fixedNonBuildDispositionFor(assetId: string, catalogStatus: string): string | undefined {
+  const retired = retiredSuccessorDispositions.get(assetId)
+  if (retired !== undefined && catalogStatus === 'RETIRED') return retired
+  return fixedNonBuildDispositions.get(assetId)
+}
 const fixedProducerCoverage = new Map([
   ['bg_sign_medical', 'bg_medical_mappings'],
   ['bg_nakshatra_medical', 'bg_medical_mappings'],
@@ -405,7 +425,7 @@ export function nirmanaExecutionContractForRegistryRow(row: NirmanaRegistryContr
   producer_id?: string
   covered_asset_ids?: string[]
 } {
-  const fixedDisposition = fixedNonBuildDispositions.get(row.asset_id)
+  const fixedDisposition = fixedNonBuildDispositionFor(row.asset_id, row.catalog_status)
   if (fixedDisposition) return { execution_obligation: fixedDisposition as NirmanaExecutionObligation }
 
   const producerId = fixedProducerCoverage.get(row.asset_id)
@@ -573,7 +593,7 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
     if (asset.asset_id === 'lel_events' && (asset.layer !== 'L5' || asset.execution_obligation !== 'source_acceptance')) {
       throw new Error('The legacy lel_events identity is permitted only as the L5 user-authored source disposition.')
     }
-    const fixedDisposition = fixedNonBuildDispositions.get(asset.asset_id)
+    const fixedDisposition = fixedNonBuildDispositionFor(asset.asset_id, asset.registry_contract.catalog_status)
     if (fixedDisposition !== undefined && asset.execution_obligation !== fixedDisposition) {
       throw new Error(`Asset ${asset.asset_id} must retain its adjudicated ${fixedDisposition} obligation.`)
     }
@@ -596,7 +616,8 @@ export function assertFreezableManifest(manifest: NirmanaElevationManifest): voi
     if (asset.execution_obligation === 'retired_with_disposition'
       && (asset.registry_contract.catalog_status !== 'RETIRED'
         || asset.registry_contract.is_active
-        || !asset.registry_contract.superseded_by
+        || (!asset.registry_contract.superseded_by && !retiredWithoutSuccessor.has(asset.asset_id))
+        || (retiredWithoutSuccessor.has(asset.asset_id) && asset.registry_contract.superseded_by)
         || !asset.registry_contract.data_disposition)) {
       throw new Error(`Retired asset ${asset.asset_id} is missing its successor or data disposition.`)
     }

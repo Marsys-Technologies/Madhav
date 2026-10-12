@@ -24,7 +24,7 @@ describe('getPrashnaLagnaCapability', () => {
     const sql = mockQuery.mock.calls[0][0] as string
     expect(sql).toContain('FROM ga_prashna_lagna')
     expect(sql).toContain('chart_id = $1')
-    expect(mockQuery.mock.calls[0][1]).toEqual([PRASHNA_CHART_ID, 20])
+    expect(mockQuery.mock.calls[0][1]).toEqual([PRASHNA_CHART_ID, 'lahiri_chitrapaksha', 20])
   })
 
   it('primary_only filter adds is_primary = TRUE with no extra param', async () => {

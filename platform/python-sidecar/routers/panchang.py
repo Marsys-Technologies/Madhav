@@ -568,7 +568,7 @@ def panchanga_get_endpoint(
             "service_asset_id": "bg_panchanga",
             "grain": "civil_date+latitude+longitude+tz_offset_minutes",
             "frame": "geocentric_sidereal",
-            "ayanamsha_id": "lahiri",
+            "ayanamsha_id": "lahiri_chitrapaksha",
             "node_mode": "mean",
             "calendar_day_boundary": "local_sunrise_to_next_local_sunrise",
             "sunrise_convention": "upper_limb_with_atmospheric_refraction",

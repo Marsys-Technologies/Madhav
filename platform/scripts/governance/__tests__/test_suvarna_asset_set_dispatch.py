@@ -1169,3 +1169,390 @@ def test_r5_bad_run_ids_and_non_ascii_digits_are_bad_input_not_unexpected(env):
         assert code == 2, flag
     code, ev = run(env, argv_for(env, "--accept-cross-chart-impact", f"{OTHER_A}=\u00b2"), db=FakeDB())
     assert code == 2
+
+
+# ───────────────────────── family override (--allow-family-assets, SS N-443 D3) ─────────────────────────
+# The override waives EXACTLY FAMILY_ASSET and SPLITS_FAMILY, ONLY for the named ids; it is bound into the token, the receipt and the log.
+# With the flag absent every output is what it was before the flag existed (the GOLDEN_* constants were captured from the old code).
+
+FX = json.loads((HERE / "_asset_set_family_override_fixture.json").read_text())
+FX_ROWS = {r["asset_id"]: r for r in FX["rows"]}
+FAMILY_FILE = json.loads((REPO / "00_ARCHITECTURE" / "control" / "FAMILY_ASSETS.json").read_text())
+FAMILY_REAL = {"state": "present", "family_set": frozenset(FAMILY_FILE["family_set"]),
+               "families": {k: frozenset(FAMILY_FILE[k]) for k in slw.FAMILY_LIST_KEYS}}
+ALL_LAYERS = "brahmagyan,ganita,bodha,kala,phala,mimamsa"
+FAMILY_FLAG = "--allow-family-assets"
+FAM_MIN = {"state": "present", "family_set": frozenset({"fam_a", "fam_b", "fam_c"}),
+           "families": {**{k: frozenset() for k in slw.FAMILY_LIST_KEYS}, "family_gochara": frozenset({"fam_a", "fam_b", "fam_c"})}}
+FAMILY_CODES = {"FAMILY_ASSET", "SPLITS_FAMILY"}
+
+GOLDEN_UNIT_TOKEN = "ASSETSET2_0F753BD8FEF8_FORCE_ASSET_SET_REBUILD"
+GOLDEN_PLAN_TOKEN = "ASSETSET7_AC8EC62423B3_FORCE_ASSET_SET_REBUILD"
+GOLDEN_SUMMARY_KEYS = sorted("""action anchor_chart anchor_is_canonical asset_count assets committed committed_runs confirm_token connection_budget
+cross_chart_impact cross_chart_impact_accepted cross_chart_impact_lines dispatch_command_preview event excluded_accepted execution_env_override
+external_dependencies force_execute global_assets impact_sha256 insert job_image_check layer_counts locks manifest_digest
+out_of_set_intermediates_at_risk receipt_path runbook_gates_not_in_tool runtime_estimate schema scope target triggered_by wave_count wave_widths
+waves worker_limit_override""".split())
+GOLDEN_RECEIPT_KEYS = sorted("""anchor_chart assets committed committed_at confirm_token connection_budget cross_chart_impact excluded_accepted
+execution_name image_sha impact_sha256 inputs inventory_sha manifest_digest planned_at run_id schema target triggered_by verification waves
+worker_limit""".split())
+GOLDEN_INPUT_KEYS = ["accept_cross_chart", "accept_excluded", "allow_redispatch", "requested"]
+
+
+def _codes(findings, asset):
+    return sorted(f["code"] for f in findings if f["asset"] == asset)
+
+
+def _fam_rows(**over):
+    base = {"fam_a": row("fam_a"), "fam_b": row("fam_b"), "ok_1": row("ok_1")}
+    base.update(over)
+    return list(base.values())
+
+
+# ── pure classifier ──
+
+def test_the_waiver_applies_only_to_the_named_ids_and_covers_both_family_codes():
+    ids = ["fam_a", "fam_b", "ok_1"]
+    plain = asd.classify_assets(ids, _fam_rows(), FAM_MIN)
+    assert _codes(plain, "fam_a") == ["FAMILY_ASSET", "SPLITS_FAMILY"] and _codes(plain, "fam_b") == ["FAMILY_ASSET", "SPLITS_FAMILY"]
+    waived = asd.classify_assets(ids, _fam_rows(), FAM_MIN, allow_family=["fam_a"])
+    assert _codes(waived, "fam_a") == []                                                    # both codes waived for the named id
+    assert _codes(waived, "fam_b") == ["FAMILY_ASSET", "SPLITS_FAMILY"]                     # the id that is not named is refused as before
+    assert _codes(waived, "ok_1") == []
+    assert asd.classify_assets(ids, _fam_rows(), FAM_MIN, allow_family=["fam_a", "fam_b"]) == []
+
+
+def test_the_name_pattern_family_is_waived_for_a_named_id_too():
+    rows = [row("bg_gochara_arcs", scope="global", layer="brahmagyan")]
+    assert _codes(asd.classify_assets(["bg_gochara_arcs"], rows, {"state": "absent"}), "bg_gochara_arcs") == ["FAMILY_ASSET"]
+    assert asd.classify_assets(["bg_gochara_arcs"], rows, {"state": "absent"}, allow_family=["bg_gochara_arcs"]) == []
+
+
+@pytest.mark.parametrize("over,protected,expected", [
+    (row("fam_a", active=False), (), ["NOT_ACTIVE"]),
+    (row("fam_a", kind="service", writer=False), (), ["NO_WRITER", "SERVICE_ASSET"]),
+    (row("fam_a", writer=False), (), ["NO_WRITER"]),
+    (row("fam_a", probe=True), (), ["FORCE_BYPASSED_BY_PROBE"]),
+    (row("fam_a", layer="kala"), (), ["LAYER_NOT_ALLOWED"]),
+    (row("fam_a", scope="mixed"), (), ["SCOPE_NOT_ALLOWED"]),
+    (row("fam_a"), ("fam_a",), ["PROTECTED_ASSET"]),
+])
+def test_every_other_refusal_still_fires_for_a_named_family_id(over, protected, expected):
+    f = asd.classify_assets(["fam_a", "fam_b", "ok_1"], _fam_rows(fam_a=over), FAM_MIN, protected=protected, allow_family=["fam_a", "fam_b"])
+    assert _codes(f, "fam_a") == expected and _codes(f, "fam_b") == []
+
+
+def test_the_family_names_are_validated_requested_member_and_not_also_excluded():
+    ids = ["fam_a", "fam_b", "ok_1"]
+    asd.validate_allow_family(ids, ["fam_a", "fam_b"], FAM_MIN)                              # exact list: no refusal
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        asd.validate_allow_family(ids, ["fam_c", "ok_1", "fam_a", "no_such_x"], FAM_MIN, accept_excluded=["fam_a"])
+    got = sorted((r["asset"], r["code"]) for r in exc.value.refusals)
+    assert got == [("fam_a", "ACCEPT_FAMILY_ALSO_EXCLUDED"), ("fam_c", "ACCEPT_FAMILY_NOT_REQUESTED"),
+                   ("no_such_x", "ACCEPT_FAMILY_NOT_REQUESTED"), ("ok_1", "ACCEPT_FAMILY_NOT_FAMILY")]
+
+
+# ── token ──
+
+def test_the_token_changes_with_the_family_list_and_is_unchanged_without_it():
+    base = dict(manifest_digest=_hex("m"), ids=["a", "b"], anchor=CHART, image_sha=sha_of("i"), worker_limit=4, accepted_excluded=[],
+                allow_redispatch=[])
+    assert asd.build_confirm_token(**base) == GOLDEN_UNIT_TOKEN                              # captured from the code before the flag existed
+    assert asd.build_confirm_token(**base, allow_family=[]) == GOLDEN_UNIT_TOKEN              # empty list == absent flag
+    a = asd.build_confirm_token(**base, allow_family=["a"])
+    ab = asd.build_confirm_token(**base, allow_family=["a", "b"])
+    assert len({GOLDEN_UNIT_TOKEN, a, ab}) == 3                                              # a different list is a different token
+    assert ab == asd.build_confirm_token(**base, allow_family=["b", "a"])                    # the list is a set: order-free
+    assert asd.build_confirm_token(**base, allow_family=["b"]) != a
+
+
+# ── the CLI, small registry ──
+
+def _world(env, extra_rows=None, *, family_set=("bg_gochara_arcs",), registry_over=None):
+    reg = {**REG, **(extra_rows or {}), **(registry_over or {})}
+    digests = {a: _hex(a) for a in reg}
+    (pathlib.Path(env["repo"]) / "platform" / "src" / "generated" / "nirmana-writer-digests.json").write_text(
+        json.dumps({"version": 1, "writers": digests}))
+    return FakeDB(registry=reg), FakeGit(deployed=digests, family_set=family_set)
+
+
+def _token_without_or_with(s, allow):
+    return asd.build_confirm_token(manifest_digest=s["manifest_digest"], ids=s["assets"], anchor=CHART,
+                                   image_sha=s["job_image_check"]["deployed_job_sha"], worker_limit=None, accepted_excluded=[],
+                                   allow_redispatch=[], accepted_cross_chart={}, impact_sha256=s["impact_sha256"], job="brahma-build-pipeline-job",
+                                   project="madhav-astrology", region="asia-south1", job_worker_limit=None, allow_family=allow)
+
+
+def test_the_plan_with_the_flag_records_the_override_everywhere_and_the_token_binds_it(env, capsys):
+    ids = GOOD + ["bg_gochara_arcs"]
+    db, git = _world(env)
+    code, ev = run(env, argv_for(env, assets=ids), db=db, git=git)                           # without the flag: refused, as before
+    assert code == 4 and refusal_pairs(ev) == [("bg_gochara_arcs", "FAMILY_ASSET")]
+    capsys.readouterr()
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids), db=db, git=git)
+    assert code == 0, ev
+    s = last(ev)
+    assert [e["event"] for e in ev] == ["family_override", "summary"]
+    assert ev[0]["ids"] == ["bg_gochara_arcs"] and ev[0]["waives"] == ["FAMILY_ASSET", "SPLITS_FAMILY"]
+    assert ev[0]["line"] == "family-override: bg_gochara_arcs"
+    assert "family-override: bg_gochara_arcs" in capsys.readouterr().err                     # the plain log line
+    assert s["family_override"]["ids"] == ["bg_gochara_arcs"] and s["family_override"]["line"] == "family-override: bg_gochara_arcs"
+    assert "bg_gochara_arcs" in s["assets"] and s["asset_count"] == len(ids)
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["family_override"] == ["bg_gochara_arcs"] and rec["inputs"]["allow_family"] == ["bg_gochara_arcs"]
+    # the list is part of the token: the printed token is the one WITH the list, and not the one without it
+    assert _token_without_or_with(s, ["bg_gochara_arcs"]) == s["confirm_token"]
+    assert _token_without_or_with(s, []) != s["confirm_token"]
+
+
+def test_only_the_named_family_id_is_waived_the_other_family_id_and_split_members_still_refuse(env):
+    aux = {"bg_gochara_aux": row("bg_gochara_aux", scope="global", layer="brahmagyan")}
+    db, git = _world(env, aux, family_set=("bg_gochara_arcs", "bg_gochara_aux", "bg_gochara_unrequested"))
+    ids = GOOD + ["bg_gochara_arcs", "bg_gochara_aux"]
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids), db=db, git=git)
+    assert code == 4
+    assert refusal_pairs(ev) == [("bg_gochara_aux", "FAMILY_ASSET"), ("bg_gochara_aux", "SPLITS_FAMILY")]
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds()
+
+
+@pytest.mark.parametrize("over,code_", [
+    ({"bg_gochara_arcs": row("bg_gochara_arcs", scope="global", layer="brahmagyan", active=False)}, "NOT_ACTIVE"),
+    ({"bg_gochara_arcs": row("bg_gochara_arcs", scope="global", layer="brahmagyan", writer=False)}, "NO_WRITER"),
+    ({"bg_gochara_arcs": row("bg_gochara_arcs", scope="global", layer="brahmagyan", probe=True)}, "FORCE_BYPASSED_BY_PROBE"),
+    ({"bg_gochara_arcs": row("bg_gochara_arcs", scope="global", layer="kala")}, "LAYER_NOT_ALLOWED"),
+])
+def test_a_named_family_id_that_trips_another_refusal_is_still_refused(env, over, code_):
+    db, git = _world(env, registry_over=over)
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=GOOD + ["bg_gochara_arcs"]), db=db, git=git)
+    assert code == 4 and (("bg_gochara_arcs", code_) in refusal_pairs(ev))
+    assert not any(c in FAMILY_CODES for _a, c in refusal_pairs(ev))
+    assert db.inserts("build_runs") == []
+
+
+def test_protected_family_id_is_still_refused(env):
+    db, git = _world(env)
+    db.protected = ["bg_gochara_arcs"]
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=GOOD + ["bg_gochara_arcs"]), db=db, git=git)
+    assert code == 4 and refusal_pairs(ev) == [("bg_gochara_arcs", "PROTECTED_ASSET")]
+
+
+def test_unknown_unrequested_non_family_and_excluded_names_refuse_and_insert_nothing(env):
+    db, git = _world(env)
+    ids = GOOD + ["bg_gochara_arcs"]
+    for extra, pair in ((("ga_sensitive",), ("ga_sensitive", "ACCEPT_FAMILY_NOT_FAMILY")),
+                        (("bg_transit_rules",), ("bg_transit_rules", "ACCEPT_FAMILY_NOT_REQUESTED")),
+                        (("no_such_asset",), ("no_such_asset", "ACCEPT_FAMILY_NOT_REQUESTED"))):
+        code, ev = run(env, argv_for(env, FAMILY_FLAG, ",".join(("bg_gochara_arcs",) + extra), assets=ids), db=db, git=git)
+        assert code == 4 and refusal_pairs(ev) == [pair], extra
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", "--accept-excluded", "bg_gochara_arcs", assets=ids), db=db, git=git)
+    assert code == 4 and refusal_pairs(ev) == [("bg_gochara_arcs", "ACCEPT_FAMILY_ALSO_EXCLUDED")]
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs,bg_gochara_arcs", assets=ids), db=db, git=git)
+    assert code == 2                                                                         # the same id twice is bad input
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds()
+
+
+def test_commit_needs_the_flagged_plan_token_and_records_the_override_in_events_and_receipt(env):
+    ids = GOOD + ["bg_gochara_arcs"]
+    db0, git = _world(env)
+    s = last(run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids, worker_limit=3), db=db0, git=git)[1])
+    pathlib.Path(env["receipt"]).unlink()
+    tok = s["confirm_token"]
+    # the same token without the flag cannot run (the family id is refused again, and the token is a different one): nothing is inserted
+    db = FakeDB(registry=db0.registry)
+    code, ev = run(env, argv_for(env, assets=ids, commit=True, confirm=tok, worker_limit=3), db=db, git=git, dispatch=Dispatch())
+    assert code == 4 and db.inserts("build_runs") == [] and "commit" not in db.kinds()
+    # a wrong token with the flag
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids, commit=True, confirm=GOLDEN_PLAN_TOKEN, worker_limit=3),
+                   db=db, git=git, dispatch=Dispatch())
+    assert code == 4 and refusal_pairs(ev) == [(None, "CONFIRM_TOKEN_MISMATCH")] and db.inserts("build_runs") == []
+    disp = Dispatch()
+    code, ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids, commit=True, confirm=tok, worker_limit=3), db=db, git=git,
+                   dispatch=disp)
+    assert code == 0 and len(disp.calls) == 1 and len(db.inserts("build_runs")) == 1
+    by = {e["event"]: e for e in ev}
+    assert by["run_committed"]["family_override"] == ["bg_gochara_arcs"] and by["run_dispatched"]["family_override"] == ["bg_gochara_arcs"]
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["committed"] is True and rec["confirm_token"] == tok
+    assert rec["family_override"] == ["bg_gochara_arcs"] and rec["inputs"]["allow_family"] == ["bg_gochara_arcs"]
+
+
+def _crashed_flagged(env):
+    ids = GOOD + ["bg_gochara_arcs"]
+    db0, git = _world(env)
+    tok = last(run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids, worker_limit=3), db=db0, git=git)[1])["confirm_token"]
+    pathlib.Path(env["receipt"]).unlink()
+    db = FakeDB(registry=db0.registry)
+
+    class Killed(Dispatch):
+        def __call__(self, run_id):
+            self.calls.append(run_id)
+            raise KeyboardInterrupt
+    code, _ev = run(env, argv_for(env, FAMILY_FLAG, "bg_gochara_arcs", assets=ids, commit=True, confirm=tok, worker_limit=3), db=db, git=git,
+                    dispatch=Killed())
+    assert code == 7
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    rec.pop("dispatch_intended_at", None)
+    pathlib.Path(env["receipt"]).write_text(json.dumps(rec))
+    db.run_row = {"id": rec["run_id"], "chart_id": CHART, "state": "planned", "triggered_by": rec["triggered_by"],
+                  "plan_manifest_digest": rec["manifest_digest"]}
+    return db, git, rec, tok
+
+
+def test_dispatch_existing_takes_the_family_list_from_the_receipt_and_refuses_the_flag_and_a_tampered_list(env):
+    db, git, rec, tok = _crashed_flagged(env)
+    assert rec["inputs"]["allow_family"] == ["bg_gochara_arcs"]
+    # the flag is not accepted in recovery mode: the receipt is the source
+    code, ev = run(env, _existing_args(env, rec, tok, extra=[FAMILY_FLAG, "bg_gochara_arcs"]), db=db, git=git, dispatch=Dispatch())
+    assert code == 2
+    # a receipt whose list was edited cannot be executed (the family id is refused again)
+    good_rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    bad = json.loads(json.dumps(good_rec))
+    bad["inputs"]["allow_family"] = []
+    pathlib.Path(env["receipt"]).write_text(json.dumps(bad))
+    disp = Dispatch()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, git=git, dispatch=disp)
+    assert code == 4 and disp.calls == [] and ("bg_gochara_arcs", "FAMILY_ASSET") in refusal_pairs(ev)
+    # the untouched receipt executes once, with the same token, and no new INSERT
+    pathlib.Path(env["receipt"]).write_text(json.dumps(good_rec))
+    db.log.clear()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, git=git, dispatch=disp)
+    assert code == 0 and disp.calls == [rec["run_id"]] and db.inserts("build_runs") == []
+    assert [e["event"] for e in ev][:3] == ["family_override", "run_dispatching_existing", "run_dispatched"]
+    assert ev[0]["ids"] == ["bg_gochara_arcs"]
+
+
+def test_a_receipt_without_a_family_list_still_works_in_recovery_mode(env):
+    db, rec, tok = _crashed_after_commit(env)                                                  # an unflagged run: no allow_family anywhere
+    on_disk = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert "allow_family" not in on_disk["inputs"] and "family_override" not in on_disk
+    db.log.clear()
+    code, ev = run(env, _existing_args(env, rec, tok), db=db, dispatch=Dispatch())
+    assert code == 0 and "family_override" not in [e["event"] for e in ev]
+
+
+# ── flag absent: byte-for-byte the old behaviour ──
+
+def test_without_the_flag_token_summary_receipt_and_events_are_exactly_what_they_were(env, capsys):
+    code, ev = run(env, argv_for(env, *ACCEPT_ALL, worker_limit=4), db=FakeDB(throughput=OTHER_ROWS))
+    assert code == 0
+    assert [e["event"] for e in ev] == ["summary"]
+    s = last(ev)
+    assert s["confirm_token"] == GOLDEN_PLAN_TOKEN                                           # token captured from the code before the flag
+    assert sorted(s) == GOLDEN_SUMMARY_KEYS and "family_override" not in s
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert sorted(rec) == GOLDEN_RECEIPT_KEYS and sorted(rec["inputs"]) == GOLDEN_INPUT_KEYS
+    assert "family-override" not in capsys.readouterr().err
+
+
+def test_without_the_flag_a_committed_run_has_no_family_field_anywhere(env):
+    code, ev, db, disp = commit_run(env)
+    assert code == 0
+    assert all("family_override" not in e for e in ev)
+    assert "family_override" not in json.loads(pathlib.Path(env["receipt"]).read_text())
+
+
+# ── offline planner on the single-rebuild id lists (run 1 and tails A / B), registry rows from the in-repo fixture ──
+
+RUN1_FAMILY = ["bg_gochara_arcs", "bg_gochara_citation_resolution"]
+TAIL_A_FAMILY = ["ka_gochara", "ka_gochara_resonance", "ka_moorti_nirnaya", "ka_sangam", "ka_vedha_gochara", "ka_vighnakara", "ka_yojaka"]
+TAIL_B_FAMILY = ["ka_bhavishya_lekha", "ka_kala_darshana", "ka_kalasutra", "mi_adhilepa", "ph_muhurta", "ph_nimitta", "ph_pratikara"]
+FX_CASES = [("run1", 53, 17, RUN1_FAMILY), ("tailA", 8, 4, TAIL_A_FAMILY), ("tailB_482012f1", 22, 13, TAIL_B_FAMILY),
+            ("tailB_1c826d5a", 22, 13, TAIL_B_FAMILY)]
+SLOT = "bg_gochara_citation_resolution"        # reserved run-1 slot: no writer today (NO_WRITER until its writer PR lands)
+
+
+def _fx_world(env, assume_writer=()):
+    reg = {a: row(a, r["depends_on"], scope=r["scope"], layer=r["layer"], kind=r["asset_kind"], active=r["is_active"],
+                  writer=True if a in assume_writer else r["has_writer"], domain=r["domain"], probe=bool(r["rebuild_on_probe_fail"]))
+           for a, r in FX_ROWS.items()}
+    digests = {a: _hex(a) for a in reg}
+    (pathlib.Path(env["repo"]) / "platform" / "src" / "generated" / "nirmana-writer-digests.json").write_text(
+        json.dumps({"version": 1, "writers": digests}))
+    git = FakeGit(deployed=digests)
+    git.family = {k: list(FAMILY_FILE[k]) for k in (*slw.FAMILY_LIST_KEYS, "family_set")}
+    return reg, git
+
+
+def _fx_cli(env, name, allow, *extra, assume_writer=()):
+    reg, git = _fx_world(env, assume_writer)
+    ids = FX["lists"][name]
+    deps = {a: ("lit", "fresh", reg[a]["asset_kind"]) for a in reg if a not in ids}          # everything outside the list is lit and fresh
+    db = FakeDB(registry=reg, deps=deps)
+    flag = [FAMILY_FLAG, ",".join(allow)] if allow else []
+    code, ev = run(env, argv_for(env, "--allowed-layers", ALL_LAYERS, *flag, *extra, assets=ids), db=db, git=git)
+    return code, ev, db
+
+
+def _fx_classify(name, allow=(), assume_writer=()):
+    ids = FX["lists"][name]
+    rows = [{**FX_ROWS[a], **({"has_writer": True} if a in assume_writer else {})} for a in ids]
+    return asd.classify_assets(ids, rows, FAMILY_REAL, allowed_layers=tuple(ALL_LAYERS.split(",")), protected=["ka_gochara_sweep"],
+                               allow_family=allow)
+
+
+@pytest.mark.parametrize("name,count,waves,family", FX_CASES)
+def test_the_fixture_lists_are_what_the_runbook_says(name, count, waves, family):
+    ids = FX["lists"][name]
+    assert len(ids) == count and sorted(set(ids) & FAMILY_REAL["family_set"]) == family
+
+
+@pytest.mark.parametrize("name,count,waves,family", FX_CASES)
+def test_without_the_flag_the_family_ids_of_each_run_are_refused(name, count, waves, family):
+    f = _fx_classify(name, assume_writer=(SLOT,))
+    assert sorted({x["asset"] for x in f if x["code"] == "FAMILY_ASSET"}) == family
+    assert any(x["code"] == "SPLITS_FAMILY" for x in f)
+
+
+@pytest.mark.parametrize("name,count,waves,family", FX_CASES)
+def test_with_the_flag_the_family_refusals_disappear_and_the_planner_builds_the_waves(env, name, count, waves, family):
+    assert _fx_classify(name, allow=family, assume_writer=(SLOT,)) == []
+    code, ev, db = _fx_cli(env, name, family, assume_writer=(SLOT,))
+    assert code == 0, ev
+    s = last(ev)
+    assert s["asset_count"] == count and s["wave_count"] == waves and sorted(s["assets"]) == sorted(FX["lists"][name])
+    assert s["family_override"]["ids"] == family and s["excluded_accepted"] == []
+    assert sum(s["wave_widths"]) == count
+    rec = json.loads(pathlib.Path(env["receipt"]).read_text())
+    assert rec["family_override"] == family and rec["inputs"]["allow_family"] == family
+    assert len(db.inserts("build_runs")) == 1 and "commit" not in db.kinds()                    # plan: INSERT then ROLLBACK
+
+
+@pytest.mark.parametrize("name", ["run1", "tailA", "tailB_482012f1"])
+def test_the_cli_without_the_flag_refuses_the_same_lists(env, name):
+    code, ev, db = _fx_cli(env, name, [], assume_writer=(SLOT,))
+    assert code == 4 and {a for a, c in refusal_pairs(ev) if c == "FAMILY_ASSET"} == set(FX["lists"][name]) & FAMILY_REAL["family_set"]
+    assert db.inserts("build_runs") == []
+
+
+def test_run1_slot_without_a_writer_is_still_refused_even_when_named():
+    f = _fx_classify("run1", allow=RUN1_FAMILY)
+    assert [(x["asset"], x["code"]) for x in f] == [(SLOT, "NO_WRITER")]
+
+
+def test_run1_cli_with_the_slot_unbuilt_refuses_no_writer_and_inserts_nothing(env):
+    code, ev, db = _fx_cli(env, "run1", RUN1_FAMILY)
+    assert code == 4 and refusal_pairs(ev) == [(SLOT, "NO_WRITER")] and db.inserts("build_runs") == []
+
+
+def test_naming_only_some_family_ids_waives_only_those(env):
+    named = ["ka_gochara", "ka_moorti_nirnaya", "ka_vedha_gochara", "ka_vighnakara"]
+    code, ev, db = _fx_cli(env, "tailA", named)
+    assert code == 4
+    left = {a for a, c in refusal_pairs(ev) if c == "FAMILY_ASSET"}
+    assert left == {"ka_gochara_resonance", "ka_sangam", "ka_yojaka"} and not left & set(named)
+    assert not any(a in named for a, _c in refusal_pairs(ev))
+
+
+def test_the_whole_family_with_the_override_still_cannot_include_its_unbuildable_members():
+    members = sorted(a for a in FAMILY_REAL["family_set"] if a in FX_ROWS)
+    rows = [dict(FX_ROWS[a]) for a in members]
+    f = asd.classify_assets(members, rows, FAMILY_REAL, allowed_layers=tuple(ALL_LAYERS.split(",")), protected=["ka_gochara_sweep"],
+                            allow_family=members)
+    got = {}
+    for x in f:
+        got.setdefault(x["asset"], []).append(x["code"])
+    assert got == {"bg_gochara_citation_resolution": ["NO_WRITER"],
+                   "ka_gochara_sweep": ["NOT_ACTIVE", "PROTECTED_ASSET"],
+                   "ka_gochara_v3_century_materialize": ["NOT_ACTIVE"], "ka_gochara_v4_41_candidate": ["NOT_ACTIVE"],
+                   "ka_gochara_v5": ["NOT_ACTIVE"], "ka_tulana": ["SERVICE_ASSET"]}
+    assert not any(c in FAMILY_CODES for codes in got.values() for c in codes)

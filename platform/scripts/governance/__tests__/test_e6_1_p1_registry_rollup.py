@@ -96,6 +96,10 @@ PINNED_FINGERPRINTS = {
     26: "e3b11162f186818e22e1a0b34d7f83ef7281e7863c332aaece6f57da32bc25bd",
     # 27 (SS N-305, §N.8): Build.completion revision 7 - an unread latest-attempt log never leaves a PASS standing (the PASS is cut to PARTIAL naming the unread fact)
     27: "a556dc49ba1e9ceff91087b35300f98fea61e78c2d333d9fd76056a75a5f4cf2",
+    # 28 (SS N-429/N-431, ONE bump for all engine forms): (provisional): SS N-430/N-431 engine forms, ONE revision (the registry text edits of rev28_registry_edits.json); vocab_json_kinds, a CHECKED per-JSON-path kind for the Vocab.alias value detector (opt-in; an undeclared asset measures exactly as before)
+    28: "a8e18168b71510ea3ff87a1fa7bdeaf1673a8f0df57ca22e34fbca3959b76386",
+    # 29 (SS N-514, ONE bump): (provisional): SS N-514 Cost.baseline revision 2: the sibling credit (a verified writer_sibling rider carries its primary's Cost.baseline verdict) and the no-writer N/A (cause no-writer-registry-agrees, released exactly where Earn.build_record reads its released no-writer N/A); NA_CAUSES + a rule
+    29: "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
 }
 
 
