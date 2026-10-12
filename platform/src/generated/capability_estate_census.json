@@ -4315,7 +4315,7 @@
             "type": "number"
           },
           "lord_graha": {
-            "description": "Filter by lord graha abbreviation (e.g. SU, MO, MA).",
+            "description": "Filter by dasha lord. Accepts a graha code, alias or name (SU, Sun and sun are the same; MO, MA, Rahu, Ketu ...), a sign name for the rashi dasha systems (chara_karaka, kalachakra, narayana: e.g. Taurus), or a yogini deity name (e.g. Mangala); resolved to the stored form. An unrecognised value returns an invalid_lord_graha error listing the recognised values, never an empty page.",
             "type": "string"
           },
           "offset": {
@@ -22219,7 +22219,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "0cfbeedf4d939425d7b938ff041cebfb497da3a1e0f330e68d093c0de062f6b2"
+        "sha256": "2f7d31c1051f66346f0857f2b1a1becdcf198b52c1c96b4d02e9723fbfcff32d"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22612,7 +22612,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "ee42231c58b9e3b235d52f4ae3668c0901e3346ef7097b85c29f802df3561f0a"
+        "sha256": "4ef0932afe06188beaa884bcf14a23572f12925f6d23e95f32f26b57c123ab4a"
       },
       {
         "id": "public_registrar_source_set",
@@ -22720,7 +22720,7 @@
           },
           {
             "path": "platform-mcp/src/tools/muhurta_finder.ts",
-            "sha256": "f38d99362a769174ce9fc1983b12cfc07d165d979d6729ffb27eb25496c36444"
+            "sha256": "2b915439a8cf95ce3832317e95397e60e0fa20e9021f96ca5cd4d48d9fe1203e"
           },
           {
             "path": "platform-mcp/src/tools/phala_event_anchors.ts",
@@ -22788,7 +22788,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "63f366f517405811fc565facb9df22c33279da555a6aebd803d7bc4566b11aa0"
+            "sha256": "a23e12659d2cd08f74c2d2c61fa156c8ba5e431dcdc4769c18e8f249f9f9f7ff"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -22824,7 +22824,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b3a557485fe3efb81f9eae23aececc205c74ca626cf3d2947218a289526e93c6"
+        "sha256": "5a542b4fda495ed0c35b5c34f316b536e597473a01056bbdac510b6620b31753"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23038,7 +23038,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts",
-            "sha256": "b7f9dfa777f4904ac0deb4aa3016c626f2ab40f87ae422a3ee819edca70b0419"
+            "sha256": "0daa996eacf51e57f685f9b868db3ae6c0dec94d13a600e3c96f123c0d9834df"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
@@ -23198,7 +23198,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "54bcb8218561f0afd8495ce693abc58648589d638fe2f0d2d178129dff0bda81"
+            "sha256": "966fd1dd470454eb2aea01454c73afb3a9371da741e4faa359c707050f520117"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -23706,7 +23706,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "ed4404599ec4592320e311156d6eac7bb40f5b1c56c692cc30095efad5e60697"
+        "sha256": "6e7855827c721c71de83236276eb53b4735d1f67de28bdf4489cdfbf61366a1e"
       },
       {
         "id": "service_effect_contracts",
@@ -23726,7 +23726,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "4919bba1c7b42b08a7991261c045dda61a9a92eebd40004ff0313295d38621e5"
+        "sha256": "290dc7b918a8c71fc3276449d61eb0082f8a378ccad9935e18ea947f65402448"
       }
     ]
   },
