@@ -670,7 +670,9 @@ def test_real_ga_vichara_object_dict_assignment_is_not_runtime_rebinding():
     # chart_vichara is its own table; public.chart_facts is real since TI-ga-structural-cycle-001: the daridra
     # dosha_label post-pass (ga_writers/ga_daridra_postpass.py, listed in the adapter's source_paths) deletes and
     # inserts that one row. The assertion's point stands: no spurious third table from the object-dict assignment.
-    assert res["tables"] == ["public.chart_facts", "public.chart_vichara"], res
+    # The same post-pass now also writes its durable evidence record (post_pass_evidence/1) to the bookkeeping table
+    # public.orchestrator_event_register (Option A, owner ruling) — a real, intended third table, not a spurious one.
+    assert res["tables"] == ["public.chart_facts", "public.chart_vichara", "public.orchestrator_event_register"], res
 
 
 def test_the_scan_limitations_list_names_the_new_rules():

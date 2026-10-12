@@ -79,15 +79,11 @@ _COLS = (
     "embedding_vec", "embedding_model", "embedding_model_version",
     "embedding_input_summary", "computed_at",
 )
-# The column list and the per-row placeholders are LITERAL SQL text, in the order of _COLS (the order the bind values are
-# collected in _batch_insert): a reader of this file, and the census writer scan, can read exactly which columns are written.
-# The test tests/test_bo_samskara_insert_sql_literal.py asserts these literals equal what the former run-time join built,
-# for every row count 1..500 (byte-identical SQL text sent to PostgreSQL).
-_ROW_PLACEHOLDERS = "%s, %s, %s, %s, %s, %s::vector, %s, %s, %s, %s"
+_ROW_PLACEHOLDERS = ", ".join(
+    "%s::vector" if c == "embedding_vec" else "%s" for c in _COLS
+)
 _MULTI_INSERT_HEAD = (
-    "INSERT INTO public.bodha_signal_embeddings (\n"
-    "  embedding_id, signal_id, chart_id, ayanamsha_id, build_id, embedding_vec, embedding_model, embedding_model_version, embedding_input_summary, computed_at\n"
-    ") VALUES\n"
+    "INSERT INTO public.bodha_signal_embeddings (\n  " + ", ".join(_COLS) + "\n) VALUES\n"
 )
 _MULTI_INSERT_TAIL = """
 ON CONFLICT (signal_id) DO UPDATE SET

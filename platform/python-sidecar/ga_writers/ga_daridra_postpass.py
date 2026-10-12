@@ -226,6 +226,144 @@ def _cancel_daridra(
     }
 
 
+# ── Run evidence (ga_vichara Option A, SS N-545): one durable record per (chart, ayanamsha, build) ─────────
+#
+# Why: when daridra does not form this post-pass writes NO chart_facts row (an honest absence, never a placeholder), so
+# an empty slice is indistinguishable from "the post-pass never ran" (a dry run, the three early returns of the substep,
+# a skipped call).  The census may only call the empty slice "empty by a verified conditional" when the run itself says:
+# post-pass evaluated N catalog entries and found nothing.  That statement is this record.  Contract: the frozen
+# `post_pass_evidence/1` (N431/post_pass_evidence_record_v1.md): one orchestrator_event_register row, event type
+# `writer.post_pass_evaluated`, run_id = the build id, payload EXACTLY the keys below.
+#
+# Written on the writer's own connection, in the SAME transaction as the rows it describes, inside its own
+# savepoint, AFTER the subject-scoped delete and BEFORE the return, on BOTH the "not formed" and the "formed" branch.
+# NOT written on a dry run, on the substep's early returns (those never reach this module) or on any raise earlier in
+# the post-pass (the substep savepoint rolls the work back).  A failed evidence write RAISES: the substep fails and
+# the rows roll back with it (a lost record must never pass quietly).  The writer never commits and never touches
+# asset_throughput (the orchestrator owns build state, N.2).
+POST_PASS_EVENT_TYPE = "writer.post_pass_evaluated"
+POST_PASS_SCHEMA = "post_pass_evidence/1"
+POST_PASS_NAME = "daridra_dosha_label"
+POST_PASS_ASSET_ID = "ga_vichara"
+POST_PASS_SLICE = {"table": "chart_facts", "fact_category": "dosha_label", "fact_subject": DARIDRA}
+POST_PASS_EMITTED_BY = "ga_daridra_postpass"
+
+_EVIDENCE_INSERT_SQL = """
+    INSERT INTO orchestrator_event_register
+      (event_type, chart_id, asset_id, run_id, rows_present, substeps_remaining, emitted_by, payload)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+"""
+
+
+def _nonneg_int(name: str, v: Any) -> int:
+    if isinstance(v, bool) or not isinstance(v, int) or v < 0:
+        raise ValueError(f"[ga_daridra_postpass] evidence field {name} must be a non-negative integer, got {v!r}")
+    return v
+
+
+def post_pass_evidence_payload(
+    ayanamsha_id: str, *, entries_evaluated: int, formed: bool, rows_written: int, prior_rows_deleted: int,
+) -> dict[str, Any]:
+    """The payload of the evidence record: EXACTLY the frozen `post_pass_evidence/1` keys, nothing else."""
+    if not isinstance(ayanamsha_id, str) or not ayanamsha_id:
+        raise ValueError("[ga_daridra_postpass] evidence ayanamsha_id must be a non-empty string")
+    if not isinstance(formed, bool):
+        raise ValueError(f"[ga_daridra_postpass] evidence field formed must be a bool, got {formed!r}")
+    return {
+        "schema": POST_PASS_SCHEMA,
+        "post_pass": POST_PASS_NAME,
+        "ayanamsha_id": ayanamsha_id,
+        "slice": dict(POST_PASS_SLICE),
+        "entries_evaluated": _nonneg_int("entries_evaluated", entries_evaluated),
+        "formed": formed,
+        "rows_written": _nonneg_int("rows_written", rows_written),
+        "prior_rows_deleted": _nonneg_int("prior_rows_deleted", prior_rows_deleted),
+    }
+
+
+# ONE seam for the transport.  Two channels carry the SAME event; the choice is the constant below (one line):
+#   "direct_insert"  (current, closure-free): this module INSERTs the register row itself, payload = exactly the frozen keys.
+#                    It imports nothing from pipeline.orchestrator, so the only writer closure it touches is ga_vichara's.
+#   "persist_event"  (the designed channel; becomes the default when the owner has approved the ONE allowlist line in
+#                    pipeline/orchestrator/events.py): the orchestrator's own never-raising audit helper, whose stored payload is
+#                    the whole event dict (the frozen keys plus type/chart_id/asset_id/run_id/rows_present).  Importing events.py
+#                    puts that module into this writer's source closure (and so into ga_vichara's window; events.py is already
+#                    in the closure of 38 other writers).  A False return (not allowlisted, no cursor, failed insert) RAISES here.
+EVIDENCE_CHANNEL = "direct_insert"
+
+
+def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, Any]) -> None:
+    """THE seam: persist one evidence event or raise RuntimeError.  `event` is the flat event dict (type, chart_id, asset_id, run_id,
+    rows_present + the payload keys); `payload` is the frozen payload alone."""
+    chart_id, ayanamsha_id = event["chart_id"], payload["ayanamsha_id"]
+    if EVIDENCE_CHANNEL == "persist_event":
+        from pipeline.orchestrator.events import persist_event       # lazy: only the designed channel pulls the orchestrator module in
+        try:
+            ok = persist_event(conn.cursor(), event)
+        except Exception as exc:
+            raise RuntimeError(
+                f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
+                f"{ayanamsha_id}: {exc}; failing the substep (the rows roll back with it)"
+            ) from exc
+        if ok is not True:
+            raise RuntimeError(
+                f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
+                f"{ayanamsha_id}: persist_event returned {ok!r} (event type not allowlisted, or the insert failed); "
+                "failing the substep (the rows roll back with it)"
+            )
+        return
+    if EVIDENCE_CHANNEL != "direct_insert":
+        raise RuntimeError(f"[ga_daridra_postpass] unknown EVIDENCE_CHANNEL {EVIDENCE_CHANNEL!r}")
+    params = (
+        event["type"], str(chart_id), event["asset_id"], str(event["run_id"]),
+        event["rows_present"], None, POST_PASS_EMITTED_BY, json.dumps(payload, sort_keys=True),
+    )
+    try:
+        conn.execute("SAVEPOINT post_pass_evidence")
+    except Exception as exc:
+        raise RuntimeError(
+            f"[ga_daridra_postpass] could not open the evidence savepoint for chart {chart_id} ayanamsha {ayanamsha_id}: {exc}"
+        ) from exc
+    try:
+        conn.execute(_EVIDENCE_INSERT_SQL, params)
+        conn.execute("RELEASE SAVEPOINT post_pass_evidence")
+    except Exception as exc:
+        try:
+            conn.execute("ROLLBACK TO SAVEPOINT post_pass_evidence")
+            conn.execute("RELEASE SAVEPOINT post_pass_evidence")
+        except Exception:                                          # the caller's savepoint rolls everything back anyway
+            pass
+        raise RuntimeError(
+            f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
+            f"{ayanamsha_id} build {event['run_id']}: {exc}; failing the substep (the rows roll back with it)"
+        ) from exc
+
+
+def record_post_pass_evidence(
+    conn: Any,
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    *,
+    entries_evaluated: int,
+    formed: bool,
+    rows_written: int,
+    prior_rows_deleted: int,
+) -> None:
+    """Write ONE evidence record (see the block comment above).  Raises RuntimeError when the record could not be written."""
+    payload = post_pass_evidence_payload(
+        ayanamsha_id, entries_evaluated=entries_evaluated, formed=formed,
+        rows_written=rows_written, prior_rows_deleted=prior_rows_deleted,
+    )
+    if formed != (rows_written > 0) or (not formed and rows_written != 0):
+        raise ValueError(f"[ga_daridra_postpass] evidence is inconsistent: formed={formed} rows_written={rows_written}")
+    event = {
+        "type": POST_PASS_EVENT_TYPE, "chart_id": str(chart_id), "asset_id": POST_PASS_ASSET_ID,
+        "run_id": str(build_id), "rows_present": rows_written, **payload,
+    }
+    _write_evidence_event(conn, event, payload)
+
+
 # ── Post-pass driver ──────────────────────────────────────────────────────────
 
 def build_daridra_label_rows(
@@ -237,13 +375,17 @@ def build_daridra_label_rows(
     birth_params: dict[str, Any] | None = None,
     chart_output: dict[str, Any] | None = None,
     dosha_catalog: list[dict[str, Any]] | None = None,
+    evaluation: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """The daridra dosha_label row(s) for one (chart, ayanamsha), built by ga_structural's own
     label-pass code with the downstream cancellation wired in.  Returns [] when daridra does not form
     for the chart (honest absence, exactly as before) or a READABLE catalog has no daridra entry.
     An EMPTY catalog (which is also what ga_structural's loader returns when the table is unreadable)
     raises: the caller deletes the prior daridra row afterwards, and "no catalog" is not "daridra does
-    not form"."""
+    not form".
+
+    `evaluation`, when given, receives {"entries_evaluated": N}: the number of daridra entries of the catalog the
+    label pass was run over (0 = the readable catalog has no daridra entry: "not evaluated", never "does not form")."""
     catalog = dosha_catalog if dosha_catalog is not None else _gsw._load_dosha_catalog(conn)
     if not catalog:
         raise RuntimeError(
@@ -252,6 +394,8 @@ def build_daridra_label_rows(
             "(the prior daridra dosha_label row is left untouched; fix the catalog and rebuild ga_vichara)"
         )
     entries = [e for e in catalog if e["canonical_id"] == DARIDRA]
+    if evaluation is not None:
+        evaluation["entries_evaluated"] = len(entries)
     if not entries:
         return []
     if chart_output is None:
@@ -289,11 +433,18 @@ def emit_daridra_label_post_pass(
     """Delete-then-insert the daridra dosha_label row.  Must run AFTER ga_yoga (ga_yoga_firings)
     and after ga_vichara's own chart_vichara insert for this ayanamsha (it reads both).  Returns
     the number of chart_facts rows written (0 or 1): ga_vichara COUNTS it in its rows_written.  Never commits."""
-    rows = build_daridra_label_rows(conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params)
+    evaluation: dict[str, Any] = {}
+    rows = build_daridra_label_rows(
+        conn, chart_id, build_id, ayanamsha_id, birth_params=birth_params, evaluation=evaluation,
+    )
     deleted = replace_prior_daridra_label_rows(conn, chart_id, ayanamsha_id)
     if not rows:
         logger.info("[ga_daridra_postpass] chart=%s ayanamsha=%s: daridra does not form; deleted %d prior row(s)",
                     chart_id, ayanamsha_id, deleted)
+        record_post_pass_evidence(
+            conn, chart_id, build_id, ayanamsha_id, entries_evaluated=evaluation["entries_evaluated"],
+            formed=False, rows_written=0, prior_rows_deleted=deleted,
+        )
         return 0
     _gsw._verify_no_duplicate_fact_ids(rows)
     _gsw._verify_citation_completeness(rows)
@@ -301,4 +452,8 @@ def emit_daridra_label_post_pass(
     written = insert_daridra_label_rows(conn, rows)
     logger.info("[ga_daridra_postpass] chart=%s ayanamsha=%s: wrote %d daridra dosha_label row(s) (deleted %d prior)",
                 chart_id, ayanamsha_id, written, deleted)
+    record_post_pass_evidence(
+        conn, chart_id, build_id, ayanamsha_id, entries_evaluated=evaluation["entries_evaluated"],
+        formed=written > 0, rows_written=written, prior_rows_deleted=deleted,
+    )
     return written
