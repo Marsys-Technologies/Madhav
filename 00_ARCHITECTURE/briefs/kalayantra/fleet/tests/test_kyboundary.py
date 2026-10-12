@@ -98,13 +98,14 @@ class World:
         self.run, self.fleet, self.kbin = self.ky_root / "run", self.ky_root / "fleet_live", self.ky_root / "bin"
         self.jobs = b / "scratch" / "jobs"
         self.S, self.other = self.jobs / JOB, self.jobs / "J-other"
-        self.tmp, self.cache, self.view = self.S / "tmp", self.S / "cache", self.S / "view"
+        self.cache, self.view, self.program = self.S / "cache", self.S / "view", self.S / "program"
+        self.tmp = b / "scratch" / "tmp" / JOB          # TMPDIR outside S: a writable place S could be moved into
         self.repo, self.wt = b / "repo", b / "wt" / "item"
         self.la = self.home / "Library" / "LaunchAgents"
-        self.projects = self.home / ".claude" / "projects"
+        self.claude = self.home / ".claude"
         self.state_path = self.run / "jobs" / JOB / "state.json"
         self.fake = b / "fakebin" / "fake_program.py"
-        for d in (self.la, self.home / ".claude", self.run / "jobs" / JOB, self.fleet, self.kbin, self.tmp,
+        for d in (self.la, self.home / ".claude", self.run / "jobs" / JOB, self.fleet, self.kbin, self.S, self.tmp,
                   self.other, self.repo / "dir", self.fake.parent, b / "ctmp"):
             d.mkdir(parents=True)
         self.fake.write_text(FAKE_PROGRAM)
@@ -112,6 +113,19 @@ class World:
             "run": self.state_path, "run_tests": self.run / "tests" / "ITEM.txt", "fleet": self.fleet / "kyjob.sh",
             "kbin": self.kbin / "ky", "other": self.other / "result.json", "la": self.la / "in.marsys.existing.plist",
             "claude_settings": self.home / ".claude" / "settings.json", "claude_json": self.home / ".claude.json"}
+        # the owner's program store, shared by every unconfined session of the same user: what they source before each
+        # Bash command (shell-snapshots, session-env), load into context (projects/*/memory) or restore (file-history)
+        # — review KB-R2-01. One existing file in each directory v1.1 granted.
+        sid = "0b5c6f1e-2d3a-4c8b-9e7f-1a2b3c4d5e6f"
+        self.shared.update({
+            "claude_shell_snapshot": self.claude / "shell-snapshots" / "snapshot-bash-1760000000000-ab12cd.sh",
+            "claude_session_env": self.claude / "session-env" / sid / "sessionstart-hook-0.sh",
+            "claude_memory": self.claude / "projects" / "-Users-Dev-Vibe-Coding-Apps-Madhav" / "memory" / "MEMORY.md",
+            "claude_file_history": self.claude / "file-history" / sid / "3f1a2b4c5d6e7f80@v1",
+            "claude_todos": self.claude / "todos" / ("%s-agent-%s.json" % (sid, sid)),
+            "claude_statsig": self.claude / "statsig" / "statsig.cached.evaluations.0",
+            "claude_debug": self.claude / "debug" / ("%s.txt" % sid),
+            "claude_tasks": self.claude / "tasks" / sid / "1.json"})
         (self.S / "snapshot.json").write_text('{"head": "controller-owned"}\n')
         (self.repo / "a.txt").write_text("alpha\n" * 50)
         (self.repo / "dir" / "b.txt").write_text("beta\n")
@@ -159,7 +173,7 @@ class World:
     def targets(self):
         return {"VIEW": self.view, "WT": self.wt, "GITV": self.gitv, "GITC": self.gitc, "GITW": self.gitw,
                 "RUN": self.run, "FLEET": self.fleet, "KBIN": self.kbin, "OTHER": self.other, "LA": self.la,
-                "S": self.S, "PROJECTS": self.projects, "KYROOT": self.ky_root, "CHMODVIEW": self.base / "chmodview",
+                "S": self.S, "PROGRAM": self.program, "KYROOT": self.ky_root, "CHMODVIEW": self.base / "chmodview",
                 "MOUNTVIEW": self.base / "mountview"}
 
     def inner(self, mode, arg, extra=None):
@@ -190,7 +204,7 @@ class World:
     def snapshot(self):
         """(kind, mode, sha256) of everything under the base except what a job may write and what `check` writes"""
         skip = {str(p) for p in (self.tmp, self.cache, self.S / "boundary.check.json", self.S / "result.json",
-                                 self.base / "ctmp", self.projects)}
+                                 self.base / "ctmp", self.program)}
         snap = {}
         for root, dirs, files in os.walk(self.base):
             dirs[:] = [d for d in dirs if os.path.join(root, d) not in skip]
@@ -300,11 +314,14 @@ SHARED_OPS = [
     ("replace-by-rename", 'echo pwn > "$TMPDIR/n.$$" && mv -f "$TMPDIR/n.$$" "$F"'),
     ("delete-and-recreate", 'rm -f "$F" && echo pwn > "$F"'),
 ]
-SHARED_PLACES = ["run", "run_tests", "fleet", "kbin", "other", "la", "claude_settings", "claude_json"]
+SHARED_PLACES = ["run", "run_tests", "fleet", "kbin", "other", "la", "claude_settings", "claude_json",
+                 "claude_shell_snapshot", "claude_session_env", "claude_memory", "claude_file_history", "claude_todos",
+                 "claude_statsig", "claude_debug", "claude_tasks"]
 
 
 def _shared_attacks():
-    """$KY_RUN, $KY_FLEET, $KY_ROOT/bin, another job's scratch, ~/Library/LaunchAgents and the program's own settings"""
+    """$KY_RUN, $KY_FLEET, $KY_ROOT/bin, another job's scratch, ~/Library/LaunchAgents, and the program's settings and
+    the session store every other session of the user shares (~/.claude/*)"""
     return [("%s:%s" % (place, i), c, {"F": "shared:" + place}, "bytes") for place in SHARED_PLACES for i, c in SHARED_OPS]
 
 
@@ -314,7 +331,7 @@ def _evidence_attacks():
            for name, seen in (("boundary.json", "check"), ("snapshot.json", "bytes"))
            for i, c in SHARED_OPS if i != "create"]
     out.append(("scratch:move-scratch-then-write",
-                'mkdir -p "$PROJECTS" && mv "$S" "$PROJECTS/moved" && echo pwn >> "$PROJECTS/moved/view/a.txt"', {}, "check"))
+                'mv "$S" "$TMPDIR/moved" && echo pwn >> "$TMPDIR/moved/view/a.txt"', {}, "check"))
     # a link planted where the unsandboxed controller writes its temporary files (review KB-R1-01)
     out += [("scratch:link-at-%s-tmp:%s" % (n, t), 'ln -s %s "$S/%s.tmp.%d"' % (target, f, 4242 + k), v, "bytes")
             for n, f in (("record", "boundary.json"), ("check", "boundary.check.json"))
@@ -381,9 +398,8 @@ def test_prepare_writes_the_boundary_record_and_a_view_at_the_reviewed_head(worl
     assert set(doc) >= {"schema", "mechanism", "view", "writable", "head", "tracked_sha256", "prepared_at"}
     assert doc["schema"] == "ky.boundary/1" and doc["mechanism"] == MECHANISM
     assert doc["view"] == str(world.view) and doc["head"] == world.head
-    programs = [str(world.home / ".claude" / d) for d in
-                ("projects", "todos", "shell-snapshots", "session-env", "statsig", "debug", "file-history", "tasks")]
-    assert doc["writable"] == [str(world.S), str(world.cache), str(world.tmp)] + programs
+    assert doc["writable"] == [str(world.S), str(world.cache), str(world.tmp), str(world.program)]
+    assert world.cache.is_dir() and world.program.is_dir()
     assert all(os.path.isabs(p) for p in doc["writable"] + [doc["view"]])
     # the hash is the contract's, recomputed here independently, and the view and the item worktree agree on it
     assert doc["tracked_sha256"] == tracked_sha256(world.view) == tracked_sha256(world.wt)
@@ -424,7 +440,9 @@ def test_prepare_is_not_established_on_a_bad_state(tmp_path):
     for change in ({"job_scratch": "relative/scratch"}, {"job_scratch": None}, {"tmp_path": "tmp"},
                    {"worktree": str(w.base / "absent")}, {"head": "0" * 40}, {"head": "not-a-sha"},
                    {"tmp_path": str(w.wt / "dir")}, {"tmp_path": str(w.run)}, {"job_scratch": refused},
-                   {"tmp_path": str(w.home)}, {"worktree": str(w.repo / "dir")}):
+                   {"tmp_path": str(w.home)}, {"worktree": str(w.repo / "dir")},
+                   {"tmp_path": str(w.claude)}, {"tmp_path": str(w.claude / "session-env")},
+                   {"tmp_path": str(w.claude / "shell-snapshots")}):
         w.state = dict(good)
         w.write_state(**change)
         _not_established(w, change)
@@ -498,6 +516,40 @@ def test_a_forged_check_file_cannot_be_written_and_check_replaces_what_is_there(
     (w.view / "a.txt").write_text("pwn\n")
     rc, doc, r = w.check()
     assert rc == 1 and json.loads((w.S / "boundary.check.json").read_text()) == doc and "forged" not in doc
+
+
+# ── nothing the job may write is shared with another session of the same user (review KB-R2-01) ─────────────────────
+def test_every_writable_path_is_this_jobs_own(world):
+    """writable[] is S and what lies under it, and the state's tmp_path: nothing under HOME, so nothing an unconfined
+    session of the same user sources, executes or loads"""
+    doc = json.loads((world.S / "boundary.json").read_text())
+    own = [str(world.S), str(world.tmp)]
+    for w in doc["writable"]:
+        assert any(w == o or w.startswith(o + os.sep) for o in own), w
+        assert not (w == str(world.home) or w.startswith(str(world.home) + os.sep)), w
+
+
+def test_a_shell_snapshot_planted_from_inside_never_runs_outside(tmp_path):
+    """the reproduction of KB-R2-01: a line appended from inside to a snapshot the owner's unconfined sessions source
+    before every Bash command, then sourced as they do. Inside: the append fails and the sourced snapshot writes
+    nothing. Control, the boundary disabled: the append succeeds and the sourced snapshot writes the $KY_RUN stand-in"""
+    plant = 'printf "%s\\n" "echo pwn >> \\"$RUN/tests/ITEM.txt\\"" >> "$F"'
+
+    def attempt(sub, bounded):
+        (tmp_path / sub).mkdir()
+        w = World(tmp_path / sub)
+        snap, target = w.shared["claude_shell_snapshot"], w.shared["run_tests"]
+        assert_inside(w.base, snap, target)
+        before = (snap.read_bytes(), target.read_bytes())
+        r = (w.bounded if bounded else w.unbounded)(plant, {"F": snap})
+        sh([BASH, "-c", 'source "$1" >/dev/null 2>&1; exit 0', "owner-session", snap], env={"PATH": PATH}, check=True)
+        return w, r, before, (snap.read_bytes(), target.read_bytes())
+
+    w, r, before, after = attempt("bounded", True)
+    assert r.returncode != 0 and after == before, (r.returncode, after)
+    assert w.check()[0] == 0
+    w, r, before, after = attempt("disabled", False)
+    assert r.returncode == 0 and after[0] != before[0] and after[1] == before[1] + b"pwn\n", (r.stderr, after)
 
 
 # ── the controller never writes through a name the job can create (review KB-R1-01) ─────────────────────────────────
@@ -614,13 +666,13 @@ def test_the_mechanism_is_accepted_by_the_same_judge_that_rejects_the_controls(w
 # ── the declared writes and reads succeed ────────────────────────────────────────────────────────────────────────────
 def test_declared_writes_reads_git_and_loopback_work_inside(world):
     ok = world.bounded('pwd -P > "$S/cwd.txt" && echo r > "$S/result.json" && mkdir -p "$S/cache/pip" && '
-                       'echo c > "$S/cache/pip/x" && echo t > "$TMPDIR/t.txt" && mkdir -p "$PROJECTS/p" && '
-                       'echo s > "$PROJECTS/p/session.jsonl" && echo n > /dev/null && rm "$TMPDIR/t.txt" && '
+                       'echo c > "$S/cache/pip/x" && echo t > "$TMPDIR/t.txt" && mkdir -p "$PROGRAM/projects/p" && '
+                       'echo s > "$PROGRAM/projects/p/session.jsonl" && echo n > /dev/null && rm "$TMPDIR/t.txt" && '
                        'mv "$S/cache/pip/x" "$S/cache/pip/y"')
     assert ok.returncode == 0, ok.stderr
     assert (world.S / "cwd.txt").read_text().strip() == str(world.view)
     assert (world.S / "result.json").read_text() == "r\n" and (world.cache / "pip" / "y").read_text() == "c\n"
-    assert (world.projects / "p" / "session.jsonl").read_text() == "s\n" and not (world.tmp / "t.txt").exists()
+    assert (world.program / "projects" / "p" / "session.jsonl").read_text() == "s\n" and not (world.tmp / "t.txt").exists()
 
     r = world.bounded('git log -1 --format=%H && git diff --stat HEAD~1 HEAD && git status --porcelain && '
                       'git log --oneline | wc -l && git -C "$WT" log -1 --format=%H')

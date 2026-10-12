@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# kyboundary.sh v1.1 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
+# kyboundary.sh v1.2 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
 # verifier boundary. A qualification PASS is not this boundary (kyqualify.py BOUNDARY); this is.
+# Status: DRAFT — pending independent review (KV3-B-KYBOUNDARY loop 3).
 #
 #   kyboundary.sh prepare <job_id>            build the verifier's VIEW of the job's worktree at the reviewed head and the
 #                                             record S/boundary.json. 0 ready · 1 not established · 64 usage
@@ -11,7 +12,8 @@
 #   kyboundary.sh release <job_id>            remove the view; idempotent; 0 only when it is verifiably absent
 #
 # S = the state's job_scratch. Read from $KY_RUN/jobs/<job_id>/state.json: worktree, head, slot, job_scratch, tmp_path —
-# nothing else. $KY_ROOT, $KY_RUN, $KY_FLEET and $HOME come from the caller's environment (plan §7 defaults).
+# nothing else. $KY_ROOT, $KY_RUN, $KY_FLEET and $HOME come from the caller's environment (plan §7 defaults); $HOME
+# only names places that are never writable.
 #
 # THE MECHANISM: "seatbelt-file-write-deny/1" — the job runs under /usr/bin/sandbox-exec with a profile generated from the
 # record at every `exec` (never stored, so there is no profile file to tamper with):
@@ -27,10 +29,14 @@
 #   The VIEW is S/view: a scratch checkout (`git init` + objects borrowed read-only through objects/info/alternates +
 # every ref of the item repository + a detached checkout of the head). It is never a registered worktree, has no remote,
 # and its .git is a directory inside the view, so the Git metadata the job sees is under the same deny rule.
-#   writable[] is exactly: S, S/cache (the named cache directory), tmp_path (TMPDIR), and the model program's session
-# store — $HOME/.claude/{projects,todos,shell-snapshots,session-env,statsig,debug,file-history,tasks}. NOT writable, on
-# purpose: $HOME/.claude.json and $HOME/.claude/settings.json (either would let a job plant a hook or an MCP server that
-# the owner's next unsandboxed session runs). Whether the real program runs without writing ~/.claude.json is proven at
+#   writable[] is exactly: S, S/cache (the named cache directory), tmp_path (TMPDIR), and S/program — the model
+# program's own config and session store, made by `prepare` for this job alone (kyjob.sh points the program at it,
+# for Claude Code CLAUDE_CONFIG_DIR=S/program inside its `env -i`). Every entry is this job's own. NOTHING under $HOME is
+# writable: not $HOME/.claude.json, and no part of $HOME/.claude — its settings.json would let a job plant a hook or an
+# MCP server, and its shell-snapshots, session-env, projects/*/memory and file-history are sourced, loaded or restored
+# by every unconfined session of the same user, so a write there runs the job's code OUTSIDE the boundary (review
+# KB-R2-01). `prepare` refuses a state whose S or tmp_path overlaps $HOME/.claude or $HOME/.claude.json. Whether the
+# real program signs in and runs with its store redirected, and writes nothing else outside writable[], is proven at
 # B-2 requalification, not here: here a fake program stands in (packet). The slot DB is loopback TCP, not a path.
 #
 # WHAT WAS TRIED (ruling P20: first those needing no administrator action), each judged by tests/test_kyboundary.py on
@@ -85,6 +91,8 @@
 #
 # Changelog: v1.0 (2026-10-12) first version. v1.1 (2026-10-12) review KB-R1-01: the controller no longer writes
 # through a link planted at its predictable temporary name (write_json, the probe); the profile denies those names.
+# v1.2 (2026-10-12) review KB-R2-01: writable[] no longer grants the shared $HOME/.claude/* directories; the program's
+# store is the per-job S/program, and $HOME/.claude and $HOME/.claude.json join the paths no writable may overlap.
 set -u
 PY=/opt/homebrew/bin/python3
 [ -x "$PY" ] || PY=/usr/bin/python3
@@ -98,7 +106,6 @@ SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 if os.environ.get("KY_BOUNDARY_TEST_OVERRIDE") == "1" and os.environ.get("KY_BOUNDARY_SANDBOX_EXEC"):
     SANDBOX_EXEC = os.environ["KY_BOUNDARY_SANDBOX_EXEC"]
     MECHANISM = "test-override:" + SANDBOX_EXEC
-PROGRAM_DIRS = ("projects", "todos", "shell-snapshots", "session-env", "statsig", "debug", "file-history", "tasks")
 SCRATCH_DENIED = ("boundary.json", "boundary.check.json", "snapshot.json")     # the controller's files inside S
 SCRATCH_DENIED_RE = r"/boundary(\.check)?\.json\.tmp\."                      # and its temporary names beside them
 DEV_WRITABLE = ("/dev/null", "/dev/zero", "/dev/tty", "/dev/ptmx", "/dev/dtracehelper")
@@ -157,11 +164,12 @@ def load(job_id):
     if p["head"] is not None and not (isinstance(p["head"], str) and SHA.match(p["head"])):
         raise NotEstablished("state: head is neither null nor a 40-hex commit")
     S = p["job_scratch"]
-    p["view"], p["cache"] = os.path.join(S, "view"), os.path.join(S, "cache")
+    p["view"], p["cache"], p["program"] = os.path.join(S, "view"), os.path.join(S, "cache"), os.path.join(S, "program")
     p["record"], p["check"] = os.path.join(S, "boundary.json"), os.path.join(S, "boundary.check.json")
-    p["writable"] = [S, p["cache"], p["tmp_path"]] + [os.path.join(home, ".claude", d) for d in PROGRAM_DIRS]
+    p["writable"] = [S, p["cache"], p["tmp_path"], p["program"]]          # this job's own, nothing shared (KB-R2-01)
     p["protected"] = [p["worktree"], ky_run, ky_fleet, os.path.join(ky_root, "bin"),
-                      os.path.join(home, "Library", "LaunchAgents")]
+                      os.path.join(home, "Library", "LaunchAgents"), os.path.join(home, ".claude"),
+                      os.path.join(home, ".claude.json")]
     return p
 
 
@@ -453,6 +461,7 @@ def prepare(job_id):
         p["common"] = os.path.realpath(os.fsdecode(out).rstrip("\n"))
         validate_layout(p)
         os.makedirs(p["cache"], exist_ok=True)
+        os.makedirs(p["program"], exist_ok=True)
 
         def must(*args, **kw):
             rc, out = git(kw.get("tree", p["view"]), *args)
