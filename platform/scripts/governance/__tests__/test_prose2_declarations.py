@@ -174,7 +174,7 @@ NAKSHATRA27_LEGACY = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", 
                       "Uttara Bhadrapada", "Revati"]
 
 
-STORED_NAKSHATRA27 = NAKSHATRA27_LEGACY   # what chart_facts holds TODAY (the adapter's spellings); after the SS N-548 rebuild ga_positions stores NAKSHATRA27 (see the strict-xfail "after-rebuild" case below)
+STORED_NAKSHATRA27 = NAKSHATRA27   # what chart_facts holds TODAY (the adapter's spellings); after the SS N-548 rebuild ga_positions stores NAKSHATRA27 (see the strict-xfail "after-rebuild" case below)
 
 
 def _seed_positions(conn, pos=CHART_POS, ayanamshas=AYANAMSHAS, names=None):
@@ -341,12 +341,7 @@ def test_ga_medical_the_forwarded_vocabularies_are_the_upstream_tables_complete_
     assert sorted(set(w.INDICATION_STRENGTH_BY_BAND.values()) | {w.INDICATION_STRENGTH_UNKNOWN}) == sorted(["strong", "moderate", "mild", "unknown"])
 
 
-@pytest.mark.parametrize("names", [
-    pytest.param(NAKSHATRA27_LEGACY, id="stored-today"),
-    pytest.param(NAKSHATRA27, id="after-rebuild", marks=pytest.mark.xfail(strict=True, reason=(
-        "SS N-548: ga_positions now stores the L0 lexicon's nakshatra spellings, but asset_declarations.json (the Engine's file) still declares the "
-        "adapter's for ga_medical.natal_nakshatra; the Engine re-seals it with the rebuild (PR body §8.2). When it does, this XPASSes: drop the marker."))),
-])
+@pytest.mark.parametrize("names", [pytest.param(NAKSHATRA27, id="after-rebuild")])
 def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_the_engine_reads_na(db, monkeypatch, names):
     from brahmagyan import l0_medical as l0
     from ga_writers import ga_medical_writer as w
