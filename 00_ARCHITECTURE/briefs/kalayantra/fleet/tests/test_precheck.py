@@ -389,6 +389,72 @@ def test_entry_is_an_exact_path_not_a_prefix_or_pattern(tmp_path):
     assert_green(rc, out)
 
 
+def big_manifest(hit_at, entries=2400):
+    """A valid manifest of several pipe buffers (64 KiB each), with FROZEN_ENTRY at the given place: more than one buffer follows a middle hit."""
+    lines = [f"docs/filler/{n:04d}_{'x' * 60}.md" for n in range(entries)]
+    lines.insert({"first": 0, "middle": entries // 2, "last": entries}[hit_at], FROZEN_ENTRY)
+    text = "# frozen paths (large test manifest)\n" + "\n".join(lines) + "\n"
+    assert len(text.encode()) > 2 * (65536 + 4096)
+    return text
+
+
+@pytest.mark.parametrize("hit_at", ["first", "middle", "last"])
+def test_manifest_above_one_pipe_buffer_still_refuses_its_entry(tmp_path, hit_at):
+    """Review round 1, B-01: the membership test must not depend on how much of the entry list a reader consumed."""
+    bench = Bench(tmp_path, manifest=big_manifest(hit_at))
+    bench.change(FROZEN_ENTRY)
+    bench.change("t/new_module.py", "X = 1\n")
+    rc, out = bench.run()
+    assert_red(rc, out, f"freeze: {FROZEN_ENTRY}")
+
+
+def test_renaming_a_frozen_file_away_is_refused_with_a_manifest_above_one_pipe_buffer(tmp_path):
+    bench = Bench(tmp_path, manifest=big_manifest("first"))
+    git(bench.repo, "mv", FROZEN_ENTRY, "docs/moved_note.md")
+    rc, out = bench.run()
+    assert_red(rc, out, f"freeze: {FROZEN_ENTRY}")
+
+
+def test_manifest_above_one_pipe_buffer_refuses_nothing_else(tmp_path):
+    bench = Bench(tmp_path, manifest=big_manifest("first"))
+    for near in ("t/new_module.py", "docs/frozen_note.md.bak", "docs/filler/0000_x.md", "docs/filler/*", "docs/fro*", "docs/[f]rozen_note.md",
+                 "docs/frozen_note?md", "docs\\frozen_note.md"):
+        bench.change(near, "X = 1\n")
+    rc, out = bench.run()
+    assert_green(rc, out)
+    assert "✓ no path of FROZEN_PATHS.txt in the diff" in out
+
+
+@pytest.mark.parametrize("dup_of", ["first", "middle"])
+def test_duplicate_entry_in_a_manifest_above_one_pipe_buffer_is_malformed(tmp_path, dup_of):
+    text = big_manifest(dup_of) + FROZEN_ENTRY + "\n"
+    bench = Bench(tmp_path, manifest=text)
+    bench.change("docs/readme.md")
+    rc, out = bench.run()
+    assert_red(rc, out, f"frozen manifest {bench.manifest} holds another line — line {text.count(chr(10))}: a duplicate entry")
+    assert "✓ no path of FROZEN_PATHS.txt in the diff" not in out
+
+
+AWK_STUB = """#!/bin/bash
+n=$(( $(cat "$AWK_COUNT" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$AWK_COUNT"
+[ "$n" = "$AWK_FAIL_AT" ] && exit 2
+exec /usr/bin/awk "$@"
+"""
+
+
+@pytest.mark.parametrize("fail_at,reason", [("1", "frozen manifest {m} could not be checked for duplicate entries"),
+                                            ("2", "frozen manifest check could not compare the diff with {m}")])
+def test_membership_tool_failure_is_red_not_no_match(bench, fail_at, reason):
+    """A comparison that did not run is not a comparison that found nothing."""
+    stub = bench.tmp / "bin" / "awk"
+    stub.write_text(AWK_STUB)
+    stub.chmod(0o755)
+    bench.change(FROZEN_ENTRY)
+    rc, out = bench.run(AWK_COUNT=str(bench.tmp / "awk.count"), AWK_FAIL_AT=fail_at)
+    assert_red(rc, out, reason.format(m=bench.manifest))
+    assert "✓ no path of FROZEN_PATHS.txt in the diff" not in out
+
+
 def test_renaming_a_frozen_file_away_is_refused(bench):
     git(bench.repo, "mv", FROZEN_ENTRY, "docs/moved_note.md")
     rc, out = bench.run()

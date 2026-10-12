@@ -124,14 +124,17 @@ echo "$CHANGED" | grep -qE '^(CLAUDECODE_BRIEF\.md|CLAUDE\.md|\.codex/.*|'"$WF"'
 # the environment relocates or disables it. The diff is listed again here with -z and --no-renames so that a quoted (non-ASCII) name
 # or the old name of a renamed file still meets its entry, and a diff that cannot be listed is RED rather than empty.
 # "$0", not BASH_SOURCE: bash 3.2 lets an exported BASH_SOURCE replace its own. A relative "$0" is relative to where line 9 left.
+# Membership (a duplicate entry; a changed path that is an entry) is decided by awk reading the manifest file and the whole path list,
+# never by a reader that stops at its first match on a pipe: under pipefail that loses the match once the list passes one pipe buffer.
 FZ_DIR="$(dirname "$0")"; case "$FZ_DIR" in /*) ;; *) FZ_DIR="$OLDPWD/$FZ_DIR" ;; esac
-FZ="$FZ_DIR/FROZEN_PATHS.txt"; FZ_ENTRIES=""; FZ_BAD=""; FZ_LINE=0
+FZ="$FZ_DIR/FROZEN_PATHS.txt"; FZ_N=0; FZ_BAD=""; FZ_LINE=0; FZ_DUP=""
 if [ ! -e "$FZ" ]; then FZ_BAD="is missing"
 elif [ ! -f "$FZ" ]; then FZ_BAD="is not a regular file"
 elif [ ! -r "$FZ" ]; then FZ_BAD="is unreadable"
 elif ! iconv -f UTF-8 -t UTF-8 < "$FZ" >/dev/null 2>&1; then FZ_BAD="is not valid UTF-8"
 elif [ "$(LC_ALL=C tr -d '\000' < "$FZ" | wc -c)" -ne "$(wc -c < "$FZ")" ]; then FZ_BAD="holds a NUL byte"
 elif [ -n "$(tail -c 1 "$FZ")" ]; then FZ_BAD="does not end with a line feed"
+elif ! FZ_DUP="$(LC_ALL=C awk '$0 == "" || substr($0, 1, 1) == "#" { next } seen[$0]++ { print NR; exit }' "$FZ")"; then FZ_BAD="could not be checked for duplicate entries"
 else
   while IFS= read -r e; do FZ_LINE=$((FZ_LINE + 1)); why=""
     case "$e" in ''|'#'*) continue ;; esac
@@ -143,17 +146,17 @@ else
       .|..|./*|../*|*/.|*/..|*/./*|*/../*) why="a . or .. segment" ;;
       */|*//*) why="an empty path segment" ;;
     esac
-    [ -z "$why" ] && printf '%s\n' "$FZ_ENTRIES" | grep -Fxq -- "$e" && why="a duplicate entry"
+    [ -z "$why" ] && [ "$FZ_LINE" = "$FZ_DUP" ] && why="a duplicate entry"
     if [ -n "$why" ]; then FZ_BAD="holds another line — line $FZ_LINE: $why"; break; fi
-    FZ_ENTRIES="$FZ_ENTRIES${FZ_ENTRIES:+$'\n'}$e"
+    FZ_N=$((FZ_N + 1))
   done < "$FZ"
-  [ -z "$FZ_BAD" ] && [ -z "$FZ_ENTRIES" ] && FZ_BAD="has no entries"
+  [ -z "$FZ_BAD" ] && [ "$FZ_N" -eq 0 ] && FZ_BAD="has no entries"
 fi
 if [ -n "$FZ_BAD" ]; then fail "frozen manifest $FZ $FZ_BAD"
 elif ! FZ_CHANGED="$( { git diff --no-renames --name-only -z origin/main...HEAD && git diff --no-renames --name-only -z && git diff --no-renames --name-only -z --cached; } 2>/dev/null | tr '\000' '\n' | sort -u)"; then fail "frozen manifest check could not list the diff against origin/main"
-else FZ_HIT=0
-  while IFS= read -r p; do [ -n "$p" ] && printf '%s\n' "$FZ_ENTRIES" | grep -Fxq -- "$p" && { fail "freeze: $p"; FZ_HIT=1; }; done <<< "$FZ_CHANGED"
-  [ "$FZ_HIT" -eq 0 ] && ok "no path of FROZEN_PATHS.txt in the diff"
+elif ! FZ_HITS="$(LC_ALL=C awk 'FNR == NR { if ($0 != "" && substr($0, 1, 1) != "#") fz[$0] = 1; next } $0 != "" && ($0 in fz)' "$FZ" - <<< "$FZ_CHANGED")"; then fail "frozen manifest check could not compare the diff with $FZ"
+elif [ -n "$FZ_HITS" ]; then while IFS= read -r p; do fail "freeze: $p"; done <<< "$FZ_HITS"
+else ok "no path of FROZEN_PATHS.txt in the diff"
 fi
 git diff --cached --name-only | grep -qE '\.(env|pem|key)$|pgenv' && fail "credential-like file staged" || ok "no credential-like files staged"
 if echo "$CHANGED" | grep -qE 'pipeline/orchestrator/writers/ka_.*\.py'; then echo "$CHANGED" | grep -q 'nirmana-writer-digests.json' && ok "writer digest regenerated with the writer change" || fail "writer changed but nirmana-writer-digests.json not regenerated (CI provenance check)"; fi
