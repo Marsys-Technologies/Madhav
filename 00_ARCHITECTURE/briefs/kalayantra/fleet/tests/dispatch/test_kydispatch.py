@@ -1,0 +1,954 @@
+#!/usr/bin/env python3
+"""Tests of kydispatch.py — the dispatcher engine of KĀLA-YANTRA v3 (packet KV3-B-KYDISPATCH v1; relaunch plan v2.7
+§4 capacity, §6).
+
+    python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kydispatch.py -q -p no:cacheprovider
+
+Real modules, fake commands. The engine runs as its own process against a world built under pytest's tmp_path:
+
+    root/            $KY_ROOT   bin/ky is a fake tracker CLI; HOLD when the case asks for it
+    root/run/        $KY_RUN    loops/, EVENTS.jsonl, jobs/, locks/, … as the case seeds them
+    fleet/           $KY_FLEET  fake kygate.sh, kynotify.sh, kyjob.sh, kypacket.py, kyroute.py, kyverdicts.py,
+                                kyboundary.sh, kyregen.sh, local_db.sh, precheck.sh, kyalloc.py; cards; and the REAL
+                                kylock.sh (a copy): the instance lock is never faked
+    scratch/         $KY_SCRATCH
+    repo/            $KY_SOURCE_REPO  a throwaway git repository with a bare `origin` beside it (no network)
+    worktrees/       where the patched driver lets kyd_jobs and kyd_admit put item worktrees
+    bin/             first on PATH: fake gh; git (answers from the case's replies, else the real /usr/bin/git)
+
+The five kyd_*.py modules, kyaction, kycommands and kyloop are the real ones beside kydispatch.py. Nothing here runs
+the real claude, ky, gh, launchctl, docker or a database, and nothing is written under /Users/Dev/kalayantra. The
+only processes signalled are job processes these tests started, identified by pid and start time.
+
+engine.json holds the cases: a world (`setup`), `steps` and what must be true afterwards (`expect`).
+    {"dry": [...]}          the real command line `kydispatch.py --dry` (through the patched driver when the case
+                            says `patched`): exit 0 and exactly this job list. A `key` is compared when the case
+                            gives one; otherwise it must have the form <kind>.<item>.<12 hex>.
+    {"once": N}             `kydispatch.py --once`, exit N
+    {"session": [...]}      one controller process: tick · {"sleep": s} · {"wait_jobs": s} · {"clock": s} ·
+                            {"patch": {...}} · stop · crash; `ticks` = the job list of each tick
+    {"mutate": {...}}       change the world between steps (the keys of `setup`)
+"""
+from __future__ import annotations
+
+import copy
+import hashlib
+import http.server
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+import pytest
+
+HERE = Path(__file__).resolve().parent
+FLEET = HERE.parent.parent
+ENGINE = FLEET / "kydispatch.py"
+sys.path.insert(0, str(FLEET))
+
+import kyaction as ka  # noqa: E402
+import kycommands as kc  # noqa: E402
+import kyd_kinds_ops as ops  # noqa: E402
+import kyloop  # noqa: E402
+import kyschema  # noqa: E402
+
+DOC = json.loads((HERE / "engine.json").read_text(encoding="utf-8"))
+CASES = DOC["cases"]
+CTL = "CTL-dispatcher-20261012T000000Z-1"       # the controller a --dry reads the run directory as (loop file)
+GIT = "/usr/bin/git"
+KEY_RE = re.compile(r"^[A-Z][A-Z-]*\.[A-Za-z0-9._:-]+\.[0-9a-f]{12}\Z")
+PLAN_MODEL = "00_ARCHITECTURE/control/kalayantra/plan_model.json"
+PACKETS = "00_ARCHITECTURE/briefs/kalayantra/packets"
+OPS_TABLE = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
+
+# ───────────────────────────────────────── the fake commands ─────────────────────────────────────────
+# One program under many names. Every call is logged to <fake>/calls.jsonl. A case's `replies` rule answers first
+# ({cmd, args: tokens that appear in the argv in this order, rc, out, err, sleep, once, after: only once a call
+# containing that text has been made}); otherwise the name's built-in behaviour below.
+
+FAKECMD = r'''
+import json, os, sys, time, hashlib
+
+FAKE = %(fake)r
+RUN = %(run)r
+SCRATCH = %(scratch)r
+
+
+def load(name, default):
+    try:
+        with open(os.path.join(FAKE, name), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def save(name, obj):
+    tmp = os.path.join(FAKE, ".%%s.%%d" %% (name, os.getpid()))
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f)
+    os.replace(tmp, os.path.join(FAKE, name))
+
+
+def append(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    try:
+        os.write(fd, text.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def event(obj):
+    obj.setdefault("ts", time.strftime("%%Y-%%m-%%dT%%H:%%M:%%SZ", time.gmtime()))
+    append(os.path.join(RUN, "EVENTS.jsonl"), json.dumps(obj, ensure_ascii=False) + "\n")
+    nxt = load("ky_next.json", None)
+    if isinstance(nxt, dict) and isinstance(nxt.get("version"), int):     # the live tracker's version advances
+        nxt["version"] += 1
+        save("ky_next.json", nxt)
+    return obj
+
+
+def opt(argv, name, default=None):
+    return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else default
+
+
+def in_order(tokens, argv):
+    at = 0
+    for token in tokens:
+        try:
+            at = argv.index(token, at) + 1
+        except ValueError:
+            return False
+    return True
+
+
+def out(rc, text="", err=""):
+    if text:
+        sys.stdout.write(text if isinstance(text, str) else json.dumps(text))
+        sys.stdout.write("" if isinstance(text, str) and text.endswith("\n") else "\n")
+    if err:
+        sys.stderr.write(err + "\n")
+    sys.stdout.flush()
+    sys.exit(rc)
+
+
+def ky(argv):
+    stream, lane = os.environ.get("KY_STREAM", ""), os.environ.get("KY_LANE", "")
+    actor = "stream-%%s%%s" %% (stream, ":" + lane if lane else "")
+    verb = argv[0] if argv else ""
+    if verb == "next":
+        nxt = load("ky_next.json", None)
+        return out(3, err="tracker unreachable and no snapshot on disk") if nxt is None else out(0, nxt)
+    if verb == "inbox":
+        rows = load("ky_inbox.json", [])
+        return out(0 if rows else 1, rows)
+    if verb == "claim":
+        item, worker = argv[1], opt(argv, "--worker")
+        n = load("claims_n.json", 0) + 1
+        save("claims_n.json", n)
+        claim = {"item": item, "worker_id": worker, "claim_id": "CL-%%04d" %% n, "state": "acquired"}
+        os.makedirs(os.path.join(RUN, "claims"), exist_ok=True)
+        with open(os.path.join(RUN, "claims", worker + ".json"), "w", encoding="utf-8") as f:
+            json.dump(claim, f)
+        return out(0, json.dumps(event({"kind": "claim", "item": item, "claim_id": claim["claim_id"],
+                                        "state": "acquired", "actor": actor})))
+    if verb in ("release", "renew"):
+        path = os.path.join(RUN, "claims", lane + ".json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                claim = json.load(f)
+        except (OSError, ValueError):
+            return out(2, err="refused: no claim of %%s" %% lane)
+        claim["state"] = "released" if verb == "release" else "renewed"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(claim, f)
+        return out(0, json.dumps(event({"kind": "claim", "item": claim["item"], "claim_id": claim["claim_id"],
+                                        "state": claim["state"], "actor": actor})))
+    if verb == "step":
+        return out(0, json.dumps(event({"kind": "item", "item": argv[1], "step": argv[2], "state": "done",
+                                        "evidence": opt(argv, "--evidence"), "actor": actor})))
+    if verb in ("block", "done"):
+        return out(0, json.dumps(event({"kind": "item", "item": argv[1], "detail": opt(argv, "--detail", ""),
+                                        "state": "blocked" if verb == "block" else "done", "actor": actor})))
+    return out(64, err="fake ky: no verb %%r" %% verb)
+
+
+def job_state(job_id):
+    with open(os.path.join(RUN, "jobs", job_id, "state.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def kyjob(argv):
+    job = job_state(argv[0])
+    plan = load("jobs.json", {})
+    how = plan.get(job["item"]) or plan.get(job["kind"]) or {"do": "exit", "rc": 0}
+    seq = how if isinstance(how, list) else [how]
+    n = load("job_runs_%%s.json" %% job["item"].replace("/", "_"), 0)
+    save("job_runs_%%s.json" %% job["item"].replace("/", "_"), n + 1)
+    how = seq[min(n, len(seq) - 1)]
+    session = "sess-%%s" %% job["job_id"]
+    append(job["stdout_path"], json.dumps({"type": "system", "subtype": "init", "session_id": session}) + "\n")
+    actor = "stream-%%s:%%s" %% (job["stream"], job["slot"])
+    do = how.get("do")
+    result = {"schema": "ky.job_result/1", "job_id": job["job_id"], "item": job["item"], "status": "done",
+              "branch": job.get("branch"), "head_sha": None, "pr_number": None, "tests": [], "blocked_reason": None,
+              "notes": "fake job"}
+    if do == "sleep":
+        time.sleep(how.get("s", 120))
+        sys.exit(0)
+    if do == "quota":
+        append(job["stdout_path"], json.dumps({"type": "rate_limit_event", "rate_limit_info": {
+            "status": "rejected", "rateLimitType": "five_hour"}}) + "\n")
+        sys.exit(1)
+    if do == "review":
+        event({"kind": "item", "item": job["item"], "state": "review", "actor": actor,
+               "detail": "PR #%%d @ %%s" %% (how["pr"], how["head"])})
+        result.update(head_sha=how["head"], pr_number=how["pr"])
+    elif do == "block":
+        event({"kind": "item", "item": job["item"], "state": "blocked", "actor": actor, "detail": how.get("detail", "x")})
+        result.update(status="blocked", blocked_reason=how.get("detail", "x"))
+    elif do == "decide":
+        append(os.path.join(RUN, "DECISIONS_SURROGATE.jsonl"), json.dumps({
+            "id": how.get("id", "SD-20261012T000000Z-1"), "awaiting": job["item"], "session": session,
+            "class": how.get("class", "routine"), "state": how.get("state", "EFFECTIVE"),
+            "decision": how.get("decision", "reconciled")}) + "\n")
+    if how.get("result", True):
+        with open(os.path.join(job["job_scratch"], "result.json"), "w", encoding="utf-8") as f:
+            json.dump(result, f)
+    sys.exit(how.get("rc", 0))
+
+
+def packet_front(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().split("\n")
+        return json.loads("\n".join(lines[1:lines.index("```", 1)]))
+    except (OSError, ValueError):
+        return {}
+
+
+def builtin(name, argv):
+    if name == "git":
+        os.execv("/usr/bin/git", ["/usr/bin/git"] + argv)
+    if name == "ky":
+        return ky(argv)
+    if name == "kyjob.sh":
+        return kyjob(argv)
+    if name == "gh":
+        return out(0, "[]") if argv[:2] == ["pr", "list"] else out(1, err="fake gh: no reply for %%s" %% " ".join(argv))
+    if name == "kygate.sh":
+        return out(0, "OPEN") if os.path.exists(os.path.join(FAKE, "gate_open")) else out(75, "WAIT\nreason=fixture: wait")
+    if name == "kynotify.sh":
+        append(os.path.join(FAKE, "notify.log"), json.dumps(argv, ensure_ascii=False) + "\n")
+        return out(0, "notify=dry")
+    if name == "kypacket.py":
+        return out(0, {"schema": "ky.packet_check/1", "admitted": True, "reasons": []})
+    if name == "kyroute.py":
+        if argv[:1] == ["packet"]:
+            return out(0, {"decision": "ROUTE", "tier": packet_front(opt(argv, "--packet")).get("build_tier") or "opus"})
+        if argv[:1] == ["escalate"]:
+            return out(0, {"decision": "CONTINUE"})
+        return out(0, {"decision": "SAME_TIER"})
+    if name == "local_db.sh":
+        if argv[:1] == ["db"]:
+            slot, session = argv[1], opt(argv, "--session")
+            mount = os.path.join(SCRATCH, "local_db", slot)
+            os.makedirs(mount, exist_ok=True)
+            os.makedirs(os.path.join(RUN, "local_db"), exist_ok=True)
+            with open(os.path.join(RUN, "local_db", slot + ".json"), "w", encoding="utf-8") as f:
+                json.dump({"schema": "ky.slot_db/1", "slot": slot, "session_id": session, "result": "READY",
+                           "mount_source": mount, "seed": {k: "0" * 64 for k in
+                                                           ("schema_sha256", "ledger_sha256", "registry_sha256")}}, f)
+        return out(0)
+    if name == "kyverdicts.py":
+        if argv[:1] == ["snapshot"]:
+            with open(opt(argv, "--out"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            return out(0)
+        if argv[:1] == ["inherit"]:
+            return out(1)
+        if argv[:1] == ["publish"]:
+            event({"kind": "verdict", "item": opt(argv, "--item"), "phase": opt(argv, "--phase"), "head": opt(argv, "--head"),
+                   "artifact_digest": opt(argv, "--artifact-digest"), "result": "ACCEPTED",
+                   "actor": "stream-V:%%s" %% opt(argv, "--vslot")})
+            return out(0, {"published": True})
+        if argv[:1] == ["invalidate"]:
+            event({"kind": "verdict", "item": opt(argv, "--item"), "phase": opt(argv, "--phase"), "head": opt(argv, "--head"),
+                   "artifact_digest": None, "result": "REJECTED", "detail": "invalidated: " + str(opt(argv, "--reason")),
+                   "actor": "stream-V:%%s" %% opt(argv, "--vslot")})
+            return out(0)
+    if name in ("kyboundary.sh", "kyregen.sh"):
+        return out(0)
+    if name == "precheck.sh":
+        return out(1, "EXPECTED-RED")
+    if name == "kyalloc.py":
+        return out(0, {"numbers": [901]})
+    return out(97, err="fake %%s: no reply" %% name)
+
+
+def main(name, argv):
+    append(os.path.join(FAKE, "calls.jsonl"), json.dumps({
+        "cmd": name, "argv": argv, "cwd": os.getcwd(),
+        "env": {k: os.environ[k] for k in ("KY_STREAM", "KY_LANE", "KY_RUN_ID", "KY_ROLE", "KY_SOURCE_REPO") if k in os.environ},
+        "credentials": sorted(k for k in os.environ if k in ("DATABASE_URL", "PGPASSWORD", "ANTHROPIC_API_KEY")
+                              or k.endswith("_DATABASE_URL"))}, ensure_ascii=False) + "\n")
+    rules = load("replies.json", [])
+    used = load("used.json", [])
+    try:
+        with open(os.path.join(FAKE, "calls.jsonl"), encoding="utf-8") as f:
+            earlier = ["%%s %%s" %% (c["cmd"], " ".join(c["argv"])) for c in map(json.loads, f.read().splitlines()[:-1])]
+    except (OSError, ValueError):
+        earlier = []
+    for n, rule in enumerate(rules):
+        if rule.get("cmd") != name or n in used or not in_order(rule.get("args", []), argv):
+            continue
+        if rule.get("after") and not any(rule["after"] in line for line in earlier):
+            continue
+        if rule.get("once"):
+            save("used.json", used + [n])
+        if rule.get("sleep"):
+            time.sleep(rule["sleep"])
+        return out(rule.get("rc", 0), rule.get("out", ""), rule.get("err", ""))
+    return builtin(name, argv)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2:])
+'''
+
+# The patched driver: the engine with the two work-worktree roots moved under tmp_path (kyd_jobs and kyd_admit hard-
+# code the policy root). One argument: {"argv": [...]} runs the real main(); {"session": [...]} drives one controller.
+DRIVER = r'''
+import json, os, sys, time
+sys.path.insert(0, %(fleet)r)
+import kyd_admit, kyd_jobs, kyloop
+import kydispatch
+
+kyd_jobs.WORKTREES = kyd_admit.WORKTREE_ROOT = %(worktrees)r
+plan = json.loads(sys.argv[1])
+if "argv" in plan:
+    sys.exit(kydispatch.main(plan["argv"]))
+engine = kydispatch.Engine(dict(os.environ))
+rc = engine.acquire()
+if rc != 0:
+    sys.exit(rc)
+ticks, shift = [], [0.0]
+engine.clock = lambda: time.time() + shift[0]
+for step in plan["session"]:
+    if step == "tick":
+        ticks.append(engine.tick()["jobs"])
+    elif step == "stop":
+        engine.stop()
+    elif step == "crash":
+        sys.stdout.write(json.dumps({"ticks": ticks}) + "\n")
+        sys.stdout.flush()
+        os._exit(0)
+    elif "sleep" in step:
+        time.sleep(step["sleep"])
+    elif "clock" in step:
+        shift[0] += step["clock"]
+    elif "patch" in step:
+        for name, value in step["patch"].items():
+            setattr(kyd_jobs, name, value)
+    elif "wait_jobs" in step:
+        end = time.monotonic() + step["wait_jobs"]
+        while time.monotonic() < end:
+            live = [j for j in kyd_jobs.load(engine.ctx) if j["phase"] == "live"]
+            if all(kyd_jobs._process(j) == "gone" for j in live):
+                break
+            time.sleep(0.05)
+sys.stdout.write(json.dumps({"ticks": ticks}) + "\n")
+'''
+
+
+# ───────────────────────────────────────── the tracker's /api/verify, as a loopback fixture ─────────────────────────────────────────
+
+class _Verify(http.server.BaseHTTPRequestHandler):
+    table = {}
+
+    def do_GET(self):                                   # noqa: N802
+        from urllib.parse import parse_qs, urlparse
+        url = urlparse(self.path)
+        q = parse_qs(url.query)
+        item, step = (q.get("id") or [""])[0], (q.get("step") or [""])[0]
+        how = self.table.get("%s/%s" % (item, step))
+        if url.path != "/api/verify" or how is None:
+            body, code = {"error": "unknown item or no detector"}, 404
+        elif how == "no_echo":                          # a tracker that ignores &step= answers for the ITEM's detector
+            body, code = {"item": item, "detector": {"status": "done"}}, 200
+        else:
+            body, code = {"item": item, "step": step, "detector": {"status": how}}, 200
+        data = json.dumps(body).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture(scope="session")
+def tracker():
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Verify)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield "http://127.0.0.1:%d" % server.server_address[1]
+    server.shutdown()
+
+
+@pytest.fixture(scope="session")
+def template(tmp_path_factory):
+    """A committed repository with a bare origin: copied per case (cheaper than building it each time)."""
+    base = tmp_path_factory.mktemp("template")
+    repo, origin = base / "repo", base / "origin.git"
+    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid", GIT_COMMITTER_NAME="t",
+               GIT_COMMITTER_EMAIL="t@example.invalid", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
+
+    def git(*argv, cwd=repo):
+        subprocess.run([GIT] + list(argv), cwd=cwd, env=env, check=True, capture_output=True)
+
+    repo.mkdir()
+    git("init", "-q", "-b", "main")
+    table = json.loads((HERE / "kinds_ops.json").read_text(encoding="utf-8"))["table"]    # one production kind enabled
+    (repo / OPS_TABLE).parent.mkdir(parents=True)
+    (repo / OPS_TABLE).write_text(json.dumps({"ops": table}), encoding="utf-8")
+    (repo / "README").write_text("throwaway\n", encoding="utf-8")
+    git("add", "-A")
+    git("-c", "commit.gpgsign=false", "commit", "-q", "-m", "base")
+    subprocess.run([GIT, "init", "-q", "--bare", "-b", "main", str(origin)], check=True, capture_output=True, env=env)
+    git("remote", "add", "origin", str(origin))
+    git("push", "-q", "origin", "main")
+    git("fetch", "-q", "origin")
+    return base
+
+
+# ───────────────────────────────────────── the world ─────────────────────────────────────────
+
+def gh_pr(pr):
+    """A case's PR as `gh pr view --json …` prints it (checks: name → conclusion, or {status, url})."""
+    rollup = []
+    for name, check in (pr.get("checks") or {}).items():
+        check = check if isinstance(check, dict) else {"status": check}
+        done = check["status"] not in ("IN_PROGRESS", "QUEUED", "PENDING")
+        rollup.append({"__typename": "CheckRun", "name": name, "status": "COMPLETED" if done else check["status"],
+                       "conclusion": check["status"] if done else "", "detailsUrl": check.get("url", "")})
+    return {"number": pr["number"], "headRefOid": pr["head"], "baseRefName": pr.get("base", "main"),
+            "title": pr.get("title", "a title"), "state": pr.get("state", "OPEN"),
+            "mergeable": pr.get("mergeable", "MERGEABLE"), "mergeStateStatus": pr.get("merge_state", "CLEAN"),
+            "statusCheckRollup": rollup, "mergeCommit": {"oid": pr["merge_commit"]} if pr.get("merge_commit") else None,
+            "files": [{"path": p} for p in pr.get("files", [])],
+            "autoMergeRequest": {"mergeMethod": "SQUASH"} if pr.get("auto_merge") else None}
+
+
+class World:
+    def __init__(self, tmp, template, tracker_url):
+        self.tmp = Path(os.path.realpath(tmp))
+        self.root, self.fleet, self.scratch = self.tmp / "root", self.tmp / "fleet", self.tmp / "scratch"
+        self.run, self.repo, self.fake = self.root / "run", self.tmp / "repo", self.tmp / "fake"
+        self.bin, self.worktrees = self.tmp / "bin", self.tmp / "worktrees"
+        self.tracker_url = tracker_url
+        for d in (self.root / "bin", self.run / "loops", self.fleet / "cards", self.scratch, self.fake, self.bin,
+                  self.worktrees):
+            d.mkdir(parents=True)
+        shutil.copytree(template / "repo", self.repo, symlinks=True)
+        shutil.copytree(template / "origin.git", self.tmp / "origin.git", symlinks=True)
+        subprocess.run([GIT, "remote", "set-url", "origin", str(self.tmp / "origin.git")], cwd=self.repo, check=True)
+        self.head = subprocess.run([GIT, "rev-parse", "HEAD"], cwd=self.repo, check=True, capture_output=True,
+                                   text=True).stdout.strip()
+        (self.fake / "fakecmd.py").write_text(FAKECMD % {"fake": str(self.fake), "run": str(self.run),
+                                                         "scratch": str(self.scratch)}, encoding="utf-8")
+        (self.tmp / "driver.py").write_text(DRIVER % {"fleet": str(FLEET), "worktrees": str(self.worktrees)},
+                                            encoding="utf-8")
+        for name in ("kygate.sh", "kynotify.sh", "kyjob.sh", "local_db.sh", "kyboundary.sh", "kyregen.sh", "precheck.sh"):
+            self._stub(self.fleet / name, name, shell=True)
+        for name in ("kypacket.py", "kyroute.py", "kyverdicts.py", "kyalloc.py"):
+            self._stub(self.fleet / name, name, shell=False)
+        self._stub(self.root / "bin" / "ky", "ky", shell=True)
+        self._stub(self.bin / "gh", "gh", shell=True)
+        self._stub(self.bin / "git", "git", shell=True)
+        os.symlink(sys.executable, self.bin / "python3")
+        shutil.copy(FLEET / "kylock.sh", self.fleet / "kylock.sh")           # the real instance lock
+        shutil.copy(FLEET / "mcp.none.json", self.fleet / "mcp.none.json")
+        for card in ("KARAKA.md", "PARIKSAKA.md", "ADHIKARIN.md", "OWNER_SURROGATE.md"):
+            (self.fleet / "cards" / card).write_text("card %s\n" % card, encoding="utf-8")
+        (self.run / "EVENTS.jsonl").write_text("", encoding="utf-8")
+        self.started = []                                                  # background controllers of this test
+
+    def _stub(self, path, name, shell):
+        fake = str(self.fake / "fakecmd.py")
+        if shell:
+            path.write_text("#!/bin/bash\nexec %s -B %s %s \"$@\"\n" % (sys.executable, fake, name), encoding="utf-8")
+        else:
+            path.write_text("import sys, runpy\nsys.argv = [%r, %r] + sys.argv[1:]\nrunpy.run_path(%r, run_name='__main__')\n"
+                            % (fake, name, fake), encoding="utf-8")
+        path.chmod(0o755)
+
+    # ── placeholders ──
+    def sub(self, value):
+        if isinstance(value, str):
+            for name, text in (("$RUN", self.run), ("$ROOT", self.root), ("$REPO", self.repo), ("$FLEET", self.fleet),
+                               ("$SCRATCH", self.scratch), ("$WT", self.worktrees), ("$CTL", CTL), ("$HEAD", self.head)):
+                value = value.replace(name, str(text))
+            value = re.sub(r"\$H([0-9a-f])", lambda m: m.group(1) * 40, value)
+            return re.sub(r"\$D([0-9a-f])", lambda m: m.group(1) * 64, value)
+        if isinstance(value, list):
+            return [self.sub(v) for v in value]
+        if isinstance(value, dict):
+            return {self.sub(k): self.sub(v) for k, v in value.items()}
+        return value
+
+    def write(self, path, content):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(content, (dict, list)) or content is None or isinstance(content, (int, bool)):
+            content = json.dumps(content, ensure_ascii=False, indent=1) + "\n"
+        path.write_text(content, encoding="utf-8")
+
+    def packet(self, item, front):
+        front = dict({"id": item, "kind": "fix", "build_tier": "sonnet", "max_loops": 3, "needs_chart_data": False}, **front)
+        self.write(self.repo / PACKETS / ("PACKET_%s_v1.md" % item), "```json\n%s\n```\n# %s\n" % (json.dumps(front), item))
+
+    def qualification(self, role, model, seconds=3600):
+        self.write(self.run / "QUALIFICATIONS" / ("%s-%s.json" % (role, model)), {
+            "schema": "ky.qualification/1", "role": role, "model": model, "result": "PASS", "context": "launchd",
+            "binds": {"model": model, "effort": "high", "permission_mode": "bypassPermissions",
+                      "claude_bin": "/nonexistent/claude", "max_turns": 30, "deadline_seconds": seconds,
+                      "extra_flags": [], "disallowed_tools": [],
+                      "mcp_config_sha256": ka.sha_file(self.fleet / "mcp.none.json")}})
+
+    def slot(self, slot, session=CTL):
+        mount = self.scratch / "local_db" / slot
+        mount.mkdir(parents=True, exist_ok=True)
+        self.write(self.run / "local_db" / (slot + ".json"), {
+            "schema": "ky.slot_db/1", "slot": slot, "session_id": session, "result": "READY", "mount_source": str(mount),
+            "seed": {k: "0" * 64 for k in ("schema_sha256", "ledger_sha256", "registry_sha256")}})
+
+    def loop(self, **fields):
+        doc, _ = kyloop.loop_state(self.run, "dispatcher")
+        doc = dict(doc or {}, **fields)
+        self.write(self.run / "loops" / "dispatcher.json", doc)
+
+    # ── a case's setup, and its mutations ──
+    def apply(self, setup, first=False):
+        setup = self.sub(copy.deepcopy(setup))
+        if first:
+            self.loop(enabled=True, controller={"id": CTL, "pid": 1})
+            for role in ("build", "rework", "verify", "artifact", "pre-accept", "post-readback", "ruling", "surrogate",
+                         "plan", "model", "request-prep"):
+                for model in ("claude-sonnet-5-5", "claude-opus-5-5"):
+                    self.qualification(role, model, setup.get("deadline_seconds", 3600))
+            for item, front in DOC["defaults"]["packets"].items():
+                self.packet(item, front)
+            self.write(self.repo / PLAN_MODEL, {"items": self.sub(copy.deepcopy(DOC["defaults"]["model"])) + setup.get("model", [])})
+            self.write(self.fake / "replies.json", [])
+            self.write(self.fake / "jobs.json", {})
+        elif "model" in setup:
+            self.write(self.repo / PLAN_MODEL, {"items": self.sub(copy.deepcopy(DOC["defaults"]["model"])) + setup["model"]})
+        if "next" in setup:
+            nxt = setup["next"]
+            if nxt is None:
+                (self.fake / "ky_next.json").unlink(missing_ok=True)
+            else:
+                nxt = dict({"running": [], "ready": [], "blocked": []}, **nxt)
+                if not nxt.pop("snapshot", False):
+                    nxt = dict({"stream": "", "version": 5}, **nxt)
+                self.write(self.fake / "ky_next.json", nxt)
+        if "prs" in setup:                                                 # `gh pr view <n>` answers, in gh's own shape
+            setup["replies"] = [{"cmd": "gh", "args": ["pr", "view", str(pr["number"])], "out": gh_pr(pr),
+                                 **({"after": pr["after"]} if pr.get("after") else {})}
+                                for pr in setup["prs"]] + setup.get("replies", [])
+        for key, name in (("replies", "replies.json"), ("jobs", "jobs.json"), ("inbox", "ky_inbox.json")):
+            if key in setup:
+                self.write(self.fake / name, setup[key])
+        if "gate" in setup:
+            (self.fake / "gate_open").unlink(missing_ok=True)
+            if setup["gate"] == "OPEN":
+                self.write(self.fake / "gate_open", "")
+        for key, path in (("hold", self.root / "HOLD"), ("hold_merges", self.run / "HOLD_MERGES"),
+                          ("stop", self.run / "STOP_dispatcher")):
+            if key in setup:
+                path.unlink(missing_ok=True)
+                if setup[key]:
+                    self.write(path, "fixture\n")
+        if "enabled" in setup:
+            self.loop(enabled=setup["enabled"])
+        if "loop" in setup:
+            self.loop(**setup["loop"])
+        for slot in setup.get("slots", []):
+            self.slot(slot)
+        for event in setup.get("events", []):
+            with open(self.run / "EVENTS.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(dict({"ts": "2026-10-12T10:00:00Z"}, **event), ensure_ascii=False) + "\n")
+        if "events_raw" in setup:
+            with open(self.run / "EVENTS.jsonl", "a", encoding="utf-8") as f:
+                f.write(setup["events_raw"])
+        for item, front in setup.get("packets", {}).items():
+            self.packet(item, front)
+        for path, content in setup.get("files", {}).items():
+            if content is None:
+                Path(path).unlink(missing_ok=True)
+            else:
+                self.write(path, content)
+        for record in setup.get("prepared", []):                           # ky.op_prepared/1, digest by the real module
+            request = record["request"]
+            self.write(self.run / "ops" / "prepared" / (request["operation_id"] + ".json"), {
+                "schema": "ky.op_prepared/1", "operation_id": request["operation_id"], "item": request["item_id"],
+                "step": 1, "request": request, "request_sha256": ops.request_digest(request),
+                "prepared_by": CTL, "prepared_by_slot": record.get("slot")})
+            if record.get("receipt"):
+                output = self.run / "ops" / "receipts" / (request["operation_id"] + ".output.txt")
+                self.write(output, "rows=12\n")
+                self.write(self.run / "ops" / "done" / (request["operation_id"] + ".json"), request)
+                self.write(self.run / "ops" / "receipts" / (request["operation_id"] + ".json"), {
+                    "operation_id": request["operation_id"], "kind": request["kind"], "item_id": request["item_id"],
+                    "status": record["receipt"], "exit_code": 0, "request_sha256": ops.request_digest(request),
+                    "requested_by": request["requested_by"], "output_file": str(output),
+                    "output_sha256": ka.sha_file(output), "output_bytes": 8})
+        for doc in setup.get("awaiting", []):
+            self.write(self.run / "awaiting" / (doc["id"] + ".json"), dict({
+                "schema": "ky.awaiting/1", "created_at": "2026-10-12T10:00:00Z",
+                "raised_by": {"role": "conductor", "session_id": "S-1", "job_id": None}, "item": None,
+                "options": [{"id": "reconciled", "text": "done"}], "recommendation": None, "evidence": [],
+                "deadline": None, "class_hint": "unknown", "blocks": "none"}, **doc))
+        for command in setup.get("commands", []):
+            kc.submit(self.run, command.get("role", "dispatcher"), command["command"], command.get("args", {}),
+                      {"kind": "cockpit", "session_id": "owner-cockpit", "pid": os.getpid(),
+                       "process_start": ka.self_identity()["process_start"]})
+        if setup.get("pause_applied"):                                     # an owner pause in force: APPLIED, no later resume
+            cid = kc.submit(self.run, "campaign", "pause", {}, {"kind": "cockpit", "session_id": "owner-cockpit",
+                                                                "pid": os.getpid(),
+                                                                "process_start": ka.self_identity()["process_start"]})
+            entry = kc.find(self.run, cid)
+            self.write(entry["path"], dict(entry["doc"], state="APPLIED", applied_at=ka.utc(), result={},
+                                           applied_by={"holder_kind": "controller", "controller_id": "CTL-campaign-1",
+                                                       "role": "campaign"}))
+            assert kc.owner_paused(self.run) is True
+        for n in range(setup.get("worktrees", 0)):                         # registered copies under the patched root
+            subprocess.run([GIT, "worktree", "add", "-q", "-b", "kalayantra/old-%d" % n,
+                            str(self.worktrees / ("kalayantra-old-%d" % n)), "HEAD"], cwd=self.repo, check=True,
+                           capture_output=True)
+        for name in setup.get("plain_dirs", []):
+            Path(name).mkdir(parents=True, exist_ok=True)
+        _Verify.table = setup.get("verify", _Verify.table if not first else {})
+
+    # ── running the engine ──
+    def env(self, extra=None):
+        env = {"HOME": str(self.tmp / "home"), "USER": os.environ.get("USER", "t"), "LANG": "en_US.UTF-8", "TERM": "dumb",
+               "PATH": "%s:/usr/bin:/bin:/usr/sbin:/sbin" % self.bin, "TMPDIR": os.environ.get("TMPDIR", str(self.tmp)),
+               "KY_ROOT": str(self.root), "KY_RUN": str(self.run), "KY_FLEET": str(self.fleet),
+               "KY_SCRATCH": str(self.scratch), "KY_SOURCE_REPO": str(self.repo), "KY_TRACKER_URL": self.tracker_url,
+               "GIT_CONFIG_GLOBAL": os.devnull, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+        (self.tmp / "home").mkdir(exist_ok=True)
+        env.update(extra or {})
+        return env
+
+    def cli(self, argv, patched=False, extra=None, timeout=120):
+        cmd = [sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else \
+            [sys.executable, "-B", "-u", str(ENGINE)] + argv
+        return subprocess.run(cmd, env=self.env(extra), capture_output=True, text=True, timeout=timeout,
+                              cwd=str(self.tmp), stdin=subprocess.DEVNULL)
+
+    def session(self, steps, timeout=120):
+        return subprocess.run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})],
+                              env=self.env(), capture_output=True, text=True, timeout=timeout, cwd=str(self.tmp),
+                              stdin=subprocess.DEVNULL)
+
+    def background(self, steps):
+        proc = subprocess.Popen([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})],
+                                env=self.env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                cwd=str(self.tmp), stdin=subprocess.DEVNULL)
+        self.started.append(proc)
+        return proc
+
+    # ── what happened ──
+    def calls(self):
+        try:
+            lines = (self.fake / "calls.jsonl").read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            return []
+        return [json.loads(line) for line in lines]
+
+    def call_lines(self):
+        return ["%s %s" % (c["cmd"], " ".join(c["argv"])) for c in self.calls()]
+
+    def jobs(self):
+        out = []
+        directory = self.run / "jobs"
+        for name in sorted(os.listdir(directory)) if directory.is_dir() else []:
+            if (directory / name / "state.json").is_file():
+                out.append(json.loads((directory / name / "state.json").read_text(encoding="utf-8")))
+        return out
+
+    def journal(self):
+        try:
+            return (self.run / "JOURNAL_DISPATCHER.md").read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return ""
+
+    def cleanup(self):
+        """End what this test started: its background controllers, and job processes recorded in ITS run directory
+        whose pid still has the recorded start identity (a pid alone is never signalled)."""
+        for proc in self.started:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=10)
+        for job in self.jobs():
+            pid, start = job.get("pid"), job.get("process_start")
+            if isinstance(pid, int) and pid > 1 and job.get("pgid") == pid and ka.process_matches(pid, start) is True:
+                try:
+                    os.killpg(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+
+
+@pytest.fixture
+def world(tmp_path, template, tracker):
+    w = World(tmp_path, template, tracker)
+    yield w
+    w.cleanup()
+
+
+# ───────────────────────────────────────── the cases of engine.json ─────────────────────────────────────────
+
+def _same_jobs(got, want, label):
+    assert [(j["kind"], j["item"], j["pool"], j["decision"]) for j in got] == \
+        [(j["kind"], j["item"], j.get("pool"), j["decision"]) for j in want], "%s: %s" % (label, json.dumps(got))
+    for have, expected in zip(got, want):
+        assert set(have) == {"kind", "item", "key", "pool", "decision"}, label
+        assert KEY_RE.match(have["key"]) and have["key"].startswith("%s.%s." % (have["kind"], have["item"])), have["key"]
+        if "key" in expected:
+            assert have["key"] == expected["key"], label
+
+
+def _subset(have, want):
+    return all(have.get(k) == v for k, v in want.items())
+
+
+def _expect(world, expect, label):
+    expect = world.sub(copy.deepcopy(expect))
+    lines = world.call_lines()
+    at = 0
+    for wanted in expect.get("calls", []):                                 # in this order
+        found = next((n for n in range(at, len(lines)) if wanted in lines[n]), None)
+        assert found is not None, "%s: no call %r after position %d in\n%s" % (label, wanted, at, "\n".join(lines))
+        at = found + 1
+    for unwanted in expect.get("no_calls", []):
+        assert not [x for x in lines if unwanted in x], "%s: a call %r was made" % (label, unwanted)
+    for text, count in expect.get("call_counts", {}).items():
+        assert len([x for x in lines if text in x]) == count, "%s: %r not called %d times\n%s" % (label, text, count, "\n".join(lines))
+    if "jobs" in expect:
+        jobs = world.jobs()
+        assert len(jobs) == len(expect["jobs"]), "%s: job states %s" % (label, [(j["kind"], j["item"], j["phase"], j["outcome"]) for j in jobs])
+        for have, want in zip(jobs, expect["jobs"]):
+            assert _subset(have, want), "%s: job %s is %s, wanted %s" % (
+                label, have["job_id"], {k: have.get(k) for k in want}, want)
+            assert have["schema"] == "ky.job/1"
+    journal = world.journal()
+    for text in expect.get("journal", []):
+        assert text in journal, "%s: journal lacks %r:\n%s" % (label, text, journal)
+    for text in expect.get("no_journal", []):
+        assert text not in journal, "%s: journal has %r:\n%s" % (label, text, journal)
+    notify = (world.fake / "notify.log").read_text(encoding="utf-8") if (world.fake / "notify.log").exists() else ""
+    for text in expect.get("notify", []):
+        assert text in notify, "%s: no notification %r in\n%s" % (label, text, notify)
+    for text, count in expect.get("notify_counts", {}).items():
+        assert notify.count(text) == count, "%s: %r notified %d times, wanted %d" % (label, text, notify.count(text), count)
+    for path, want in expect.get("files", {}).items():
+        if isinstance(want, bool):
+            assert os.path.lexists(path) is want, "%s: %s %s" % (label, path, "is missing" if want else "exists")
+        elif isinstance(want, str):
+            assert Path(path).read_text(encoding="utf-8").strip() == want, "%s: %s" % (label, path)
+        else:
+            have = json.loads(Path(path).read_text(encoding="utf-8"))
+            assert _subset(have, want), "%s: %s is %s" % (label, path, have)
+    for slug, count in expect.get("awaiting", {}).items():
+        found = sorted((world.run / "awaiting").glob("AW-*-%s.json" % slug)) if (world.run / "awaiting").is_dir() else []
+        assert len(found) == count, "%s: %d awaiting item(s) %s, wanted %d" % (label, len(found), slug, count)
+        schema = kyschema.load_json(FLEET / "schemas" / "awaiting.json")
+        for path in found:
+            assert not kyschema.validate(schema, json.loads(path.read_text(encoding="utf-8"))), path
+    if "loop" in expect:
+        doc, err = kyloop.loop_state(world.run, "dispatcher")
+        assert err is None and _subset(doc, expect["loop"]), "%s: loop file %s" % (label, doc)
+    if "command_states" in expect:
+        assert [e["doc"]["state"] for e in kc.scan(world.run)[0]] == expect["command_states"], \
+            "%s: %s" % (label, [(e["doc"]["command"], e["doc"]["state"], e["doc"].get("result")) for e in kc.scan(world.run)[0]])
+    if expect.get("adopted"):
+        doc, _ = kyloop.loop_state(world.run, "dispatcher")
+        live = [j for j in world.jobs() if j["phase"] == "live"]
+        assert live and all(j["controller_id"] == doc["controller"]["id"] != CTL for j in live), label
+    if "lock" in expect:
+        assert os.path.lexists(world.run / "locks" / "dispatcher") is expect["lock"], "%s: instance lock" % label
+    for call in world.calls():
+        assert call["credentials"] == [], "a credential variable reached %s" % call["cmd"]
+
+
+@pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
+def test_case(case, world):
+    world.apply(case.get("setup", {}), first=True)
+    patched = bool(case.get("patched"))
+    for n, step in enumerate(case["steps"]):
+        label = "%s step %d" % (case["name"], n + 1)
+        if "mutate" in step:
+            world.apply(step["mutate"])
+        elif "dry" in step:
+            events = (world.run / "EVENTS.jsonl").read_bytes()
+            before = sorted(str(p) for p in world.run.rglob("*"))
+            done = world.cli(["--dry"], patched=patched)
+            assert done.returncode == step.get("exit", 0), "%s: exit %d\n%s" % (label, done.returncode, done.stderr)
+            plan = json.loads(done.stdout)
+            assert set(plan) == {"schema", "jobs"} and plan["schema"] == "ky.dispatch_plan/1", label
+            _same_jobs(plan["jobs"], world.sub(copy.deepcopy(step["dry"])), label)
+            assert sorted(str(p) for p in world.run.rglob("*")) == before, "%s: --dry wrote under $KY_RUN" % label
+            assert (world.run / "EVENTS.jsonl").read_bytes() == events, label
+        elif "once" in step:
+            done = world.cli(["--once"], patched=True)
+            assert done.returncode == step["once"], "%s: exit %d\n%s" % (label, done.returncode, done.stderr)
+        elif "session" in step:
+            done = world.session(world.sub(copy.deepcopy(step["session"])))
+            assert done.returncode == step.get("exit", 0), "%s: exit %d\n%s\n%s" % (label, done.returncode, done.stdout, done.stderr)
+            if "ticks" in step:
+                ticks = json.loads(done.stdout.strip().splitlines()[-1])["ticks"]
+                want = world.sub(copy.deepcopy(step["ticks"]))
+                assert len(ticks) == len(want), "%s: %d ticks: %s" % (label, len(ticks), json.dumps(ticks))
+                for t, (got, expected) in enumerate(zip(ticks, want)):
+                    _same_jobs(got, expected, "%s tick %d" % (label, t + 1))
+        if "expect" in step:
+            _expect(world, step["expect"], label)
+    _expect(world, case.get("expect", {}), case["name"])
+
+
+def test_every_listed_item_has_a_case():
+    """The packet's acceptance: at least one case per item of the plan's "Tests (B-1)" list, per negative case and
+    for a refusal after J.open; and a case per kind."""
+    covered = {tag for case in CASES for tag in case["covers"]}
+    for tag, test in DOC["covered_elsewhere"].items():                     # by a test of this file, named there
+        assert callable(globals().get(test)), test
+        covered.add(tag)
+    kinds = {"BUILD", "REWORK", "STEP", "VERIFY", "ARTIFACT", "REGEN", "MERGE", "COMPLETE", "REQUEST-PREP", "PRE-ACCEPT",
+             "EXECUTE", "POST-READBACK", "MODEL", "RULING", "SURROGATE", "PLAN"}
+    transitions = {"done", "blocked", "failed", "interrupted", "timed_out", "refused"}
+    listed = {"recovery", "timeout reaping", "hold precedence", "gate WAIT with bootstrap exemption", "ceiling refusal",
+              "stale-snapshot refusal", "duplicate instance refusal", "head-match guard", "inheritance predicate",
+              "failure fingerprint persistence"}
+    negative = {"STOP_dispatcher", "global HOLD", "HOLD_MERGES", "gate WAIT", "snapshot fallback", "second instance",
+                "refusal after J.open"}
+    missing = (kinds | transitions | listed | negative) - covered
+    assert not missing, "no case covers: %s" % ", ".join(sorted(missing))
+    assert len({c["name"] for c in CASES}) == len(CASES)
+
+
+# ───────────────────────────────────────── what a case file cannot say ─────────────────────────────────────────
+
+BUILD_READY = {"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready", "completion_kind": "code",
+                                   "deps_open": [], "deps_open_strict": []}]},
+               "files": {"$RUN/PRIORITY.txt": "K-1\n"}, "gate": "OPEN", "slots": ["b1"]}
+
+
+def test_a_second_instance_exits_75_and_changes_nothing(world):
+    """Duplicate instance refusal: while one controller holds the real instance lock, `--once` exits 75."""
+    world.apply(dict(BUILD_READY, jobs={"K-1": {"do": "sleep", "s": 60}}), first=True)
+    first = world.background(["tick", {"sleep": 60}])
+    end = time.monotonic() + 30
+    while time.monotonic() < end and not (world.run / "locks" / "dispatcher" / "owner.json").exists():
+        time.sleep(0.05)
+    owner = json.loads((world.run / "locks" / "dispatcher" / "owner.json").read_text(encoding="utf-8"))
+    assert owner["pid"] == first.pid and owner["session_or_run_id"].endswith("-%d" % first.pid)
+    before = len(world.calls())
+    second = world.cli(["--once"], patched=True)
+    assert second.returncode == 75, second.stderr
+    after = [c for c in world.calls()[before:] if c["cmd"] != "kygate.sh"]
+    assert not [c for c in after if c["cmd"] in ("ky", "gh", "kyjob.sh", "local_db.sh")], after
+    assert json.loads((world.run / "locks" / "dispatcher" / "owner.json").read_text(encoding="utf-8")) == owner
+    assert first.poll() is None
+
+
+def test_usage_and_credential_refusals(world):
+    world.apply(BUILD_READY, first=True)
+    assert world.cli(["--bogus"]).returncode == 64
+    assert world.cli(["--dry", "extra"]).returncode == 64
+    for name in ("ANTHROPIC_API_KEY", "PGPASSWORD", "DATABASE_URL", "KALA_DATABASE_URL"):
+        done = world.cli(["--dry"], extra={name: "not-a-real-value"})
+        assert done.returncode == 78 and name in done.stderr and "not-a-real-value" not in done.stderr + done.stdout
+    assert world.cli(["--dry"], extra={"KY_SCRATCH": "relative/path"}).returncode == 64
+    assert world.calls() == []                                             # refused before anything was asked
+
+
+def test_the_real_command_line_needs_no_lock_for_dry_and_takes_it_for_once(world):
+    world.apply(BUILD_READY, first=True)
+    dry = world.cli(["--dry"])
+    assert dry.returncode == 0 and json.loads(dry.stdout)["jobs"][0]["decision"] == "launch"
+    assert not (world.run / "locks").exists()
+    once = world.cli(["--once"], patched=True)
+    assert once.returncode == 0, once.stderr
+    lines = world.call_lines()
+    assert any(x.startswith("local_db.sh close --session CTL-dispatcher-") for x in lines)       # kylock.sh release
+    assert not (world.run / "locks" / "dispatcher").exists()
+    loop, _ = kyloop.loop_state(world.run, "dispatcher")
+    assert loop["enabled"] is True and loop["controller"]["id"].startswith("CTL-dispatcher-")
+    assert re.match(r"^CTL-dispatcher-[0-9]{8}T[0-9]{6}Z-[0-9]+\Z", loop["controller"]["id"])
+    assert os.path.isabs(loop["log_path"]) and loop["log_path"].startswith(str(world.scratch / "dispatcher"))
+    assert kyloop.SHA_RE.match(loop["tracker"]["events_sha256"]) and loop["tracker"]["version"] == 5
+
+
+def test_pr_is_mapped_to_the_shape_the_modules_document():
+    import kydispatch
+    doc = {"number": 7, "headRefOid": "a" * 40, "baseRefName": "main", "title": "t", "state": "OPEN",
+           "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN", "mergeCommit": {"oid": "b" * 40},
+           "files": [{"path": "platform/x.py", "additions": 1}], "autoMergeRequest": None,
+           "statusCheckRollup": [
+               {"__typename": "CheckRun", "name": "Kāla DB Tests (throwaway Postgres)", "status": "COMPLETED",
+                "conclusion": "SUCCESS", "detailsUrl": "https://github.com/o/r/actions/runs/123/job/9"},
+               {"__typename": "CheckRun", "name": "lint", "status": "COMPLETED", "conclusion": "FAILURE",
+                "detailsUrl": "https://github.com/o/r/actions/runs/124/attempts/2/job/9"},
+               {"__typename": "CheckRun", "name": "build", "status": "IN_PROGRESS", "conclusion": "",
+                "detailsUrl": "https://example.invalid/elsewhere"},
+               {"__typename": "StatusContext", "context": "ci/ext", "state": "PENDING", "targetUrl": None}]}
+    assert kydispatch.map_pr(doc) == {
+        "number": 7, "head": "a" * 40, "base": "main", "title": "t", "state": "OPEN", "mergeable": "MERGEABLE",
+        "merge_state": "CLEAN", "merge_commit": "b" * 40, "files": ["platform/x.py"], "auto_merge": None,
+        "checks": {"Kāla DB Tests (throwaway Postgres)": {"status": "SUCCESS", "run_id": 123, "attempt": None},
+                   "lint": {"status": "FAILURE", "run_id": 124, "attempt": 2},
+                   "build": {"status": "IN_PROGRESS", "run_id": None, "attempt": None},
+                   "ci/ext": {"status": "PENDING", "run_id": None, "attempt": None}}}
+    for broken in ({}, dict(doc, number="7"), dict(doc, headRefOid=None), dict(doc, statusCheckRollup="x"),
+                   dict(doc, statusCheckRollup=[{"name": None}]), dict(doc, files=[{"nopath": 1}]), [], None):
+        assert kydispatch.map_pr(broken) == "unknown"
+    assert kydispatch.map_pr(dict(doc, mergeCommit=None, statusCheckRollup=None, files=None))["checks"] == {}
+
+
+def test_pool_sizes_and_backoff_steps(tmp_path):
+    import kydispatch
+    assert kydispatch.BACKOFF_MINUTES == (5, 10, 20, 30)
+    for text, want in (("3\n", 3), ("8", 8), ("1", 1), ("0", 0), ("9", 0), ("six", 0), ("", 0), ("3.0", 0), ("-2", 0)):
+        (tmp_path / "KY_WORKERS").write_text(text, encoding="utf-8")
+        assert kydispatch.pool_size(tmp_path / "KY_WORKERS", 6) == want, text
+    assert kydispatch.pool_size(tmp_path / "absent", 6) == 6 and kydispatch.pool_size(tmp_path / "absent", 4) == 4
+    (tmp_path / "dir").mkdir()
+    assert kydispatch.pool_size(tmp_path / "dir", 6) == 0                  # unreadable is no capacity, not the default
+
+
+def test_fresh_is_only_a_live_version_that_advanced_or_stands_on_unchanged_events():
+    import kydispatch
+    live = {"stream": "", "version": 5, "running": [], "ready": [], "blocked": []}
+    seen = {"version": 5, "events_size": 10, "events_sha256": "a" * 64}
+    now = {"events_size": 10, "events_sha256": "a" * 64}
+    assert kydispatch.fresh(live, None, now) is True                       # the first reading of this run directory
+    assert kydispatch.fresh(dict(live, version=6), seen, dict(now, events_size=99)) is True
+    assert kydispatch.fresh(live, seen, now) is True
+    assert kydispatch.fresh(live, seen, dict(now, events_sha256="b" * 64)) is False
+    assert kydispatch.fresh(live, seen, dict(now, events_size=11)) is False
+    assert kydispatch.fresh(live, seen, None) is False                     # EVENTS unreadable: unchanged is not shown
+    assert kydispatch.fresh(dict(live, version=4), seen, now) is False
+    for not_live in ({k: v for k, v in live.items() if k != "version"}, dict(live, version=True),
+                     dict(live, version="5"), dict(live, version=None), [], None, "x"):
+        assert kydispatch.fresh(not_live, None, now) is False              # the snapshot fallback carries no version
