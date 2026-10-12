@@ -3,7 +3,7 @@
 -- Documentation fix, ONE column of ONE registry row (volume_explanation): the registered prose says "canonical 3,002-rule projection"; since the rules table dropped 8 consequence-less rules
 -- (3,002 -> 2,994; migration 1368) and the projection was rebuilt (migration 1370 re-sealed its check, run 45c8b3b1), the registered explanation must name the current size. The stored check never
 -- reads this column; the three places that carry the prose move together in the same release: this row, scripts/seed/asset_registry_seed.ts, and the constant of the contract test
--- tests/unit/migrations/nirmana_l0_concordance_integrity_contract.test.ts. Migration 619's own text stays as history (never edited).
+-- tests/unit/migrations/nirmana_l0_concordance_integrity_contract.test.ts. The old prose is kept as history in migration 1370's text (never edited; the 619 constant inside the contract test is the test's own history).
 -- GUARD: the UPDATE replaces only the exact old explanation (and the exact floor 721 and partition key); a different live text is a NOTICE-and-NO-OP; a row already at the new text is an idempotent
 -- no-op; a silent no-op of an UPDATE that should have matched RAISES. Transaction ownership belongs to platform/scripts/migrate.ts (no BEGIN/COMMIT here). Data-only.
 -- TRIGGER EFFECT: nirmana_registry_receipt_invalidation fires on an UPDATE of volume_explanation only if that column is in its watched list; if it fires, this asset's freshness becomes 'stale'

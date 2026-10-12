@@ -3,13 +3,15 @@
 -- Census Count.floor: three registry floors that no longer match the documented, INTENDED achieved counts. All three are floor RE-PINS to the live count after an intended change; no row is added,
 -- removed or rewritten anywhere (CLAUDE.md N.4: floors are aspirational and never a reason to fabricate rows).
 -- (1) ga_vichara 8249 -> 7774: lane #2970 (whole-row dedupe, S-L1 integration e9e96d759, 2026-10-03) removed 750 exact duplicate valence_pass rows (5 x 150; membership identical): 8,524 -> 7,774
---     (HOOKS_W7_HAND_READBACK_v1_0.md, the writer acceptance SQL). Migration 846's formula with the new valence term: 5 x (1500 + 35 + 9 + 9) + 9 = 7,774. Measured on production 2026-10-11 through
+--     (HOOKS_W7_HAND_READBACK_v1_0.md, the writer acceptance SQL). Migration 846's formula with the new valence term: 5 x (1500 + 35 + 9 + 9) + 9 = 7,774. Measured on the evaluation copy of on-demand backup 1791769727082 (taken 2026-10-12T01:50Z; restored copy, not the live database) through
 --     the registered count_sql = 7,774 (chart 482012f1). The other two charts still hold older output (8,240 / 8,247) until replicated.
 -- (2) bg_parihara_rules 449 -> 440: floor 449 = 61 + 329 + 59 (migration 644); migration 703 deleted 9 orphaned rows (1 parihara, 8 census) and re-pinned the check to 60 / 329 / 51 but not the floor.
---     The registered count_sql measured on production 2026-10-11 = 60 + 329 + 51 = 440 (identical in every census since 2026-09-30).
--- (3) ga_yoga 63 -> 53: floor 63 was the native chart's count on 2026-09-05 (migration 650: min of 80 / 69 / 63). Live: 53 rows / 13 yogas (5 ayanamshas): 10 firings fewer = two yogas (chatra,
---     ardhachandra) that no longer fire under the tightened evaluator (PR #1298); the Engine's read of 2026-10-12: an INTENDED evaluator change, not lost rows. Measured on production 2026-10-11:
---     53 firings, 13 yogas, every row fired. The other two charts hold older output (69 / 80) until replicated.
+--     The registered count_sql measured on the evaluation copy of on-demand backup 1791769727082 (taken 2026-10-12T01:50Z; restored copy, not the live database) = 60 + 329 + 51 = 440 (identical in every census since 2026-09-30).
+-- (3) ga_yoga 63 -> 53: floor 63 was the native chart's count recorded by migration 650 (2026-09-05; min of 80 / 69 / 63). Now: 53 rows / 13 yogas (5 ayanamshas), every row fired: a delta of -10 firings
+--     (measured on the evaluation copy of on-demand backup 1791769727082 (taken 2026-10-12T01:50Z; restored copy, not the live database)).
+--     CAUSE NOT ISOLATED: the committed evidence shows the delta, not the per-yoga cause. The probable cause is the Nabhasa rule tightening (commit bdc27ccdf: chatra and ardhachandra, 2 yogas x 5 ayanamshas = 10),
+--     which the Engine read on 2026-10-12 as an intended evaluator change, not lost rows; that attribution is plausible, not proven by a per-yoga count. PR #1298 merged 2026-08-15, before migration 650 recorded 63,
+--     so it is NOT the explanation. The other two charts hold older output (69 / 80) until replicated.
 -- GUARD: each UPDATE replaces only the exact old floor of its own asset row; a different live floor is a NOTICE-and-NO-OP; a floor already at the new value is an idempotent no-op; a silent no-op of an
 -- UPDATE that should have matched RAISES. Transaction ownership belongs to platform/scripts/migrate.ts (no BEGIN/COMMIT). Data-only.
 -- TRIGGER EFFECT: nirmana_registry_receipt_invalidation fires for target_floor: the three assets' freshness becomes 'stale' (registry_changed) until their next build.
