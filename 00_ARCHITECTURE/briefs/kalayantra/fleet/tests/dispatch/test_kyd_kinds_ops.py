@@ -1,9 +1,15 @@
 """KV3-B-KYDKINDS-OPS: the eight operation/ruling kinds of the dispatcher (relaunch plan v2.7 §6 REQUEST-PREP … PLAN).
 
 `kinds_ops.json` holds the cases. Each case builds a recording ctx double over a throwaway directory, lays down its
-files, and runs steps — `intents`, `start`, `finish`, `mutate`, `restart` — comparing what the module answered with the
+files (the plan model the ctx names among them: `ctx.model`), and runs steps — `intents`, `start`, `finish`, `mutate`, `restart` — comparing what the module answered with the
 case's expectations: the intents, the exact calls it made (argv of every `sh` / `ky`, every action record, journal line
 and awaiting item), the files it wrote, and the files it must not have written.
+
+The tracker's answers are in the shapes pravaha_tracker emits (review r5 KO5-B1): `next` is the `ky next --json`
+object {stream, version, running, ready, blocked} of item rows as state.build_snapshot writes them, `events` are
+EVENTS.jsonl lines ({kind: item, state: review | blocked}, {kind: verdict}), the inbox rows are message events, and
+brief / completion_kind / done_by / join are in the plan model only. `test_the_fixtures_use_the_trackers_shapes`
+holds every case to that, against the tracker's own source.
 
 The double starts no process and touches no network: an `sh` or `ky` call no case answered is recorded and fails the
 case. The real `ky`, `gh`, executor, kyverdicts and kyboundary are never run. `executor.py` is imported (not run) in
@@ -15,6 +21,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -28,6 +35,15 @@ TABLE_ARGV_TAIL = "origin/main:00_ARCHITECTURE/briefs/kalayantra/fleet/executor_
 INTENT_FIELDS = {"kind", "item", "key", "stream", "role", "pool", "runner", "queue", "claim", "locks", "tier",
                  "not_slot", "head", "digest", "verdict_phase", "evidence_fp", "card", "packet", "header"}
 KEY_RE = re.compile(r"^[A-Z-]+\.[^.\s][^\s]*\.[0-9a-f]{12}$")
+MODEL_REL = "00_ARCHITECTURE/control/kalayantra/plan_model.json"
+TRACKER = FLEET.parents[3] / "platform" / "scripts" / "governance" / "pravaha_tracker"
+EMPTY_NEXT = {"stream": "", "version": 1, "running": [], "ready": [], "blocked": []}
+NEXT_STATUSES = {"running": ("running", "review"), "ready": ("ready",), "blocked": ("blocked", "failed", "parked", "conflict")}
+# the keys of an item row: state.py build_snapshot (id … cross_stream, **item_status(), deps_open*, elapsed_s)
+ROW_KEYS = {"id", "title", "lane", "gate", "owner", "depends_on", "cross_stream", "status", "source", "detail", "progress",
+            "actor", "evidence", "started_at", "updated_at", "checked_at", "deps_open", "deps_open_strict", "elapsed_s"}
+# what item_status / build_snapshot add to some rows only
+ROW_EXTRAS = {"steps", "outcome", "detector_warning", "deps_merged_pending_deploy", "gaps", "skip_origin"}
 
 
 def load_module(name="kyd_kinds_ops_under_test"):
@@ -39,6 +55,58 @@ def load_module(name="kyd_kinds_ops_under_test"):
 
 DOC = json.loads(CASES_PATH.read_text(encoding="utf-8"))
 CASES = DOC["cases"]
+# the cases that lay down a shape the tracker does NOT emit, on purpose (each says so in its steps): everything else is
+# held to the tracker's own shapes by `tracker_shape_faults`
+FOREIGN = {"rp_an_unrecognised_tracker_answer_is_unknown_not_an_empty_tracker",
+           "model_finish_reads_review_and_block_as_the_tracker_writes_them",
+           "prb_a_the_author_and_the_excluded_slot_are_the_review_events_actor",
+           "plan_an_unknown_tracker_or_plan_model_is_no_wave_boundary",
+           "plan_the_wave_boundary_is_open_items_none_ready_none_running_admitted",
+           "ruling_an_inbox_row_that_is_no_message_event_is_unknown"}
+
+
+def tracker(name):
+    """A module of the tracker package in this working copy (imported, never run): the producer of the shapes."""
+    if str(TRACKER.parent) not in sys.path:
+        sys.path.insert(0, str(TRACKER.parent))
+    return importlib.import_module("pravaha_tracker." + name)
+
+
+def tracker_shape_faults(spec):
+    """What in a case's `next`, `events`, inbox rows or plan model is not what pravaha_tracker emits."""
+    events, bad = tracker("events"), []
+    nxt = spec.get("next", EMPTY_NEXT)
+    if nxt is not None:
+        if not isinstance(nxt, dict) or set(nxt) != {"stream", "version", "running", "ready", "blocked"}:
+            bad.append("next is not the /api/next object: %r" % (sorted(nxt) if isinstance(nxt, dict) else nxt,))
+        else:
+            for bucket, statuses in NEXT_STATUSES.items():
+                for row in nxt[bucket]:
+                    if not ROW_KEYS <= set(row) <= ROW_KEYS | ROW_EXTRAS or row["status"] not in statuses:
+                        bad.append("next.%s row %r is not a build_snapshot item row" % (bucket, row.get("id")))
+    for item, lines in (spec.get("events") or {}).items():
+        for line in lines or []:
+            try:
+                events.validate(line)
+            except events.EventError as exc:
+                bad.append("event of %s refused by events.validate: %s (%r)" % (item, exc, line))
+                continue
+            if line["kind"] in ("item", "verdict") and line.get("item") != item:
+                bad.append("event filed under %s names item %r" % (item, line.get("item")))
+    for answer in spec.get("ky", []):
+        if answer["match"][:1] == ["inbox"] and answer.get("rc", 0) == 0 and isinstance(answer.get("out"), list):
+            for line in answer["out"]:
+                try:
+                    events.validate(line, allow_model_party=True)
+                    assert line["kind"] == "message" and line["to"] == "N"
+                except (events.EventError, AssertionError, TypeError, KeyError) as exc:
+                    bad.append("inbox row is not a message event to N: %s (%r)" % (exc, line))
+    model = spec.get("model", {"items": []})
+    if isinstance(model, dict) and isinstance(model.get("items"), list):
+        for item in model["items"]:
+            if isinstance(item, dict) and {"status", "ready"} & set(item):
+                bad.append("plan model item %r carries tracker state" % item.get("id"))
+    return bad
 
 
 def canon(obj):
@@ -67,8 +135,22 @@ class Double:
         self.table = table
         self.calls = []
         self.unmatched = []
-        self.next = spec.get("next", [])
+        self.next = spec.get("next", EMPTY_NEXT)
         self.act_file = self.base / "act_done.json"
+        if not spec.get("no_model_attr"):                              # the engine's ctx names the plan model by path
+            self.model = str(self.repo / MODEL_REL)
+        self.put_model()
+
+    def put_model(self):
+        """The plan model file: the case's `model` (an object, raw text, or null for no file); none given → no items."""
+        path = self.repo / MODEL_REL
+        content = self.spec.get("model", {"items": []})
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if content is None:
+            if path.exists():
+                path.unlink()
+        else:
+            path.write_text(content if isinstance(content, str) else json.dumps(content), encoding="utf-8")
 
     def veto_status(self):
         """kyveto.status() as the engine hands it over; a case that names none gets the unreadable answer."""
@@ -263,19 +345,25 @@ def run_case(case, tmp_path):
     for k in ("next", "sh", "ky", "veto", "events", "prs", "act"):
         if k in spec:
             spec[k] = resolve(spec[k])
-    double.next = spec.get("next", [])
+    double.next = spec.get("next", EMPTY_NEXT)
     put_files(resolve, case.get("files", {}))
     last_intents, failures = [], []
 
     def check(label, bad):
         failures.extend("%s: %s" % (label, b) for b in bad)
 
+    if case["name"] not in FOREIGN:
+        check(case["name"] + " fixture", tracker_shape_faults(spec))
+
     for n, step in enumerate(case["steps"]):
         label = "%s step %d (%s)" % (case["name"], n, step["op"])
         if "mutate" in step:
             delta = step["mutate"]
             merge_spec(spec, resolve({k: v for k, v in delta.items() if k != "files"}))
-            double.next = spec.get("next", [])
+            double.next = spec.get("next", EMPTY_NEXT)
+            double.put_model()
+            if case["name"] not in FOREIGN:
+                check(label + " fixture", tracker_shape_faults(spec))
             put_files(resolve, delta.get("files", {}))
         double.calls.clear()
         if step["op"] == "mutate":
@@ -283,15 +371,25 @@ def run_case(case, tmp_path):
         if step["op"] == "restart":
             double = Double(tmp_path, spec, DOC["table"])
             resolve = Resolver(double, defs)
-            double.next = spec.get("next", [])
+            double.next = spec.get("next", EMPTY_NEXT)
             last_intents = []
             continue
         if step["op"] == "intents":
             before = tree(tmp_path)
             got = mod.intents(double)
             check(label + " read-only tree", [] if tree(tmp_path) == before else ["intents() changed files"])
-            side = [c for c in double.calls if c["fn"] not in ("table",) and not (c["fn"] == "ky" and c["args"][:1] == ["inbox"])]
+            said = [c for c in double.calls if c["fn"] == "journal"]     # at most the one `ops_unknown` line of the tick
+            side = [c for c in double.calls if c["fn"] not in ("table", "journal") and not (c["fn"] == "ky" and c["args"][:1] == ["inbox"])]
             check(label + " read-only calls", [] if not side else ["intents() made side-effect calls: %r" % side])
+            check(label + " one unknown line", [] if len(said) <= 1 and all(c["event"] == "ops_unknown" for c in said)
+                  else ["intents() journalled %r" % said])
+            wanted = step.get("unknown")                                 # the reasons the tick must say; none named → none said
+            text = said[0]["text"] if said else ""
+            if wanted is None:
+                check(label + " unknown", [] if not said else ["an unknown was journalled that the case does not name: %s" % text])
+            else:
+                check(label + " unknown", ["no unknown was journalled"] if not said
+                      else ["the journal line lacks %r: %s" % (w, text) for w in resolve(wanted) if w not in text])
             for it in got:
                 check(label + " intent shape", [] if set(it) == INTENT_FIELDS else ["fields %r" % sorted(set(it) ^ INTENT_FIELDS)])
                 check(label + " intent contract", [] if (KEY_RE.match(it["key"]) and it["role"] == it["kind"].lower()
@@ -328,7 +426,7 @@ def run_case(case, tmp_path):
             if before is not None:
                 check(label + " unchanged", [] if tree(tmp_path) == before else ["the tree changed"])
         if "calls" in step:
-            actual = [c for c in double.calls if c["fn"] != "table"]
+            actual = [c for c in double.calls if c["fn"] != "table" and not (step["op"] == "intents" and c["fn"] == "journal")]
             if not any(c["fn"] == "ky" for c in step["calls"]):         # inbox reads are only listed by the cases about the inbox
                 actual = [c for c in actual if not (c["fn"] == "ky" and c["args"][:1] == ["inbox"])]
             check(label + " calls", subset(resolve(step["calls"]), actual))
@@ -408,6 +506,112 @@ def test_the_cases_cover_review_r4():
                      "plan_an_unreadable_repacket_file_is_not_an_empty_one",
                      "ex_an_awaiting_file_that_is_not_its_record_is_not_a_raised_item"):
         assert required in names, required
+
+
+def test_the_cases_cover_review_r5():
+    """KO5-B1 (the tracker's and the plan model's real shapes, one case per kind that fails on the guessed ones) and the
+    sweep of both families: an unknown is said, a marker is read back, a producer's shape is the fixture's shape."""
+    names = {c["name"] for c in CASES}
+    for required in ("rp_a_ready_operation_item_in_the_trackers_shape_gets_a_request_prep_job",       # KO5-B1 (a)
+                     "rp_an_unrecognised_tracker_answer_is_unknown_not_an_empty_tracker",
+                     "rp_brief_and_completion_kind_come_from_the_plan_model_not_the_row",
+                     "rp_a_ctx_that_names_no_plan_model_is_unknown",
+                     "rp_the_steps_of_brief_op_are_prepared_in_order",
+                     "plan_an_unknown_tracker_or_plan_model_is_no_wave_boundary",
+                     "model_finish_reads_review_and_block_as_the_tracker_writes_them",               # KO5-B1 (b)
+                     "prb_a_the_author_and_the_excluded_slot_are_the_review_events_actor",
+                     "pa_an_unreadable_table_is_said_not_read_as_no_request",                        # the sweep
+                     "ex_a_request_the_executor_moved_to_inflight_is_submitted_not_owed_again",
+                     "ex_a_refused_receipt_that_names_no_request_raises_the_awaiting_item",
+                     "ruling_an_inbox_row_that_is_no_message_event_is_unknown",
+                     "ruling_a_handled_marker_that_is_not_the_record_handles_nothing",
+                     "plan_a_handled_marker_that_is_not_the_record_handles_nothing",
+                     "sg_an_awaiting_file_that_is_no_item_is_said_and_the_others_keep_their_job",
+                     "sg_a_handled_decision_that_kyveto_status_does_not_show_is_said",
+                     "plan_an_admission_record_is_read_back_not_merely_present",
+                     "prb_a_a_pull_request_answer_without_its_state_is_unknown",
+                     "ex_a_prepared_request_whose_kind_left_the_table_is_said",
+                     "rp_an_operation_id_that_is_another_prepared_records_is_said"):
+        assert required in names, required
+    assert FOREIGN <= names
+
+
+def test_the_fixtures_use_the_trackers_shapes():
+    """The fixture shapes are the producer's, measured against its source in this working copy: the item row keys are
+    those of a row state.build_snapshot builds (no brief, done_by or join), `/api/next` answers the object the cases
+    use, and the detector that holds every case to them does refuse the guessed shapes of the reviewed head."""
+    state = tracker("state")
+    model = {"tracks": [{"id": "T", "title": "t"}], "streams": [], "phases": [], "decisions": [],
+             "items": [{"id": "X-1", "track": "T", "title": "x", "owner": "N", "completion_kind": "operation",
+                        "brief": {"op": ["readback_sql"]}, "done_by": None, "join": False}]}
+    built = state.build_snapshot(model, [], {}, {}, {})["tracks"][0]["items"][0]
+    assert set(built) == ROW_KEYS and built["status"] == "ready"
+    server = (TRACKER / "server.py").read_text(encoding="utf-8")
+    assert 'return self._json({"stream": sid, "version": snap.get("version"),' in server
+    for bucket, statuses in NEXT_STATUSES.items():
+        tests = ('t["status"] == "%s"' % statuses[0] if len(statuses) == 1
+                 else 't["status"] in (%s)' % ", ".join('"%s"' % s for s in statuses))
+        assert '"%s": [t for t in mine if %s]' % (bucket, tests) in server, bucket
+    good = {"next": dict(EMPTY_NEXT, ready=[dict(built)]),
+            "events": {"X-1": [{"kind": "item", "actor": "stream-N:b1", "item": "X-1", "state": "review"}]}}
+    assert tracker_shape_faults(good) == []
+    for guessed in ({"next": [{"id": "X-1", "owner": "N", "status": "ready", "brief": {}}]},                    # a flat list
+                    {"next": {"items": []}},
+                    {"next": dict(EMPTY_NEXT, ready=[dict(built, brief={"op": ["readback_sql"]})])},            # a brief on the row
+                    {"next": dict(EMPTY_NEXT, running=[dict(built)])},                                          # ready, in `running`
+                    {"events": {"X-1": [{"type": "review", "actor": "stream-K:b2", "lane": "b2"}]}},
+                    {"events": {"X-1": [{"type": "verdict", "phase": "artifact", "result": "ACCEPTED"}]}},
+                    {"ky": [{"match": ["inbox"], "out": [{"msg_id": "M-1", "from": "S", "text": "x"}]}]},
+                    {"model": {"items": [{"id": "X-1", "status": "ready"}]}}):
+        assert tracker_shape_faults(guessed), guessed
+
+
+def test_intents_on_the_trackers_own_snapshot_of_the_campaigns_plan_model(tmp_path):
+    """End to end on the producers themselves (review r5 KO5-B1): the campaign's plan model, the snapshot
+    pravaha_tracker's state.build_snapshot makes of it, bucketed as server.py /api/next does, and the operations table
+    in this working copy. A ready N-owned operation item and a ready S-owned item get their jobs; nothing is unknown."""
+    state = tracker("state")
+    root = FLEET.parents[3]
+    model = json.loads((root / MODEL_REL).read_text(encoding="utf-8"))
+    table = json.loads((FLEET / "executor_ops.json").read_text(encoding="utf-8"))["ops"]
+    items = {i["id"]: i for i in model["items"]}
+    usable = lambda e: bool(e) and e.get("enabled") and "TO_BE_SET" not in str(e.get("script", "")) + str(e.get("needs", ""))
+    operation = next((i for i in model["items"] if i.get("owner") == "N" and i.get("completion_kind") == "operation"
+                      and isinstance(i["brief"].get("op"), list) and usable(table.get(i["brief"]["op"][0]))), None)
+    assert operation is not None, "the plan model has no N-owned operation item whose first kind is enabled in the table"
+    done, todo = set(), list(operation.get("depends_on", []))
+    while todo:                                                        # every dependency of it, completed under the guard
+        dep = todo.pop()
+        if dep not in done:
+            done.add(dep)
+            todo.extend(items[dep].get("depends_on", []))
+    ts = "2026-10-12T11:00:00+00:00"
+    events = [{"kind": "decision", "actor": "steward", "decision": d["id"], "state": "decided", "outcome": "approved", "detail": "x", "ts": ts}
+              for d in model.get("decisions", [])]
+    events += [{"kind": "item", "actor": "steward", "item": dep, "state": "done", "guarded": True, "evidence": "fixture", "ts": ts}
+               for dep in sorted(done)]
+    pending = {i: {"status": "pending", "detail": "not matched", "checked_at": ts} for i in items}
+    snap = state.build_snapshot(model, events, pending, {}, {})
+    flat = [t for tr in snap["tracks"] for t in tr["items"]]
+    answer = {"stream": "", "version": 3,                              # server.py do_GET /api/next, sid == ""
+              "running": [t for t in flat if t["status"] in ("running", "review")],
+              "ready": [t for t in flat if t["status"] == "ready"],
+              "blocked": [t for t in flat if t["status"] in ("blocked", "failed", "parked", "conflict")]}
+    assert operation["id"] in {t["id"] for t in answer["ready"]}, "the fixture events did not make the operation item ready"
+    spec = {"next": json.loads(json.dumps(answer)), "model": model, "events": {}}
+    assert tracker_shape_faults(spec) == []
+    double = Double(tmp_path, spec, table)
+    got = load_module().intents(double)
+    said = [c for c in double.calls if c["fn"] == "journal"]
+    assert said == [], said
+    owed = {(i["kind"], i["item"]) for i in got}
+    assert ("REQUEST-PREP", operation["id"]) in owed
+    prep = next(i for i in got if i["kind"] == "REQUEST-PREP" and i["item"] == operation["id"])
+    assert prep["runner"] == "model"                                   # a kind name states no kyd: the request needs authoring
+    ready_s = {t["id"] for t in answer["ready"] if t["owner"] == "S" and items[t["id"]].get("done_by") not in ("decision", "join")
+               and items[t["id"]].get("join") is not True} - {"C-3", "C-4"}
+    assert {item for kind, item in owed if kind == "MODEL"} == ready_s
+    assert not any(kind == "PLAN" for kind, _ in owed)                 # ready work is in flight: no wave boundary
 
 
 def test_job_key_is_twelve_hex_of_the_head_or_digest_and_evidence_fp():

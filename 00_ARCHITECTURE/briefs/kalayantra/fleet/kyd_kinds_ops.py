@@ -16,24 +16,40 @@ the engine's ctx offers no `veto_status`).
 
 Every status here is earned (CLAUDE.md §N.8): `done` is only returned from a detector that measures the claim (a
 file read back at the digest the job was started for, an inbox without the message, an event that was not there at the
-launch); evidence that cannot be read is `interrupted`, never a guess. Nothing in this file starts executor.py, holds a
-credential, dispatches a workflow or runs a tracker-state `ky` verb.
+launch); evidence that cannot be read is `interrupted`, never a guess. An answer `intents` cannot recognise (the
+tracker's, the plan model's, the table's, the inbox's, a record's) is unknown: no job is derived from it and the tick
+says so in one `ops_unknown` journal line (I-15) — it is never read as "nothing owed". Nothing in this file starts
+executor.py, holds a credential, dispatches a workflow or runs a tracker-state `ky` verb.
 
 INTERPRETATIONS (the packet's "(I)" — what the plan leaves open, and what is done here):
-  I-1  Items come from `ctx.next` (`ky next --json`): a list, or {"items": [...]}; each item {id, owner, status,
-       ready, completion_kind, brief{op, migration}, detector, done_by, join}. Ready = `ready` true or status "ready".
-  I-2  `brief.op` is {kind, args, kyd, requested_by?, operation_id?, idempotency_key?, chart_id?, lease_id?,
-       reviewed_commit?, expires_at?, timeout_s?} or the bare name of a table kind. Prose and "NONE" are not an
-       operation. operation_id defaults to OP-<item>; idempotency_key to the operation_id; requested_by to
-       `adhikarin` (the N lane) when the entry admits it; chart_id to the canonical chart. A field that cannot be
-       derived (kyd; for a production kind lease_id, reviewed_commit, expires_at) makes the job a model job.
-       That job's request must carry every derived field unchanged and add nothing; it fills only the missing
-       ones. An item with any valid prepared record, under any operation id, is prepared.
+  I-1  Items are the rows of `ctx.next`, the live tracker's `ky next --json`: {stream: "", version: <int>, running[],
+       ready[], blocked[]} (pravaha_tracker server.py /api/next), each row {id, owner, status, …} as
+       state.build_snapshot writes it; the status is the row's (running: running | review; ready: ready; blocked:
+       blocked | failed | parked | conflict). Waiting and done items are not shown and are not looked for. A row
+       carries no brief, done_by or join: those (and completion_kind) are read from the plan model the engine's ctx
+       names (`ctx.model`, an absolute path; {items: [{id, completion_kind, brief{op, migration}, done_by, join}]}).
+       Anything else — no fresh answer, another shape, one stream's answer, an unreadable model, a row the model
+       does not know — is unknown (I-15), never an empty list.
+  I-2  `brief.op` is what the plan model states (its brief_keys.op: "executor operation kinds, in order"): a list.
+       A step is the name of a table kind (the only form the model carries today), or — an interpretation no
+       producer emits yet, kept so that a request a PLAN job has fully stated needs no model — an object {kind,
+       args, kyd, requested_by?, operation_id?, idempotency_key?, chart_id?, lease_id?, reviewed_commit?,
+       expires_at?, timeout_s?}. No brief.op is no operation; any other shape, or a step naming no table kind, is
+       unknown (I-15). Steps are prepared in order: step n is owed once every earlier step has a prepared request
+       whose executor receipt is COMPLETED and measured and whose latest artifact verdict at that receipt's sha256
+       is ACCEPTED. operation_id defaults to OP-<item> (OP-<item>-s<n> for step n of several); idempotency_key to
+       the operation_id; requested_by to `adhikarin` (the N lane) when the entry admits it; chart_id to the
+       canonical chart. A field that cannot be derived (kyd; args when the step states none and the entry allows
+       some; for a production kind lease_id, reviewed_commit, expires_at) makes the job a model job — with the plan
+       model as it is today, every job. That job's request must carry every derived field unchanged and add
+       nothing; it fills only the missing ones. A step with any valid prepared record of the item at that step,
+       under any operation id, is prepared.
   I-3  A request is "accepted by executor.validate" if `static_validate` — its field, entry, requester, argument and
        production-field checks, kept equal to executor.py by a test that imports both — passes. What only the executor
        can know (lease liveness, ancestry of reviewed_commit, idempotency, capability) stays the executor's.
   I-4  The prepared request is `$KY_RUN/ops/prepared/<operation_id>.json` {schema ky.op_prepared/1, operation_id, item,
-       request, request_sha256, prepared_by, prepared_by_slot}; request_sha256 is the executor's digest.
+       step, request, request_sha256, prepared_by, prepared_by_slot}; request_sha256 is the executor's digest; step is
+       the 1-based place of the request in brief.op.
   I-5  Only a production kind needs a PRE-ACCEPT; a read-only kind goes straight from prepared to EXECUTE.
   I-6  EXECUTE submits `$KY_RUN/ops/requests/<operation_id>.json` and nothing else. A receipt of that request that is
        FAILED, REFUSED or INTERRUPTED raises one awaiting item (slug exec-<operation>-<12 hex of the receipt digest>)
@@ -42,19 +58,24 @@ INTERPRETATIONS (the packet's "(I)" — what the plan leaves open, and what is d
        verdict yet at (post_deploy, merge commit), and a COMPLETED, measured readback receipt of that item
        (kind readback_sql / migration_readback). None → one journal line, by a script intent, per merge commit.
        "Measured": status COMPLETED, exit_code 0, and an output file whose sha256 is the receipt's output_sha256 and
-       that is not empty. Whether the deployment itself has landed is the tracker's guard at COMPLETE (deployment
-       containment); this kind does not claim it.
+       that is not empty. Nothing here measures that the deployment has landed, or that the receipt was taken after
+       the merge: the packet's trigger is the merge commit plus a receipt, and this kind claims no more than that.
        (b): a prepared operation whose executor receipt is COMPLETED and measured, for that request and item, with no
        artifact verdict at the receipt's sha256. The quiescence record, when present, is part of the evidence.
-  I-8  A job's author identity: (a) the actor of the item's latest `review` event; (b) the preparer of the request
-       (`stream-N:<slot>`, or `controller:<id>` for a script preparation). Unknown → nothing is published.
+  I-8  A job's author identity: (a) the actor of the item's latest review event (`stream-K:<slot>`; its slot is the
+       intent's not_slot); (b) the preparer of the request (`stream-N:<slot>`, or `controller:<id>` for a script
+       preparation). Unknown → nothing is published.
   I-9  Job keys: job_key(kind, item, head or digest, evidence_fp) = "<kind>.<item>.<12 hex of sha256 of the canonical
        JSON [head-or-digest, evidence_fp]>". Locks list the job lock first.
-  I-10 Tracker events are dicts with a type (`type`, `event` or `kind`): review, block / blocked, verdict (phase, head,
-       artifact_digest, result), and an actor. MODEL's and PLAN's "after the launch" is recovered from the job's own
-       evidence_fp (the event count / packet set it was started on).
-  I-11 PLAN's wave boundary: an open executable item exists and nothing is in flight — none ready, none in review,
-       none running with an admission record (a `running` item without one is not admitted work).
+  I-10 Tracker events are the lines of EVENTS.jsonl as pravaha_tracker writes them (events.py validate, cli.py):
+       a review is {kind: "item", state: "review"} and a block {kind: "item", state: "blocked"} (a `step` line is
+       neither); a verdict is {kind: "verdict", phase, head | artifact_digest, result}. The author is the line's
+       `actor` (`stream-<S>` or `stream-<S>:<slot>`); there is no lane or slot key. MODEL's and PLAN's "after the
+       launch" is recovered from the job's own evidence_fp (the event count / packet set it was started on).
+  I-11 PLAN's wave boundary: an open executable item is shown by `ky next` and nothing is in flight — none ready,
+       none in review, none running with an admission record (kyd_admit's {item, base_sha, test_digests, result},
+       read back as that item's; a `running` item without one is not admitted work; one that cannot be read is
+       unknown). An unknown tracker or plan model is no boundary.
   I-12 Cards: ADHIKARIN (N/S operators), PARIKSAKA (verifiers), OWNER_SURROGATE; Opus 5.5; effort xhigh for the PLAN
        class (REQUEST-PREP / MODEL / PLAN), high otherwise.
   I-13 Kind order within a tick: EXECUTE, PRE-ACCEPT, REQUEST-PREP, POST-READBACK, SURROGATE, RULING, MODEL, PLAN.
@@ -64,6 +85,11 @@ INTERPRETATIONS (the packet's "(I)" — what the plan leaves open, and what is d
        or unresolved flag; its state is its latest line's; EXECUTED needs executed_by_handler true (the handler's DONE
        execution record); VETOED needs the owner's veto command. FAILED never moves an item: status() shows no handler
        record behind a FAILED line, so the owner-wait stays open for the owner. A hard_stop item is never moved here.
+  I-15 Unknown is said, once a tick: `intents` collects what it could not read or recognise (and a stated request
+       the executor's own rules refuse) and writes one journal line (`ops_unknown`) naming each; `start` and `finish`
+       answer `refused` / `interrupted` for the same. A kind that is listed but not enabled is a known wait. A handled
+       marker counts only when read back as that record: one that is merely present handles nothing (the job is owed
+       again). A prepared record that does not load could be any item's, so no request is prepared while it is there.
 """
 from __future__ import annotations
 
@@ -95,12 +121,15 @@ DECISION_CLASSES = ("routine", "veto", "hard_stop")
 DECISION_STATES = ("PROPOSED", "PENDING_VETO", "EFFECTIVE", "EXECUTED", "VETOED", "FAILED")
 MOVE_STATES = ("EXECUTED", "VETOED")             # the terminal states a record of the handler or owner can stand behind (I-14)
 RECEIPT_AWAITED = ("FAILED", "REFUSED", "INTERRUPTED")
-CLOSED = ("done", "completed", "complete", "abandoned", "retired", "cancelled", "superseded")
 VERDICT_VALUES = ("ACCEPTED", "REJECTED")
 OPUS = "claude-opus-5-5"
 CARDS = {"adhikarin": "ADHIKARIN.md", "verifier": "PARIKSAKA.md", "surrogate": "OWNER_SURROGATE.md"}
 PREPARED_SCHEMA = "ky.op_prepared/1"
 HANDLED_SCHEMA = "ky.handled/1"
+NEXT_BUCKETS = (("running", ("running", "review")), ("ready", ("ready",)),       # server.py /api/next, cli.py cmd_next
+                ("blocked", ("blocked", "failed", "parked", "conflict")))
+EVENT_KINDS = ("item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim", "verdict")   # events.py KINDS
+UNKNOWN_EVENT = "ops_unknown"
 
 
 # ───────────────────────────────────────── small helpers ─────────────────────────────────────────
@@ -216,52 +245,111 @@ def _truthy_meta(value):
     return value is True
 
 
-def _brief(item):
-    return item.get("brief") if isinstance(item.get("brief"), dict) else {}
+def _say(unknown, text):
+    """Note one thing this tick could not read or recognise (I-15); `unknown` is the tick's list, or None."""
+    if unknown is not None and text not in unknown:
+        unknown.append(text)
 
 
-def _writes_data(item):
-    brief = _brief(item)
+def _brief(model_item):
+    return model_item.get("brief") if isinstance(model_item.get("brief"), dict) else {}
+
+
+def _writes_data(model_item):
+    brief = _brief(model_item)
     return _truthy_meta(brief.get("migration")) or _truthy_meta(brief.get("op"))
 
 
-def _is_ready(item):
-    return item.get("ready") is True or item.get("status") == "ready"
-
-
-def _is_closed(item):
-    return str(item.get("status", "")).lower() in CLOSED
-
-
-def _items(ctx):
+def _tracker_rows(ctx):
+    """(rows, None): the item rows of the live tracker's `ky next --json`, by id; or (None, why) when the answer is
+    not that — no fresh answer, the snapshot fallback (no stream, no version), one stream's answer, or another shape."""
     nxt = ctx.next() if callable(ctx.next) else ctx.next
-    rows = nxt.get("items") if isinstance(nxt, dict) else nxt
-    if not isinstance(rows, list):
-        return []
-    return sorted((r for r in rows if isinstance(r, dict) and isinstance(r.get("id"), str)), key=lambda r: r["id"])
+    if nxt is None:
+        return None, "the engine holds no fresh `ky next --json` answer"
+    if (not isinstance(nxt, dict) or isinstance(nxt.get("version"), bool) or not isinstance(nxt.get("version"), int)
+            or nxt.get("stream") != ""):
+        return None, "`ky next --json` is not the live tracker's all-stream answer {stream: \"\", version, running, ready, blocked}"
+    rows = []
+    for bucket, statuses in NEXT_BUCKETS:
+        part = nxt.get(bucket)
+        if not isinstance(part, list):
+            return None, "`ky next --json` carries no `%s` list" % bucket
+        for row in part:
+            if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"] or row.get("status") not in statuses:
+                return None, "a `%s` row of `ky next --json` is not a tracker item row with that status" % bucket
+            rows.append(row)
+    if len({r["id"] for r in rows}) != len(rows):
+        return None, "`ky next --json` shows an item twice"
+    return sorted(rows, key=lambda r: r["id"]), None
+
+
+def _plan_items(ctx):
+    """({id: item}, None) of the plan model the engine's ctx names, or (None, why)."""
+    path = getattr(ctx, "model", None)
+    if not isinstance(path, (str, os.PathLike)) or not str(path):
+        return None, "the engine's ctx names no plan model"
+    doc = read_json(path)
+    items = doc.get("items") if isinstance(doc, dict) else None
+    if not isinstance(items, list) or any(not isinstance(i, dict) or not isinstance(i.get("id"), str) for i in items):
+        return None, "the plan model %s is unreadable or carries no items list" % path
+    return {i["id"]: i for i in items}, None
+
+
+def _items(ctx, unknown=None):
+    """The tracker's shown rows joined to their plan-model items: [{id, owner, status, model}] by id (I-1). None when
+    the tracker's answer or the model is unknown, or a row is not an item of the model (two different plans)."""
+    rows, why = _tracker_rows(ctx)
+    model = None
+    if rows is not None:
+        model, why = _plan_items(ctx)
+    if model is not None:
+        absent = [r["id"] for r in rows if r["id"] not in model]
+        if not absent:
+            return [{"id": r["id"], "owner": r.get("owner"), "status": r["status"], "model": model[r["id"]]} for r in rows]
+        why = "tracker item %s is not in the plan model %s" % (", ".join(absent), getattr(ctx, "model", None))
+    _say(unknown, why)
+    return None
 
 
 def _events(ctx, item_id):
+    """The item's lines of EVENTS.jsonl, or None: not a list, or a line that is not a tracker event (I-10) — a line
+    this module cannot read may be the review, the block or the verdict it is looking for."""
     ev = ctx.events(item_id)
-    return ev if isinstance(ev, list) and all(isinstance(e, dict) for e in ev) else None
+    return ev if isinstance(ev, list) and all(isinstance(e, dict) and e.get("kind") in EVENT_KINDS for e in ev) else None
 
 
-def _etype(event):
-    return str(event.get("type") or event.get("event") or event.get("kind") or "").lower()
+def _is_review(event):
+    return event.get("kind") == "item" and event.get("state") == "review" and not event.get("step")
+
+
+def _is_block(event):
+    return event.get("kind") == "item" and event.get("state") == "blocked" and not event.get("step")
+
+
+def _verdicts(events, phase, head=None, digest=None):
+    return [e for e in events if e.get("kind") == "verdict" and e.get("phase") == phase
+            and ((head is not None and e.get("head") == head) or (digest is not None and e.get("artifact_digest") == digest))]
 
 
 def _has_verdict(events, phase, head=None, digest=None):
-    for e in events:
-        if _etype(e) != "verdict" or e.get("phase") != phase:
-            continue
-        if (head is not None and e.get("head") == head) or (digest is not None and e.get("artifact_digest") == digest):
-            return True
-    return False
+    return bool(_verdicts(events, phase, head, digest))
 
 
 def _latest_review(events):
-    reviews = [e for e in events if _etype(e) == "review"]
+    reviews = [e for e in events if _is_review(e)]
     return reviews[-1] if reviews else None
+
+
+def _actor_slot(actor):
+    """`stream-K:b2` → b2; an actor without a slot (or no actor) → None."""
+    return actor.split(":", 1)[1] or None if isinstance(actor, str) and actor.startswith("stream-") and ":" in actor else None
+
+
+def _marker(path, **fields):
+    """A handled record read back: True only when it is that record (the schema and each named field). A file that is
+    merely present, truncated or of another thing handles nothing."""
+    have = read_json(path)
+    return isinstance(have, dict) and have.get("schema") == HANDLED_SCHEMA and all(have.get(k) == v for k, v in fields.items())
 
 
 def _card(ctx, name):
@@ -382,18 +470,28 @@ def required_checks(kind):
     return required, mutating
 
 
-def op_spec(item, table):
-    op = _brief(item).get("op")
-    if isinstance(op, str):
-        op = {"kind": op} if op in table else None
-    if not isinstance(op, dict) or not isinstance(op.get("kind"), str) or not op["kind"]:
+def op_steps(model_item):
+    """brief.op as steps (I-2): [] when the item states no operation, None when it is not the plan model's list of
+    kind names (or stated steps). A kind name becomes {kind: <name>}."""
+    op = _brief(model_item).get("op")
+    if op is None:
+        return []
+    if not isinstance(op, list):
         return None
-    return op
+    steps = []
+    for step in op:
+        if isinstance(step, str) and step:
+            steps.append({"kind": step})
+        elif isinstance(step, dict) and isinstance(step.get("kind"), str) and step["kind"]:
+            steps.append(step)
+        else:
+            return None
+    return steps
 
 
-def derive_request(item_id, op, entry):
-    """(request, missing): the request as far as brief.op and the table determine it (I-2)."""
-    operation_id = op.get("operation_id") or "OP-" + item_id
+def derive_request(item_id, op, entry, step=1, steps=1):
+    """(request, missing): the request of step `step` of `steps` as far as brief.op and the table determine it (I-2)."""
+    operation_id = op.get("operation_id") or ("OP-" + item_id if steps == 1 else "OP-%s-s%d" % (item_id, step))
     requesters = entry.get("requesters", ["adhikarin"])
     req = {"operation_id": operation_id, "kind": op["kind"], "item_id": item_id,
            "idempotency_key": op.get("idempotency_key") or operation_id,
@@ -402,6 +500,8 @@ def derive_request(item_id, op, entry):
     if op.get("timeout_s") is not None:
         req["timeout_s"] = op["timeout_s"]
     missing = []
+    if "args" not in op and entry.get("allowed_args"):
+        missing.append("args")                           # a kind name states no arguments; the entry takes some
     if entry.get("production"):
         req["chart_id"] = op.get("chart_id") or CANONICAL_CHART
         for k in ("lease_id", "reviewed_commit", "expires_at"):
@@ -415,10 +515,10 @@ def derive_request(item_id, op, entry):
     return req, missing
 
 
-def request_unbound(request, item_id, op, entry):
+def request_unbound(request, item_id, op, entry, step=1, steps=1):
     """A model-authored request may fill only the fields derive_request left missing; every field it fixes (and no
     other) must be there with its derived value. The first difference, or None."""
-    derived, missing = derive_request(item_id, op, entry)
+    derived, missing = derive_request(item_id, op, entry, step, steps)
     extra = sorted(k for k in request if k not in derived)
     if extra:
         return "fields neither derived nor missing: %s" % extra
@@ -426,6 +526,10 @@ def request_unbound(request, item_id, op, entry):
         if k not in missing and (k not in request or request[k] != derived[k]):
             return "%s differs from the value brief.op and the table fix" % k
     return None
+
+
+def _prep_digest(item_id, step, op, entry, missing):
+    return sha_canonical({"item": item_id, "step": step, "op": op, "entry": entry, "missing": missing})
 
 
 # ───────────────────────────────────────── prepared / accepted / submitted state ─────────────────────────────────────────
@@ -440,16 +544,22 @@ def load_prepared(path):
         return None
     req = doc["request"]
     opid = req.get("operation_id")
-    if (not isinstance(opid, str) or not SAFE_ID.match(opid) or pathlib.Path(path).stem != opid or doc.get("operation_id") != opid
-            or doc.get("item") != req.get("item_id") or doc.get("request_sha256") != request_digest(req)):
+    step = doc.get("step")
+    if (not isinstance(opid, str) or not SAFE_ID.match(opid) or pathlib.Path(path).name != opid + ".json" or doc.get("operation_id") != opid
+            or doc.get("item") != req.get("item_id") or doc.get("request_sha256") != request_digest(req)
+            or isinstance(step, bool) or not isinstance(step, int) or step < 1):
         return None
     return doc
 
 
-def all_prepared(run):
+def all_prepared(run, unknown=None):
+    """The valid prepared records, by file name. One that is there but does not load is unknown (I-15), not absent."""
     try:
         names = sorted(os.listdir(prepared_dir(run)))
+    except FileNotFoundError:
+        return []
     except OSError:
+        _say(unknown, "the prepared requests under %s could not be listed" % prepared_dir(run))
         return []
     out = []
     for name in names:
@@ -457,7 +567,12 @@ def all_prepared(run):
             doc = load_prepared(prepared_dir(run) / name)
             if doc is not None:
                 out.append((prepared_dir(run) / name, doc))
+            else:
+                _say(unknown, "the prepared record %s is not a valid %s" % (prepared_dir(run) / name, PREPARED_SCHEMA))
     return out
+
+
+SUBMITTED_DIRS = ("requests", "inflight", "done")       # executor.py: REQ → INFLIGHT (RUNNING receipt after the move) → DONE
 
 
 def _acceptance_path(run, opid):
@@ -469,7 +584,7 @@ def _receipt_path(run, opid):
 
 
 def _submitted(run, opid):
-    return any((run / "ops" / d / (opid + ".json")).exists() for d in ("requests", "done", "receipts"))
+    return any((run / "ops" / d / (opid + ".json")).exists() for d in SUBMITTED_DIRS + ("receipts",))
 
 
 def acceptance_matches(acc, prepared):
@@ -535,58 +650,108 @@ def _readback_receipts(run, item_id):
 
 # ───────────────────────────────────────── REQUEST-PREP ─────────────────────────────────────────
 
-def _c_request_prep(ctx):
+TABLE_UNKNOWN = "the operations table at origin/main could not be read"
+NO_KIND = "the prepared request %s names %r, which is no kind of the operations table"
+
+
+def _owed_step(ctx, run, item_id, steps, prepared, unknown=None):
+    """(n, step) of the first step with no prepared request, once every step before it is complete: a prepared
+    request of that step with a COMPLETED, measured receipt whose latest artifact verdict is ACCEPTED (I-2). Else None."""
+    events = False
+    for n, op in enumerate(steps, 1):
+        mine = [doc for _, doc in prepared if doc["item"] == item_id and doc["step"] == n]
+        if not mine:
+            return n, op
+        receipts = [r for r in (_b_receipt(run, doc) for doc in mine) if r is not None]
+        if n == len(steps) or not receipts:
+            return None
+        if events is False:
+            events = _events(ctx, item_id)
+        if events is None:
+            _say(unknown, "the events of %s could not be read" % item_id)
+            return None
+        latest = [(_verdicts(events, "artifact", digest=sha) or [{}])[-1].get("result") for _, sha in receipts]
+        if "ACCEPTED" not in latest:
+            return None
+    return None
+
+
+def _c_request_prep(ctx, unknown=None):
     table = read_table(ctx)
     if table is None:
+        _say(unknown, TABLE_UNKNOWN)
         return []
-    run, out = _run(ctx), []
-    for item in _items(ctx):
-        if item.get("owner") != "N" or not _is_ready(item) or item.get("completion_kind", "operation") != "operation":
+    items = _items(ctx, unknown)
+    if items is None:
+        return []
+    run, out, unloadable = _run(ctx), [], []
+    prepared = all_prepared(run, unloadable)
+    for why in unloadable:
+        _say(unknown, why)
+    if unloadable:
+        return []                                        # whose request that record was is unknown: no second one on a guess
+    for item in items:
+        if item["owner"] != "N" or item["status"] != "ready" or item["model"].get("completion_kind") != "operation":
             continue
-        op = op_spec(item, table)
-        entry = table.get(op["kind"]) if op else None
+        steps = op_steps(item["model"])
+        if steps is None:
+            _say(unknown, "brief.op of %s is not the plan model's list of operation kinds" % item["id"])
+            continue
+        owed = _owed_step(ctx, run, item["id"], steps, prepared, unknown)
+        if owed is None:
+            continue
+        step, op = owed
+        entry = table.get(op["kind"])
+        if entry is None:
+            _say(unknown, "step %d of %s names %r, which is no kind of the operations table" % (step, item["id"], op["kind"]))
+            continue
         if not entry_usable(entry):
-            continue
-        req, missing = derive_request(item["id"], op, entry)
+            continue                                     # listed, not enabled yet: the item waits for the entry
+        req, missing = derive_request(item["id"], op, entry, step, len(steps))
         opid = req["operation_id"]
-        if not SAFE_ID.match(str(opid)) or (prepared_dir(run) / (opid + ".json")).exists():
+        if not isinstance(opid, str) or not SAFE_ID.match(opid):
+            _say(unknown, "step %d of %s states an operation id the executor refuses" % (step, item["id"]))
             continue
-        if any(doc["item"] == item["id"] for _, doc in all_prepared(run)):
-            continue                                     # a prepared request of the item, under any operation id
+        if os.path.lexists(str(prepared_dir(run) / (opid + ".json"))):
+            _say(unknown, "the operation id %s of step %d of %s is another prepared record's" % (opid, step, item["id"]))
+            continue
         if missing:
-            digest = sha_canonical({"item": item["id"], "op": op, "entry": entry, "missing": missing})
+            digest = _prep_digest(item["id"], step, op, entry, missing)
             intent = _intent(ctx, "REQUEST-PREP", item["id"], stream="N", runner="model", pool="builder", tier="opus", digest=digest,
                              evidence_fp=digest, card=_card(ctx, "adhikarin"), effort="xhigh")
-            out.append((intent, {"op": op, "entry": entry, "missing": missing}))
+            out.append((intent, {"op": op, "entry": entry, "missing": missing, "step": step, "steps": len(steps)}))
             continue
-        if static_validate(req, entry) is not None:
-            continue                                     # stated but refused by the executor's own rules: not ours to prepare
+        refused = static_validate(req, entry)
+        if refused is not None:                          # fully stated, and the executor would refuse it: nothing to prepare, said
+            _say(unknown, "step %d of %s states a request the executor refuses (%s)" % (step, item["id"], refused))
+            continue
         digest = request_digest(req)
         fp = sha_canonical({"request_sha256": digest, "entry": entry})
         intent = _intent(ctx, "REQUEST-PREP", item["id"], stream="N", runner="script", digest=digest, evidence_fp=fp)
-        out.append((intent, {"op": op, "entry": entry, "request": req}))
+        out.append((intent, {"op": op, "entry": entry, "request": req, "step": step, "steps": len(steps)}))
     return out
 
 
-def _prepared_doc(job, request, slot):
-    return {"schema": PREPARED_SCHEMA, "operation_id": request["operation_id"], "item": request["item_id"], "request": request,
-            "request_sha256": request_digest(request), "prepared_by": job.get("controller_id"), "prepared_by_slot": slot}
+def _prepared_doc(job, request, slot, step):
+    return {"schema": PREPARED_SCHEMA, "operation_id": request["operation_id"], "item": request["item_id"], "step": step,
+            "request": request, "request_sha256": request_digest(request), "prepared_by": job.get("controller_id"),
+            "prepared_by_slot": slot}
 
 
-def _write_prepared(ctx, job, request, slot, item):
+def _write_prepared(ctx, job, request, slot, item, step):
     run = _run(ctx)
     path = prepared_dir(run) / (request["operation_id"] + ".json")
-    doc = _prepared_doc(job, request, slot)
+    doc = _prepared_doc(job, request, slot, step)
 
     def effect():
         write_once(path, doc)
         return {"path": str(path), "request_sha256": doc["request_sha256"]}
 
     def observer(record):
-        have = read_json(path)
-        if isinstance(have, dict) and have.get("request_sha256") == doc["request_sha256"]:
+        have = load_prepared(path)
+        if have is not None and have["request_sha256"] == doc["request_sha256"] and have["step"] == step:
             return "done", {"path": str(path), "request_sha256": doc["request_sha256"]}
-        return ("not_done", "absent") if not path.exists() else ("unknown", "another prepared record is in place")
+        return ("not_done", "absent") if not os.path.lexists(str(path)) else ("unknown", "another prepared record is in place")
 
     status, result = ctx.act("PREPARE-%s-%s" % (action_part(request["operation_id"]), doc["request_sha256"][:12]), "request_prep",
                              {"operation_id": request["operation_id"], "request_sha256": doc["request_sha256"]},
@@ -601,22 +766,27 @@ def _start_request_prep(ctx, job):
     intent, payload = found
     if intent["runner"] == "model":
         return None
-    return _write_prepared(ctx, job, payload["request"], None, job["item"])
+    return _write_prepared(ctx, job, payload["request"], None, job["item"], payload["step"])
 
 
 def _model_prep_payload(ctx, job):
-    """({op, entry}, None) when brief.op and the table still give the model job's digest, whatever has been prepared
-    since; else (None, the result that stops the finish)."""
+    """({op, entry, step, steps}, None) when brief.op and the table still give the model job's digest, whatever has
+    been prepared since; else (None, the result that stops the finish)."""
     table = read_table(ctx)
     if table is None:
-        return None, _result("interrupted", "the operations table at origin/main could not be read")
-    item = next((i for i in _items(ctx) if i["id"] == job.get("item")), None)
-    op = op_spec(item, table) if item else None
-    entry = table.get(op["kind"]) if op else None
-    if entry_usable(entry):
-        _, missing = derive_request(item["id"], op, entry)
-        if missing and sha_canonical({"item": item["id"], "op": op, "entry": entry, "missing": missing}) == job.get("digest"):
-            return {"op": op, "entry": entry}, None
+        return None, _result("interrupted", TABLE_UNKNOWN)
+    unknown = []
+    items = _items(ctx, unknown)
+    if items is None:
+        return None, _result("interrupted", "the item cannot be read: %s" % "; ".join(unknown))
+    item = next((i for i in items if i["id"] == job.get("item")), None)
+    steps = op_steps(item["model"]) if item else None
+    for step, op in enumerate(steps or [], 1):
+        entry = table.get(op["kind"])
+        if entry_usable(entry):
+            _, missing = derive_request(item["id"], op, entry, step, len(steps))
+            if missing and _prep_digest(item["id"], step, op, entry, missing) == job.get("digest"):
+                return {"op": op, "entry": entry, "step": step, "steps": len(steps)}, None
     return None, _fail("REQUEST-PREP", job.get("item"), "evidence_changed", "the operation or the table changed during the job")
 
 
@@ -637,18 +807,18 @@ def _finish_request_prep(ctx, job):
     # the packet names the boundary for PRE-ACCEPT and POST-READBACK. The binding checks and the digest read-back gate this.
     if request.get("item_id") != job["item"] or request.get("kind") != payload["op"]["kind"]:
         return _fail("REQUEST-PREP", job["item"], "request_for_another_operation", "item_id/kind do not match the item's operation")
-    unbound = request_unbound(request, job["item"], payload["op"], payload["entry"])
+    unbound = request_unbound(request, job["item"], payload["op"], payload["entry"], payload["step"], payload["steps"])
     if unbound:
         return _fail("REQUEST-PREP", job["item"], "request_not_bound", unbound)
     reason = static_validate(request, payload["entry"])
     if reason:
         return _fail("REQUEST-PREP", job["item"], "request_invalid", reason)
     path = prepared_dir(run) / (request["operation_id"] + ".json")
-    if path.exists():                       # a repeated finish only when it is exactly the record this finish writes
-        if canonical(read_json(path)) == canonical(_prepared_doc(job, request, job.get("slot"))):
+    if os.path.lexists(str(path)):          # a repeated finish only when it is exactly the record this finish writes
+        if canonical(read_json(path)) == canonical(_prepared_doc(job, request, job.get("slot"), payload["step"])):
             return _result("done", "prepared record %s is the checked request's, by this job" % path)
         return _fail("REQUEST-PREP", job["item"], "already_prepared", request["operation_id"])
-    return _write_prepared(ctx, job, request, job.get("slot"), job["item"])
+    return _write_prepared(ctx, job, request, job.get("slot"), job["item"], payload["step"])
 
 
 def _boundary(ctx, job):
@@ -663,18 +833,22 @@ def _boundary(ctx, job):
 
 # ───────────────────────────────────────── PRE-ACCEPT ─────────────────────────────────────────
 
-def _c_pre_accept(ctx):
+def _c_pre_accept(ctx, unknown=None):
     table = read_table(ctx)
     if table is None:
+        _say(unknown, TABLE_UNKNOWN)
         return []
     run, out = _run(ctx), []
-    for _, doc in all_prepared(run):
+    for _, doc in all_prepared(run, unknown):
         req = doc["request"]
         entry = table.get(req["kind"])
-        if not isinstance(entry, dict) or not entry.get("production"):
+        if not isinstance(entry, dict):
+            _say(unknown, NO_KIND % (req["operation_id"], req["kind"]))
             continue
-        if _submitted(run, req["operation_id"]) or _acceptance_path(run, req["operation_id"]).exists():
+        if not entry.get("production"):
             continue
+        if _submitted(run, req["operation_id"]) or os.path.lexists(str(_acceptance_path(run, req["operation_id"]))):
+            continue                                     # an acceptance file is there; whether it is this request's is EXECUTE's to say
         fp = sha_canonical({"request_sha256": doc["request_sha256"], "entry": entry})
         out.append((_intent(ctx, "PRE-ACCEPT", doc["item"], stream="V", runner="model", pool="verifier", tier="opus",
                             digest=doc["request_sha256"], evidence_fp=fp, card=_card(ctx, "verifier"),
@@ -758,21 +932,25 @@ def _exec_slug(opid, receipt_sha):
     return "%s-%s" % (base, receipt_sha[:12])
 
 
-def _c_execute(ctx):
+def _c_execute(ctx, unknown=None):
     table = read_table(ctx)
     if table is None:
+        _say(unknown, TABLE_UNKNOWN)
         return []
     run, out = _run(ctx), []
-    for ppath, doc in all_prepared(run):
+    for ppath, doc in all_prepared(run, unknown):
         req, sha = doc["request"], doc["request_sha256"]
         opid = req["operation_id"]
         entry = table.get(req["kind"])
         if not isinstance(entry, dict):
+            _say(unknown, NO_KIND % (opid, req["kind"]))
             continue
         if not _submitted(run, opid):
             acc_path, acc_sha = _acceptance_path(run, opid), None
             if entry.get("production"):
                 if not acceptance_matches(read_json(acc_path), doc):
+                    if os.path.lexists(str(acc_path)):       # present, and not this request's acceptance: nobody will redo it
+                        _say(unknown, "the acceptance %s is not an ACCEPTED record of the prepared request %s" % (acc_path, sha))
                     continue
                 acc_sha = file_sha(acc_path)
             fp = sha_canonical({"request_sha256": sha, "acceptance_sha256": acc_sha})
@@ -780,12 +958,20 @@ def _c_execute(ctx):
                         {"variant": "submit", "prepared": doc, "acceptance_path": acc_path, "production": bool(entry.get("production"))}))
             continue
         rpath = _receipt_path(run, opid)
-        receipt = read_json(rpath)
-        if not isinstance(receipt, dict) or receipt.get("request_sha256") != sha or receipt.get("status") not in RECEIPT_AWAITED:
+        if not os.path.lexists(str(rpath)):
+            continue                                     # submitted, no receipt yet
+        receipt, rsha = read_json(rpath), file_sha(rpath)
+        if not isinstance(receipt, dict) or rsha is None or not isinstance(receipt.get("status"), str):
+            _say(unknown, "the executor receipt %s could not be read" % rpath)
             continue
-        rsha = file_sha(rpath)
-        if rsha is None or _awaiting_recorded(run, _exec_slug(opid, rsha)):
+        if receipt.get("request_sha256") not in (sha, None):
+            _say(unknown, "the executor receipt %s is of another request than the prepared one" % rpath)
             continue
+        if receipt.get("request_sha256") is None and receipt["status"] not in RECEIPT_AWAITED:
+            _say(unknown, "the executor receipt %s names no request" % rpath)
+            continue
+        if receipt["status"] not in RECEIPT_AWAITED or _awaiting_recorded(run, _exec_slug(opid, rsha)):
+            continue                                     # RUNNING or COMPLETED; or the owner-wait is already raised
         fp = sha_canonical({"request_sha256": sha, "receipt_sha256": rsha})
         out.append((_intent(ctx, "EXECUTE", doc["item"], stream="N", runner="script", digest=rsha, evidence_fp=fp),
                     {"variant": "await", "prepared": doc, "prepared_path": ppath, "receipt_path": rpath, "receipt": receipt,
@@ -847,11 +1033,11 @@ def _finish_execute(ctx, job):
         if doc["request_sha256"] != digest:
             continue
         opid = doc["request"]["operation_id"]
-        for d in ("requests", "done"):
+        for d in SUBMITTED_DIRS:
             have = read_json(run / "ops" / d / (opid + ".json"))
             if isinstance(have, dict) and request_digest(have) == digest:
                 return _result("done", "request %s is in %s/" % (opid, d))
-        return _result("interrupted", "request %s is not in requests/ or done/" % opid)
+        return _result("interrupted", "request %s is not in requests/, inflight/ or done/" % opid)
     directory = run / "ops" / "receipts"
     try:
         names = sorted(os.listdir(directory))
@@ -907,28 +1093,33 @@ def _handled_path(run, name):
 def _wait_marked(path, item_id, merge_commit):
     """The readback-wait marker of this item at this merge commit, read back (not merely present)."""
     have = read_json(path)
-    return (isinstance(have, dict) and have.get("kind") == "readback_wait" and have.get("item") == item_id
-            and have.get("merge_commit") == merge_commit)
+    return _marker(path, kind="readback_wait", item=item_id, merge_commit=merge_commit) is True
 
 
-def _c_post_readback(ctx):
+def _c_post_readback(ctx, unknown=None):
     run, out = _run(ctx), []
-    for item in _items(ctx):                                                  # (a) a deployed data-writing code item
-        if item.get("completion_kind") != "code" or not _writes_data(item) or _is_closed(item):
+    for item in _items(ctx, unknown) or []:                                   # (a) a deployed data-writing code item
+        if item["model"].get("completion_kind") != "code" or not _writes_data(item["model"]):
             continue
         pr = ctx.pr(item["id"])
-        if not isinstance(pr, dict) or str(pr.get("state", "")).upper() != "MERGED" or not HEX40.match(str(pr.get("merge_commit", ""))):
+        if pr is not None and not (isinstance(pr, dict) and "state" in pr and "merge_commit" in pr):
+            _say(unknown, "the pull request of %s could not be read" % item["id"])
+            continue
+        if pr is None or str(pr.get("state", "")).upper() != "MERGED" or not HEX40.match(str(pr.get("merge_commit", ""))):
             continue
         merge = pr["merge_commit"]
         events = _events(ctx, item["id"])
-        if events is None or _has_verdict(events, "post_deploy", head=merge):
+        if events is None:
+            _say(unknown, "the events of %s could not be read" % item["id"])
             continue
-        review = _latest_review(events) or {}
+        if _has_verdict(events, "post_deploy", head=merge):
+            continue
         receipts = _readback_receipts(run, item["id"])
         if not receipts:
             fp = _wait_evidence(item["id"], merge)
-            if _wait_marked(_handled_path(run, "readback.%s.%s.json" % (action_part(item["id"]), fp[:12])), item["id"], merge):
-                continue
+            marker = _handled_path(run, "readback.%s.%s.json" % (action_part(item["id"]), fp[:12]))
+            if _wait_marked(marker, item["id"], merge):
+                continue                                 # a marker that is not that record marks nothing: the line is owed again
             out.append((_intent(ctx, "POST-READBACK", item["id"], stream="V", runner="script", head=merge,
                                 verdict_phase="post_deploy", evidence_fp=fp),
                         {"variant": "wait", "item": item, "merge_commit": merge}))
@@ -937,15 +1128,23 @@ def _c_post_readback(ctx):
         out.append((_intent(ctx, "POST-READBACK", item["id"], stream="V", runner="model", pool="verifier", tier="opus", head=merge,
                             verdict_phase="post_deploy", evidence_fp=_a_evidence(item["id"], merge, path, doc),
                             card=_card(ctx, "verifier"), packet=_packet_path(ctx, item["id"]),
-                            not_slot=review.get("lane") or review.get("slot"), effort="high"),
+                            not_slot=_actor_slot(_latest_actor(events)), effort="high"),
                     {"variant": "a", "item": item, "merge_commit": merge, "events": events}))
-    for _, prepared in all_prepared(run):                                      # (b) a receipted operation
+    for _, prepared in all_prepared(run, unknown):                             # (b) a receipted operation
         found = _b_receipt(run, prepared)
         if found is None:
+            rpath = _receipt_path(run, prepared["request"]["operation_id"])
+            receipt = read_json(rpath)
+            if (isinstance(receipt, dict) and receipt.get("status") == "COMPLETED"
+                    and receipt.get("request_sha256") == prepared["request_sha256"]):
+                _say(unknown, "the COMPLETED receipt %s carries no measured readback (exit 0 and an output of its digest, for this item)" % rpath)
             continue
         path, rsha = found
         events = _events(ctx, prepared["item"])
-        if events is None or _has_verdict(events, "artifact", digest=rsha):
+        if events is None:
+            _say(unknown, "the events of %s could not be read" % prepared["item"])
+            continue
+        if _has_verdict(events, "artifact", digest=rsha):
             continue
         out.append((_intent(ctx, "POST-READBACK", prepared["item"], stream="V", runner="model", pool="verifier", tier="opus", digest=rsha,
                             verdict_phase="artifact", evidence_fp=_b_evidence(run, prepared, rsha), card=_card(ctx, "verifier"),
@@ -1034,7 +1233,7 @@ def _finish_post_readback(ctx, job):
     if job.get("verdict_phase") == "post_deploy":
         head = job.get("head")
         pr = ctx.pr(item)
-        if not isinstance(pr, dict):
+        if not isinstance(pr, dict) or "state" not in pr or "merge_commit" not in pr:
             return _result("interrupted", "the pull request of %s could not be read" % item)
         if not HEX40.match(str(head or "")) or str(pr.get("state", "")).upper() != "MERGED" or pr.get("merge_commit") != head:
             return _fail("POST-READBACK", item, "not_the_merge_commit", "the job's head is not the squash merge commit of the PR")
@@ -1079,19 +1278,20 @@ def _finish_post_readback(ctx, job):
 
 # ───────────────────────────────────────── MODEL ─────────────────────────────────────────
 
-def _executable(item):
-    return item.get("done_by") not in ("decision", "join") and item.get("join") is not True
+def _executable(model_item):
+    return model_item.get("done_by") not in ("decision", "join") and model_item.get("join") is not True
 
 
-def _c_model(ctx):
+def _c_model(ctx, unknown=None):
     out = []
-    for item in _items(ctx):
-        if (item.get("owner") != "S" or not _is_ready(item) or not _executable(item) or item["id"] in MODEL_EXCLUDED):
+    for item in _items(ctx, unknown) or []:
+        if item["owner"] != "S" or item["status"] != "ready" or not _executable(item["model"]) or item["id"] in MODEL_EXCLUDED:
             continue
         events = _events(ctx, item["id"])
         if events is None:
+            _say(unknown, "the events of %s could not be read" % item["id"])
             continue
-        digest = sha_canonical(item)
+        digest = sha_canonical(item["model"])
         fp = sha_canonical({"item_sha": digest, "event_count": len(events)})
         out.append((_intent(ctx, "MODEL", item["id"], stream="S", runner="model", pool="builder", tier="opus", digest=digest,
                             evidence_fp=fp, locks=["item." + item["id"]], card=_card(ctx, "adhikarin"), effort="xhigh"), {"item": item}))
@@ -1114,10 +1314,9 @@ def _finish_model(ctx, job):
     later = _after_launch(ctx, job)
     if later is None:
         return _result("interrupted", "the events of the item could not be matched to the launch")
-    kinds = [_etype(e) for e in later]
-    if "review" in kinds:
+    if any(_is_review(e) for e in later):
         return _result("done", "the job registered a review")
-    if "block" in kinds or "blocked" in kinds:
+    if any(_is_block(e) for e in later):
         return _result("blocked", "the job blocked the item")
     return _result("interrupted", "the job ended with neither a review nor a block event")
 
@@ -1136,19 +1335,25 @@ def _inbox(ctx):
         return None
     if rc == 1:
         return [] if rows == [] else None
-    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else None
+    if not isinstance(rows, list) or any(not isinstance(r, dict) or not isinstance(r.get("msg_id"), str)
+                                         or not MESSAGE_ID.match(r["msg_id"]) for r in rows):
+        return None                                      # a row that is no message event (cli.py _unacked): not an inbox
+    return rows
 
 
-def _c_ruling(ctx):
+def _c_ruling(ctx, unknown=None):
     rows = _inbox(ctx)
-    if not rows:
+    if rows is None:
+        _say(unknown, "the N inbox (`ky inbox --stream N --json`) could not be read")
         return []
     run, out, seen = _run(ctx), [], set()
     for msg in rows:
-        mid = msg.get("msg_id")
-        if not isinstance(mid, str) or not MESSAGE_ID.match(mid) or mid in seen or _handled_path(run, "msg.%s.json" % mid).exists():
+        mid = msg["msg_id"]
+        if mid in seen:
             continue
         seen.add(mid)
+        if _marker(_handled_path(run, "msg.%s.json" % mid), kind="msg", msg_id=mid) is True:
+            continue                                     # read back, not merely present: a truncated marker handles nothing
         digest = sha_canonical(msg)
         fp = sha_canonical({"msg_id": mid, "digest": digest})
         out.append((_intent(ctx, "RULING", "msg." + mid, stream="N", runner="model", pool="builder", tier="opus", digest=digest,
@@ -1171,8 +1376,7 @@ def _finish_ruling(ctx, job):
         return {"path": str(path)}
 
     def observer(rec):
-        have = read_json(path)
-        return ("done", {"path": str(path)}) if isinstance(have, dict) and have.get("msg_id") == mid else ("not_done", "no handled record")
+        return ("done", {"path": str(path)}) if _marker(path, kind="msg", msg_id=mid) is True else ("not_done", "no handled record")
 
     status, result = ctx.act("HANDLED-msg-%s-%s" % (action_part(mid), str(job.get("digest"))[:12]), "handled",
                              {"msg_id": mid}, {"path": str(path)}, effect, observer)
@@ -1210,11 +1414,14 @@ def _veto_rows(ctx):
     return {r["id"]: r for r in rows if isinstance(r, dict) and "id" in r} if isinstance(rows, list) else None
 
 
-def _awaiting_docs(ctx):
+def _awaiting_docs(ctx, unknown=None):
     directory, out = _run(ctx) / "awaiting", []
     try:
         names = sorted(os.listdir(directory))
+    except FileNotFoundError:
+        return out
     except OSError:
+        _say(unknown, "the awaiting items under %s could not be listed" % directory)
         return out
     for name in names:
         if not name.endswith(".json") or name.endswith(OWNER_DECISION_SUFFIX):
@@ -1222,6 +1429,8 @@ def _awaiting_docs(ctx):
         doc = read_json(directory / name)
         if isinstance(doc, dict) and doc.get("id") == name[:-len(".json")] and AWAITING_ID.match(str(doc["id"])):
             out.append(doc)
+        else:
+            _say(unknown, "the awaiting file %s is not an awaiting item of that id" % (directory / name))
     return out
 
 
@@ -1255,15 +1464,19 @@ def _move_digest(aid, decision_id, state):
     return sha_canonical({"move": aid, "decision_id": decision_id, "state": state})
 
 
-def _c_surrogate(ctx):
+def _c_surrogate(ctx, unknown=None):
     run, out, rows = _run(ctx), [], False
-    for doc in _awaiting_docs(ctx):
+    for doc in _awaiting_docs(ctx, unknown):
         aid, fp = doc["id"], awaiting_fingerprint(ctx, doc)
         handled = read_json(_handled_path(run, "awaiting.%s.json" % aid))
         if isinstance(handled, dict) and handled.get("fingerprint") == fp:
             if rows is False:
                 rows = _veto_rows(ctx)
+                if rows is None:
+                    _say(unknown, "kyveto.status() could not be read")
             row = rows.get(handled.get("decision_id")) if rows else None
+            if rows is not None and row is None:
+                _say(unknown, "kyveto.status() shows no decision %r, the one recorded for %s" % (handled.get("decision_id"), aid))
             if move_refusal(aid, handled, row) is None:
                 digest = _move_digest(aid, handled["decision_id"], row["state"])
                 move_fp = sha_canonical({"fingerprint": fp, "decision_id": handled["decision_id"], "state": row["state"]})
@@ -1392,28 +1605,45 @@ def _packets_sha(ctx):
     return None if any(s is None for _, s in shas) else sha_canonical(shas)
 
 
-def _c_plan(ctx):
+def _admitted(run, item_id):
+    """kyd_admit's `$KY_RUN/admission/<item>.json` {item, base_sha, test_digests, result}, read back: True when it is
+    that item's record, False when there is none, None when a file is there that is not it."""
+    path = run / "admission" / ("%s.json" % item_id)
+    if not os.path.lexists(str(path)):
+        return False
+    doc = read_json(path)
+    return True if isinstance(doc, dict) and doc.get("item") == item_id and isinstance(doc.get("result"), str) else None
+
+
+def _c_plan(ctx, unknown=None):
     run = _run(ctx)
     try:
         text = (run / "REPACKET.txt").read_text(encoding="utf-8")
     except FileNotFoundError:
         text = ""
     except (OSError, ValueError):
+        _say(unknown, "%s could not be read" % (run / "REPACKET.txt"))
         return []                                                       # unreadable is unknown, not empty
     packets = _packets_sha(ctx)
     if packets is None:
+        _say(unknown, "the packet set under %s could not be read" % (_repo(ctx) / PACKETS_REL))
         return []
     if text.strip():
         trigger, item, digest = "repacket", "REPACKET", sha_text(text)
     else:
-        items = [i for i in _items(ctx) if not _is_closed(i) and _executable(i)]
-        admitted = [i for i in items if i.get("status") == "running" and (run / "admission" / ("%s.json" % i["id"])).exists()]
-        in_flight = [i for i in items if _is_ready(i) or str(i.get("status", "")).lower() == "review"]
-        if not items or in_flight or admitted:
+        items = _items(ctx, unknown)
+        if items is None:
+            return []                                                   # an unknown tracker is no wave boundary
+        items = [i for i in items if _executable(i["model"])]
+        in_flight = [i for i in items if i["status"] in ("ready", "review")]
+        admitted = [_admitted(run, i["id"]) for i in items if i["status"] == "running"]
+        if None in admitted and not in_flight:
+            _say(unknown, "an admission record under %s is not its item's record" % (run / "admission"))
+        if not items or in_flight or any(a is not False for a in admitted):
             return []
         trigger, item, digest = "boundary", "WAVE-BOUNDARY", sha_canonical(sorted(i["id"] for i in items))
-    if _handled_path(run, "plan.%s.json" % digest[:12]).exists():
-        return []
+    if _marker(_handled_path(run, "plan.%s.json" % digest[:12]), kind="plan", digest=digest) is True:
+        return []                                                       # read back, not merely present
     fp = sha_canonical({"trigger": trigger, "digest": digest, "packets_sha256": packets})
     return [(_intent(ctx, "PLAN", item, stream="S", runner="model", pool="builder", tier="opus", digest=digest, evidence_fp=fp,
                      locks=["plan"], card=_card(ctx, "adhikarin"), effort="xhigh"), {"trigger": trigger})]
@@ -1443,7 +1673,8 @@ def _finish_plan(ctx, job):
         return {"path": str(path)}
 
     def observer(rec):
-        return ("done", {"path": str(path)}) if path.exists() else ("not_done", "no handled record")
+        return (("done", {"path": str(path)}) if _marker(path, kind="plan", digest=job.get("digest")) is True
+                else ("not_done", "no handled record"))
 
     status, res = ctx.act("HANDLED-plan-%s" % str(job.get("digest"))[:12], "handled", {"trigger": trigger, "digest": job.get("digest")},
                           {"path": str(path)}, effect, observer)
@@ -1462,13 +1693,19 @@ FINISH = {"REQUEST-PREP": _finish_request_prep, "PRE-ACCEPT": _finish_pre_accept
 
 
 def intents(ctx):
-    """Every job owed now, in kind order (I-13). Read-only: it reads files, the table, the inbox and the tracker."""
-    out, seen = [], set()
+    """Every job owed now, in kind order (I-13). Read-only: it reads files, the table, the inbox and the tracker;
+    what it could not read or recognise goes into one journal line (I-15)."""
+    out, seen, unknown = [], set(), []
     for kind in ORDER:
-        for intent, _ in CANDIDATES[kind](ctx):
+        for intent, _ in CANDIDATES[kind](ctx, unknown):
             if intent["key"] not in seen:
                 seen.add(intent["key"])
                 out.append(intent)
+    if unknown:                                                         # I-15: unknown is said, never read as nothing owed
+        try:
+            ctx.journal(UNKNOWN_EVENT, "no job is derived this tick from what could not be read, recognised or used: " + "; ".join(unknown))
+        except Exception:
+            pass                                                        # the intents that are known still stand
     return out
 
 
