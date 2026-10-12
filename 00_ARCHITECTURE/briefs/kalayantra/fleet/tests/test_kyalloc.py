@@ -74,37 +74,30 @@ class Fixture:
         self.git("init", "-q")
 
     # -- building the repository (test side only; kyalloc itself is held to three read-only verbs)
-    def git(self, *args, stdin=None, index=None) -> str:
+    def git(self, *args, stdin=None) -> str:
         env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "GIT_CONFIG_GLOBAL": os.devnull,
-               "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
-        if index:
-            env["GIT_INDEX_FILE"] = str(index)
+               "GIT_CONFIG_NOSYSTEM": "1"}
         p = subprocess.run([GIT, *args], cwd=self.repo, env=env, input=stdin, capture_output=True)
         assert p.returncode == 0, (args, p.stderr.decode())
         return p.stdout.decode().strip()
 
-    def commit(self, ref: str, files: dict, base=None, remove=()) -> str:
+    def commit(self, ref: str, files: dict, base=None, remove=()) -> None:
         """`ref` := a commit of `base`'s tree (none: an empty tree) with `files` written and `remove` deleted"""
         self._n += 1
-        index = self.tmp / f"index.{self._n}"
+        message = f"fixture {self._n}".encode()
+        stream = [f"commit {ref}\ncommitter t <t@example.invalid> {1700000000 + self._n} +0000\n".encode(),
+                  b"data %d\n%s\n" % (len(message), message)]
         if base:
-            self.git("read-tree", base, index=index)
+            stream.append(f"from {base}^0\n".encode())
         for path in remove:
-            self.git("update-index", "--force-remove", path, index=index)
+            stream.append(f"D {path}\n".encode())
         for path, content in files.items():
             data = content if isinstance(content, bytes) else content.encode("utf-8")
-            blob = self.git("hash-object", "-w", "--stdin", stdin=data)
-            self.git("update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", index=index)
-        tree = self.git("write-tree", index=index)
-        parents = ["-p", self.git("rev-parse", base)] if base else []
-        sha = self.git("commit-tree", tree, *parents, "-m", f"fixture {self._n}")
-        self.git("update-ref", ref, sha)
-        return sha
+            stream.append(f"M 100644 inline {path}\n".encode() + b"data %d\n%s\n" % (len(data), data))
+        self.git("fast-import", "--quiet", "--force", stdin=b"".join(stream))
 
     def set_claims(self, rows, text=None):
-        body = claims_md(rows) if text is None else text
-        return self.commit(CLAIMS, {CLAIMS_PATH: body})
+        self.commit(CLAIMS, {CLAIMS_PATH: claims_md(rows) if text is None else text})
 
     # -- running the allocator
     def env(self, **extra) -> dict:
@@ -194,7 +187,7 @@ def fx(bare):
 
 
 def land_on_main(fx: Fixture, path: str, content="-- landed\n"):
-    return fx.commit(MAIN, {path: content}, base=MAIN)
+    fx.commit(MAIN, {path: content}, base=MAIN)
 
 
 # ---------------------------------------------------------------- 1. concurrent allocation
@@ -390,7 +383,8 @@ def test_conflict_claim_range_covering_the_number(fx):
 
 @pytest.mark.parametrize("token", ["kyalloc:K-B@kalayantra/k-a", "kyalloc:K-A@kalayantra/k-a-2",
                                    "kyalloc:K-A@kalayantra/k", "kyalloc:K-A", "kyalloc:k-a@kalayantra/k-a",
-                                   "xkyalloc:K-A@kalayantra/k-a.", "K-A@kalayantra/k-a"])
+                                   "xkyalloc:K-A@kalayantra/k-a", "kyalloc:K-A@kalayantra/k-a.",
+                                   "K-A@kalayantra/k-a"])
 def test_conflict_near_miss_token(fx, token):
     fx.reserved("K-A", "kalayantra/k-a")
     fx.set_claims(STD_ROWS + (f"| {STD_NEXT} | KY | x | CLAIMED — {token} |",))
@@ -565,16 +559,16 @@ def unreadable_cases():
     return {
         "ref missing": lambda fx: ("--ref", "origin/nope"),
         "claims ref missing": lambda fx: ("--claims-ref", "origin/nope"),
-        "claim file missing at the claims ref": lambda fx: fx.commit(CLAIMS, {"README.md": "x"}) and (),
-        "claim section missing": lambda fx: fx.set_claims((), text="# CAMPAIGN COORDINATION\n\n| 1339 | x |\n") and (),
-        "claim section twice": lambda fx: fx.set_claims((), text=claims_md(STD_ROWS) + claims_md(STD_ROWS)) and (),
-        "claim section without a row": lambda fx: fx.set_claims(()) and (),
-        "claim number not understood": lambda fx: fx.set_claims(STD_ROWS + ("| 1349 or 1350 | OTHER | x | CLAIMED |",)) and (),
-        "claim number with text": lambda fx: fx.set_claims(STD_ROWS + ("| 13x9 | OTHER | x | CLAIMED |",)) and (),
-        "claim range reversed": lambda fx: fx.set_claims(STD_ROWS + ("| 1360–1355 | OTHER | x | CLAIMED |",)) and (),
-        "claim file not text": lambda fx: fx.set_claims((), text=claims_md(STD_ROWS).encode() + b"\xff\xfe") and (),
-        "claim path is a directory": lambda fx: fx.commit(CLAIMS, {CLAIMS_PATH + "/x.md": claims_md(STD_ROWS)}) and (),
-        "no migration at the ref": lambda fx: fx.commit(MAIN, {"README.md": "x"}) and (),
+        "claim file missing at the claims ref": lambda fx: fx.commit(CLAIMS, {"README.md": "x"}) or (),
+        "claim section missing": lambda fx: fx.set_claims((), text="# CAMPAIGN COORDINATION\n\n| 1339 | x |\n") or (),
+        "claim section twice": lambda fx: fx.set_claims((), text=claims_md(STD_ROWS) + claims_md(STD_ROWS)) or (),
+        "claim section without a row": lambda fx: fx.set_claims(()) or (),
+        "claim number not understood": lambda fx: fx.set_claims(STD_ROWS + ("| 1349 or 1350 | OTHER | x | CLAIMED |",)) or (),
+        "claim number with text": lambda fx: fx.set_claims(STD_ROWS + ("| 13x9 | OTHER | x | CLAIMED |",)) or (),
+        "claim range reversed": lambda fx: fx.set_claims(STD_ROWS + ("| 1360–1355 | OTHER | x | CLAIMED |",)) or (),
+        "claim file not text": lambda fx: fx.set_claims((), text=claims_md(STD_ROWS).encode() + b"\xff\xfe") or (),
+        "claim path is a directory": lambda fx: fx.commit(CLAIMS, {CLAIMS_PATH + "/x.md": claims_md(STD_ROWS)}) or (),
+        "no migration at the ref": lambda fx: fx.commit(MAIN, {"README.md": "x"}) or (),
         "ref is not a commit": lambda fx: ("--ref", fx.git("rev-parse", f"{MAIN}:platform/migrations/001_baseline.sql")),
     }
 
