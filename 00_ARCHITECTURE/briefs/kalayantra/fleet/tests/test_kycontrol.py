@@ -4787,3 +4787,509 @@ def test_an_executed_line_must_carry_effective_at(tmp_path):
     with pytest.raises(kyveto.Unwritable):
         handler.append(executed, "EXECUTED", "executed", None)
     assert w.log.read_bytes() == before                   # nothing was written
+
+
+# ── C4-01 (review round 4, ruling R14): VETOED / FAILED is final by the handler's own records, never by a line ──
+
+TERMINAL_CLAIM = "terminal_line_not_the_handlers"
+
+
+def surrogate_line(w, sid, state, **over):
+    """One more line under a decision's id as the surrogate writes it when it re-rules a blocked item."""
+    line = dict(w.history(sid)[0], state=state, by=kyveto.SURROGATE, session="surrogate-2", reason="re-ruled")
+    line.update(over)
+    w.append(line)
+
+
+def half_executed(w, **target):
+    """The reviewer's half state: the handler was killed between the two capacity files. → the decision id."""
+    sid = w.propose(cap(**target))
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "2\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+    return sid
+
+
+def test_a_terminal_line_is_final_by_the_handlers_records_not_by_its_author():
+    """The state rule itself: `held` — the handler holds an action record for the decision; `closed` — the state
+    the handler closed it with itself (its own marker), which the caller withholds while `<id>.execute` is
+    INTENDED or DONE."""
+    veto = {"class": "veto"}
+    lines = [dict(veto, state="PENDING_VETO"), dict(veto, state="EFFECTIVE")]
+    for claim in ("FAILED", "VETOED"):
+        for by in ("kyveto", kyveto.SURROGATE):                       # who a line says wrote it plays no part
+            claimed = lines + [dict(veto, state=claim, by=by)]
+            assert kyveto.first_terminal(claimed, False) == claim     # no record of the handler's: nothing is out
+            assert kyveto.first_terminal(claimed, False, held=True) is None
+            assert kyveto.first_terminal(claimed, False, held=True, closed=claim) == claim
+            assert kyveto.first_terminal(claimed, True, held=True, closed=claim) is None      # executed: EXECUTED only
+            assert kyveto.first_terminal(claimed + [dict(veto, state="EXECUTED")], True, held=True) == "EXECUTED"
+            assert kyveto.first_terminal(claimed + [dict(veto, state="EXECUTED")], False, held=True) is None
+            assert kyveto.needs_handler(claimed, False, begun=True) is True
+            assert kyveto.needs_handler(claimed, False, begun=True, closed=claim) is False
+            assert kyveto.needs_handler(claimed, True, begun=True, closed=claim) is True
+            assert kyveto.needs_handler(claimed, False) is False
+            assert kyveto.accepted_state(claimed, True, False) == "EFFECTIVE"
+            assert kyveto.accepted_state(claimed, True, False, closed=claim) == claim
+            assert kyveto.accepted_state(claimed, True, True, closed=claim) == "EFFECTIVE"
+            assert kyveto.accepted_state(claimed, False, False, begun=True) == "PENDING_VETO"
+            assert kyveto.accepted_state(claimed, False, False) == claim
+    other = lines + [dict(veto, state="VETOED"), dict(veto, state="FAILED")]
+    assert kyveto.first_terminal(other, False, held=True, closed="FAILED") == "FAILED"         # the handler's own word
+    assert kyveto.first_terminal(other, False, held=True, closed="EXECUTED") is None
+    assert kyveto.first_terminal(other, False) == "VETOED"
+
+
+@pytest.mark.parametrize("restorable", [True, False])
+def test_an_executed_claim_over_a_half_written_effect_is_undone_not_only_failed(tmp_path, restorable):
+    """Probe (a): the handler was killed between the two capacity files (KY_WORKERS 6, KY_VERIFIERS 2, execute
+    INTENDED), then an EXECUTED line appears in the log. Before: FAILED log_claims_executed_without_action_record
+    without a look at what was in place — the record stayed INTENDED, KY_WORKERS kept 6, the next tick reported
+    nothing and `status` read FAILED, attention false, partial_effects empty."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    if not restorable:
+        (w.run / "KY_VERIFIERS").write_text("5\n")        # not the before value, not this change's: not ours to undo
+    left = w.capacity()
+    surrogate_line(w, sid, "EXECUTED", effective_at=AT)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "log_claims_executed_without_action_record")
+    assert d["anomaly"] == "log_claim_without_action_record" and d["attention"] is True and report["attention"] is True
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state and d["published"] is True
+    assert w.capacity() == (("3\n", "2\n") if restorable else left)
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["because"] == "log_claims_executed_without_action_record"
+    assert rec["result"]["reason"] == ("given_up_partial_effect_restored" if restorable else "given_up_with_partial_effect")
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == state and partial["in_place" if not restorable else "restored"] == ["KY_WORKERS"]
+    assert rec["reconciliations"][0]["detail"]["incomplete"] == ["KY_VERIFIERS"]
+    assert_schema("action", rec)
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["reason"]) == ("FAILED", "kyveto", d["reason"])
+    assert line["detail"] == {"published": True, "partial_effect": partial}
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == (("3\n", "2\n") if restorable else left)
+    rc, status, row = status_row(w, sid)
+    assert row["state"] == "FAILED" and row["partial_effect"] == state and status["unfinished_actions"] == []
+    assert (rc, row.get("unresolved"), status["partial_effects"]) == ((0, None, []) if restorable else (3, True, [sid]))
+
+
+@pytest.mark.parametrize("exit_", ["proposal_missing", "decision_record_mutated: proposal",
+                                   "log_claims_effective_without_action_record"])
+def test_every_exit_that_gives_a_decision_up_closes_its_unfinished_execution(tmp_path, exit_):
+    """Probe (a), "the same exit serves decision_record_mutated: proposal and proposal_missing": every FAILED the
+    handler writes while `<id>.execute` is INTENDED first looks at what is in place, as an owner veto does."""
+    w = World(tmp_path)
+    sid = half_executed(w)
+    lines = w.history(sid)
+    if exit_ == "proposal_missing":
+        w.log.write_text(json.dumps(dict(lines[0], state="PROPOSED")) + "\n")
+    elif exit_.startswith("decision_record_mutated"):
+        w.log.write_text("".join(json.dumps(x) + "\n" for x in [dict(lines[0], rationale="a different story")] + lines[1:]))
+    else:
+        (w.run / "actions" / (sid + ".publish.json")).unlink()         # the EFFECTIVE line is a claim nothing backs
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("failed", exit_, True)
+    assert d["partial_effect"] == "restored" and w.capacity() == ("3\n", "2\n")
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["because"] == exit_
+    assert rec["result"]["partial_effect"]["restored"] == ["KY_WORKERS"]
+    assert w.history(sid)[-1]["detail"]["partial_effect"] == rec["result"]["partial_effect"]
+    assert w.tick(LATER)["decisions"] == [] and kyveto.status(w.env)["unfinished_actions"] == []
+
+
+def test_an_executed_claim_over_a_complete_effect_is_answered_from_the_disk(tmp_path):
+    """The same exit with both files written (killed before the result was recorded): the record is reconciled
+    to DONE, so the decision IS executed — the handler says so itself instead of resting FAILED on 6/4."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert w.crash("after-execute", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "4\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    surrogate_line(w, sid, "EXECUTED", effective_at=AT)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("executed", "already_executed", True)
+    assert d["instead_of"] == "log_claims_executed_without_action_record" and d["executed"] is True
+    assert d["anomaly"] == "log_claim_without_action_record" and d["published"] is True
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "DONE" and [r["outcome"] for r in rec["reconciliations"]] == ["done"]
+    last = w.history(sid)[-1]
+    assert (last["state"], last["by"], last["detail"]["already_executed"]) == ("EXECUTED", "kyveto", d["instead_of"])
+    assert w.capacity() == ("6\n", "4\n") and w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "EXECUTED" and row["executed_by_handler"] is True
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+@pytest.mark.parametrize("restorable", [True, False])
+def test_a_terminal_line_over_a_half_written_effect_does_not_end_the_handlers_custody(tmp_path, claim, restorable):
+    """Probe (b), first half: the half state, then a FAILED or VETOED line written by the surrogate. Before:
+    first_terminal accepted the line, the decision left the handler for good, no tick row, `status` FAILED with
+    attention false, the record INTENDED and KY_WORKERS 6."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    if not restorable:
+        (w.run / "KY_VERIFIERS").write_text("5\n")
+    left = w.capacity()
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)                  # not final — and somebody is told before any tick ran
+    assert rc == 3 and (row["state"], row["latest_line_state"]) == ("EFFECTIVE", claim)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    assert status["unfinished_actions"] == [sid + ".execute"]
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: " + claim)
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True and report["attention"] is True
+    assert d["published"] is True and d["executed"] is False
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state and w.capacity() == (("3\n", "2\n") if restorable else left)
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["partial_effect"]["state"] == state
+    assert rec["result"]["because"] == d["reason"]
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["reason"]) == ("FAILED", "kyveto", d["reason"])
+    assert line["detail"] == {"published": True, "partial_effect": rec["result"]["partial_effect"]}
+    assert w.tick(LATER)["decisions"] == []               # answered once: the handler has closed it itself now
+    rc, status, row = status_row(w, sid)
+    assert row["state"] == "FAILED" and "anomaly" not in row and status["unfinished_actions"] == []
+    assert (rc, row.get("unresolved"), status["partial_effects"]) == ((0, None, []) if restorable else (3, True, [sid]))
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+def test_a_terminal_line_beside_an_executed_effect_is_overruled_by_the_execution_record(tmp_path, monkeypatch, claim):
+    """Probe (b), second half: fully executed (`<id>.execute` DONE, capacity 6/4), the EXECUTED line lost, then
+    a FAILED or VETOED line written by the surrogate. Before: `status` FAILED with executed_by_handler true and
+    attention false, and no tick ever said a word."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real = kyveto.Handler.append
+
+    def lose_the_executed_line(self, latest, state, *a, **k):
+        if state == "EXECUTED":
+            raise OSError("no space left on device")
+        return real(self, latest, state, *a, **k)
+
+    with monkeypatch.context() as m:
+        m.setattr(kyveto.Handler, "append", lose_the_executed_line)
+        assert one(w.tick(AT), sid)["outcome"] == "blocked"
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"] and w.action(sid + ".execute")["state"] == "DONE"
+    assert w.capacity() == ("6\n", "4\n")
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"], row["executed_by_handler"]) == ("EFFECTIVE", claim, True)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("executed", "already_executed", True)
+    assert d["instead_of"] == "closed_by_log_line: " + claim and d["anomaly"] == TERMINAL_CLAIM
+    assert d["executed"] is True and d["published"] is True and report["attention"] is True
+    last = w.history(sid)[-1]
+    assert (last["state"], last["by"], last["effective_at"]) == ("EXECUTED", "kyveto", AT)
+    assert w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.tick(LATER)["decisions"] == []               # the log says the truth again: reported once
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and (row["state"], row["latest_line_state"]) == ("EXECUTED", "EXECUTED")
+    assert "unresolved" not in row and "anomaly" not in row
+
+
+@pytest.mark.parametrize("claim", ["FAILED", "VETOED"])
+def test_a_terminal_line_after_publication_is_answered_when_the_handler_closed_nothing(tmp_path, monkeypatch, claim):
+    """Probe (c): published, the execution blocked with attention on every tick, then a surrogate FAILED line.
+    Before: the blocked row disappeared, the delegated approval stayed in the tracker and nobody was told."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    with monkeypatch.context() as m:
+        m.setattr(kyveto.Handler, "execute", lambda self, *a, **k: {
+            "outcome": "blocked", "reason": "simulated stop before the execution", "attention": True})
+        for now in (AT, AFTER):
+            report = w.tick(now)
+            assert one(report, sid)["outcome"] == "blocked" and report["attention"] is True
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE"] and len(w.ky_calls()) == 1
+    assert w.actions() == [sid + ".publish.json"]
+    surrogate_line(w, sid, claim)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"], row["published"]) == ("EFFECTIVE", claim, True)
+    assert row["unresolved"] is True and row["anomaly"] == TERMINAL_CLAIM
+    report = w.tick(LATER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: " + claim)
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True and report["attention"] is True
+    assert d["published"] is True and d["executed"] is False and "partial_effect" not in d
+    line = w.history(sid)[-1]
+    assert (line["state"], line["by"], line["detail"]) == ("FAILED", "kyveto", {"published": True})
+    assert w.capacity() == ("3\n", "2\n") and w.actions() == [sid + ".publish.json"] and len(w.ky_calls()) == 1
+    for _ in range(2):                                    # once: the handler has closed it itself now
+        assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "FAILED" and "unresolved" not in row and "anomaly" not in row
+    assert row["published"] is True and row["executed_by_handler"] is False
+
+
+def test_a_terminal_line_over_an_unknown_publication_is_answered_with_the_unknown(tmp_path, monkeypatch):
+    """Probe (c) with `ky decide` unanswered: blocked publication_unreconciled on every tick, then FAILED."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    surrogate_line(w, sid, "FAILED")
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "closed_by_log_line: FAILED")
+    assert (d["published"], d["executed"], d["attention"], d["anomaly"]) == ("unknown", False, True, TERMINAL_CLAIM)
+    assert w.history(sid)[-1]["detail"] == {"published": "unknown"} and len(w.ky_calls()) == 1
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # the unknown publication stays the owner's to settle
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True and "anomaly" not in row
+
+
+def test_a_terminal_line_never_silences_an_execution_that_cannot_be_reconciled(tmp_path, monkeypatch):
+    """Probe (c) with the record begun: blocked execution_unreconciled on every tick stays exactly that."""
+    w = World(tmp_path)
+    sid = half_executed(w, tracker_decision=TD)
+    capacity = kyveto.REGISTRY["capacity"]
+    with monkeypatch.context() as m:
+        m.setattr(capacity, "observer", lambda p, ctx: ("unknown", {"error": "the pool files cannot be read"}))
+        assert one(w.tick(AFTER), sid)["reason"] == "execution_unreconciled"
+        surrogate_line(w, sid, "FAILED")
+        for now in (AFTER, LATER):
+            report = w.tick(now)
+            d = one(report, sid)
+            assert (d["outcome"], d["attention"], d["anomaly"]) == ("blocked", True, TERMINAL_CLAIM)
+            assert d["reason"] == "execution_unreconciled" and d["giving_up"] == "closed_by_log_line: FAILED"
+            assert report["attention"] is True
+    assert w.action(sid + ".execute")["state"] == "INTENDED" and w.capacity() == ("6\n", "2\n")
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["unresolved"] is True and row["state"] == "EFFECTIVE"
+    d = one(w.tick(LATER), sid)                           # the files can be read again: closed, put back, said
+    assert (d["outcome"], d["partial_effect"]) == ("failed", "restored") and w.capacity() == ("3\n", "2\n")
+
+
+def test_an_owner_veto_is_still_the_answer_to_a_decision_a_line_claims_closed(tmp_path):
+    w = World(tmp_path)
+    sid = half_executed(w)
+    surrogate_line(w, sid, "FAILED")
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["command"], d["partial_effect"]) == ("vetoed", cid, "restored")
+    assert d["anomaly"] == TERMINAL_CLAIM and d["attention"] is True
+    assert d["executed"] is False and d["published"] is False
+    assert w.capacity() == ("3\n", "2\n") and w.command(cid)["state"] == "APPLIED"
+    assert w.command(cid)["result"]["outcome"] == "VETOED" and report["commands"][0]["status"] == "applied"
+    assert w.states(sid)[-2:] == ["FAILED", "VETOED"] and w.history(sid)[-1]["by"] == "kyveto"
+    assert w.action(sid + ".execute")["result"]["reason"] == "vetoed_partial_effect_restored"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # the handler's own closing is what the state is
+    assert rc == 0 and (row["state"], row["latest_line_state"]) == ("VETOED", "VETOED")
+
+
+def test_the_handler_remembers_which_decisions_it_closed_itself(tmp_path):
+    """R14, "a state rule, not an authorship rule": a line's `by` is whatever the model wrote. What ends the
+    handler's custody of a decision it had begun to act on is its own closing marker beside the action records."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    w.crash("before-execute", "tick")                     # published; `<id>.execute` INTENDED, nothing written
+    w.veto(sid)
+    assert one(w.tick(AFTER), sid)["outcome"] == "vetoed"
+    path = kyveto.stamp_path(w.run, sid, "closed")
+    marker = json.loads(path.read_text())
+    assert (marker["state"], marker["reason"], marker["closed_at"]) == ("VETOED", "owner_veto", AFTER)
+    assert kyveto.closed_as(w.run, sid) == "VETOED" and kyveto.closed_as(w.run, sid, {"state": "FAILED"}) == "VETOED"
+    for state in ("INTENDED", "DONE"):                    # such an execution record overrules any closing
+        assert kyveto.closed_as(w.run, sid, {"state": state}) is None
+    assert w.tick(LATER)["decisions"] == []
+    path.unlink()                                         # without it the very same lines are a claim again
+    assert kyveto.closed_as(w.run, sid) is None and status_row(w, sid)[2]["anomaly"] == TERMINAL_CLAIM
+    d = one(w.tick(LATER), sid)
+    assert (d["outcome"], d["anomaly"], d["attention"], d["published"]) == ("vetoed", TERMINAL_CLAIM, True, True)
+    assert kyveto.closed_as(w.run, sid) == "VETOED" and w.tick(LATER)["decisions"] == []
+    path.unlink()
+    path.write_text("{")                                  # a marker that cannot be read closes nothing
+    assert kyveto.closed_as(w.run, sid) is None
+    path.write_text(json.dumps({"state": "EXECUTED"}))    # … nor does one that names no closing state
+    assert kyveto.closed_as(w.run, sid) is None
+    # a decision the handler never began to act on needs none: nothing of its own is out, the line is final
+    other = w.propose(cap(builders=5), notification={"submitted": False, "ts": T_NOTIFY})
+    report = w.tick(AT)
+    assert one(report, other)["reason"] == "notification_not_submitted"
+    assert one(report, sid)["anomaly"] == TERMINAL_CLAIM  # (the first one's marker was spoilt above: answered again)
+    assert not kyveto.stamp_path(w.run, other, "closed").exists() and kyveto.closed_as(w.run, sid) == "VETOED"
+    assert w.tick(LATER)["decisions"] == []
+
+
+# ── C4-02 (review round 4): a veto that arrives after EXECUTED carries attention in the later tick too ──
+
+def test_a_veto_one_tick_after_the_execution_is_reported_with_attention(tmp_path):
+    """The reviewer's probe: settled REJECTED too_late with no attention and exit 0, while the same veto inside
+    the executing tick carries attention."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert one(w.tick(AT), sid)["outcome"] == "executed"
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["attention"], d["command"]) == ("executed", "veto_too_late", True, cid)
+    assert report["attention"] is True and [c["id"] for c in report["commands"]] == [cid]
+    cmd = w.command(cid)
+    assert cmd["state"] == "REJECTED" and cmd["result"]["reason"].startswith("too_late")
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE", "EXECUTED"] and w.capacity() == ("6\n", "4\n")
+    again = w.tick(LATER)                                 # said once
+    assert again["decisions"] == [] and again["commands"] == [] and again["attention"] is False
+    other = w.propose(cap(builders=5))                    # … and the real program exits 3 on it
+    assert w.cli("tick").returncode == 0 and w.states(other)[-1] == "EXECUTED"
+    w.veto(other)
+    r = w.cli("tick")
+    assert r.returncode == 3, r.stderr
+    assert one(json.loads(r.stdout), other)["reason"] == "veto_too_late"
+    assert w.cli("tick").returncode == 0
+
+
+# ── ruling R16: nothing comes to rest wrong, and no wait goes on, with nobody told ──
+
+@pytest.mark.parametrize("executed", [False, True])
+def test_a_record_refused_while_its_execution_is_open_is_not_left_as_it_is(tmp_path, executed):
+    """`refuse` is an exit that gives a decision up too: with `<id>.execute` INTENDED it left the half in place
+    and the record unfinished behind a refusal that said nothing about either."""
+    w = World(tmp_path)
+    if executed:
+        sid = w.propose(cap())
+        assert w.crash("after-execute", "tick").returncode == -signal.SIGKILL
+    else:
+        sid = half_executed(w)
+    w.append(dict(w.history(sid)[0], rationale=""))       # a line the handler cannot answer with a valid one
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert d["outcome"] == "refused" and d["reason"] == "record_malformed: rationale" and d["attention"] is True
+    rec, marker = w.action(sid + ".execute"), w.refusal(sid)
+    if executed:
+        assert d["executed"] is True and marker["executed"] is True and "partial_effect" not in d
+        assert rec["state"] == "DONE" and w.capacity() == ("6\n", "4\n")
+    else:
+        assert d["partial_effect"] == "restored" and "executed" not in d and w.capacity() == ("3\n", "2\n")
+        assert rec["state"] == "FAILED" and rec["result"]["reason"] == "given_up_partial_effect_restored"
+        assert rec["result"]["because"] == "refused: record_malformed: rationale"
+        assert marker["partial_effect"] == rec["result"]["partial_effect"]
+    assert w.tick(LATER)["decisions"] == [] and kyveto.status(w.env)["unfinished_actions"] == []
+
+
+def test_a_record_that_turns_out_unanswerable_after_publication_says_what_was_published(tmp_path, monkeypatch):
+    """The refusal written when a line could not be appended after all was marked `published: false` whatever
+    the tracker held."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real = kyveto.line_problem
+    monkeypatch.setattr(kyveto, "line_problem", lambda line: (
+        "line_malformed: by_test" if line.get("state") == "EFFECTIVE" else real(line)))
+    report = w.tick(AT)
+    d = one(report, sid)
+    assert d["outcome"] == "refused" and d["reason"].startswith("record_unanswerable") and d["attention"] is True
+    assert d["published"] is True and w.refusal(sid)["published"] is True
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n") and w.states(sid) == ["PENDING_VETO"]
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] is True and row["refused"] and row["unresolved"] is True
+
+
+def test_an_action_whose_first_actor_cannot_be_told_alive_or_gone_is_not_waited_for_in_silence(tmp_path, monkeypatch):
+    """`locked … in_progress` means "come back later". When the process that began the action cannot be judged
+    at all (`ps` does not answer), later may never come: the row then carries attention."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.crash("before-execute", "tick")
+    shutil.rmtree(w.run / "locks")                        # (the dead handler's own locks are another test's subject)
+    path = w.run / "actions" / (sid + ".execute.json")
+    with bystander() as (pid, start):
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), process={"pid": pid, "process_start": start})))
+        quiet = w.tick(AFTER)                             # alive elsewhere: nobody needs to do anything
+        assert one(quiet, sid) == {"id": sid, "outcome": "locked", "reason": "execution_in_progress"}
+        assert quiet["attention"] is False
+        with monkeypatch.context() as m:
+            no_ps(m)
+            for path_taken in ("executing", "giving up"):
+                report = w.tick(AFTER)
+                d = one(report, sid)
+                assert (d["outcome"], d["reason"], d["attention"]) == ("locked", "execution_in_progress", True), path_taken
+                assert d["owner"] == "unknown" and report["attention"] is True
+                cid = w.veto(sid) if path_taken == "executing" else cid       # the second pass meets it in `vetoed`
+        assert w.capacity() == ("3\n", "2\n") and "reconciliations" not in w.action(sid + ".execute")
+        assert w.command(cid)["state"] == "QUEUED" and w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+
+
+def test_status_does_not_read_normal_over_an_execution_nobody_is_carrying_out(tmp_path):
+    """`<id>.execute` INTENDED after a crash: until a tick has completed or closed it, part of the effect may be
+    in force. `status` listed the record and said nothing needed anybody."""
+    w = World(tmp_path)
+    sid = half_executed(w)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["execution_unfinished"] is True and row["unresolved"] is True
+    assert status["unfinished_actions"] == [sid + ".execute"] and row["state"] == "EFFECTIVE"
+    path = w.run / "actions" / (sid + ".execute.json")
+    doc = json.loads(path.read_text())
+    with bystander() as (pid, start):                     # a live process is carrying it out: nothing to attend to
+        path.write_text(json.dumps(dict(doc, process={"pid": pid, "process_start": start})))
+        rc, status, row = status_row(w, sid)
+        assert rc == 0 and "execution_unfinished" not in row and "unresolved" not in row
+    path.write_text(json.dumps(doc))
+    assert one(w.tick(AFTER), sid)["outcome"] == "executed"
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and "execution_unfinished" not in row and status["unfinished_actions"] == []
+
+
+# ── C4-05 (review round 4): the holds are looked at again wherever the veto is ──
+
+@pytest.mark.parametrize("hold_", ["HOLD", "owner_pause_pending"])
+@pytest.mark.parametrize("during", ["recheck", "publication"])
+def test_a_hold_placed_while_the_pass_is_under_way_stops_what_has_not_happened_yet(tmp_path, monkeypatch, during, hold_):
+    """Holds and the owner pause were read once, before the recheck; a HOLD or pause placed while `ky decide`
+    ran (up to 120 s) did not stop that pass from executing."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    placed = []
+
+    def place():
+        if hold_ == "HOLD":
+            (w.root / "HOLD").write_text("x\n")
+        elif not placed:
+            placed.append(kycommands.submit(w.run, "campaign", "pause", {}, COCKPIT))
+
+    real_ky = kyveto.run_ky
+    with monkeypatch.context() as m:
+        if during == "recheck":
+            m.setattr(kyveto.REGISTRY["capacity"], "precheck", lambda params, ctx: place())
+        else:
+            m.setattr(kyveto, "run_ky", lambda argv, env: (place(), real_ky(argv, env))[1])
+        report = w.tick(AT)
+    d = one(report, sid)
+    assert (d["outcome"], d["reasons"]) == ("held", [hold_]) and report["attention"] is False
+    assert w.capacity() == ("3\n", "2\n") and sid + ".execute.json" not in w.actions()
+    if during == "recheck":                               # nothing was published either
+        assert w.ky_calls() == [] and w.states(sid) == ["PENDING_VETO"]
+        assert sid + ".publish.json" not in w.actions()
+    else:                                                 # published and effective; the execution waits for the hold
+        assert len(w.ky_calls()) == 1 and w.states(sid) == ["PENDING_VETO", "EFFECTIVE"]
+    assert one(w.tick(AFTER), sid)["outcome"] == "held"
+    if hold_ == "HOLD":
+        (w.root / "HOLD").unlink()
+    else:
+        kycommands.submit(w.run, "campaign", "resume", {}, COCKPIT)
+    assert one(w.tick(LATER), sid)["outcome"] == "executed"
+    assert w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+
+
+# ── C4-04 (review round 4): the immutable activation record names its receipts absolutely, whatever KY_RUN is ──
+
+def test_the_activation_record_names_its_receipts_absolutely_under_a_relative_run_directory(tmp_path, monkeypatch):
+    """KY_RUN need not be absolute; only the manifest path was made absolute, the receipt paths were stored as
+    they came — relative to wherever the handler happened to run."""
+    w = World(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    target = bundle(w)
+    target["review_receipts"] = [os.path.relpath(p, w.run) for p in target["review_receipts"]]
+    w.environ["KY_RUN"] = os.path.relpath(w.run, tmp_path)
+    assert not os.path.isabs(str(w.env.run)) and not os.path.isabs(target["review_receipts"][0])
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert_schema("activation_record", rec)
+    (r1,) = rec["review_receipts"]
+    assert os.path.isabs(r1["path"]) and r1["sha256"] == sha(r1["path"])
+    assert os.path.isabs(rec["new_manifest"]["path"])

@@ -29,8 +29,12 @@ handler did — a line saying `"by": "kyveto"` least of all. The handler's memor
   $KY_RUN/actions/<SD id>.execute        the kyaction record of the class executor; DONE = the handler executed it
                                          (both are handled-state: they are never pruned — without them the log's
                                          EFFECTIVE / EXECUTED lines are claims nothing backs)
-  $KY_RUN/veto/<SD id>.refused.json      {refused_at, reason, published}: a record the handler will never act on
-                                         and cannot answer in the log (see "refused" below)
+  $KY_RUN/veto/<SD id>.refused.json      {refused_at, reason, published[, executed, partial_effect]}: a record
+                                         the handler will never act on and cannot answer in the log (see
+                                         "refused" below)
+  $KY_RUN/veto/<SD id>.closed.json       {closed_at, state, reason}: the handler brought the decision to VETOED or
+                                         FAILED itself — written after its line, for every decision it holds an
+                                         action record for (see "A TERMINAL STATE" below)
 PUBLICATION HAS THREE ANSWERS (`publication`): true — `<id>.publish` names a tracker decision and is DONE; false —
 there is no such record, it names no tracker decision, or it is FAILED with `result.published: false` (`ky` never
 started, or a readback proved the tracker holds nothing); "unknown" — anything else: `ky decide` was started and
@@ -42,6 +46,23 @@ and what `kynotify.sh` wrote: a $KY_RUN/JOURNAL_COCKPIT.md line `- <UTC> [<level
 (one physical line, split at LF only: a Unicode line separator smuggled into a message starts no new line).
 These files are the handler's by the roles' instructions; the enforced write boundary that would stop a job from
 planting one is a B-1 deliverable, and until then this is a convention the reviewer of a job's writes checks.
+
+A TERMINAL STATE IS ACCEPTED BY STATE, NEVER BY AUTHORSHIP (C4-01, ruling R14; `first_terminal`). While the
+handler holds no action record for a decision, its first VETOED or FAILED line is final: nothing of the
+handler's is out. Once it holds one, no line ends its custody — a line's `by` is whatever the model wrote:
+  `<id>.execute` DONE       the effect is in place: the decision is EXECUTED and nothing else. A VETOED or FAILED
+                            line beside it is overruled: the handler appends EXECUTED itself (`already_executed`)
+  `<id>.execute` INTENDED   nothing is final. EVERY exit that gives the decision up — an owner veto, a failed
+                            check, a refusal, a terminal line the handler did not write — first closes that
+                            record (`give_up`): reconciled against the disk; complete → DONE (EXECUTED); otherwise
+                            what is in place is put back and verified, or recorded as `partial_effect` in the
+                            record, the line and the row; what cannot be judged stays `blocked`, on every tick
+  otherwise                 VETOED / FAILED is final once the handler closed the decision itself
+                            (`<id>.closed.json`). A VETOED or FAILED line found without that closing is a claim
+                            (anomaly `terminal_line_not_the_handlers`): the tick answers it ONCE — an owner veto
+                            for it first, else FAILED `closed_by_log_line: <state>` — with attention, the
+                            three-valued `published` and the `executed` flag, and writes the closing; until then
+                            `status` keeps the decision `unresolved` and shows the state the handler accepts.
 
 For every decision that needs the handler (ANY of its lines says PENDING_VETO, EFFECTIVE or EXECUTED, or the
 handler holds an action record for it, and it has no terminal state the handler accepts; or a line was appended
@@ -58,7 +79,8 @@ after its terminal state), under the lock `decision.<id>` and after a FRESH re-r
       delegated, never published), any class but `veto`, or malformed base fields — gets NO line: it is REFUSED
       once in $KY_RUN/veto/<id>.refused.json and reported with attention; `status` keeps showing it
   (1) a line after the decision's terminal state → the terminal state is appended again (terminal_state_is_final),
-      reported with attention; EFFECTIVE without a DONE `<id>.publish`, or EXECUTED without a DONE `<id>.execute`
+      reported with attention; a VETOED / FAILED line that is not final (above) → answered as said there;
+      EFFECTIVE without a DONE `<id>.publish`, or EXECUTED without a DONE `<id>.execute`
       → FAILED log_claims_<state>_without_action_record: that decision is blocked for good
   (2) first sight is stamped; a stamp whose sha256 is not this proposal → FAILED decision_record_mutated: proposal
   (3) an owner `veto` command for it, QUEUED or APPLIED      → VETOED; the command is marked applied; never executed
@@ -71,7 +93,9 @@ after its terminal state), under the lock `decision.<id>` and after a FRESH re-r
       notified_at is the time of the latest such journal line. A backdated proposal therefore still waits 30 real
       minutes from the handler's first sight of it.
   (5) $KY_ROOT/HOLD, an owner pause (applied, or requested and not applied), $KY_RUN/STOP_veto, or a command
-      queue that cannot be read                              → left pending, reported "held"; nothing fails
+      queue that cannot be read                              → left pending, reported "held"; nothing fails.
+      Looked at three times — here, before the publication and before the execution, each time beside the last
+      look at the veto (C4-05): a hold placed while the recheck or `ky decide` ran stops what has not happened
   (6) recheck — the first failure appends FAILED with its named reason: record immutability across the decision's
       lines (decision_record_mutated: <field>), authority (authority_unbound / authority_changed), target
       (target_unbound / unknown_target_kind / target_malformed / target_changed), tracker_decision shape, the
@@ -104,9 +128,11 @@ commands[], problems[], attention}. One row per decision the pass looked at — 
   held        reasons[] (HOLD, STOP_veto, owner_paused, owner_pause_pending, command_queue_unreadable,
               authority_unknown); nothing was changed
   locked      another LIVE actor has the decision or its awaiting item, or (reason publication_in_progress /
-              execution_in_progress) the process that began that action is alive elsewhere: come back later
+              execution_in_progress) the process that began that action is alive elsewhere: come back later.
+              When that process cannot be told alive or gone the row carries attention and `owner: "unknown"`
   blocked     needs somebody (attention): an unreconciled publication or execution, a lock or stamp or journal
-              that cannot be judged or read, a foreign action record, an unexpected error; reported on every tick
+              that cannot be judged or read, a foreign action record, an unexpected error; reported on every tick.
+              `giving_up` names what the handler was about to say when the execution could not be closed first
   vetoed · executed · failed · refused      final for the decision: reported ONCE (it then no longer needs the
               handler). `failed` and `refused` always carry attention; `vetoed` / `executed` carry it when the
               tracker holds, or may hold, a decision that contradicts the outcome (`published`: true or
@@ -114,13 +140,19 @@ commands[], problems[], attention}. One row per decision the pass looked at — 
               decision whose unknown publication a later readback settled is reported once more (reason
               publication_reconciled, with attention when the tracker does hold the decision); `anomaly`
               names a log line the handler did not write (line_appended_after_terminal_state,
-              log_claim_without_action_record, line_regressed_before_terminal_state — the last on any row);
+              log_claim_without_action_record, terminal_line_not_the_handlers,
+              line_regressed_before_terminal_state — the last two on any row);
               `partial_effect` (restored | in_place | unknown, always with attention) on a `vetoed` / `failed`
-              row: part of the execution was in place when it was given up — put back and verified, or left
-              and said so in the line's detail and the `<id>.execute` record (`status` keeps the latter two
-              `unresolved`, listed in `partial_effects`, for as long as a fresh look does not find the
-              recorded before values)
-  not_pending another handler finished it between this pass's first look and its lock
+              / `refused` row: part of the execution was in place when it was given up — put back and
+              verified, or left and said so in the line's detail (the refusal marker) and the `<id>.execute`
+              record (`status` keeps the latter two `unresolved`, listed in `partial_effects`, for as long as
+              a fresh look does not find the recorded before values); `executed` (with attention) on a row
+              that was about to give the decision up: is the effect in place by the handler's own record?
+              — `executed` / `already_executed` with `instead_of` when it is; an owner veto that reaches an
+              EXECUTED decision in a LATER tick is reported like one inside the tick (`executed`, reason
+              veto_too_late, attention, `command`; C4-02)
+  not_pending another handler finished it between this pass's first look and its lock; with reason
+              veto_too_late, `state` and attention: an owner veto of a decision that is not the handler's
 `attention` (exit 3) is true when any row or command carries it or `problems` is not empty.
 
 Target classes (registry keyed by target.kind; every target carries `fingerprint`, see `kyveto.py fingerprint`):
@@ -128,12 +160,13 @@ Target classes (registry keyed by target.kind; every target carries `fingerprint
                       both files are written under the one `<id>.execute` record, which stores their exact
                       before values (inputs.before) with the intention: a crash between them leaves it
                       unfinished, its reconciliation sees the pair incomplete and the executor finishes it.
-                      When the execution is given up instead (an owner veto, an executor error), "incomplete"
-                      is never read as "nothing happened" (C3-01): the pair is compared with the before values —
-                      nothing in place → vetoed_before_execution; this change's own half → put back and
-                      verified (vetoed_partial_effect_restored / partial_effect restored); anything else →
-                      reported as in place (vetoed_with_partial_effect) or, on a veto when it cannot be judged
-                      at all, blocked execution_unreconciled
+                      When the execution is given up instead (an owner veto, an executor error, any other
+                      exit — see "A TERMINAL STATE" above), "incomplete" is never read as "nothing happened"
+                      (C3-01): the pair is compared with the before values — nothing in place →
+                      vetoed_before_execution / given_up_before_execution; this change's own half → put back
+                      and verified (…_partial_effect_restored / partial_effect restored); anything else →
+                      reported as in place (…_with_partial_effect) or, when it cannot be judged at all,
+                      blocked execution_unreconciled
   plan_bundle_change  {kind, old_commit, new_commit, old_manifest_digest, new_manifest_digest, new_manifest_path,
                       review_receipts[][, tracker_decision]} → the next immutable $KY_RUN/ACTIVATION_RECORD.<n>.json.
                       "Independently reviewed" is computed, not asserted: every receipt says ACCEPTED, names a
@@ -143,7 +176,7 @@ Target classes (registry keyed by target.kind; every target carries `fingerprint
                       is new_manifest_digest, it names new_commit as its (approved_)source_commit, it carries
                       the five-role `entrypoints` mapping, any `entrypoints_digest` it states is that mapping's,
                       and its owner_decisions entrypoint is the unchanged blob at new_commit; the activation
-                      record stores the manifest's absolute path
+                      record stores the absolute paths of the manifest and of every receipt
   campaign_start, protected_window        their executors are later deliverables: always FAILED
                       "executor_unavailable: …" — never a faked success
 An unknown kind is FAILED unknown_target_kind.
@@ -182,9 +215,11 @@ import kycommands  # noqa: E402
 HANDLER = "kyveto"
 SURROGATE = "kalayantra-owner-surrogate"
 STATES = ("PROPOSED", "PENDING_VETO", "EFFECTIVE", "EXECUTED", "VETOED", "FAILED")
-TERMINAL = ("EXECUTED", "VETOED", "FAILED")
 ORDER = {"PROPOSED": 0, "PENDING_VETO": 1, "EFFECTIVE": 2, "EXECUTED": 3}       # a later line never steps back
 REGRESSED = "line_regressed_before_terminal_state"
+CLAIMED = "terminal_line_not_the_handlers"     # a VETOED / FAILED line the handler's own records do not bear out
+GIVEN_UP = {"absent": "given_up_before_execution", "restored": "given_up_partial_effect_restored",
+            "in_place": "given_up_with_partial_effect"}       # how an unfinished `<id>.execute` was closed, by `undo`
 VETO_WINDOW_S = 1800                    # the owner's window: 30 minutes of real time
 # Source of CAPACITY_MAX: owner direction of 2026-10-12 — builders up to 8; recorded in the run directory's
 # PLANNER_STATE active.owner_directions_20261012, not yet in the owner decisions file; verifier maximum 8 is an
@@ -346,24 +381,37 @@ def in_domain(lines):
     return any(line.get("class") != "routine" or _state(line) in ("PENDING_VETO", "VETOED") for line in lines)
 
 
-def first_terminal(lines, executed):
-    """The terminal state the handler accepts for a decision: its first VETOED or FAILED line, or its first
-    EXECUTED line when — and only when — the handler's own execution record is DONE (`executed`). Else None."""
-    for line in lines:
-        state = _state(line)
-        if state in TERMINAL and (state != "EXECUTED" or executed):
-            return state
-    return None
+def claimed(lines):
+    """The first VETOED or FAILED state among a decision's lines, or None. A claim until first_terminal accepts it."""
+    return next((state for state in map(_state, lines) if state in ("VETOED", "FAILED")), None)
 
 
-def needs_handler(lines, executed, begun=False):
+def first_terminal(lines, executed, held=False, closed=None):
+    """The terminal state the handler accepts for a decision, or None. A state rule (C4-01, ruling R14): the
+    handler's own records decide — who a line says wrote it plays no part.
+      executed  `<id>.execute` is DONE: EXECUTED once a line says so, else None. The effect is in place, and a
+                VETOED or FAILED line beside it is a claim that record overrules
+      held      the handler holds an action record of its own for the decision: the state it closed the decision
+                with itself (`closed` — see closed_as: its own marker, never while `<id>.execute` is INTENDED),
+                else None. Without that no VETOED or FAILED line ends the handler's custody
+      neither   the first VETOED or FAILED line (`claimed`): nothing of the handler's is out. An EXECUTED line
+                never counts without the DONE record."""
+    if executed:
+        return "EXECUTED" if any(_state(line) == "EXECUTED" for line in lines) else None
+    if held:
+        return closed if closed in ("VETOED", "FAILED") else None
+    return claimed(lines)
+
+
+def needs_handler(lines, executed, begun=False, closed=None):
     """True when a tick has something to do or to say about this decision (see the module docstring). `begun`:
-    the handler holds an action record of its own for it. Once a decision has entered its window (ANY line of it
-    says PENDING_VETO, EFFECTIVE or EXECUTED) or the handler has begun to act on it, it needs the handler until
-    it has a terminal state the handler accepts — whatever its latest line says (C3-02)."""
+    the handler holds an action record of its own for it; `closed`: the state it closed the decision with itself
+    (closed_as). Once a decision has entered its window (ANY line of it says PENDING_VETO, EFFECTIVE or EXECUTED)
+    or the handler has begun to act on it, it needs the handler until it has a terminal state the handler
+    accepts (first_terminal) — whatever its latest line says (C3-02, C4-01)."""
     if not lines or not (begun or in_domain(lines)):
         return False
-    latest, finished = _state(lines[-1]), first_terminal(lines, executed)
+    latest, finished = _state(lines[-1]), first_terminal(lines, executed, begun, closed)
     if finished:
         return latest != finished
     return begun or any(_state(line) in ("PENDING_VETO", "EFFECTIVE", "EXECUTED") for line in lines)
@@ -377,18 +425,19 @@ def regressed(lines):
     return latest is not None and any(ORDER.get(_state(line), -1) > latest for line in lines[:-1])
 
 
-def accepted_state(lines, published, executed):
-    """A decision's state as the handler accepts it: its terminal state (first_terminal); else EFFECTIVE once the
-    handler's own publication record is DONE (`published`); else PENDING_VETO when a later line stepped back
-    behind the proposal; else what the latest line says."""
+def accepted_state(lines, published, executed, begun=False, closed=None):
+    """A decision's state as the handler accepts it: its terminal state (first_terminal; `begun` and `closed` as
+    in needs_handler); else EFFECTIVE once the handler's own publication record is DONE (`published`); else
+    PENDING_VETO when a later line stepped back behind the proposal or claims a VETOED / FAILED the handler does
+    not accept; else what the latest line says."""
     if not in_domain(lines):
         return _state(lines[-1])
-    finished = first_terminal(lines, executed)
+    finished = first_terminal(lines, executed, begun or published or executed, closed)
     if finished:
         return finished
     if published:
         return "EFFECTIVE"
-    if regressed(lines) and proposal_of(lines) is not None:
+    if (regressed(lines) or claimed(lines)) and proposal_of(lines) is not None:
         return "PENDING_VETO"
     return _state(lines[-1])
 
@@ -522,6 +571,18 @@ def read_refusal(run, decision_id):
     if err == "missing":
         return None
     return marker if isinstance(marker, dict) else {"reason": "refusal_marker_unreadable"}
+
+
+def closed_as(run, decision_id, exe=None):
+    """The state the handler closed a decision with itself — VETOED or FAILED, from its own marker
+    $KY_RUN/veto/<id>.closed.json — or None: there is no usable marker, or the decision's `<id>.execute` record
+    (`exe`) is INTENDED or DONE. Such a record overrules any closing: part of the effect may be, or all of it is,
+    in place (ruling R14)."""
+    if exe is not None and exe.get("state") != "FAILED":
+        return None
+    marker, err = kyaction.read_json(stamp_path(run, decision_id, "closed"))
+    state = marker.get("state") if not err and isinstance(marker, dict) else None
+    return state if state in ("VETOED", "FAILED") else None
 
 
 # ───────────────────────────────────────── authority ─────────────────────────────────────────
@@ -889,8 +950,8 @@ class PlanBundleChange:
                 return None, "review_receipt_not_bound: %s does not carry new_manifest_digest" % raw
             if not isinstance(doc.get("inputs"), dict) or not doc["inputs"]:
                 return None, "review_receipt_without_inputs: %s names nothing it reviewed" % raw
-            out.append({"path": str(path), "sha256": kyaction.sha_file(path), "verdict": "ACCEPTED",
-                        "reviewer_session_id": reviewer, "manifest_sha256": doc["manifest_sha256"]})
+            out.append({"path": os.path.abspath(str(path)), "sha256": kyaction.sha_file(path), "verdict": "ACCEPTED",
+                        "reviewer_session_id": reviewer, "manifest_sha256": doc["manifest_sha256"]})     # C4-04
         return out, None
 
     def _verify(self, p, ctx):
@@ -1103,6 +1164,16 @@ def _own(record):
         and actor.get("holder_kind") in ("controller", "supervisor")
 
 
+def _abandoned(record):
+    """True for an INTENDED record nobody is known to be carrying out: the process that began it is gone, is this
+    very process, was never recorded, or cannot be judged at all."""
+    if record is None or record.get("state") != "INTENDED":
+        return False
+    process = record.get("process") if isinstance(record.get("process"), dict) else {}
+    alive = kyaction.process_matches(process.get("pid"), process.get("process_start"))
+    return not (alive is True and process.get("pid") != os.getpid())
+
+
 def publication(record):
     """Does the tracker hold the delegated decision of this `<id>.publish` record? Three answers, never two:
     True     the record names a tracker decision and is DONE (`ky decide` exited 0, or a readback saw it)
@@ -1141,6 +1212,7 @@ class Handler:
         self.log_path = env.run / "DECISIONS_SURROGATE.jsonl"
         self.log = log or (lambda text: print("kyveto: %s" % text, file=sys.stderr))
         self.commands = []
+        self.late = []                       # rows of decisions an owner veto reached too late (sweep)
         self.authority_held = []
 
     # ---- small readers
@@ -1179,20 +1251,26 @@ class Handler:
             out.append(record)
         return out[0], out[1]
 
+    def terminal(self, did, lines, pub, exe):
+        """first_terminal by the handler's own memory of the decision: its two action records and its closing."""
+        return first_terminal(lines, _done(exe), pub is not None or exe is not None,
+                              closed_as(self.env.run, did, exe))
+
     def state_of(self, did, lines):
         """A decision's state as the handler accepts it: its terminal state when it has one, else its latest."""
         try:
-            executed = _done(self.memory(did)[1])
+            finished = self.terminal(did, lines, *self.memory(did))
         except kyaction.ActionError:
-            executed = False
-        return (first_terminal(lines, executed) if in_domain(lines) else None) or _state(lines[-1])
+            finished = first_terminal(lines, False)
+        return (finished if in_domain(lines) else None) or _state(lines[-1])
 
     def candidate(self, did, lines):
         if read_refusal(self.env.run, did) is not None:
             return False
         try:
             pub, exe = self.memory(did)
-            return needs_handler(lines, _done(exe), begun=pub is not None or exe is not None)
+            return needs_handler(lines, _done(exe), pub is not None or exe is not None,
+                                 closed_as(self.env.run, did, exe))
         except kyaction.ActionError:
             return bool(lines) and in_domain(lines)          # unreadable memory: let the decision's pass report it
 
@@ -1227,20 +1305,111 @@ class Handler:
                 record = kyaction.fail(run, action_id, {"published": False, "reason": "readback: not published"})
         return publication(record)
 
+    def close(self, did, state, reason):
+        """The handler's own memory of having brought a decision to VETOED or FAILED: $KY_RUN/veto/<id>.closed.json,
+        written AFTER its line and only for a decision it holds an action record for — there a line alone, whoever
+        wrote it, never ends the handler's custody (R14). A crash between the line and the marker leaves a line
+        the next tick answers once more, with attention; never a closing nobody was told of."""
+        pub, exe = self.memory(did)
+        if pub is None and exe is None:
+            return
+        path = stamp_path(self.env.run, did, "closed")
+        os.makedirs(path.parent, exist_ok=True)
+        marker = {"closed_at": self.now_iso, "state": state, "reason": reason, "by": self.holder}
+        kyaction.write_atomic(path, json.dumps(marker, indent=1, sort_keys=True) + "\n", mode=0o444)
+
+    def busy(self, record, what):
+        """Another process began this action and has not finished it: `locked`, come back later. When that process
+        cannot be told alive or gone (`ps` does not answer, no start identity to compare), later may never come
+        by itself: the row then carries attention (R16) — still nothing is repeated, reconciled or failed."""
+        row = {"outcome": "locked", "reason": "%s_in_progress" % what}
+        process = record.get("process") if isinstance(record.get("process"), dict) else {}
+        if kyaction.process_matches(process.get("pid"), process.get("process_start")) is None:
+            row.update(attention=True, owner=UNKNOWN)
+        return row
+
+    def give_up(self, did, result):
+        """What stands of a decision's execution when the handler is about to give the decision up — an owner
+        veto, a check that failed, a record it cannot answer, a terminal line it did not write? Its own
+        `<id>.execute` record answers, and an INTENDED one is never left behind (C3-01, C4-01 / R14): it is
+        reconciled against the disk, and what is in place of an incomplete effect is put back and verified, or
+        recorded as it is (`undo`), before the record is closed FAILED with `result(state)` — the result for the
+        state `undo` found: absent | restored | in_place. The target and the before values are the record's
+        own, never the log's. → (row, executed, partial):
+          row       not None: the decision cannot be given up now, and nothing was closed — another process may
+                    be executing it (`locked`), or what is in place cannot be judged (`blocked`, with attention,
+                    on every tick)
+          executed  True: the effect is completely in place (the record is DONE — it was, or the disk showed it)
+          partial   what `undo` found and the FAILED record holds (None: positively nothing is in place)."""
+        run, action_id = self.env.run, did + ".execute"
+        record = self.memory(did)[1]
+        if record is None:
+            return None, False, None
+        if record["state"] == "INTENDED":
+            if kyaction.in_progress(record):                 # another live process may be executing it right now
+                return self.busy(record, "execution"), False, None
+            blocked = {"outcome": "blocked", "reason": "execution_unreconciled", "attention": True}
+            try:
+                cls, params = bind(record.get("target"))
+            except TargetError:
+                return blocked, False, None
+            ctx = Ctx(self.env, did, (record.get("inputs") or {}).get("authority"), self.now_iso)
+            outcome, record = kyaction.reconcile(run, action_id, lambda r: cls.observer(params, ctx), by=self.holder)
+            if outcome == "unknown":
+                return blocked, False, None
+            if outcome == "not_done":                        # "not complete" — what IS in place is looked at now
+                state, partial = self.undo(cls, params, ctx, record)
+                if state == UNKNOWN:         # neither "nothing happened" nor what did can be recorded
+                    return dict(blocked, reason="execution_unreconciled: %s" % kyaction.flat(
+                        partial.get("error") or "the effect in place cannot be judged", 120)), False, None
+                closing = dict(result(state))
+                if partial:
+                    closing["partial_effect"] = partial
+                record = kyaction.fail(run, action_id, closing)
+        if _done(record):
+            return None, True, None
+        partial = (record.get("result") or {}).get("partial_effect")
+        return None, False, partial if isinstance(partial, dict) and partial else None
+
     def failed(self, did, latest, reason, effective_at=None, published=None, partial=None):
         """FAILED, always with attention: the owner is told of every decision that did not go through.
         `published`: the three-valued answer when the caller has just read it back; otherwise it is read here.
-        `partial`: what `undo` found of an execution that was not completed (None: positively nothing)."""
+        `partial`: what `undo` found of an execution that was not completed (None: positively nothing).
+        No decision is called FAILED past its own execution record (`give_up`): an INTENDED `<id>.execute` is
+        closed first — or the row says why it cannot be (`giving_up` names what was about to be said) — and a
+        DONE one makes the decision EXECUTED instead (`stands`)."""
+        row, executed, left = self.give_up(did, lambda state: {"reason": GIVEN_UP[state], "because": reason})
+        if row:
+            return dict(row, giving_up=reason)
+        if executed:
+            return self.stands(did, latest, reason, effective_at)
+        partial = partial or left
         published = self.published(did) if published is None else published
         detail = {} if published is False else {"published": published}
         if partial:
             detail["partial_effect"] = partial
         self.append(latest, "FAILED", reason, effective_at, detail or None)
+        self.close(did, "FAILED", reason)
         out = {"outcome": "failed", "reason": reason, "attention": True}
         if published is not False:           # the tracker holds, or may hold, a decision that was not carried out
             out["published"] = published
         if partial:                          # part of the effect was, or still is, in place
-            out["partial_effect"] = partial["state"]
+            out["partial_effect"] = partial.get("state", UNKNOWN)
+        return out
+
+    def stands(self, did, latest, reason, effective_at=None):
+        """The decision was about to be given up (`reason`), but the handler's own `<id>.execute` record is DONE:
+        the effect is in place, so the decision is EXECUTED. The handler says so in the log from its own memory
+        and reports it with attention: what was about to be said (`instead_of`) is the owner's to look at."""
+        pub = self.memory(did)[0]
+        effective_at = effective_at or (_effective_at(pub) if _done(pub) else None)
+        self.append(latest, "EXECUTED", "executed", effective_at, {"action": did + ".execute",
+                                                                   "already_executed": reason})
+        out = {"outcome": "executed", "reason": "already_executed", "instead_of": reason, "attention": True,
+               "executed": True}
+        published = self.published(did)
+        if published is not False:
+            out["published"] = published
         return out
 
     def undo(self, cls, params, ctx, record):
@@ -1276,14 +1445,25 @@ class Handler:
 
     def refuse(self, did, reason, published=False):
         """A record the handler cannot answer in the log: nothing is appended; the refusal is the handler's own
-        marker, written once, and reported once with attention. `published`: True, False or UNKNOWN."""
+        marker, written once, and reported once with attention. `published`: True, False or UNKNOWN.
+        A refusal gives the decision up like any other exit (`give_up`): an INTENDED `<id>.execute` is closed
+        first (or the row says why it cannot be, and nothing is refused yet), and the marker and the row say
+        what stands of the execution — `executed`, or the `partial_effect` that record holds."""
+        row, executed, partial = self.give_up(did, lambda state: {"reason": GIVEN_UP[state],
+                                                                  "because": "refused: %s" % reason})
+        if row:
+            return dict(row, giving_up="refused: %s" % reason)
         path = stamp_path(self.env.run, did, "refused")
         os.makedirs(path.parent, exist_ok=True)
         marker = {"refused_at": self.now_iso, "reason": reason, "published": published, "by": self.holder}
-        kyaction.write_exclusive(path, json.dumps(marker, indent=1, sort_keys=True) + "\n", mode=0o444)
         out = {"outcome": "refused", "reason": reason, "attention": True}
         if published is not False:
             out["published"] = published
+        if executed:                         # the effect is in place, whatever the record says now
+            marker["executed"] = out["executed"] = True
+        if partial:                          # part of the effect was, or still is, in place
+            marker["partial_effect"], out["partial_effect"] = partial, partial.get("state", UNKNOWN)
+        kyaction.write_exclusive(path, json.dumps(marker, indent=1, sort_keys=True) + "\n", mode=0o444)
         return out
 
     def settle(self, entry, result=None, reject=None):
@@ -1318,7 +1498,7 @@ class Handler:
             try:
                 out = self.process(did)
             except Unwritable as e:          # a record that cannot be answered in the log after all: refused instead
-                out = self.refuse(did, "record_unanswerable: %s" % kyaction.flat(e, 160))
+                out = self.refuse(did, "record_unanswerable: %s" % kyaction.flat(e, 160), self.published(did))
         except Exception as e:               # one decision's trouble never ends the pass: blocked, with attention
             out = {"outcome": "blocked", "reason": "error: %s: %s" % (type(e).__name__, kyaction.flat(e, 160)),
                    "attention": True}
@@ -1364,11 +1544,18 @@ class Handler:
         problem = base_problem(latest) or (base_problem(proposal) if proposal is not None else None)
         if problem:                                           # (0) nothing this handler could write would be valid
             return self.refuse(did, problem, publication(pub))
-        finished = first_terminal(lines, _done(exe))          # (1) a later line never resurrects a finished decision
+        finished = self.terminal(did, lines, pub, exe)        # (1) a later line never resurrects a finished decision
         if finished:
             self.append(latest, finished, "terminal_state_is_final", effective_at)
             return {"outcome": finished.lower(), "reason": "terminal_state_is_final", "attention": True,
                     "anomaly": "line_appended_after_terminal_state"}
+        claim = claimed(lines)
+        if claim:                                             # … and a line never ends the handler's custody (R14):
+            veto = self.veto_command(did)                     # the handler closes what it began, then says so itself
+            out = self.vetoed(did, latest, veto, effective_at) if veto \
+                else self.failed(did, latest, "closed_by_log_line: %s" % claim, effective_at)
+            pub, exe = self.memory(did)
+            return dict(out, anomaly=CLAIMED, attention=True, published=publication(pub), executed=_done(exe))
         for claim, backed in (("EFFECTIVE", _done(pub)), ("EXECUTED", _done(exe))):
             if not backed and any(_state(line) == claim for line in lines):
                 return dict(self.failed(did, latest, "log_claims_%s_without_action_record" % claim.lower(),
@@ -1422,6 +1609,9 @@ class Handler:
         veto = self.veto_command(did)                         # a last look before anything is published
         if veto:
             return self.vetoed(did, latest, veto, effective_at)
+        held = self.holds()                                   # … also at the holds: the recheck took its time (C4-05)
+        if held:
+            return {"outcome": "held", "reasons": held}
         out = self.publish(did, latest, td, effective_at)     # (7) publish …
         if out:
             return out
@@ -1433,6 +1623,9 @@ class Handler:
         veto = self.veto_command(did)                         # a last look before anything is executed
         if veto:
             return self.vetoed(did, latest, veto, effective_at)
+        held = self.holds()                  # a HOLD or pause placed while `ky decide` ran stops the execution
+        if held:
+            return {"outcome": "held", "reasons": held}
         out = self.execute(did, latest, cls, params, ctx, effective_at)     # … then execute
         if out:
             return out
@@ -1440,35 +1633,13 @@ class Handler:
         return {"outcome": "executed"}
 
     def vetoed(self, did, latest, veto, effective_at):
-        run, action_id, command_id = self.env.run, did + ".execute", veto["doc"]["id"]
-        _, record = self.memory(did)
-        if record is not None and kyaction.in_progress(record):      # another live process may be executing it now:
-            return {"outcome": "locked", "reason": "execution_in_progress"}    # the veto is settled when that is known
-        if record is not None and record["state"] == "INTENDED":
-            try:
-                cls, params = bind(latest.get("target"))
-            except TargetError:
-                return {"outcome": "blocked", "reason": "execution_unreconciled", "attention": True}
-            ctx = Ctx(self.env, did, latest["authority"], self.now_iso)
-            outcome, record = kyaction.reconcile(run, action_id, lambda r: cls.observer(params, ctx), by=self.holder)
-            if outcome == "unknown":
-                return {"outcome": "blocked", "reason": "execution_unreconciled", "attention": True}
-            if outcome == "not_done":                         # "not complete" — what IS in place is looked at now
-                state, partial = self.undo(cls, params, ctx, record)
-                if state == UNKNOWN:         # neither "nothing happened" nor what did can be recorded
-                    return {"outcome": "blocked", "attention": True, "reason": "execution_unreconciled: %s"
-                            % kyaction.flat(partial.get("error") or "the effect in place cannot be judged", 120)}
-                result = {"command": command_id, "reason": {
-                    "absent": "vetoed_before_execution", "restored": "vetoed_partial_effect_restored",
-                    "in_place": "vetoed_with_partial_effect"}[state]}
-                if partial:
-                    result["partial_effect"] = partial
-                record = kyaction.fail(run, action_id, result)
-        partial = (record.get("result") or {}).get("partial_effect") \
-            if record is not None and record["state"] == "FAILED" else None
-        if not isinstance(partial, dict) or not partial:
-            partial = None
-        if _done(record):                                     # the effect is already in place: the veto is too late
+        action_id, command_id = did + ".execute", veto["doc"]["id"]
+        row, executed, partial = self.give_up(did, lambda state: {"command": command_id, "reason": {
+            "absent": "vetoed_before_execution", "restored": "vetoed_partial_effect_restored",
+            "in_place": "vetoed_with_partial_effect"}[state]})
+        if row:                              # locked or blocked: the veto is settled when the execution is known
+            return row
+        if executed:                                          # the effect is already in place: the veto is too late
             self.append(latest, "EXECUTED", "executed", effective_at, {"action": action_id,
                                                                        "veto_too_late": command_id})
             self.settle(veto, reject="too_late: decision %s was already executed" % did)
@@ -1478,6 +1649,7 @@ class Handler:
         if partial:
             detail["partial_effect"] = partial
         self.append(latest, "VETOED", "owner_veto", effective_at, detail)
+        self.close(did, "VETOED", "owner_veto")
         self.settle(veto, result={"decision": did, "outcome": "VETOED"})
         out = {"outcome": "vetoed", "command": command_id}
         if published is not False:           # the tracker decision is out, or may be, and contradicts the owner
@@ -1558,7 +1730,7 @@ class Handler:
                 {"tracker_decision": td["id"], "outcome": td["outcome"]},
                 "tracker decision %s: open → %s (steward, delegated) for %s" % (td["id"], td["outcome"], did))
         if status == "in_progress":          # the process that began it is alive elsewhere: it may be publishing now
-            return {"outcome": "locked", "reason": "publication_in_progress"}
+            return self.busy(record, "publication")
         if status == "unfinished":           # a restart inside the publication: observe, never repeat blind
             status, record = kyaction.reconcile(run, action_id, observer, by=self.holder)
             if status == "unknown":
@@ -1616,7 +1788,7 @@ class Handler:
             run, action_id, "veto_decision_execute:" + cls.kind, self.actor, inputs,
             latest.get("target"), cls.describe(params))
         if status == "in_progress":          # the process that began it is alive elsewhere: it may be executing now
-            return {"outcome": "locked", "reason": "execution_in_progress"}
+            return self.busy(record, "execution")
         if status == "unfinished":           # a restart between begin and execution: reconcile first
             status, record = kyaction.reconcile(run, action_id, lambda r: cls.observer(params, ctx), by=self.holder)
             if status == "unknown":
@@ -1674,8 +1846,11 @@ class Handler:
                 elif state in ("VETOED", "FAILED"):
                     self.settle(entry, result={"decision": did, "outcome": state,
                                                "note": "the decision was already %s" % state})
-                else:
-                    self.settle(entry, reject="too_late: decision %s is %s" % (did, state))
+                else:                        # C4-02: the owner is told, as when the veto arrives inside the tick —
+                    self.settle(entry, reject="too_late: decision %s is %s" % (did, state))    # and until it is settled
+                    row = {"id": did, "reason": "veto_too_late", "attention": True, "command": doc["id"]}
+                    self.late.append(dict(row, outcome="executed") if state == "EXECUTED"
+                                     else dict(row, outcome="not_pending", state=state))
 
     # ---- finished decisions whose publication is still unknown: settled when a readback exists
     def reconcile_publications(self, history, report):
@@ -1685,7 +1860,7 @@ class Handler:
         for did, lines in sorted(history.items()):
             try:
                 pub, exe = self.memory(did)
-                finished = first_terminal(lines, _done(exe)) if in_domain(lines) else None
+                finished = self.terminal(did, lines, pub, exe) if in_domain(lines) else None
                 if did in seen or finished not in ("VETOED", "FAILED") or publication(pub) != UNKNOWN:
                     continue
                 lock = kyaction.acquire_lock(self.env.run, "decision." + did, self.holder, log=self.log)
@@ -1720,6 +1895,7 @@ class Handler:
                 self.sweep()
             except (kyaction.ActionError, kycommands.CommandError, OSError) as e:
                 report["problems"].append("command sweep: %s: %s" % (type(e).__name__, kyaction.flat(e, 160)))
+            report["decisions"].extend(self.late)
         if self.authority_held:              # ONE attention item, however many decisions wait for it
             report["problems"].append(
                 "authority_unknown: the authorised source cannot be established (%s); held, not failed: %s"
@@ -1785,7 +1961,10 @@ def status(env=None, now=None, authorised=None):
     a refused record or a hard stop whose awaiting item is still open (`unresolved` on a row, `hard_stops`);
     a decision — finished or not — whose publication is unknown (`published: "unknown"`, `unresolved`, listed in
     `publication_unknown`) until its `<id>.publish` record is reconciled; a decision whose latest line stepped
-    back behind an earlier one, or that has handler records but no proposal (`unresolved`, an anomaly); a given-up
+    back behind an earlier one, or that has handler records but no proposal (`unresolved`, an anomaly); a
+    VETOED / FAILED line the handler's own records do not bear out (`unresolved`, anomaly
+    terminal_line_not_the_handlers — until a tick has closed the decision itself); an `<id>.execute` record
+    that is INTENDED with nobody known to be carrying it out (`execution_unfinished`, `unresolved`); a given-up
     execution part of which is still in place or cannot be judged (`partial_effect`, `unresolved`, listed in
     `partial_effects` — looked at afresh on every call). `published` on every row is the
     three-valued `publication` of the handler's own record ("unknown" too when that record is not the handler's).
@@ -1810,8 +1989,10 @@ def status(env=None, now=None, authorised=None):
         pub, exe = by_id.get(did + ".publish"), by_id.get(did + ".execute")
         published = publication(pub) if pub is None or _own(pub) else UNKNOWN
         pub, exe = (pub if pub and _own(pub) else None), (exe if exe and _own(exe) else None)
-        finished = first_terminal(lines, _done(exe)) if in_domain(lines) else None
-        row = {"id": did, "class": latest.get("class"), "state": accepted_state(lines, _done(pub), _done(exe)),
+        begun, closed = pub is not None or exe is not None, closed_as(env.run, did, exe)
+        finished = first_terminal(lines, _done(exe), begun, closed) if in_domain(lines) else None
+        row = {"id": did, "class": latest.get("class"),
+               "state": accepted_state(lines, _done(pub), _done(exe), begun, closed),
                "latest_line_state": _state(latest), "by": latest.get("by"), "awaiting": latest.get("awaiting"),
                "kind": target.get("kind") if isinstance(target, dict) else None,
                "veto_deadline": latest.get("veto_deadline"), "effective_at": latest.get("effective_at"),
@@ -1831,12 +2012,18 @@ def status(env=None, now=None, authorised=None):
             for claim, backed in (("EFFECTIVE", _done(pub)), ("EXECUTED", _done(exe))):
                 if not backed and not finished and any(_state(line) == claim for line in lines):
                     anomalies.append("log_claims_%s_without_action_record" % claim.lower())
+            if not finished and claimed(lines):               # C4-01: a VETOED / FAILED line the handler's records
+                anomalies.append(CLAIMED)                     # do not bear out ends nothing: unresolved until the
+                row["unresolved"] = True                      # handler has closed the decision itself
             if not finished and regressed(lines):             # C3-02: the handler carries on; somebody is told
                 anomalies.append(REGRESSED)
                 row["unresolved"] = True
             if not finished and (pub or exe) and proposal_of(lines) is None:
                 anomalies.append("proposal_missing")          # handler records without a proposal in the log
                 row["unresolved"] = True
+        if _abandoned(exe):                                   # R16: begun, not finished, nobody carrying it out —
+            row["execution_unfinished"] = True                # part of the effect may be in force until a tick
+            row["unresolved"] = True                          # has completed or closed it
         partial = (exe.get("result") or {}).get("partial_effect") if exe and exe["state"] == "FAILED" else None
         if isinstance(partial, dict) and partial:             # C3-01: part of an execution that was not completed
             row["partial_effect"] = partial.get("state", UNKNOWN)
