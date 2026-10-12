@@ -183,6 +183,35 @@ def test_c_campaign_coverage_references_and_honest_exceptions():
     assert campaign_coverage_problems(text.replace("GAP cells (", "GAP cells:", 1), ids)
 
 
+def campaign_boundary_problems(text, rule):
+    line = rule_line(text, rule)
+    if rule == "PA-05":
+        command = ("python3 -B -m pytest <packet test paths> -p no:cacheprovider "
+                   "--basetemp=<absolute job scratch>/pytest")
+        return [] if command in line and "paths written out" in line else ["invalid pytest invocation"]
+    required = ("verify locally", "request/consume credential-free executor evidence",
+                "independent production readback", "no production access/own acceptance")
+    builder_readback = re.search(r"(?i)(?:perform(?:s)?|run|verify|do) (?:the )?production readback", line)
+    return [] if all(part in line for part in required) and not builder_readback else [
+        "builder production boundary absent or contradictory"]
+
+
+def test_cr04_campaign_verifier_invokes_pytest_and_rejects_the_broken_command():
+    text = card_text("PARIKSAKA")
+    assert campaign_boundary_problems(text, "PA-05") == []
+    assert campaign_boundary_problems(text.replace("-m pytest ", "", 1), "PA-05")
+
+
+def test_cr01_builder_consumes_independent_readback_and_rejects_builder_production_duty():
+    text = card_text("KARAKA")
+    assert campaign_boundary_problems(text, "KA-13") == []
+    old = ("- KA-13 Migrations verified applied locally + production readback; never edit applied SQL.")
+    assert campaign_boundary_problems(text.replace(rule_line(text, "KA-13"), old), "KA-13")
+    assert campaign_boundary_problems(text.replace(rule_line(text, "KA-13"),
+                                                   rule_line(text, "KA-13") + " Perform production readback yourself."),
+                                      "KA-13")
+
+
 # --------------------------------------------------------------------------------------------------------------
 # (c) the coverage table and the cards cite each other exactly; its honesty rules (N-02)
 # --------------------------------------------------------------------------------------------------------------
