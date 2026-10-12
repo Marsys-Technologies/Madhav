@@ -1,16 +1,17 @@
 -- 1371_ga_structural_target_table_and_natural_key_partition.sql   (partition text is byte-sorted)
 --
 -- Certification registry fix (SS N-538, Exec Suvarna). Fills TWO NULL columns of ONE asset_registry row (ga_structural): target_table and natural_key_partition, in ONE guarded UPDATE;
--- nothing else. Same pattern and reasons as migration 1358 (ga_strength): the census cells Ldgr and Vocab.identity read only asset_registry.target_table, so the asset reads as having no table;
+-- nothing else. Same pattern and reasons as migration 1358: the census cells Ldgr and Vocab.identity read only asset_registry.target_table, so the asset reads as having no table;
 -- its writer writes ONE table, chart_facts (and never without a partition: once target_table = 'chart_facts' is shared with the other chart_facts writers, provenance.py treats the asset as having
 -- co-writers and needs natural_key_partition, else the receipt reason is partition_undeclared and the dependents block on DEP-ASSERT). So both go together.
--- WHY ga_strength SHOWS chart_facts WHILE ITS SEED SAYS NULL: migration 1358 set it in the registry; scripts/seed/asset_registry_seed.ts keeps `target_table: null` on purpose (the registry insert is
+-- WHY THE 1358 PRECEDENT SHOWS chart_facts WHILE ITS SEED SAYS NULL: migration 1358 set it in the registry; scripts/seed/asset_registry_seed.ts keeps `target_table: null` on purpose (the registry insert is
 -- ON CONFLICT DO NOTHING, so a re-seed never reverts a migration, and a fresh database replaying seed then migrations holds NULL, matches the guard, and is set here). The seed entry of this asset
 -- is left null for the same reason.
 -- THE PARTITION (82 categories, derived, not guessed): the rows of fact_category_ownership whose owning_asset_id is 'ga_structural' (read from production 2026-10-12: 82 categories, sorted; 75 of them
 -- carry rows on the native chart, 107,708 rows = the asset's recorded rows_written), in the 872/874/1358 text shape "chart_facts.fact_category IN (<sorted list>)".
--- GUARD. Each column is filled only while it is NULL (COALESCE keeps an existing value); the UPDATE runs only if at least one of the two is NULL; a column that already holds a different value is left as is
--- with a NOTICE. Absent row = no-op with a NOTICE. RAISES only if the post-check finds the row present and either column still NULL (a silent no-op is never trusted).
+-- GUARD. Each column is filled only while it is NULL (COALESCE keeps an existing value); the UPDATE runs only if at least one of the two is NULL. A column that already holds a DIFFERENT value
+-- (a target_table other than chart_facts, or a partition text whose md5 is not the one below) RAISES before anything is written: filling the other column next to a foreign value would leave a mismatched pair.
+-- Absent row = no-op with a NOTICE. The post-check RAISES unless the row ends with target_table = 'chart_facts' AND the exact partition md5 (a silent no-op is never trusted).
 -- TRIGGER EFFECT (real, intended): target_table and natural_key_partition are columns of nirmana_registry_receipt_invalidation (migration 596): the UPDATE stales this asset's freshness rows (registry_changed).
 -- VERIFICATION BY PRODUCTION STRUCTURE: SELECT asset_id, target_table, md5(natural_key_partition), length(natural_key_partition) FROM asset_registry WHERE asset_id = 'ga_structural';
 --   expect chart_facts, 844a2086ddb289cab723eb8b70d47b1b, 2028
@@ -26,10 +27,10 @@ BEGIN
     RAISE NOTICE '1371: no ga_structural registry row (empty registry); nothing to do';
   ELSE
     IF v_tt IS NOT NULL AND v_tt IS DISTINCT FROM 'chart_facts' THEN
-      RAISE NOTICE '1371: ga_structural target_table is already % (not NULL); left as is', v_tt;
+      RAISE EXCEPTION '1371: ga_structural target_table is already % (not NULL, not chart_facts); refusing to fill the partition next to a foreign table', v_tt;
     END IF;
     IF v_nkp IS NOT NULL AND md5(v_nkp) IS DISTINCT FROM '844a2086ddb289cab723eb8b70d47b1b' THEN
-      RAISE NOTICE '1371: ga_structural natural_key_partition is already set to a different text (md5 %); left as is', md5(v_nkp);
+      RAISE EXCEPTION '1371: ga_structural natural_key_partition is already set to a different text (md5 %); refusing to fill target_table next to a foreign partition', md5(v_nkp);
     END IF;
     IF v_tt IS NOT NULL AND v_nkp IS NOT NULL THEN
       RAISE NOTICE '1371: ga_structural target_table and natural_key_partition are already set; nothing to do';
@@ -48,11 +49,11 @@ DO $post$
 DECLARE v_n int; v_tt text; v_nkp text;
 BEGIN
   SELECT count(*), max(target_table), max(natural_key_partition) INTO v_n, v_tt, v_nkp FROM asset_registry WHERE asset_id = 'ga_structural';
-  IF v_n = 1 AND v_tt IS NULL THEN
-    RAISE EXCEPTION '1371: ga_structural target_table update did not take (still NULL)';
+  IF v_n = 1 AND v_tt IS DISTINCT FROM 'chart_facts' THEN
+    RAISE EXCEPTION '1371: ga_structural target_table is % after the update (expected chart_facts)', coalesce(v_tt, '<NULL>');
   END IF;
-  IF v_n = 1 AND v_nkp IS NULL THEN
-    RAISE EXCEPTION '1371: ga_structural natural_key_partition update did not take (still NULL)';
+  IF v_n = 1 AND md5(v_nkp) IS DISTINCT FROM '844a2086ddb289cab723eb8b70d47b1b' THEN
+    RAISE EXCEPTION '1371: ga_structural natural_key_partition md5 is % after the update (expected 844a2086ddb289cab723eb8b70d47b1b)', coalesce(md5(v_nkp), '<NULL>');
   END IF;
 END
 $post$;

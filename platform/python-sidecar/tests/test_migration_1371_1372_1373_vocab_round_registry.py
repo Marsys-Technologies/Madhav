@@ -68,10 +68,32 @@ def test_static_1371_partition_is_82_unique_byte_sorted_categories_with_the_pinn
     assert len(t) == EXPECT_LEN and hashlib.md5(t.encode()).hexdigest() == EXPECT_MD5
 
 
-def test_static_1371_header_guard_and_rollback_all_carry_the_one_md5():
+def test_static_1371_every_md5_in_the_file_is_the_one_pinned_value():
     text = _M1371.read_text()
-    assert text.count(EXPECT_MD5) == 3          # header "expect" line, $pre$ guard, rollback line
+    hexes = set(re.findall(r"\b[0-9a-f]{32}\b", text))
+    assert hexes == {EXPECT_MD5}                # header, pre-check, rollback and post-check carry the one value; no other digest
+    assert text.count(EXPECT_MD5) >= 4
     assert "f922f0ea" not in text               # the collation-ordered text of the first draft
+
+
+def test_static_1371_names_only_its_own_asset_anywhere_in_the_file_comments_included():
+    """By the build-window rule a migration names only its own asset, and comments count: scan the WHOLE text for registry asset ids."""
+    text = _M1371.read_text()
+    assert set(re.findall(r"\b(?:bg|ga|bo|ka|ph|mi)_[a-z0-9_]+\b", text)) == {"ga_structural"}
+    assert "ga_strength" not in text
+
+
+def test_static_1371_post_check_verifies_the_exact_values_not_just_not_null():
+    post = _code(_M1371).split("DO $post$", 1)[1]
+    assert "v_tt IS DISTINCT FROM 'chart_facts'" in post
+    assert f"md5(v_nkp) IS DISTINCT FROM '{EXPECT_MD5}'" in post
+    assert post.count("RAISE EXCEPTION") == 2 and "RAISE NOTICE" not in post
+
+
+def test_static_1371_pre_check_raises_on_a_foreign_value_instead_of_a_notice():
+    pre = _code(_M1371).split("DO $pre$", 1)[1].split("$pre$;", 1)[0]
+    assert pre.count("RAISE EXCEPTION") == 2          # a foreign target_table, a foreign partition
+    assert "refusing" in pre
 
 
 def test_static_1371_partition_is_exactly_the_categories_ga_structural_owns_and_emits():
@@ -218,10 +240,19 @@ def test_live_1371_idempotent_partial_state_foreign_values_and_empty_registry(pg
     db2 = _setup(pg, tt="chart_facts")                                  # partial: only the partition is filled
     assert _apply(pg, db2, _M1371).returncode == 0
     assert q(pg, db2, "SELECT natural_key_partition FROM asset_registry WHERE asset_id='ga_structural'") == _partition_text()
-    db3 = _setup(pg, tt="other_table", nkp="chart_facts.fact_category IN (x)")   # foreign values are never overwritten
+    # a foreign target_table or a foreign partition is REFUSED (a mismatched pair is never written), and nothing changes
+    db3 = _setup(pg, tt="other_table", nkp="chart_facts.fact_category IN (x)")
     r3 = _apply(pg, db3, _M1371)
-    assert r3.returncode == 0 and "different text" in r3.stderr and "left as is" in r3.stderr
+    assert r3.returncode != 0 and "refusing" in r3.stderr
     assert q(pg, db3, "SELECT target_table || '|' || natural_key_partition FROM asset_registry WHERE asset_id='ga_structural'") == "other_table|chart_facts.fact_category IN (x)"
+    db3b = _setup(pg, tt="other_table")
+    r3b = _apply(pg, db3b, _M1371)
+    assert r3b.returncode != 0 and "not NULL, not chart_facts" in r3b.stderr
+    assert q(pg, db3b, "SELECT coalesce(natural_key_partition,'<NULL>') FROM asset_registry WHERE asset_id='ga_structural'") == "<NULL>"
+    db3c = _setup(pg, nkp="chart_facts.fact_category IN (x)")
+    r3c = _apply(pg, db3c, _M1371)
+    assert r3c.returncode != 0 and "different text" in r3c.stderr
+    assert q(pg, db3c, "SELECT coalesce(target_table,'<NULL>') FROM asset_registry WHERE asset_id='ga_structural'") == "<NULL>"
     r4 = _apply(pg, _setup(pg, rows=False), _M1371)
     assert r4.returncode == 0 and "no ga_structural registry row" in r4.stderr
 
@@ -231,7 +262,7 @@ def test_live_1371_post_check_raises_when_the_update_did_not_take(pg):
     db = _setup(pg)
     q(pg, db, "CREATE RULE swallow AS ON UPDATE TO asset_registry WHERE OLD.asset_id = 'ga_structural' DO INSTEAD NOTHING")
     r = _apply(pg, db, _M1371)
-    assert r.returncode != 0 and "did not take" in r.stderr
+    assert r.returncode != 0 and "after the update (expected chart_facts)" in r.stderr
 
 
 @requires_pg
