@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kyboundary.sh v1.0 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
+# kyboundary.sh v1.1 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
 # verifier boundary. A qualification PASS is not this boundary (kyqualify.py BOUNDARY); this is.
 #
 #   kyboundary.sh prepare <job_id>            build the verifier's VIEW of the job's worktree at the reviewed head and the
@@ -16,7 +16,8 @@
 # THE MECHANISM: "seatbelt-file-write-deny/1" — the job runs under /usr/bin/sandbox-exec with a profile generated from the
 # record at every `exec` (never stored, so there is no profile file to tamper with):
 #     (allow default) (deny file-write*) (allow file-write* <writable[]> <a few /dev nodes>)
-#     (deny file-write* <the view> <S itself> <S/boundary.json> <S/boundary.check.json> <S/snapshot.json>)
+#     (deny file-write* <the view> <S itself> <S/boundary.json> <S/boundary.check.json> <S/snapshot.json>
+#                       <S/boundary.json.tmp.*> <S/boundary.check.json.tmp.*>)
 # The kernel applies it to the process and to every descendant; a sandboxed process cannot drop or loosen it (a nested
 # sandbox-exec only adds rules). file-write* covers data, create, unlink, rename, mode, flags, xattr, times and link, so
 # chmod, chflags, replace-by-rename, delete-and-recreate and hard links are denied by the same rule as a plain edit. It
@@ -44,8 +45,9 @@
 #      the test base unchanged and `check` 0; every declared write, git log/diff/status, reading every tracked file and a
 #      loopback TCP connection work; the group kill reaches a TERM-ignoring child (test_attack_fails_inside_the_boundary
 #      and the tests after it). sandbox-exec is deprecated by Apple: on this host it enforces, and `prepare`, `exec` and
-#      `check` each PROBE that it does (a write into the view under the generated profile must fail) rather than assume
-#      it — a sandbox-exec that runs the command unconfined gives 1 / 70 / violated
+#      `check` each PROBE that it does (under the generated profile a write into a fresh directory of S must succeed and
+#      one into the view fail) rather than assume it — a sandbox-exec that runs the command unconfined gives 1 / 70 /
+#      violated
 #      (test_prepare_is_not_established_when_the_sandbox_does_not_enforce).
 #   1+2. the image under the profile  → passes, NOT chosen: the mount adds no layer the job cannot remove. `hdiutil
 #      detach` run INSIDE the profile succeeds (the unmount is done by a system daemon, not by the job's process), after
@@ -72,15 +74,22 @@
 # {view_git_sha256, worktree_head_ref}: the baseline `check` needs for the view's Git metadata and the worktree's branch.
 # tracked_sha256 = sha256 over, for each tracked path in byte order, `<path> NUL <sha256 hex> LF`, where the second is
 # the sha256 of the work-tree file's bytes (a symlink: of "link:" + its target).
+# CONTROLLER-SIDE WRITES INSIDE S (S is the job's to write): never through a name the job can create. The record and
+# the check file are written to an unpredictable temporary name created O_CREAT|O_EXCL|O_NOFOLLOW (a planted file or
+# link there is refused, never followed), renamed into place and confirmed to be that same regular file; any refusal
+# is 1 (prepare) / unknown (check). The profile also denies the job those temporary names. The probe works in a fresh
+# directory of S with an unpredictable name and removes what it made through a descriptor of that directory, so a
+# link the job put in S (its cache, say) is neither written nor removed through.
 # KY_BOUNDARY_SANDBOX_EXEC is honoured only with the tests-only gate KY_BOUNDARY_TEST_OVERRIDE=1, and then the mechanism
 # is recorded as "test-override:…", which `exec` refuses and `check` never reports intact.
 #
-# Changelog: v1.0 (2026-10-12) first version.
+# Changelog: v1.0 (2026-10-12) first version. v1.1 (2026-10-12) review KB-R1-01: the controller no longer writes
+# through a link planted at its predictable temporary name (write_json, the probe); the profile denies those names.
 set -u
 PY=/opt/homebrew/bin/python3
 [ -x "$PY" ] || PY=/usr/bin/python3
 IFS= read -r -d '' KYBOUNDARY_PY <<'PYEOF'
-import datetime, hashlib, json, os, re, shutil, stat, subprocess, sys
+import datetime, hashlib, json, os, re, secrets, shutil, stat, subprocess, sys
 
 SCHEMA, CHECK_SCHEMA = "ky.boundary/1", "ky.boundary_check/1"
 MECHANISM = "seatbelt-file-write-deny/1"
@@ -91,6 +100,7 @@ if os.environ.get("KY_BOUNDARY_TEST_OVERRIDE") == "1" and os.environ.get("KY_BOU
     MECHANISM = "test-override:" + SANDBOX_EXEC
 PROGRAM_DIRS = ("projects", "todos", "shell-snapshots", "session-env", "statsig", "debug", "file-history", "tasks")
 SCRATCH_DENIED = ("boundary.json", "boundary.check.json", "snapshot.json")     # the controller's files inside S
+SCRATCH_DENIED_RE = r"/boundary(\.check)?\.json\.tmp\."                      # and its temporary names beside them
 DEV_WRITABLE = ("/dev/null", "/dev/zero", "/dev/tty", "/dev/ptmx", "/dev/dtracehelper")
 GIT = next((g for g in ("/opt/homebrew/bin/git", "/usr/bin/git") if os.access(g, os.X_OK)), None)
 JOB_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -142,6 +152,8 @@ def load(job_id):
         if inside(v, "/tmp") or inside(os.path.realpath(v), "/private/tmp"):
             raise NotEstablished("state: %s is under /tmp" % key)
         p[key] = os.path.realpath(v)
+    if re.search(r'[\[\]\\^"]', p["job_scratch"]):
+        raise NotEstablished("state: job_scratch has a character the profile cannot express: %s" % p["job_scratch"])
     if p["head"] is not None and not (isinstance(p["head"], str) and SHA.match(p["head"])):
         raise NotEstablished("state: head is neither null nor a 40-hex commit")
     S = p["job_scratch"]
@@ -268,33 +280,46 @@ def profile(p, writable):
     S = p["job_scratch"]
     allow = " ".join("(subpath %s)" % sb(w) for w in writable) + " " + " ".join("(literal %s)" % sb(d) for d in DEV_WRITABLE)
     deny = "(subpath %s) (literal %s) " % (sb(p["view"]), sb(S)) + " ".join("(literal %s)" % sb(os.path.join(S, n)) for n in SCRATCH_DENIED)
+    deny += ' (regex #"^%s%s")' % ("".join("[%s]" % c if c in ".*+?(){}|$" else c for c in S), SCRATCH_DENIED_RE)
     return ("(version 1)\n(allow default)\n(deny file-write*)\n"
             "(allow file-write* %s (regex #\"^/dev/ttys[0-9]+$\") (regex #\"^/dev/fd/[0-9]+$\"))\n"
             "(deny file-write* %s)\n" % (allow, deny))
 
 
 def enforces(p, writable):
-    """the detector behind `ready`: under the generated profile a write to the cache succeeds and one into the view fails.
-    True / False, or None when the probe itself could not be run"""
-    tag = ".kyboundary-probe-%d" % os.getpid()
-    good, bad = os.path.join(p["cache"], tag), os.path.join(p["view"], tag)
+    """the detector behind `ready`: under the generated profile a write into a fresh directory of S succeeds and one into
+    the view fails. Both names are unpredictable; what the probe made is examined and removed through a descriptor of
+    the directory it created, never through a path the job could have redirected. True / False, or None when the probe
+    itself could not be run"""
+    tag = ".kyboundary-probe-" + secrets.token_hex(16)
+    box, bad = os.path.join(p["job_scratch"], tag), os.path.join(p["view"], tag)
     script = 'echo p > "$1" 2>/dev/null && echo CACHE_WRITTEN; echo p > "$2" 2>/dev/null && echo VIEW_WRITTEN; exit 0'
     try:
-        os.makedirs(p["cache"], exist_ok=True)
-        r = subprocess.run([SANDBOX_EXEC, "-p", profile(p, writable), "/bin/sh", "-c", script, "sh", good, bad],
+        os.mkdir(box, 0o700)
+        fd = os.open(box, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return None
+    try:
+        r = subprocess.run([SANDBOX_EXEC, "-p", profile(p, writable), "/bin/sh", "-c", script, "sh",
+                            os.path.join(box, "w"), bad],
                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
                            env={"PATH": "/usr/bin:/bin"})
         words = r.stdout.decode(errors="replace").split()
         leaked = os.path.lexists(bad)
         if leaked:
             os.unlink(bad)
-        if os.path.lexists(good):
-            os.unlink(good)
+        names = os.listdir(fd)
+        wrote = names == ["w"] and stat.S_ISREG(os.stat("w", dir_fd=fd, follow_symlinks=False).st_mode)
+        for name in names:
+            os.unlink(name, dir_fd=fd)
+        os.rmdir(box)
     except (OSError, subprocess.SubprocessError):
         return None
+    finally:
+        os.close(fd)
     if leaked or "VIEW_WRITTEN" in words:
         return False
-    return True if (r.returncode == 0 and words == ["CACHE_WRITTEN"]) else None
+    return True if (r.returncode == 0 and words == ["CACHE_WRITTEN"] and wrote) else None
 
 
 def read_record(p):
@@ -371,11 +396,25 @@ def remove_view(p):
 
 
 def write_json(path, doc):
-    tmp = "%s.tmp.%d" % (path, os.getpid())
-    with open(tmp, "w") as f:
-        json.dump(doc, f, indent=1)
-        f.write("\n")
-    os.replace(tmp, path)
+    """never through a name the job can create: an unpredictable temporary name created O_CREAT|O_EXCL|O_NOFOLLOW (an
+    existing file or link there is refused, not followed), renamed into place, then confirmed to be that same regular
+    file. Any refusal raises OSError"""
+    tmp = "%s.tmp.%s" % (path, secrets.token_hex(16))
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+    try:
+        with open(fd, "w") as f:
+            json.dump(doc, f, indent=1)
+            f.write("\n")
+            f.flush()
+            made = os.fstat(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.lexists(tmp):
+            os.unlink(tmp)
+        raise
+    st = os.lstat(path)
+    if not stat.S_ISREG(st.st_mode) or (st.st_dev, st.st_ino) != (made.st_dev, made.st_ino):
+        raise OSError("%s is not the regular file this run wrote" % path)
 
 
 # ── the verbs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────

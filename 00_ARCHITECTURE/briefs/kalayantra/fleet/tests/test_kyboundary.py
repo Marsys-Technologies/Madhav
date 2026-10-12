@@ -315,6 +315,10 @@ def _evidence_attacks():
            for i, c in SHARED_OPS if i != "create"]
     out.append(("scratch:move-scratch-then-write",
                 'mkdir -p "$PROJECTS" && mv "$S" "$PROJECTS/moved" && echo pwn >> "$PROJECTS/moved/view/a.txt"', {}, "check"))
+    # a link planted where the unsandboxed controller writes its temporary files (review KB-R1-01)
+    out += [("scratch:link-at-%s-tmp:%s" % (n, t), 'ln -s %s "$S/%s.tmp.%d"' % (target, f, 4242 + k), v, "bytes")
+            for n, f in (("record", "boundary.json"), ("check", "boundary.check.json"))
+            for k, (t, target, v) in enumerate((("wt", '"$WT/a.txt"', {}), ("fleet", '"$F"', {"F": "shared:fleet"})))]
     return out
 
 
@@ -494,6 +498,91 @@ def test_a_forged_check_file_cannot_be_written_and_check_replaces_what_is_there(
     (w.view / "a.txt").write_text("pwn\n")
     rc, doc, r = w.check()
     assert rc == 1 and json.loads((w.S / "boundary.check.json").read_text()) == doc and "forged" not in doc
+
+
+# ── the controller never writes through a name the job can create (review KB-R1-01) ─────────────────────────────────
+# v1.0's writer: a predictable temporary name opened with a plain open-for-write — the control below runs it
+NAIVE_WRITE_JSON = '''def write_json(path, doc):
+    tmp = "%s.tmp.%d" % (path, os.getpid())
+    with open(tmp, "w") as f:
+        json.dump(doc, f, indent=1)
+        f.write("\\n")
+    os.replace(tmp, path)'''
+
+
+def naive_writer_copy(w):
+    """kyboundary.sh with only its controller-side writer replaced by the v1.0 one, under the pytest base"""
+    text = KYB.read_text()
+    start = text.index("\ndef write_json(") + 1
+    end = text.index("\n\n\n", start)
+    mutant = text[:start] + NAIVE_WRITE_JSON + text[end:]
+    assert mutant != text and mutant.count("def write_json(") == 1
+    path = w.base / "naive" / "kyboundary.sh"
+    assert_inside(w.base, path)
+    path.parent.mkdir()
+    path.write_text(mutant)
+    return path
+
+
+def run_with_planted_link(w, script, verb, target):
+    """run `verb` as the controller does, after a link to `target` was planted at the temporary name v1.0 would use,
+    "<file>.tmp.<pid>": the wrapper reports its pid and waits; then it becomes kyboundary.sh, which becomes Python,
+    keeping that pid. Returns (exit, stdout, the final file's lstat or None, whether the target's bytes changed)"""
+    name = {"check": "boundary.check.json", "prepare": "boundary.json"}[verb]
+    assert_inside(w.base, target)
+    before = hashlib.sha256(Path(target).read_bytes()).hexdigest()
+    p = subprocess.Popen([BASH, "-c", 'echo $$; read _; exec /bin/bash "$0" "$1" "$2"', str(script), verb, JOB],
+                         env=w.env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        pid = int(p.stdout.readline())
+        os.symlink(target, w.S / ("%s.tmp.%d" % (name, pid)))
+        out, _err = p.communicate("go\n", timeout=120)
+    finally:
+        if p.poll() is None:
+            p.kill()
+    final = w.S / name
+    st = os.lstat(final) if os.path.lexists(final) else None
+    return p.returncode, out, st, hashlib.sha256(Path(target).read_bytes()).hexdigest() != before
+
+
+@pytest.mark.parametrize("verb", ["check", "prepare"])
+@pytest.mark.parametrize("place", ["worktree-file", "shared-control"])
+def test_the_controller_never_writes_through_a_link_planted_at_its_temporary_name(tmp_path, verb, place):
+    def world(sub):
+        (tmp_path / sub).mkdir()
+        w = World(tmp_path / sub, prepare=(verb == "check"))
+        return w, {"worktree-file": w.wt / "a.txt", "shared-control": w.shared["fleet"]}[place]
+
+    w, target = world("real")
+    rc, out, st, changed = run_with_planted_link(w, KYB, verb, target)
+    assert not changed, "the controller wrote through the planted link into %s" % target
+    assert rc == 0 and st is not None and stat.S_ISREG(st.st_mode), (rc, out)
+    if verb == "check":
+        doc = json.loads(out)
+        assert doc["result"] == "intact" and json.loads((w.S / "boundary.check.json").read_text()) == doc
+    assert w.check()[0] == 0
+
+    # control: the same fixture detects the v1.0 writer — it writes through the link, puts the link in the file's
+    # place, and still reports success (for `check`: intact, exit 0)
+    w, target = world("naive")
+    rc, out, st, changed = run_with_planted_link(w, naive_writer_copy(w), verb, target)
+    assert changed and rc == 0 and st is not None and stat.S_ISLNK(st.st_mode), (rc, out)
+    if verb == "check":
+        assert json.loads(out)["result"] == "intact"
+
+
+def test_the_probe_neither_follows_nor_is_blinded_by_a_link_the_job_put_in_its_scratch(fresh):
+    w = fresh
+    # S is the job's: it may replace its cache directory by a link to a place it may not write
+    r = w.bounded('rm -rf "$S/cache" && ln -s "$WT" "$S/cache"')
+    assert r.returncode == 0, r.stderr
+    before = w.snapshot()
+    rc, doc, _ = w.check()
+    assert rc == 0 and doc["result"] == "intact" and doc["mechanism_intact"] is True, doc
+    assert w.kyb("prepare", JOB).returncode == 0
+    assert w.bounded("true").returncode == 0
+    assert w.snapshot() == before and git(w.wt, "status", "--porcelain") == ""
+    assert list(w.S.glob(".kyboundary-probe-*")) == [] and list(w.wt.glob(".kyboundary-probe-*")) == []
 
 
 def test_the_boundary_cannot_be_shed_or_loosened_from_inside(world):
