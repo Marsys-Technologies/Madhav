@@ -1197,7 +1197,7 @@ function titleCaseUnderscored(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-interface ChartFactsRow {
+export interface ChartFactsRow {
   fact_id?: unknown
   fact_category?: unknown
   fact_subject?: unknown
@@ -1452,6 +1452,17 @@ function readArgalaFamily(domain: string, argalaPayload: unknown, house: number)
   }
 }
 
+/** The Ārūḍha Lagna sign row from `bhava_arudha` rows. The stored subjects are BHAVA_ARUDHA_A1..A12, BHAVA_ARUDHA_AL and
+ *  BHAVA_ARUDHA_UPA, each with the keys house_d1 / longitude_sidereal / sign (only `sign` carries text). The AL row is the
+ *  EXACT subject BHAVA_ARUDHA_AL with fact_key 'sign': no substring match (HOUSE_1 also matched HOUSE_10/11/12 and matched
+ *  nothing real), no first-in-row-order pick, no null-text row. Several candidate rows are ordered deterministically by
+ *  fact_id so the pick never depends on the database's row order. Returns undefined when there is no usable AL row. */
+export function pickArudhaLagnaSignRow(rows: ChartFactsRow[]): ChartFactsRow | undefined {
+  return rows
+    .filter((r) => String(r.fact_subject) === 'BHAVA_ARUDHA_AL' && String(r.fact_key) === 'sign' && typeof r.fact_value_text === 'string' && r.fact_value_text !== '')
+    .sort((a, b) => String(a.fact_id ?? '').localeCompare(String(b.fact_id ?? '')))[0]
+}
+
 function readSpecialLagnaFamily(specialPayload: unknown, arudhaPayload: unknown): ReadingFamilyEntry {
   const rows = rowsOf(specialPayload)
   const bySubject = new Map<string, Map<string, ChartFactsRow>>()
@@ -1470,11 +1481,10 @@ function readSpecialLagnaFamily(specialPayload: unknown, arudhaPayload: unknown)
       factIds.push(String(sign.fact_id ?? ''))
     }
   }
-  const arudhaRows = rowsOf(arudhaPayload)
-  const al = arudhaRows.find((r) => String(r.fact_subject).includes('HOUSE_1') || String(r.fact_subject) === 'AL1' || String(r.fact_subject) === 'ARUDHA_LAGNA')
+  const al = pickArudhaLagnaSignRow(rowsOf(arudhaPayload))
   if (al) {
-    const signVal = al.fact_value_text ?? (al.fact_value_jsonb as Record<string, unknown> | null)?.['sign']
-    if (signVal) { parts.push(`Ārūḍha Lagna (AL) in ${String(signVal)}`); factIds.push(String(al.fact_id ?? '')) }
+    parts.push(`Ārūḍha Lagna (AL) in ${String(al.fact_value_text)}`)
+    factIds.push(String(al.fact_id ?? ''))
   }
   return {
     family: 'special_lagnas',

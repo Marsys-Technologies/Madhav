@@ -334,7 +334,7 @@ export const ASSETS: AssetDef[] = [
     target_floor: 721,
     expected_volume_formula: 'ACTUAL(bg_rules) * CONCORDANCE_DENSITY',
     expected_volume_inputs: null,
-    volume_explanation: '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 3,002-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.',
+    volume_explanation: '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 2,994-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.',
     depends_on: ['bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },

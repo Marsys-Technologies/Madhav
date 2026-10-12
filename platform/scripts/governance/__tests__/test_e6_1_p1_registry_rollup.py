@@ -100,6 +100,8 @@ PINNED_FINGERPRINTS = {
     28: "a8e18168b71510ea3ff87a1fa7bdeaf1673a8f0df57ca22e34fbca3959b76386",
     # 29 (SS N-514, ONE bump): (provisional): SS N-514 Cost.baseline revision 2: the sibling credit (a verified writer_sibling rider carries its primary's Cost.baseline verdict) and the no-writer N/A (cause no-writer-registry-agrees, released exactly where Earn.build_record reads its released no-writer N/A); NA_CAUSES + a rule
     29: "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
+    # 30 (SS N-431/N-545, ONE bump): (provisional): SS N-431/N-545 empty_slice_by_conditional: the opt-in verified-conditional exemption of a filtered produced slice, read by a detector over the writer's own run-evidence records (orchestrator_event_register, post_pass_evidence/1); applicability text appended to Vocab.alias (rev 10), Null.blank_rows (rev 11), Narr.checkable (rev 8) and Null.schema_default (rev 11, text only); no NA_CAUSES / NA_RULE_DECISIONS change
+    30: "b1acb3f678b5c8fbe343b93d96d8f2db24e2d024b15412aa960056b98bc5f23c",
 }
 
 
