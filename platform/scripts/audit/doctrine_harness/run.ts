@@ -32,7 +32,7 @@ import { McpClient } from './lib/mcp_client'
 import { ALL_ASSERTIONS, runAssertion } from './lib/assertions'
 import type { AssertionResult, RunContext } from './lib/types'
 
-const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const ABHINANDAN_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 const DEFAULT_TARGET = 'https://amjis-mcp-qm256lasva-el.a.run.app/mcp'
 
@@ -98,7 +98,7 @@ async function main() {
   }
 
   const client = resolveClient(args.target)
-  const ctx: RunContext = { client, chartId: ABHISEK_CHART_ID, secondChartId: ABHINANDAN_CHART_ID }
+  const ctx: RunContext = { client, chartId: CANONICAL_CHART_ID, secondChartId: ABHINANDAN_CHART_ID }
 
   const results: AssertionResult[] = []
   for (const def of selected) {
@@ -117,7 +117,7 @@ async function main() {
     harness: 'doctrine_harness',
     wave: args.wave ?? 'D-1.5a',
     target: args.target,
-    chart_id: ABHISEK_CHART_ID,
+    chart_id: CANONICAL_CHART_ID,
     second_chart_id: ABHINANDAN_CHART_ID,
     run_at: new Date().toISOString(),
     requested: args.assertions === 'all' ? 'all' : args.assertions,

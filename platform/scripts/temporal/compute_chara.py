@@ -21,9 +21,9 @@ Variants:
 
 Usage:
   python3 compute_chara.py \\
-      --chart-id ABHISEK_MOHANTY \\
-      --birth 1984-02-05T10:43:00+05:30 \\
-      --lat 20.2961 --lon 85.8245 \\
+      --chart-id <chart-uuid> \\
+      --birth <ISO8601-birth-datetime-with-offset> \\
+      --lat <lat> --lon <lon> \\
       --output 05_TEMPORAL_ENGINES/dasha/jaimini/CHARA_RAW_v1_0.json
 """
 from __future__ import annotations

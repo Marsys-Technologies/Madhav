@@ -37,7 +37,7 @@ import type { RunContext } from './lib/types'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const ABHINANDAN_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 const DEFAULT_TARGET = 'https://amjis-mcp-qm256lasva-el.a.run.app/mcp'
 
@@ -75,7 +75,7 @@ async function main() {
   const client = resolveClient(args.target)
 
   console.error('[1/5] §G.0 wealth-conclusion gate…')
-  const wealthGate = await runWealthConclusionGate({ client, chartId: ABHISEK_CHART_ID, secondChartId: ABHINANDAN_CHART_ID })
+  const wealthGate = await runWealthConclusionGate({ client, chartId: CANONICAL_CHART_ID, secondChartId: ABHINANDAN_CHART_ID })
 
   // Fetched once, reused by both the census sweep and the alias-count check — never a second
   // tools/list call just to feed the alias check (extra live calls are exactly what the
@@ -88,7 +88,7 @@ async function main() {
     console.error('[2/5] Census battery (paced)…')
     census = await runCensusSweep(client, tools, {
       checkpointPath: args.checkpointPath,
-      chartId: ABHISEK_CHART_ID,
+      chartId: CANONICAL_CHART_ID,
       target: args.target,
       batchSize: DEFAULT_BATCH_SIZE,
       interBatchMs: DEFAULT_INTER_BATCH_MS,
@@ -99,7 +99,7 @@ async function main() {
   }
 
   console.error('[3/5] Completeness-receipt validator…')
-  const receiptCheck = await validateLiveReceipt(client, ABHISEK_CHART_ID, 'wealth')
+  const receiptCheck = await validateLiveReceipt(client, CANONICAL_CHART_ID, 'wealth')
 
   console.error('[4/5] Alias-count check…')
   const aliasCheck = checkAliasCount(tools)
@@ -107,7 +107,7 @@ async function main() {
   let regression: { total: number; green: number; red: number; red_ids: string[] } | null = null
   if (!args.skipRegression) {
     console.error('[5/5] Regression battery (Gate-A/B/Ś assertions, K.2/A5/A7/Gate-B)…')
-    const ctx: RunContext = { client, chartId: ABHISEK_CHART_ID, secondChartId: ABHINANDAN_CHART_ID }
+    const ctx: RunContext = { client, chartId: CANONICAL_CHART_ID, secondChartId: ABHINANDAN_CHART_ID }
     const results = []
     for (const def of ALL_ASSERTIONS) results.push(await runAssertion(def, ctx))
     const greenIds = results.filter((r) => r.status === 'green').map((r) => r.id)
@@ -121,7 +121,7 @@ async function main() {
     harness: 'doctrine_harness/run_master_gate',
     wave: 'D-2',
     target: args.target,
-    chart_id: ABHISEK_CHART_ID,
+    chart_id: CANONICAL_CHART_ID,
     run_at: new Date().toISOString(),
     wealth_conclusions: wealthGate,
     census: census

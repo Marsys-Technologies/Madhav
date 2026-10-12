@@ -56,6 +56,21 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // SS N-376 / PR-S4: share links are authenticated, convenience links. Keep the
+  // rendered conversation out of search indexes and out of Referer headers, and
+  // never cache it in a shared cache.
+  async headers() {
+    return [
+      {
+        source: '/share/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'private, no-store' },
+        ],
+      },
+    ]
+  },
   output: "standalone",
   // GCP SDK packages use dynamic requires internally — exclude from webpack bundle
   // so they're loaded from node_modules at runtime in the standalone container.

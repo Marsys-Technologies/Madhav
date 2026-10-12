@@ -11,6 +11,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 import { GESTALT_SCUS } from '../../knowledge/editorial'
 
@@ -24,8 +25,8 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
   semantic_capabilities: GESTALT_SCUS,
 
   description: [
-    'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per',
-    'ayanamsha. Fields: defining_threads, central_dynamics_ids, pivot_ids,',
+    'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row stored per',
+    'ayanamsha (a default call serves the Lahiri primary\'s row). Fields: defining_threads, central_dynamics_ids, pivot_ids,',
     'center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic),',
     'watch_list, central_question, outliers, contested_areas, zoom_spine. This is the',
     'orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded',
@@ -34,7 +35,7 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 
@@ -71,14 +72,21 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
-    const where = filters.join(' AND ')
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    const p = params.length + 1
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT gestalt_id, ayanamsha_id, gestalt_formula_version, defining_threads_jsonb,
@@ -88,7 +96,7 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
              outliers_jsonb, contested_areas_jsonb, zoom_spine_jsonb, engine_version
       FROM bodha_chart_gestalt
       WHERE ${where}
-      ORDER BY ayanamsha_id
+      ORDER BY ${ayanamshaServeOrderBy()}
       LIMIT $${p}`
 
     try {
@@ -100,10 +108,11 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
       // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
       // tail_watch section". Best-effort — buildTailWatch returns an explained empty
       // rather than throwing, so the tail can never fail the read the caller asked for.
-      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
+      const tail = await buildTailWatch(chart_id, aya.id ?? PRIMARY_AYANAMSHA)
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
@@ -111,9 +120,11 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
           tail_watch: tail.tail_watch,
           tail_watch_empty_reason: tail.tail_watch_empty_reason,
           tail_watch_components: tail.tail_watch_components,
+          // Under the explicit 'all' opt-out the rows are pooled but the tail is a separate section pinned to the primary ayanamsha — label it.
+          ...(aya.id === null ? { tail_watch_ayanamsha_id: PRIMARY_AYANAMSHA } : {}),
           empty_reason: rowsRes.rows.length > 0 ? null
             : `no bodha_chart_gestalt row for chart ${chart_id}` +
-              (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+              ` at ${describeAyanamshaScope(aya)}` +
               '. The gestalt is written once per (chart, ayanamsha) by bo_chart_gestalt; ' +
               'an absent row means that writer has not run for this chart, not that the chart has no gestalt.',
           filters: { ayanamsha_id, limit },

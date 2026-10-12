@@ -4,8 +4,8 @@
   "wave": "W1 Lane L1c (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0 / RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0 W-22 service half)",
   "extraction_method": "HYBRID. (1) The set of 20 app.include_router() mount points is HAND-ENUMERATED from platform/python-sidecar/main.py \u2014 verified exhaustive via `grep -rn include_router` across the whole python-sidecar tree (zero other call sites exist). (2) The per-router endpoint list (path + method) is MECHANICALLY cross-checked two ways: (a) each router file's own @router.get/@router.post decorators were grepped directly, and (b) a live GET /openapi.json snapshot was fetched from the deployed amjis-sidecar Cloud Run service on 2026-07-20 (see openapi_snapshot.json in this directory) and diffed against (a) \u2014 the two agree exactly, zero missing / zero extra paths (see validation block below). (3) health_probe, concurrency_cap, and cost_class fields are HAND-AUTHORED v1 judgments \u2014 no per-router health-check or concurrency metadata exists anywhere in this codebase to extract mechanically; these are conservative defaults, not measurements.",
   "validation": {
-    "openapi_total_paths": 50,
-    "manifest_computed_paths": 50,
+    "openapi_total_paths": 49,
+    "manifest_computed_paths": 49,
     "missing_from_openapi": [],
     "extra_in_openapi_not_in_manifest": [],
     "clean_match": true
@@ -39,8 +39,8 @@
       "verified_live_2026_07_20": true,
       "existing_ts_side_probe": "platform/src/app/api/sidecar/health/route.ts \u2014 server-side proxy for this endpoint (auth-gated to logged-in users; adds a 5s AbortSignal.timeout)"
     },
-    "process_model": "SINGLE FastAPI process. All 20 routers below (49 endpoints) plus /health run in the same Cloud Run service/container \u2014 there is NO per-router process or concurrency isolation today. A concurrency problem in one router (e.g. an expensive PyJHora compute) can starve every other router sharing the same instance.",
-    "concurrency_note": "No per-router concurrency caps exist in the running system \u2014 this is the honest v1 finding, not a gap in this manifest. The only real ceiling is Cloud Run's shared per-instance concurrency (80, platform default, NOT overridden in deploy.yml) applied across ALL 50 endpoints in this one process, with min-instances=0 (cold starts possible) and cpu=2 (so CPU-bound compute routers \u2014 ephemeris, pyhora, panchang, phala muhurta/holistic_bundle \u2014 will bottleneck on CPU well before hitting the 80-request ceiling). The per-router `cost_class` field below (cheap / medium / expensive) is a hand-authored QUALITATIVE judgment of compute weight per request, read from each handler's own code (DB-only read = cheap; ephemeris/dasha/panchang derivation = medium; full natal/electional/holistic-bundle multi-technique compute = expensive) \u2014 it is NOT a measured number and NOT independently enforced (no semaphore, no queue, no per-route rate limit exists anywhere in main.py or the router files). Actually adding per-route concurrency isolation (e.g. a semaphore per cost_class) is W2 scope if the native wants it, not landed here."
+    "process_model": "SINGLE FastAPI process. All 20 routers below (48 endpoints) plus /health run in the same Cloud Run service/container \u2014 there is NO per-router process or concurrency isolation today. A concurrency problem in one router (e.g. an expensive PyJHora compute) can starve every other router sharing the same instance.",
+    "concurrency_note": "No per-router concurrency caps exist in the running system \u2014 this is the honest v1 finding, not a gap in this manifest. The only real ceiling is Cloud Run's shared per-instance concurrency (80, platform default, NOT overridden in deploy.yml) applied across ALL 49 endpoints in this one process, with min-instances=0 (cold starts possible) and cpu=2 (so CPU-bound compute routers \u2014 ephemeris, pyhora, panchang, phala muhurta/holistic_bundle \u2014 will bottleneck on CPU well before hitting the 80-request ceiling). The per-router `cost_class` field below (cheap / medium / expensive) is a hand-authored QUALITATIVE judgment of compute weight per request, read from each handler's own code (DB-only read = cheap; ephemeris/dasha/panchang derivation = medium; full natal/electional/holistic-bundle multi-technique compute = expensive) \u2014 it is NOT a measured number and NOT independently enforced (no semaphore, no queue, no per-route rate limit exists anywhere in main.py or the router files). Actually adding per-route concurrency isolation (e.g. a semaphore per cost_class) is W2 scope if the native wants it, not landed here."
   },
   "routers": [
     {
@@ -428,7 +428,7 @@
       "mount_prefix": "/brahmagyan/ephemeris",
       "main_py_include_router_line": 78,
       "conditional_mount": false,
-      "summary": "L0FR Stream B ephemeris QUERY endpoints (reads ephemeris_daily table, 1900-2150, 9 bodies) \u2014 planet_position, transit, aspects, retrograde_periods, all_bodies_range, native_lifetime_meta. This is a DIFFERENT service than call_ephemeris_at_t / ka_graha_sancara (GT-50): this router answers from the precomputed ephemeris_daily table (bounded 1900-2150 range, DB-backed), whereas ka_graha_sancara is meant to be an on-demand arbitrary-datetime compute path with no backing table. Their overlap/boundary is exactly the kind of ambiguity a W2 ka_graha_sancara wiring decision needs to resolve (see DESIGN_KA_GRAHA_SANCARA.md).",
+      "summary": "L0FR Stream B ephemeris QUERY endpoints (reads ephemeris_daily table, 1900-2150, 9 bodies) \u2014 planet_position, transit, aspects, retrograde_periods, all_bodies_range. This is a DIFFERENT service than call_ephemeris_at_t / ka_graha_sancara (GT-50): this router answers from the precomputed ephemeris_daily table (bounded 1900-2150 range, DB-backed), whereas ka_graha_sancara is meant to be an on-demand arbitrary-datetime compute path with no backing table. Their overlap/boundary is exactly the kind of ambiguity a W2 ka_graha_sancara wiring decision needs to resolve (see DESIGN_KA_GRAHA_SANCARA.md).",
       "provides_apis": [
         {
           "path": "/brahmagyan/ephemeris/planet_position",
@@ -449,13 +449,9 @@
         {
           "path": "/brahmagyan/ephemeris/all_bodies_range",
           "method": "GET"
-        },
-        {
-          "path": "/brahmagyan/ephemeris/native_lifetime_meta",
-          "method": "GET"
         }
       ],
-      "endpoint_count": 6,
+      "endpoint_count": 5,
       "health_probe": {
         "method": "none-dedicated",
         "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."

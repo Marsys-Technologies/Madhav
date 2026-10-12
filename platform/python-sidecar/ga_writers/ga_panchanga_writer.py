@@ -65,6 +65,17 @@ FORENSIC_EXPECTED = {
 # Engine identification string (A4 §5 — NOT natal_engine)
 ENGINE_STRING = "panchanga_engine/2.0.0-P2"
 
+# SS N-341 item 2 / F15 (CLAUDE.md §N.8): `panchanga_instant` is Lahiri-only (it pins the Lahiri
+# sidereal mode internally and takes no ayanamsha argument), so the ayanamsha-DEPENDENT categories
+# built from that one `pi` are ONE computation. The Lahiri row is the computed one; the same values
+# stored under the other four ayanamsha ids are replicas, not independent agreement, and must say so
+# (a cross-ayanamsha reader counting `n/5` over them would otherwise read a false green).
+# SS ruling N-389: on THIS chart the values are identical under every ayanamsha (all five give Purva Bhadrapada), so the replica is as well verified
+# as the original and KEEPS its tier; only `source_calculation` says it is not an independent check. LIMIT (Kāla, SS N-410): Moon nakshatra, tara bala and
+# panchaka depend on the ayanamsha in general. BACKLOG: add a nakshatra-equality gate before this label is extended to any other chart.
+REFERENCE_AYANAMSHA = "lahiri_chitrapaksha"
+REPLICATED_SOURCE_NOTE = "copied from the lahiri computation; not an independent check"
+
 # Nakshatra short codes for Tara bala subject key
 NAKSHATRA_SHORT: list[str] = [
     "ASH", "BHA", "KRI", "ROH", "MRI", "ARD", "PUN", "PUS", "ASL",
@@ -152,6 +163,23 @@ def _single_verif() -> str:
     # Q03 / SS N-62: UNVERIFIED_DEFAULT ("single") -- no check ran on any panchanga row, so none is
     # stamped with a tier. ("single_pass" is a deprecated reader-only alias, never emitted.)
     return UNVERIFIED_DEFAULT
+
+
+def _mark_replicated_rows(rows: list[dict], ayanamsha_id: str) -> list[dict]:
+    """Label rows that are a copy of the Lahiri `panchanga_instant` computation (SS N-341 item 2, N-389).
+
+    The reference (Lahiri) rows are returned untouched. For every other ayanamsha id the row keeps its
+    value AND its original `verification_pass_status` (rows are still emitted for all five ids); only
+    `source_calculation` changes, to say the row is a copy and not an independent check. Only the rows
+    passed in are touched, so the caller must pass the replicated categories and NOT rows that read a
+    genuinely per-ayanamsha input (chandra_bala_natal_baseline reads that ayanamsha's own ga_positions
+    Moon sign).
+    """
+    if ayanamsha_id == REFERENCE_AYANAMSHA:
+        return rows
+    for r in rows:
+        r["source_calculation"] = f"{ENGINE_STRING}; {REPLICATED_SOURCE_NOTE}"
+    return rows
 
 
 def _fact_id(category: str, subject: str, key: str,
@@ -1528,16 +1556,20 @@ def build_ga_panchanga(
 
     all_dependent: list[dict] = []
     for ay in CANONICAL_AYANAMSHAS:
-        dep_rows: list[dict] = []
-        dep_rows += _emit_nakshatra_moon(pi, chart_id, build_id, computed_at, ay)
-        dep_rows += _emit_special_yoga_combinations(pi, chart_id, build_id, computed_at, ay)
-        dep_rows += _emit_panchaka_classification(pi, chart_id, build_id, computed_at, ay)
-        dep_rows += _emit_panchaka_flag(pi, chart_id, build_id, computed_at, ay)
-        dep_rows += _emit_eclipse_proximity(pi, chart_id, build_id, computed_at, ay)
-        dep_rows += _emit_bhadra_flag(pi, chart_id, build_id, computed_at, ay)
+        # Rows built from the single Lahiri `pi`: replicas under every id but the reference one, so
+        # they are labelled (SS N-341 item 2); the Lahiri rows are unchanged.
+        replicated: list[dict] = []
+        replicated += _emit_nakshatra_moon(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_special_yoga_combinations(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_panchaka_classification(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_panchaka_flag(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_eclipse_proximity(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_bhadra_flag(pi, chart_id, build_id, computed_at, ay)
 
         # Tara bala baseline (27 rows per ayanamsha) — derived from this chart's birth nakshatra
-        dep_rows += _emit_tara_bala_baseline(pi, chart_id, build_id, computed_at, ay)
+        replicated += _emit_tara_bala_baseline(pi, chart_id, build_id, computed_at, ay)
+
+        dep_rows: list[dict] = _mark_replicated_rows(replicated, ay)
 
         # Chandra bala baseline (12 rows per ayanamsha) — from this ayanamsha's ga_positions Moon-sign fact
         dep_rows += _emit_chandra_bala_baseline(

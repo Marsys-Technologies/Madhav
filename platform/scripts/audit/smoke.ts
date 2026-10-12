@@ -70,7 +70,7 @@ function fakePrediction(queryId: string, i: number) {
     horizon_start: '2026-07-01',
     horizon_end: '2027-06-30',
     falsifier: `No career event observed by 2027-06-30`,
-    subject: 'native:abhisek',
+    subject: 'native:primary',
   }
 }
 

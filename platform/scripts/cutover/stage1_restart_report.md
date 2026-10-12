@@ -1,3 +1,4 @@
+NOTE: 362f9f17-… is a dead phantom; canonical is 482012f1-710e-4a25-994a-93821f5871aa
 ---
 report_id: STAGE1_RESTART_REPORT
 version: "1.0"
