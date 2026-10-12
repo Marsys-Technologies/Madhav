@@ -621,6 +621,11 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         v = meas["v"]
         if v not in ROLLUP_ORDER and v != NA:
             raise ValueError(f"{crit}: measured verdict {v!r} is outside the rollup vocabulary")
+        #<clause empty-slice-rollup>
+        bad = empty_slice_problem(crit, meas)                                      # SS N-431/N-545: a record that claims an empty-slice exemption needs its verified evidence block
+        if bad:
+            return dict(criterion=crit, v=NO_DET, state="MEASURED", reason=bad)
+        #</clause empty-slice-rollup>
         if v == NA:
             cause = meas.get("cause")
             if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
@@ -2979,10 +2984,12 @@ def _scope_block(table):
     return v.get("block") if v else None
 
 
-def mark_empty_scopes(scopes: dict, convention_holds: bool = False) -> dict:
+def mark_empty_scopes(scopes: dict, convention_holds: bool = False, exempt_fn=None) -> dict:
     """Mark (in place, and return) every SCOPED table of `scopes` that holds no row in its scope: `block` says so, and the label carries it. One EXISTS probe per scoped table (`LIMIT 1` inside; a failed or
     cancelled probe marks nothing: the reads then run and answer for themselves). `convention_holds` (a declared zero_row_convention VERIFIED for the measured chart) lifts the guard: zero rows is then the
-    by-design reading for this chart."""
+    by-design reading for this chart. `exempt_fn(table, scope)` (SS N-431/N-545, a declared `empty_slice_by_conditional`) is asked for each table found EMPTY: it answers the detector's outcome for the declared
+    slice table (None for any other table). A `holds` outcome marks the scope `exempt` (the verified evidence block) and, when the declaration names Vocab.alias, lifts its `block` (the table is not read and is
+    not unread); any other outcome keeps the block exactly as before and records `empty_slice_declined` (the clause that decided) beside the label. An exempt_fn that raises never exempts."""
     if convention_holds:
         return scopes
     for t, v in scopes.items():
@@ -2995,7 +3002,26 @@ def mark_empty_scopes(scopes: dict, convention_holds: bool = False) -> dict:
         if got is not None and str(got).strip().lower() in ("f", "false"):
             v["empty"] = True
             v["block"] = f"the table holds NO rows in the read scope ({v['label']}): there is nothing to judge, and a closure / vocabulary / source over zero rows is vacuous, never a pass"
-            v["label"] = v["label"] + "; NO ROWS in this scope"
+            label0 = v["label"]
+            v["label"] = label0 + "; NO ROWS in this scope"
+            if exempt_fn is None:
+                continue
+            try:
+                out = exempt_fn(t, v)
+            except Exception as exc:                                  # noqa: BLE001 -- an exemption that cannot be computed is never granted
+                out = dict(state="unverified", clause="read-failed", detail=f"NO_DETECTOR — the empty-slice detector raised {type(exc).__name__}")
+            if not isinstance(out, dict):
+                continue
+            if out.get("state") == "holds" and isinstance(out.get("evidence"), dict):
+                ev = out["evidence"]
+                v["exempt"] = ev
+                v["label"] = (label0 + f"; EMPTY BY VERIFIED CONDITIONAL (post-pass {ev.get('post_pass')} ran in run {str(ev.get('run_id'))[:8]}, {len(ev.get('entries_evaluated') or {})}/{len(ev.get('partitions') or [])} ayanamsha "
+                              f"partitions, entries evaluated {'/'.join(str(n) for n in (ev.get('entries_evaluated') or {}).values())}, formed false)")
+                if "Vocab.alias" in (ev.get("criteria") or ()):
+                    del v["block"]
+            else:
+                v["empty_slice_declined"] = dict(state=out.get("state"), clause=out.get("clause"), detail=out.get("detail"))
+                v["label"] += f"; empty_slice_by_conditional declared but NOT credited ({out.get('clause')}): {str(out.get('detail'))[:300]}"
     return scopes
 
 
@@ -3318,7 +3344,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                      ("prose_none_column_declaration_fields", PROSE_NONE_COLUMN_FIELDS), ("produced_table_declaration_fields", PRODUCED_TABLE_FIELDS),
                      ("service_probe_declaration_fields", SERVICE_PROBE_DECL_FIELDS),
                      ("zero_row_convention_declaration_fields", ZERO_ROW_DECL_FIELDS),
-                     ("static_data_declaration_fields", STATIC_DATA_DECL_FIELDS),
+                     ("static_data_declaration_fields", STATIC_DATA_DECL_FIELDS), ("empty_slice_by_conditional_declaration_fields", ES_DECL_FIELDS),
                      ("probe_attempts_declaration_fields", PROBE_ATTEMPTS_DECL_FIELDS),
                      ("run_stamp_declaration_fields", RUN_STAMP_FIELDS), ("templated_declaration_fields", TEMPLATED_FIELDS), ("static_read_declaration_fields", STATIC_READ_FIELDS),
                      ("unset_declaration_fields", UNSET_FIELDS), ("curated_corpus_declaration_fields", CURATED_CORPUS_DECL_FIELDS), ("writer_sibling_declaration_fields", WRITER_SIBLING_FIELDS), ("code_vocabulary_declaration_fields", CODE_VOCABULARY_FIELDS), ("service_wiring_declaration_fields", SERVICE_WIRING_FIELDS), ("vocab_embedded_text_declaration_fields", VOCAB_EMBEDDED_TEXT_FIELDS)):
@@ -3336,7 +3362,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             raise DeclarationsError(f"{where}: asset id is not in the census registry set")
         if not isinstance(e, dict):
             raise DeclarationsError(f"{where}: must be an object")
-        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_FORMGAP_KEYS) - set(DECL_N189_KEYS))
+        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_FORMGAP_KEYS) - set(DECL_N189_KEYS) - set(DECL_N431_ES_KEYS))
         if extra:
             raise DeclarationsError(f"{where}: unknown field(s) {extra}")
         k = e.get("kind")
@@ -3362,6 +3388,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_null_convention_declaration(where, e["null_convention"], e)
         if e.get("zero_row_convention") is not None:
             validate_zero_row_convention_declaration(where, e["zero_row_convention"], e)
+        if e.get(ES_FORM) is not None:
+            validate_empty_slice_by_conditional_declaration(where, aid, e[ES_FORM], e)
         if e.get("static_data") is not None:
             validate_static_data_declaration(where, e["static_data"], e)
         if e.get("probe_attempts") is not None:
@@ -3380,7 +3408,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_prose_excluded_declaration(where, aid, e)
         if e.get("label_columns") is not None:
             validate_label_columns_declaration(where, e)
-        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_N189_KEYS))
+        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_N189_KEYS) - set(DECL_N431_ES_KEYS))
         if e.get("curated_corpus") is not None:
             validate_curated_corpus_declaration(where, e)
         if e.get("writer_sibling") is not None:
@@ -5117,6 +5145,9 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
     cands, problems = vocab_candidate_columns(own, udts)
     if not own:
         return dict(v=NO_DET, measured="NO_DETECTOR — the asset owns no table that exists in production: nothing to read the vocabulary from")
+    es_exempt = {t: v["exempt"] for t, v in scopes.items() if isinstance(v.get("exempt"), dict) and t in own and "Vocab.alias" in (v["exempt"].get("criteria") or ())}      # SS N-431/N-545: a verified-empty conditional slice is not read
+    if es_exempt:
+        cands = [x for x in cands if x[0] not in es_exempt]
     blocked = {t: v["block"] for t, v in scopes.items() if v.get("block") and t in own}
     if blocked:                                              # a table with no rows in the scope (or whose scope is unknown) is not read: nothing to judge
         problems += [f"{t}: {why}" for t, why in sorted(blocked.items())]
@@ -5213,7 +5244,11 @@ def vocab_value_detect(own: dict, udts=None, declared: dict | None = None, cache
             readings.append(rec)
     order = {(t, c): i for i, (t, c, _k) in enumerate(cands)}
     readings.sort(key=lambda r: order.get((r["table"], r["column"]), 0))
-    return vocab_values_record(readings, problems, list(own), declared=declared, scopes={t: v.get("label") for t, v in scopes.items() if t in own}, embedded_exempt=embedded_exempt, embedded_exempt_auto=embedded_exempt_auto, pair_reports=pair_reports)
+    rec = vocab_values_record(readings, problems, list(own), declared=declared, scopes={t: v.get("label") for t, v in scopes.items() if t in own}, embedded_exempt=embedded_exempt, embedded_exempt_auto=embedded_exempt_auto, pair_reports=pair_reports)
+    if es_exempt and isinstance(rec, dict) and isinstance(rec.get("measured"), str):
+        t0 = sorted(es_exempt)[0]
+        rec = dict(rec, empty_slice=es_exempt[t0], measured=rec["measured"] + f"; {t0}: {empty_slice_text(es_exempt[t0])}")          # LAST segment: census_postprocess strips it (ES_VOCAB_SEGMENT) before it matches the named ceilings
+    return rec
 
 
 def vocab_scopes(tables, r: dict, own: dict, shared, decl, chart_id: str) -> dict:
@@ -12065,52 +12100,83 @@ def prose_row_counts(table: str, entries, where_tail: str, types=None) -> dict:
 UPPER_BOUND = "whole-table upper bound"
 
 
+def _es_split(entries, counts, crit: str):
+    """(exempt, live): the declared entries a VERIFIED empty-slice block exempts for `crit` ({entry: block}), and the entries that are measured. An entry whose block fails `empty_slice_problem` is neither:
+    it is read as unknown (never exempted, never counted as zero rows)."""
+    ex, live = {}, []
+    for e in entries:
+        c = counts.get(e) if isinstance(counts, dict) else None
+        if isinstance(c, dict) and "exempt" in c:
+            b = c["exempt"]
+            if empty_slice_problem(crit, dict(empty_slice=b)) is None:
+                ex[e] = b
+            else:
+                live.append(e)
+            continue
+        live.append(e)
+    return ex, live
+
+
+def _es_cnt(counts, e):
+    c = counts.get(e)
+    return None if (c is None or "exempt" in c) else c
+
+
 def grade_narr_checkable(entries, counts) -> dict:
     """Narr.checkable (SS 2026-10-01): rows actually CHECKABLE per declared entry (`counts[entry]` = dict(checkable,
     blank, scope), or None = unknown for that entry). PASS: every entry has >= 1 checkable row in a chart-scoped (or
     chart-free) count; PARTIAL: some have none / are unknown, or the count is a whole-table upper bound (the scope is
-    named). Zero everywhere, unknown everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive), never PASS."""
+    named). Zero everywhere, unknown everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive), never PASS.
+    SS N-431/N-545: an entry whose count is `dict(exempt=<verified empty_slice block>)` is n/a with that evidence and is taken out of the tests."""
     if not isinstance(counts, dict):
         return dict(v=NO_DET, inconclusive=True, measured="INCONCLUSIVE: no row data was read for the declared prose "
                                                           "entries (scope unsupported or not measured); no PASS is possible")
-    n = {e: (None if counts.get(e) is None else int(counts[e].get("checkable", 0))) for e in entries}
-    scopes = sorted({counts[e]["scope"] for e in entries if counts.get(e) and counts[e].get("scope")})
+    ex, live = _es_split(entries, counts, "Narr.checkable")
+    n = {e: (None if _es_cnt(counts, e) is None else int(counts[e].get("checkable", 0))) for e in live}
+    scopes = sorted({counts[e]["scope"] for e in live if _es_cnt(counts, e) and counts[e].get("scope")})
     extra = dict(scope="; ".join(scopes)) if scopes else {}
-    text = ", ".join(f"{e}={'unknown' if k is None else k}" for e, k in n.items())
+    if ex:
+        extra.update(empty_slice=next(iter(ex.values())), exempt_entries=sorted(ex))
+    text = ", ".join(f"{e}={'n/a' if e in ex else 'unknown' if n[e] is None else n[e]}" for e in entries)
+    xtext = (f"; {', '.join(sorted(ex))} n/a, {empty_slice_text(next(iter(ex.values())))}") if ex else ""
     if not any(n.values()):
         return dict(v=NO_DET, inconclusive=True, checkable=n, **extra,
-                    measured=f"INCONCLUSIVE: 0 checkable rows on every declared entry ({text})")
+                    measured=f"INCONCLUSIVE: 0 checkable rows on every declared entry ({text}){xtext}")
     bad = [e for e, k in n.items() if not k]
     if bad:
         return dict(v=PARTIAL, checkable=n, **extra,
-                    measured=f"checkable rows per declared entry: {text}; none or unknown on {', '.join(bad)}")
+                    measured=f"checkable rows per declared entry: {text}; none or unknown on {', '.join(bad)}{xtext}")
     if UPPER_BOUND in scopes:
         return dict(v=PARTIAL, checkable=n, **extra, measured=f"checkable rows per declared entry: {text}; the count is a "
-                    f"{UPPER_BOUND} (count_sql unparseable, unshared table that carries chart_id): rows of other charts may count")
-    return dict(v=PASS, checkable=n, **extra, measured=f"checkable rows per declared entry: {text} ({'; '.join(scopes) or 'scope n/a'})")
+                    f"{UPPER_BOUND} (count_sql unparseable, unshared table that carries chart_id): rows of other charts may count{xtext}")
+    return dict(v=PASS, checkable=n, **extra, measured=f"checkable rows per declared entry: {text} ({'; '.join(scopes) or 'scope n/a'}){xtext}")
 
 
 def grade_null_blank_rows(entries, counts) -> dict:
     """Null.blank_rows: declared prose rows holding a blank string or a placeholder literal instead of NULL. FAIL on
-    any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows."""
+    any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows.
+    SS N-431/N-545: an entry whose count is `dict(exempt=<verified empty_slice block>)` is n/a with that evidence and is taken out of the unknown / clean tests."""
     if isinstance(counts, dict):
-        bad = {e: (None if counts.get(e) is None else int(counts[e].get("blank", 0))) for e in entries}
-        ub = {e for e in entries if (counts.get(e) or {}).get("scope") == UPPER_BOUND}
+        ex, live = _es_split(entries, counts, "Null.blank_rows")
+        bad = {e: (None if _es_cnt(counts, e) is None else int(counts[e].get("blank", 0))) for e in live}
+        ub = {e for e in live if (counts.get(e) or {}).get("scope") == UPPER_BOUND}
         hit = [f"{e}={k}" for e, k in bad.items() if k and e not in ub]
         hit_ub = [f"{e}={k}" for e, k in bad.items() if k and e in ub]
+        xextra = dict(empty_slice=next(iter(ex.values())), exempt_entries=sorted(ex)) if ex else {}
+        xtext = (f" ({', '.join(sorted(ex))} n/a: {empty_slice_text(next(iter(ex.values())))})") if ex else ""
         if hit:
-            return dict(v=FAIL, blank=bad, measured="blank or placeholder rows standing in for NULL in declared prose "
+            return dict(v=FAIL, blank=bad, **xextra, measured="blank or placeholder rows standing in for NULL in declared prose "
                                                     "column(s): " + ", ".join(hit)
                         + (f" (not counted: {', '.join(hit_ub)} in a {UPPER_BOUND})" if hit_ub else ""))
         if hit_ub:
-            return dict(v=PARTIAL, blank=bad, measured=f"blank or placeholder rows ({', '.join(hit_ub)}) in a {UPPER_BOUND}: "
+            return dict(v=PARTIAL, blank=bad, **xextra, measured=f"blank or placeholder rows ({', '.join(hit_ub)}) in a {UPPER_BOUND}: "
                         "they may belong to other charts, so this chart is not failed on them; chart-scope the count to decide")
-        if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
+        if any((counts.get(e) or {}).get("checkable", 0) for e in live):
             unk = [e for e, k in bad.items() if k is None]
             # `clean` (S1): every declared entry has >= 1 checkable row, none is unknown, none counted as a whole-table upper bound
-            clean = (not unk and not ub and all((counts.get(e) or {}).get("checkable", 0) >= 1 for e in entries))
-            return dict(v=PARTIAL, blank=bad, **({"clean": True} if clean else {}), measured="no blank or placeholder row among the checkable prose rows"
-                        + (f" (unknown for {', '.join(unk)})" if unk else "") + "; schema defaults are read by "
+            clean = (not unk and not ub and all((counts.get(e) or {}).get("checkable", 0) >= 1 for e in live))
+            return dict(v=PARTIAL, blank=bad, **({"clean": True} if clean else {}), **xextra, measured="no blank or placeholder row among the checkable prose rows"
+                        + (f" (unknown for {', '.join(unk)})" if unk else "") + xtext + "; schema defaults are read by "
                         "Null.schema_default and writer literal fallbacks and constant columns are not measured, so "
                         "this is never PASS")
     return dict(v=NO_DET, inconclusive=True,
@@ -12441,6 +12507,569 @@ def zero_row_convention_outcome(zr: dict, chart_id: str) -> dict:
     if v in ("f", "false"):
         return dict(state="does_not_hold", detail=f"chart {chart_id[:8]} IS in {where}")
     return dict(state="unverified", detail=f"the read of {where} returned {v!r}")
+
+
+# ───────────── SS N-431 / N-545: EMPTY SLICE BY CONDITIONAL (an EARNED detector for a conditional produced slice, ga_vichara option A) ─────────────
+# A writer-backed asset whose produced set holds a FILTERED slice of a shared table that its writer fills only when a CONDITION holds (ga_vichara: the daridra dosha_label row exists only for a chart
+# on which daridra forms) reads "the slice is empty" as vacuous: the scoped table is blocked ("NO ROWS in this scope"). That reading stays the default. An asset may DECLARE the form below; the census then
+# EARNS the emptiness: the writer's post-pass writes ONE evidence record per (chart, ayanamsha, build) into the orchestrator's durable register whether or not the condition held
+# (the frozen contract `post_pass_evidence/1`), and the detector `empty_slice_conditional_outcome` reads those records for the MEASURED chart. The slice is exempted ONLY when ALL of its clauses hold
+# (see the function). Never credited: a slice that was merely not run, a record of another chart or an older build, an incomplete partition set, entries_evaluated 0, formed true, duplicate records, a
+# record outside its run's time bracket, a live slice that is not empty, a register the census role cannot read. No `not present` row is ever written; the detector never recomputes the writer's
+# condition (it only reads the writer's own evaluation count: CLAUDE.md N.7 item 3). The declaration NAMES, the data DECIDES.
+ES_FORM = "empty_slice_by_conditional"
+DECL_N431_ES_KEYS = (ES_FORM,)
+ES_DECL_FIELDS = ("slice", "post_pass", "run_evidence", "cross_check", "entries", "criteria", "why", "evidence")
+ES_SLICE_FIELDS = ("table", "fact_category", "fact_subject")
+ES_RUN_EVIDENCE_FIELDS = ("source", "emitter", "caller", "partitions_from")
+ES_SOURCE_FIELDS = ("table", "event_type")
+ES_FUNC_REF_FIELDS = ("file", "function")
+ES_CONST_REF_FIELDS = ("file", "constant")
+ES_CROSS_CHECK_FIELDS = ("table", "partition_column", "build_column")
+ES_CRITERIA = ("Narr.checkable", "Null.blank_rows", "Vocab.alias")
+ES_SLICE_TABLES = ("chart_facts",)             # the one shared table whose slice is addressed by (fact_category, fact_subject): the frozen evidence record names exactly that shape
+ES_EVENT_TYPE = "writer.post_pass_evaluated"   # frozen by post_pass_evidence/1
+ES_EVIDENCE_SCHEMA = "post_pass_evidence/1"
+ES_SOURCE_TABLE = "orchestrator_event_register"
+ES_PAYLOAD_REQUIRED = ("schema", "post_pass", "ayanamsha_id", "slice", "entries_evaluated", "formed", "rows_written", "prior_rows_deleted")
+ES_PAYLOAD_OPTIONAL = ("chart_vichara_rows_inserted",)
+# `persist_event` stores the WHOLE flat event dict as the payload column: beside the frozen keys a record may carry the event's own keys (type, chart_id, asset_id, run_id, rows_present ...), which are
+# cross-checked against the register's columns; extra keys are tolerated, a MISSING or mistyped frozen key never is (pr #3448: direct_insert writes exactly the frozen keys, persist_event the superset)
+ES_CLOCK_SKEW_S = 2.0                          # a record's occurred_at (the register's DEFAULT NOW() = its transaction's start) may precede the attempt's started_at / follow its ended_at by this much
+ES_MAX_RECORDS = 50                            # evidence rows read for ONE run (5 per run is the design: more is a read that cannot be trusted)
+ES_MAX_ATTEMPTS = 200
+_ES_IDENT = re.compile(r"[a-z][a-z0-9_]{1,60}")
+_ES_POST_PASS = re.compile(r"[a-z][a-z0-9_]{2,60}")
+
+# DATA, not registry text (REGISTRY_REVISION, the fingerprint pin and CRITERION_REGISTRY are NOT touched here): each sentence below is APPENDED to that criterion's `applicability` and its `revision` goes
+# from ES_REVISION_BUMPS[crit][0] to [1] by the ONE bump at the end of the round (the way CORPUS_DERIVED_APPLICABILITY_ADDITIONS / VOCAB_JSON_GROUPS_APPLICABILITY_ADDITIONS are consumed by gen_rev28_edits.py).
+_ES_APPLIC_HEAD = ("; SS N-431/N-545 (opt-in): an asset that DECLARES `empty_slice_by_conditional` (a filtered produced slice that its writer fills only when a post-pass condition holds, the post-pass, its run-evidence "
+                   "emitter, the entries the slice alone holds, a cross-check table) has that slice read as EMPTY BY A VERIFIED CONDITIONAL, never as vacuous, ONLY when the census EARNS it by a detector over the writer's own "
+                   "evidence records (one record per chart, ayanamsha partition and build in orchestrator_event_register, event writer.post_pass_evaluated, schema post_pass_evidence/1): ALL of: the measured chart's NEWEST "
+                   "complete build run (no later attempt that errored, aborted, is queued, running or cascade-blocked, ordered by run creation with never-started attempts included) lies inside the Build.history window "
+                   "of the current writer code; exactly ONE record per partition of the declared partition constant for THAT run and chart, each naming the declared post-pass and slice, with entries_evaluated >= 1, "
+                   "formed false and rows_written 0; every record inside its run's start..end time bracket; the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
+                   "declaration names an emitter and a caller that exist in the writer's code, the caller reaching the emitter on every return path, and the event type and partition constant in the writer source; a register "
+                   "the census role cannot read, an unreadable attempt log or an unknown window reads NO_DETECTOR for the claim and never earns it. ")
+ES_APPLICABILITY_ADDITIONS = {
+    "Vocab.alias": _ES_APPLIC_HEAD + ("A table whose scope is so exempted is NOT read and is NOT an `unread` finding (the cell states the run, the partitions and the entries evaluated); a table that is empty "
+                                      "but not exempted keeps reading as unread; the remaining findings of the other tables are graded as before"),
+    "Null.blank_rows": _ES_APPLIC_HEAD + ("A declared prose entry that only the exempted slice holds is taken out of the `none or unknown` and `clean` tests and printed as n/a with the verified evidence; every other "
+                                          "entry is measured as before; the entry stays covered by the writer scan; the verdict is never more than the writer scan and the measured entries earn"),
+    "Narr.checkable": _ES_APPLIC_HEAD + ("A declared prose entry that only the exempted slice holds is taken out of the checkable count and printed as n/a with the verified evidence; every other entry needs its "
+                                         "checkable rows as before"),
+    "Null.schema_default": ("; SS N-431/N-545 (opt-in, text only, no logic change): where the declared `empty_slice_by_conditional` is verified for an entry that only the exempted slice holds, the joint writer-scan "
+                            "lift of the two Null cells (both records clean, the scan clean) reads on the remaining measured entries, the exempted entry staying under the scan; the cell states the evidence"),
+}
+ES_REVISION_BUMPS = {"Vocab.alias": (9, 10), "Null.blank_rows": (10, 11), "Narr.checkable": (7, 8), "Null.schema_default": (10, 11)}
+
+
+def _es_file(rel) -> Path | None:
+    """The repo file a declared pointer names (repo-relative, inside the repository), else None."""
+    if not isinstance(rel, str) or not rel.endswith(".py") or not _evidence_pointer_ok(rel):
+        return None
+    return ROOT / rel
+
+
+def _es_tree(rel):
+    """(ast tree, None) of a declared repo .py file, or (None, why)."""
+    p = _es_file(rel)
+    if p is None:
+        return None, f"{rel!r} is not an existing repo-relative .py file"
+    try:
+        return ast.parse(p.read_text(encoding="utf-8"), filename=str(p)), None
+    except (OSError, SyntaxError, UnicodeDecodeError) as exc:
+        return None, f"{rel} cannot be parsed ({type(exc).__name__})"
+
+
+def _es_func(tree, name):
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name:
+            return n
+    return None
+
+
+def _es_call_name(c) -> str | None:
+    f = c.func
+    return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+
+
+def _es_has_call(stmt, name: str) -> bool:
+    return any(isinstance(n, ast.Call) and _es_call_name(n) == name for n in ast.walk(stmt))
+
+
+def _es_uncovered_exits(func, emitter: str) -> list[str]:
+    """The exits of `func` (a `return`, or falling off the end) that can be reached WITHOUT a prior call of `emitter` on their own path. Statement order and branching are followed: a call inside an `if`
+    branch covers only that branch; a call at the top of the body covers every later exit; `raise` is no exit (a raised post-pass leaves no record by design); nested definitions are skipped. Pure."""
+    bad: list[str] = []
+
+    def walk(stmts, called: bool) -> bool:
+        """Walk a statement list; returns whether the emitter has surely been called when control falls out of its end."""
+        for s in stmts:
+            if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(s, ast.Return):
+                if not (called or _es_has_call(s, emitter)):
+                    bad.append(f"line {s.lineno}")
+                return True                      # control leaves: the rest of the list is unreachable on this path
+            if isinstance(s, ast.Raise):
+                return True
+            if isinstance(s, ast.If):
+                a = walk(s.body, called)
+                b = walk(s.orelse, called) if s.orelse else called
+                called = called or (a and b)
+            elif isinstance(s, (ast.With, ast.AsyncWith)):
+                called = walk(s.body, called) or called
+            elif isinstance(s, ast.Try):
+                walk(s.body, called)
+                for h in s.handlers:
+                    walk(h.body, called)
+                walk(s.orelse, called)
+                walk(s.finalbody, called)
+            elif isinstance(s, (ast.For, ast.AsyncFor, ast.While)):
+                walk(s.body, called)
+                walk(s.orelse, called)
+            elif _es_has_call(s, emitter):
+                called = True
+        return called
+    if not walk(func.body, False):
+        bad.append("falling off the end of the function")
+    return bad
+
+
+def _es_str_constants(tree) -> set:
+    return {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+
+
+def _es_const_list(tree, name):
+    """The module-level `name = [..str..]` (or tuple) as a list of strings, else None."""
+    for n in tree.body:
+        tgt = val = None
+        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in n.targets):
+            val = n.value
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            val = n.value
+        if val is not None and isinstance(val, (ast.List, ast.Tuple)) and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in val.elts):
+            return [e.value for e in val.elts]
+    return None
+
+
+def empty_slice_static_problem(es: dict):
+    """(None, partitions) when the declared run-evidence pointers hold in the code tree, else (why, None). Reads the writer files by AST (no code is run): the emitter and the caller exist, the caller reaches
+    the emitter on EVERY return path (the formed and the not-formed one), the event type and the evidence schema are string constants of the emitter's file, the declared post-pass name is a string constant of the
+    caller's file, and the partition constant is a non-empty list of distinct strings that the plan_substeps of its file reads. Pure but for the file reads; never raises."""
+    try:
+        re_ = es["run_evidence"]
+        et, why = _es_tree(re_["emitter"]["file"])
+        if et is None:
+            return f"run_evidence.emitter.file: {why}", None
+        ef = _es_func(et, re_["emitter"]["function"])
+        if ef is None:
+            return f"the emitter function {re_['emitter']['function']!r} is not defined in {re_['emitter']['file']}", None
+        consts = _es_str_constants(et)
+        for lit, what in ((re_["source"]["event_type"], "event type"), (ES_EVIDENCE_SCHEMA, "evidence schema")):
+            if lit not in consts:
+                return f"the {what} {lit!r} is not a string constant of {re_['emitter']['file']}: the emitter does not write the declared record", None
+        ct, why = _es_tree(re_["caller"]["file"])
+        if ct is None:
+            return f"run_evidence.caller.file: {why}", None
+        cf = _es_func(ct, re_["caller"]["function"])
+        if cf is None:
+            return f"the caller function {re_['caller']['function']!r} is not defined in {re_['caller']['file']}", None
+        if not _es_has_call(cf, re_["emitter"]["function"]):
+            return f"{re_['caller']['function']} never calls the emitter {re_['emitter']['function']}", None
+        if es["post_pass"] not in _es_str_constants(ct):
+            return f"the declared post_pass {es['post_pass']!r} is not a string constant of {re_['caller']['file']}: the caller does not name it", None
+        bad = _es_uncovered_exits(cf, re_["emitter"]["function"])
+        if bad:
+            return f"{re_['caller']['function']} can return ({'; '.join(bad[:4])}) without calling the emitter {re_['emitter']['function']}: the evidence is not written on every path (formed and not formed)", None
+        pt, why = _es_tree(re_["partitions_from"]["file"])
+        if pt is None:
+            return f"run_evidence.partitions_from.file: {why}", None
+        const = re_["partitions_from"]["constant"]
+        parts = _es_const_list(pt, const)
+        if not parts or len(set(parts)) != len(parts) or not all(_ES_IDENT.fullmatch(x) for x in parts):
+            return f"{const} in {re_['partitions_from']['file']} is not a non-empty module-level list of distinct identifier strings", None
+        ps = _es_func(pt, "plan_substeps")
+        if ps is None or not any(isinstance(n, ast.Name) and n.id == const for n in ast.walk(ps)):
+            return f"plan_substeps in {re_['partitions_from']['file']} does not read {const}: the partitions are not the substeps the writer plans", None
+        return None, parts
+    except (KeyError, TypeError, AttributeError) as exc:
+        return f"the declaration is not in the declared shape ({type(exc).__name__}: {exc})", None
+
+
+def validate_empty_slice_by_conditional_declaration(where: str, aid: str, es, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `empty_slice_by_conditional` is malformed or points at nothing: the closed field list; `slice` {table, fact_category, fact_subject} that equals one declared
+    produced_tables entry (table and a `fact_subject` filter: a whole table is never a conditional slice); `post_pass` (an identifier); `run_evidence` {source {table orchestrator_event_register, event_type
+    writer.post_pass_evaluated}, emitter {file, function}, caller {file, function}, partitions_from {file, constant}} whose pointers hold in the code tree (`empty_slice_static_problem`); `cross_check`
+    {table, partition_column, build_column} naming another produced table WITHOUT a filter; `entries` (declared prose_fields, none empty); `criteria` (a subset of ES_CRITERIA); `why` (a real reason);
+    `evidence` (`<writer .py>:<line>` that exists: `unverified:` is refused, the form releases a verdict). The asset must be writer-backed."""
+    key = f"{where}.{ES_FORM}"
+    if not isinstance(es, dict):
+        raise DeclarationsError(f"{key} must be an object or null")
+    missing = [f for f in ES_DECL_FIELDS if f not in es]
+    if missing:
+        raise DeclarationsError(f"{key}: missing field(s) {missing}")
+    _s3_common(where, ES_FORM, es, ES_DECL_FIELDS, na=True)
+    if not re.search(r"\.py:[0-9]+$", str(es["evidence"])):
+        raise DeclarationsError(f"{key}.evidence {es['evidence']!r} must point at the writer line `<file>.py:<line>`")
+    if e.get("has_writer") is False:
+        raise DeclarationsError(f"{key}: the asset declares has_writer false: an empty slice is judged for a writer-backed asset only")
+    sl = es["slice"]
+    if not (isinstance(sl, dict) and set(sl) == set(ES_SLICE_FIELDS)):
+        raise DeclarationsError(f"{key}.slice must be an object with exactly {list(ES_SLICE_FIELDS)}")
+    if sl["table"] not in ES_SLICE_TABLES:
+        raise DeclarationsError(f"{key}.slice.table must be one of {list(ES_SLICE_TABLES)}, got {sl['table']!r}")
+    for f in ("fact_category", "fact_subject"):
+        if not (isinstance(sl[f], str) and _ES_IDENT.fullmatch(sl[f])):
+            raise DeclarationsError(f"{key}.slice.{f} must be a lower-case identifier, got {sl[f]!r}")
+    pt = [d for d in (e.get("produced_tables") or []) if isinstance(d, dict) and d.get("table") == sl["table"]]
+    if not any(isinstance(d.get("filter"), dict) and d["filter"].get("column") == "fact_subject" and d["filter"].get("equals") == sl["fact_subject"] for d in pt):
+        raise DeclarationsError(f"{key}.slice must equal a declared produced_tables entry of {sl['table']} filtered on fact_subject = {sl['fact_subject']!r} (a whole table is never a conditional slice)")
+    if not (isinstance(es["post_pass"], str) and _ES_POST_PASS.fullmatch(es["post_pass"])):
+        raise DeclarationsError(f"{key}.post_pass must match {_ES_POST_PASS.pattern}, got {es['post_pass']!r}")
+    re_ = es["run_evidence"]
+    if not (isinstance(re_, dict) and set(re_) == set(ES_RUN_EVIDENCE_FIELDS)):
+        raise DeclarationsError(f"{key}.run_evidence must be an object with exactly {list(ES_RUN_EVIDENCE_FIELDS)}")
+    for part, fields in (("source", ES_SOURCE_FIELDS), ("emitter", ES_FUNC_REF_FIELDS), ("caller", ES_FUNC_REF_FIELDS), ("partitions_from", ES_CONST_REF_FIELDS)):
+        if not (isinstance(re_[part], dict) and set(re_[part]) == set(fields) and all(isinstance(v, str) and v.strip() for v in re_[part].values())):
+            raise DeclarationsError(f"{key}.run_evidence.{part} must be an object with exactly {list(fields)} (non-blank strings)")
+    if re_["source"]["table"] != ES_SOURCE_TABLE or re_["source"]["table"] not in BOOKKEEPING_TABLES:
+        raise DeclarationsError(f"{key}.run_evidence.source.table must be the bookkeeping register {ES_SOURCE_TABLE!r}, got {re_['source']['table']!r}")
+    if re_["source"]["event_type"] != ES_EVENT_TYPE:
+        raise DeclarationsError(f"{key}.run_evidence.source.event_type must be {ES_EVENT_TYPE!r} (the frozen contract {ES_EVIDENCE_SCHEMA}), got {re_['source']['event_type']!r}")
+    for part in ("emitter", "caller"):
+        if not _ES_IDENT.fullmatch(re_[part]["function"]):
+            raise DeclarationsError(f"{key}.run_evidence.{part}.function must be an identifier, got {re_[part]['function']!r}")
+    if not re.fullmatch(r"[A-Z][A-Z0-9_]{2,60}", re_["partitions_from"]["constant"]):
+        raise DeclarationsError(f"{key}.run_evidence.partitions_from.constant must be an UPPER_CASE module constant, got {re_['partitions_from']['constant']!r}")
+    cc = es["cross_check"]
+    if not (isinstance(cc, dict) and set(cc) == set(ES_CROSS_CHECK_FIELDS) and all(isinstance(v, str) and _DECL_IDENT.fullmatch(v) for v in cc.values())):
+        raise DeclarationsError(f"{key}.cross_check must be an object with exactly {list(ES_CROSS_CHECK_FIELDS)} (identifiers)")
+    if not any(d.get("table") == cc["table"] and d.get("filter") is None for d in (e.get("produced_tables") or []) if isinstance(d, dict)):
+        raise DeclarationsError(f"{key}.cross_check.table {cc['table']!r} must be a declared produced_tables entry WITHOUT a filter (the asset's own table whose rows carry the run id)")
+    pf = e.get("prose_fields")
+    ent = es["entries"]
+    if not (isinstance(ent, list) and 1 <= len(ent) <= 8 and all(isinstance(x, str) and _DECL_IDENT.fullmatch(x) for x in ent) and len(set(ent)) == len(ent)):
+        raise DeclarationsError(f"{key}.entries must be a list of 1 to 8 distinct column names")
+    if not isinstance(pf, list) or any(x not in pf for x in ent):
+        raise DeclarationsError(f"{key}.entries {ent} must all be declared prose_fields of the asset (an entry is a prose column the slice alone holds)")
+    cr = es["criteria"]
+    if not (isinstance(cr, list) and cr and len(set(cr)) == len(cr) and all(c in ES_CRITERIA for c in cr)):
+        raise DeclarationsError(f"{key}.criteria must be a non-empty list of distinct criteria from {list(ES_CRITERIA)}")
+    bad, _parts = empty_slice_static_problem(es)
+    if bad:
+        raise DeclarationsError(f"{key}: {bad}")
+
+
+def _es_res(state: str, clause: str, detail: str, **kw) -> dict:
+    """One detector answer: `state` holds | does_not_hold | unverified; `clause` the stable name of the clause that decided (None when it holds)."""
+    return dict(state=state, clause=(None if state == "holds" else clause), detail=detail, **kw)
+
+
+def _es_read_failure(exc, what: str, clause: str = "register-read") -> dict:
+    msg = " ".join(str(exc).split())[:220]
+    if re.search(r"permission denied|42501|InsufficientPrivilege", msg, re.I):
+        return _es_res("unverified", clause, f"NO_DETECTOR — the census role cannot read {what} (permission denied): the claim cannot be measured, never earned ({msg})", no_detector=True, cause="permission-denied")
+    if re.search(r"does not exist|undefined_table|42P01", msg, re.I):
+        return _es_res("unverified", clause, f"NO_DETECTOR — {what} does not exist in this database: the claim cannot be measured, never earned ({msg})", no_detector=True, cause="table-missing")
+    return _es_res("unverified", clause, f"NO_DETECTOR — {what} could not be read ({msg}): the claim cannot be measured, never earned", no_detector=True, cause="read-failed")
+
+
+def _es_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def empty_slice_attempts(aid: str, chart_id: str, limit: int = ES_MAX_ATTEMPTS) -> list[dict]:
+    """This asset's build_run_assets attempts at the measured chart (runs of that chart, and chart-less global runs), OLDEST FIRST, in the Build.history convention (`build_attempt_log`: ordered by the run's
+    creation then run id; EVERY attempt, a never-started one included: an errored attempt that never started still happened and is newer than the build it follows). Read-only, census-written.
+    Each {run_id, chart, state, disposition, started, created, started_at, ended_at} (epochs; None when NULL). The newest `limit` are read."""
+    if not (_ASSET_ID.fullmatch(aid) and isinstance(chart_id, str) and _UUID.fullmatch(chart_id) and isinstance(limit, int) and 1 <= limit <= 1000):
+        raise Unknown("empty_slice_attempts: malformed asset id, chart id or limit")
+    raw = psql("SELECT a.run_id::text, coalesce(r.chart_id::text,''), coalesce(a.state,''), coalesce(a.disposition,''), (a.started_at IS NOT NULL)::text, "
+               "coalesce(extract(epoch FROM r.created_at)::text,''), coalesce(extract(epoch FROM a.started_at)::text,''), coalesce(extract(epoch FROM a.ended_at)::text,'') "
+               "FROM build_run_assets a JOIN build_runs r ON r.id = a.run_id "
+               f"WHERE a.asset_id = '{aid}' AND (r.chart_id::text = '{chart_id}' OR r.chart_id IS NULL) "
+               f"ORDER BY r.created_at DESC, a.run_id DESC LIMIT {limit}")
+    bad = [x for x in raw if len(x) != 8]
+    if bad:
+        raise Unknown(f"empty_slice_attempts: {len(bad)} line(s) did not parse into the 8 selected fields: the attempts are not read")
+    out = []
+    for r in reversed(raw):
+        created = _epoch(r[5])
+        if created == float("-inf"):
+            raise Unknown(f"empty_slice_attempts: run {r[0][:8]} has no readable creation time: it cannot be placed")
+        out.append(dict(run_id=r[0], chart=r[1], state=r[2], disposition=r[3], started=(r[4] in ("t", "true")), created=created,
+                        started_at=(None if r[6] == "" else _epoch(r[6])), ended_at=(None if r[7] == "" else _epoch(r[7]))))
+    return out
+
+
+def empty_slice_conditional_outcome(decl: dict, aid: str, chart_id: str, *, window=None, code_paths=None) -> dict:
+    """Verify a declared `empty_slice_by_conditional` for `chart_id` (the measured chart) against the writer's evidence records. Returns `dict(state, clause, detail, ...)`, state in `holds`,
+    `does_not_hold` (the evidence or the live data contradicts the claim, or the claim has no evidence) and `unverified` (a read failed, the window or the attempt log is unknown: never read as holding);
+    `holds` carries `evidence`, the verified block the cells print and the rollup re-checks. NEVER raises. `window` is build_window.compute_window's answer for the asset's current writer closure (with the
+    certification floor applied), `code_paths` the repo files of that closure (the emitter and the caller must be in it).
+
+    `holds` requires ALL of the clauses below (each is marked `#<clause NAME>` in the source: the mutation tests delete one clause at a time and must see the claim earned wrongly):
+    chart (a real, non-phantom chart) · declaration (the pointers hold in the code tree) · closure (emitter and caller are in the writer closure the window dates) · window (known) · attempts (readable) ·
+    latest-build (a complete `build` attempt exists; R = the newest) · newer-attempt (nothing later errored, aborted, is queued, running, blocked) · in-window (R is inside the window) · register-read ·
+    evidence-present (records exist for R, this chart, this asset) · record-shape (every record is the contract shape and agrees with its register columns) · partition-complete (exactly the declared
+    partitions) · single-record (one per partition) · evaluated (entries_evaluated >= 1) · not-formed (formed false, rows_written 0) · time-bracket (inside R's start..end) · slice-empty (the live slice holds no
+    row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees)."""
+    try:
+        return _es_outcome(decl, aid, chart_id, window, code_paths)
+    except Unknown as exc:
+        return _es_read_failure(exc, "the evidence", clause="read-failed")
+    except Exception as exc:                                    # noqa: BLE001 -- a claim that cannot be measured is never earned, and a detector never raises
+        return _es_res("unverified", "read-failed", f"NO_DETECTOR — the empty-slice detector could not run ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})", no_detector=True, cause="read-failed")
+
+
+def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
+    sl, pp, cc = decl["slice"], decl["post_pass"], decl["cross_check"]
+    re_ = decl["run_evidence"]
+    tag = f"{sl['table']}[fact_category={sl['fact_category']}, fact_subject={sl['fact_subject']}]"
+    #<clause chart>
+    if not (isinstance(chart_id, str) and _UUID.fullmatch(chart_id)) or chart_id.startswith(_PHANTOM_CHART_PREFIX):
+        return _es_res("unverified", "chart", f"the measured chart {chart_id!r} is not a real chart id (the dead phantom 362f9f17 and a malformed id are refused)")
+    #</clause chart>
+    why, partitions = empty_slice_static_problem(decl)
+    #<clause declaration>
+    if why:
+        return _es_res("does_not_hold", "declaration", f"the declaration does not hold in the code tree: {why}")
+    #</clause declaration>
+    cp = set(code_paths or ())
+    #<clause closure>
+    if not {re_["emitter"]["file"], re_["caller"]["file"]} <= cp:
+        return _es_res("unverified", "closure", f"the emitter {re_['emitter']['file']} and the caller {re_['caller']['file']} are not both in the writer closure the Build.history window dates "
+                                                f"({len(cp)} file(s)): the build that wrote the evidence cannot be tied to this code")
+    #</clause closure>
+    #<clause window>
+    if not (isinstance(window, dict) and window.get("ok") and isinstance(window.get("epoch"), (int, float))):
+        return _es_res("unverified", "window", f"the Build.history window of the current writer code could not be determined ({(window or {}).get('reason', 'not supplied')}): the build cannot be placed against the code")
+    #</clause window>
+    #<clause attempts>
+    try:
+        attempts = empty_slice_attempts(aid, chart_id)
+    except Unknown as exc:
+        return _es_read_failure(exc, "the build attempt log (build_run_assets / build_runs)", clause="attempts")
+    #</clause attempts>
+    builds = [a for a in attempts if a["state"] == "complete" and a["disposition"] == "build"]
+    run = builds[-1] if builds else None
+    #<clause latest-build>
+    if run is None:
+        return _es_res("unverified", "latest-build", f"no complete `build` attempt of {aid} for this chart among its newest {len(attempts)} attempt(s): nothing ran the writer to completion")
+    #</clause latest-build>
+    later = [a for a in attempts[attempts.index(run) + 1:] if not (a["state"] == "complete" and a["disposition"] in ("skip_no_delta", ""))]
+    #<clause newer-attempt>
+    if later:
+        return _es_res("unverified", "newer-attempt", f"a later attempt of {aid} (run {later[0]['run_id'][:8]}, state {later[0]['state'] or '-'}, disposition {later[0]['disposition'] or '-'}, "
+                                                      f"{'started' if later[0]['started'] else 'never started'}) is newer than the complete build {run['run_id'][:8]} the evidence would describe: "
+                                                      "the newest build is not the evidenced one (only a skip_no_delta or a probe row may follow it)")
+    #</clause newer-attempt>
+    opens = float(window["epoch"])
+    #<clause in-window>
+    if not (run["created"] > opens or (bool(window.get("inclusive")) and run["created"] == opens)):
+        return _es_res("does_not_hold", "in-window", f"the newest complete build {run['run_id'][:8]} was created before the current writer code's window opens ({window.get('opens', opens)}): "
+                                                     "its evidence describes code that no longer exists")
+    #</clause in-window>
+    run_id = run["run_id"]
+    #<clause register-read>
+    try:
+        raw = psql("SELECT id::text, coalesce(run_id,''), coalesce(chart_id,''), coalesce(asset_id,''), coalesce(extract(epoch FROM occurred_at)::text,''), coalesce(rows_present::text,''), payload::text "
+                   f"FROM {ES_SOURCE_TABLE} WHERE event_type = '{ES_EVENT_TYPE}' AND asset_id = '{aid}' AND chart_id = '{chart_id}' ORDER BY id DESC LIMIT {ES_MAX_RECORDS + 1}")
+    except Unknown as exc:
+        return _es_read_failure(exc, f"the evidence register {ES_SOURCE_TABLE}", clause="register-read")
+    if any(len(x) != 7 for x in raw):
+        return _es_res("unverified", "register-read", "NO_DETECTOR — the evidence register answered with rows that do not parse into the 7 selected fields: not read", no_detector=True, cause="read-failed")
+    #</clause register-read>
+    truncated = len(raw) > ES_MAX_RECORDS
+    raw = raw[:ES_MAX_RECORDS]
+    mine = []
+    for row in raw:
+        rid, r_run, r_chart, r_asset, r_at, r_rows, r_payload = row
+        #<clause chart-binding>
+        if r_chart != chart_id or r_asset != aid:
+            return _es_res("does_not_hold", "chart-binding", f"evidence record {rid} belongs to chart {r_chart[:8]!r} / asset {r_asset!r}, not to the measured chart {chart_id[:8]} / {aid}: a record of another chart is not evidence of this one")
+        #</clause chart-binding>
+        #<clause run-binding>
+        if r_run != run_id:
+            continue
+        #</clause run-binding>
+        mine.append(row)
+    #<clause evidence-present>
+    if not mine:
+        return _es_res("does_not_hold", "evidence-present", f"no {ES_EVENT_TYPE} record exists for chart {chart_id[:8]} in the newest complete build {run_id[:8]}"
+                                                            f"{' (the newest ' + str(ES_MAX_RECORDS) + ' records of the chart were read)' if truncated else ''}: the post-pass is not shown to have run "
+                                                            "(a slice that was merely not run is never credited)")
+    #</clause evidence-present>
+    recs: dict[str, list] = {}
+    for rid, r_run, r_chart, r_asset, r_at, r_rows, r_payload in mine:
+        try:
+            p = json.loads(r_payload)
+        except ValueError:
+            p = None
+        if not isinstance(p, dict):
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid} is not a JSON object")
+        nested = isinstance(p.get("payload"), dict) and not (set(ES_PAYLOAD_REQUIRED) & set(p))        # the design shape (evidence under `payload`) or the flat event persist_event stores
+        body = p["payload"] if nested else p
+        #<clause record-shape>
+        miss = sorted(set(ES_PAYLOAD_REQUIRED) - set(body))
+        if miss:                                                                   # extra keys are tolerated (the whole event is stored beside the frozen keys); a MISSING frozen key never is
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid} lacks the frozen key(s) {miss} of {ES_EVIDENCE_SCHEMA}")
+        for k, col in (("chart_id", r_chart), ("asset_id", r_asset), ("run_id", r_run), ("type", ES_EVENT_TYPE)):
+            if k in p and str(p[k]) != col:
+                return _es_res("does_not_hold", "record-shape", f"evidence record {rid} says {k} {p[k]!r} but its register column says {col!r}: the record is inconsistent")
+        if body.get("schema") != ES_EVIDENCE_SCHEMA or body.get("post_pass") != pp or body.get("slice") != dict(table=sl["table"], fact_category=sl["fact_category"], fact_subject=sl["fact_subject"]):
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid} names schema {body.get('schema')!r}, post-pass {body.get('post_pass')!r}, slice {body.get('slice')!r}: not the declared {ES_EVIDENCE_SCHEMA} / {pp} / {tag}")
+        if not (isinstance(body.get("ayanamsha_id"), str) and _es_int(body.get("entries_evaluated")) and body["entries_evaluated"] >= 0 and isinstance(body.get("formed"), bool)
+                and _es_int(body.get("rows_written")) and body["rows_written"] >= 0 and _es_int(body.get("prior_rows_deleted")) and body["prior_rows_deleted"] >= 0
+                and ("chart_vichara_rows_inserted" not in body or (_es_int(body["chart_vichara_rows_inserted"]) and body["chart_vichara_rows_inserted"] >= 0))):
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid} has a value of the wrong type")
+        if r_rows != "" and r_rows != str(body["rows_written"]):
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid}: the register column rows_present {r_rows} differs from the record's rows_written {body['rows_written']}")
+        #</clause record-shape>
+        recs.setdefault(body["ayanamsha_id"], []).append(dict(id=rid, body=body, at=_epoch(r_at)))
+    #<clause partition-complete>
+    if set(recs) != set(partitions):
+        return _es_res("does_not_hold", "partition-complete", f"the evidence covers partition(s) {sorted(recs)} but the writer plans {sorted(partitions)}: missing {sorted(set(partitions) - set(recs))}, unplanned {sorted(set(recs) - set(partitions))} "
+                                                              f"({len(set(recs) & set(partitions))}/{len(partitions)} partitions)")
+    #</clause partition-complete>
+    #<clause single-record>
+    dup = sorted(a for a, v in recs.items() if len(v) != 1)
+    if dup:
+        return _es_res("does_not_hold", "single-record", f"more than one evidence record for partition(s) {dup} of run {run_id[:8]}: duplicate or conflicting records are not credited")
+    #</clause single-record>
+    one = {a: v[0] for a, v in recs.items()}
+    #<clause evaluated>
+    zero = sorted(a for a, v in one.items() if v["body"]["entries_evaluated"] < 1)
+    if zero:
+        return _es_res("does_not_hold", "evaluated", f"entries_evaluated is 0 in partition(s) {zero}: the post-pass evaluated nothing (a catalog without the entry is `not evaluated`, never `does not form`)")
+    #</clause evaluated>
+    #<clause not-formed>
+    formed = sorted(a for a, v in one.items() if v["body"]["formed"] is not False or v["body"]["rows_written"] != 0)
+    if formed:
+        return _es_res("does_not_hold", "not-formed", f"the post-pass reports formed or rows written in partition(s) {formed}: the slice is not empty by its own account")
+    #</clause not-formed>
+    lo, hi = run["started_at"], run["ended_at"]
+    #<clause time-bracket>
+    if lo is None or hi is None or any(not (lo - ES_CLOCK_SKEW_S <= v["at"] <= hi + ES_CLOCK_SKEW_S) for v in one.values()):
+        return _es_res("does_not_hold", "time-bracket", f"an evidence record lies outside the run {run_id[:8]} attempt's start..end bracket (started {lo}, ended {hi}, +-{ES_CLOCK_SKEW_S:g}s): "
+                                                         "a record planted or replayed outside the run is not evidence of it")
+    #</clause time-bracket>
+    try:
+        n = scalar(f"SELECT count(*)::text FROM \"{sl['table']}\" WHERE chart_id::text = '{chart_id}' AND fact_subject = '{sl['fact_subject']}'")
+    except Unknown as exc:
+        return _es_read_failure(exc, f"the live slice {tag}", clause="slice-read")
+    #<clause slice-empty>
+    if n is None or not str(n).strip().isdigit():
+        return _es_res("unverified", "slice-empty", f"the live count of {tag} returned {n!r}: not read")
+    if int(n) != 0:
+        return _es_res("does_not_hold", "slice-empty", f"{tag} holds {int(n)} row(s) for chart {chart_id[:8]} now: the slice is not empty (it is judged as it stands)")
+    #</clause slice-empty>
+    try:
+        xs = psql(f"SELECT \"{cc['partition_column']}\"::text, count(*)::text, count(DISTINCT \"{cc['build_column']}\"::text)::text, coalesce(min(\"{cc['build_column']}\"::text),''), coalesce(max(\"{cc['build_column']}\"::text),'') "
+                  f"FROM \"{cc['table']}\" WHERE chart_id::text = '{chart_id}' GROUP BY 1 ORDER BY 1")
+    except Unknown as exc:
+        return _es_read_failure(exc, f"the cross-check table {cc['table']}", clause="same-build-read")
+    if any(len(x) != 5 for x in xs):
+        return _es_res("unverified", "same-build-read", f"the cross-check read of {cc['table']} did not parse: not read")
+    by = {x[0]: x for x in xs}
+    skipped = sorted(a for a, v in one.items() if "chart_vichara_rows_inserted" not in v["body"])
+    #<clause same-build>
+    if set(by) != set(partitions) or any(not (x[2] == "1" and x[3] == run_id and x[4] == run_id) for x in by.values()):
+        odd = sorted(a for a, x in by.items() if not (x[2] == "1" and x[3] == run_id and x[4] == run_id)) + sorted(set(by) - set(partitions))
+        return _es_res("does_not_hold", "same-build", f"{cc['table']} rows of chart {chart_id[:8]} do not all come from run {run_id[:8]} in every partition (partitions found {sorted(by)}, off: {odd or 'a missing partition'}): "
+                                                       "the evidence does not describe the live output")
+    disagree = sorted(a for a, v in one.items() if "chart_vichara_rows_inserted" in v["body"] and str(v["body"]["chart_vichara_rows_inserted"]) != by[a][1])
+    if disagree:
+        return _es_res("does_not_hold", "same-build", f"the rows the post-pass says it saw inserted differ from the live {cc['table']} count in partition(s) {disagree}")
+    #</clause same-build>
+    hard = ("checked in every partition" if not skipped else f"skipped in {len(skipped)} partition(s) (the record carries no row count)")
+    block = dict(verified=True, form=ES_FORM, slice=dict(sl), post_pass=pp, run_id=run_id, chart=chart_id, partitions=sorted(partitions), partitions_expected=sorted(partitions),
+                 entries=list(decl["entries"]), criteria=list(decl["criteria"]), entries_evaluated={a: one[a]["body"]["entries_evaluated"] for a in sorted(one)}, formed=False, rows_written=0,
+                 window_opens=window.get("opens"), window_inclusive=bool(window.get("inclusive")), live_slice_rows=0,
+                 cross_check=dict(table=cc["table"], partitions=len(by), rows=sum(int(x[1]) for x in by.values()), row_count_hardening=hard),
+                 source=dict(table=ES_SOURCE_TABLE, event_type=ES_EVENT_TYPE, schema=ES_EVIDENCE_SCHEMA), records=len(one))
+    return dict(state="holds", clause=None, detail=empty_slice_text(block), evidence=block)
+
+
+def empty_slice_text(block: dict) -> str:
+    """The sentence every cell that rests on a verified empty slice prints (pure): the run, the partitions, the entries evaluated, the window and the live slice."""
+    sl = block.get("slice") or {}
+    ev = block.get("entries_evaluated") or {}
+    parts = block.get("partitions") or []
+    return (f"verified empty conditional slice {sl.get('table')}[fact_category={sl.get('fact_category')}, fact_subject={sl.get('fact_subject')}]: the post-pass {block.get('post_pass')} ran to completion in build run "
+            f"{block.get('run_id')} (the chart's newest complete build, inside the Build.history window that opens {block.get('window_opens')}); {len(ev)}/{len(parts)} ayanamsha partitions each carry one "
+            f"{(block.get('source') or {}).get('event_type')} record ({', '.join(parts)}); entries evaluated {'/'.join(str(ev[a]) for a in sorted(ev))}; formed false and 0 rows written in every partition; "
+            f"the live slice holds {block.get('live_slice_rows')} row(s) for the chart; the {(block.get('cross_check') or {}).get('table')} rows ({(block.get('cross_check') or {}).get('rows')}) all come from that run")
+
+
+def empty_slice_problem(crit: str, meas) -> str | None:
+    """None unless a record carrying an `empty_slice` block is NOT backed by a complete verified block (earned-signal re-check, the pattern of `vocab_values_na_problem` / `corpus_derived_na_problem`): the block
+    must say `verified` true, the form, a run id (a UUID), a non-empty partition set equal to the expected set, every partition evaluated at least once, formed false, rows written 0, a live slice of 0 rows, the
+    exempted entries and a `criteria` list that names THIS criterion (Null.schema_default rides on Null.blank_rows). A record that claims an exemption without that is not credited. Pure."""
+    b = meas.get("empty_slice") if isinstance(meas, dict) else None
+    if b is None:
+        return None
+    ev = b.get("entries_evaluated") if isinstance(b, dict) else None
+    ok = (isinstance(b, dict) and b.get("verified") is True and b.get("form") == ES_FORM and isinstance(b.get("run_id"), str) and _UUID.fullmatch(b["run_id"])
+          and isinstance(b.get("partitions"), list) and b["partitions"] and b.get("partitions") == b.get("partitions_expected") and isinstance(ev, dict) and set(ev) == set(b["partitions"])
+          and all(_es_int(n) and n >= 1 for n in ev.values()) and b.get("formed") is False and b.get("rows_written") == 0 and b.get("live_slice_rows") == 0
+          and isinstance(b.get("entries"), list) and b["entries"] and isinstance(b.get("criteria"), list)
+          and (crit in b["criteria"] or (crit == "Null.schema_default" and "Null.blank_rows" in b["criteria"])))
+    if not ok:
+        return (f"{crit} carries an `empty_slice` exemption that is not backed by a verified evidence block (verified, the form, a run id, the complete partition set, entries evaluated >= 1 in every partition, "
+                "formed false, 0 rows written, an empty live slice, the entries and this criterion named): an exemption without it is not credited")
+    return None
+
+
+def _es_exempt_block(counts, e):
+    """The verified `empty_slice` block of entry `e` in a grader's `counts`, or None (never credited: a block that fails `empty_slice_problem` is as good as none)."""
+    c = counts.get(e) if isinstance(counts, dict) else None
+    b = c.get("exempt") if isinstance(c, dict) else None
+    return b if isinstance(b, dict) and empty_slice_problem("Narr.checkable", dict(empty_slice=b)) is None else None
+
+
+def _es_scope_exempt(table):
+    """The verified `empty_slice` block of the read scope of `table` (set by mark_empty_scopes), else None."""
+    v = _READ_SCOPE.get(str(table).strip('"').lower())
+    b = v.get("exempt") if v else None
+    return b if isinstance(b, dict) else None
+
+
+def _es_entry_exempt(block: dict, table: str, entry: str, own: dict) -> bool:
+    """Whether prose entry `entry` (held in `table`) is exempted by the scope's verified `block`: it is one of the declared entries AND no owned table other than the slice table holds its column
+    (an entry a measured table also holds is never exempted: the measured rows decide it)."""
+    if entry not in (block.get("entries") or ()):
+        return False
+    held = _holders(parse_prose_field(entry)[0], own)
+    #<clause entry-holders>
+    if held != [table]:
+        return False
+    #</clause entry-holders>
+    return True
+
+
+def empty_slice_exempt_fn(decl, thunk):
+    """The `exempt_fn` of mark_empty_scopes for an asset that declares `empty_slice_by_conditional`: asked per EMPTY scoped table, answers the detector's outcome for the declared slice table ONLY (computed once
+    through `thunk`), None for every other table (its block stands)."""
+    cache: list = []
+
+    def fn(table, scope):
+        #<clause per-table-exemption>
+        if not (isinstance(decl, dict) and isinstance(decl.get("slice"), dict) and str(table).strip('"').lower() == decl["slice"].get("table")):
+            return None
+        #</clause per-table-exemption>
+        if not cache:
+            cache.append(thunk())
+        return cache[0]
+    return fn
+
+
+def empty_slice_outcome_for(decl, aid: str, has_writer: bool, files, whist) -> dict:
+    """measure()'s thunk: the Build.history window and writer closure of `aid` (the SAME computation as `_WindowedHistory.cell`), then the detector for the measured chart. Never raises."""
+    window, paths = whist.window(aid, has_writer, files)
+    return empty_slice_conditional_outcome(decl, aid, CHART_ID, window=window, code_paths=paths)
 
 
 def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
@@ -13686,9 +14315,13 @@ def _apply_writer_scan(out: dict, pf, ctx: dict) -> None:
     if clean and ws["v"] == PASS:
         block = dict(verified=True, v=PASS, entries=list(pf), columns=sorted({parse_prose_field(e)[0] for e in pf}), files=list(ws["files"]),
                      paths_per_entry={e: ws["entries"][e]["writes"] for e in pf}, schema_default_clean=True, blank_rows_clean=True, scan=ws["measured"])
+        _eb = out["Null.blank_rows"].get("empty_slice")
         for crit in NULL_CHECKS:
             out[crit] = dict(out[crit], v=PASS, writer_scan=dict(block),
                              measured=f"PASS earned by the writer scan: {out[crit]['measured'].split('; schema defaults')[0].split('; writer literal')[0]}; {ws['measured']}")
+            if isinstance(_eb, dict) and "empty_slice" not in out[crit]:        # SS N-431/N-545: the joint lift also rests on the exempted entry's verified slice: the sibling carries the block and says so
+                out[crit] = dict(out[crit], empty_slice=_eb, exempt_entries=list(out["Null.blank_rows"].get("exempt_entries") or []),
+                                 measured=out[crit]["measured"] + f"; the exempted entr(ies) {', '.join(out['Null.blank_rows'].get('exempt_entries') or [])} stay under the writer scan; {empty_slice_text(_eb)}")
         return
     for crit in NULL_CHECKS:
         rec = out.get(crit)
@@ -14622,7 +15255,7 @@ def _completion_integrity(rec: dict, r: dict) -> dict:
 # ─────────────────────── N-150: the declared produced-table set for Build.completion (rev 4) ───────────────────────
 # The orchestrator's own bookkeeping tables are written by the build machinery around a writer, never produced by it: never an "undeclared extra".
 PRODUCED_SET_HOPS = 6      # deeper than Idem.pattern's IDEM_DELEGATION_HOPS: a cut chain would make every declared set unprovable (ga_dashas reaches a pure verifier three hops down)
-BOOKKEEPING_TABLES = frozenset({"asset_throughput", "build_runs", "build_run_assets", "build_substep_progress", "asset_provenance_receipts"})
+BOOKKEEPING_TABLES = frozenset({"asset_throughput", "build_runs", "build_run_assets", "build_substep_progress", "asset_provenance_receipts", "orchestrator_event_register"})
 
 
 def produced_set_written(aid: str, files: list[str]) -> dict:
@@ -18674,6 +19307,21 @@ class _WindowedHistory:
             return None, f"the timed attempt log could not be read ({self._err or 'unknown'})"
         return [dict(a, created_epoch=a["epoch"]) for a in self._log.get(aid, []) if a.get("started")], None
 
+    def window(self, aid: str, has_writer: bool, files: list[str]) -> tuple[dict, list[str]]:
+        """(window, code paths) of `aid`: the SAME computation as `cell` (the later of the writer closure's last change and the registry identity, the certification floor applied), but returned instead of
+        graded. A window that cannot be determined is `dict(ok=False, reason)`; never raises."""
+        paths: list[str] = []
+        try:
+            self._reader_ready()
+            paths = _writer_code_paths(aid, files, has_writer)
+            window = self._bw.compute_window(self.reader, aid, paths)
+            if window.get("ok"):
+                fl, why = self.cert_floor()
+                window = self._bw.apply_certification_floor(window, fl, why)
+        except Exception as exc:                       # noqa: BLE001 -- a date is evidence, never a crash
+            window = dict(ok=False, reason=f"{type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
+        return window, list(paths)
+
     def cell(self, aid: str, h: dict, has_writer: bool, files: list[str]) -> dict:
         if self._bw is None:
             self._bw = _lint_module("build_window")
@@ -20759,6 +21407,17 @@ def _group_counts(groups, r, own, shared) -> dict:
     absent (unknown). Raises Unknown on a failed read."""
     counts = {}
     for t, es in groups.items():
+        ex = _es_scope_exempt(t)
+        if ex:                                              # SS N-431/N-545: an entry only the verified-empty conditional slice holds is n/a with its evidence (the block rides in the count), never unknown
+            kept = []
+            for e in es:
+                if _es_entry_exempt(ex, t, e, own):
+                    counts[e] = dict(exempt=ex)
+                else:
+                    kept.append(e)
+            es = kept
+            if not es:
+                continue
         sc = _table_scope(t, r, own, shared)
         if sc is None:
             continue
@@ -22647,7 +23306,9 @@ def measure(layer_key: str, assets=None) -> dict:
         _src_declared = isinstance(_src, dict) and (_src.get("na") is not None or _src.get("level") is not None)
         _own_t = [t_ for t_ in dict.fromkeys(([tbl] if tbl else []) + list(ctables)) if t_ and t_ in cat["exists"]]
         _rscopes = read_scopes(_own_t, r, {t_: _target_columns_fact(t_, cat) for t_ in _own_t}, dens_shared, _sd, CHART_ID) if _own_t else {}
-        mark_empty_scopes(_rscopes, convention_holds=zr_holds)    # a scoped table with NO rows for the measured chart is not judged (vacuous), unless a verified zero_row_convention says zero rows is by design here
+        _es_decl = _sd.get(ES_FORM) if isinstance(_sd, dict) else None
+        mark_empty_scopes(_rscopes, convention_holds=zr_holds,
+                          exempt_fn=(empty_slice_exempt_fn(_es_decl, lambda _d=_es_decl, _a=aid, _hw=r["has_writer"], _f=files: empty_slice_outcome_for(_d, _a, _hw, _f, whist)) if isinstance(_es_decl, dict) else None))    # SS N-431/N-545 (the declared empty_slice_by_conditional) ; a scoped table with NO rows for the measured chart is not judged (vacuous), unless a verified zero_row_convention says zero rows is by design here
         set_read_scope(_rscopes)                              # every live data read below (prose closures, label values, Ldgr sources, vocabulary samples, depth, identity) is the measured chart's
         if tbl and tbl in cat["exists"]:
             # R41: each of these four checks queries the target table independently (one of them,
@@ -22956,6 +23617,11 @@ def measure(layer_key: str, assets=None) -> dict:
                                                                           "at field level"))
 
         m["Dens.served"] = dens_uniform_authority_gate(m.get("Dens.served"), m.get("Ldgr.source_presence"))      # SS N-212 (M3): a uniform-authority PASS needs this run's own source reading
+        for _es_t, _es_sc in _rscopes.items():                  # SS N-431/N-545: a declared empty slice the detector did NOT credit: the cells read exactly as before and name the clause that decided
+            if isinstance(_es_sc.get("empty_slice_declined"), dict):
+                for _es_c in ES_CRITERIA + ("Null.schema_default",):
+                    if isinstance(m.get(_es_c), dict) and "empty_slice" not in m[_es_c]:
+                        m[_es_c] = dict(m[_es_c], empty_slice_declined=dict(_es_sc["empty_slice_declined"], table=_es_t))
         stamp_read_scope(m, _rscopes)
         set_read_scope(None)
         end_asset_read_budget()

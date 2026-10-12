@@ -131,8 +131,13 @@ _V_UNREAD = (re.compile(r"([\w.]+): part of the column could not be sampled \(le
              _V_CONN_PROBE, _V_CONN_SAMPLE)
 
 
+# SS N-431/N-545: a Vocab.alias record whose conditional produced slice is VERIFIED EMPTY ends with ONE last segment "; <table>: verified empty conditional slice ..." (asset_census.empty_slice_text). It is evidence, not a
+# finding: it is stripped before the named ceilings are matched. The ZERO-ROW wording ("the table holds NO rows in the read scope", an `unread:` item) is not in it and stays a finding.
+_ES_VOCAB_SEGMENT = re.compile(r"; [a-z_][a-z0-9_]*: verified empty conditional slice .*\Z", re.S)
+
+
 def m_vocab(aid: str, text: str):
-    t = text.replace("alias(es)", "aliases")
+    t = _ES_VOCAB_SEGMENT.sub("", text.replace("alias(es)", "aliases"))
     m = _V_PRE.fullmatch(t)
     if not m or m.group(3) is None:
         return None
@@ -174,6 +179,7 @@ _V_SENTINEL = "no whole value is a term, so the spelling cannot be graded: PARTI
 
 
 def m_vocab_embedded_only(aid: str, text: str):
+    text = _ES_VOCAB_SEGMENT.sub("", text)
     # the bad-word scan skips the sentinel and the connection-lost unread segments (their psql wording holds "failed", which is no finding of the part; the segment itself is still matched whole below)
     if not text.startswith("embedded vocabulary, spelling unchecked: ") or "every whole value found is canonical" in text or _V_BAD_WORDS.search(_V_CONN_SAMPLE.sub("", _V_CONN_PROBE.sub("", text.replace(_V_SENTINEL, "")))):
         return None
