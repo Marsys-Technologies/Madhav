@@ -1109,7 +1109,8 @@ def test_the_ga_vichara_patch_applies_its_guards_and_validates_once_the_writer_s
         node = e
         for k in op["path"][:-1]:
             node = node[k]
-        cur = node[op["path"][-1]] if (isinstance(node, dict) and op["path"][-1] in node) else None
+        k = op["path"][-1]
+        cur = node[k] if ((isinstance(node, dict) and k in node) or (isinstance(node, list) and isinstance(k, int) and k < len(node))) else None
         assert cur == op["expect"], op["path"]                                    # the guard
         node[op["path"][-1]] = op["value"]
     es = e["empty_slice_by_conditional"]
