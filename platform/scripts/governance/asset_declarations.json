@@ -17597,13 +17597,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:159",
    "read_table": "kala_jivana_parva",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_jivana_parva; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:438; called at platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:191 MD, :251 AD, :327 PD; inserted to kala_jivana_parva.narrative at :354); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:152."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:159 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
+    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:438; called at platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:191 MD, :251 AD, :327 PD; inserted to kala_jivana_parva.narrative at :354); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:153."
    },
    "evidence_kind": "writer"
   },
