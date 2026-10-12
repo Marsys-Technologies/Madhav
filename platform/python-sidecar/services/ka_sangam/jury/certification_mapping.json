@@ -1,6 +1,6 @@
 {
   "version": "K4-3/v1",
-  "registry_revision": 26,
+  "registry_revision": 29,
   "asset": "ka_sangam",
   "scope": "K4 candidate fixture and attachment preparation; legacy output and production qualification remain separate",
   "kind": "data",
@@ -37,8 +37,8 @@
         "Build.contract": 2,
         "Build.target": 2,
         "Build.dag": 4,
-        "Build.count_integrity": 3,
-        "Build.completion": 6,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
         "Build.exercised": 3,
         "Build.history": 3,
         "Build.dep_liveness": 3
@@ -47,7 +47,7 @@
     },
     "Idem": {
       "revisions": {
-        "Idem.pattern": 4
+        "Idem.pattern": 5
       },
       "expected_reading": "Candidate class replacement plus repeated SQL readback; no production verdict"
     },
@@ -60,8 +60,8 @@
     },
     "Vocab": {
       "revisions": {
-        "Vocab.identity": 2,
-        "Vocab.alias": 8
+        "Vocab.identity": 3,
+        "Vocab.alias": 9
       },
       "expected_reading": "Typed event/claim identities; legacy table alias certification unproved"
     },
@@ -79,17 +79,17 @@
     },
     "Narr": {
       "revisions": {
-        "Narr.agree": 7,
-        "Narr.checkable": 6,
-        "Narr.fidelity_test": 6,
+        "Narr.agree": 8,
+        "Narr.checkable": 7,
+        "Narr.fidelity_test": 7,
         "Narr.lint": 7
       },
       "expected_reading": "Closed attachment reasons and identities compose no prose; mixed legacy prose undeclared"
     },
     "Null": {
       "revisions": {
-        "Null.schema_default": 9,
-        "Null.blank_rows": 9
+        "Null.schema_default": 10,
+        "Null.blank_rows": 10
       },
       "expected_reading": "Explicit unavailable report and named unmatched reasons; whole-table live graders unmeasured"
     },
