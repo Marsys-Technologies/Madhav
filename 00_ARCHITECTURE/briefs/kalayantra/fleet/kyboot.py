@@ -289,7 +289,7 @@ CODEX_DISABLED_FEATURES = ("memories", "multi_agent", "multi_agent_v2", "apps", 
                            "plugin_hooks", "recommended_plugins", "remote_control", "js_repl")
 CODEX_BOUND_FACTS = ("engine", "codex_bin", "codex_bin_sha256", "model", "effort", "sandbox", "network",
                      "work_root", "commit_mode", "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
-                     "ignore_user_config", "ignore_rules", "persistent_mode", "exclude_slash_tmp",
+                     "ignore_user_config", "ignore_rules", "skills_include_instructions", "persistent_mode", "exclude_slash_tmp",
                      "exclude_tmpdir_env_var", "project_agents_md_sha256",
                      "user_codex_agents_md_sha256",
                      "user_codex_hooks_sha256", "zdotdir_sha256", "harness_sha256")
@@ -1329,7 +1329,7 @@ def expected_codex_binds(launch, components, facts) -> dict:
             "env_names": sorted(launch["env"]), "child_path": launch["env"]["PATH"],
             "output_schema_sha256": launch.get(OUTPUT_SCHEMA_FILE[1], "absent"),
             "codex_disabled_features": list(CODEX_DISABLED_FEATURES), "ignore_user_config": True,
-            "ignore_rules": True, "persistent_mode": False, "exclude_slash_tmp": True,
+            "ignore_rules": True, "skills_include_instructions": False, "persistent_mode": False, "exclude_slash_tmp": True,
             "exclude_tmpdir_env_var": False, "project_agents_md_sha256": facts.get("project_agents_md_sha256"),
             "user_codex_agents_md_sha256": facts.get("user_codex_agents_md_sha256"),
             "user_codex_hooks_sha256": facts.get("user_codex_hooks_sha256"),
@@ -1540,7 +1540,8 @@ def build_codex_launch(launch) -> dict:
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=" + ("true" if launch["network"] is True else "false"),
-            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
+            "-c", "skills.include_instructions=false"]
     for feature in CODEX_DISABLED_FEATURES:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:

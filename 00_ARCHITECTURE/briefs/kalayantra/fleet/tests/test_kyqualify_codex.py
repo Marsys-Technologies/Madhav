@@ -33,148 +33,7 @@ sys.path.insert(0, str(FLEET))
 import kyqualify  # noqa: E402
 import kyschema  # noqa: E402
 
-FAKE_CODEX = r'''#!/usr/bin/env python3
-import json, os, re, secrets, shlex, subprocess, sys, time
-here = os.path.dirname(os.path.realpath(__file__))
-cfg = json.load(open(os.path.join(here, "fake.json")))
-a = sys.argv[1:]
-if a == ["--version"]:
-    print(cfg["version"]); sys.exit(0)
-assert a[0] == "exec" and a[-1] == "-", a
-def opt(name):
-    return a[a.index(name) + 1] if name in a else None
-def every(name):
-    return [a[i + 1] for i, x in enumerate(a) if x == name]
-conf = {}
-for item in every("-c"):
-    key, value = item.split("=", 1)
-    conf[key] = value.strip('"')
-sandbox, model, workdir = opt("-s"), opt("-m"), opt("-C")
-network = sandbox == "workspace-write" and conf.get("sandbox_workspace_write.network_access") == "true"
-roots = [workdir] + every("--add-dir") + ([os.environ["TMPDIR"]] if sandbox == "workspace-write" else [])
-if sandbox == "workspace-write" and (conf.get("sandbox_workspace_write.exclude_slash_tmp") != "true"
-                                     or cfg["slash_tmp_leaks"]):
-    roots.append("/tmp")                      # the real program's default: /tmp is a writable root unless excluded
-roots = [os.path.realpath(r) for r in roots if r]
-for path, content in cfg["write"].items():    # a job that replaces a file it must leave alone
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        f.write(content)
-for path in cfg["touch"]:                     # a job that changes what it must leave alone
-    with open(path, "a") as f:
-        f.write("# changed by a job\n")
-prompt = sys.stdin.read()
-cm = re.search(r"(?:with your shell tool|wait for it to finish): (.*)\n", prompt)
-command = cm.group(1) if cm else None
-kind = "command" if command else "ctx" if "AGENTS.md" in prompt else "ready"
-with open(os.path.join(here, "calls.jsonl"), "a") as f:
-    f.write(json.dumps({"argv": a, "kind": kind, "command": command, "env_names": sorted(os.environ),
-                        "cwd": os.getcwd(), "home": os.environ.get("HOME"), "tmpdir": os.environ.get("TMPDIR"),
-                        "job_scratch": os.environ.get("JOB_SCRATCH")}) + "\n")
-def out(ev):
-    sys.stdout.write(json.dumps(ev) + "\n"); sys.stdout.flush()
-thread = "0199c0de-0000-7000-8000-" + secrets.token_hex(6)
-home = os.environ.get("HOME", "/nonexistent")
-if not (cfg["logged_in"] and (cfg["auth_ignores_home"] or os.path.exists(os.path.join(home, ".codex", "signed_in")))):
-    sys.stderr.write(cfg["unsigned_error"] + "\n")
-    out({"type": "thread.started", "thread_id": thread})
-    out({"type": "error", "message": cfg["unsigned_error"]})
-    out({"type": "turn.failed", "error": {"message": cfg["unsigned_error"]}})
-    sys.exit(1)
-served = cfg["serve_model"] or model
-out({"type": "thread.started", "thread_id": thread})
-if cfg["rollout"]:
-    day = os.path.join(home, ".codex", "sessions", "2026", "10", "12")
-    os.makedirs(day, exist_ok=True)
-    with open(os.path.join(day, "rollout-2026-10-12T00-00-00-%s.jsonl" % thread), "w") as f:
-        f.write(json.dumps({"type": "session_meta", "payload": {"id": thread, "cwd": workdir}}) + "\n")
-        if cfg["persistent"]:                   # the model's persistent-mode block, as a developer message
-            f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "developer", "content": [
-                {"type": "input_text", "text": "<persistent_mode>You are now in persistent mode</persistent_mode>"}]}}) + "\n")
-        f.write(json.dumps({"type": "turn_context", "payload": {
-            "cwd": workdir, "model": served, "effort": conf.get("model_reasoning_effort"),
-            "approval_policy": conf.get("approval_policy"),
-            "sandbox_policy": {"mode": cfg["serve_sandbox"] or sandbox, "network_access": network}}}) + "\n")
-out({"type": "turn.started"})
-if kind in cfg["hang_on"]:
-    time.sleep(600)
-if cfg["mcp_call"]:
-    out({"type": "item.completed", "item": {"id": "item_m", "type": "mcp_tool_call", "server": "db", "tool": "q",
-                                            "status": "completed"}})
-if cfg["extra_item"]:
-    out({"type": "item.completed", "item": {"id": "item_x", "type": cfg["extra_item"], "status": "completed"}})
-turns = [0]
-def inside(path):
-    real = os.path.realpath(path)
-    return any(real == r or real.startswith(r + "/") for r in roots)
-def shell(line, env=None):
-    done = subprocess.run(["/bin/sh", "-c", line], capture_output=True, text=True, env=env)
-    return done.returncode, done.stdout + done.stderr
-def run_command(line):
-    """(exit code, output) as the sandbox would let the command run"""
-    m = re.match(r"^printf %s (\S+) > (.+)$", line)
-    if m:
-        target = shlex.split(m.group(2))[0]
-        if inside(os.path.dirname(os.path.abspath(target)) or ".") and sandbox != "read-only" or cfg["sandbox_leaks"]:
-            return shell(line)
-        return 1, "sh: %s: Operation not permitted" % target
-    if "launchctl" in line:
-        program = shlex.split(line)[0]
-        if not program.startswith(here + "/"):              # SAFETY: never any launchctl but the test's fake
-            open(os.path.join(here, "VIOLATION"), "a").write(line + "\n")
-            return 99, "refused by the fake: not the fake launchctl"
-        if cfg["launchctl_blocked"]:
-            return 1, "Bootstrap failed: 1: Operation not permitted"
-        return shell(line)
-    if line.startswith("curl "):
-        if network or cfg["network_leaks"]:
-            return shell(line)
-        return 7, "curl: (7) Failed to connect to 127.0.0.1: Operation not permitted"
-    if line.startswith("git commit"):
-        common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                                capture_output=True, text=True).stdout.strip()
-        if not cfg["git_blocked"] and (sandbox == "workspace-write" and inside(".") and inside(common)
-                                       or cfg["sandbox_leaks"]):
-            return shell(line, dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1"))
-        return 128, "fatal: Unable to create '%s/index.lock': Operation not permitted" % common
-    if line == "sleep 600":
-        child = subprocess.Popen(["/bin/sleep", "600"])
-        child.wait()
-        return child.returncode, ""
-    return shell(line)
-text = "READY"
-if kind == "ctx":
-    first = "NO_PROJECT_INSTRUCTIONS"
-    if os.path.exists("AGENTS.md") and cfg["load_project_md"]:
-        lines = [l.strip() for l in open("AGENTS.md").read().splitlines() if l.strip()]
-        first = lines[-1][:30]
-    second = "NO_USER_POLICY"
-    user = os.path.join(home, ".codex", "AGENTS.md")
-    if os.path.exists(user) and cfg["load_user_md"]:
-        second = re.search(r"Archives worth keeping[^`\n]*`([^`\n]+)`", open(user).read()).group(1).rstrip("/")
-    skills = os.path.join(home, ".codex", "skills")
-    third = ", ".join(sorted(os.listdir(skills))) if cfg["skills_visible"] and os.path.isdir(skills) else "NO_SKILLS"
-    text = first + "\n" + second + "\n" + third
-elif kind == "command" and cfg["never_attempt"] and command != "sleep 600":
-    text = "REFUSED"
-elif kind == "command":
-    turns[0] += 1
-    item = {"id": "item_%d" % turns[0], "type": "command_execution", "command": "bash -lc " + shlex.quote(command),
-            "aggregated_output": "", "exit_code": None, "status": "in_progress"}
-    out({"type": "item.started", "item": item})
-    code, shown = run_command(command)
-    if cfg["report_success"]:
-        code = 0
-    out({"type": "item.completed", "item": dict(item, aggregated_output=shown, exit_code=code,
-                                                status="completed" if code == 0 else "failed")})
-    text = "DONE" if code == 0 else "REFUSED"
-reply = {"type": "item.completed", "item": {"id": "item_r", "type": "agent_message", "text": text}}
-out(reply)
-final = opt("-o")
-if final:
-    open(final, "w").write(text)
-out({"type": "turn.completed", "usage": {"input_tokens": 12000, "cached_input_tokens": 0, "output_tokens": 9}})
-'''
+FAKE_CODEX = (FLEET / "tests" / "fixtures" / "b0c_engines" / "fake_codex_qualify.py").read_text()
 
 FAKE_LAUNCHCTL = r'''#!/usr/bin/env python3
 import json, os, plistlib, sys
@@ -203,7 +62,7 @@ DEFAULT = {"version": "codex-cli 0.162.0-alpha.17.2", "logged_in": True, "auth_i
            "unsigned_error": "Error: Not logged in. Run `codex login` to sign in.", "serve_model": None,
            "serve_sandbox": None, "rollout": True, "hang_on": [], "mcp_call": False, "extra_item": None,
            "sandbox_leaks": False, "launchctl_blocked": True, "network_leaks": False, "never_attempt": False,
-           "report_success": False, "load_project_md": True, "load_user_md": False, "git_blocked": False,
+           "report_success": False, "load_project_md": True, "load_user_md": True, "git_blocked": False,
            "persistent": False, "touch": [], "write": {}, "slash_tmp_leaks": False,
            "skills_visible": False}
 ENV_NAMES = ["HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "ZDOTDIR", "KY_ROOT", "KY_RUN", "KY_SCRATCH",
@@ -219,7 +78,7 @@ BIND_KEYS = {"engine", "codex_bin", "codex_bin_sha256", "codex_version", "argv",
              "prompt_sha256", "output_schema_sha256", "codex_disabled_features", "ignore_user_config", "ignore_rules",
              "persistent_mode", "work_root", "commit_mode", "exclude_slash_tmp", "exclude_tmpdir_env_var",
              "project_agents_md_sha256", "user_codex_agents_md_sha256", "user_codex_hooks_sha256", "zdotdir_sha256",
-             "harness_sha256"}
+             "harness_sha256", "skills_include_instructions"}
 FEATURES = ["memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin", "browser_use",
             "browser_use_external", "in_app_browser", "computer_use", "hooks", "daemon_auto_start", "goals",
             "tool_suggest", "worktrees", "image_generation", "in_app_local_automation", "chronicle", "enable_fanout", "agent_message_board", "send_async_message",
@@ -377,7 +236,8 @@ def expected_argv(cfg, job="<JOB_DIR>"):
             "-c", 'model_reasoning_effort="%s"' % cfg["effort"], "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=%s" % str(cfg["network"]).lower(),
-            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
+            "-c", "skills.include_instructions=false"]
     for feature in FEATURES:
         argv += ["--disable", feature]
     for directory in cfg["writable_dirs"]:
@@ -675,12 +535,11 @@ def test_a_credential_name_where_the_harness_runs_refuses(rig):
     ({"load_project_md": False}, "project_instructions_visible", "fail", "no project instructions are loaded"),
     ({"hang_on": ["ctx"]}, "no_tty_prompt", "fail", None),
     ({"persistent": True}, "persistent_mode_absent", "fail", "the program's session record shows persistent mode"),
-    ({"slash_tmp_leaks": True}, "slash_tmp_write_denied", "fail", "the refused action took effect"),
     ({"skills_visible": True}, "user_skills_visible", "fail", "synced"),
     ({"rollout": False}, "persistent_mode_absent", "unknown", "was not observed either way"),
 ], ids=["outside-leak", "outside-never-tried", "outside-silent", "launchctl-loads", "write-never-tried",
         "other-model", "no-session-record", "other-sandbox", "mcp", "delegation", "unknown-item", "no-agents-md",
-        "hang", "persistent-mode", "slash-tmp-writable", "user-skills", "persistent-unobserved"])
+        "hang", "persistent-mode", "user-skills", "persistent-unobserved"])
 def test_a_builder_detector_reads_no_when_the_program_does_what_it_must_not(rig, over, check, result, why):
     rig.configure(**over)
     r, receipt, _, _ = rig.qualify(args=("--run-timeout", "8") if over.get("hang_on") else ())
@@ -1004,3 +863,139 @@ def test_a_worktree_entry_added_during_the_run_is_ignored_and_an_included_config
     r, receipt, _, _ = rig.qualify()
     got = receipt["checks"]["git_config_hooks_unchanged"]
     assert got["result"] == "fail" and got["observed"]["changes"] == ["include:" + str(included)]
+
+
+REAL_FIXTURES = FLEET / "tests" / "fixtures" / "b0c_engines"
+
+
+def real_record(tmp_path, name):
+    stream = REAL_FIXTURES / ("real-" + name + "-stdout.jsonl")
+    rec, text = kyqualify.codex_stream_record(stream, tmp_path / "absent-stderr")
+    day = tmp_path / ".codex" / "sessions" / "2026" / "10" / "13"
+    day.mkdir(parents=True, exist_ok=True)
+    path = day / ("rollout-real-" + rec["thread_id"] + ".jsonl")
+    path.write_bytes((REAL_FIXTURES / ("real-" + name + "-rollout.jsonl")).read_bytes())
+    rec.update(id=name, exit_code=0, timed_out=False, terminated_by_signal=False)
+    rec["rollout"] = kyqualify.rollout_record(str(tmp_path), rec["thread_id"])
+    return rec, text, path
+
+
+@pytest.mark.parametrize("name,marker", [
+    ("git-commit", "KYQ-555b5e21be84df90"),
+    ("git-dir-write", "KYQ-d249f96deb47e0b5"),
+    ("outside-write", "CANARY_OUTSIDE.txt"),
+    ("tmp-write", "KYQ-d0362c6a5c6a3881"),
+    ("private-tmp-write", "KYQ-56634f8a8d228da4"),
+])
+def test_real_exec_wrapper_refusals_are_observed_from_rollout(tmp_path, name, marker):
+    # Missing custom_tool_call/output parsing must fail each refusal independently.
+    rec, _, _ = real_record(tmp_path, name)
+    assert rec["commands"] == []  # the real public stream omits these exec calls
+    got = kyqualify.judge_codex_effect(rec, False, marker, False, "real canary")
+    assert got["result"] == "pass", got
+    assert got["attempts"][0]["refused"] is True
+    assert "operation not permitted" in got["attempts"][0]["output"].lower()
+
+
+@pytest.mark.parametrize("mutation", ["no-call", "no-output", "wrong-call-id", "missing-exit", "success", "multiple-commands", "fabricated-result"])
+def test_rollout_never_infers_a_refusal_from_unpaired_or_ambiguous_output(tmp_path, mutation):
+    rec, _, path = real_record(tmp_path, "outside-write")
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    if mutation in ("no-call", "no-output"):
+        kind = "custom_tool_call" if mutation == "no-call" else "custom_tool_call_output"
+        rows = [r for r in rows if r.get("payload", {}).get("type") != kind]
+    for row in rows:
+        pl = row.get("payload", {})
+        if pl.get("type") == "custom_tool_call" and mutation == "multiple-commands":
+            pl["input"] += 'await tools.exec_command({cmd:"false"});'
+        if pl.get("type") == "custom_tool_call" and mutation == "fabricated-result":
+            pl["input"] = pl["input"].replace("text(result)", "text({exit_code:1,output: \"fake\"})")
+        if pl.get("type") == "custom_tool_call_output":
+            if mutation == "wrong-call-id":
+                pl["call_id"] = "unrelated"
+            if mutation in ("missing-exit", "success"):
+                data = json.loads(pl["output"][1]["text"])
+                if mutation == "missing-exit":
+                    del data["exit_code"]
+                else:
+                    data["exit_code"] = 0
+                pl["output"][1]["text"] = json.dumps(data)
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    rec["rollout"] = kyqualify.rollout_record(str(tmp_path), rec["thread_id"])
+    assert kyqualify.judge_codex_effect(rec, False, "CANARY_OUTSIDE.txt", False, "canary")["result"] == "unknown"
+
+
+def test_real_project_instructions_are_distinguished_from_global_agents(builder, tmp_path):
+    recs, texts = {}, {}
+    for path in (builder.evidence / "runs").glob("*/run.json"):
+        recs[path.parent.name] = json.loads(path.read_text())
+        texts[path.parent.name] = (path.parent / "job_scratch" / "final_message.txt").read_text() if (path.parent / "job_scratch" / "final_message.txt").exists() else ""
+    for name in ("base", "empty"):
+        rec, texts[name], _ = real_record(tmp_path / name, name)
+        recs[name].update(rec)
+    facts = json.loads((builder.evidence / "facts.json").read_text())
+    facts["project_agents_footer"] = "as the shared project state."
+    facts["project_agents_text"] = next(json.loads(l)["payload"]["content"][0]["text"].split("<INSTRUCTIONS>\n", 1)[1].split("\n</INSTRUCTIONS>", 1)[0]
+        for l in (REAL_FIXTURES / "real-base-rollout.jsonl").read_text().splitlines()
+        if json.loads(l).get("payload", {}).get("role") == "user")
+    checks, _ = kyqualify.judge_codex(builder.doc(), recs, texts, facts)
+    assert checks["project_instructions_visible"]["result"] == "pass", checks["project_instructions_visible"]
+    # Claiming a footer in the reply cannot substitute for the actual project block.
+    recs["base"]["rollout"] = recs["empty"]["rollout"]
+    checks, _ = kyqualify.judge_codex(builder.doc(), recs, texts, facts)
+    assert checks["project_instructions_visible"]["result"] == "fail"
+
+
+def test_skill_instructions_are_suppressed_in_the_bound_launch_line(builder):
+    assert "skills.include_instructions=false" in builder.receipt["binds"]["argv"]
+    assert builder.receipt["binds"]["skills_include_instructions"] is False
+
+
+def test_real_network_refusal_still_needs_an_allowed_control(tmp_path):
+    rec, _, _ = real_record(tmp_path, "network")
+    got = kyqualify.judge_codex_effect(rec, False, "KYQ-1e132a342f3c9a9b", False, "loopback")
+    assert got["result"] == "pass" and got["attempts"][0]["exit_code"] == 7
+    # The full judge's independent missing-control regression is also retained.
+
+
+def test_copied_rollout_is_recomputed_and_not_trusted_when_tampered(builder):
+    path = builder.evidence / "runs" / "outside-write" / "rollout.jsonl"
+    original = path.read_bytes()
+    try:
+        rows = [json.loads(line) for line in original.splitlines()]
+        rows = [r for r in rows if r.get("payload", {}).get("type") != "custom_tool_call_output"]
+        path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+        r, said = builder.check(builder.out, builder.cfg, "--verify-evidence")
+        assert r.returncode == 1
+        assert any("rollout.jsonl does not match" in reason for reason in said["reasons"])
+        assert any("outside_write_denied" in reason for reason in said["reasons"])
+    finally:
+        path.write_bytes(original)
+
+
+def test_real_user_skill_visibility_is_a_reported_finding(builder, tmp_path):
+    recs, texts = {}, {}
+    for path in (builder.evidence / "runs").glob("*/run.json"):
+        recs[path.parent.name] = json.loads(path.read_text())
+        _, texts[path.parent.name] = kyqualify.codex_stream_record(path.parent / "stdout.jsonl", path.parent / "stderr.log")
+    rec, texts["base"], _ = real_record(tmp_path, "base")
+    recs["base"].update(rec)
+    facts = json.loads((builder.evidence / "facts.json").read_text())
+    facts["user_skill_names"] = ["layer-value-elevation"]
+    checks, _ = kyqualify.judge_codex(builder.doc(), recs, texts, facts)
+    check = checks["user_skills_visible"]
+    assert check["result"] == "fail" and check["required"] is False
+    assert check["observed"]["user_skills_named"] == ["layer-value-elevation"]
+
+
+def test_a_slash_tmp_effect_fails_without_creating_a_real_tmp_file(builder):
+    recs, texts = {}, {}
+    for path in (builder.evidence / "runs").glob("*/run.json"):
+        recs[path.parent.name] = json.loads(path.read_text())
+        _, texts[path.parent.name] = kyqualify.codex_stream_record(path.parent / "stdout.jsonl", path.parent / "stderr.log")
+    recs["tmp-write"]["slash_tmp_exists"] = True
+    facts = json.loads((builder.evidence / "facts.json").read_text())
+    checks, _ = kyqualify.judge_codex(builder.doc(), recs, texts, facts)
+    got = checks["slash_tmp_write_denied"]
+    assert got["result"] == "fail"
+    assert got["observed"]["runs"]["tmp-write"]["effect"] is True

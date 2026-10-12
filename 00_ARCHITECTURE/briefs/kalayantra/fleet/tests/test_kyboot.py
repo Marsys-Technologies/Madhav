@@ -4501,7 +4501,8 @@ def codex_launch_line(launch, job="<JOB_DIR>") -> list:
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=" + str(launch["network"]).lower(),
-            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
+            "-c", "skills.include_instructions=false"]
     for feature in CODEX_FEATURES:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:
@@ -4588,7 +4589,7 @@ class CodexWorld(World):
                           "prompt_sha256": launch["prompt_sha256"],
                           "output_schema_sha256": launch.get("output_schema_sha256", "absent"),
                           "codex_disabled_features": list(CODEX_FEATURES), "ignore_user_config": True,
-                          "ignore_rules": True, "persistent_mode": False, "exclude_slash_tmp": True,
+                          "ignore_rules": True, "skills_include_instructions": False, "persistent_mode": False, "exclude_slash_tmp": True,
                           "exclude_tmpdir_env_var": False,
                           "work_root": launch.get("work_root", "worktree"),
                           "commit_mode": launch.get("commit_mode", "none"),
@@ -4707,7 +4708,7 @@ CODEX_BIND_CHANGES = [
     ("model", "gpt-5.6-sol"), ("effort", "xhigh"), ("sandbox", "read-only"), ("network", True),
     ("network", "false"), ("commit_mode", "none"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
     ("env_names", ["HOME", "PATH"]), ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"), ("output_schema_sha256", "9" * 64),
-    ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False),
+    ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False), ("skills_include_instructions", True),
     ("persistent_mode", True), ("work_root", "job"), ("exclude_slash_tmp", False), ("exclude_tmpdir_env_var", True),
     ("project_agents_md_sha256", "9" * 64), ("user_codex_agents_md_sha256", "absent"),
     ("user_codex_hooks_sha256", "9" * 64), ("zdotdir_sha256", "9" * 64), ("harness_sha256", "9" * 64),

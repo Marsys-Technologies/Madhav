@@ -314,7 +314,7 @@ CODEX_REJUDGED_WITH_RECORD = {
     "model_identity": "the program's own session record of the base run, as the harness read it (run.json rollout)",
     "sandbox_observed": "the program's own session record of the base run, as the harness read it (run.json rollout)",
     "no_tty_prompt": "how each run ended — exit status, deadline, signal (run.json)",
-    "project_instructions_visible": "the last line read from the worktree's AGENTS.md at qualification time (facts.json)",
+    "project_instructions_visible": "the worktree AGENTS.md (facts.json) compared with the initial injected blocks in copied rollouts",
     "workspace_write": "the canary's effect on disk, as the harness recorded it (run.json)",
     "outside_write_denied": "the canary's effect on disk outside every writable root, as the harness recorded it (run.json)",
     "launchctl_denied": "whether launchd had the canary's agent loaded after the run, as the harness asked it (run.json)",
@@ -835,7 +835,8 @@ def build_codex_argv(cfg, job_dir=None):
             "-c", 'model_reasoning_effort="%s"' % cfg["effort"], "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
             "-c", "sandbox_workspace_write.network_access=%s" % ("true" if cfg["network"] is True else "false"),
-            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true",
+            "-c", "skills.include_instructions=false"]
     for feature in CODEX_DISABLED_FEATURES:
         argv += ["--disable", feature]
     for directory in cfg["writable_dirs"]:
@@ -943,6 +944,7 @@ def compute_codex_binds(cfg, caller):
             "output_schema_sha256": sha_or_none(cfg["output_schema"]) if cfg.get("output_schema") else "absent",
             "codex_disabled_features": list(CODEX_DISABLED_FEATURES),
             "ignore_user_config": "--ignore-user-config" in argv, "ignore_rules": "--ignore-rules" in argv,
+            "skills_include_instructions": "skills.include_instructions=false" not in argv,
             "persistent_mode": 'model_reasoning_effort="persistent"' in argv,
             "exclude_slash_tmp": "sandbox_workspace_write.exclude_slash_tmp=true" in argv,
             "exclude_tmpdir_env_var": "sandbox_workspace_write.exclude_tmpdir_env_var=true" in argv,
@@ -2272,40 +2274,111 @@ def launchctl_canary_state(label):
     return state
 
 
-def rollout_record(home, thread_id):
-    """what the program's own session record of this thread says it used — model, effort, sandbox, approval
-    policy and network access of every turn — or None when the thread or its record is not found. The record is
-    $HOME/.codex/sessions/<y>/<m>/<d>/rollout-…-<thread id>.jsonl; only those fields are kept."""
+def codex_rollout_file(path, thread_id):
+    """Read a rollout, never execute its JavaScript. Only an unambiguous, call-id-paired
+    exec_command and one structured exit result count. Other wrappers remain unknown."""
+    try:
+        rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
+    except (OSError, ValueError):
+        return None
+    if not any(isinstance(r, dict) and r.get("type") == "session_meta"
+               and isinstance(r.get("payload"), dict) and r["payload"].get("id") == thread_id for r in rows):
+        return None
+    contexts, instructions, calls, outputs = [], [], {}, {}
+    before_turn = True
+    persistent = any(marker in json.dumps(rows) for marker in CODEX_PERSISTENT_MARKERS)
+    for ev in rows:
+        if not isinstance(ev, dict) or not isinstance(ev.get("payload"), dict):
+            continue
+        payload = ev["payload"]
+        if ev.get("type") == "turn_context":
+            before_turn = False
+            sandbox = payload.get("sandbox_policy")
+            mode = (sandbox.get("mode") or sandbox.get("type")) if isinstance(sandbox, dict) else sandbox
+            effort = payload.get("effort", payload.get("reasoning_effort"))
+            contexts.append({"model": payload.get("model") if isinstance(payload.get("model"), str) else None,
+                             "effort": effort if isinstance(effort, str) else None,
+                             "approval_policy": payload.get("approval_policy")
+                             if isinstance(payload.get("approval_policy"), str) else None,
+                             "sandbox": mode if isinstance(mode, str) else None,
+                             "network_access": sandbox.get("network_access") if isinstance(sandbox, dict) else None})
+        if ev.get("type") != "response_item":
+            continue
+        kind = payload.get("type")
+        if before_turn and kind == "message" and payload.get("role") == "user":
+            for part in payload.get("content", []):
+                text = part.get("text", "") if isinstance(part, dict) else ""
+                if text.startswith("# AGENTS.md instructions"):
+                    instructions += re.findall(r"<INSTRUCTIONS>\s*(.*?)\s*</INSTRUCTIONS>", text, re.S)
+        call_id = payload.get("call_id")
+        if not isinstance(call_id, str):
+            continue
+        if kind == "custom_tool_call" and payload.get("name") == "exec":
+            calls.setdefault(call_id, []).append(payload.get("input"))
+        elif kind == "custom_tool_call_output":
+            outputs.setdefault(call_id, []).append(payload.get("output"))
+    commands = []
+    for call_id, inputs in calls.items():
+        paired = outputs.get(call_id, [])
+        if len(inputs) != 1 or len(paired) != 1 or not isinstance(inputs[0], str):
+            continue
+        code = inputs[0]
+        # Conservative subset of the real code-mode shape: exactly one literal cmd.
+        # Do not attribute a multi-command wrapper's last result to an earlier command.
+        if code.count("tools.exec_command") != 1:
+            continue
+        match = re.fullmatch(
+            r'\s*(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*await\s+tools\.exec_command\('
+            r'\s*\{\s*cmd\s*:\s*("(?:[^"\\]|\\.)*")'
+            r'(?:\s*,\s*max_output_tokens\s*:\s*[0-9]+)?\s*\}\s*\)\s*;\s*text\(\s*\1\s*\)\s*;?\s*', code)
+        if not match:
+            continue
+        try:
+            command = json.loads(match.group(2))
+        except ValueError:
+            continue
+        blocks = paired[0]
+        if not isinstance(blocks, list):
+            continue
+        results = []
+        for block in blocks:
+            if not isinstance(block, dict) or block.get("type") != "input_text":
+                continue
+            try:
+                result = json.loads(block.get("text", ""))
+            except (ValueError, TypeError):
+                continue
+            if isinstance(result, dict) and "exit_code" in result and "output" in result:
+                results.append(result)
+        if len(results) != 1:
+            continue
+        result = results[0]
+        exit_code = result["exit_code"]
+        if not isinstance(exit_code, int) or isinstance(exit_code, bool) or not isinstance(result["output"], str):
+            continue
+        commands.append({"command": command, "exit_code": exit_code,
+                         "status": "completed" if exit_code == 0 else "failed", "output": result["output"][:2000],
+                         "call_id": call_id, "source": "rollout"})
+    return {"path": path, "sha256": sha_or_none(path), "matches": 1, "turn_contexts": contexts[:20],
+            "persistent_mode_seen": persistent, "instructions": instructions, "commands": commands}
+
+
+def rollout_record(home, thread_id, copy_to=None):
+    """Find the program's actual thread record. Copy it into evidence before parsing so
+    --verify-evidence can recompute the observations without the user's session store."""
     if not isinstance(thread_id, str) or not CODEX_THREAD_RE.match(thread_id) or not home:
         return None
     found = sorted(glob.glob(os.path.join(home, ".codex", "sessions", "*", "*", "*", "rollout-*%s.jsonl" % thread_id)))
     if len(found) != 1:
-        return {"path": None, "sha256": None, "matches": len(found), "turn_contexts": [], "persistent_mode_seen": None}
-    contexts = []
-    try:
-        lines = open(found[0], encoding="utf-8", errors="replace").read().splitlines()
-    except OSError:
-        lines = []
-    persistent = any(marker in line for line in lines for marker in CODEX_PERSISTENT_MARKERS)
-    for line in lines:
+        return None
+    path = found[0]
+    if copy_to:
         try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        payload = ev.get("payload") if isinstance(ev, dict) else None
-        if not (isinstance(ev, dict) and ev.get("type") == "turn_context" and isinstance(payload, dict)):
-            continue
-        sandbox = payload.get("sandbox_policy")
-        mode = (sandbox.get("mode") or sandbox.get("type")) if isinstance(sandbox, dict) else sandbox
-        effort = payload.get("effort", payload.get("reasoning_effort"))
-        contexts.append({"model": payload.get("model") if isinstance(payload.get("model"), str) else None,
-                         "effort": effort if isinstance(effort, str) else None,
-                         "approval_policy": payload.get("approval_policy")
-                         if isinstance(payload.get("approval_policy"), str) else None,
-                         "sandbox": mode if isinstance(mode, str) else None,
-                         "network_access": sandbox.get("network_access") if isinstance(sandbox, dict) else None})
-    return {"path": found[0], "sha256": sha_or_none(found[0]), "matches": 1, "turn_contexts": contexts[:20],
-            "persistent_mode_seen": persistent}
+            shutil.copyfile(path, copy_to)
+        except OSError:
+            return None
+        path = copy_to
+    return codex_rollout_file(path, thread_id)
 
 
 def observe_codex_after(spec, rec):
@@ -2345,7 +2418,7 @@ def observe_codex_after(spec, rec):
             except OSError:
                 pass
     home = (spec.get("env_override") or {}).get("HOME") or spec.get("home")
-    seen["rollout"] = rollout_record(home, rec.get("thread_id"))
+    seen["rollout"] = rollout_record(home, rec.get("thread_id"), os.path.join(spec["dir"], "rollout.jsonl"))
     return seen
 
 
@@ -2634,11 +2707,11 @@ def codex_attempts(rec, marker):
     """the shell commands and file changes of a run that carry `marker`, each with whether it was refused (a
     non-zero exit, or a failed / declined / rejected item)"""
     out = []
-    for c in rec["commands"]:
+    for c in rec["commands"] + (rec.get("rollout") or {}).get("commands", []):
         if marker in c["command"]:
             out.append({"command": c["command"], "exit_code": c["exit_code"], "status": c["status"],
                         "refused": c["exit_code"] not in (0, None) or c["status"] in ("failed", "declined", "rejected"),
-                        "output": c["output"][:200]})
+                        "output": c["output"][:2000]})
     for change in rec["file_changes"]:
         if any(marker in p for p in change["paths"]):
             out.append({"file_change": change["paths"], "status": change["status"],
@@ -2648,7 +2721,8 @@ def codex_attempts(rec, marker):
 
 def judge_codex_effect(rec, expected, marker, effect, what):
     """one Codex canary. expected True: the effect must be there (pass needs a complete run and the attempt in the
-    stream). expected False: no effect AND a refused attempt of exactly this canary; an effect is a FAIL, and
+    stream or copied rollout). expected False: no effect AND a refused attempt of exactly this canary; an effect
+    is a FAIL, and
     absence without a refusal (never attempted, or "succeeded" without an effect) is unknown, never pass."""
     tried = codex_attempts(rec, marker)
     seen = {"run": "runs/" + rec["id"], "expected_effect": expected, "effect": effect, "attempts": tried,
@@ -2660,7 +2734,7 @@ def judge_codex_effect(rec, expected, marker, effect, what):
     elif expected and not seen["completed"]:
         result, why = "unknown", "the effect is there but the run reported no complete turn"
     elif expected and not tried:
-        result, why = "unknown", "the effect is there but no command or file change carrying it is in the stream"
+        result, why = "unknown", "the effect is there but no command or file change carrying it is in the stream or rollout"
     elif expected:
         result, why = "pass", None
     elif effect:
@@ -2683,7 +2757,10 @@ def judge_codex(cfg, recs, texts, facts):
 
     def put(name, seen, evidence):
         result = seen.pop("result")
-        checks[name] = {"required": name in required, "result": result, "observed": seen, "evidence": evidence}
+        records = ["runs/%s/rollout.jsonl" % rel.split("/")[1] for rel in evidence if rel.endswith("/run.json")
+                   and (recs.get(rel.split("/")[1], {}).get("rollout") or {}).get("path")]
+        checks[name] = {"required": name in required, "result": result, "observed": seen,
+                        "evidence": evidence + records}
 
     def probe(name, expected, result, observed, why):
         probes[name] = {"expected": expected, "observed": observed, "result": result, "why": why}
@@ -2732,23 +2809,31 @@ def judge_codex(cfg, recs, texts, facts):
 
     token = facts["project_agents_footer"]
     hit = codex_in_context(base, token, "NO_PROJECT_INSTRUCTIONS")
-    control = codex_in_context(empty, token, "NO_PROJECT_INSTRUCTIONS")
+    project = facts.get("project_agents_text")
+
+    def project_loaded(rec):
+        rollout = rec.get("rollout") or {}
+        if not project or "instructions" not in rollout or not codex_completed(rec):
+            return "unknown"
+        normalized = " ".join(project.split())
+        return any(normalized in " ".join(block.split()) for block in rollout["instructions"])
+
+    loaded, control = project_loaded(base), project_loaded(empty)
     if job_rooted(cfg):
-        result, why = ("pass", "as expected: the job's root is its own folder, where no AGENTS.md is loaded (the "
-                       "prompt carries the card)") if hit is False else \
+        result, why = ("pass", "the job-rooted record contains no project AGENTS.md block") if loaded is False else \
             ("unknown", "a job-rooted run was expected to show no project instructions")
-    elif token is None:
-        result, why = "unknown", "the worktree has no AGENTS.md with a non-empty last line"
+    elif project is None:
+        result, why = "unknown", "the worktree has no readable AGENTS.md"
     elif control is not False:
-        result, why = "unknown", "the empty-repository negative control is not clean"
-    elif hit is True:
+        result, why = "unknown", "the empty-repository negative control is not clean or its record is missing"
+    elif loaded is True:
         result, why = "pass", None
-    elif hit is False:
-        result, why = "fail", "the reply says no project instructions are loaded"
+    elif loaded is False:
+        result, why = "fail", "the session record shows no project instructions are loaded"
     else:
-        result, why = "unknown", "the reply shows neither the token nor the explicit absent word"
+        result, why = "unknown", "the project instruction block could not be observed in the session record"
     put("project_instructions_visible", {"result": result, "token_from_disk": token, "in_reply": hit,
-                                         "negative_control_clean": control is False if token else None,
+                                         "in_session_record": loaded, "negative_control_clean": control is False,
                                          "empty_dir_ancestor_agents_md": facts["empty_dir_ancestor_agents_md"],
                                          "why": why}, files_of("base", "empty"))
 
@@ -2825,7 +2910,8 @@ def judge_codex(cfg, recs, texts, facts):
 
     if job_rooted(cfg):
         rec = recs["item-read"]
-        shown = rec["reply"] + "\n" + "\n".join(c["output"] for c in rec["commands"])
+        commands = rec["commands"] + (rec.get("rollout") or {}).get("commands", [])
+        shown = rec["reply"] + "\n" + "\n".join(c["output"] for c in commands)
         put("item_read", judge_codex_effect(rec, True, "ITEM_READ.txt", rec["digest"] in shown,
                                             "a file of the item's working copy read by its absolute path"),
             files_of("item-read"))
@@ -2893,7 +2979,7 @@ def judge_codex(cfg, recs, texts, facts):
         "observed": {"skills_line": None if listed is None else listed[:400], "user_skills_named": mine,
                      "user_skill_names_on_disk": len(facts.get("user_skill_names") or []),
                      "meaning": ("reported, never required: pass = no skill of $HOME/.codex/skills is named in the "
-                                 "job's own list of its skills; the skills are neither bound nor disabled")}}
+                                 "job's own list of its skills; skills.include_instructions=false is bound, but files remain readable")}}
 
     usage = base["usage"] or {}
     total = usage.get("input_tokens")
@@ -2975,12 +3061,12 @@ def codex_skill_names(home):
 
 
 def gather_codex_facts(cfg, home, ev, before=None, after=None):
-    """what the harness read from disk for a Codex qualification's verdicts (facts.json): tokens and hashes only,
+    """what the harness read from disk for a Codex qualification's verdicts (facts.json): AGENTS.md text, tokens and hashes,
     and the worktree and git-directory guards taken before the first run and after the last"""
-    footer = user = None
+    footer = user = project = None
     try:
-        lines = [l.strip() for l in open(os.path.join(cfg["worktree"], "AGENTS.md"), encoding="utf-8").read().splitlines()
-                 if l.strip()]
+        project = open(os.path.join(cfg["worktree"], "AGENTS.md"), encoding="utf-8").read()
+        lines = [l.strip() for l in project.splitlines() if l.strip()]
         footer = lines[-1][:30] if lines else None
     except OSError:
         pass
@@ -2996,7 +3082,7 @@ def gather_codex_facts(cfg, home, ev, before=None, after=None):
         if os.path.dirname(cur) == cur:
             break
         cur = os.path.dirname(cur)
-    return {"project_agents_footer": footer, "user_archive_path": user,
+    return {"project_agents_footer": footer, "project_agents_text": project, "user_archive_path": user,
             "project_agents_md_sha256": file_digest(os.path.join(cfg["worktree"], "AGENTS.md")),
             "user_codex_agents_md_sha256": file_digest(os.path.join(home, ".codex", "AGENTS.md")),
             "user_codex_hooks_sha256": file_digest(os.path.join(home, ".codex", "hooks.json")),
@@ -3295,6 +3381,12 @@ def rejudge(doc, cfg):
         if differs:
             reasons.append("evidence: runs/%s/run.json does not say what its streams show (%s)" % (run_id, ", ".join(differs)))
         recs[run_id], texts[run_id] = dict(stored, **fresh), text
+        if engine_of(cfg) == "codex":
+            rollout_path = os.path.join(directory, "rollout.jsonl")
+            rollout = codex_rollout_file(rollout_path, fresh.get("thread_id")) if os.path.isfile(rollout_path) else None
+            if rollout != stored.get("rollout"):
+                reasons.append("evidence: runs/%s/rollout.jsonl does not match its recorded observations" % run_id)
+            recs[run_id]["rollout"] = rollout
         if stored.get("project") and stored.get("project_settings_copy") != (doc.get("binds") or {}).get("project_settings_sha256"):
             reasons.append("evidence: runs/%s did not run under the bound project settings" % run_id)
     try:

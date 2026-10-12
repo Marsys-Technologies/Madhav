@@ -82,6 +82,7 @@
         "codex_disabled_features",
         "ignore_user_config",
         "ignore_rules",
+        "skills_include_instructions",
         "persistent_mode",
         "project_agents_md_sha256",
         "user_codex_agents_md_sha256",
@@ -199,6 +200,10 @@
         "ignore_rules": {
           "description": "--ignore-rules is on the line: no execpolicy .rules file is loaded.",
           "const": true
+        },
+        "skills_include_instructions": {
+          "description": "Bound launcher override skills.include_instructions=false; the reported skills check still measures visibility.",
+          "const": false
         },
         "persistent_mode": {
           "description": "The line asks for persistent mode (reasoning effort \"persistent\"): always false.",
