@@ -1145,3 +1145,47 @@ def test_a_declaration_that_was_not_validated_is_never_interpolated_into_a_state
     out = ac.empty_slice_conditional_outcome(d, "ga_vichara", CH, window=WINDOW, code_paths=PATHS)
     assert out["state"] == "unverified" and out["clause"] == "declaration" and db.sql == []
     assert ac.empty_slice_conditional_outcome(ES, "ga_vichara; x", CH, window=WINDOW, code_paths=PATHS)["state"] == "unverified"
+
+
+def test_evidence_of_a_run_that_is_not_a_complete_build_is_never_read(db):
+    """run_id not a completed ga_vichara build: a record of an errored / aborted / skipped run is not evidence; the newest COMPLETE build still has none."""
+    for state, disp in (("error", "build"), ("aborted", ""), ("complete", "skip_no_delta"), ("running", "")):
+        d = DB()
+        d.attempts.append(dict(run=RE, chart=CH, state=state, disp=disp, started=True, created=T0 + 2000, st=T0 + 2001, en=T0 + 2002))
+        d.records = [_rec(p, run=RE, at=T0 + 2030) for p in PARTS][::-1]
+        ac.psql = d.psql
+        out = _run()
+        assert out["state"] != "holds", (state, disp, out)
+
+
+_REAL_WRITER = "platform/python-sidecar/ga_writers/ga_daridra_postpass.py"
+
+
+def test_the_fixture_is_exactly_what_the_real_writer_emits_when_the_writer_side_is_in_the_tree():
+    """Parity with the REAL emitter: runs `record_post_pass_evidence` (its source, extracted by AST, with persist_event faked) and compares the stored event with `_rec`. Skipped on a tree
+    that does not carry the writer side yet (pr #3448)."""
+    import ast as _ast
+    p = ac.ROOT / _REAL_WRITER
+    src = p.read_text(encoding="utf-8") if p.is_file() else ""
+    if "def record_post_pass_evidence" not in src:
+        pytest.skip("the writer side (post_pass_evidence/1) is not in this tree")
+    want = {"POST_PASS_EVENT_TYPE", "POST_PASS_SCHEMA", "POST_PASS_NAME", "POST_PASS_ASSET_ID", "POST_PASS_SLICE", "DARIDRA"}
+    nodes = [n for n in _ast.parse(src).body if (isinstance(n, _ast.Assign) and any(getattr(t, "id", None) in want for t in n.targets))
+             or (isinstance(n, _ast.FunctionDef) and n.name in ("_nonneg_int", "post_pass_evidence_payload", "record_post_pass_evidence", "_write_evidence_event"))]
+    mod = _ast.Module(body=nodes, type_ignores=[])
+    _ast.fix_missing_locations(mod)
+    seen = []
+    ns = {"persist_event": lambda cur, event: seen.append(json.loads(json.dumps(event))) or True}
+    exec("from __future__ import annotations\nfrom typing import Any\n", ns)
+    exec(compile(mod, "real_postpass", "exec"), ns)
+
+    class _C:
+        def cursor(self):
+            return None
+    ns["record_post_pass_evidence"](_C(), CH, R, "raman", entries_evaluated=1, formed=False, rows_written=0, prior_rows_deleted=0)
+    assert seen[0] == _rec("raman")["payload"]
+    ev = ac.ROOT / "platform/python-sidecar/pipeline/orchestrator/events.py"
+    if ev.is_file():
+        tree = _ast.parse(ev.read_text(encoding="utf-8"))
+        durable = next((n for n in tree.body if isinstance(n, _ast.Assign) and any(getattr(t, "id", None) == "DEFAULT_DURABLE_EVENT_TYPES" for t in n.targets)), None)
+        assert durable is not None and ac.ES_EVENT_TYPE in {c.value for c in _ast.walk(durable.value) if isinstance(c, _ast.Constant)}
