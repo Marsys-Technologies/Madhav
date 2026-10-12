@@ -10,7 +10,6 @@ Routes registered under prefix /brahmagyan/ephemeris in main.py:
   GET /brahmagyan/ephemeris/aspects          — query_aspects_at_time
   GET /brahmagyan/ephemeris/retrograde_periods — query_retrograde_periods
   GET /brahmagyan/ephemeris/all_bodies_range   — all bodies for a date window (used by cache_year)
-  GET /brahmagyan/ephemeris/native_lifetime_meta — native lifetime coverage stats
 
 L0FR Stream B — authored 2026-06-07
 """
@@ -307,103 +306,6 @@ def get_all_bodies_range(
             "rows": rows,
             "count": len(rows),
             "ayanamsha_id": ayanamsha_id,
-            "computed_at": datetime.now(timezone.utc).isoformat(),
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-# ── 6. native_lifetime_meta ───────────────────────────────────────────────────
-
-NATIVE_LIFETIME_START = "1984-01-01"
-NATIVE_LIFETIME_END = "2070-12-31"
-
-@router.get("/native_lifetime_meta")
-def get_native_lifetime_meta(
-    start_date: str = Query(NATIVE_LIFETIME_START),
-    end_date: str = Query(NATIVE_LIFETIME_END),
-    count_only: bool = Query(False),
-):
-    """
-    Ephemeris coverage statistics for the native's lifetime (1984-2070).
-    Native: Abhisek Mohanty, born 1984-02-05 10:43 IST, Bhubaneswar, Odisha, India.
-    Returns row count, date range, body count, and native birth chart context.
-
-    NOT part of the EL-39 fix scope (not one of the 4 routes + /all_bodies_range
-    named for audit) — noted as a found-but-parked residual in BETA_C.md rather
-    than fixed here: `sun_sidereal_approx` uses a fixed linear-approximation
-    ayanamsha constant (23.853058, J2000 epoch value) instead of derive_sidereal's
-    proper per-date swisseph computation, and this route's own lat/lon constants
-    (20.2735/85.8334) are a THIRD "Bhubaneswar" coordinate pair alongside
-    l0_ephemeris.py's NATIVE_LAT/NATIVE_LON (20.2961/85.8245) and
-    panchang_daily_reader.py's BHUBANESWAR_LAT/LON (20.27/85.84) — a pre-existing
-    inconsistency this fix does not attempt to unify. Both fields are already
-    honestly labelled ("_approx") — low severity, PARKED-HONEST.
-    """
-    import os
-    from datetime import datetime, timezone
-
-    try:
-        import psycopg2
-        url = os.environ.get("DATABASE_URL", "")
-        if not url:
-            raise HTTPException(status_code=503, detail="DATABASE_URL not configured")
-        conn = psycopg2.connect(url)
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT COUNT(*), MIN(date), MAX(date),
-                           COUNT(DISTINCT body), COUNT(DISTINCT date)
-                    FROM ephemeris_daily
-                    WHERE date >= %s AND date <= %s AND ayanamsha_id = 'tropical'
-                    """,
-                    (start_date, end_date),
-                )
-                row = cur.fetchone()
-                total_rows = row[0]
-                date_min = row[1]
-                date_max = row[2]
-                body_count = row[3]
-                day_count = row[4]
-
-                # Native birth date Sun spot check
-                cur.execute(
-                    "SELECT tropical_longitude FROM ephemeris_daily "
-                    "WHERE date = '1984-02-05' AND body = 'Sun' LIMIT 1"
-                )
-                sun_row = cur.fetchone()
-                sun_lon = float(sun_row[0]) if sun_row else None
-        finally:
-            conn.close()
-
-        return {
-            "ok": True,
-            "resource": "marsys://resource/ephemeris-cache/native-lifetime",
-            "native": {
-                "name": "Abhisek Mohanty",
-                "birth_date": "1984-02-05",
-                "birth_time_ist": "10:43:00",
-                "birth_location": "Bhubaneswar, Odisha, India",
-                "lat": 20.2735,
-                "lon": 85.8334,
-                "sun_tropical_1984_02_05": sun_lon,
-                "sun_sidereal_approx": round(sun_lon - 23.853058, 3) if sun_lon else None,
-                "sun_sign_sidereal": "Capricorn ~22°" if sun_lon and 289 <= (sun_lon - 23.853058) <= 295 else "check",
-            },
-            "coverage": {
-                "requested_start": start_date,
-                "requested_end": end_date,
-                "actual_min": date_min.isoformat() if date_min else None,
-                "actual_max": date_max.isoformat() if date_max else None,
-                "total_rows": total_rows,
-                "day_count": day_count,
-                "body_count": body_count,
-                "expected_rows": 157266,
-                "coverage_pct": round(100.0 * total_rows / 157266, 1) if total_rows else 0,
-            },
             "computed_at": datetime.now(timezone.utc).isoformat(),
         }
     except HTTPException:

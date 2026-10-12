@@ -2,8 +2,10 @@
 
 LIVE tier on a DISPOSABLE local PostgreSQL (skipped loudly when no server binaries are found): the REAL seed_doshas writer fills the three projections, then the
 REAL on-disk migration is applied to a registry row carrying migration 692's text. Proves: the OLD check is TRUE on the old 79-row state's shape and FALSE on the rebuilt
-66-row state; the NEW check is TRUE on the rebuilt state and FALSE after a semantic drift, a dropped row and an ontology-only edit; the UPDATE is md5-guarded (a foreign text is
-left alone with a NOTICE), idempotent, and a silent no-op is caught by the post-check.
+66-row state; the UPDATE is md5-guarded (a foreign text is left alone with a NOTICE), idempotent, and a silent no-op is caught by the post-check.
+
+SUPERSEDED IN PART by migration 1361 (bg_doshas formation rules in one spelling family): the seed's leaf spellings moved, so 1324's catalog pin no longer matches the rebuilt state;
+the live "NEW check is TRUE on the rebuilt state" assertions moved to test_bg_doshas_formation_spelling_migration_1361.py against 1361's check.
 """
 from __future__ import annotations
 
@@ -59,27 +61,16 @@ def test_static_old_and_new_text_hash_to_the_named_md5():
     assert md5(NEW_TEXT) == "e4baff75780519cc4fdf76b6ce27c9fd" and len(NEW_TEXT) == 2206
 
 
-def test_live_rebuilt_state_satisfies_the_new_check_only(pg):
+def test_live_1324_pins_are_superseded_by_1361_on_the_rebuilt_state(pg):
+    """1324 sealed the catalog hash of the seed as it stood then (mixed graha / nakshatra leaf spellings). Migration 1361 moved the catalog pin when the seed moved to one
+    spelling family, so on the CURRENT rebuilt state 1324's text is FALSE only in its catalog term; its counts, ontology and reference terms still hold (the 66-row shape is unchanged)."""
     from brahmagyan import l0_doshas
     db, conn = _setup(pg)
     try:
         l0_doshas.seed_doshas(conn, autocommit=False)
         conn.commit()
-        assert _check(conn, NEW_TEXT) is True
-        assert _check(conn, OLD_TEXT) is False                      # 79-row pins no longer hold: the check is re-sealed, not loosened
-        # drift detection on the NEW text
-        with conn.cursor() as c:
-            c.execute("UPDATE brahma_dosha_catalog SET effects_text='drift' WHERE canonical_id='angarak'")
-        assert _check(conn, NEW_TEXT) is False
-        conn.rollback()
-        with conn.cursor() as c:
-            c.execute("UPDATE brahma_ontology SET source_citation='drift' WHERE entity_class='dosha' AND canonical_id='angarak'")
-        assert _check(conn, NEW_TEXT) is False
-        conn.rollback()
-        with conn.cursor() as c:
-            c.execute("DELETE FROM reference_doshas WHERE canonical_id='angarak'")
-        assert _check(conn, NEW_TEXT) is False
-        conn.rollback()
+        assert _check(conn, NEW_TEXT) is False                     # the catalog pin 308ce2a6... no longer matches the one-family leaves (1361 re-pins it)
+        assert _check(conn, OLD_TEXT) is False                     # and the 79-row pins of 692 never match again
         with conn.cursor() as c:
             c.execute("SELECT (SELECT count(*) FROM brahma_dosha_catalog) AS a, (SELECT count(*) FROM brahma_ontology WHERE entity_class='dosha') AS b, (SELECT count(*) FROM reference_doshas) AS c")
             assert tuple(c.fetchone().values()) == (66, 66, 66)

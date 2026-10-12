@@ -20,6 +20,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
@@ -57,7 +59,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
       type: 'string', description: 'Chart UUID', required: true,
     },
     ayanamsha_id: {
-      type: 'string', description: 'Filter by ayanamsha_id. Omit for all.',
+    // Plain literal on purpose: this is a platform-mcp codegen PILOT descriptor (registry_manifest.ts), whose input_schema must be
+    // statically evaluable. Equality with KP_AWARE_AYANAMSHA_ID_TEXT is pinned by __tests__/kp_descriptor_text.test.ts.
+      type: 'string', description: 'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.',
     },
     categories: {
       type: 'array',
@@ -135,7 +139,11 @@ export const getStrengthCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
+      // The reference-frame sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
+      const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
       const buildId = args.build_id as BuildFence
       const buildFence = classifyBuildFence(buildId)
@@ -153,10 +161,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
         whereClause += ` AND build_id = ANY($${whereParams.length + 1}::uuid[])`
         whereParams.push(buildIds)
       }
-      if (args.ayanamsha_id) {
-        whereClause += ` AND ayanamsha_id = $${whereParams.length + 1}`
-        whereParams.push(args.ayanamsha_id as string)
-      }
+      // graha_shadbala_naisargika and graha_shadbala_total.required_rupa are stored under the
+      // ayanamsha_id='INVARIANT' sentinel (ga_strength_writer): the filter keeps them.
+      whereClause += kp.filter(whereParams, { includeInvariant: true })
       if (args.graha_key) {
         // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
         // (e.g. "SAT", "SAT_IN_HOUSE_5"), NEVER in `fact_key` (fact_key is a generic
@@ -185,14 +192,14 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const offsetParamIdx = whereParams.length + 2
       const sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         ${whereClause}
-        ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
       `
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = kp.label(normalizeNarrationRows(result.rows))
 
       // ŚODHANA T3 (MC-014): active-house-by-graha is now computed for EVERY frame
       // (previously only for frame !== 'lagna', since only the frame_context DISPLAY
@@ -258,7 +265,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows: servedRows,
+          chart_id: chartId, ...kp.echo(servedRows), categories, frame, rows: servedRows,
           // `total` is the ROWS SERVED IN THIS PAGE (unchanged shape/name — callers that
           // already treat this as a page-length receipt keep working). F-60 fix: it is no
           // longer the only count reported — `total_available` (below) is the TRUE row

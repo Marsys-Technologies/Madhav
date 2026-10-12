@@ -31,10 +31,12 @@ describe('condition facet pagination receipts', () => {
 
     const [pageSql, pageParams] = mockQuery.mock.calls[0] as [string, unknown[]]
     const [countSql, countParams] = mockQuery.mock.calls[1] as [string, unknown[]]
-    expect(pageSql).toContain('LIMIT $3 OFFSET $4')
+    // PR-2: an omitted ayanamsha_id is the primary reading, bound as the third param.
+    expect(pageSql).toContain('LIMIT $4 OFFSET $5')
     expect(countSql).toContain('SELECT COUNT(*)::text AS total')
     expect(countSql).not.toContain('LIMIT')
-    expect(countParams).toEqual(pageParams.slice(0, 2))
+    expect(pageParams[2]).toBe('lahiri_chitrapaksha')
+    expect(countParams).toEqual(pageParams.slice(0, 3))
   })
 
   it.each(facets)('%s keeps optional filters identical for page and count queries', async (_name, capability, args) => {
@@ -48,8 +50,9 @@ describe('condition facet pagination receipts', () => {
     const [countSql, countParams] = mockQuery.mock.calls[1] as [string, unknown[]]
     expect(pageSql).toContain('ayanamsha_id = $3')
     expect(countSql).toContain('ayanamsha_id = $3')
-    expect(pageParams).toEqual([CHART_ID, expect.any(Array), 'lahiri', 3, 0])
-    expect(countParams).toEqual([CHART_ID, expect.any(Array), 'lahiri'])
+    // the short alias normalises to the stored id
+    expect(pageParams).toEqual([CHART_ID, expect.any(Array), 'lahiri_chitrapaksha', 3, 0])
+    expect(countParams).toEqual([CHART_ID, expect.any(Array), 'lahiri_chitrapaksha'])
   })
 
   it('dignity includes both ayanamsha and varga filters in its count', async () => {
@@ -63,7 +66,7 @@ describe('condition facet pagination receipts', () => {
     const [countSql, countParams] = mockQuery.mock.calls[1] as [string, unknown[]]
     expect(pageSql).toContain('fact_key ILIKE $4')
     expect(countSql).toContain('fact_key ILIKE $4')
-    expect(pageParams).toEqual([CHART_ID, expect.any(Array), 'lahiri', '%D1%', 3, 0])
-    expect(countParams).toEqual([CHART_ID, expect.any(Array), 'lahiri', '%D1%'])
+    expect(pageParams).toEqual([CHART_ID, expect.any(Array), 'lahiri_chitrapaksha', '%D1%', 3, 0])
+    expect(countParams).toEqual([CHART_ID, expect.any(Array), 'lahiri_chitrapaksha', '%D1%'])
   })
 })

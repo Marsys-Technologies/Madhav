@@ -427,10 +427,6 @@ function checkRegistryContamination(): number {
   const NATIVE_IDENTIFIERS = ['Abhisek Mohanty', '1984-02-05', 'Bhubaneswar']
 
   for (const cap of caps) {
-    // Skip the ephemeris_cache_native_lifetime resource — it is the documented
-    // exception in chart_agnostic_gate.ts (architectural description, not a default)
-    if (cap.uri === 'marsys://resource/ephemeris-cache/native-lifetime') continue
-
     const text = `${cap.description} ${cap.name} ${cap.uri}`
     if (text.includes(NATIVE_ID)) { contamCount++; continue }
     for (const id of NATIVE_IDENTIFIERS) {

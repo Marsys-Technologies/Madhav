@@ -36,6 +36,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { runCanaryBattery, type ProbeResult, type ProbeStatus } from '@/lib/canary/canary_probes'
 import { checkAndDispatch } from '@/lib/alerts/dispatch'
+import { safeEqual } from '@/lib/security/safe_equal'
 
 export const maxDuration = 60
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   const expected = process.env.MARSYS_CRON_SECRET
   const auth = request.headers.get('x-marsys-cron-secret')
 
-  if (!expected || auth !== expected) {
+  if (!safeEqual(auth, expected)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

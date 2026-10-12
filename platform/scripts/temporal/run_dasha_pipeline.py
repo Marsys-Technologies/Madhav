@@ -34,8 +34,10 @@ def main() -> int:
         choices=list(SYSTEMS),
         help="Which dasha system(s) to compute. Default: vimshottari + yogini.",
     )
-    parser.add_argument("--chart-id", default="abhisek_mohanty_primary")
-    parser.add_argument("--birth", default="1984-02-05T10:43:00+05:30")
+    parser.add_argument("--chart-id", required=True,
+                        help="Chart UUID (the charts.chart_id of the chart under test). REQUIRED.")
+    parser.add_argument("--birth", required=True,
+                        help="ISO8601 birth datetime of the chart under test (timezone-aware), from its `charts` row. REQUIRED: no birth datetime is embedded in this script.")
     parser.add_argument("--horizon-end", default="2061-01-01",
                         help="Forwarded to each engine. M3-W2-B1 + B2 horizon.")
     args = parser.parse_args()

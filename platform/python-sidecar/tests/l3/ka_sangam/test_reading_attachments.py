@@ -216,15 +216,18 @@ def test_certification_mapping_keeps_unmeasured_gates_honest():
     from pathlib import Path
     mapping = json.loads((Path(api().__file__).parent / 'certification_mapping.json').read_text())
     assert mapping['asset'] == 'ka_sangam'
-    assert mapping['registry_revision'] == 26
     assert mapping['density_tier_columns'] is None
     assert mapping['production_certification'] is None
     assert mapping['gates']['Dens']['expected_reading'] == 'No producer-stored tier; no Dens PASS claimed'
     tree = ast.parse((Path(__file__).parents[4] / 'scripts/governance/asset_census.py').read_text())
+    registry_revision = next(n.value.value for n in tree.body if isinstance(n, ast.Assign)
+                             and any(isinstance(t, ast.Name) and t.id == 'REGISTRY_REVISION'
+                                     for t in n.targets))
+    assert mapping['registry_revision'] == registry_revision
     registry = next(n.value for n in tree.body if isinstance(n, ast.AnnAssign)
                     and isinstance(n.target, ast.Name) and n.target.id == 'CRITERION_REGISTRY')
     revisions = {key.value: next(k.value.value for k in value.keywords if k.arg == 'revision')
                  for key, value in zip(registry.keys, registry.values)}
     for gate in mapping['gates'].values():
         for criterion, revision in gate['revisions'].items():
-            assert revision == revisions[criterion]
+            assert revision == revisions[criterion], criterion

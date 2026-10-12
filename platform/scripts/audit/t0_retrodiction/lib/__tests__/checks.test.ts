@@ -45,7 +45,7 @@ function realisticPeriods(): DashaPeriod[] {
   return periods
 }
 
-const BOUNDS_START = parseDate('1984-02-05')
+const BOUNDS_START = parseDate('1990-01-01')
 const BOUNDS_END = parseDate('2034-12-31')
 
 // A chart-shaped fixture: Jupiter MD, then a Mars sub-period confluence

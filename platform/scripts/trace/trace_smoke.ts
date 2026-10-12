@@ -21,7 +21,7 @@
  *   3. Env vars (add to .env.local or export):
  *        SMOKE_EMAIL        — super_admin Firebase account email
  *        SMOKE_PASSWORD     — Firebase password for that account
- *        SMOKE_CHART_ID     — UUID of the D1 chart (Abhisek Mohanty)
+ *        SMOKE_CHART_ID     — UUID of the D1 chart (the canonical chart, 482012f1-...)
  *
  * Usage:
  *   npx tsx scripts/trace/trace_smoke.ts

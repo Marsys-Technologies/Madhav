@@ -51,7 +51,7 @@ import type { QueryPlan, RetrievalTool, ToolBundle } from '../src/lib/retrieve/t
 
 const SCENARIO_COUNT = Number(process.env.SCENARIO_COUNT ?? '1')
 const WARMUP_RUNS = Number(process.env.WARMUP_RUNS ?? '1')
-const CHART_ID = process.env.CHART_ID ?? 'abhisek_mohanty_primary'
+const CHART_ID = process.env.CHART_ID ?? '482012f1-710e-4a25-994a-93821f5871aa' // canonical chart (CLAUDE.md section B); override with CHART_ID
 const NOW_ISO = new Date().toISOString()
 const OUTPUT_DIR = path.join(__dirname, 'eval')
 const OUTPUT_FILE = path.join(
