@@ -47,6 +47,7 @@ describe('JUDGMENT_FLAG_CODES — closed, registry-checked vocabulary', () => {
     'system_facet_unrecognized',
     'time_sensitive_low_confidence',
     'unmapped_lord_graha',
+    'lord_graha_resolved',
     'house_class_unresolved',
     'ratification_unavailable',
     'karaka_unresolved',

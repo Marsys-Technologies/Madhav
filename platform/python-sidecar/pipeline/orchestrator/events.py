@@ -54,6 +54,7 @@ class _Encoder(json.JSONEncoder):
 DEFAULT_DURABLE_EVENT_TYPES = frozenset({
     "asset.noop_completion",
     "asset.noop_completion_rejected",
+    "writer.post_pass_evaluated",
 })
 
 

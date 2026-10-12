@@ -19,3 +19,7 @@
 1350_kala_jury_candidate.sql
 1351_issued_forecast_lifecycle.sql
 1352_issued_forecast_finite_intervals.sql
+1353_k6_kalasutra_candidate.sql
+1354_k6_darshana_candidate.sql
+1355_k6_jivana_candidate.sql
+1356_k6_read_model_build_scoped_detectors.sql

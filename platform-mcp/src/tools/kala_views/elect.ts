@@ -59,6 +59,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { kalaViewAlias } from './registry_alias.js'
 import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
@@ -1159,7 +1160,7 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'substrate touches the span-of-life / death-timing question is WITHHELD outright under ' +
     'MACRO_PLAN §3.5.C, under every audience tier.',
     KalaElectInputShape,
-    async (args) => {
+    kalaViewAlias(principal, 'elect', async (args) => {
       const parsed = args as KalaElectInput
       if (!parsed.chart_id) return errorOutput('kala_elect_get', 'chart_id is required')
       try {
@@ -1173,6 +1174,6 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
       } catch (err) {
         return errorOutput('kala_elect_get', String(err), { chart_id: parsed.chart_id })
       }
-    },
+    }),
   )
 }

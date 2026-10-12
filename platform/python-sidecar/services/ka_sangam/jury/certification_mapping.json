@@ -1,6 +1,7 @@
 {
   "version": "K4-3/v1",
-  "registry_revision": 29,
+  "registry_revision": 30,
+  "registry_revision_reason": "re-checked against rev 30 (asset_census.py on suvarna/vocab-round-regen2 @ c76ffa798): the four criteria changed only by an appended opt-in `empty_slice_by_conditional` applicability clause and revision; ka_sangam declares no vocab_alias, prose_fields or empty slice, so no mapped claim or expected reading changes",
   "asset": "ka_sangam",
   "scope": "K4 candidate fixture and attachment preparation; legacy output and production qualification remain separate",
   "kind": "data",
@@ -61,7 +62,7 @@
     "Vocab": {
       "revisions": {
         "Vocab.identity": 3,
-        "Vocab.alias": 9
+        "Vocab.alias": 10
       },
       "expected_reading": "Typed event/claim identities; legacy table alias certification unproved"
     },
@@ -80,7 +81,7 @@
     "Narr": {
       "revisions": {
         "Narr.agree": 8,
-        "Narr.checkable": 7,
+        "Narr.checkable": 8,
         "Narr.fidelity_test": 7,
         "Narr.lint": 7
       },
@@ -88,8 +89,8 @@
     },
     "Null": {
       "revisions": {
-        "Null.schema_default": 10,
-        "Null.blank_rows": 10
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
       },
       "expected_reading": "Explicit unavailable report and named unmatched reasons; whole-table live graders unmeasured"
     },
