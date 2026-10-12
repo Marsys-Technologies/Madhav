@@ -85,7 +85,8 @@ def _psql(pg, sql=None, path=None):
 # the REAL migration files that create the produced tables (applied in this order; each is a standalone CREATE / ALTER)
 REAL_DDL = [SMIG / "204_chart_facts.sql", SMIG / "215_chart_facts_formula_id.sql", SMIG / "216_chart_facts_partial_indexes.sql",
             MIG / "279_ga_medical.sql", MIG / "276_bg_medical_mappings.sql", MIG / "277_bg_nakshatra_medical.sql", MIG / "316_bg_nakshatra_medical_dosha.sql",
-            MIG / "261_bg_prashna_rules_schema.sql", MIG / "288_prashna_charts.sql", MIG / "289_ga_prashna_lagna.sql", MIG / "290_ga_prashna_judgment.sql", MIG / "286_ga_vastu_planet_direction_map.sql"]
+            MIG / "261_bg_prashna_rules_schema.sql", MIG / "288_prashna_charts.sql", MIG / "289_ga_prashna_lagna.sql", MIG / "290_ga_prashna_judgment.sql", MIG / "286_ga_vastu_planet_direction_map.sql",
+            SMIG / "499_orchestrator_event_register.sql"]      # the register the ga_vichara post-pass writes its run-evidence record to (#3448: persist_event)
 SIGN_MEDICAL_DDL = ("CREATE TABLE bg_sign_medical (sign_number INTEGER PRIMARY KEY CHECK (sign_number BETWEEN 1 AND 12), sign_name TEXT NOT NULL UNIQUE, body_part TEXT NOT NULL, organ_systems TEXT[], "
                     "element TEXT NOT NULL CHECK (element IN ('fire','earth','air','water')), dosha TEXT NOT NULL, classical_citation TEXT NOT NULL)")
 STUBS = ["CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(uuid, text[], text[], text[]) RETURNS void LANGUAGE plpgsql AS $$ BEGIN END $$;",
@@ -94,7 +95,7 @@ STUBS = ["CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(uuid
          # the CREATE TABLE of supabase/migrations/431_bg_sign_medical_kalapurusha.sql (that file also writes asset_registry, which this database does not have); the L0 loader seeds it too
          SIGN_MEDICAL_DDL,
          "ALTER TABLE chart_facts ADD COLUMN IF NOT EXISTS formula_provenance_text TEXT"]      # the post-pass INSERT of ga_structural_writer names it (migration 209)
-TABLES = ["bg_sky_calendar", "bg_synthetic_cohort_md", "bg_synthetic_cohort", "chart_vichara", "chart_facts", "ga_medical", "bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical", "ga_condition_composite", "prashna_charts", "ga_prashna_lagna",
+TABLES = ["orchestrator_event_register", "bg_sky_calendar", "bg_synthetic_cohort_md", "bg_synthetic_cohort", "chart_vichara", "chart_facts", "ga_medical", "bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical", "ga_condition_composite", "prashna_charts", "ga_prashna_lagna",
           "ga_prashna_judgment", "bg_prashna_lagna_methods", "bg_prashna_tajik_yogas", "bg_prashna_significators", "bg_prashna_fructification_rules", "bg_prashna_special_techniques", "ga_vastu_planet_direction_map"]
 
 
@@ -128,9 +129,9 @@ def _create_table_ddl(path, table):
     raise AssertionError(f"unbalanced CREATE TABLE {table}")
 
 
-def _conn(pg):
+def _conn(pg, autocommit=True):
     import psycopg
-    return psycopg.connect(pg.url, autocommit=True)
+    return psycopg.connect(pg.url, autocommit=autocommit)
 
 
 def _measure(aid, db, monkeypatch, files, target, tables, decl=None):
@@ -625,8 +626,8 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     assert e["cross_asset_writes"] == ["chart_facts.fact_value_text", "chart_facts.citation_human"]
     ev = e["evidence"]["prose_fields"]
     for cite in ("ga_vichara_writer.py:693", "ga_vichara_writer.py:695", "ga_vichara_writer.py:388", "ga_vichara_writer.py:461", "ga_vichara_writer.py:543", "valence_doctrine.py:251",
-                 "ga_vichara_writer.py:1105", "ga_vichara_writer.py:1107", "ga_vichara_writer.py:1237", "ga_vichara_writer.py:1238", "ga_daridra_postpass.py:281", "ga_daridra_postpass.py:215",
-                 "ga_daridra_postpass.py:217", "ga_daridra_postpass.py:225", "ga_daridra_postpass.py:86", "ga_daridra_postpass.py:301", "ga_structural_writer.py:3104", "ga_structural_writer.py:3215",
+                 "ga_vichara_writer.py:1105", "ga_vichara_writer.py:1107", "ga_vichara_writer.py:1237", "ga_vichara_writer.py:1238", "ga_daridra_postpass.py:393", "ga_daridra_postpass.py:216",
+                 "ga_daridra_postpass.py:218", "ga_daridra_postpass.py:226", "ga_daridra_postpass.py:87", "ga_daridra_postpass.py:420", "ga_structural_writer.py:3104", "ga_structural_writer.py:3215",
                  "ga_structural_writer.py:3216", "ga_structural_writer.py:3222"):
         assert cite in ev, cite
     # the cited lines really hold what the evidence says they hold
@@ -637,8 +638,8 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     assert '"value_text": (' in w[692] and "ratification fails in" in w[694] and "verdict.citation" in w[387] and '"source_citation": citation' in w[460] and '"source_citation": citation' in w[542]
     assert "citation = (" in v[250] and "value_text" in w[1104] and "source_citation" in w[1106]
     assert "import emit_daridra_label_post_pass" in w[1236] and "emit_daridra_label_post_pass(conn" in w[1237] and "return inserted + daridra_written" in w[1238]
-    assert "def emit_daridra_label_post_pass" in pp[280] and '"citation_human": (' in pp[214] and "does not serve as a finding" in pp[216] and "Daridra stands uncancelled" in pp[224]
-    assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[85] and "insert_daridra_label_rows(conn, rows)" in pp[300]
+    assert "def emit_daridra_label_post_pass" in pp[392] and '"citation_human": (' in pp[215] and "does not serve as a finding" in pp[217] and "Daridra stands uncancelled" in pp[225]
+    assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[86] and "insert_daridra_label_rows(conn, rows)" in pp[419]
     assert "def _build_dosha_rows" in sw[3103] and "citation_human = (" in sw[3214] and "labels chart" in sw[3215] and "CANCELLED:" in sw[3221]
     assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"], ["citation_human"], ["citation_human"]]
     got = ac.narr_fidelity_scan(e["prose_fields"], ev, _python_tests(), e["fidelity_tests"], None)
@@ -688,7 +689,7 @@ def _vichara_world(db, monkeypatch, *, daridra="uncancelled"):
     _psql(db, "DROP TABLE IF EXISTS chart_vichara CASCADE")
     _psql(db, _chart_vichara_ddl())
     _psql(db, "DELETE FROM chart_facts")
-    conn = _conn(db)
+    conn = _conn(db, autocommit=False)          # #3448: the post-pass evidence record is written by persist_event inside a SAVEPOINT, which needs a transaction block (the orchestrator's own shape)
     facts = [g._link("l1", "Venus", 2, 2), g._link("l2", "Jupiter", 9, 2), g._functional("fc1", "JUP", "yogakaraka"), g._dignity("d1jup", "D1", "JUP", "exalted"),
              g._dignity("d9jup", "D9", "JUP", "debilitated"), g._dignity("d1ven", "D1", "VEN", "own"), g._dignity("d9ven", "D9", "VEN", "own")]
     domains = {"wealth": {"vargas": ["D1", "D9"], "houses": [2], "karaka": "Jupiter", "provisional": False}}
@@ -703,10 +704,11 @@ def _vichara_world(db, monkeypatch, *, daridra="uncancelled"):
         next(x for x in chart["grahas"] if x["name"] == "Venus").update(sign="Libra", sign_id=7, house=4, longitude=190.0)      # the 11th lord in a kendra
     canned = g._CannedConn(yoga_rows=[("dhana_yoga_house_lords", '["sun", "mercury", "venus"]')] if daridra == "cancelled" else None)
     real = getattr(pp.build_daridra_label_rows, "_real", pp.build_daridra_label_rows)           # the original, even when an earlier call of this helper in the same test already patched it
-    patched = lambda c, cid, bid, aya, **k: real(canned, cid, bid, aya, chart_output=chart, dosha_catalog=[g.DARIDRA_ENTRY])      # noqa: E731
+    patched = lambda c, cid, bid, aya, **k: real(canned, cid, bid, aya, chart_output=chart, dosha_catalog=[g.DARIDRA_ENTRY], evaluation=k.get("evaluation"))      # noqa: E731  (#3448: the emitter passes `evaluation` and reads entries_evaluated from it for the run-evidence record)
     patched._real = real
     monkeypatch.setattr(pp, "build_daridra_label_rows", patched)
     rows_written = gv.build_ga_vichara_substep(CHART, str(uuid.uuid4()), AYANAMSHAS[0], conn, as_of=datetime.date(2026, 1, 1))
+    conn.commit()
     n_v = int(_psql(db, f"SELECT count(*) FROM chart_vichara WHERE chart_id = '{CHART}'").strip())
     n_d = int(_psql(db, f"SELECT count(*) FROM chart_facts WHERE chart_id = '{CHART}' AND fact_subject = 'daridra'").strip())
     return rows_written, n_v, n_d
