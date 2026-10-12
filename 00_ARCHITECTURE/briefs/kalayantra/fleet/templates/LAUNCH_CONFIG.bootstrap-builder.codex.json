@@ -1,0 +1,33 @@
+{
+ "schema": "ky.launch_config/1",
+ "engine": "codex",
+ "role": "bootstrap-builder",
+ "model": "gpt-6.1-sol",
+ "effort": "high",
+ "sandbox": "workspace-write",
+ "network": false,
+ "commit_mode": "launcher",
+ "deadline_seconds": 14400,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
+ "codex_bin": "/opt/homebrew/bin/codex",
+ "codex_min_version": "0.162.0",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md",
+ "env_names": [
+  "HOME",
+  "USER",
+  "LANG",
+  "TERM",
+  "PATH",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
+  "KY_ITEM",
+  "KY_PY"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "writable_dirs": [],
+ "_note": "The Codex builder (cockpit ruling E7): workspace-write, no network; writable are the item's working copy, JOB_SCRATCH and TMPDIR — /tmp is excluded and no git directory is writable (the working copy is a linked worktree: its git directory lies elsewhere). The job never commits, pushes or opens a PR: it leaves its changes in the working tree and writes result.json with status, tests and commit_message; the launcher commits and pushes outside the sandbox. For the job's prompt: run no git command that writes (commit, push, config, worktree, stash, add); read-only git only, with GIT_OPTIONAL_LOCKS=0. Codex has no turn limit: deadline_seconds is the only one. Model gpt-6.1-sol at effort high (owner decision 2026-10-12); another model needs its own receipt."
+}

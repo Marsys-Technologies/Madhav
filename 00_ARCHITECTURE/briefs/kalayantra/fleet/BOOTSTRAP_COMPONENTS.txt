@@ -14,6 +14,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/surrogate_decision.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/bootstrap_launch_input.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/bootstrap_launch_input_codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.template.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.README.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py
@@ -52,6 +53,20 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
+
+# area: engines — the second agent engine (OpenAI Codex CLI): its launch configurations, schemas and tests
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/codex_reviewer_output.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result_launcher_commit.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/launch_input_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/codex_reviewer_output.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/job_result_launcher_commit.json
 
 # area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md

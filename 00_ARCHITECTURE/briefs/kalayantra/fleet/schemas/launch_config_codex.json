@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.launch_config/1#codex",
+  "title": "KĀLA-YANTRA v3 launch configuration of the OpenAI Codex CLI engine, the input of fleet/kyqualify.py (relaunch plan v2.7 §7 launch line and launch qualification KV-06)",
+  "description": "One role's Codex launch line as data: everything a Codex qualification receipt binds. The same schema id as a Claude Code configuration (launch_config.json), told apart by engine = \"codex\". kyqualify.py builds the argv from it as: codex_bin exec --ignore-user-config --ignore-rules --json [--skip-git-repo-check when work_root is \"job\"] -o <JOB_DIR>/final_message.txt -C <worktree, or <JOB_DIR> when work_root is \"job\"> -s <sandbox> -m <model> -c model_reasoning_effort=\"<effort>\" -c approval_policy=\"never\" -c web_search=\"disabled\" -c sandbox_workspace_write.network_access=<network> -c sandbox_workspace_write.exclude_slash_tmp=true --disable <feature> for each of memories, multi_agent, multi_agent_v2, apps, plugins, remote_plugin, browser_use, browser_use_external, in_app_browser, computer_use, hooks, daemon_auto_start, goals, tool_suggest, worktrees, image_generation, in_app_local_automation, chronicle, enable_fanout, agent_message_board, send_async_message, web_search_request, standalone_web_search, skill_search, plugin_hooks, recommended_plugins, remote_control, js_repl [--add-dir <dir> per writable_dirs] [--add-dir <JOB_DIR> for a worktree-rooted workspace-write] [--output-schema <output_schema>] - (the prompt on stdin; <JOB_DIR> is the job's own JOB_SCRATCH, filled per launch). Every flag is the launcher's: there is no extra-flag field, so no --dangerously-* flag, no --profile and no other sandbox can be added. Shape only. Not checked by this schema, and checked by kyqualify.py before anything is launched: paths normalised; worktree a git work tree (codex exec runs only inside one) whose common git directory no writable root holds or lies in (a builder's worktree is a linked worktree: its git directory is elsewhere); a builder says commit_mode \"launcher\" and has network false; codex_bin executable and its version (`codex --version`) at least codex_min_version, itself at least 0.162.0; prompt_path readable; output_schema strict JSON; every writable dir an existing directory; the env_names value policy of launch_config.json, with OpenAI/Codex credential names refused; the loop roles planner and conductor refused (kyloop.py fixes their Claude launch line). A Claude-only field (permission_mode, max_turns, claude_bin, mcp_config, extra_flags, disallowed_tools, add_dirs, intended_tools, denied_tools, bash_canary, shell_canary, denied_bash) refuses a Codex configuration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "engine",
+    "role",
+    "model",
+    "effort",
+    "sandbox",
+    "network",
+    "deadline_seconds",
+    "worktree",
+    "codex_bin",
+    "codex_min_version",
+    "prompt_path",
+    "env_names",
+    "child_path",
+    "writable_dirs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.launch_config/1"
+    },
+    "engine": {
+      "const": "codex"
+    },
+    "_note": {
+      "description": "Free text for people; never read by the harness and never bound.",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$",
+      "not": {
+        "enum": [
+          "planner",
+          "conductor"
+        ]
+      },
+      "description": "Names the receipt run/QUALIFICATIONS/<role>-<model>.json (the model tells a Codex receipt from a Claude one of the same role) and the one-shot launchd label in.marsys.kalayantra.qualify.<role>."
+    },
+    "model": {
+      "description": "The OpenAI model (-m); the campaign's Codex agents use gpt-6.1-sol (owner decision 2026-10-12). A different model is a different configuration: it needs its own receipt.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+    },
+    "effort": {
+      "description": "model_reasoning_effort. 'ultra' (it delegates the work to sub-agents) and 'persistent' (it switches the model into persistent mode: proactive follow-up work beyond the request) are refused.",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "sandbox": {
+      "description": "-s: read-only for reviewers, workspace-write for builders. danger-full-access is refused: it lifts the sandbox.",
+      "enum": [
+        "read-only",
+        "workspace-write"
+      ]
+    },
+    "network": {
+      "description": "sandbox_workspace_write.network_access. false for a builder (the launcher pushes for it) and for read-only; a job-rooted run's own choice (the reviewers: false).",
+      "type": "boolean"
+    },
+    "work_root": {
+      "description": "Where -C points (default \"worktree\"). \"job\": the job's own folder is -C and, with its TMPDIR, all the job may write (/tmp is excluded on every line) (workspace-write, no writable_dirs, --skip-git-repo-check on the line); the item's working copy is read through absolute paths and must be unchanged after the job (cockpit ruling E1: the reviewers).",
+      "enum": [
+        "worktree",
+        "job"
+      ]
+    },
+    "commit_mode": {
+      "description": "Required of a Codex builder (worktree-rooted, workspace-write), and only there (cockpit ruling E7): \"launcher\" — the job has no write access to any git directory and no network; it leaves its changes in the working copy and a proposed commit_message in result.json (schemas/job_result_launcher_commit.json); the launcher commits and pushes outside the sandbox.",
+      "enum": [
+        "launcher"
+      ]
+    },
+    "deadline_seconds": {
+      "description": "The role's wall-clock deadline; bound, and the upper limit of every canary run. Codex has no turn limit: the deadline is the only one.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "worktree": {
+      "description": "-C: the job's working root, a git work tree.",
+      "$ref": "#/$defs/path"
+    },
+    "codex_bin": {
+      "description": "The program (on the campaign host /opt/homebrew/bin/codex); its real path is hashed and bound.",
+      "$ref": "#/$defs/path"
+    },
+    "codex_min_version": {
+      "description": "The lowest `codex --version` (X.Y.Z, a pre-release suffix ignored) this configuration accepts.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "prompt_path": {
+      "$ref": "#/$defs/path"
+    },
+    "output_schema": {
+      "description": "Optional --output-schema: the JSON schema of the job's final message (a reviewer's JSON result). Its sha256 is bound.",
+      "$ref": "#/$defs/path"
+    },
+    "env_names": {
+      "description": "The job's whole environment, by name (env -i semantics); values follow kyqualify.py's value policy. CODEX_HOME is not among them: the program then uses $HOME/.codex for its sign-in.",
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "not": {
+          "pattern": "^(DATABASE_URL|.*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY|OPENAI_API_KEY|CODEX_API_KEY|AZURE_OPENAI_API_KEY)$"
+        }
+      }
+    },
+    "child_path": {
+      "description": "The PATH value: absolute entries separated by ':'; an empty entry would be the current directory.",
+      "type": "string",
+      "pattern": "^/[^:\\n]*(:/[^:\\n]*)*$"
+    },
+    "writable_dirs": {
+      "description": "Extra writable roots (--add-dir) besides -C and, for a builder, the job's own folder; empty for read-only and for a job-rooted run. Never a git directory, a path inside one or a folder that holds the worktree's common git directory (derived with git and checked): a Codex job writes no git directory.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/path"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "sandbox": {
+            "const": "read-only"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      },
+      "then": {
+        "properties": {
+          "network": {
+            "const": false
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "work_root": {
+            "const": "job"
+          }
+        },
+        "required": [
+          "work_root"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "work_root": {
+            "const": "worktree"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      },
+      "then": {
+        "required": [
+          "commit_mode"
+        ],
+        "properties": {
+          "network": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "commit_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "work_root": {
+            "const": "worktree"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "path": {
+      "type": "string",
+      "pattern": "^/[^\\n]*$"
+    }
+  }
+}

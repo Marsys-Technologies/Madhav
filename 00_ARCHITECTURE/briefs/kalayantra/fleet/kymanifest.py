@@ -62,6 +62,16 @@ COVERED_DIRS = [FLEET + "/" + d for d in ("cards", "schemas", "templates", "laun
 ROSTER = ["claude-opus-5-5", "claude-sonnet-5-5"]
 HARNESS = FLEET + "/kyqualify.py"
 LAUNCH_CONFIG = FLEET + "/templates/LAUNCH_CONFIG.%s.json"
+LAUNCH_CONFIG_CODEX = FLEET + "/templates/LAUNCH_CONFIG.%s.codex.json"     # a receipt that says "engine": "codex"
+
+
+def launch_config_of(doc):
+    """the repository-relative launch configuration a qualification receipt is judged against: the role's Codex
+    configuration for a receipt that says "engine": "codex", the role's Claude Code configuration otherwise"""
+    role = doc.get("role") if isinstance(doc, dict) else None
+    if not isinstance(role, str):
+        return None
+    return (LAUNCH_CONFIG_CODEX if doc.get("engine") == "codex" else LAUNCH_CONFIG) % role
 
 
 class Refused(Exception):
@@ -243,10 +253,11 @@ def observe_qualifications(repo, run_dir, bound=None):
         if doc.get("result") != "PASS":
             raise Refused("qualification receipt is not PASS (%r): %s" % (doc.get("result"), name))
         role = doc.get("role")
-        config = os.path.join(repo, LAUNCH_CONFIG % role) if isinstance(role, str) else None
+        listed = launch_config_of(doc)
+        config = os.path.join(repo, listed) if listed else None
         if not config or not os.path.isfile(config):
             raise Refused("no launch configuration in the reviewed source for the receipt's role: " + name)
-        if bound is not None and LAUNCH_CONFIG % role not in bound:
+        if bound is not None and listed not in bound:
             raise Refused("the receipt's launch configuration is not a bound component (deferred or unlisted): " + name)
         # -I: the harness must not import a module planted beside it or named by the environment.
         harness = subprocess.run([sys.executable, "-I", "-B", os.path.join(repo, HARNESS), "check", path, "--config", config,
@@ -254,7 +265,7 @@ def observe_qualifications(repo, run_dir, bound=None):
         if harness.returncode != 0:
             raise Refused("the qualification harness does not accept %s (exit %d)" % (name, harness.returncode))
         out.append({"path": path, "sha256": sha256(path), "result": "PASS", "role": role, "model": doc.get("model"),
-                    "context": doc.get("context"), "config": LAUNCH_CONFIG % role, "config_sha256": sha256(config)})
+                    "context": doc.get("context"), "config": listed, "config_sha256": sha256(config)})
     return out
 
 

@@ -286,3 +286,46 @@ def test_every_file_in_a_covered_directory_is_listed():
                 assert str(p.relative_to(REPO)) in listed, "unlisted: %s" % p.relative_to(REPO)
     for rel in listed:
         assert (REPO / rel).is_file(), "listed but missing: " + rel
+
+
+def test_a_codex_receipt_is_judged_against_the_roles_codex_configuration_never_the_claude_one(rig):
+    """the second engine: a receipt that says "engine": "codex" names LAUNCH_CONFIG.<role>.codex.json — a Claude
+    configuration of the same role is not its configuration, and the Codex one must be a bound component"""
+    codex = rig.run / "QUALIFICATIONS" / "bootstrap-builder-gpt-6.1-sol.json"
+    codex.write_text(json.dumps({"result": "PASS", "role": "bootstrap-builder", "model": "gpt-6.1-sol",
+                                 "context": "launchd", "engine": "codex"}))
+    r = rig.build()                         # only the Claude configuration of the role is in the source
+    assert r.returncode == 1 and "no launch configuration in the reviewed source" in r.stderr, r.stderr
+    cfg = km.LAUNCH_CONFIG_CODEX % "bootstrap-builder"
+    assert cfg == km.FLEET + "/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json"
+    (rig.repo / cfg).write_text("codex component\n")
+    (rig.repo / km.COMPONENT_LIST).write_text("\n".join(rig.comps) + "\n# tranche: deferred\n" + cfg + "\n")
+    rig.commit("a deferred codex configuration")
+    rig.write_review()
+    assert "not a bound component" in rig.build().stderr
+    (rig.repo / km.COMPONENT_LIST).write_text("\n".join(rig.comps + [cfg]) + "\n")
+    rig.commit("bind the codex configuration")
+    comps = rig.comps + [cfg]
+    review = json.loads(rig.review.read_text())
+    review["inputs"] = {rel: sha(rig.repo / rel) for rel in comps}
+    rig.review.write_text(json.dumps(review))
+    rec = rig.run / "reviews" / "two.review.json"            # the second area review covers the new file too
+    area = json.loads(rec.read_text())
+    area["inputs"][cfg] = sha(rig.repo / cfg)
+    area["inputs"][km.COMPONENT_LIST] = sha(rig.repo / km.COMPONENT_LIST)
+    rec.write_text(json.dumps(area))
+    review["area_reviews"] = [dict(e, record_sha256=sha(e["record"])) for e in review["area_reviews"]]
+    rig.review.write_text(json.dumps(review))
+    for e in review["area_reviews"]:
+        one = json.loads(Path(e["record"]).read_text())
+        one["inputs"] = {k: sha(rig.repo / k) for k in one["inputs"]}
+        Path(e["record"]).write_text(json.dumps(one))
+    review["area_reviews"] = [dict(e, record_sha256=sha(e["record"])) for e in review["area_reviews"]]
+    rig.review.write_text(json.dumps(review))
+    r = rig.build()
+    assert r.returncode == 0, r.stderr
+    recorded = {q["model"]: q["config"] for q in json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())["qualifications"]}
+    assert recorded == {"claude-opus-5-5": km.LAUNCH_CONFIG % "bootstrap-builder", "gpt-6.1-sol": cfg}
+    assert km.launch_config_of({"role": "bootstrap-builder"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
+    assert km.launch_config_of({"role": "bootstrap-builder", "engine": "claude"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
+    assert km.launch_config_of({"role": 7}) is None
