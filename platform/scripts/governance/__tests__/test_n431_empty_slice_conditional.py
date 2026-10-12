@@ -297,7 +297,7 @@ class DB:
         elif tag == "throughput":
             rows = [list(r) for r in self.throughput]
         elif tag == "register":
-            rows = [[str(100 + i), r["run"], r["chart"], r["asset"], str(r["at"]), r["rows"], json.dumps(r["payload"])] for i, r in enumerate(self.records)]
+            rows = [[str(1000 - i), r["run"], r["chart"], r["asset"], str(r["at"]), r["rows"], json.dumps(r["payload"])] for i, r in enumerate(self.records)]
         elif tag == "slice":
             rows = [[str(self.slice_rows)]]
         else:
@@ -456,12 +456,36 @@ def _row_count_disagrees(d):
     d.records = [_rec(p, chart_vichara_rows_inserted=1) for p in PARTS][::-1]       # the live chart_vichara count is 1550+
 
 
-def _duplicate(d):
-    d.records = d.records + [_rec(PARTS[0])]
-
-
 def _conflicting_duplicate(d):
-    d.records = d.records + [_rec(PARTS[0], formed=True, rows_written=1)]           # the older (lower id) record contradicts the newer one
+    d.records = d.records + [_rec(PARTS[0], formed=True, rows_written=1)]           # the older (lower id, same time) record contradicts the newer one
+
+
+def _earlier_entries_zero(d):
+    d.records = d.records + [_rec(PARTS[1], entries_evaluated=0)]
+
+
+def _earlier_rows_written(d):
+    d.records = d.records + [_rec(PARTS[2], rows_written=2, formed=True)]
+
+
+def _later_formed_true(d):
+    d.records = [_rec(PARTS[3], formed=True, rows_written=1, at=T0 + 1040)] + d.records   # a newer record (higher id, later time) contradicts the older agreeing one
+
+
+def _four_dup_fifth_missing(d):
+    d.records = ([_rec(p) for p in PARTS[:4]] + [_rec(p, at=T0 + 1020) for p in PARTS[:4]])[::-1]
+
+
+def _latest_by_time_outside(d):                                          # the highest register id carries an EARLIER time (inside); the LATEST by time (lowest id) lies after the run ended
+    d.records = [_rec(PARTS[0], at=T0 + 1030)] + [_rec(p) for p in PARTS[1:]][::-1] + [_rec(PARTS[0], at=T0 + 1060 + 600)]
+
+
+def _retry_final_emitted_nothing(d):                                     # a retry: the final attempt (started T0+1001) took an early return, the first pass (T0+900) left 5 records
+    d.records = [_rec(p, at=T0 + 900) for p in PARTS][::-1]
+
+
+def _retry_final_partial(d):                                             # first pass 5 records, the final attempt emitted only 3: the other two latest records predate its start
+    d.records = ([_rec(p, at=T0 + 900) for p in PARTS] + [_rec(p, at=T0 + 1030) for p in PARTS[:3]])[::-1]
 
 
 def _vichara_other_build(d):
@@ -533,8 +557,8 @@ CASES = [
     ("M2 only 4 of 5 ayanamsha records", _four_of_five, {}, "does_not_hold", "partition-complete", ("partition-complete",)),
     ("M3 evidence of ANOTHER chart", _other_chart, {}, "does_not_hold", "chart-binding", ("chart-binding",)),
     ("M3 payload chart differs from its column", _payload_chart_differs, {}, "does_not_hold", "record-shape", ("record-shape",)),
-    ("M4 evidence from an OLDER build only", _older_build_only_in_bracket, {}, "does_not_hold", "evidence-present", ("run-binding", "evidence-present", "time-bracket")),
-    ("M4 older build evidence (also outside the bracket)", _older_build_only, {}, "does_not_hold", "evidence-present", ("run-binding", "evidence-present", "time-bracket")),
+    ("M4 evidence from an OLDER build only", _older_build_only_in_bracket, {}, "does_not_hold", "evidence-present", ("run-binding", "evidence-present", "bracket-lower", "bracket-upper")),
+    ("M4 older build evidence (also outside the bracket)", _older_build_only, {}, "does_not_hold", "evidence-present", ("run-binding", "evidence-present", "bracket-lower", "bracket-upper")),
     ("M4 the evidenced build predates the writer-code window", _run_older_than_window, {}, "does_not_hold", "in-window", ("in-window",)),
     ("M5 newer attempt errored, never started", _newer_error_never_started, {}, "unverified", "newer-attempt", ("newer-attempt",)),
     ("M5 newer errored attempt created later but started earlier", _newer_error_started_earlier, {}, "unverified", "newer-attempt", ("newer-attempt",)),
@@ -548,14 +572,20 @@ CASES = [
     ("M7 formed = true with rows_written 0", _formed_true_rows_zero, {}, "does_not_hold", "not-formed", ("not-formed",)),
     ("M7 rows_written 1 while formed false", _rows_written_nonzero, {}, "does_not_hold", "not-formed", ("not-formed",)),
     ("M7 rows the post-pass saw differ from the live count", _row_count_disagrees, {}, "does_not_hold", "same-build", ("same-build",)),
-    ("M8 duplicate record for a partition", _duplicate, {}, "does_not_hold", "single-record", ("single-record",)),
-    ("M8 conflicting duplicate record", _conflicting_duplicate, {}, "does_not_hold", "single-record", ("single-record",)),
+    ("M8 an EARLIER record of the run for a partition says formed true (a later one says false)", _conflicting_duplicate, {}, "does_not_hold", "not-formed", ("not-formed",)),
+    ("M8 an earlier record says entries_evaluated 0", _earlier_entries_zero, {}, "does_not_hold", "evaluated", ("evaluated",)),
+    ("M8 an earlier record says rows_written 2", _earlier_rows_written, {}, "does_not_hold", "not-formed", ("not-formed",)),
+    ("M8 a LATER record says formed true after an agreeing earlier one", _later_formed_true, {}, "does_not_hold", "not-formed", ("not-formed",)),
+    ("M8 four partitions with duplicates, the fifth missing", _four_dup_fifth_missing, {}, "does_not_hold", "partition-complete", ("partition-complete",)),
+    ("M8 the latest record (by time) lies outside the bracket though the highest id is inside", _latest_by_time_outside, {}, "does_not_hold", "time-bracket", ("latest-record",)),
+    ("RETRY: the final attempt emitted NOTHING (early return): only first-pass records", _retry_final_emitted_nothing, {}, "does_not_hold", "time-bracket", ("bracket-lower",)),
+    ("RETRY: the final attempt emitted only 3 partitions of 5", _retry_final_partial, {}, "does_not_hold", "time-bracket", ("bracket-lower",)),
     ("M9 chart_vichara rows come from another build", _vichara_other_build, {}, "does_not_hold", "same-build", ("same-build",)),
     ("M9 chart_vichara rows of two builds in one partition", _vichara_two_builds, {}, "does_not_hold", "same-build", ("same-build",)),
     ("M9 a partition without chart_vichara rows", _vichara_partition_missing, {}, "does_not_hold", "same-build", ("same-build",)),
-    ("M10 record after the run ended", _outside_bracket_late, {}, "does_not_hold", "time-bracket", ("time-bracket",)),
-    ("M10 record before the run started", _outside_bracket_early, {}, "does_not_hold", "time-bracket", ("time-bracket",)),
-    ("M10 the run has no end time", _run_never_ended, {}, "does_not_hold", "time-bracket", ("time-bracket",)),
+    ("M10 record after the run ended", _outside_bracket_late, {}, "does_not_hold", "time-bracket", ("bracket-upper",)),
+    ("M10 record before the run started", _outside_bracket_early, {}, "does_not_hold", "time-bracket", ("bracket-lower",)),
+    ("M10 the run has no end time", _run_never_ended, {}, "does_not_hold", "time-bracket", ("bracket-missing",)),
     ("M11 closure: the emitter is not in the writer closure the window dates", None, dict(code_paths=[WRITER]), "unverified", "closure", ("closure",)),
     ("M14 window cannot be dated", None, dict(window=dict(ok=False, reason="shallow clone")), "unverified", "window", ("window",)),
     ("M14 window not supplied", None, dict(window=None), "unverified", "window", ("window",)),
@@ -1353,3 +1383,101 @@ def test_a_failed_read_of_the_assets_own_build_record_is_unverified(db):
     del db.errors["throughput"]
     db.ragged.add("throughput")
     assert _run()["clause"] == "fresh-build"
+
+
+# ───────────────────────── SS N-562 / N-563: repeats of one run (an append-only register), the latest record is credited, the bracket guards the retry ─────────────────────────
+
+def _mutant_state(*clauses, **kw):
+    """The mutated detector's state for a case that the REAL detector credits (so the mutant must refuse it), or 'crash'."""
+    mut = _mutant(ac._es_outcome, *clauses)
+    a = dict(window=WINDOW, code_paths=PATHS)
+    a.update(kw)
+    try:
+        return mut(ES, "ga_vichara", a.pop("chart", CH), a["window"], a["code_paths"])["state"]
+    except Exception:                                                  # noqa: BLE001
+        return "crash"
+
+
+def test_two_agreeing_records_for_a_partition_are_credited_and_the_latest_is_the_credited_one(db):
+    db.records = [_rec(p, at=T0 + 1020) for p in PARTS] + [_rec(p, at=T0 + 1030) for p in PARTS]
+    db.records = db.records[::-1]
+    out = _run()
+    assert out["state"] == "holds" and out["evidence"]["records"] == 10 and out["evidence"]["repeated_partitions"] == sorted(PARTS), out
+
+
+def test_a_retry_shape_five_first_pass_and_five_second_pass_records_is_credited_and_the_bracket_applies_to_the_latest_only(db):
+    db.records = ([_rec(p, at=T0 + 900) for p in PARTS] + [_rec(p, at=T0 + 1030) for p in PARTS])[::-1]       # the first pass predates the final attempt's start (a retry resets started_at)
+    assert _run()["state"] == "holds"
+    assert _mutant_state("bracket-latest-only") == "does_not_hold"      # the mutant applies the bracket to every record and would refuse a legitimate retried run
+
+
+def test_a_record_of_another_run_is_ignored_whatever_it_says_and_never_blocks_the_right_run(db):
+    db.records = db.records + [_rec(p, run=R0, formed=True, rows_written=3, entries_evaluated=0, at=T0 - 450) for p in PARTS] + [_rec(p, run=RE) for p in PARTS[:2]]
+    assert _run()["state"] == "holds"
+    assert _mutant_state("run-binding") != "holds"                      # without the run binding the other run's contradicting records would be read
+
+
+def test_the_latest_record_is_chosen_by_time_then_id_not_by_id_alone(db):
+    _latest_by_time_outside(db)
+    out = _run()
+    assert out["clause"] == "time-bracket" and "after the attempt's end" in out["detail"]
+    assert _wrongly_credited("latest-record")
+
+
+def test_a_tie_in_time_is_broken_by_the_higher_register_id(db):
+    db.records = [_rec(PARTS[0], at=T0 + 1030, formed=True, rows_written=1)] + [_rec(p) for p in PARTS][::-1]       # highest id, same time, disagrees: all records must agree anyway
+    assert _run()["clause"] == "not-formed"
+
+
+def test_a_disagreement_names_the_record_and_how(db):
+    _conflicting_duplicate(db)
+    d = _run()["detail"]
+    low = min(int(r[0]) for r in [[str(1000 - i)] for i in range(len(db.records))])
+    assert str(low) in d and "formed True" in d and PARTS[0] in d and "ALL agree" in d
+
+
+def test_the_lower_bound_a_retried_run_whose_final_attempt_emitted_nothing_is_not_credited(db):
+    """NAMED (SS N-563): first pass emitted 5 records, the FINAL attempt took an early return (dry run / no chart_facts / no constants) and emitted 0: only first-pass records exist and the
+    latest of every partition predates the final attempt's start. The lower bound of the bracket is what refuses it; deleting it credits the run."""
+    _retry_final_emitted_nothing(db)
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "time-bracket"
+    assert "predates the final attempt's start" in out["detail"] and all(p in out["detail"] for p in PARTS), out["detail"]
+    assert _wrongly_credited("bracket-lower")
+    assert _mutant_state("bracket-upper") == "does_not_hold"             # the upper bound alone does not catch it: the lower bound is the guard
+
+
+def test_a_partial_retry_names_the_partitions_whose_latest_record_predates_the_final_start(db):
+    _retry_final_partial(db)
+    out = _run()
+    assert out["clause"] == "time-bracket" and "predates the final attempt's start" in out["detail"]
+    missing = PARTS[3:]
+    assert all(p in out["detail"] for p in missing) and not any(p in out["detail"] for p in PARTS[:3]), out["detail"]
+    assert _wrongly_credited("bracket-lower")
+
+
+def test_the_census_code_is_independent_of_whether_the_writer_file_names_the_register(monkeypatch):
+    """The writer may or may not name orchestrator_event_register (a DELETE or an INSERT of its own): Build.completion's produced set excludes it either way (bookkeeping table)."""
+    import ast as _ast
+    for src in ('def f(conn):\n    conn.execute("INSERT INTO chart_vichara (a) VALUES (1)")\n',
+                'def f(conn):\n    conn.execute("INSERT INTO chart_vichara (a) VALUES (1)")\n    conn.execute("DELETE FROM orchestrator_event_register WHERE run_id = %s", [1])\n',
+                'def f(conn):\n    conn.execute("INSERT INTO chart_vichara (a) VALUES (1)")\n    conn.execute("DELETE FROM orchestrator_event_register WHERE run_id = %s", [1])\n    conn.execute("INSERT INTO orchestrator_event_register (event_type) VALUES (%s)", [1])\n'):
+        tree = _ast.parse(src)
+        units = [dict(rel="w.py", path=pathlib.Path("w.py"), tree=tree, nodes=[tree], hop=0, via="w.py")]
+        monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None, _u=units: (_u, []))
+        got = ac.produced_set_written("ga_vichara", ["w.py"])
+        assert got["written"] == ["chart_vichara"] and got["delete_only"] == [] and got["update_only"] == [] and got["complete"] is True, got
+
+
+def test_an_eight_record_retry_three_first_pass_and_five_final_pass_with_five_distinct_ayanamshas_is_credited(db):
+    """#3448 (0bddc686d): the substeps commit one by one, so a retry after 3 committed substeps leaves 3 first-pass records beside the 5 of the final pass (append-only register, identical payloads)."""
+    first = [_rec(p, at=T0 + 900 + i) for i, p in enumerate(PARTS[:3])]                 # older than the final attempt's started_at (T0+1001)
+    final = [_rec(p, at=T0 + 1020 + i) for i, p in enumerate(PARTS)]
+    db.records = (first + final)[::-1]
+    assert len(db.records) == 8 and len({r["payload"]["ayanamsha_id"] for r in db.records}) == 5
+    out = _run()
+    assert out["state"] == "holds" and out["evidence"]["records"] == 8 and out["evidence"]["repeated_partitions"] == sorted(PARTS[:3]), out
+    assert _mutant_state("bracket-latest-only") == "does_not_hold"            # a bracket on every record would refuse the legitimate retry
+    # the same retry with one first-pass record contradicting is refused, naming it
+    db.records = ([_rec(PARTS[0], at=T0 + 900, formed=True, rows_written=1)] + first[1:] + final)[::-1]
+    assert _run()["clause"] == "not-formed"
