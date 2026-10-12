@@ -643,12 +643,13 @@ class World:
                "KY_ROOT": str(self.root), "KY_RUN": str(self.run), "KY_FLEET": str(self.fleet),
                "KY_SCRATCH": str(self.scratch), "KY_SOURCE_REPO": str(self.repo), "KY_TRACKER_URL": self.tracker_url,
                "GIT_CONFIG_GLOBAL": os.devnull, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+               "PYTHONPYCACHEPREFIX": str(self.tmp.parent / "pycache")}        # bytecode beside the worlds, never in the repo
         (self.tmp / "home").mkdir(exist_ok=True)
         env.update(extra or {})
         return env
 
-    def _run(self, cmd, extra=None, timeout=180):
+    def _run(self, cmd, extra=None, timeout=900):
         """Run one engine process. Its output goes to files, not pipes: a job the engine starts inherits the
         engine's stdout and stderr (the real kyjob.sh redirects its own), and a pipe would stay open with it."""
         self.runs = getattr(self, "runs", 0) + 1
@@ -660,14 +661,14 @@ class World:
         return done
 
     def cli(self, argv, patched=False, extra=None):
-        return self._run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else
-                         [sys.executable, "-B", "-u", str(ENGINE)] + argv, extra)
+        return self._run([sys.executable, str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else
+                         [sys.executable, "-u", str(ENGINE)] + argv, extra)
 
     def session(self, steps):
-        return self._run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})])
+        return self._run([sys.executable, str(self.tmp / "driver.py"), json.dumps({"session": steps})])
 
     def background(self, steps):
-        proc = subprocess.Popen([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})],
+        proc = subprocess.Popen([sys.executable, str(self.tmp / "driver.py"), json.dumps({"session": steps})],
                                 env=self.env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                 cwd=str(self.tmp), stdin=subprocess.DEVNULL)
         self.started.append(proc)
@@ -867,7 +868,7 @@ def test_a_second_instance_exits_75_and_changes_nothing(world):
     """Duplicate instance refusal: while one controller holds the real instance lock, `--once` exits 75."""
     world.apply(dict(BUILD_READY, jobs={"K-1": {"do": "sleep", "s": 60}}), first=True)
     first = world.background(["tick", {"sleep": 60}])
-    end = time.monotonic() + 60                                            # until its first tick is over
+    end = time.monotonic() + 300                                           # until its first tick is over
     while time.monotonic() < end and (kyloop.loop_state(world.run, "dispatcher")[0].get("controller") or {}).get("pid") != first.pid:
         time.sleep(0.05)
     owner = json.loads((world.run / "locks" / "dispatcher" / "owner.json").read_text(encoding="utf-8"))

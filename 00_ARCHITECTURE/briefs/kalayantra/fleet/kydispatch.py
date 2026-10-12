@@ -41,10 +41,13 @@ step>` (attempts · open · launch · start · park · a kyd_admit code) · `wai
 
 Files: the loop file $KY_RUN/loops/dispatcher.json (kyloop.loop_state / update_loop_state; `enabled` is kyloop.py
 admin's and is written here only by `loops stop dispatcher`): last_iteration_at, controller{id, pid}, waiting,
-log_path, and this engine's own backoff, tracker, priority, conditions. The journal $KY_RUN/JOURNAL_DISPATCHER.md.
+log_path, and this engine's own backoff, tracker, priority and conditions (the gate as last read, and what the
+last tick journalled — what "once per changed condition" is judged against). The journal $KY_RUN/JOURNAL_DISPATCHER.md.
 The log $KY_SCRATCH/dispatcher/<controller_id>.log. Job state only through kyd_jobs.
 
 INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each errs to doing less)
+  * ctx.ky runs $KY_ROOT/bin/ky (install_tracker.sh's wrapper) through ctx.sh, with KY_STREAM and KY_LANE for
+    `stream` and `lane`.
   * controller_id = CTL-dispatcher-<UTC yyyymmddThhmmssZ>-<pid>. The instance lock is released only at a stop with
     no job that has not ended; a lock kept for a live job is taken over by the next instance, which adopts the job.
   * --dry reads the run directory as the controller the loop file names (slot databases and jobs are that
@@ -231,6 +234,22 @@ def paths_problem(environ):
     return None
 
 
+def _observed(observer, record):
+    """An observer's answer in kyaction.reconcile's form; one that raises or answers otherwise has seen nothing."""
+    try:
+        answer = observer(json.loads(json.dumps(record)))
+    except Exception as e:
+        return "unknown", {"error": "observer_raised: %s" % type(e).__name__}
+    if not isinstance(answer, (tuple, list)) or len(answer) != 2 or answer[0] not in ("done", "not_done", "unknown"):
+        return "unknown", {"error": "observer_answer_invalid"}
+    return answer[0], answer[1]
+
+
+def job_lock_owner(controller_id, key):
+    """The owner id kyd_jobs gives a job's locks (its _owner): what kyd_admit.admit must find on the item lock."""
+    return "%s:job.%s" % (controller_id, key)
+
+
 class _View:
     """ctx as one module's contract wants it: the engine's ctx with the named attributes replaced."""
 
@@ -323,7 +342,7 @@ class Engine:
         full.update({k: str(v) for k, v in (env or {}).items()})
         try:
             done = subprocess.run([os.fspath(a) for a in argv], env=full, cwd=os.fspath(cwd) if cwd else None,
-                                  capture_output=True, text=True, errors="replace", timeout=timeout,
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
                                   stdin=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             return None, "", "no answer within %s s" % timeout
@@ -366,7 +385,7 @@ class Engine:
         if isinstance(answer, tuple) and len(answer) == 2 and answer[0] in ("done", "failed", "unknown"):
             outcome, result = answer
         else:                                            # a plain result: only the observer says it is done
-            seen, detail = ka._observe(observer, record)
+            seen, detail = _observed(observer, record)
             outcome = {"done": "done", "not_done": "failed"}.get(seen, "unknown")
             result = answer if outcome == "done" and isinstance(answer, dict) else \
                 {"effect": answer if isinstance(answer, dict) else ka.flat(answer, 300), "observed": detail}
@@ -721,14 +740,13 @@ class Engine:
     def _handle(self, command):
         name = command.get("command")
         args = command.get("args") if isinstance(command.get("args"), dict) else {}
-        if name == "status" or (name == "loops" and args.get("op") == "status" and args.get("loop") == ROLE):
+        if name == "status":
             return self._status()
         if name == "loops":
             if args.get("loop") != ROLE:
-                raise kc.Reject("not_this_roles_loop: the dispatcher stops and reports only its own loop, not %r"
-                                % (args.get("loop"),))
+                raise kc.Reject("not_this_roles_loop: the dispatcher stops only its own loop, not %r" % (args.get("loop"),))
             if args.get("op") != "stop":
-                raise kc.Reject("loops_start_not_applicable: this dispatcher is already running")
+                raise kc.Reject("loops_op_not_applicable: a running dispatcher takes `loops stop dispatcher` only")
             ka.write_atomic(os.path.join(self.run, "STOP_dispatcher"),
                             ("%s %s: owner command %s: loops stop dispatcher\n" % (ka.utc(), self.controller_id,
                                                                                   command.get("id"))).encode("utf-8"))
@@ -822,7 +840,7 @@ class Engine:
             self.journal("surrogate decision", "%s: %s (job %s)" % (job.get("item"), ka.flat(detail, 400), job["job_id"]))
 
     def _in_backoff(self):
-        until = J._when(self.backoff.get("until"))
+        until = ka.parse_utc(self.backoff.get("until"))
         return until is not None and self.clock() < until
 
     # 4 ── holds
@@ -939,7 +957,7 @@ class Engine:
         state["open_keys"].add(key)
         if slot is not None:
             state["busy"].add(slot)
-        admitted = A.admit(_View(self.admit_ctx, controller_id=J._owner(self.controller_id, key)), job)
+        admitted = A.admit(_View(self.admit_ctx, controller_id=job_lock_owner(self.controller_id, key)), job)
         if not admitted["admitted"]:
             first = admitted["refusals"][0]
             self._refuse(job, state, "admit_%s" % first["code"], "admit: %s: %s" % (first["code"], first["detail"]))
