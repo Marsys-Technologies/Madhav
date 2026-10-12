@@ -38,7 +38,7 @@ _M669 = _MIGRATIONS / "669_bo_nakshatra_semantic_integrity_check.sql"
 _M1364 = _MIGRATIONS / "1364_bo_nakshatra_semantic_integrity_accept_canonical_spelling.sql"
 
 OLD_MD5, OLD_LEN = "24f6f27a4d7a941445def16ebe95e899", 2481
-NEW_MD5, NEW_LEN = "819cb0d44572c41dd26129dfce1679d6", 2865
+NEW_MD5, NEW_LEN = "8eb1ce3b7599ab32a547c919c2ca1ea9", 2882
 
 # The 27 OLD L1 spellings, spelled here independently of the lexicon and of the migration (what migration 669 held).
 OLD_27 = (
@@ -158,6 +158,15 @@ def test_static_header_states_why_what_guard_trigger_effect_verification_rollbac
 
 def test_static_unique_number_and_routine_migration():
     assert [p.name for p in _MIGRATIONS.glob("1364_*.sql")] == [_M1364.name]
+
+
+def test_static_the_file_names_no_registry_asset_id_but_its_own():
+    """SS N-568 / N-570 (build-window rule: a migration that names asset_registry AND an asset id -- comments included -- reopens that
+    asset's window): the whole file, comments and the md5'd text alike, may name bo_nakshatra_semantic and no other registry asset."""
+    tokens = set(re.findall(r"\b(?:bg|ga|bo|ka|ph|mi)_[a-z0-9_]+", SQL))
+    assert tokens == {"bo_nakshatra_semantic"}, sorted(tokens)
+    declared = set(json.loads((_MIGRATIONS.parent / "scripts" / "governance" / "asset_declarations.json").read_text(encoding="utf-8"))["assets"])
+    assert declared and {a for a in declared if a in SQL} == {"bo_nakshatra_semantic"}
 
 
 # -- LIVE tier: disposable PostgreSQL -------------------------------------------------------------------------------------

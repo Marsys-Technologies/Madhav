@@ -8,8 +8,8 @@
 --
 -- WHY. Migration 669 registered an eight-conjunct check whose third conjunct bounds configuration_jsonb->>'nakshatra' to 27 hard-coded names, and
 -- those names are the OLD L1 spellings (Mrigashira, Mula, Dhanishta). The component PR this migration ships with makes L1 write the L0
--- lexicon's spellings instead (pyjhora_adapter._names derives from brahmagyan.nakshatra_vocabulary, whose names are the bg_nakshatra seed's
--- name_en): nakshatra no. 5 "Mrigasira", no. 19 "Moola", no. 23 "Dhanishtha". The bo_nakshatra_semantic emitter forwards the L1 fact's own text
+-- lexicon's spellings instead (the emitting L1 writers fold the adapter's name through brahmagyan.nakshatra_vocabulary, whose names are
+-- the L0 nakshatra lexicon's reference_nakshatra.name_en): nakshatra no. 5 "Mrigasira", no. 19 "Moola", no. 23 "Dhanishtha". The bo_nakshatra_semantic emitter forwards the L1 fact's own text
 -- into configuration_jsonb.nakshatra, so after the rebuild the native's Jupiter (in Moola) would read 'Moola', which the OLD list does not hold:
 -- conjunct 3 would turn the asset's integrity check FALSE on the canonical chart, for a spelling that is correct. This migration prevents that.
 --
@@ -44,11 +44,11 @@
 -- 596): AFTER UPDATE OF depends_on, natural_key_partition, health_probe, integrity_check_sql, target_floor, asset_kind, asset_type, scope,
 -- has_writer, is_active, target_table, FOR EACH ROW WHEN (old.* IS DISTINCT FROM new.*), which sets asset_freshness.freshness_state = 'stale'
 -- (reason registry_changed) WHERE asset_id = NEW.asset_id. So applying this STALES bo_nakshatra_semantic's freshness rows (every chart that
--- holds one) until its next build writes fresh receipts, exactly as 1221 / 1326 / 1363 did for ga_structural: the accepted cost of ANY change to
+-- holds one) until its next build writes fresh receipts, exactly as 1221 / 1326 / 1363 did for the asset each re-sealed: the accepted cost of ANY change to
 -- this text. No other asset is touched. A re-run updates 0 rows and does not fire the trigger.
 --
--- VERIFICATION BY PRODUCTION STRUCTURE (never trust a deploy log). After the deploy, as the read-only role, expect md5 819cb0d44572c41dd26129dfce1679d6 and
--- length 2865:
+-- VERIFICATION BY PRODUCTION STRUCTURE (never trust a deploy log). After the deploy, as the read-only role, expect md5 8eb1ce3b7599ab32a547c919c2ca1ea9 and
+-- length 2882:
 --   SELECT asset_id, md5(integrity_check_sql), length(integrity_check_sql) FROM asset_registry WHERE asset_id = 'bo_nakshatra_semantic';
 -- (these two figures are computed from the text in this file; the author read no production catalog).
 --
@@ -56,14 +56,14 @@
 -- the TypeScript, any data row.
 --
 -- ROLLBACK (not executed by migrate.ts): UPDATE asset_registry SET integrity_check_sql = <migration 669's $ic$ body, md5 24f6f27a4d7a941445def16ebe95e899>
--- WHERE asset_id = 'bo_nakshatra_semantic' AND md5(integrity_check_sql) = '819cb0d44572c41dd26129dfce1679d6'; fires the same trigger.
+-- WHERE asset_id = 'bo_nakshatra_semantic' AND md5(integrity_check_sql) = '8eb1ce3b7599ab32a547c919c2ca1ea9'; fires the same trigger.
 
 SET LOCAL lock_timeout = '5s';
 
 DO $m1364$
 DECLARE
   c_old_md5  constant text := '24f6f27a4d7a941445def16ebe95e899';
-  c_new_md5  constant text := '819cb0d44572c41dd26129dfce1679d6';
+  c_new_md5  constant text := '8eb1ce3b7599ab32a547c919c2ca1ea9';
   c_new_text constant text := $nt$
 SELECT
   (
@@ -84,7 +84,7 @@ SELECT
     SELECT 1 FROM bodha_msr_signals
     WHERE signal_type_class = 'nakshatra_semantic'
       AND configuration_jsonb->>'nakshatra' NOT IN (
-        -- Migration 1364: the 27 names of the L0 lexicon (bg_nakshatra name_en), in nakshatra order, ...
+        -- Migration 1364: the 27 names of the L0 nakshatra lexicon (reference_nakshatra.name_en), in nakshatra order, ...
         'Ashwini','Bharani','Krittika','Rohini','Mrigasira','Ardra',
         'Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni',
         'Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha',
