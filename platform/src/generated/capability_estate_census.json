@@ -21468,7 +21468,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "ee42231c58b9e3b235d52f4ae3668c0901e3346ef7097b85c29f802df3561f0a"
+        "sha256": "4ef0932afe06188beaa884bcf14a23572f12925f6d23e95f32f26b57c123ab4a"
       },
       {
         "id": "public_registrar_source_set",
@@ -22542,7 +22542,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c1871ddb38abbe8535a98314fabe15904968aa3a28ea36e4186a55d4f4ebc460"
+        "sha256": "23cdd0d59654158c201f0f10b0d183b8f58fb81835fb40963037b2b807e5ecd0"
       }
     ]
   },
