@@ -93,6 +93,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { kalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -822,7 +823,7 @@ export function registerKalaStoryTool(server: McpServer, principal: Principal): 
     'daśā second-voice narration and punctuation-mark overlay are not yet wired — reported ' +
     'honestly via this response\'s coverage block.',
     KalaStoryInputShape,
-    async (args) => {
+    kalaViewAlias(principal, 'story', async (args) => {
       const parsed = args as KalaStoryInput
       if (!parsed.chart_id) return errorOutput('kala_story_get', 'chart_id is required')
       try {
@@ -832,6 +833,6 @@ export function registerKalaStoryTool(server: McpServer, principal: Principal): 
       } catch (err) {
         return errorOutput('kala_story_get', String(err), { chart_id: parsed.chart_id })
       }
-    },
+    }),
   )
 }
