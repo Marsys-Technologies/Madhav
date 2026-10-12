@@ -31,6 +31,13 @@ handler did — a line saying `"by": "kyveto"` least of all. The handler's memor
                                          EFFECTIVE / EXECUTED lines are claims nothing backs)
   $KY_RUN/veto/<SD id>.refused.json      {refused_at, reason, published}: a record the handler will never act on
                                          and cannot answer in the log (see "refused" below)
+PUBLICATION HAS THREE ANSWERS (`publication`): true — `<id>.publish` names a tracker decision and is DONE; false —
+there is no such record, it names no tracker decision, or it is FAILED with `result.published: false` (`ky` never
+started, or a readback proved the tracker holds nothing); "unknown" — anything else: `ky decide` was started and
+neither its exit status 0 nor a readback says what the tracker holds. Unknown is never reported as "not published":
+VETOED / FAILED lines and rows then carry `published: "unknown"` with attention, and `status` keeps the decision
+`unresolved` until the record is reconciled (a tick given a `publish_observer` does that, also for a finished
+decision; until B-3 delivers one, the owner corrects the tracker and the record by hand).
 and what `kynotify.sh` wrote: a $KY_RUN/JOURNAL_COCKPIT.md line `- <UTC> [<level>] <SD id>: … [notify=submitted]`
 (one physical line, split at LF only: a Unicode line separator smuggled into a message starts no new line).
 These files are the handler's by the roles' instructions; the enforced write boundary that would stop a job from
@@ -62,7 +69,8 @@ and after a FRESH re-read:
       lines (decision_record_mutated: <field>), authority (authority_unbound / authority_changed), target
       (target_unbound / unknown_target_kind / target_malformed / target_changed), tracker_decision shape, the
       awaiting item (awaiting_unbound / awaiting_not_open / awaiting_unreadable / tracker_decision_not_the_
-      awaiting_items / superseded_by_owner_decide / awaiting_already_decided), class hold (class_hold:
+      awaiting_items — also when the item names no tracker decision at all / superseded_by_owner_decide /
+      awaiting_already_decided), class hold (class_hold:
       HOLD_MERGES), the ky CLI when a tracker decision must be published, and the class's own prerequisites.
       An authority that cannot be established (no arguments, no usable PLANNER_STATE.json `authorised_source`,
       or one an activation chain has superseded) is NOT a failure: the decision is HELD and the tick reports
@@ -70,8 +78,11 @@ and after a FRESH re-read:
   (7) publish, then execute, each through its own kyaction record:
         <id>.publish   `ky decide <D-id> --outcome <o> --as steward --delegated --detail "<id>: <decision>"`
                        where target.tracker_decision = {"id", "outcome"} is set (otherwise the record only says
-                       that nothing was to be published); a non-zero exit is FAILED publication_failed (not read
-                       back), an unobservable one stays unfinished and blocks — never retried
+                       that nothing was to be published); a non-zero exit is read back: proven published → DONE,
+                       proven not → the record FAILED (published: false); no readback → the record stays
+                       unfinished (published unknown) — in both of the latter the decision is FAILED
+                       publication_failed; an exit that was not observed at all stays unfinished and blocks —
+                       never retried
         EFFECTIVE      appended with effective_at once that record is DONE
         <id>.execute   the class executor; an unfinished record is reconciled against the disk first
         EXECUTED       appended only after the executor's observed result is recorded
@@ -91,7 +102,10 @@ commands[], problems[], attention}. One row per decision the pass looked at — 
               that cannot be judged or read, a foreign action record, an unexpected error; reported on every tick
   vetoed · executed · failed · refused      final for the decision: reported ONCE (it then no longer needs the
               handler). `failed` and `refused` always carry attention; `vetoed` / `executed` carry it when the
-              tracker holds a decision that contradicts the outcome (published) or a veto came too late; `anomaly`
+              tracker holds, or may hold, a decision that contradicts the outcome (`published`: true or
+              "unknown" — the key is absent only when nothing was published) or a veto came too late; a finished
+              decision whose unknown publication a later readback settled is reported once more (reason
+              publication_reconciled, with attention when the tracker does hold the decision); `anomaly`
               names a log line the handler did not write (line_appended_after_terminal_state,
               log_claim_without_action_record)
   not_pending another handler finished it between this pass's first look and its lock
@@ -107,8 +121,10 @@ Target classes (registry keyed by target.kind; every target carries `fingerprint
                       reviewer_session_id that is none of the decision's own sessions, carries source_commit =
                       new_commit, manifest_sha256 = new_manifest_digest and a non-empty `inputs`; the manifest file
                       exists, its recomputed digest (canonical JSON without `manifest_sha256`, as kymanifest.py)
-                      is new_manifest_digest, it carries the five-role `entrypoints` mapping, and its
-                      owner_decisions entrypoint is the unchanged blob at new_commit
+                      is new_manifest_digest, it names new_commit as its (approved_)source_commit, it carries
+                      the five-role `entrypoints` mapping, any `entrypoints_digest` it states is that mapping's,
+                      and its owner_decisions entrypoint is the unchanged blob at new_commit; the activation
+                      record stores the manifest's absolute path
   campaign_start, protected_window        their executors are later deliverables: always FAILED
                       "executor_unavailable: …" — never a faked success
 An unknown kind is FAILED unknown_target_kind.
@@ -733,12 +749,17 @@ class PlanBundleChange:
                 return None, ("manifest_entrypoints_missing: %s gives no repository-relative path and blob id for %s"
                               % (raw, role))
         named = doc.get("approved_source_commit", doc.get("source_commit"))
-        if named is not None and named != p["new_commit"]:
-            return None, "manifest_not_for_new_commit: %s is a manifest of another source commit" % raw
+        if named != p["new_commit"]:                          # a manifest that names no source commit binds nothing
+            return None, "manifest_not_for_new_commit: %s %s" % (
+                raw, "names no source commit" if named is None else "is a manifest of another source commit")
         binding = {role: {"path": entrypoints[role]["path"], "git_blob": entrypoints[role]["git_blob"]}
                    for role in ENTRYPOINT_ROLES}
-        return {"path": raw, "sha256": kyaction.sha_file(path), "entrypoints": binding,
-                "entrypoints_digest": kyaction.sha_bytes(kyaction.canonical(binding))}, None
+        digest = kyaction.sha_bytes(kyaction.canonical(binding))
+        if "entrypoints_digest" in doc and doc["entrypoints_digest"] != digest:
+            return None, ("manifest_entrypoints_digest_mismatch: %s states an entrypoints_digest that is not its "
+                          "mapping's" % raw)
+        return {"path": os.path.abspath(str(path)), "sha256": kyaction.sha_file(path), "entrypoints": binding,
+                "entrypoints_digest": digest}, None
 
     def _receipts(self, p, ctx):
         """→ ([{path, sha256, verdict, reviewer_session_id, manifest_sha256}], None) or (None, named reason)."""
@@ -977,10 +998,25 @@ def _own(record):
         and actor.get("holder_kind") in ("controller", "supervisor")
 
 
-def _published(record):
-    """True when a DONE publication record means the tracker holds a delegated decision."""
-    return _done(record) and isinstance(record.get("target"), dict) \
-        and record["target"].get("tracker_decision") is not None
+def publication(record):
+    """Does the tracker hold the delegated decision of this `<id>.publish` record? Three answers, never two:
+    True     the record names a tracker decision and is DONE (`ky decide` exited 0, or a readback saw it)
+    False    there is no record (the handler never began), the record names no tracker decision, or it is FAILED
+             with `result.published` exactly false (`ky` was never started, or a readback proved nothing is held)
+    UNKNOWN  everything else — an unfinished record, a failure nothing read back, a record that cannot be judged."""
+    if record is None:
+        return False
+    target = record.get("target")
+    if not isinstance(target, dict) or "tracker_decision" not in target:
+        return UNKNOWN
+    if target["tracker_decision"] is None:
+        return False
+    if record.get("state") == "DONE":
+        return True
+    result = record.get("result")
+    if record.get("state") == "FAILED" and isinstance(result, dict) and result.get("published") is False:
+        return False
+    return UNKNOWN
 
 
 def _effective_at(record):
@@ -1072,25 +1108,39 @@ class Handler:
         append_line(self.log_path, line)
         return line
 
+    def published(self, did):
+        """`publication` of the decision's own record, after ONE readback of an unfinished one (recorded in its
+        reconciliations[]): a readback that proves nothing is held closes the record as not published; one that
+        cannot say — or none at all — leaves it unfinished and the answer UNKNOWN."""
+        run, action_id = self.env.run, did + ".publish"
+        record = self.memory(did)[0]
+        if publication(record) == UNKNOWN and record.get("state") == "INTENDED" and not kyaction.in_progress(record):
+            outcome, record = kyaction.reconcile(run, action_id, self.publish_observer or _no_tracker_readback,
+                                                 by=self.holder)
+            if outcome == "not_done":
+                record = kyaction.fail(run, action_id, {"published": False, "reason": "readback: not published"})
+        return publication(record)
+
     def failed(self, did, latest, reason, effective_at=None, published=None):
-        """FAILED, always with attention: the owner is told of every decision that did not go through."""
-        published = _published(self.memory(did)[0]) if published is None else published
-        self.append(latest, "FAILED", reason, effective_at, {"published": True} if published else None)
+        """FAILED, always with attention: the owner is told of every decision that did not go through.
+        `published`: the three-valued answer when the caller has just read it back; otherwise it is read here."""
+        published = self.published(did) if published is None else published
+        self.append(latest, "FAILED", reason, effective_at, None if published is False else {"published": published})
         out = {"outcome": "failed", "reason": reason, "attention": True}
-        if published:                        # the tracker holds a decision that was then not carried out
-            out["published"] = True
+        if published is not False:           # the tracker holds, or may hold, a decision that was not carried out
+            out["published"] = published
         return out
 
     def refuse(self, did, reason, published=False):
         """A record the handler cannot answer in the log: nothing is appended; the refusal is the handler's own
-        marker, written once, and reported once with attention."""
+        marker, written once, and reported once with attention. `published`: True, False or UNKNOWN."""
         path = stamp_path(self.env.run, did, "refused")
         os.makedirs(path.parent, exist_ok=True)
-        marker = {"refused_at": self.now_iso, "reason": reason, "published": bool(published), "by": self.holder}
+        marker = {"refused_at": self.now_iso, "reason": reason, "published": published, "by": self.holder}
         kyaction.write_exclusive(path, json.dumps(marker, indent=1, sort_keys=True) + "\n", mode=0o444)
         out = {"outcome": "refused", "reason": reason, "attention": True}
-        if published:
-            out["published"] = True
+        if published is not False:
+            out["published"] = published
         return out
 
     def settle(self, entry, result=None, reject=None):
@@ -1161,7 +1211,7 @@ class Handler:
         effective_at = _effective_at(pub) if _done(pub) else None
         problem = base_problem(latest) or (base_problem(proposal) if proposal is not None else None)
         if problem:                                           # (0) nothing this handler could write would be valid
-            return self.refuse(did, problem, _published(pub))
+            return self.refuse(did, problem, publication(pub))
         finished = first_terminal(lines, _done(exe))          # (1) a later line never resurrects a finished decision
         if finished:
             self.append(latest, finished, "terminal_state_is_final", effective_at)
@@ -1239,7 +1289,7 @@ class Handler:
 
     def vetoed(self, did, latest, veto, effective_at):
         run, action_id, command_id = self.env.run, did + ".execute", veto["doc"]["id"]
-        pub, record = self.memory(did)
+        _, record = self.memory(did)
         if record is not None and kyaction.in_progress(record):      # another live process may be executing it now:
             return {"outcome": "locked", "reason": "execution_in_progress"}    # the veto is settled when that is known
         if record is not None and record["state"] == "INTENDED":
@@ -1258,12 +1308,12 @@ class Handler:
                                                                        "veto_too_late": command_id})
             self.settle(veto, reject="too_late: decision %s was already executed" % did)
             return {"outcome": "executed", "reason": "veto_too_late", "attention": True}
-        published = _published(pub)
+        published = self.published(did)      # True, False or UNKNOWN — unknown is never "not published"
         self.append(latest, "VETOED", "owner_veto", effective_at, {"command": command_id, "published": published})
         self.settle(veto, result={"decision": did, "outcome": "VETOED"})
         out = {"outcome": "vetoed", "command": command_id}
-        if published:                        # the tracker decision is already out and now contradicts the owner
-            out.update(attention=True, published=True)
+        if published is not False:           # the tracker decision is out, or may be, and contradicts the owner
+            out.update(attention=True, published=published)
         return out
 
     def recheck(self, did, lines, history, ctx):
@@ -1304,9 +1354,9 @@ class Handler:
         if err or not isinstance(item, dict) or item.get("id", awaiting) != awaiting:
             return "awaiting_unreadable"
         named = named_tracker_decision(item)
-        if td is not None and named is not None and td["id"] != named:
+        if td is not None and td["id"] != named:              # also when the item names none: nothing binds the id
             return "tracker_decision_not_the_awaiting_items: %s would be published, the item names %s" % (
-                td["id"], named)
+                td["id"], named or "no tracker decision")
         decided = self.commands_about("decide", "awaiting_id", awaiting)
         if decided:
             return "superseded_by_owner_decide: %s" % decided[0]["doc"]["id"]
@@ -1349,7 +1399,7 @@ class Handler:
             earlier = record.get("result") or {}
             return self.failed(did, latest, "publication_failed: %s" % (
                 "rc=%d" % earlier["exit_status"] if isinstance(earlier.get("exit_status"), int)
-                else kyaction.flat(earlier.get("error"), 120)), effective_at, published=False)
+                else kyaction.flat(earlier.get("error") or earlier.get("reason"), 120)), effective_at)
         if td is None:                       # "new" or "not_done", and nothing to send
             kyaction.complete(run, action_id, {"published": False, "effective_at": self.now_iso})
             return None
@@ -1358,12 +1408,24 @@ class Handler:
             kyaction.complete(run, action_id, {"exit_status": 0, "output": text, "published": True,
                                                "effective_at": self.now_iso})
             return None
-        if kind == "exited":                 # not read back: the owner is told (attention) and nothing is executed
-            kyaction.fail(run, action_id, {"exit_status": rc, "output": text})
-            return self.failed(did, latest, "publication_failed: rc=%d" % rc, effective_at, published=False)
+        if kind == "exited":                 # a non-zero exit says nothing about the tracker: only a readback does
+            def readback(record):
+                outcome, detail = observer(record)
+                if outcome == "unknown":     # kept with the record: why it is unfinished, and what `ky` said
+                    detail = {"readback": detail, "ky_exit_status": rc, "ky_output": text}
+                return outcome, detail
+
+            status, record = kyaction.reconcile(run, action_id, readback, by=self.holder)
+            if status == "done":             # the tracker holds the decision although `ky` complained
+                self.log("%s: `ky decide` exited %d but the readback shows the decision published" % (did, rc))
+                return None
+            if status == "not_done":
+                record = kyaction.fail(run, action_id, {"exit_status": rc, "output": text, "published": False})
+            # … else the record stays unfinished: published unknown (the line and the row say so), never retried
+            return self.failed(did, latest, "publication_failed: rc=%d" % rc, effective_at, publication(record))
         if kind == "not_started":
-            kyaction.fail(run, action_id, {"exit_status": None, "error": text})
-            return self.failed(did, latest, "publication_failed: %s" % text, effective_at, published=False)
+            kyaction.fail(run, action_id, {"exit_status": None, "error": text, "published": False})
+            return self.failed(did, latest, "publication_failed: %s" % text, effective_at)
         self.log("%s: `ky decide` gave no exit status (%s); the publication stays unreconciled" % (did, text))
         return {"outcome": "blocked", "reason": "publication_unreconciled", "attention": True}
 
@@ -1407,7 +1469,7 @@ class Handler:
             if entry["invalid"]:
                 self.settle(entry)           # kycommands settles it as REJECTED invalid_command
             elif doc["command"] != "veto":
-                self.settle(entry, reject="unsupported_by_veto_handler: %s" % doc["command"])
+                continue                     # the veto controller's (kyloop.VetoController.apply_commands): stays queued
             else:
                 did = doc["args"]["decision_id"]
                 lines = history.get(did)
@@ -1427,6 +1489,33 @@ class Handler:
                 else:
                     self.settle(entry, reject="too_late: decision %s is %s" % (did, state))
 
+    # ---- finished decisions whose publication is still unknown: settled when a readback exists
+    def reconcile_publications(self, history, report):
+        if self.publish_observer is None:    # nothing could answer: `status` keeps them unresolved
+            return
+        seen = {row.get("id") for row in report["decisions"]}
+        for did, lines in sorted(history.items()):
+            try:
+                pub, exe = self.memory(did)
+                finished = first_terminal(lines, _done(exe)) if in_domain(lines) else None
+                if did in seen or finished not in ("VETOED", "FAILED") or publication(pub) != UNKNOWN:
+                    continue
+                lock = kyaction.acquire_lock(self.env.run, "decision." + did, self.holder, log=self.log)
+            except kyaction.ActionError:     # unreadable or foreign memory, a lock nobody can judge: still unknown
+                continue
+            if lock is None:
+                continue
+            try:
+                published = self.published(did)
+            finally:
+                kyaction.release_lock(lock)
+            if published != UNKNOWN:
+                row = {"id": did, "outcome": finished.lower(), "reason": "publication_reconciled",
+                       "published": published}
+                if published:                # the tracker holds a decision the owner vetoed or that was not carried out
+                    row["attention"] = True
+                report["decisions"].append(row)
+
     def run(self, report):
         history, problems, unusable = load_decisions(self.log_path)
         pause = kycommands.pause_state(self.env.run)
@@ -1435,6 +1524,10 @@ class Handler:
         if not problems:                     # an unattributable line: no decision's state is known → no transition
             for did in sorted(d for d, lines in history.items() if d not in unusable and self.candidate(d, lines)):
                 report["decisions"].append(self.guarded(did))
+            try:
+                self.reconcile_publications({d: x for d, x in history.items() if d not in unusable}, report)
+            except (kyaction.ActionError, OSError) as e:
+                report["problems"].append("publication readback: %s: %s" % (type(e).__name__, kyaction.flat(e, 160)))
             try:
                 self.sweep()
             except (kyaction.ActionError, kycommands.CommandError, OSError) as e:
@@ -1500,7 +1593,10 @@ def status(env=None, now=None, authorised=None):
     line). `state` is the terminal state the handler accepts when there is one, else the latest line's;
     `latest_line_state` is what the log's last line says. `now` only moves the remaining-time arithmetic.
     `attention` is what needs somebody NOW: problems; an anomaly no tick has answered yet (`anomaly` on a row);
-    a refused record or a hard stop whose awaiting item is still open (`unresolved` on a row, `hard_stops`).
+    a refused record or a hard stop whose awaiting item is still open (`unresolved` on a row, `hard_stops`);
+    a decision — finished or not — whose publication is unknown (`published: "unknown"`, `unresolved`, listed in
+    `publication_unknown`) until its `<id>.publish` record is reconciled. `published` on every row is the
+    three-valued `publication` of the handler's own record ("unknown" too when that record is not the handler's).
     What a tick has answered and the owner has dealt with stays in the rows and no longer raises it."""
     env = env or Env()
     moment = _now(now)
@@ -1515,11 +1611,12 @@ def status(env=None, now=None, authorised=None):
         doc = entry["doc"]
         if not entry["invalid"] and doc["command"] == "veto" and doc["state"] in ("QUEUED", "APPLIED"):
             vetoes.setdefault(doc["args"]["decision_id"], doc["id"])
-    decisions, hard_stops = [], []
+    decisions, hard_stops, unknown_publications = [], [], []
     for did, lines in sorted(history.items()):
         latest = lines[-1]
         target, notification = latest.get("target"), latest.get("notification")
         pub, exe = by_id.get(did + ".publish"), by_id.get(did + ".execute")
+        published = publication(pub) if pub is None or _own(pub) else UNKNOWN
         pub, exe = (pub if pub and _own(pub) else None), (exe if exe and _own(exe) else None)
         finished = first_terminal(lines, _done(exe)) if in_domain(lines) else None
         row = {"id": did, "class": latest.get("class"), "state": finished or _state(latest),
@@ -1528,7 +1625,10 @@ def status(env=None, now=None, authorised=None):
                "veto_deadline": latest.get("veto_deadline"), "effective_at": latest.get("effective_at"),
                "notification_submitted": isinstance(notification, dict) and notification.get("submitted") is True,
                "veto_command": vetoes.get(did), "reason": latest.get("reason"),
-               "made_effective_by_handler": _done(pub), "executed_by_handler": _done(exe)}
+               "made_effective_by_handler": _done(pub), "executed_by_handler": _done(exe), "published": published}
+        if published == UNKNOWN:                               # never shown as "not published"; somebody must look
+            row["unresolved"] = True
+            unknown_publications.append(did)
         anomalies, refusal = [], read_refusal(env.run, did)
         awaiting = latest.get("awaiting")
         named = isinstance(awaiting, str) and bool(AW_RE.match(awaiting))
@@ -1569,7 +1669,7 @@ def status(env=None, now=None, authorised=None):
     return {"schema": "ky.veto_status/1", "now": kyaction.utc(moment),
             "authority": dict(authorised or {}, source=source), "holds": reader.holds(),
             "pause": {k: pause[k] for k in ("state", "applied_pause", "pending_pause")}, "decisions": decisions,
-            "hard_stops": hard_stops,
+            "hard_stops": hard_stops, "publication_unknown": unknown_publications,
             "unfinished_actions": sorted(a["action_id"] for a in actions if a["state"] == "INTENDED"),
             "problems": all_problems,
             "attention": bool(all_problems) or bool(hard_stops) or any("anomaly" in row or row.get("unresolved")

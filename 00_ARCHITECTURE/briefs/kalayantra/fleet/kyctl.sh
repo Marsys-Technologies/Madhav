@@ -35,9 +35,10 @@
 #           The veto line also carries what its controller recorded at its last tick (veto_pending,
 #           veto_next_deadline, veto_last_tick).
 #
-# The veto loop is stopped and observed HERE only (`kyctl.sh stop veto`, `kyctl.sh status`): of the owner's queued
-# commands the veto role takes `veto <decision-id>` alone — a queued `status` or `loops stop` addressed to it is
-# REJECTED by the veto handler.
+# The veto loop is stopped and observed here (`kyctl.sh stop veto`, `kyctl.sh status`) or through the owner's
+# command queue: its running controller (kyloop.py veto) applies a queued `status`, `loops stop veto`, `loops
+# status veto` and `decide` addressed to the veto role itself, before each tick; `veto <decision-id>` is settled
+# by the veto handler. A veto loop that is not running applies nothing — then only this script stops it.
 #
 # Never removes $KY_ROOT/HOLD or $KY_RUN/HOLD_MERGES. Every launchctl call goes through ${KY_LAUNCHCTL}.
 # Exit: 0 ok · 1 action failed or unconfirmed · 2 refused · 64 usage · 77 run as root.

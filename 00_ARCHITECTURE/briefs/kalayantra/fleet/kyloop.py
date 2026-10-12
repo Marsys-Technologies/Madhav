@@ -13,7 +13,10 @@
 
 launchd supervises THIS script, never an unconditional chain of model runs. The controller
 
-  * is the sole holder of the role lock ($KY_RUN/locks/<role>, or $KY_FLEET/kylock.sh when installed) and
+  * is the sole holder of the role lock ($KY_RUN/locks/<role>; taken, given its child and released through
+    $KY_FLEET/kylock.sh when that is installed — Controller.kylock() is the one place it is run and reads its
+    exit codes one by one: 75 live holder · 76 cockpit · 77 unknown owner · 74 released-not-proven, lock kept ·
+    70 identity refused; nothing but 0 is success) and
     the sole writer of $KY_RUN/<ROLE>_STATE.json and JOURNAL_<ROLE>.md while it runs. ONE liveness rule
     (process_matches: True alive · False POSITIVELY gone · None unknown) governs every lock here: a lock is
     created atomically WITH its owner record (a private directory renamed onto the lock path, which fails when
@@ -31,7 +34,8 @@ launchd supervises THIS script, never an unconditional chain of model runs. The 
     also applies the `campaign` role's pause / resume (holding locks/campaign only for the application).
     While an owner pause is in force — applied, queued and not yet applied, or unknowable — no model job is
     launched by any role;
-  * waits itself (hold, pause, backoff, "no eligible work", inbox polling) and launches ONE bounded
+  * waits itself (hold, pause, backoff, "no eligible work", inbox polling, messages another actor holds
+    locked — `items_locked`, never an immediate second look) and launches ONE bounded
     `claude -p` child only for an eligible work item (planner: a pending Wave B step) or an actionable,
     deduplicated, handled-state-checked batch of inbox messages (conductor);
   * wraps every side effect of its own in an action record (kyaction: INTENDED before, the observed result
@@ -69,7 +73,8 @@ nothing ever falls back to the installed manifest.
 
 The `veto` role (plan §4a.2/§4a.3) launches no model at all: it holds the `veto` lock and calls kyveto.py's
 `tick` as that lock's holder, waiting in between until the earliest pending veto deadline, a new command for
-the veto role, or its poll period. It is admitted exactly like the model loops — an installation receipt of
+the veto role, or its poll period. Before each tick it applies the veto role's own queued commands itself —
+`status`, `loops stop|status veto`, `decide` — and leaves `veto <decision-id>` to the handler. It is admitted exactly like the model loops — an installation receipt of
 mode bootstrap or final AND a passing kyversion.sh in the matching mode, at start-up and whenever the receipt
 changes — and passes the authorised bundle to every tick explicitly: the terminal activation link's source
 commit and its manifest's entrypoints digest when a chain exists, otherwise PLANNER_STATE.json
@@ -125,6 +130,12 @@ WAIT_POLL_S = 15.0          # "no eligible work" / inbox polling period; also ho
 COMMAND_POLL_S = 1.0        # how often a waiting controller looks for a new command / a still-pending one
 VETO_POLL_S = 30.0          # the veto controller's tick period when no deadline or command comes sooner
 VETO_LOCK_WAIT_S = 150.0    # how long the veto controller waits for another handler's tick to release the lock
+KYLOCK_TIMEOUT_S = 120.0    # kylock.sh acquire / child: it answers at once, or it is not an answer
+KYLOCK_RELEASE_TIMEOUT_S = 960.0    # kylock.sh release runs the KU-02 database step (900 s) before it answers
+# kylock.sh's exit codes (packet KV3-B-KYLOCK, "Contract"); anything else — and no answer — reads "error"
+KYLOCK_EXITS = {0: "ok", 64: "usage", 70: "bad_identity", 73: "not_owner", 74: "release_unproven", 75: "live",
+                76: "cockpit", 77: "unknown"}
+KYLOCK_REFUSALS = {"live": "live", "cockpit": "cockpit", "unknown": "unknown", "bad_identity": "identity_refused"}
 TERM_GRACE_S = 10.0         # TERM → KILL → record must fit inside launchd's default 20 s exit timeout
 CHILD_POLL_S = 0.2
 EVENT_SOURCE_FAILURE_LIMIT = 5
@@ -731,7 +742,9 @@ class Controller:
         self.lock_dir = self.run / "locks" / role
         self.signal = None
         self.lock_mode = None
-        self.lock_refusal = None    # why acquire_lock() said no: {"state": live|cockpit|unknown|kylock|race, …}
+        self.lock_refusal = None    # why acquire_lock() said no: {"state": live|cockpit|unknown|self_unknown|race|
+                                    # identity_refused|kylock_error, …} (the last two: kylock.sh's answers only)
+        self.items_waiting = []     # the message ids the last lock_items() skipped because another actor holds them
         self.ka = self.kc = self.kv = None      # kyaction / kycommands / kyveto, see load_siblings()
         self.commands_blocked = None            # why a QUEUED command of this role could not be settled yet
         self.cfg = None
@@ -971,14 +984,19 @@ class Controller:
         (lock_create), and an existing one is taken over only when its recorded owner is POSITIVELY gone, by a
         takeover that is verified after the rename (lock_bury). Nothing here ever removes a lock by its age."""
         self.lock_refusal = None
-        kylock = self.fleet / "kylock.sh"
-        if kylock.is_file() and os.access(kylock, os.X_OK):
-            r = subprocess.run([str(kylock), "acquire", self.role, self.controller_id], capture_output=True, text=True)
-            if r.returncode == 0:
+        answer = self.kylock("acquire")
+        if answer is not None:                  # kylock.sh is installed: it alone decides, by its exit code
+            outcome, rc, text = answer
+            if outcome == "ok":
                 self.lock_mode, self.lock_held = "kylock", True
                 return True
-            self.lock_refusal = {"state": "kylock", "detail": "kylock.sh rc=%d" % r.returncode}
-            self.log("lock held or refused by kylock.sh (rc=%d): %s" % (r.returncode, flat(r.stderr or r.stdout)))
+            owner, _ = read_json(self.lock_dir / "owner.json")
+            holder = {k: owner.get(k) for k in ("session_or_run_id", "holder_kind", "pid", "process_start")} \
+                if isinstance(owner, dict) else None
+            self.lock_refusal = {"state": KYLOCK_REFUSALS.get(outcome, "kylock_error"), "holder": holder,
+                                 "kylock": outcome, "kylock_rc": rc,
+                                 "detail": "kylock.sh acquire: %s (rc=%s) %s" % (outcome, rc, text)}
+            self.log("lock held or refused by kylock.sh (%s, rc=%s): %s" % (outcome, rc, text))
             return False
         os.makedirs(self.lock_dir.parent, exist_ok=True)
         if self.identity()["process_start"] is None:
@@ -1026,6 +1044,29 @@ class Controller:
         self.log("lock held: lost the takeover race")
         return False
 
+    def kylock(self, verb, *args, timeout=KYLOCK_TIMEOUT_S):
+        """THE one place $KY_FLEET/kylock.sh is run (packet KV3-B-KYLOCK: `acquire|release|child <role>
+        <controller identity> [pending|none|<JSON>]`). → None while kylock.sh is NOT installed as an executable
+        file beside this controller — then, and only then, the built-in lock above and below is what holds the
+        role — else (outcome, rc, text). `outcome` is read from the exit code and from nothing else: "ok" (0) ·
+        "live" (75: a live non-cockpit holder, or a lost race) · "cockpit" (76: a live cockpit) · "unknown" (77:
+        an owner nobody can judge; untouched) · "release_unproven" (74: the lock is KEPT, the databases of this
+        session are not proven removed) · "not_owner" (73) · "bad_identity" (70) · "usage" (64) · "error" (any
+        other code, no answer in time, or it could not be started). Nothing but 0 is ever taken for success."""
+        script = self.fleet / "kylock.sh"
+        if not (script.is_file() and os.access(script, os.X_OK)):
+            return None
+        try:
+            r = subprocess.run([str(script), verb, self.role, self.controller_id, *args], capture_output=True,
+                               text=True, timeout=timeout,
+                               env=dict(os.environ, KY_RUN=str(self.run), KY_FLEET=str(self.fleet),
+                                        KY_SCRATCH=str(self.scratch)))
+        except subprocess.TimeoutExpired:
+            return "error", None, "no answer within %d s" % timeout
+        except (OSError, ValueError) as e:
+            return "error", None, "not started (%s)" % type(e).__name__
+        return KYLOCK_EXITS.get(r.returncode, "error"), r.returncode, flat(r.stderr or r.stdout)
+
     def remove_stale_lock(self, judged):
         """Take the role lock away from an owner that was judged POSITIVELY gone — verify-after-rename (lock_bury),
         so two contenders can never remove each other's fresh lock. → lock_bury's outcome."""
@@ -1042,7 +1083,8 @@ class Controller:
         gone, so somebody has to look) — but no STOP and no switch: this instance never stops what it cannot see."""
         refusal = self.lock_refusal or {}
         waiting = {"cockpit": "role_held_by_cockpit", "unknown": "role_lock_owner_unknown",
-                   "self_unknown": "own_process_identity_unknown"}.get(refusal.get("state"))
+                   "self_unknown": "own_process_identity_unknown", "identity_refused": "role_lock_identity_refused",
+                   "kylock_error": "role_lock_helper_failed"}.get(refusal.get("state"))
         if not waiting:
             return
         try:
@@ -1056,6 +1098,19 @@ class Controller:
                 "no lock and launched nothing: a lock whose owner nobody can verify would block the role for good."
                 % self.role, ["controller: %s" % self.controller_id],
                 message="%s loop did not start: its own process identity cannot be read" % self.role)
+        if refusal.get("state") in ("identity_refused", "kylock_error"):
+            # kylock.sh said neither "held" nor "acquired": not a waiting state that ends by itself, so somebody
+            # is told — and nothing is stopped, since this instance holds nothing
+            self.raise_attention(
+                "loop-%s-lock-helper-refused" % self.role,
+                "kylock.sh did not give the %s loop controller the role lock and did not report a holder either "
+                "(%s). Nothing was launched. %s" % (
+                    self.role, flat(refusal.get("detail"), 200),
+                    "It refused this controller's identity (exit 70)." if refusal.get("state") == "identity_refused"
+                    else "Its answer is not one of its documented exit codes."),
+                ["controller: %s" % self.controller_id, "helper: %s" % (self.fleet / "kylock.sh"),
+                 "answer: %s" % flat(refusal.get("detail"), 300)],
+                message="%s loop did not start: kylock.sh refused or failed (%s)" % (self.role, refusal.get("kylock")))
         if refusal.get("state") == "unknown":
             self.raise_attention(
                 "loop-%s-lock-owner-unknown" % self.role,
@@ -1084,14 +1139,29 @@ class Controller:
     def write_owner(self, child):
         """Record the child this lock's holder is responsible for: None, "pending" (written BEFORE the child is
         started, so a controller that dies in between never looks child-less), or its identity."""
-        if self.lock_mode != "builtin":
-            return
-        write_json(self.lock_dir / "owner.json", self.owner_doc(child))
+        if self.lock_mode == "builtin":
+            write_json(self.lock_dir / "owner.json", self.owner_doc(child))
+        elif self.lock_mode == "kylock":
+            # `kylock.sh child <role> <identity> pending|none|<JSON>` — the same record, written by the lock's owner
+            arg = "none" if child is None else child if child == "pending" else json.dumps(child, sort_keys=True)
+            outcome, rc, text = self.kylock("child", arg) or ("error", None, "kylock.sh is no longer installed")
+            if outcome == "ok":
+                return
+            why = "role_lock_child_not_recorded: kylock.sh child %s: %s (rc=%s) %s" % (
+                "<identity>" if isinstance(child, dict) else arg, outcome, rc, text)
+            if child is None:
+                # a child that stays recorded after it ended is the safe side (it is judged by its identity);
+                # the next launch records "pending" first, and THAT is refused while kylock.sh still says no
+                self.log(why)
+                return
+            raise Refusal([why])                # no child is started, or left running, that the lock does not name
 
     def release_lock(self):
         if self.lock_mode == "kylock":
-            subprocess.run([str(self.fleet / "kylock.sh"), "release", self.role, self.controller_id],
-                           capture_output=True, text=True)
+            outcome, rc, text = self.kylock("release", timeout=KYLOCK_RELEASE_TIMEOUT_S) \
+                or ("error", None, "kylock.sh is no longer installed")
+            if outcome != "ok":
+                self.release_not_proven(outcome, rc, text)
         elif self.lock_mode == "builtin":
             owner, _ = read_json(self.lock_dir / "owner.json")
             if isinstance(owner, dict) and owner.get("session_or_run_id") == self.controller_id \
@@ -1103,6 +1173,38 @@ class Controller:
                 except OSError as e:
                     self.log("could not release the lock: %s" % type(e).__name__)
         self.lock_mode, self.lock_held = None, False
+
+    def release_not_proven(self, outcome, rc, text):
+        """kylock.sh did not answer `released`. Nothing here calls the lock released: what it said is recorded in
+        loops/<role>.json (`lock_release`) and — except for a lock that simply is not this controller's (73) — ONE
+        attention item is raised. 74 means the lock is KEPT because the databases of this session are not proven
+        removed (KU-02); the next controller takes the lock over from this process once it is positively gone,
+        and that takeover never removes a database. Never raises: this runs while the controller exits."""
+        kept = outcome == "release_unproven"
+        self.log("the role lock was NOT released by kylock.sh (%s, rc=%s): %s%s"
+                 % (outcome, rc, text, " — the lock is kept; this session's databases are not proven removed" if kept else ""))
+        note = {"state": "kept" if kept else "not_owner" if outcome == "not_owner" else "unknown", "kylock": outcome,
+                "kylock_rc": rc, "at": utc(), "controller_id": self.controller_id, "detail": flat(text, 200)}
+        try:
+            self.ls(lambda d: dict(d, lock_release=note))
+        except Exception as e:
+            self.log("the lock release result was not recorded (%s)" % type(e).__name__)
+        if outcome == "not_owner":
+            return
+        self.raise_attention(
+            "loop-%s-lock-release-unproven" % self.role,
+            "The %s loop controller %s ended, and %s" % (
+                self.role, self.controller_id,
+                "kylock.sh KEPT the role lock: the test databases of that session are not proven removed (exit 74). "
+                "Remove them?" if kept else
+                "kylock.sh did not confirm that the role lock was released (%s). Is the lock still there?" % outcome),
+            ["kylock.sh release: %s (rc=%s) %s" % (outcome, rc, flat(text, 240)), "lock: %s" % self.lock_dir,
+             "session: %s" % self.controller_id, "scratch: %s" % self.scratch],
+            options=[{"id": "close-databases", "text": "Run `local_db.sh close --session %s` (or remove that "
+                                                       "session's test databases by hand) and check that they are "
+                                                       "gone." % self.controller_id},
+                     {"id": "acknowledge", "text": "Seen; nothing further."}],
+            message="%s loop: kylock.sh did not release the role lock (%s)" % (self.role, outcome))
 
     # ---- configuration and launch preconditions
     def load_config(self):
@@ -1838,8 +1940,9 @@ class Controller:
                     ka.release_lock(campaign)
         return settled
 
-    def apply_one(self, role, doc):
-        """→ True when the command is settled (APPLIED or REJECTED, now or earlier); False when it has to wait."""
+    def apply_one(self, role, doc, in_order=True):
+        """→ True when the command is settled (APPLIED or REJECTED, now or earlier); False when it has to wait.
+        `in_order=False` (kycommands.apply) is the veto role's: its commands have independent targets."""
         kc, ka, cid = self.kc, self.ka, doc.get("id")
         args = doc.get("args") if isinstance(doc.get("args"), dict) else {}
         item = None
@@ -1860,7 +1963,8 @@ class Controller:
         self.own_actions.add("CMD-%s" % cid)
         try:
             status, out = kc.apply(self.run, cid, self.controller_id, lambda cmd: self.handle_command(role, cmd),
-                                   observer=lambda record: self.observe_command(role, record), log=self.log)
+                                   observer=lambda record: self.observe_command(role, record),
+                                   in_order=in_order, log=self.log)
         except ka.LockBusy:
             self.commands_blocked = "action_record_busy: CMD-%s" % cid
             return False
@@ -2542,7 +2646,10 @@ class Controller:
         """Message locks, each followed by a fresh handled-state check (double-action guard, §4a.6). Taken through
         kyaction's lock — the one rule: atomic with its owner, taken over only from an owner that is positively
         gone. A lock held by a live actor skips that message; one whose owner cannot be judged skips it too and
-        raises one attention item (never taken over)."""
+        raises one attention item (never taken over). The ids skipped for a lock are left in self.items_waiting:
+        when nothing else remains, the loop WAITS for them (waiting state `items_locked`) — it never comes
+        straight back for another look."""
+        self.items_waiting = []
         if self.role != "conductor":
             return items
         kept = []
@@ -2551,8 +2658,10 @@ class Controller:
                 lock = self.ka.acquire_lock(self.run, it["id"], run_id, log=self.log)
             except self.ka.LockUnknown as e:
                 self.lock_attention(it["id"], e)
+                self.items_waiting.append(it["id"])
                 continue
             if lock is None:
+                self.items_waiting.append(it["id"])
                 continue
             self.item_locks[it["id"]] = lock
             if (self.run / "handled" / (it["id"] + ".json")).exists():
@@ -2591,11 +2700,13 @@ class Controller:
         return as_int(window.get("count")) if window.get("evidence") == evidence else 0
 
     def run_job(self, items):
+        """Launch ONE bounded child for those items and see it through. → "items_locked" when nothing was
+        launched because every remaining item is locked by another actor (the caller waits); None otherwise."""
         cfg = self.cfg
         run_id = self.new_run_id()
         items = self.lock_items(items, run_id)
         if not items:
-            return
+            return "items_locked" if self.items_waiting else None
         rs = self.scratch / "loops" / self.role / run_id
         out = rs / "out"
         os.makedirs(out / "checkpoints")
@@ -2685,7 +2796,12 @@ class Controller:
                                                 wakeups=(d.get("counters") or {}).get("wakeups", 0) + (self.role == "conductor")),
                                expected_child={"run_id": run_id, "pid": None, "pgid": None, "process_start": None,
                                                "pending": True}, last_run_id=run_id))
-        self.write_owner("pending")             # BEFORE the child exists: a dead owner never looks child-less (R2)
+        try:
+            self.write_owner("pending")         # BEFORE the child exists: a dead owner never looks child-less (R2)
+        except Refusal:                         # kylock.sh would not record it: nothing is started, and that is
+            with guarded("finalize"):           # recorded as the launch that did not happen — then the refusal
+                self.finalize(record, None, "launch_failed", state_bytes=state_bytes, actions_before=set(actions_before))
+            raise
         try:
             with open(prompt_path, "rb") as fin, open(record["stdout_path"], "wb") as fo, \
                     open(record["stderr_path"], "wb") as fe:
@@ -3048,7 +3164,8 @@ class Controller:
         switch · the owner's queued commands · completion (planner) / a valid OWNER_RESUME (conductor) · the global
         HOLD · an owner pause · the circuit breaker · launch preconditions · quota backoff · sole-writer check ·
         eligible work · unfinished actions · and once more, immediately before the launch, STOP / enabled /
-        commands / HOLD / pause."""
+        commands / HOLD / pause. A launch that finds every item locked by another actor is a wait
+        (wait_items_locked), never an immediate second look."""
         while True:
             if self.signal:
                 raise Interrupted()
@@ -3117,7 +3234,23 @@ class Controller:
             if closed:
                 self.log("launch withheld at the last look (%s)" % closed)
                 continue
-            self.run_job(items)
+            if self.run_job(items) == "items_locked":
+                self.wait_items_locked()
+
+    def wait_items_locked(self):
+        """Every eligible message is locked by another actor — a live one that is acting on it, or one that
+        cannot be judged (attention was raised). Nothing was launched and nothing is relaunched: this is a
+        waiting state of the CONTROLLER (`items_locked`, counted in counters.item_lock_waits), for one poll
+        period, after which every gate is read again from the top."""
+        held = sorted(self.items_waiting)
+
+        def fn(d):
+            counters = dict(d.get("counters") or {})
+            counters["item_lock_waits"] = as_int(counters.get("item_lock_waits")) + 1
+            return dict(d, counters=counters, item_lock_wait={"items": held, "at": utc()})
+        self.ls(fn)
+        self.log("nothing launched: %s locked by another actor; waiting" % ", ".join(held))
+        self.wait("items_locked", WAIT_POLL_S)
 
     def acquire(self):
         return self.acquire_lock()
@@ -3210,8 +3343,8 @@ class Controller:
         signal.signal(signal.SIGTERM, self.on_signal)
         signal.signal(signal.SIGINT, self.on_signal)
         self.heartbeat()
-        if self.ls().get("lock_wait"):
-            self.ls(lambda d: {k: v for k, v in d.items() if k != "lock_wait"})
+        if self.ls().get("lock_wait") or self.ls().get("lock_release"):     # what an earlier instance observed
+            self.ls(lambda d: {k: v for k, v in d.items() if k not in ("lock_wait", "lock_release")})
         try:
             with guarded("prepare"):
                 self.prepare()
@@ -3233,6 +3366,11 @@ class VetoController(Controller):
     deadline, a new command for the veto role, or the poll period. kyveto itself keeps decisions pending under
     $KY_ROOT/HOLD, an owner pause and STOP_veto; this controller just keeps ticking, and exits on STOP_veto or
     when it is not enabled.
+
+    Of the owner's commands addressed to the veto role, `veto <decision-id>` is the handler's (consumed by the
+    tick under the decision's lock). Every other one is this controller's, applied before each tick as the holder
+    of the veto lock (apply_commands): `status`, `loops stop veto` — the owner's queued stop ends this loop —,
+    `loops status veto` and `decide`; anything else is rejected by name.
 
     Attention (what `kyveto.py tick` reports with exit 3) is never ticked through:
       * something that will be reported again on every tick — an unreconciled publication or execution, a
@@ -3468,7 +3606,13 @@ class VetoController(Controller):
 
     def attention_fingerprint(self):
         """What must change before a veto loop stopped for attention may tick again: the decision log, the state
-        and observed result of the handler's own action records, or the command queue."""
+        and observed result of the handler's own action records, the command queue — or the AUTHORITY: the
+        authorised bundle and where it was read from (authority()), so that a stop taken while the bundle could
+        not be established, or under another bundle, lifts by itself once the authority returns or changes."""
+        try:
+            bundle, source = self.authority()
+        except Exception as e:                  # what cannot be read is its own, stable, value — never "no change"
+            bundle, source = None, "authority_unreadable: %s" % type(e).__name__
         actions = []
         directory = self.run / "actions"
         for path in sorted(directory.glob("SD-*.json")) if directory.is_dir() else []:
@@ -3477,6 +3621,7 @@ class VetoController(Controller):
                            if isinstance(doc, dict) else [path.name, "unreadable", sha_file(path)])
         directory = self.run / "commands"
         parts = {"decisions": sha_file(self.run / "DECISIONS_SURROGATE.jsonl"), "actions": actions,
+                 "authority": {"known": bundle is not None, "bundle": bundle, "source": source},
                  "commands": [[q.name, sha_file(q)] for q in sorted(directory.glob("*.json"))]
                  if directory.is_dir() else []}
         return sha_bytes(json.dumps(parts, sort_keys=True).encode())
@@ -3533,6 +3678,39 @@ class VetoController(Controller):
         self.log("attention stop lifted: recorded evidence changed")
         return False
 
+    # ---- the veto role's own commands (plan §4a.5): everything but `veto <decision-id>`, which is the handler's
+    def apply_commands(self):
+        """Settle the QUEUED commands addressed to the veto role that are this CONTROLLER's — `status`, `loops
+        stop|status veto`, `decide` for an item this loop raised; anything else it rejects by name — through
+        kycommands.apply, as the holder of the veto lock, BEFORE the handler's tick sees the queue. `veto
+        <decision-id>` is never touched here: kyveto's tick consumes it under the decision's lock. Each command
+        has its own target, so one that has to wait (a held lock) does not keep the others, or the tick, waiting.
+        → True when at least one was settled (the caller re-reads STOP and the switch before anything else)."""
+        self.commands_blocked = None
+        try:
+            queue = self.kc.pending(self.run, self.role)
+        except (self.kc.CommandError, OSError) as e:    # the tick reports an unreadable queue as its own problem
+            self.log("command queue not read (%s): nothing applied by the controller" % type(e).__name__)
+            return False
+        settled = False
+        for doc in queue:
+            if doc.get("command") == "veto":
+                continue
+            if self.apply_one(self.role, doc, in_order=False):
+                settled = True
+            elif self.commands_blocked:
+                self.log("a queued command cannot be settled yet (%s)" % self.commands_blocked)
+        return settled
+
+    def handle_command(self, role, cmd):
+        """What the veto CONTROLLER carries out itself: `status` (its `kyctl.sh status` line), `loops stop veto`
+        (the switch, tagged with the command id — the loop then ends at its next look), `loops status veto`, and
+        `decide` for an awaiting item this loop raised. Everything else is rejected by name."""
+        if cmd.get("command") in ("status", "loops", "decide"):
+            return super().handle_command(role, cmd)
+        raise self.kc.Reject("unsupported_by_veto_role: %s (the veto controller takes status, loops stop|status "
+                             "veto and decide; `veto <decision-id>` is settled by the veto handler)" % cmd.get("command"))
+
     def queued_commands(self):
         try:
             return {str(d.get("id")) for d in self.kc.pending(self.run, "veto")}
@@ -3569,6 +3747,8 @@ class VetoController(Controller):
                          % (st.get("reason") or "no admission record", self.role))
                 return 0
             self.verify_veto()
+            if self.apply_commands():
+                continue                        # a command may have stopped this loop: STOP and the switch first
             if self.attention_gate(st):
                 return 0
             report = self.tick()

@@ -1,6 +1,6 @@
 """B-0c loop control: kynotify.sh, kyloop.py (deterministic controller), kyctl.sh, launchd
 templates and the two loop prompts (relaunch plan v2.7 §4a.1-3, §4a.6, §7, §10, §11, §13; B-0c rework rulings
-R1–R3, R5, R6, R8–R10 and the loops review's findings L-01…L-03, N-01…N-10).
+R1–R3, R5, R6, R8–R10 and the loops review's findings L-01…L-03, N-01…N-10; part 2: L2-a…L2-d, last section).
 
 Nothing here touches the real launchctl, ~/Library/LaunchAgents, the real `claude` or
 /Users/Dev/kalayantra: every test runs in its own tree under pytest's basetemp with test
@@ -573,11 +573,12 @@ def test_kylock_helper_is_used_when_installed(w):
     calls = (w.fleet / "kylock.sh.calls").read_text().splitlines()
     assert re.fullmatch(r"acquire planner CTL-PLANNER-\d{8}T\d{6}Z-\d+", calls[0])
     assert calls[-1] == calls[0].replace("acquire", "release") and not (w.run / "locks" / "planner").exists()
-    (w.fleet / "kylock.sh.rc").write_text("1")              # held elsewhere → this instance exits, runs nothing
+    (w.fleet / "kylock.sh.rc").write_text("75")             # held by a live holder → this instance exits, runs nothing
     w.rearm()
     w.modes("stop")
     r = w.kyloop("planner")
     assert r.returncode == 0 and w.calls() == [1] and "lock held" in r.stderr
+    assert w.awaiting() == [] and not w.stop_file().exists()        # a duplicate start raises and stops nothing
 
 
 def test_unknown_role_is_a_usage_error(w):
@@ -1628,7 +1629,10 @@ def propose(w, n=1, expires_in=2, tracker=True, seen=True, notified=True, **over
         stamp.parent.mkdir(exist_ok=True)
         stamp.write_text(json.dumps({"first_seen_at": iso(deadline - 1800),
                                      "proposal_line_sha256": kyveto.proposal_sha(line)}))
-    (w.run / "awaiting" / (aw + ".json")).write_text(json.dumps({"id": aw}))
+    item = {"id": aw}
+    if isinstance(target.get("tracker_decision"), dict):   # the item names the tracker decision that would be published
+        item["tracker_decision"] = target["tracker_decision"]["id"]
+    (w.run / "awaiting" / (aw + ".json")).write_text(json.dumps(item))
     return sid, deadline
 
 
@@ -2064,6 +2068,7 @@ def test_a_decision_bound_to_a_superseded_source_is_judged_against_the_chains_te
     p = w.popen("veto")
     try:
         assert wait_for(lambda: states(w, stale)[-1] == "FAILED" and states(w, current)[-1] == "EXECUTED")
+        assert wait_for(lambda: "veto" in (w.loop_state("veto") or {}))        # the tick's summary follows its lines
         assert w.loop_state("veto")["veto"]["authority"]["source"].startswith("activation_chain: ACTIVATION_RECORD.2.json")
         stop_and_wait(w, p, "veto")
     finally:
@@ -4487,3 +4492,373 @@ def test_a_refusal_backs_off_by_the_step_when_the_reset_is_later_or_already_past
     assert first["quota_refusal"] is True and q["backoff_basis"] == "backoff_step" and q["resets_at"] == resets
     assert q["backoff_until"] == q["backoff_step_until"]
     assert second["quota_refusal"] is False
+
+
+# ───────────────────────────── B-0c part 2: L2-a … L2-d ─────────────────────────────
+
+# L2-a — a message another actor holds locked is waited for in the controller; it is never a second look at once
+
+def conductor_with_inbox(w, *ids):
+    w.resume()
+    w.ready("conductor")
+    w.default_mode("ack")
+    (w.root / "fake_ky" / "inbox.S.json").write_text(json.dumps([{"msg_id": m, "detail": "do " + m} for m in ids]))
+
+
+def lock_waits(w):
+    return ((w.loop_state("conductor") or {}).get("counters") or {}).get("item_lock_waits", 0)
+
+
+def test_a_message_locked_by_another_live_actor_is_waited_for_in_the_controller_and_never_relaunched(w):
+    conductor_with_inbox(w, "M1")
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")        # this test process: alive, and not us
+    assert other is not None
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: (w.loop_state("conductor") or {}).get("waiting") == "items_locked")
+        assert wait_for(lambda: lock_waits(w) >= 3)         # pass after pass it WAITS: a counted waiting state
+        ls = w.loop_state("conductor")
+        assert p.poll() is None and ls["enabled"] is True and ls["breaker"]["open"] is False
+        assert ls["item_lock_wait"]["items"] == ["msg.M1"] and ls["no_progress_count"] == 0
+        assert ls["counters"].get("launches", 0) == 0 and ls["expected_child"] is None
+        assert w.calls() == [] and w.records("conductor") == [] and w.awaiting() == []     # nothing was launched
+        assert not list((w.run / "actions").glob("LAUNCH-*")) if (w.run / "actions").is_dir() else True
+        assert json.loads((w.run / "locks" / "msg.M1" / "owner.json").read_text())["session_or_run_id"] == "another-actor"
+        assert kyaction.release_lock(other)                 # the other actor is done and did not handle it
+        assert wait_for(lambda: w.calls() == [1])           # … and only now is ONE job launched for it
+        assert wait_for(lambda: (w.loop_state("conductor") or {}).get("waiting") == "no_eligible_work")
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+    (rec,) = w.records("conductor")
+    assert [i["id"] for i in rec["work_items"]] == ["msg.M1"] and w.calls() == [1]
+
+
+def test_a_message_lock_nobody_can_judge_is_waited_for_with_one_attention_item_and_never_taken_over(w):
+    conductor_with_inbox(w, "M1")
+    (w.run / "locks" / "msg.M1").mkdir(parents=True)       # a bare lock: no owner record at all
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: lock_waits(w) >= 3)
+        assert w.loop_state("conductor")["waiting"] == "items_locked" and p.poll() is None
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+    assert w.calls() == [] and w.records("conductor") == []
+    (item,) = w.awaiting()                                  # ONE item, however many passes waited
+    assert item["id"].endswith("-lock-owner-unknown-msg-m1") and item["blocks"] == "none"
+    assert (w.run / "locks" / "msg.M1").is_dir() and not (w.run / "locks" / "msg.M1" / "owner.json").exists()
+
+
+def test_an_unlocked_message_is_launched_without_waiting_for_the_locked_one(w):
+    """The negative of the wait: `items_locked` is the state of a pass that could launch NOTHING — not of a pass
+    in which one message of several is held by somebody else."""
+    conductor_with_inbox(w, "M1", "M2")
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: w.calls() == [1] and len(w.records("conductor")) == 1
+                        and w.records("conductor")[0]["ended_at"] is not None)
+        assert [i["id"] for i in w.records("conductor")[0]["work_items"]] == ["msg.M2"]
+        assert wait_for(lambda: lock_waits(w) >= 1)         # M2 is handled; M1 is still somebody else's: now it waits
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+        kyaction.release_lock(other)
+    assert w.calls() == [1]
+
+
+def test_run_job_says_items_locked_only_when_a_lock_kept_everything_back(w, monkeypatch):
+    conductor_with_inbox(w, "M1")
+    c = controller_in_process(w, monkeypatch, "conductor")
+    c.load_siblings()
+    c.cfg = {}
+    item = {"id": "msg.M1", "kind": "message", "key": "M1", "stream": "S", "message": {"msg_id": "M1"}}
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")
+    assert c.run_job([item]) == "items_locked" and c.items_waiting == ["msg.M1"]
+    kyaction.release_lock(other)
+    (w.run / "handled").mkdir()
+    (w.run / "handled" / "msg.M1.json").write_text("{}")   # handled meanwhile: nothing to wait for, nothing launched
+    assert c.run_job([item]) is None and c.items_waiting == [] and w.calls() == []
+    assert not (w.run / "locks" / "msg.M1").exists()
+
+
+# L2-b — the veto controller applies its own role's commands; `veto <decision-id>` stays the handler's
+
+def test_the_veto_controller_applies_its_own_roles_queued_commands_and_a_queued_stop_ends_the_loop(w):
+    veto_world(w)
+    w.enable("veto")
+    status = submit(w, "veto", "status")
+    other = submit(w, "veto", "priority", {"item": "B-4"})             # not a thing the veto role can carry out
+    foreign = submit(w, "veto", "loops", {"op": "stop", "loop": "planner"})
+    stop = submit(w, "veto", "loops", {"op": "stop", "loop": "veto"})
+    r = w.kyloop("veto")
+    assert r.returncode == 0, r.stderr                      # the owner's queued stop ended the loop
+    docs = {c: command(w, c) for c in (status, other, foreign, stop)}
+    assert [docs[c]["state"] for c in (status, other, foreign, stop)] == ["APPLIED", "REJECTED", "REJECTED", "APPLIED"]
+    for d in docs.values():
+        assert d["applied_by"]["role"] == "veto" and d["applied_by"]["holder_kind"] == "controller"
+        assert re.fullmatch(r"CTL-VETO-\d{8}T\d{6}Z-\d+", d["applied_by"]["controller_id"])
+        assert_schema("command", d)
+    assert docs[status]["result"]["line"].startswith("veto state=") and docs[status]["result"]["facts"]["enabled"] == "true"
+    assert docs[other]["result"]["reason"].startswith("unsupported_by_veto_role: priority")
+    assert docs[foreign]["result"]["reason"].startswith("not_this_roles_loop")
+    assert "unsupported_by_veto_handler" not in json.dumps(list(docs.values()))
+    ls = w.loop_state("veto")
+    assert ls["enabled"] is False and ls["disabled_by_command"] == stop and stop in ls["reason"]
+    assert ls["commands"]["applied"] == 2 and ls["commands"]["rejected"] == 2
+    assert "veto" not in ls                                 # stopped before a single tick
+    assert not w.stop_file("veto").exists() and w.awaiting() == [] and not (w.run / "locks" / "veto").exists()
+    assert kyaction.load(w.run, "CMD-" + stop)["state"] == "DONE"
+    before = {c: kycommands.find(w.run, c)["path"].read_bytes() for c in docs}
+    w.enable("veto")                                        # a restart applies nothing a second time
+    p = w.popen("veto")
+    try:
+        assert wait_for(lambda: veto_summary(w).get("ticks", 0) >= 2)
+        stop_and_wait(w, p, "veto")
+    finally:
+        p.kill()
+    assert before == {c: kycommands.find(w.run, c)["path"].read_bytes() for c in docs}
+
+
+def test_a_veto_command_is_never_applied_by_the_controller_itself(w, monkeypatch):
+    """The negative: of the veto role's queue the controller leaves `veto <decision-id>` exactly as it found it —
+    that one is consumed by the handler's tick, under the decision's lock."""
+    veto_world(w)
+    w.enable("veto")
+    sid, _ = propose(w, expires_in=3600, tracker=False)
+    veto = submit(w, "veto", "veto", {"decision_id": sid})
+    status = submit(w, "veto", "status")
+    c = controller_in_process(w, monkeypatch, "veto")
+    assert c.acquire()
+    try:
+        c.prepare()
+        before = kycommands.find(w.run, veto)["path"].read_bytes()
+        assert c.apply_commands() is True                   # the status behind it was settled, out of order
+        assert command(w, status)["state"] == "APPLIED" and command(w, veto)["state"] == "QUEUED"
+        assert kycommands.find(w.run, veto)["path"].read_bytes() == before
+        assert not (w.run / "actions" / ("CMD-%s.json" % veto)).exists() and states(w, sid) == ["PENDING_VETO"]
+        assert (w.run / "actions" / ("CMD-%s.json" % status)).exists()
+        assert c.apply_commands() is False                  # nothing of its own is left: the tick may run
+        assert [d["id"] for d in kycommands.pending(w.run, "veto")] == [veto]
+    finally:
+        c.release_lock()
+
+
+def test_a_stop_queued_while_the_veto_loop_waits_is_applied_before_the_next_tick(w, monkeypatch):
+    veto_world(w)
+    w.enable("veto")
+    queued, ticks = [], []
+    with Signals():
+        c = controller_in_process(w, monkeypatch, "veto")
+
+        def tick():
+            ticks.append(c.ls().get("enabled"))
+            return {"decisions": [], "problems": [], "commands": [], "holds": [], "attention": False}
+
+        def wait_for_event(deadline, seen):                 # the owner queues the stop while the controller waits
+            queued.append(submit(w, "veto", "loops", {"op": "stop", "loop": "veto"}))
+
+        monkeypatch.setattr(c, "tick", tick)
+        monkeypatch.setattr(c, "wait_for_event", wait_for_event)
+        assert c.main() == 0
+    assert ticks == [True] and len(queued) == 1             # ONE tick; the stop was honoured before a second one
+    assert command(w, queued[0])["state"] == "APPLIED"
+    ls = w.loop_state("veto")
+    assert ls["enabled"] is False and ls["disabled_by_command"] == queued[0] and ls["controller"] is None
+    assert w.awaiting() == [] and not w.stop_file("veto").exists() and not (w.run / "locks" / "veto").exists()
+
+
+# L2-c — kylock.sh: one function runs it, its exit codes are read one by one, and the child is given to it
+
+FAKE_KYLOCK = """#!/bin/bash
+# Test double for kylock.sh (packet KV3-B-KYLOCK call forms): records its argv in <script>.calls and exits with
+# the integer in <script>.rc.<verb>, else <script>.rc, else 0; sleeps <script>.sleep seconds first when present.
+set -u
+printf '%s\\n' "$*" >> "$0.calls"
+if [ -f "$0.sleep" ]; then sleep "$(cat "$0.sleep")"; fi
+if [ -s "$0.seq.$1" ]; then                      # one exit code per call, first line first; then the files below
+  rc="$(head -n 1 "$0.seq.$1")"; tail -n +2 "$0.seq.$1" > "$0.seq.tmp"; mv "$0.seq.tmp" "$0.seq.$1"; exit "$rc"
+fi
+if [ -f "$0.rc.$1" ]; then exit "$(cat "$0.rc.$1")"; fi
+if [ -f "$0.rc" ]; then exit "$(cat "$0.rc")"; fi
+echo "kylock: $1 role=$2 state=ok holder=$3 pid=0"
+exit 0
+"""
+
+
+def fake_kylock(w, **rcs):
+    path = w.fleet / "kylock.sh"
+    path.write_text(FAKE_KYLOCK)
+    path.chmod(0o755)
+    for verb, rc in rcs.items():
+        (w.fleet / ("kylock.sh.rc." + verb)).write_text(str(rc))
+    return path
+
+
+def kylock_calls(w):
+    p = w.fleet / "kylock.sh.calls"
+    return p.read_text().splitlines() if p.exists() else []
+
+
+def test_kylock_is_one_function_that_answers_none_while_kylock_is_not_installed(w, monkeypatch):
+    c = controller_in_process(w, monkeypatch)
+    assert c.kylock("acquire") is None                      # not installed: the built-in lock is what holds the role
+    (w.fleet / "kylock.sh").write_text(FAKE_KYLOCK)
+    (w.fleet / "kylock.sh").chmod(0o644)
+    assert c.kylock("acquire") is None and kylock_calls(w) == []       # present but not executable: not installed
+    assert c.acquire_lock() and c.lock_mode == "builtin" and (w.run / "locks" / "planner" / "owner.json").exists()
+    c.release_lock()
+    assert not (w.run / "locks" / "planner").exists() and kylock_calls(w) == []
+    fake_kylock(w)
+    assert c.kylock("acquire")[:2] == ("ok", 0)
+    assert c.kylock("child", "pending")[:2] == ("ok", 0)
+    assert kylock_calls(w) == ["acquire planner " + c.controller_id, "child planner %s pending" % c.controller_id]
+    for rc, outcome in ((75, "live"), (76, "cockpit"), (77, "unknown"), (74, "release_unproven"), (73, "not_owner"),
+                        (70, "bad_identity"), (64, "usage"), (1, "error"), (2, "error"), (127, "error")):
+        (w.fleet / "kylock.sh.rc").write_text(str(rc))
+        assert c.kylock("acquire")[:2] == (outcome, rc)     # every non-zero code is its own answer, none a success
+    (w.fleet / "kylock.sh.rc").unlink()
+    (w.fleet / "kylock.sh.sleep").write_text("5")
+    t0 = time.time()
+    assert c.kylock("acquire", timeout=0.3)[:2] == ("error", None) and time.time() - t0 < 4       # no answer: no lock
+
+
+KYLOCK_REFUSALS = [
+    (75, None, None, "live"),                               # a live holder: a duplicate start, nothing recorded
+    (76, "role_held_by_cockpit", None, "cockpit"),
+    (77, "role_lock_owner_unknown", "-loop-planner-lock-owner-unknown", "unknown"),
+    (70, "role_lock_identity_refused", "-loop-planner-lock-helper-refused", "identity_refused"),
+    (74, "role_lock_helper_failed", "-loop-planner-lock-helper-refused", "kylock_error"),   # not an acquire answer
+    (1, "role_lock_helper_failed", "-loop-planner-lock-helper-refused", "kylock_error"),
+]
+
+
+@pytest.mark.parametrize("rc,waiting,slug,state", KYLOCK_REFUSALS, ids=["rc%d" % x[0] for x in KYLOCK_REFUSALS])
+def test_kylocks_acquire_exit_codes_are_told_apart(w, rc, waiting, slug, state):
+    w.ready()
+    w.default_mode("stop")
+    fake_kylock(w, acquire=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and w.calls() == [] and "rc=%d" % rc in r.stderr
+    assert len(kylock_calls(w)) == 1 and kylock_calls(w)[0].startswith("acquire planner CTL-PLANNER-")
+    assert not w.stop_file().exists() and w.loop_state()["enabled"] is True    # it never stops what it does not hold
+    ls = w.loop_state()
+    assert ls.get("waiting") == waiting
+    if waiting is None:
+        assert "lock_wait" not in ls and w.awaiting() == []
+    else:
+        assert ls["lock_wait"]["state"] == state and ls["lock_wait"]["kylock_rc"] == rc
+        assert [a["id"][len("AW-20261011T000000Z"):] for a in w.awaiting()] == ([slug] if slug else [])
+    assert w.kyloop("planner").returncode == 0              # a second refused start raises nothing new
+    assert len(w.awaiting()) == (1 if slug else 0) and w.calls() == []
+
+
+def test_the_veto_controller_waits_for_a_live_kylock_holder_and_for_no_other_answer(w, monkeypatch):
+    """75 (a live holder: another handler's tick) is waited for, bounded; a cockpit (76) and an unknown owner (77)
+    are not: no other answer of kylock.sh is a reason to try again."""
+    veto_world(w)
+    monkeypatch.setattr(kyloop, "VETO_LOCK_WAIT_S", 60000.0)           # 60 s at the test scale: never the limit here
+    fake_kylock(w)
+    c = controller_in_process(w, monkeypatch, "veto")
+    (w.fleet / "kylock.sh.seq.acquire").write_text("75\n75\n75\n")
+    assert c.acquire() is True and c.lock_mode == "kylock"
+    assert [x.split()[0] for x in kylock_calls(w)] == ["acquire"] * 4      # three refusals waited for, then acquired
+    c.release_lock()
+    for rc, state in ((76, "cockpit"), (77, "unknown"), (70, "identity_refused"), (1, "kylock_error")):
+        (w.fleet / "kylock.sh.calls").unlink()
+        (w.fleet / "kylock.sh.seq.acquire").write_text("%d\n" % rc)       # a second try would be given the lock
+        c = controller_in_process(w, monkeypatch, "veto")
+        assert c.acquire() is False and c.lock_refusal["state"] == state and len(kylock_calls(w)) == 1
+
+
+def test_the_child_is_given_to_kylock_before_and_after_it_is_started(w):
+    w.ready()
+    w.modes("stop")
+    fake_kylock(w)
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1]
+    (rec,) = w.records()
+    ctl = rec["controller_id"]
+    calls = kylock_calls(w)
+    assert calls[0] == "acquire planner " + ctl and calls[1] == "child planner %s pending" % ctl
+    assert calls[3:] == ["child planner %s none" % ctl, "release planner " + ctl]
+    prefix = "child planner %s " % ctl
+    assert calls[2].startswith(prefix)
+    child = json.loads(calls[2][len(prefix):])              # exactly the packet's keys, and the run's own identity
+    assert child == {"run_id": rec["run_id"], "pid": rec["pid"], "pgid": rec["pgid"],
+                     "process_start": rec["process_start"]}
+    assert "lock_release" not in w.loop_state() and len(w.awaiting()) == 0
+
+
+@pytest.mark.parametrize("rc", [73, 77, 1])
+def test_nothing_is_launched_when_kylock_will_not_record_the_pending_child(w, rc):
+    w.ready()
+    w.default_mode("substep")
+    fake_kylock(w, child=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and "Traceback" not in r.stderr
+    assert "role_lock_child_not_recorded: kylock.sh child pending" in json.dumps(refused(w))     # … and no model run
+    (rec,) = w.records()
+    assert rec["pid"] is None and rec["ended_reason"] == "launch_failed"
+    assert kyaction.load(w.run, "LAUNCH-" + rec["run_id"])["state"] != "INTENDED"     # not left as a launch in doubt
+    assert w.loop_state()["expected_child"] is None
+    assert [c.split()[0] for c in kylock_calls(w)].count("release") == 1
+
+
+RELEASES = [(74, "kept", True), (1, "unknown", True), (73, "not_owner", False)]
+
+
+@pytest.mark.parametrize("rc,state,raised", RELEASES, ids=["rc%d" % x[0] for x in RELEASES])
+def test_a_release_kylock_did_not_confirm_is_never_reported_as_released(w, rc, state, raised):
+    w.ready()
+    w.modes("stop")
+    fake_kylock(w, release=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and w.calls() == [1] and "NOT released by kylock.sh" in r.stderr
+    note = w.loop_state()["lock_release"]
+    assert (note["state"], note["kylock_rc"]) == (state, rc) and note["controller_id"] == w.records()[0]["controller_id"]
+    items = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-lock-release-unproven")]
+    assert len(items) == (1 if raised else 0)
+    if rc == 74:                                            # KU-02: the lock is kept, the databases are named
+        assert "KEPT the role lock" in items[0]["question"] and note["controller_id"] in json.dumps(items[0])
+        assert_awaiting_schema(items[0])
+    (w.fleet / "kylock.sh.rc.release").unlink()             # the next controller's own start and clean release
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1, 2]
+    assert "lock_release" not in w.loop_state()             # … withdraw the observation; the item stays the owner's
+    assert len([a for a in w.awaiting() if a["id"].endswith("-lock-release-unproven")]) == (1 if raised else 0)
+
+
+# L2-d — the authority is part of what must change before a veto loop stopped for attention ticks again
+
+def test_the_attention_fingerprint_changes_with_the_authority_and_with_nothing_else_unrecorded(w, monkeypatch):
+    veto_world(w, authorised=False)
+    c = controller_in_process(w, monkeypatch, "veto")
+    unknown = c.attention_fingerprint()
+    assert c.attention_fingerprint() == unknown             # nothing changed: the same fingerprint
+    (w.run / "KY_WORKERS").write_text("9\n")                # not evidence of this stop
+    assert c.attention_fingerprint() == unknown
+    veto_world(w)                                           # the authorised source is recorded
+    known = c.attention_fingerprint()
+    assert known != unknown and c.attention_fingerprint() == known
+    w.write_state({"active": {}, "completed_steps": [], "authorised_source": {"source_commit": C2, "entrypoints_digest": E1}})
+    assert c.attention_fingerprint() not in (known, unknown)        # another bundle is another authority
+    veto_world(w, authorised=False)
+    assert c.attention_fingerprint() == unknown             # … and it is a function of what is recorded, only
+
+
+def test_a_veto_stop_taken_without_an_authority_lifts_when_the_authority_returns(w, monkeypatch):
+    veto_world(w, authorised=False)
+    w.enable("veto")
+    c = controller_in_process(w, monkeypatch, "veto")
+    c.load_siblings()
+    c.open_attention(["SD-20261011T220000Z-1: blocked (error: the bundle could not be read)"])
+    ls = w.loop_state("veto")
+    assert ls["breaker"]["open"] is True and ls["enabled"] is False and len(w.awaiting()) == 1
+    assert c.attention_gate(c.ls()) is True                 # nothing changed: the restart is refused
+    assert c.attention_gate(c.ls()) is True and w.loop_state("veto")["breaker"]["open"] is True
+    veto_world(w)                                           # the authority returns — and nothing else changed
+    assert c.attention_gate(c.ls()) is False
+    ls = w.loop_state("veto")
+    assert ls["breaker"]["open"] is False and ls["breaker"]["history"][-1]["from"] != ls["breaker"]["history"][-1]["to"]

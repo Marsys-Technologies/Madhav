@@ -684,6 +684,27 @@ def test_process_matches_has_three_answers(monkeypatch):
     assert kyaction.process_matches(dead_pid(), me["process_start"]) is None               # … so nothing is "gone"
 
 
+def test_a_zombie_is_positively_gone_even_with_its_own_start_identity(monkeypatch):
+    """C2-08: an exited process nobody has reaped still answers `ps` under its pid and its start identity."""
+    p = subprocess.Popen([PY, "-c", "pass"])              # exits at once; not reaped until wait() below
+    try:
+        probe, deadline = None, time.time() + 30
+        while time.time() < deadline:
+            probe = kyaction.ps_probe(p.pid)
+            if probe and probe[0] == "alive" and probe[1].startswith("Z"):
+                break
+            time.sleep(0.02)
+        assert probe and probe[0] == "alive" and probe[1].startswith("Z"), probe       # ps still lists it …
+        assert kyaction.process_matches(p.pid, probe[2]) is False                      # … and it is gone all the same
+    finally:
+        p.wait()
+    me = kyaction.self_identity()                         # the same rule on a ps answer written out here
+    monkeypatch.setattr(kyaction, "_ps", lambda pid, columns: (0, "Z+ " + me["process_start"], ""))
+    assert kyaction.process_matches(me["pid"], me["process_start"]) is False
+    monkeypatch.setattr(kyaction, "_ps", lambda pid, columns: (0, "S+ " + me["process_start"], ""))
+    assert kyaction.process_matches(me["pid"], me["process_start"]) is True
+
+
 @pytest.mark.parametrize("answer", ["timeout", "garbage", "error-text", "rc2"])
 def test_a_ps_that_does_not_answer_properly_is_unknown_never_gone(monkeypatch, answer):
     class Result:
@@ -1315,6 +1336,28 @@ def test_a_cockpit_holding_the_role_lock_may_apply(tmp_path):
     assert_schema("command", doc)
 
 
+@pytest.mark.parametrize("applier", [
+    {"holder_kind": "job", "controller_id": "sess-1"}, {"holder_kind": "job", "session_id": "sess-1"},
+    {"holder_kind": "job", "controller_id": "sess-1", "run_id": "PLANNER-20261011T220000Z"},
+    {"holder_kind": "robot", "controller_id": "sess-1"}, {"controller_id": "sess-1"}, "", None,
+])
+def test_a_job_or_an_unknown_kind_of_holder_never_applies_a_command(tmp_path, applier):
+    """C2-09: schemas/command.json admits cockpit | controller | supervisor as `applied_by`; a job actor used to
+    pass here and then fail inside kyaction with an error that is not a CommandError."""
+    run = mkrun(tmp_path)
+    cid = kycommands.submit(run, "planner", "handoff", {}, COCKPIT)
+    hold(run, "planner", "sess-1")
+    seen = []
+    with pytest.raises(kycommands.CommandInvalid, match="applier must be"):
+        kycommands.apply(run, cid, applier, lambda c: seen.append(c) or {})
+    with pytest.raises(kycommands.CommandInvalid):
+        kycommands.applier_identity(applier)
+    assert seen == [] and kycommands.find(run, cid)["doc"]["state"] == "QUEUED"
+    assert not (run / "actions").exists() and not (run / "locks" / ("command." + cid)).exists()
+    assert set(kycommands.APPLIER_KINDS) == set(
+        json.loads((SCHEMAS / "command.json").read_text())["$defs"]["actor"]["properties"]["holder_kind"]["enum"])
+
+
 @pytest.mark.parametrize("lock,reason", [
     ("none", "role_lock_not_held"), ("other", "role_lock_held_by_another"), ("dead", "role_lock_stale"),
     ("unverifiable", "role_lock_owner_unverifiable"), ("wrong-role", "role_lock_not_held"),
@@ -1835,7 +1878,11 @@ class World:
         if seen is not None and line["state"] == "PENDING_VETO":
             self.see(sid, seen)
         if awaiting_open and isinstance(line["awaiting"], str):
-            (self.run / "awaiting" / (line["awaiting"] + ".json")).write_text(json.dumps({"id": line["awaiting"]}))
+            item = {"id": line["awaiting"]}
+            td = target.get("tracker_decision") if isinstance(target, dict) else None
+            if isinstance(td, dict) and isinstance(td.get("id"), str):
+                item["item"] = td["id"]                    # C2-02: the item names the tracker decision it is about
+            (self.run / "awaiting" / (line["awaiting"] + ".json")).write_text(json.dumps(item))
         return sid
 
     def notify(self, sid, at=T_NOTIFY, result="submitted", text="raise capacity", level="decision"):
@@ -2249,6 +2296,10 @@ def test_an_action_record_the_veto_role_did_not_write_is_not_the_handlers_memory
     d = one(report, sid)
     assert d["outcome"] == "blocked" and "Foreign" in d["reason"] and d["attention"] is True
     assert w.states(sid) == ["PENDING_VETO"] and w.ky_calls() == [] and w.capacity() == ("3\n", "2\n")
+    status = kyveto.status(w.env, now=BEFORE)             # C2-01: what somebody else did under that id is not known
+    (row,) = status["decisions"]
+    assert row["published"] == "unknown" and row["unresolved"] is True and row["made_effective_by_handler"] is False
+    assert status["publication_unknown"] == [sid] and status["attention"] is True
 
 
 def test_a_first_seen_stamp_that_cannot_be_read_blocks(tmp_path):
@@ -2434,13 +2485,14 @@ def test_a_veto_of_a_decision_not_yet_in_its_window_waits_for_it(tmp_path):
     assert w.command(cid)["state"] == "APPLIED" and w.capacity() == ("3\n", "2\n")
 
 
-def test_other_commands_addressed_to_the_veto_role_are_rejected_not_left_to_block(tmp_path):
+def test_other_commands_addressed_to_the_veto_role_are_left_queued_for_the_controller(tmp_path):
     w = World(tmp_path)
     cid = kycommands.submit(w.run, "veto", "status", {}, COCKPIT)
-    report = w.tick(BEFORE)
-    assert w.command(cid)["state"] == "REJECTED"
-    assert w.command(cid)["result"]["reason"] == "unsupported_by_veto_handler: status"
-    assert report["commands"][0]["status"] == "rejected"
+    sid = w.propose(cap())
+    vid = w.veto(sid)
+    report = w.tick(AFTER)
+    assert w.command(cid)["state"] == "QUEUED"            # the veto controller applies or rejects it, never the handler
+    assert one(report, sid)["outcome"] == "vetoed" and w.command(vid)["state"] == "APPLIED"   # and it blocks no veto
 
 
 def test_a_named_holder_settles_the_veto_under_its_own_identity(tmp_path):
@@ -2912,22 +2964,81 @@ def test_authority_given_as_arguments_takes_precedence_over_the_state_file(tmp_p
 
 # ── publication ──
 
-def test_a_failed_publication_is_failed_never_executed(tmp_path):
+READBACKS = {"done": lambda record: ("done", {"observed": "tracker readback"}),
+             "not_done": lambda record: ("not_done", "no such tracker event")}
+
+
+def status_row(w, sid):
+    """→ (exit status, report, the decision's row) of the real `kyveto.py status`."""
+    r = w.cli("status")
+    report = json.loads(r.stdout)
+    (row,) = [x for x in report["decisions"] if x["id"] == sid]
+    return r.returncode, report, row
+
+
+@pytest.mark.parametrize("record,answer", [
+    (None, False),                                                                   # the handler never began
+    ({"state": "DONE", "target": {"tracker_decision": None}}, False),                # nothing was to be published
+    ({"state": "DONE", "target": {"tracker_decision": "D-41", "outcome": "approved"}}, True),
+    ({"state": "INTENDED", "target": {"tracker_decision": "D-41"}, "result": None}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"exit_status": 3}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": "unknown"}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": None}}, "unknown"),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": {"published": False}}, False),
+    ({"state": "FAILED", "target": {"tracker_decision": "D-41"}, "result": None}, "unknown"),
+    ({"state": "DONE", "target": {}}, "unknown"), ({"state": "DONE", "target": None}, "unknown"),
+])
+def test_publication_has_three_answers(record, answer):
+    """C2-01: published / not published / unknown — and unknown is whatever is not proven either way."""
+    got = kyveto.publication(record)
+    assert got == answer and type(got) is type(answer)
+
+
+def test_a_publication_ky_refused_is_failed_never_executed_and_not_called_unpublished(tmp_path):
+    """C2-06: a non-zero exit of `ky decide` proves nothing about the tracker. Without a readback the decision is
+    FAILED (nothing is executed, nothing retried) and its publication is UNKNOWN — said in the line, the row and
+    `status`, never "not published"."""
     w = World(tmp_path)
     w.ky_says("rc", 3)
     sid = w.propose(cap(tracker_decision=TD))
     report = w.tick(AT)
     d = one(report, sid)
     assert d["outcome"] == "failed" and d["reason"] == "publication_failed: rc=3"
-    assert d["attention"] is True and "published" not in d            # CT-11: the owner is told; it was not read back
+    assert d["attention"] is True and d["published"] == "unknown" and report["attention"] is True
     assert w.states(sid) == ["PENDING_VETO", "FAILED"]                 # never EFFECTIVE, never EXECUTED
+    assert w.history(sid)[-1]["detail"] == {"published": "unknown"}
     assert w.capacity() == ("3\n", "2\n")
     publish = w.action(sid + ".publish")
-    assert publish["state"] == "FAILED" and publish["result"]["exit_status"] == 3
+    assert publish["state"] == "INTENDED" and len(publish["reconciliations"]) == 1     # unfinished: nothing is known
+    seen = publish["reconciliations"][-1]
+    assert seen["outcome"] == "unknown" and seen["detail"]["ky_exit_status"] == 3
+    assert_schema("action", publish)
     assert w.actions() == [sid + ".publish.json"]                      # the executor was never begun
     w.ky_says("rc", 0)
     assert w.tick(AFTER)["decisions"] == []                            # a failed proposal is not retried
     assert len(w.ky_calls()) == 1 and w.states(sid) == ["PENDING_VETO", "FAILED"]
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True
+    assert status["publication_unknown"] == [sid] and status["attention"] is True
+
+
+def test_a_readback_decides_what_a_refusing_ky_left_behind(tmp_path):
+    """C2-06: "unless a readback proves otherwise" — in both directions."""
+    w = World(tmp_path)
+    w.ky_says("rc", 3)
+    sid = w.propose(cap(tracker_decision=TD))
+    d = one(w.tick(AT, publish_observer=READBACKS["not_done"]), sid)
+    assert d["outcome"] == "failed" and d["reason"] == "publication_failed: rc=3" and "published" not in d
+    assert "detail" not in w.history(sid)[-1] and w.capacity() == ("3\n", "2\n")
+    publish = w.action(sid + ".publish")
+    assert publish["state"] == "FAILED" and publish["result"]["exit_status"] == 3
+    assert publish["result"]["published"] is False
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is False and "unresolved" not in row and status["publication_unknown"] == []
+    other = w.propose(cap(builders=5, tracker_decision=TD))            # the tracker did record it: carried out
+    assert one(w.tick(AT, publish_observer=READBACKS["done"]), other)["outcome"] == "executed"
+    assert w.states(other) == ["PENDING_VETO", "EFFECTIVE", "EXECUTED"] and w.capacity() == ("5\n", "4\n")
+    assert w.action(other + ".publish")["state"] == "DONE" and len(w.ky_calls()) == 2   # one call each, no retry
 
 
 def test_a_missing_ky_is_refused_before_anything_is_recorded(tmp_path):
@@ -2947,20 +3058,152 @@ def test_a_tracker_decision_the_handler_cannot_publish_exactly_is_refused(tmp_pa
     assert w.ky_calls() == []
 
 
-def test_ky_that_does_not_answer_leaves_the_publication_unknown_and_is_not_repeated(tmp_path):
-    w = World(tmp_path)
-    w.ky_says("sleep", 5)
+def ky_never_answers(w, monkeypatch):
+    """`ky decide` is started, records its call and then gives no exit status within the handler's timeout.
+
+    C2-07: the handler's timeout runs from the moment the child is spawned, so on a loaded machine a 0.5 s
+    timeout could expire before the double had even recorded its call. Here the very same real process is run
+    under the very same timeout, and kyveto still meets a real subprocess.TimeoutExpired — only the timeout's
+    clock starts once the double's call is on record. Nothing else that calls subprocess.run is changed."""
+    w.ky_says("sleep", 600)
     w.environ["KYVETO_KY_TIMEOUT_S"] = "0.5"
-    sid = w.propose(cap(tracker_decision=TD))
+    real, ky, calls = subprocess.run, str(w.root / "bin" / "ky"), w.root / "fake_ky" / "calls.jsonl"
+
+    def run(argv, **kw):
+        if not (isinstance(argv, list) and argv and argv[0] == ky and kw.get("timeout")):
+            return real(argv, **kw)
+        before = len(w.ky_calls())
+        p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=kw.get("env"),
+                             stdin=kw.get("stdin"))
+        try:
+            deadline = time.time() + 120
+            while (not calls.exists() or len(w.ky_calls()) <= before) and p.poll() is None:
+                assert time.time() < deadline, "the ky double never recorded its call"
+                time.sleep(0.01)
+            out, err = p.communicate(timeout=kw["timeout"])
+        except BaseException:                             # TimeoutExpired included: as subprocess.run does
+            p.kill()
+            p.communicate()
+            raise
+        return subprocess.CompletedProcess(argv, p.returncode, out, err)
+
+    monkeypatch.setattr(kyveto.subprocess, "run", run)
+
+
+def unknown_publication(w, monkeypatch, **target):
+    """A decision whose `ky decide` timed out: `<id>.publish` INTENDED, the tick blocked. → its id."""
+    ky_never_answers(w, monkeypatch)
+    sid = w.propose(cap(tracker_decision=TD, **target))
     report = w.tick(AT)
     d = one(report, sid)
     assert (d["outcome"], d["reason"]) == ("blocked", "publication_unreconciled")
     assert report["attention"] is True and w.states(sid) == ["PENDING_VETO"]
     assert w.action(sid + ".publish")["state"] == "INTENDED" and w.capacity() == ("3\n", "2\n")
+    assert len(w.ky_calls()) == 1                                       # it was really started, once
+    return sid
+
+
+def test_ky_that_does_not_answer_leaves_the_publication_unknown_and_is_not_repeated(tmp_path, monkeypatch):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
     (w.root / "fake_ky" / "sleep").unlink()
     assert one(w.tick(AFTER), sid)["reason"] == "publication_unreconciled"
     assert len(w.ky_calls()) == 1                                       # unknown never permits a blind retry
     assert w.action(sid + ".publish")["reconciliations"][-1]["outcome"] == "unknown"
+    rc, status, row = status_row(w, sid)                                # C2-01: and `status` does not call it unpublished
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True
+    assert status["publication_unknown"] == [sid]
+
+
+# ── C2-01: publication has three answers; unknown is never reported as "not published" ──
+
+def test_a_veto_after_ky_timed_out_says_the_publication_is_unknown_until_it_is_reconciled(tmp_path, monkeypatch):
+    """The reviewer's probe: `ky decide` gave no exit status, the owner then vetoed — the line said
+    published:false, the row carried no attention and nothing ever mentioned it again, while the tracker may hold
+    a delegated approval the owner vetoed."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["published"], d["attention"]) == ("vetoed", "unknown", True)
+    assert report["attention"] is True
+    assert w.states(sid) == ["PENDING_VETO", "VETOED"] and w.capacity() == ("3\n", "2\n")
+    assert w.history(sid)[-1]["detail"] == {"command": cid, "published": "unknown"}
+    assert w.command(cid)["state"] == "APPLIED" and len(w.ky_calls()) == 1
+    assert w.action(sid + ".publish")["state"] == "INTENDED"            # never closed as "not published"
+    for _ in range(2):                                                  # final for the tick; unresolved for `status`
+        assert w.tick(LATER)["decisions"] == []
+        rc, status, row = status_row(w, sid)
+        assert rc == 3 and status["attention"] is True and status["publication_unknown"] == [sid]
+        assert (row["state"], row["published"], row["unresolved"]) == ("VETOED", "unknown", True)
+    # … until the publish record is reconciled: the tracker does hold the approval the owner vetoed
+    report = w.tick(LATER, publish_observer=READBACKS["done"])
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == (
+        "vetoed", "publication_reconciled", True, True)
+    assert report["attention"] is True and w.states(sid) == ["PENDING_VETO", "VETOED"]
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n")   # reconciled, never re-published or executed
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is True and "unresolved" not in row and status["publication_unknown"] == []
+    assert w.tick(LATER, publish_observer=READBACKS["done"])["decisions"] == []          # reported once
+
+
+def test_a_failed_recheck_after_ky_timed_out_says_the_publication_is_unknown(tmp_path, monkeypatch):
+    """The same probe through the recheck: FAILED target_changed carried no publication flag at all."""
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    (w.run / "KY_WORKERS").write_text("5\n")                           # the target changed while nobody knew
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == ("failed", "target_changed", "unknown", True)
+    assert w.states(sid) == ["PENDING_VETO", "FAILED"] and w.history(sid)[-1]["detail"] == {"published": "unknown"}
+    assert w.capacity() == ("5\n", "2\n") and len(w.ky_calls()) == 1 and sid + ".execute.json" not in w.actions()
+    assert w.action(sid + ".publish")["state"] == "INTENDED"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["published"], row["unresolved"]) == ("FAILED", "unknown", True)
+    # a readback that proves the tracker holds nothing closes it without an alarm
+    report = w.tick(LATER, publish_observer=READBACKS["not_done"])
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"], d["published"]) == ("failed", "publication_reconciled", False)
+    assert "attention" not in d and report["attention"] is False
+    publish = w.action(sid + ".publish")
+    assert publish["state"] == "FAILED" and publish["result"]["published"] is False
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["published"] is False and "unresolved" not in row
+    assert w.tick(LATER, publish_observer=READBACKS["not_done"])["decisions"] == []
+
+
+@pytest.mark.parametrize("readback,published", [("done", True), ("not_done", False), ("unknown", "unknown"),
+                                                ("raises", "unknown")])
+def test_a_veto_reads_the_unknown_publication_back_before_it_answers(tmp_path, monkeypatch, readback, published):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    cid = w.veto(sid)
+    observer = READBACKS.get(readback) or (lambda record: ("unknown", "tracker unreachable") if readback == "unknown"
+                                           else 1 / 0)
+    report = w.tick(AFTER, publish_observer=observer)
+    d = one(report, sid)
+    assert d["outcome"] == "vetoed" and w.history(sid)[-1]["detail"] == {"command": cid, "published": published}
+    assert d.get("published", False) == published and d.get("attention", False) is (published is not False)
+    assert report["attention"] is (published is not False)
+    assert w.action(sid + ".publish")["state"] == {True: "DONE", False: "FAILED", "unknown": "INTENDED"}[published]
+    assert len(w.ky_calls()) == 1 and w.capacity() == ("3\n", "2\n") and sid + ".execute.json" not in w.actions()
+
+
+def test_a_refused_record_carries_the_unknown_publication_too(tmp_path, monkeypatch):
+    w = World(tmp_path)
+    sid = unknown_publication(w, monkeypatch)
+    w.append(dict(w.history(sid)[-1], rationale=""))                    # a line the handler cannot answer validly
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["published"], d["attention"]) == ("refused", "unknown", True)
+    assert w.refusal(sid)["published"] == "unknown"
+    # the readback pass settles FINISHED decisions only: a refused record stays the owner's, unresolved in `status`
+    assert w.tick(LATER, publish_observer=READBACKS["done"])["decisions"] == []
+    assert w.action(sid + ".publish")["state"] == "INTENDED"
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["published"] == "unknown" and row["unresolved"] is True and row["refused"]
 
 
 # ── crashes: a real SIGKILL in a real process (the real clock), recovered by the next tick ──
@@ -3335,8 +3578,10 @@ def test_an_awaiting_item_that_cannot_be_read_as_this_item_fails_the_decision(tm
     ({"tracker_decision": {"id": "D-41"}}, {"id": "D-42", "outcome": "approved"}, False),
     ({"tracker_decision": {"id": "D-41"}, "item": "K7-3"}, {"id": "D-41", "outcome": "approved"}, True),
     ({"item": "D-41"}, None, True),                                             # nothing is published at all
-    ({"item": "K7-3"}, {"id": "D-42", "outcome": "approved"}, True),            # the item names no tracker decision
-    ({}, {"id": "D-42", "outcome": "approved"}, True),
+    ({"item": "K7-3"}, {"id": "D-42", "outcome": "approved"}, False),           # C2-02: the item names no tracker
+    ({}, {"id": "D-42", "outcome": "approved"}, False),                         # decision: nothing binds D-42 to it
+    ({"tracker_decision": {"outcome": "approved"}}, {"id": "D-42", "outcome": "approved"}, False),
+    ({"item": "K7-3"}, None, True),                                             # … and nothing is published: fine
 ])
 def test_the_published_tracker_decision_is_the_one_the_awaiting_item_names(tmp_path, names, published, ok):
     w = World(tmp_path)
@@ -3348,7 +3593,9 @@ def test_the_published_tracker_decision_is_the_one_the_awaiting_item_names(tmp_p
         assert [c["argv"][1] for c in w.ky_calls()] == ([published["id"]] if published else [])
     else:
         d = failed(w, sid, "tracker_decision_not_the_awaiting_items")
-        assert "D-42" in d["reason"] and "D-41" in d["reason"] and w.ky_calls() == [] and w.actions() == []
+        named = kyveto.named_tracker_decision(names)
+        assert "D-42" in d["reason"] and (named or "the item names no tracker decision") in d["reason"]
+        assert named in ("D-41", None) and w.ky_calls() == [] and w.actions() == []
 
 
 def test_the_owners_own_decision_supersedes_the_pending_proposal(tmp_path):
@@ -3584,6 +3831,9 @@ def test_a_bundle_change_without_a_manifest_path_is_malformed(tmp_path):
     ("four-roles", "manifest_entrypoints_missing"), ("six-roles", "manifest_entrypoints_missing"),
     ("entry-without-blob", "manifest_entrypoints_missing"), ("entry-with-absolute-path", "manifest_entrypoints_missing"),
     ("another-commit", "manifest_not_for_new_commit"), ("owner-decisions-blob", "manifest_entrypoint_mismatch"),
+    ("no-source-commit", "manifest_not_for_new_commit"), ("source-commit-null", "manifest_not_for_new_commit"),
+    ("another-entrypoints-digest", "manifest_entrypoints_digest_mismatch"),
+    ("entrypoints-digest-null", "manifest_entrypoints_digest_mismatch"),
 ])
 def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
     """The reviewer's finding: new_manifest_digest and the KX-03 entrypoints mapping were never checked against
@@ -3609,8 +3859,17 @@ def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
             doc["approved_source_commit"] = C3
         elif how == "owner-decisions-blob":
             doc["entrypoints"]["owner_decisions"]["git_blob"] = "9" * 40      # git says d…d at new_commit
+        elif how == "no-source-commit":                   # C2-03: a manifest of no commit in particular
+            del doc["approved_source_commit"]
+        elif how == "source-commit-null":
+            doc["approved_source_commit"] = None
+        elif how == "another-entrypoints-digest":         # C2-03: kyloop refuses this manifest for the next authority
+            doc["entrypoints_digest"] = E2
+        elif how == "entrypoints-digest-null":
+            doc["entrypoints_digest"] = None
         if how in ("no-entrypoints", "four-roles", "six-roles", "entry-without-blob", "entry-with-absolute-path",
-                   "another-commit", "owner-decisions-blob"):
+                   "another-commit", "owner-decisions-blob", "no-source-commit", "source-commit-null",
+                   "another-entrypoints-digest", "entrypoints-digest-null"):
             target["new_manifest_path"], target["new_manifest_digest"] = write_manifest(w, C2, doc=doc, name="m.json")
         elif how == "stored-digest-wrong":
             write_manifest(w, C2, name=Path(target["new_manifest_path"]).name, stored=M3)
@@ -3625,6 +3884,38 @@ def test_the_successor_manifest_is_checked_not_named(tmp_path, how, reason):
             doc["components"].append({"path": "something/slipped/in.py", "sha256": "8" * 64})
             path.write_text(json.dumps(doc))
     chain_refusal(tmp_path, reason, prepare=prepare)
+
+
+@pytest.mark.parametrize("key", ["approved_source_commit", "source_commit"])
+def test_a_manifest_that_states_its_commit_and_its_own_entrypoints_digest_is_accepted(tmp_path, key):
+    """C2-03, the passing side: the source commit under either name, and the digest of the manifest's own mapping."""
+    w = World(tmp_path)
+    doc = manifest_doc(C2)
+    doc[key] = doc.pop("approved_source_commit")
+    doc["entrypoints_digest"] = kyaction.sha_bytes(kyaction.canonical(
+        {role: {"path": e["path"], "git_blob": e["git_blob"]} for role, e in doc["entrypoints"].items()}))
+    path, digest = write_manifest(w, C2, doc=doc, name="stated.json")
+    target = bundle(w, new_manifest_path=path, new_manifest_digest=digest)
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert rec["new_manifest"]["entrypoints_digest"] == doc["entrypoints_digest"]
+
+
+def test_the_activation_record_names_the_manifest_by_its_absolute_path(tmp_path):
+    """C2-04: a target may name the manifest relative to the run directory; the immutable record may not."""
+    w = World(tmp_path)
+    path, digest = write_manifest(w, C2)
+    relative = os.path.relpath(path, w.run)
+    assert not os.path.isabs(relative) and not relative.startswith("..")
+    target = bundle(w, new_manifest_path=relative, new_manifest_digest=digest)
+    sid = w.propose(target)
+    assert one(w.tick(AT, authorised=ROOT_AUTHORITY), sid)["outcome"] == "executed"
+    rec = json.loads((w.run / "ACTIVATION_RECORD.1.json").read_text())
+    assert_schema("activation_record", rec)
+    assert os.path.isabs(rec["new_manifest"]["path"]) and rec["new_manifest"]["path"] == os.path.abspath(path)
+    assert rec["new_manifest"]["sha256"] == sha(rec["new_manifest"]["path"])
+    assert all(os.path.isabs(r["path"]) for r in rec["review_receipts"])
 
 
 def test_a_manifest_changed_during_the_window_is_a_changed_target(tmp_path):
