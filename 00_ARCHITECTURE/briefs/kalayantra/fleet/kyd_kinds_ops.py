@@ -58,6 +58,12 @@ INTERPRETATIONS (the packet's "(I)" — what the plan leaves open, and what is d
   I-12 Cards: ADHIKARIN (N/S operators), PARIKSAKA (verifiers), OWNER_SURROGATE; Opus 5.5; effort xhigh for the PLAN
        class (REQUEST-PREP / MODEL / PLAN), high otherwise.
   I-13 Kind order within a tick: EXECUTE, PRE-ACCEPT, REQUEST-PREP, POST-READBACK, SURROGATE, RULING, MODEL, PLAN.
+  I-14 SURROGATE's move to awaiting/done/ (review r4 KO4-B1): kyveto.status() takes a row's state from the model-written
+       log when the handler accepted no terminal state, so the row counts only with a record behind it. The handled
+       record's and the row's class are both `veto`; the row is this item's and carries no hard_stop, anomaly, refused
+       or unresolved flag; its state is its latest line's; EXECUTED needs executed_by_handler true (the handler's DONE
+       execution record); VETOED needs the owner's veto command. FAILED never moves an item: status() shows no handler
+       record behind a FAILED line, so the owner-wait stays open for the owner. A hard_stop item is never moved here.
 """
 from __future__ import annotations
 
@@ -87,7 +93,7 @@ READBACK_KINDS = ("readback_sql", "migration_readback")
 MODEL_EXCLUDED = ("C-3", "C-4")
 DECISION_CLASSES = ("routine", "veto", "hard_stop")
 DECISION_STATES = ("PROPOSED", "PENDING_VETO", "EFFECTIVE", "EXECUTED", "VETOED", "FAILED")
-VETO_TERMINAL = ("EXECUTED", "VETOED", "FAILED")
+MOVE_STATES = ("EXECUTED", "VETOED")             # the terminal states a record of the handler or owner can stand behind (I-14)
 RECEIPT_AWAITED = ("FAILED", "REFUSED", "INTERRUPTED")
 CLOSED = ("done", "completed", "complete", "abandoned", "retired", "cancelled", "superseded")
 VERDICT_VALUES = ("ACCEPTED", "REJECTED")
@@ -474,12 +480,17 @@ def acceptance_matches(acc, prepared):
 
 
 def _awaiting_recorded(run, slug):
+    """An awaiting item of this slug is raised: a readable record whose id is its file name, open or done."""
     for directory in (run / "awaiting", run / "awaiting" / "done"):
         try:
-            if any(n.startswith("AW-") and n.endswith("-%s.json" % slug) for n in os.listdir(directory)):
-                return True
+            names = os.listdir(directory)
         except OSError:
-            pass
+            continue
+        for n in names:
+            if n.startswith("AW-") and n.endswith("-%s.json" % slug):
+                doc = read_json(directory / n)
+                if isinstance(doc, dict) and doc.get("id") == n[:-len(".json")]:
+                    return True
     return False
 
 
@@ -593,9 +604,25 @@ def _start_request_prep(ctx, job):
     return _write_prepared(ctx, job, payload["request"], None, job["item"])
 
 
+def _model_prep_payload(ctx, job):
+    """({op, entry}, None) when brief.op and the table still give the model job's digest, whatever has been prepared
+    since; else (None, the result that stops the finish)."""
+    table = read_table(ctx)
+    if table is None:
+        return None, _result("interrupted", "the operations table at origin/main could not be read")
+    item = next((i for i in _items(ctx) if i["id"] == job.get("item")), None)
+    op = op_spec(item, table) if item else None
+    entry = table.get(op["kind"]) if op else None
+    if entry_usable(entry):
+        _, missing = derive_request(item["id"], op, entry)
+        if missing and sha_canonical({"item": item["id"], "op": op, "entry": entry, "missing": missing}) == job.get("digest"):
+            return {"op": op, "entry": entry}, None
+    return None, _fail("REQUEST-PREP", job.get("item"), "evidence_changed", "the operation or the table changed during the job")
+
+
 def _finish_request_prep(ctx, job):
     run = _run(ctx)
-    for path, doc in all_prepared(run):
+    for path, doc in all_prepared(run):                                  # a script job: its digest is the derived request's
         if doc["item"] == job.get("item") and doc["request_sha256"] == job.get("digest"):
             return _result("done", "prepared record %s carries the request digest" % path)
     if job.get("exit_code") != 0:
@@ -603,13 +630,9 @@ def _finish_request_prep(ctx, job):
     request = read_json(pathlib.Path(str(job.get("job_scratch"))) / "request.json")
     if not isinstance(request, dict):
         return _result("interrupted", "the job proposed no request.json")
-    for path, doc in all_prepared(run):                                  # a repeated finish after the effect: read it back
-        if doc["item"] == job.get("item") and doc["request_sha256"] == request_digest(request):
-            return _result("done", "prepared record %s carries the proposed request's digest" % path)
-    found = _find(ctx, "REQUEST-PREP", job)
-    if found is None:
-        return _fail("REQUEST-PREP", job.get("item"), "evidence_changed", "the operation or the table changed during the job")
-    _, payload = found
+    payload, stop = _model_prep_payload(ctx, job)
+    if stop is not None:
+        return stop
     # No kyboundary check: a builder-pool job gets no prepared view, so `check` could only answer 3 (review r2 KO2-B1);
     # the packet names the boundary for PRE-ACCEPT and POST-READBACK. The binding checks and the digest read-back gate this.
     if request.get("item_id") != job["item"] or request.get("kind") != payload["op"]["kind"]:
@@ -620,7 +643,10 @@ def _finish_request_prep(ctx, job):
     reason = static_validate(request, payload["entry"])
     if reason:
         return _fail("REQUEST-PREP", job["item"], "request_invalid", reason)
-    if (prepared_dir(run) / (request["operation_id"] + ".json")).exists():
+    path = prepared_dir(run) / (request["operation_id"] + ".json")
+    if path.exists():                       # a repeated finish only when it is exactly the record this finish writes
+        if canonical(read_json(path)) == canonical(_prepared_doc(job, request, job.get("slot"))):
+            return _result("done", "prepared record %s is the checked request's, by this job" % path)
         return _fail("REQUEST-PREP", job["item"], "already_prepared", request["operation_id"])
     return _write_prepared(ctx, job, request, job.get("slot"), job["item"])
 
@@ -680,12 +706,6 @@ def _finish_pre_accept(ctx, job):
         return _result("interrupted", "the operations table at origin/main could not be read")
     if prepared.get("prepared_by_slot") == slot:
         return _fail("PRE-ACCEPT", item, "not_independent", "the preparer and the signer are the same slot")
-    existing = read_json(_acceptance_path(run, req["operation_id"]))
-    if isinstance(existing, dict) and existing.get("result") == "ACCEPTED" and existing.get("by") == slot \
-            and existing.get("request_sha256") == prepared["request_sha256"]:
-        return _result("done", "acceptance of %s by %s is already in place" % (req["operation_id"], slot))     # a repeated finish
-    if _acceptance_path(run, req["operation_id"]).exists():
-        return _fail("PRE-ACCEPT", item, "acceptance_exists", req["operation_id"])
     proposed = read_json(pathlib.Path(str(job.get("job_scratch"))) / "acceptance.json")
     if not isinstance(proposed, dict):
         return _result("interrupted", "the job proposed no acceptance.json")
@@ -709,6 +729,11 @@ def _finish_pre_accept(ctx, job):
     record = {"result": "ACCEPTED", "operation_id": req["operation_id"], "by": slot, "reviewed_commit": req.get("reviewed_commit"),
               "ts": _now(ctx), "request_sha256": prepared["request_sha256"], "rows": rows, "checks": checks}
     path = _acceptance_path(run, req["operation_id"])
+    if path.exists():                       # a repeated finish only when it is, apart from ts, the record this finish writes
+        existing = read_json(path)
+        if isinstance(existing, dict) and {k: v for k, v in existing.items() if k != "ts"} == {k: v for k, v in record.items() if k != "ts"}:
+            return _result("done", "acceptance of %s by %s is already in place" % (req["operation_id"], slot))
+        return _fail("PRE-ACCEPT", item, "acceptance_exists", req["operation_id"])
 
     def effect():
         write_once(path, record)
@@ -879,6 +904,13 @@ def _handled_path(run, name):
     return run / "handled" / name
 
 
+def _wait_marked(path, item_id, merge_commit):
+    """The readback-wait marker of this item at this merge commit, read back (not merely present)."""
+    have = read_json(path)
+    return (isinstance(have, dict) and have.get("kind") == "readback_wait" and have.get("item") == item_id
+            and have.get("merge_commit") == merge_commit)
+
+
 def _c_post_readback(ctx):
     run, out = _run(ctx), []
     for item in _items(ctx):                                                  # (a) a deployed data-writing code item
@@ -895,7 +927,7 @@ def _c_post_readback(ctx):
         receipts = _readback_receipts(run, item["id"])
         if not receipts:
             fp = _wait_evidence(item["id"], merge)
-            if _handled_path(run, "readback.%s.%s.json" % (action_part(item["id"]), fp[:12])).exists():
+            if _wait_marked(_handled_path(run, "readback.%s.%s.json" % (action_part(item["id"]), fp[:12])), item["id"], merge):
                 continue
             out.append((_intent(ctx, "POST-READBACK", item["id"], stream="V", runner="script", head=merge,
                                 verdict_phase="post_deploy", evidence_fp=fp),
@@ -933,14 +965,14 @@ def _start_post_readback(ctx, job):
         path = _handled_path(run, "readback.%s.%s.json" % (action_part(job["item"]), fp[:12]))
         record = {"schema": HANDLED_SCHEMA, "kind": "readback_wait", "item": job["item"], "merge_commit": p["merge_commit"]}
 
-        def effect():
-            write_json(path, record)
+        def effect():                       # the journal line first: the marker is what says it was written
             ctx.journal("post_readback_waiting", "%s is merged at %s and owes a post_deploy readback, but no COMPLETED measured readback "
                         "receipt of the item exists; none has been requested" % (job["item"], p["merge_commit"]))
+            write_json(path, record)
             return {"path": str(path)}
 
         def observer(rec):
-            return ("done", {"path": str(path)}) if path.exists() else ("not_done", "no marker")
+            return ("done", {"path": str(path)}) if _wait_marked(path, job["item"], p["merge_commit"]) else ("not_done", "no marker")
 
         status, result = ctx.act("READBACK-WAIT-%s-%s" % (action_part(job["item"]), fp[:12]), "readback_wait",
                                  {"item": job["item"], "merge_commit": p["merge_commit"]}, {"path": str(path)}, effect, observer)
@@ -983,10 +1015,12 @@ def _publish(ctx, job, phase_args, author):
     except (ValueError, TypeError):
         said = None
     said = said if isinstance(said, dict) else {}
-    if rc == 0 and said.get("published", True) is not False:
-        return _result("done", "kyverdicts.py published %s (%s)" % (said.get("result"), said.get("action_id")))
     why = said.get("reasons") or (err or out or "")[-200:]
-    return _fail("POST-READBACK", job["item"], "publication_refused", "kyverdicts.py publish exited %r: %s" % (rc, why))
+    if rc == 0 and said.get("published") is True:
+        return _result("done", "kyverdicts.py published %s (%s)" % (said.get("result"), said.get("action_id")))
+    if rc == 1 or (rc == 0 and said.get("published") is False):
+        return _fail("POST-READBACK", job["item"], "publication_refused", "kyverdicts.py publish exited %r: %s" % (rc, why))
+    return _result("interrupted", "kyverdicts.py publish exited %r with no published answer (unknown; nothing proceeds): %s" % (rc, why))
 
 
 def _finish_post_readback(ctx, job):
@@ -1196,6 +1230,31 @@ def _owner_answered(run, aid):
     return (run / "awaiting" / (aid + OWNER_DECISION_SUFFIX)).exists()
 
 
+def move_refusal(aid, handled, row):
+    """Why awaiting item `aid` may not move to awaiting/done/ on this kyveto.status() row, or None (I-14). The log is
+    model-written, so a row's state counts only with a record behind it that no model line can stand in for."""
+    if not isinstance(handled, dict) or not isinstance(row, dict):
+        return "no handled record or no decision row"
+    if handled.get("class") != "veto" or row.get("class") != "veto":
+        return "not a veto-class decision (a hard_stop is the owner's to resolve)"
+    if row.get("id") != handled.get("decision_id") or row.get("awaiting") != aid:
+        return "the decision row is not this awaiting item's"
+    if row.get("hard_stop") or row.get("anomaly") or row.get("anomalies") or row.get("refused") or row.get("unresolved"):
+        return "the row carries a hard_stop, anomaly or refusal flag"
+    state = row.get("state")
+    if state not in MOVE_STATES or row.get("latest_line_state") != state:
+        return "state %r is not a terminal state with a record behind it" % (state,)
+    if state == "EXECUTED" and row.get("executed_by_handler") is not True:
+        return "EXECUTED without the handler's DONE execution record"
+    if state == "VETOED" and not (isinstance(row.get("veto_command"), str) and row["veto_command"]):
+        return "VETOED without the owner's veto command"
+    return None
+
+
+def _move_digest(aid, decision_id, state):
+    return sha_canonical({"move": aid, "decision_id": decision_id, "state": state})
+
+
 def _c_surrogate(ctx):
     run, out, rows = _run(ctx), [], False
     for doc in _awaiting_docs(ctx):
@@ -1205,8 +1264,8 @@ def _c_surrogate(ctx):
             if rows is False:
                 rows = _veto_rows(ctx)
             row = rows.get(handled.get("decision_id")) if rows else None
-            if row and row.get("state") in VETO_TERMINAL:
-                digest = sha_canonical({"move": aid, "decision_id": handled["decision_id"], "state": row["state"]})
+            if move_refusal(aid, handled, row) is None:
+                digest = _move_digest(aid, handled["decision_id"], row["state"])
                 move_fp = sha_canonical({"fingerprint": fp, "decision_id": handled["decision_id"], "state": row["state"]})
                 out.append((_intent(ctx, "SURROGATE", aid, stream="steward", runner="script", digest=digest, evidence_fp=move_fp,
                                     locks=["awaiting." + aid]), {"variant": "move", "doc": doc}))
@@ -1235,6 +1294,12 @@ def _start_surrogate(ctx, job):
     found = _find(ctx, "SURROGATE", job)
     if found is None or found[1]["variant"] != "move":
         return _result("refused", "the awaiting item's evidence or its decision state changed since the intent")
+    handled = read_json(_handled_path(run, "awaiting.%s.json" % aid))        # the move conditions, again, under the lock
+    rows = _veto_rows(ctx)
+    row = rows.get(handled.get("decision_id")) if rows and isinstance(handled, dict) else None
+    refusal = move_refusal(aid, handled, row)
+    if refusal is not None or _move_digest(aid, handled.get("decision_id"), row.get("state")) != job.get("digest"):
+        return _result("refused", "awaiting item %s may not be moved: %s" % (aid, refusal or "the decision state changed"))
     src, dst = run / "awaiting" / ("%s.json" % aid), run / "awaiting" / "done" / ("%s.json" % aid)
 
     def effect():
@@ -1274,8 +1339,19 @@ def _decision_line(run, aid, session):
     return found
 
 
+def _is_move_job(run, aid, job):
+    """True for the script job that moves the item: its digest is a move digest of the handled decision."""
+    handled = read_json(_handled_path(run, "awaiting.%s.json" % aid))
+    did = handled.get("decision_id") if isinstance(handled, dict) else None
+    return isinstance(did, str) and job.get("digest") in [_move_digest(aid, did, s) for s in MOVE_STATES]
+
+
 def _finish_surrogate(ctx, job):
     run, aid = _run(ctx), job.get("item")
+    if _is_move_job(run, aid, job):
+        if (run / "awaiting" / "done" / ("%s.json" % aid)).exists() and not (run / "awaiting" / ("%s.json" % aid)).exists():
+            return _result("done", "awaiting item %s is in awaiting/done/" % aid)
+        return _result("interrupted", "awaiting item %s has not been moved to awaiting/done/" % aid)
     line = _decision_line(run, aid, job.get("provider_session_id"))
     if line is not None:
         path = _handled_path(run, "awaiting.%s.json" % aid)
@@ -1298,28 +1374,35 @@ def _finish_surrogate(ctx, job):
             ctx.journal("hard stop", "owner-only decision %s on awaiting item %s: no delegated approval is published; the item stays unresolved"
                         % (line["id"], aid))
         return _from_act("SURROGATE", aid, status, result, "decision %s (%s, %s) recorded for %s" % (line["id"], line["class"], line["state"], aid))
-    if (run / "awaiting" / "done" / ("%s.json" % aid)).exists() and not (run / "awaiting" / ("%s.json" % aid)).exists():
-        return _result("done", "awaiting item %s is in awaiting/done/" % aid)
-    return _result("interrupted", "the job's session wrote no decision line for %s" % aid)
+    return _result("interrupted", "the job's session wrote no decision line for %s (wherever the item now is)" % aid)
 
 
 # ───────────────────────────────────────── PLAN ─────────────────────────────────────────
 
 def _packets_sha(ctx):
+    """The packet set's digest; an absent directory is the empty set, an unreadable directory or packet is None."""
     directory = _repo(ctx) / PACKETS_REL
     try:
         names = sorted(n for n in os.listdir(directory) if n.startswith("PACKET_") and n.endswith(".md"))
-    except OSError:
+    except FileNotFoundError:
         names = []
-    return sha_canonical([[n, file_sha(directory / n)] for n in names])
+    except OSError:
+        return None
+    shas = [[n, file_sha(directory / n)] for n in names]
+    return None if any(s is None for _, s in shas) else sha_canonical(shas)
 
 
 def _c_plan(ctx):
     run = _run(ctx)
     try:
         text = (run / "REPACKET.txt").read_text(encoding="utf-8")
-    except OSError:
+    except FileNotFoundError:
         text = ""
+    except (OSError, ValueError):
+        return []                                                       # unreadable is unknown, not empty
+    packets = _packets_sha(ctx)
+    if packets is None:
+        return []
     if text.strip():
         trigger, item, digest = "repacket", "REPACKET", sha_text(text)
     else:
@@ -1331,7 +1414,7 @@ def _c_plan(ctx):
         trigger, item, digest = "boundary", "WAVE-BOUNDARY", sha_canonical(sorted(i["id"] for i in items))
     if _handled_path(run, "plan.%s.json" % digest[:12]).exists():
         return []
-    fp = sha_canonical({"trigger": trigger, "digest": digest, "packets_sha256": _packets_sha(ctx)})
+    fp = sha_canonical({"trigger": trigger, "digest": digest, "packets_sha256": packets})
     return [(_intent(ctx, "PLAN", item, stream="S", runner="model", pool="builder", tier="opus", digest=digest, evidence_fp=fp,
                      locks=["plan"], card=_card(ctx, "adhikarin"), effort="xhigh"), {"trigger": trigger})]
 
@@ -1347,7 +1430,10 @@ def _finish_plan(ctx, job):
     if result["status"] == "failed":
         return _fail("PLAN", job.get("item"), "job_reported_failure", str(result.get("notes") or ""))
     trigger = "repacket" if job.get("item") == "REPACKET" else "boundary"
-    if sha_canonical({"trigger": trigger, "digest": job.get("digest"), "packets_sha256": _packets_sha(ctx)}) == job.get("evidence_fp"):
+    packets = _packets_sha(ctx)
+    if packets is None:
+        return _result("interrupted", "the packet set could not be read: whether it changed is unknown")
+    if sha_canonical({"trigger": trigger, "digest": job.get("digest"), "packets_sha256": packets}) == job.get("evidence_fp"):
         return _result("interrupted", "the packet set is unchanged: nothing was repacketed")
     path = _handled_path(_run(ctx), "plan.%s.json" % str(job.get("digest"))[:12])
     record = {"schema": HANDLED_SCHEMA, "kind": "plan", "trigger": trigger, "digest": job.get("digest"), "job_id": job.get("job_id")}

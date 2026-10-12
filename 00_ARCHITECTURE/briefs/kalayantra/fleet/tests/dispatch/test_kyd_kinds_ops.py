@@ -139,6 +139,8 @@ class Double:
 
     def journal(self, event, text):
         self.calls.append({"fn": "journal", "event": event, "text": text})
+        if self.spec.get("journal_raises"):                            # a journal that cannot be written (a crash point)
+            raise OSError("journal unwritable in the test double")
 
     def events(self, item):
         return self.spec.get("events", {}).get(item, [])
@@ -386,6 +388,25 @@ def test_the_cases_cover_each_named_negative():
                      "rp_any_prepared_record_of_the_item_counts_as_prepared",
                      "rp_a_model_authored_request_finishes_with_no_boundary_view",          # review r2 KO2-B1
                      "ruling_finish_with_an_exit_1_inbox_that_is_not_an_empty_list_records_nothing"):  # review r3 KO3-B1
+        assert required in names, required
+
+
+def test_the_cases_cover_review_r4():
+    """KO4-B1 and the sweep of its family: nothing a model can write alone, nor an unknown, reads as done."""
+    names = {c["name"] for c in CASES}
+    for required in ("sg_a_hard_stop_with_a_later_failed_or_executed_line_moves_nothing",              # KO4-B1
+                     "sg_a_veto_decision_whose_executed_is_not_backed_by_the_handler_moves_nothing",
+                     "sg_start_rechecks_the_move_conditions_under_the_lock",
+                     "sg_a_backed_executed_or_vetoed_veto_decision_moves_the_item_to_awaiting_done",
+                     "sg_a_vetoed_or_failed_row_moves_only_with_a_record_behind_it",                    # sweep
+                     "sg_finish_of_a_decide_job_is_not_done_because_the_item_left_the_queue",
+                     "pa_an_acceptance_already_in_place_is_done_only_after_every_check",
+                     "rp_a_prepared_record_in_place_is_done_only_for_the_checked_request",
+                     "prb_publish_is_done_only_when_kyverdicts_says_published",
+                     "prb_a_the_wait_marker_is_written_only_after_its_journal_line",
+                     "plan_an_unreadable_packet_set_is_not_a_changed_one",
+                     "plan_an_unreadable_repacket_file_is_not_an_empty_one",
+                     "ex_an_awaiting_file_that_is_not_its_record_is_not_a_raised_item"):
         assert required in names, required
 
 
