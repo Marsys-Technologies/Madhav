@@ -194,7 +194,7 @@
     "calls": [
      "ky next --json",
      "git -C $REPO fetch",
-     "git -C $REPO merge --ff-only origin/main",
+     "git -C $REPO merge --ff-only",
      "kygate.sh",
      "local_db.sh up --session CTL-dispatcher-",
      "local_db.sh db b1 --session CTL-dispatcher-",
@@ -570,6 +570,15 @@
        "origin/main"
       ],
       "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "diff",
+       "7"
+      ],
+      "out": "diff --git a/x b/x\n"
      }
     ],
     "slots": [
@@ -648,7 +657,6 @@
      "kyverdicts.py snapshot --worktree $WT/kalayantra-k-1",
      "kyjob.sh J-",
      "kyboundary.sh check J-",
-     "kyverdicts.py publish --job-id J-",
      "--phase pre_merge --head $Ha --vslot v1 --author-id stream-K:b2 --reviewer-id stream-V:v1",
      "kyboundary.sh release J-"
     ],
@@ -988,7 +996,7 @@
    "expect": {
     "calls": [
      "git -C $REPO fetch",
-     "git -C $REPO merge --ff-only origin/main",
+     "git -C $REPO merge --ff-only",
      "gh pr merge 7 --auto --squash --match-head-commit $Ha"
     ],
     "call_counts": {
@@ -1649,7 +1657,7 @@
         "kind": "REGEN",
         "item": "R-1",
         "pool": null,
-        "decision": "launch"
+        "decision": "refused:start"
        }
       ]
      ]
@@ -1842,7 +1850,8 @@
      }
     },
     "no_calls": [
-     "executor"
+     "executor.py",
+     "executor.sh"
     ]
    }
   },
@@ -2328,6 +2337,28 @@
    },
    "steps": [
     {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [],
+      []
+     ],
+     "expect": {
+      "no_calls": [
+       "ky ",
+       "kyjob.sh",
+       "local_db.sh up",
+       "local_db.sh db",
+       "git ",
+       "gh ",
+       "kygate.sh"
+      ]
+     }
+    },
+    {
      "dry": [
       {
        "kind": "BUILD",
@@ -2342,35 +2373,23 @@
        "decision": "wait:hold"
       }
      ]
-    },
-    {
-     "session": [
-      "tick",
-      "tick",
-      "stop"
-     ],
-     "ticks": [
-      [],
-      []
-     ]
     }
    ],
    "expect": {
     "no_calls": [
      "ky claim",
-     "ky next",
      "kyjob.sh",
      "local_db.sh up",
      "local_db.sh db",
-     "git ",
-     "kygate.sh"
+     "fetch"
     ],
     "jobs": [],
     "loop": {
      "waiting": "hold"
     },
     "lock": false
-   }
+   },
+   "note": "the live tick ends at the hold; --dry still shows what waits behind it"
   },
   {
    "name": "an_owner_pause_or_an_unreadable_command_queue_holds_like_the_global_hold",
@@ -2410,6 +2429,23 @@
    },
    "steps": [
     {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ],
+     "expect": {
+      "no_calls": [
+       "ky ",
+       "git ",
+       "gh ",
+       "kygate.sh"
+      ]
+     }
+    },
+    {
      "dry": [
       {
        "kind": "BUILD",
@@ -2423,15 +2459,6 @@
        "pool": "builder",
        "decision": "wait:hold"
       }
-     ]
-    },
-    {
-     "session": [
-      "tick",
-      "stop"
-     ],
-     "ticks": [
-      []
      ]
     },
     {
@@ -3581,7 +3608,7 @@
     },
     "files": {
      "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
-     "$RUN/KY_WORKERS": "1\n"
+     "$RUN/KY_WORKERS": "2\n"
     },
     "gate": "OPEN",
     "slots": [],
@@ -4024,8 +4051,7 @@
       "K-1": {
        "done_exit_3": {
         "count": 3,
-        "evidence_fp": "ee2aa2bd9cbb4c7b4d2ee2d1a6d1f0c7d5d6c6f0c8e0f3f5a9f1f2f7e3d4c5b6",
-        "last_job": null
+        "evidence_fp": "6443dcf2003f3c91de8710eca58d4400d366486f21cce55caf2a4c48f3e55467"
        }
       }
      }

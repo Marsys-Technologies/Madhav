@@ -147,7 +147,7 @@ def ky(argv):
         return out(3, err="tracker unreachable and no snapshot on disk") if nxt is None else out(0, nxt)
     if verb == "inbox":
         rows = load("ky_inbox.json", [])
-        return out(0 if rows else 1, rows)
+        return out(0 if rows else 1, json.dumps(rows))                    # cli.py: exit 1 and `[]` when there is none
     if verb == "claim":
         item, worker = argv[1], opt(argv, "--worker")
         n = load("claims_n.json", 0) + 1
@@ -620,12 +620,9 @@ class World:
                 "deadline": None, "class_hint": "unknown", "blocks": "none"}, **doc))
         for command in setup.get("commands", []):
             kc.submit(self.run, command.get("role", "dispatcher"), command["command"], command.get("args", {}),
-                      {"kind": "cockpit", "session_id": "owner-cockpit", "pid": os.getpid(),
-                       "process_start": ka.self_identity()["process_start"]})
+                      {"kind": "cockpit", "session_id": "owner-cockpit"})
         if setup.get("pause_applied"):                                     # an owner pause in force: APPLIED, no later resume
-            cid = kc.submit(self.run, "campaign", "pause", {}, {"kind": "cockpit", "session_id": "owner-cockpit",
-                                                                "pid": os.getpid(),
-                                                                "process_start": ka.self_identity()["process_start"]})
+            cid = kc.submit(self.run, "campaign", "pause", {}, {"kind": "cockpit", "session_id": "owner-cockpit"})
             entry = kc.find(self.run, cid)
             self.write(entry["path"], dict(entry["doc"], state="APPLIED", applied_at=ka.utc(), result={},
                                            applied_by={"holder_kind": "controller", "controller_id": "CTL-campaign-1",
@@ -651,16 +648,23 @@ class World:
         env.update(extra or {})
         return env
 
-    def cli(self, argv, patched=False, extra=None, timeout=120):
-        cmd = [sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else \
-            [sys.executable, "-B", "-u", str(ENGINE)] + argv
-        return subprocess.run(cmd, env=self.env(extra), capture_output=True, text=True, timeout=timeout,
-                              cwd=str(self.tmp), stdin=subprocess.DEVNULL)
+    def _run(self, cmd, extra=None, timeout=180):
+        """Run one engine process. Its output goes to files, not pipes: a job the engine starts inherits the
+        engine's stdout and stderr (the real kyjob.sh redirects its own), and a pipe would stay open with it."""
+        self.runs = getattr(self, "runs", 0) + 1
+        paths = [self.tmp / ("engine.%d.%s" % (self.runs, name)) for name in ("out", "err")]
+        with open(paths[0], "w") as out, open(paths[1], "w") as err:
+            done = subprocess.run(cmd, env=self.env(extra), stdout=out, stderr=err, timeout=timeout, cwd=str(self.tmp),
+                                  stdin=subprocess.DEVNULL)
+        done.stdout, done.stderr = (p.read_text(encoding="utf-8") for p in paths)
+        return done
 
-    def session(self, steps, timeout=120):
-        return subprocess.run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})],
-                              env=self.env(), capture_output=True, text=True, timeout=timeout, cwd=str(self.tmp),
-                              stdin=subprocess.DEVNULL)
+    def cli(self, argv, patched=False, extra=None):
+        return self._run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"argv": argv})] if patched else
+                         [sys.executable, "-B", "-u", str(ENGINE)] + argv, extra)
+
+    def session(self, steps):
+        return self._run([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})])
 
     def background(self, steps):
         proc = subprocess.Popen([sys.executable, "-B", str(self.tmp / "driver.py"), json.dumps({"session": steps})],
@@ -684,8 +688,10 @@ class World:
         out = []
         directory = self.run / "jobs"
         for name in sorted(os.listdir(directory)) if directory.is_dir() else []:
-            if (directory / name / "state.json").is_file():
+            try:
                 out.append(json.loads((directory / name / "state.json").read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                pass                                                       # a case's unreadable state, or no state
         return out
 
     def journal(self):
@@ -730,7 +736,10 @@ def _same_jobs(got, want, label):
 
 
 def _subset(have, want):
-    return all(have.get(k) == v for k, v in want.items())
+    """Every key of `want` is in `have` with that value; an object value is compared the same way."""
+    if not isinstance(have, dict):
+        return False
+    return all(_subset(have.get(k), v) if isinstance(v, dict) and v else have.get(k) == v for k, v in want.items())
 
 
 def _expect(world, expect, label):
@@ -858,8 +867,8 @@ def test_a_second_instance_exits_75_and_changes_nothing(world):
     """Duplicate instance refusal: while one controller holds the real instance lock, `--once` exits 75."""
     world.apply(dict(BUILD_READY, jobs={"K-1": {"do": "sleep", "s": 60}}), first=True)
     first = world.background(["tick", {"sleep": 60}])
-    end = time.monotonic() + 30
-    while time.monotonic() < end and not (world.run / "locks" / "dispatcher" / "owner.json").exists():
+    end = time.monotonic() + 60                                            # until its first tick is over
+    while time.monotonic() < end and (kyloop.loop_state(world.run, "dispatcher")[0].get("controller") or {}).get("pid") != first.pid:
         time.sleep(0.05)
     owner = json.loads((world.run / "locks" / "dispatcher" / "owner.json").read_text(encoding="utf-8"))
     assert owner["pid"] == first.pid and owner["session_or_run_id"].endswith("-%d" % first.pid)
