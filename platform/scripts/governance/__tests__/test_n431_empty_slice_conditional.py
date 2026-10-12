@@ -1289,7 +1289,8 @@ GA_VICHARA_ES = {
     "entries": ["citation_human"], "criteria": ["Narr.checkable", "Null.blank_rows", "Vocab.alias"],
     "why": ("the daridra post-pass writes its one chart_facts row (fact_category dosha_label, fact_subject daridra) only on a chart on which daridra forms, so on a chart where it does not form the slice is empty by construction "
             "and no stand-in row is ever written; the post-pass instead records, once per ayanamsha and build, that it ran to completion, evaluated the catalog entry and found the dosha not formed, "
-            "and the census reads that record before it reads the empty slice as verified"),
+            "and the census reads that record before it reads the empty slice as verified"
+            "; ownership and order: the category dosha_label is owned by ga_structural, while ga_vichara is the producer of the daridra row (its post-pass in ga_vichara_writer.py deletes only the daridra subject and inserts the row with ga_vichara's own build id) and the owner of the run evidence; a ga_structural rebuild deletes the whole dosha_label category including the daridra row, so ga_structural must be rebuilt before ga_vichara"),
     "evidence": "platform/python-sidecar/ga_writers/ga_vichara_writer.py:1238"}
 
 
@@ -1664,3 +1665,61 @@ def test_a_record_with_no_occurred_at_is_refused_whether_latest_or_not(db):
     d.records = [_rec(p, at=None) for p in PARTS][::-1]                           # all NULL: the latest is NULL too
     ac.psql = d.psql
     assert _run()["clause"] == "record-shape"
+
+
+# ───────────────────────── the live emptiness read is EXACT: the declared (fact_category, fact_subject) slice, not the subject alone ─────────────────────────
+
+class _FactsDB(DB):
+    """DB whose chart_facts count is computed from real (fact_category, fact_subject) rows by the predicates the census wrote in the SQL text."""
+
+    def __init__(self, facts, strip_category=False):
+        super().__init__()
+        self.facts = facts
+        self.strip_category = strip_category
+
+    def psql(self, sql, *a, **k):
+        if 'FROM "chart_facts"' in sql:
+            self.sql.append(sql)
+            if self.strip_category:                                                    # the MUTANT: the census read without its fact_category predicate
+                sql = re.sub(r" AND fact_category = '[a-z0-9_]+'", "", sql)
+            cat = re.search(r"fact_category = '([a-z0-9_]+)'", sql)
+            sub = re.search(r"fact_subject = '([a-z0-9_]+)'", sql)
+            n = sum(1 for c, s in self.facts if (cat is None or c == cat.group(1)) and (sub is None or s == sub.group(1)))
+            return [[str(n)]]
+        return super().psql(sql, *a, **k)
+
+
+def test_the_live_slice_read_names_both_declared_predicates(tree, monkeypatch):
+    d = _FactsDB([])
+    monkeypatch.setattr(ac, "psql", d.psql)
+    out = _run()
+    sqls = [s for s in d.sql if 'FROM "chart_facts"' in s]
+    assert len(sqls) == 1 and "fact_category = 'dosha_label'" in sqls[0] and "fact_subject = 'daridra'" in sqls[0] and "chart_id::text = '" in sqls[0], sqls
+    assert out["state"] == "holds", out
+    src = inspect.getsource(ac._es_outcome)
+    assert "AND fact_category = '{sl['fact_category']}' AND fact_subject = '{sl['fact_subject']}'" in src
+
+
+def test_a_daridra_subject_row_of_another_category_is_not_the_declared_slice(tree, monkeypatch):
+    d = _FactsDB([("some_other_category", "daridra"), ("dosha_label", "someone_else")])
+    monkeypatch.setattr(ac, "psql", d.psql)
+    out = _run()
+    assert out["state"] == "holds", out                      # neither row is in the declared slice: the slice is empty
+
+
+def test_only_a_row_of_the_declared_category_and_subject_makes_the_slice_non_empty(tree, monkeypatch):
+    d = _FactsDB([("some_other_category", "daridra"), ("dosha_label", "daridra")])
+    monkeypatch.setattr(ac, "psql", d.psql)
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "slice-empty", out
+
+
+def test_a_mutant_reading_the_subject_alone_is_caught_by_the_other_category_row(tree, monkeypatch):
+    """Mutation proof: with the fact_category predicate stripped from the SQL the other-category row is counted, the slice reads non-empty and the verdict flips: the test above would fail."""
+    d = _FactsDB([("some_other_category", "daridra")], strip_category=True)
+    monkeypatch.setattr(ac, "psql", d.psql)
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "slice-empty", out                  # the mutant's wrong verdict (the exact read says holds, asserted two tests above)
+    exact = _FactsDB([("some_other_category", "daridra")])
+    monkeypatch.setattr(ac, "psql", exact.psql)
+    assert _run()["state"] == "holds"
