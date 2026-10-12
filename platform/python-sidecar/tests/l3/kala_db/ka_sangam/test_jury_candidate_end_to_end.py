@@ -3,7 +3,7 @@ import ast
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -24,11 +24,16 @@ def ctx(kala_db_dsn):
     # The session DB is guarded/disposable. A transactional schema keeps the
     # original K4-2a migration oracles and this writer fixture independent.
     with psycopg.connect(kala_db_dsn) as conn:
+        # Roles are cluster-wide. Give each fixture its own NOLOGIN principal;
+        # rollback removes it together with the schema and its migration grants.
+        verifier_role = 'jury_fixture_verifier_' + uuid4().hex
+        conn.execute(psycopg.sql.SQL('CREATE ROLE {} NOLOGIN').format(
+            psycopg.sql.Identifier(verifier_role)))
         conn.execute('CREATE SCHEMA jury_writer_fixture')
         conn.execute('SET LOCAL search_path TO jury_writer_fixture, public')
         for name in ('1330_kala_layer_manifest_candidates.sql', '1350_kala_jury_candidate.sql'):
             sql = (ROOT / 'migrations' / name).read_text().replace('public.', 'jury_writer_fixture.')
-            conn.execute(sql)
+            conn.execute(sql.replace('verifier_principal', verifier_role))
         conn.execute('CREATE TABLE kala_convergence(chart_id uuid, legacy_value text)')
         conn.execute('INSERT INTO kala_convergence VALUES (%s,%s)', (CHART, 'legacy-published-value'))
         conn.execute('INSERT INTO kala_layer_head(chart_id,generation) VALUES (%s,%s)',
