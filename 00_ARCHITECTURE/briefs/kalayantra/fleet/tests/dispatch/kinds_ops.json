@@ -7551,7 +7551,7 @@
        "--json"
       ],
       "rc": 1,
-      "out": ""
+      "out": []
      }
     ]
    },
@@ -7780,7 +7780,7 @@
          "--json"
         ],
         "rc": 1,
-        "out": ""
+        "out": []
        }
       ]
      },
@@ -9458,7 +9458,7 @@
          "--json"
         ],
         "rc": 1,
-        "out": ""
+        "out": []
        }
       ]
      }
@@ -9483,6 +9483,199 @@
       {
        "fn": "act",
        "observed_done": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ruling_finish_with_an_exit_1_inbox_that_is_not_an_empty_list_records_nothing",
+   "covers": "RULING",
+   "ctx": {
+    "ky": [
+     {
+      "match": [
+       "inbox",
+       "--stream",
+       "N",
+       "--json"
+      ],
+      "rc": 0,
+      "out": [
+       {
+        "msg_id": "M-1",
+        "from": "S",
+        "text": "which dispatch window?"
+       }
+      ]
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "RULING",
+       "item": "msg.M-1"
+      }
+     ]
+    },
+    {
+     "op": "finish",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 1,
+        "out": "",
+        "err": "Traceback (most recent call last):\nImportError: cannot import name 'cli'"
+       }
+      ]
+     },
+     "result": {
+      "outcome": "interrupted"
+     },
+     "absent": [
+      "$RUN/handled/msg.M-1.json"
+     ],
+     "calls": [
+      {
+       "fn": "ky",
+       "args": [
+        "inbox",
+        "--stream",
+        "N",
+        "--json"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "finish",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 1,
+        "out": "none"
+       }
+      ]
+     },
+     "result": {
+      "outcome": "interrupted"
+     },
+     "absent": [
+      "$RUN/handled/msg.M-1.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 1,
+        "out": [
+         {
+          "msg_id": "M-1",
+          "from": "S",
+          "text": "which dispatch window?"
+         }
+        ]
+       }
+      ]
+     },
+     "result": {
+      "outcome": "interrupted"
+     },
+     "absent": [
+      "$RUN/handled/msg.M-1.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 1,
+        "out": {}
+       }
+      ]
+     },
+     "result": {
+      "outcome": "interrupted"
+     },
+     "absent": [
+      "$RUN/handled/msg.M-1.json"
+     ]
+    },
+    {
+     "op": "intents",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 1,
+        "out": "",
+        "err": "Traceback (most recent call last):\nImportError: cannot import name 'cli'"
+       }
+      ]
+     },
+     "expect": []
+    },
+    {
+     "op": "intents",
+     "mutate": {
+      "ky": [
+       {
+        "match": [
+         "inbox",
+         "--stream",
+         "N",
+         "--json"
+        ],
+        "rc": 0,
+        "out": [
+         {
+          "msg_id": "M-1",
+          "from": "S",
+          "text": "which dispatch window?"
+         }
+        ]
+       }
+      ]
+     },
+     "expect": [
+      {
+       "kind": "RULING",
+       "item": "msg.M-1"
       }
      ]
     }

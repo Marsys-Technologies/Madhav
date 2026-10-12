@@ -1091,16 +1091,17 @@ def _finish_model(ctx, job):
 # ───────────────────────────────────────── RULING ─────────────────────────────────────────
 
 def _inbox(ctx):
-    """Unacked N messages: a list, or None when the inbox could not be read (exit 1 is "none")."""
+    """Unacked N messages: a list, or None when the inbox could not be read. Exit 1 is "none" only with the
+    empty JSON list `ky inbox --json` prints then; an exit 1 with any other stdout (a traceback) is unreadable."""
     rc, out, _ = ctx.ky("inbox", "--stream", "N", "--json", stream="N")
-    if rc == 1:
-        return []
-    if rc != 0:
+    if rc not in (0, 1):
         return None
     try:
         rows = json.loads(out)
     except (ValueError, TypeError):
         return None
+    if rc == 1:
+        return [] if rows == [] else None
     return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else None
 
 

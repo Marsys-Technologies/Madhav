@@ -88,7 +88,7 @@ class Double:
         args = list(args)
         self.calls.append({"fn": "ky", "args": args, "stream": stream, "lane": lane})
         if args[:1] == ["inbox"] and not any(args[:len(r["match"])] == r["match"] for r in self.spec.get("ky", [])):
-            return 1, "", ""                                           # an inbox no case filled is an empty one (ky inbox: exit 1)
+            return 1, "[]", ""                                         # an inbox no case filled is an empty one (ky inbox --json: exit 1, [])
         return self._answer(self.spec.get("ky", []), args)
 
     def _answer(self, table, argv):
@@ -384,7 +384,8 @@ def test_the_cases_cover_each_named_negative():
                      "rp_a_model_authored_request_is_bound_to_the_derived_fields",          # review r1 KO-B2
                      "rp_a_model_authored_production_request_keeps_the_stated_fields",
                      "rp_any_prepared_record_of_the_item_counts_as_prepared",
-                     "rp_a_model_authored_request_finishes_with_no_boundary_view"):         # review r2 KO2-B1
+                     "rp_a_model_authored_request_finishes_with_no_boundary_view",          # review r2 KO2-B1
+                     "ruling_finish_with_an_exit_1_inbox_that_is_not_an_empty_list_records_nothing"):  # review r3 KO3-B1
         assert required in names, required
 
 
