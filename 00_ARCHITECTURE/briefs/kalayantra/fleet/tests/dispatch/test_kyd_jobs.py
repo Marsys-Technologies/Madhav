@@ -377,6 +377,11 @@ def run_step(world, step):
         assert world.crash_after is None and world.crash_before is None, "the crash point was never reached"
     elif op == "restart":
         J._CHILDREN.clear()                               # a new process holds no child handle
+        if step.get("owners_gone"):                       # as a real restart leaves them: the old pid is gone
+            pid, start = gone_owner()
+            for name in sorted(os.listdir(world.run / "locks")):
+                if not name.startswith("."):
+                    rewrite_owner(world, name, pid=pid, pgid=pid, process_start=start)
         world.ctx = Ctx(world, step["controller"])
     elif op == "set":
         world.patch(step["job"], step["patch"])
@@ -424,6 +429,9 @@ def check(world, want):
         assert {k: s[k] for k in keys} == world.named(world.fill(keys)), {k: s[k] for k in keys}
     for name, there in want.get("locks", {}).items():
         assert os.path.isdir(world.run / "locks" / name) is there, (name, sorted(os.listdir(world.run / "locks")))
+    for name, alias in want.get("lock_owner", {}).items():   # the lock is still that job's, bound to its key
+        owner = json.loads((world.run / "locks" / name / "owner.json").read_text())
+        assert owner["session_or_run_id"].endswith(":job.%s" % world.state(alias)["key"]), (name, owner)
     if "failures" in want:
         got = json.loads((world.run / "jobs" / "failures.json").read_text())
         slim = {item: {fp: {"count": e["count"], "evidence_fp": e["evidence_fp"]} for fp, e in fps.items()}

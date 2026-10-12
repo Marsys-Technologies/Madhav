@@ -65,7 +65,11 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
     else interrupted (plan §6 table: "else interrupted"; §6 recovery: gone → interrupted, re-queue once). The
     job's own result.json is never an outcome — only the kind's finish, which checks what it asserts, says done.
   * a job's locks are bound to the job: their owner id is "<controller_id>:job.<key>" (one job of a key is
-    not ended at a time), so another job's lock of the same name never reads as this job's. Its locks step keeps a
+    not ended at a time), so another job's lock of the same name never reads as this job's. From the moment the
+    job exists its locks record it as their `child` (job_id and state path, no process identity), so kyaction
+    reads them as unknown whatever became of the controller and never takes them over while the job is not ended
+    (review KYDJOBS-R2-B1); only the job's own close, or its adoption, re-owns such a lock in place (under
+    kyaction's takeover guard, and only from an owner that is this process or positively gone). Its locks step keeps a
     ledger (checkpoint.lock_release, name → releasing | released, persisted before and after each release): a
     lock found held by another owner was released by this job when the ledger says releasing, and is left
     alone; one never released by this job and held by another owner is an owner-wait.
@@ -85,6 +89,7 @@ Python >= 3.9, standard library only; kyaction.py, kyloop.py, kyschema.py and sc
 from __future__ import annotations
 
 import calendar
+import fcntl
 import io
 import json
 import os
@@ -133,6 +138,7 @@ KILL_WAIT_S = 5.0
 FAILURE_LIMIT = 3
 INTERRUPT_LIMIT = 2
 QUOTA = "quota"
+TAKEOVER_GUARD = ".takeover.guard"      # kyaction's guard in $KY_RUN/locks: a re-owning never meets a takeover
 PENDING = "pending"
 RESULT_MAX_BYTES = 1 << 20
 HEADER_LINE = b"--- job header ---\n"
@@ -321,13 +327,46 @@ def _lock_holder(ctx, name):
     return "unknown", None
 
 
+def _child(ctx, job):
+    """What each lock of a job that is not ended records as its `child`: the job, with no process identity. kyaction
+    reads such a lock as unknown once its owner is gone, and never takes it over."""
+    return {"job_id": job["job_id"], "state": str(_state_path(ctx, job["job_id"])), "pid": None, "pgid": None,
+            "process_start": None}
+
+
+def _rehome(ctx, job, name, child):
+    """Hold one lock of this job under this controller by rewriting its owner record in place: this process, the
+    owner id _owner(controller_id, key) and `child`. Only a lock whose owner id is this job's and whose recorded
+    owner is this process or positively gone; under kyaction's takeover guard. → True / False."""
+    path, mine, ident = ka.lock_path(_run(ctx), name), _owner(ctx.controller_id, job["key"]), ka.self_identity()
+    if ident["process_start"] is None:
+        return False                                     # an owner nobody could judge is never written
+    try:
+        guard = os.open(str(path.parent / TAKEOVER_GUARD), os.O_CREAT | os.O_RDWR, 0o600)
+    except OSError:
+        return False
+    try:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        owner, _ = ka.lock_owner(_run(ctx), name)
+        if owner is None or owner.get("session_or_run_id") not in (_owner(job.get("controller_id"), job["key"]), mine):
+            return False
+        if owner.get("pid") != os.getpid() and ka.process_matches(owner.get("pid"), owner.get("process_start")) is not False:
+            return False                                 # a live owner, or one that cannot be judged, keeps it
+        ka.write_json(path / "owner.json", dict(owner, session_or_run_id=mine, child=child, **ident))
+        return True
+    except OSError:
+        return False
+    finally:
+        os.close(guard)
+
+
 def _drop(ctx, job, name, ledger):
     """Release one lock of this job. True: this job does not hold it (any more). False: it is held by an owner that
     is not this job although this job never released it, or its owner cannot be judged, or it could not be
     removed. `ledger` (checkpoint.lock_release) is marked "releasing" and persisted only once the lock is shown
     to be this job's, before it is removed; a lock of another owner found after that mark is one taken since —
-    never touched. A lock this job's controller left behind, positively gone, is taken over (kyaction's rule)
-    and then released."""
+    never touched. A lock this job's controller left behind, positively gone, is re-owned in place (its child
+    names this job, so kyaction would never take it over) and then released."""
     state, owner = _lock_holder(ctx, name)
     if state == "free":
         return True
@@ -341,25 +380,15 @@ def _drop(ctx, job, name, ledger):
         _save(ctx, job)
     if owner.get("pid") == os.getpid():
         return ka.release_lock(ka.Lock(ka.lock_path(_run(ctx), name), owner["session_or_run_id"]))
-    lock = _take(ctx, name, mine)
-    return lock is not None and ka.release_lock(lock)
+    return _rehome(ctx, job, name, None) and ka.release_lock(ka.Lock(ka.lock_path(_run(ctx), name), mine))
 
 
 def _own(ctx, job, name):
-    """Hold one lock of an adopted job under this controller. → True / False."""
-    state, owner = _lock_holder(ctx, name)
-    if state == "unknown":
+    """Hold one lock of an adopted job under this controller, still naming the job as its child. → True / False."""
+    state, _ = _lock_holder(ctx, name)
+    if state == "free" and _take(ctx, name, _owner(ctx.controller_id, job["key"])) is None:
         return False
-    mine = _owner(ctx.controller_id, job["key"])
-    if state == "owned":
-        if owner.get("session_or_run_id") not in (_owner(job.get("controller_id"), job["key"]), mine):
-            return False
-        if owner.get("pid") == os.getpid():
-            if owner["session_or_run_id"] == mine:
-                return True
-            if not ka.release_lock(ka.Lock(ka.lock_path(_run(ctx), name), owner["session_or_run_id"])):
-                return False
-    return _take(ctx, name, mine) is not None
+    return state != "unknown" and _rehome(ctx, job, name, _child(ctx, job))
 
 
 # ───────────────────────────────────────── failure accounting ─────────────────────────────────────────
@@ -662,8 +691,9 @@ def open(ctx, intent, slot, facts):                      # noqa: A001 — the pa
                 job = _reserve(ctx, plan["state"])
             except OSError as e:
                 why = "the job could not be written (%s: %s)" % (type(e).__name__, ka.flat(e, 200))
-        if job is not None:
-            why = _prepare(ctx, job, plan)
+        if job is not None:                              # from now on its locks name it: never taken over
+            unmarked = [lk.path.name for lk in held if not _rehome(ctx, job, lk.path.name, _child(ctx, job))]
+            why = "lock(s) %s could not record the job" % ", ".join(unmarked) if unmarked else _prepare(ctx, job, plan)
             if why is not None:
                 _close(ctx, job, {"outcome": "refused", "detail": "open: %s" % why, "failure_fp": None})
                 held, job = [], None                     # that close released what the job held, or keeps it

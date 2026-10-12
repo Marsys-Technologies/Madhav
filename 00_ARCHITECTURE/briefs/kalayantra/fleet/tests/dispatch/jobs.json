@@ -3038,6 +3038,328 @@
    }
   },
   {
+   "name": "r2b1_an_unknown_jobs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.unknown"
+   ],
+   "why": "KYDJOBS-R2-B1 case 1. A live job whose state cannot be told; the controller dies and its pid is gone, as a real restart leaves the lock owners. The job's locks name it as their child, so kyaction never takes them over: no REWORK or VERIFY of the item opens into the worktree of a job that may still run, and item.K-1 stays the first job's.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "process_start": "not a start identity"
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-unknown"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    },
+    "job": {
+     "j1": {
+      "phase": "live"
+     }
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_terminating_jobs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.terminating"
+   ],
+   "why": "KYDJOBS-R2-B1 case 2. A close handed a job that still runs (and ignores TERM): terminating, its process live. The controller dies with its pid gone; recover carries the close on, which stops at exited. Its locks are never taken over: no REWORK or VERIFY of the item opens.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "ignore_term"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "failed",
+      "detail": "engine",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-live"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_stale_pending_launchs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1"
+   ],
+   "why": "KYDJOBS-R2-B1: a start recorded pending, then the controller dies with its pid gone. Whether a process exists is unknown, so its locks are never taken over: no REWORK or VERIFY of the item opens.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "pid": "pending"
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-launch-pending"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_gone_jobs_close_releases_the_locks_of_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.gone"
+   ],
+   "why": "KYDJOBS-R2-B1, the other side: a lock that names its job is released by that job's own close. The job finished, its controller died with its pid gone; recover closes it interrupted, its locks are released, and a REWORK of the item then opens and holds item.K-1.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "awaiting": [],
+    "lock_owner": {
+     "item.K-1": "j2"
+    },
+    "job": {
+     "j1": {
+      "outcome": "interrupted"
+     }
+    }
+   }
+  },
+  {
    "name": "refusal_after_open_is_closed_refused_and_frees_the_slot",
    "covers": [
     "refusal_after_open"
