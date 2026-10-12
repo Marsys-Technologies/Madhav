@@ -196,6 +196,9 @@ ACTIVATION_NAME = re.compile(r"^ACTIVATION_RECORD(?:\.([1-9][0-9]{0,5}))?\.json\
 OWNER_DECISION_SUFFIX = ".owner_decision.json"
 OWNER_DECISION_SCHEMA = "ky.owner_decision/1"   # the owner's answer beside an awaiting item (record_owner_decision)
 AWAITING_DONE = "done"      # $KY_RUN/awaiting/done/: where a closed owner-wait lies — never read as an open one
+WAIT_CLOSE_KIND = "awaiting_close:veto_executed"    # this controller's record AWCLOSE-<awaiting id> (R18)
+WAIT_CLOSE_PREFIX = "AWCLOSE-"
+VETO_EXECUTE_KIND = "veto_decision_execute:"        # kind of the veto handler's own `<SD id>.execute` record
 JOB_ACTION_SLUG = "job-action-"                 # + the record id: the item raised for a job action nobody observed
 JOB_ACTION_OPTIONS = ("happened", "did-not-happen")     # … and the two options that item offers the owner
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
@@ -1791,18 +1794,79 @@ class Controller:
             out[aid] = {"record": rec, "command": cmd, "path": p}
         return out
 
+    def handler_answers(self):
+        """{awaiting id: {"record": {"wait": the item}, "decision", "path"}} — the owner-waits of a veto class
+        that the veto HANDLER itself completed (R18, L5-01): the surrogate leaves such an item in $KY_RUN/awaiting
+        and kyveto.py never moves one, so this is where an executed veto-class decision has its end. One counts
+        only when ALL of this holds, read from the handler's own files and judged by its own rule:
+          * DECISIONS_SURROGATE.jsonl can be read line for line (kyveto.load_decisions reports no problem — while
+            one exists no decision's state is known) and holds a decision whose every line is of class `veto` and
+            names THAT awaiting id;
+          * the handler's execute action record for that decision, `<SD id>.execute`, is DONE — a record of the
+            veto role's controller or supervisor, of the class executor's kind, naming that decision. A log line
+            is never that record: a bare EXECUTED line releases nothing;
+          * the decision reads EXECUTED as the handler accepts it (kyveto.first_terminal with that record);
+          * the wait is not a hard stop: neither its raiser called it one (class_hint) nor does any line of the
+            log about that awaiting id. A hard stop is released by an owner `decide` only (owner_answers()).
+        PENDING_VETO, EFFECTIVE, VETOED and FAILED therefore still block, and so does whatever cannot be read:
+        unknown is never an answer. `path` is the handler's record — the evidence the release is counted by."""
+        log = self.run / "DECISIONS_SURROGATE.jsonl"
+        if not log.is_file():
+            return {}
+        try:
+            self.load_siblings()
+            history, problems, unusable = self.kv.load_decisions(log)
+        except (Refusal, OSError):
+            return {}
+        if problems:
+            return {}
+        hard = {line.get("awaiting") for lines in history.values() for line in lines
+                if line.get("class") == "hard_stop"}
+        out, directory = {}, self.run / "awaiting"
+        for did, lines in sorted(history.items()):
+            aid = lines[0].get("awaiting")
+            if did in unusable or not isinstance(aid, str) or not self.kc.AW_RE.match(aid) or aid in hard \
+                    or aid in out or any(line.get("class") != "veto" or line.get("awaiting") != aid for line in lines):
+                continue
+            try:
+                rec = self.ka.load(self.run, did + ".execute")
+            except (self.ka.ActionError, OSError):
+                continue
+            actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+            inputs = rec.get("inputs") if isinstance(rec.get("inputs"), dict) else {}
+            if rec["state"] != "DONE" or actor.get("role") != "veto" \
+                    or actor.get("holder_kind") not in ("controller", "supervisor") \
+                    or not str(rec.get("kind", "")).startswith(VETO_EXECUTE_KIND) or inputs.get("decision_id") != did \
+                    or self.kv.first_terminal(lines, True) != "EXECUTED":
+                continue
+            doc = None
+            for path in (directory / (aid + ".json"), directory / AWAITING_DONE / (aid + ".json")):
+                doc, _ = read_json(path)
+                if isinstance(doc, dict):
+                    break
+            if not isinstance(doc, dict) or doc.get("class_hint") == "hard_stop":
+                continue
+            out[aid] = {"record": {"wait": doc}, "decision": did, "path": self.ka.record_path(self.run, did + ".execute")}
+        return out
+
+    def wait_answers(self):
+        """Every answer an owner-wait can have: the veto handler's completed decision (handler_answers(), R18)
+        and the OWNER's `decide` (owner_answers(), R15), which stands before it when both are there."""
+        return dict(self.handler_answers(), **self.owner_answers())
+
     def awaiting_blocks(self, authored=None, scope=None, answers=None):
         """(loop_blocked, blocked item keys, ids) from the owner-waits that are OPEN and UNANSWERED: the files of
         $KY_RUN/awaiting (not of awaiting/done/) that hold this role up (wait_target()) and have no answer of the
-        owner beside them. An owner-wait the owner answered — owner_answers(), `answers` when the caller has
-        them already — no longer blocks its item or its loop and is not counted (R15: an answered wait has an
-        end; the controller that applied the `decide` closes it, and until it has, it is answered all the same).
+        owner beside them. An owner-wait the owner answered, or a veto-class one whose decision the veto handler
+        itself completed — wait_answers(), `answers` when the caller has them already — no longer blocks its
+        item or its loop and is not counted (R15, R18: an answered wait has an end; the controller closes it,
+        and until it has, it is answered all the same).
         An unanswered one blocks, whatever else lies beside it. `authored`, when given, is filled with the ids of
         the items a JOB of this role raised (raised_by.role is this role and raised_by.job_id is set) — they block
         like any other, but a run is never credited with a "changed dependency" for an owner-wait a job wrote
         (N-02). `scope`: see wait_target()."""
         loop_blocked, items, ids = False, set(), []
-        answers = self.owner_answers() if answers is None else answers
+        answers = self.wait_answers() if answers is None else answers
         directory = self.run / "awaiting"
         for p in sorted(directory.glob("*.json")) if directory.is_dir() else []:
             if p.name.endswith(OWNER_DECISION_SUFFIX):  # the owner's recorded answer beside an item, not an item
@@ -1828,9 +1892,11 @@ class Controller:
         """[[awaiting id, sha256 of the owner's decision record]] — the owner-waits of this loop, or of an item
         this role can work on, that the OWNER has answered: a changed dependency, and one no run authored — also
         when a job of this role had raised the wait (R15). Judged by wait_target(), exactly as an open wait is,
-        on what the decision record says was asked (`wait`), else on the item itself, open or closed."""
+        on what the decision record says was asked (`wait`), else on the item itself, open or closed. The same
+        for a veto-class wait the veto handler released (R18): there the sha256 is that of the handler's DONE
+        execute record."""
         out = []
-        for aid, answer in sorted((self.owner_answers() if answers is None else answers).items()):
+        for aid, answer in sorted((self.wait_answers() if answers is None else answers).items()):
             doc = answer["record"].get("wait")
             for path in (self.run / "awaiting" / (aid + ".json"), self.run / "awaiting" / AWAITING_DONE / (aid + ".json")):
                 if isinstance(doc, dict):
@@ -1977,7 +2043,7 @@ class Controller:
         `external_only`, owner-waits a job of this role raised are left out: a run that only wrote an owner-wait
         has changed nothing it did not author (N-02). The owner's answer to such a wait stays in: no run authors
         that."""
-        authored, answers = set(), self.owner_answers()
+        authored, answers = set(), self.wait_answers()
         scope = self.item_keys() if keys is None else keys
         _, _, ids = self.awaiting_blocks(authored, scope=scope, answers=answers)
         parts = {"awaiting": [i for i in ids if i not in authored] if external_only else ids,
@@ -2423,11 +2489,12 @@ class Controller:
             return str(dst)
         return str(self.archive(src, aid))
 
-    def close_answered_wait(self, aid, doc, record):
+    def close_answered_wait(self, aid, doc, record, answered="The owner's answer to %s is recorded"):
         """Steps 2 and 3 of an applied `decide` for the open item `doc` and the owner's decision `record`:
         idempotent, and total — it never raises. → {"closed": where the item lies now | None[, "close_error"]
         [, "job_action"]}. An option that could not be carried out leaves the item where it is (answered, so it
-        blocks nothing), for the next look to finish both."""
+        blocks nothing), for the next look to finish both. `answered` says, in the one notice a failed close
+        raises, what released the wait (R18: the veto handler's executed decision rather than an owner answer)."""
         out = {"closed": None}
         try:
             action_id = self.job_action_of(aid, doc)
@@ -2440,9 +2507,9 @@ class Controller:
                           "at a later look" % (aid, out["close_error"]))
             self.raise_attention(
                 "loop-%s-answered-wait-not-closed" % self.role,
-                "The owner's answer to %s is recorded, but the %s controller could not close the item (%s). It "
+                "%s, but the %s controller could not close the item (%s). It "
                 "blocks nothing, yet it still lies in run/awaiting as if it were open; the controller tries again "
-                "at every look. Repair what keeps it there?" % (aid, self.role, out["close_error"]),
+                "at every look. Repair what keeps it there?" % (answered % aid, self.role, out["close_error"]),
                 ["item: %s" % (self.run / "awaiting" / (aid + ".json")),
                  "closed items go to: %s" % (self.run / "awaiting" / AWAITING_DONE),
                  "error: %s" % out["close_error"]],
@@ -2480,6 +2547,76 @@ class Controller:
                     self.ka.release_lock(lock)
         except Exception as e:
             self.log("answered owner-waits were not closed at this look (%s: %s)" % (type(e).__name__, flat(e, 160)))
+        self.close_executed_waits()
+
+    def close_executed_waits(self):
+        """R18: each owner-wait still in $KY_RUN/awaiting that the veto handler released (handler_answers()) and
+        that is THIS role's — about its loop, raised by it, or about an item it works on: the role a wait holds
+        up closes it, as it answers for it (record_owner_decision) — is moved to awaiting/done/ now, under the
+        item's lock and under ONE action record of this controller, AWCLOSE-<awaiting id>. Idempotent, and the
+        crash window is R15's: a record a dead controller left begun is found again here (`unfinished`) and
+        completed under the same id, moved or not (move_to_done() says where the item lies); reconcile_each()
+        never refuses a launch over it. A move that fails leaves the record open and the item where it is —
+        released, so it blocks nothing — tells somebody once, and is tried again at every look. The first close
+        is changed evidence for this role, as an applied `decide` is. Never raises."""
+        if self.ka is None:
+            return
+        try:
+            released = sorted(self.handler_answers().items())
+        except Exception as e:
+            self.log("executed veto-class waits were not looked at (%s: %s)" % (type(e).__name__, flat(e, 160)))
+            return
+        for aid, answer in released:
+            path, lock = self.run / "awaiting" / (aid + ".json"), None
+            try:
+                if not path.is_file():
+                    continue
+                lock = self.ka.acquire_lock(self.run, "awaiting." + aid, self.controller_id, log=self.log_once)
+                if lock is None:
+                    continue
+                doc, _ = read_json(path)                    # the fresh look, under the item's lock
+                raised = doc.get("raised_by") if isinstance(doc, dict) and isinstance(doc.get("raised_by"), dict) else {}
+                if not isinstance(doc, dict) or doc.get("class_hint") == "hard_stop" or (
+                        doc.get("item") != "loop.%s" % self.role and raised.get("role") != self.role
+                        and self.wait_target(doc, self.item_keys()) is None):
+                    continue
+                did = answer["decision"]
+                status, _ = self.begin_own(
+                    WAIT_CLOSE_PREFIX + aid, WAIT_CLOSE_KIND, {"awaiting_id": aid, "decision_id": did},
+                    {"awaiting": path.name}, "close owner-wait %s: awaiting/ → awaiting/%s/" % (aid, AWAITING_DONE))
+                if status == "in_progress":                 # another live controller is closing it right now
+                    continue
+                closed = self.close_answered_wait(
+                    aid, {}, {}, "The veto handler executed " + did + " for %s").get("closed")
+                if closed is None or status in ("done", "failed"):
+                    continue
+                self.ka.complete(self.run, WAIT_CLOSE_PREFIX + aid, {
+                    "closed": closed, "released_by": did + ".execute",
+                    "execute_record_sha256": sha_file(answer["path"])})
+                self.log("owner-wait %s closed: the veto handler executed %s for it" % (aid, did))
+                self.ls(lambda d: dict(d, no_progress_count=0,
+                                       evidence_changed={"at": utc(), "by": "veto:" + did, "awaiting_id": aid}))
+            except self.ka.LockUnknown as e:
+                self.lock_attention("awaiting." + aid, e)
+            except Exception as e:
+                self.log_once("executed veto-class wait %s was not closed at this look (%s: %s)"
+                              % (aid, type(e).__name__, flat(e, 160)))
+            finally:
+                if lock is not None:
+                    self.ka.release_lock(lock)
+
+    def observe_wait_close(self, record):
+        """kyaction observer for an AWCLOSE record an earlier controller left begun: the item lies under
+        awaiting/done/ and no longer in awaiting/ → done; otherwise not_done — close_executed_waits() then
+        completes it under the same record."""
+        aid = (record.get("inputs") or {}).get("awaiting_id") if isinstance(record.get("inputs"), dict) else None
+        if not isinstance(aid, str) or not ID_RE.match(aid):
+            return "unknown", {"reason": "the record names no awaiting id"}
+        src = self.run / "awaiting" / (aid + ".json")
+        dst = src.parent / AWAITING_DONE / src.name
+        if dst.is_file() and not os.path.lexists(src):
+            return "done", {"closed": str(dst), "reconciled": True}
+        return "not_done", {"open": os.path.lexists(src), "closed": dst.is_file()}
 
     def observe_command(self, role, record):
         """kyaction observer for a command whose earlier application died inside its handler: did the handler's
@@ -3054,6 +3191,9 @@ class Controller:
                 continue                        # another role's, a cockpit's or the bootstrap supervisor's record
             if kind in ("notification", "dispatcher_start"):
                 self.reconcile_soft(rec)
+                continue
+            if kind == WAIT_CLOSE_KIND:         # never stops the loop: the next look at the queue completes it (R18)
+                ka.reconcile(self.run, aid, self.observe_wait_close, by=self.controller_id)
                 continue
             if kind == "launch":
                 run_id = (rec.get("target") or {}).get("run_id") if isinstance(rec.get("target"), dict) else None

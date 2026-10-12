@@ -5811,3 +5811,281 @@ def test_an_owner_pause_itself_raises_nothing(w):
     finally:
         p.kill()
     assert w.awaiting() == [] and w.calls() == [1]
+
+
+# ═════════════════ an executed veto-class owner-wait has an end, on the controller's side (R18, L5-01) ═════════════════
+#
+# The surrogate leaves a veto-class item in run/awaiting and kyveto.py never moves one. The wait is answered when the
+# veto HANDLER itself completed the decision for that awaiting id: its own `<SD id>.execute` action record is DONE
+# and the decision reads EXECUTED by the handler's own rule. The controller of the role the wait holds up then
+# closes the item under an action record of its own (AWCLOSE-<awaiting id>). A log line alone, and every other
+# state, still blocks; a hard stop is the owner's alone.
+
+VETO_CTL = "CTL-VETO-20260101T000000Z-1"
+VETO_ACTOR = {"role": "veto", "holder_kind": "controller", "controller_id": VETO_CTL}
+VETO_TARGET = {"kind": "capacity", "fingerprint": "f" * 64}
+
+
+def surrogate_lines(w, aid, *states, n=1, cls="veto"):
+    """Lines of ONE decision about that awaiting id in DECISIONS_SURROGATE.jsonl, as they stand there. → its id."""
+    sid = "SD-20261011T220000Z-%d" % n
+    with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+        for state in states:
+            f.write(json.dumps({"id": sid, "awaiting": aid, "class": cls, "state": state, "decision": "yes",
+                                "target": VETO_TARGET, "by": "kyveto" if state in ("EFFECTIVE", "EXECUTED")
+                                else "kalayantra-owner-surrogate"}) + "\n")
+    return sid
+
+
+def handler_execute(w, sid, state="DONE", actor=VETO_ACTOR, kind="veto_decision_execute:capacity", decision=None):
+    """The class executor's action record exactly as kyveto.Handler.execute names and settles it."""
+    kyaction.begin(w.run, sid + ".execute", kind, actor, {"decision_id": decision or sid, "class": "veto",
+                                                         "authority": {"source_commit": C1, "entrypoints_digest": E1}},
+                   VETO_TARGET, "capacity: builders 4 → 6")
+    if state == "DONE":
+        kyaction.complete(w.run, sid + ".execute", {"written": True})
+    elif state == "FAILED":
+        kyaction.fail(w.run, sid + ".execute", {"reason": "target_changed"})
+    else:
+        left_by_a_dead_process(w, sid + ".execute")
+    return w.run / "actions" / (sid + ".execute.json")
+
+
+def close_record(w, aid):
+    return kyaction.load(w.run, "AWCLOSE-" + aid)
+
+
+def test_an_executed_veto_class_wait_at_item_level_puts_its_item_back_to_work(w, monkeypatch):
+    """L5-01, item level — the reviewer's probe: a planner-job wait on B-3 (class_hint veto, blocks item). It blocks
+    B-3 through the whole veto window and while EXECUTED is only a line; once the handler's own execute record is
+    DONE it blocks nothing, and the planner controller closes the item under one action record — once."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, answer, closed = wait_paths(w, aid)
+    asked, held = item.read_bytes(), (["step.B-4"], (False, {"B-3"}, [aid]))
+    with lock_holder(w, monkeypatch) as c:
+        assert (eligible(c), c.awaiting_blocks()) == held
+        for state in ("PROPOSED", "PENDING_VETO", "EFFECTIVE", "EXECUTED"):
+            sid = surrogate_lines(w, aid, state)
+            assert (eligible(c), c.awaiting_blocks()) == held, state        # a line is never the handler's record
+            assert c.apply_commands() is False and item.exists()
+        record = handler_execute(w, sid)
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+        assert item.exists()                                # answered already; closed at the controller's next look
+        assert c.apply_commands() is False
+        assert not item.exists() and closed.read_bytes() == asked and not answer.exists()
+        act = close_record(w, aid)
+        assert act["state"] == "DONE" and act["kind"] == "awaiting_close:veto_executed"
+        assert act["actor"] == dict(act["actor"], role="planner", holder_kind="controller")
+        assert act["inputs"] == {"awaiting_id": aid, "decision_id": sid}
+        assert act["result"] == dict(act["result"], closed=str(closed), execute_record_sha256=sha(record))
+        first = (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).read_bytes()
+        assert c.apply_commands() is False                  # idempotent: nothing moved, nothing written again
+        assert (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).read_bytes() == first
+        assert sorted(p.name for p in closed.parent.iterdir()) == [closed.name]
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_an_executed_veto_class_wait_at_loop_level_puts_the_loop_back_to_work(w, monkeypatch):
+    """L5-01, loop level: with `blocks: loop` the whole loop rested in no_eligible_work."""
+    w.ready()
+    aid = job_wait(w, "planner-loop-capacity", "B-3", blocks="loop", class_hint="veto")
+    with lock_holder(w, monkeypatch) as c:
+        sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+        assert eligible(c) == [] and c.awaiting_blocks() == (True, set(), [aid])
+        handler_execute(w, sid)
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+        assert c.apply_commands() is False
+    assert w.awaiting() == [] and wait_paths(w, aid)[2].exists() and close_record(w, aid)["state"] == "DONE"
+
+
+def test_a_running_loop_goes_on_when_the_handler_executed_its_loop_level_veto_wait(w):
+    """The whole path in the real controller: it waits, no model, while the decision is pending; the handler's DONE
+    record — no command of anybody — ends the wait, and the job is given the work."""
+    w.ready()
+    w.default_mode("stop")
+    aid = job_wait(w, "planner-loop-capacity", "B-3", blocks="loop", class_hint="veto")
+    sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: (w.loop_state() or {}).get("waiting") == "no_eligible_work")
+        time.sleep(0.3)
+        assert w.calls() == [] and p.poll() is None         # EXECUTED as a line only: still waiting
+        handler_execute(w, sid)
+        assert p.wait(timeout=15) == 0
+    finally:
+        p.kill()
+    assert w.calls() == [1] and work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert w.awaiting() == [] and wait_paths(w, aid)[2].exists() and close_record(w, aid)["state"] == "DONE"
+
+
+STILL_BLOCKS = ["pending-veto", "effective", "vetoed", "failed", "failed-with-failed-record", "bare-executed-line",
+                "executed-line-record-intended", "executed-line-record-failed", "done-record-no-executed-line",
+                "done-record-not-the-handlers", "done-record-of-a-cockpit", "done-record-of-another-kind",
+                "done-record-for-another-decision", "decision-about-another-wait", "decision-not-of-veto-class",
+                "log-with-a-line-nobody-can-read"]
+
+
+@pytest.mark.parametrize("blocks", ["item", "loop"])
+@pytest.mark.parametrize("case", STILL_BLOCKS)
+def test_a_veto_class_wait_the_handler_did_not_complete_still_blocks(w, monkeypatch, case, blocks):
+    """R18, the negatives. Everything short of "the handler's own execute record for THIS decision about THIS wait
+    is DONE and the decision reads EXECUTED" leaves the wait blocking and the item where it is — and none of it is
+    a dead end: when the handler's record is there, the same wait is released."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", blocks=blocks, class_hint="veto")
+    other = job_wait(w, "b-4-capacity", "B-4", class_hint="veto")
+    item = wait_paths(w, aid)[0]
+    held = ([], (True, {"B-4"}, sorted([aid, other]))) if blocks == "loop" else \
+        ([], (False, {"B-3", "B-4"}, sorted([aid, other])))
+    lines = {"pending-veto": ["PENDING_VETO"], "effective": ["PENDING_VETO", "EFFECTIVE"],
+             "vetoed": ["PENDING_VETO", "VETOED"], "failed": ["PENDING_VETO", "FAILED"],
+             "failed-with-failed-record": ["PENDING_VETO", "EFFECTIVE", "FAILED"],
+             "done-record-no-executed-line": ["PENDING_VETO", "EFFECTIVE"]}.get(
+                 case, ["PENDING_VETO", "EFFECTIVE", "EXECUTED"])
+    about = other if case == "decision-about-another-wait" else aid
+    sid = surrogate_lines(w, about, *lines, cls="routine" if case == "decision-not-of-veto-class" else "veto")
+    if case in ("failed-with-failed-record", "executed-line-record-failed"):
+        handler_execute(w, sid, "FAILED")
+    elif case == "executed-line-record-intended":
+        handler_execute(w, sid, "INTENDED")
+    elif case == "done-record-not-the-handlers":
+        handler_execute(w, sid, actor={"role": "planner", "holder_kind": "controller", "controller_id": OLD_CTL})
+    elif case == "done-record-of-a-cockpit":
+        handler_execute(w, sid, actor={"role": "veto", "holder_kind": "cockpit", "session_id": "surrogate-1"})
+    elif case == "done-record-of-another-kind":
+        handler_execute(w, sid, kind="notification")
+    elif case == "done-record-for-another-decision":
+        handler_execute(w, sid, decision="SD-20261011T220000Z-7")
+    elif case in ("done-record-no-executed-line", "decision-not-of-veto-class", "log-with-a-line-nobody-can-read"):
+        handler_execute(w, sid)
+    if case == "log-with-a-line-nobody-can-read":
+        with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+            f.write("{torn\n")
+    if case == "decision-about-another-wait":               # … which IS released: the other one, and only that
+        handler_execute(w, sid)
+        held = ([], (True, set(), [aid])) if blocks == "loop" else (["step.B-4"], (False, {"B-3"}, [aid]))
+    with lock_holder(w, monkeypatch) as c:
+        before = c.accepted_summary()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        assert c.apply_commands() is False
+        assert item.exists() and not (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).exists()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        if case != "decision-about-another-wait":
+            assert c.accepted_summary() == before           # and it is no changed dependency
+        # no dead end: the handler's own completed decision about this wait releases it
+        if case == "log-with-a-line-nobody-can-read":
+            log = w.run / "DECISIONS_SURROGATE.jsonl"
+            log.write_text(log.read_text().replace("{torn\n", ""))
+        else:
+            handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED", n=2))
+        assert aid not in c.awaiting_blocks()[2] and c.awaiting_blocks()[0] is False
+        assert c.apply_commands() is False and not item.exists() and close_record(w, aid)["state"] == "DONE"
+
+
+@pytest.mark.parametrize("how", ["class-hint", "surrogate-record"])
+def test_a_hard_stop_wait_is_not_released_by_an_executed_decision_only_by_an_owner_decide(w, monkeypatch, how):
+    """R18: a hard stop is still the owner's alone. Not even an EXECUTED line with a DONE execute record of the
+    handler's about that awaiting id releases it — whether the raiser called it a hard stop or the surrogate
+    recorded it as one — and the controller does not move it. The owner's `decide` does."""
+    w.ready()
+    aid = job_wait(w, "frozen-contract-change", "B-3", class_hint="hard_stop" if how == "class-hint" else "veto")
+    item, answer, closed = wait_paths(w, aid)
+    held = (["step.B-4"], (False, {"B-3"}, [aid]))
+    if how == "surrogate-record":
+        with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": "SD-20261011T220000Z-9", "awaiting": aid, "class": "hard_stop",
+                                "decision": "owner only", "by": "kalayantra-owner-surrogate"}) + "\n")
+    handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED"))
+    with lock_holder(w, monkeypatch) as c:
+        before = c.accepted_summary()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        assert c.apply_commands() is False
+        assert item.exists() and not closed.exists() and (eligible(c), c.awaiting_blocks()) == held
+        assert not (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).exists() and c.accepted_summary() == before
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "no: the contract stays frozen"})
+        assert c.apply_commands() is True
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    assert command(w, cid)["state"] == "APPLIED" and json.loads(answer.read_text())["command_id"] == cid
+    assert not item.exists() and closed.exists()
+
+
+def test_the_release_of_an_executed_veto_class_wait_is_a_changed_dependency(w, monkeypatch):
+    """R18: the release is a changed dependency no run authored — also for the wait a job of this role raised (in no
+    external fingerprint while open, N-02). It restarts the no-progress count, once, and is evidence for the
+    sub-step window; closing the item afterwards changes nothing further. Another role's executed wait about an
+    item this role does not work on is neither this role's dependency nor its to close (L3-01)."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    with lock_holder(w, monkeypatch) as c:
+        kyloop.update_loop_state(w.run, "planner", lambda d: dict(d, no_progress_count=2))
+        sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+        before, window = c.accepted_summary(), c.substep_evidence()
+        handler_execute(w, sid)
+        after = c.accepted_summary()
+        for basis in ("dependency_fingerprint", "external_fingerprint"):
+            assert after[basis] != before[basis], basis
+        assert c.substep_evidence() != window and w.loop_state()["no_progress_count"] == 2
+        assert c.apply_commands() is False                  # the controller closes it: the same evidence, no more
+        assert not wait_paths(w, aid)[0].exists() and c.accepted_summary() == after
+        ls = w.loop_state()
+        assert ls["no_progress_count"] == 0
+        assert ls["evidence_changed"] == dict(ls["evidence_changed"], awaiting_id=aid, by="veto:" + sid)
+        kyloop.update_loop_state(w.run, "planner", lambda d: dict(d, no_progress_count=2))
+        assert c.apply_commands() is False and w.loop_state()["no_progress_count"] == 2     # once
+        other = job_wait(w, "k9-23-capacity", "K9-23", role="conductor", class_hint="veto")
+        handler_execute(w, surrogate_lines(w, other, "PENDING_VETO", "EFFECTIVE", "EXECUTED", n=2))
+        assert c.accepted_summary() == after
+        assert c.apply_commands() is False and wait_paths(w, other)[0].exists()
+        assert not (w.run / "actions" / ("AWCLOSE-%s.json" % other)).exists()
+
+
+@pytest.mark.parametrize("moved", [False, True], ids=["before-the-move", "after-the-move"])
+def test_a_close_interrupted_before_or_after_the_move_is_completed_on_the_next_look(w, moved):
+    """R18, the crash window (as R15's): the controller died with its close record begun — the item not yet moved,
+    or moved and the record not yet completed. The next controller is not refused over that record: it completes
+    the close under the SAME record, and the job is given B-3."""
+    w.ready()
+    w.modes("stop")
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, _, closed = wait_paths(w, aid)
+    asked = item.read_bytes()
+    sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+    handler_execute(w, sid)
+    kyaction.begin(w.run, "AWCLOSE-" + aid, "awaiting_close:veto_executed",
+                   {"role": "planner", "holder_kind": "controller", "controller_id": OLD_CTL},
+                   {"awaiting_id": aid, "decision_id": sid}, {"awaiting": aid + ".json"},
+                   "close owner-wait %s: awaiting/ → awaiting/done/" % aid)
+    left_by_a_dead_process(w, "AWCLOSE-" + aid)
+    if moved:
+        closed.parent.mkdir()
+        item.rename(closed)
+    r = w.kyloop("planner")
+    assert r.returncode == 0, r.stderr
+    assert work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert not item.exists() and closed.read_bytes() == asked
+    act = close_record(w, aid)
+    assert act["state"] == "DONE" and act["actor"]["controller_id"] == OLD_CTL
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_an_executed_veto_wait_that_cannot_be_moved_blocks_nothing_and_is_closed_at_a_later_look(w, monkeypatch):
+    """The move failed: the wait is answered all the same, somebody is told once, and a later look closes it."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, _, closed = wait_paths(w, aid)
+    handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED"))
+    with lock_holder(w, monkeypatch) as c:
+        closed.parent.write_text("a file where the directory should be")
+        for _ in range(2):
+            assert c.apply_commands() is False and item.exists()
+            assert eligible(c) == ["step.B-3", "step.B-4"]
+        assert close_record(w, aid)["state"] == "INTENDED"
+        (note,) = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-answered-wait-not-closed")]
+        assert note["blocks"] == "none" and aid in json.dumps(note)
+        assert note["question"].startswith("The veto handler executed SD-20261011T220000Z-1 for %s, but" % aid)
+        assert_awaiting_schema(note)
+        closed.parent.unlink()
+        assert c.apply_commands() is False
+        assert not item.exists() and closed.exists() and close_record(w, aid)["state"] == "DONE"
