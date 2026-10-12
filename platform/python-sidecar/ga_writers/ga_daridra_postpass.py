@@ -39,6 +39,7 @@ from ga_writers.ga_structural_writer import (
     _get_house_lord,
     _graha_in_sign,
 )
+from pipeline.orchestrator.events import persist_event
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,8 @@ def _cancel_daridra(
 # `post_pass_evidence/1` (N431/post_pass_evidence_record_v1.md): one orchestrator_event_register row, event type
 # `writer.post_pass_evaluated`, run_id = the build id, payload EXACTLY the keys below.
 #
-# Written on the writer's own connection, in the SAME transaction as the rows it describes, inside its own
+# Written through the orchestrator's `persist_event` (event type allowlisted in pipeline/orchestrator/events.py, owner-approved)
+# on the writer's own connection, in the SAME transaction as the rows it describes, inside persist_event's own
 # savepoint, AFTER the subject-scoped delete and BEFORE the return, on BOTH the "not formed" and the "formed" branch.
 # NOT written on a dry run, on the substep's early returns (those never reach this module) or on any raise earlier in
 # the post-pass (the substep savepoint rolls the work back).  A failed evidence write RAISES: the substep fails and
@@ -246,14 +248,6 @@ POST_PASS_SCHEMA = "post_pass_evidence/1"
 POST_PASS_NAME = "daridra_dosha_label"
 POST_PASS_ASSET_ID = "ga_vichara"
 POST_PASS_SLICE = {"table": "chart_facts", "fact_category": "dosha_label", "fact_subject": DARIDRA}
-POST_PASS_EMITTED_BY = "ga_daridra_postpass"
-
-_EVIDENCE_INSERT_SQL = """
-    INSERT INTO orchestrator_event_register
-      (event_type, chart_id, asset_id, run_id, rows_present, substeps_remaining, emitted_by, payload)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
-"""
-
 
 def _nonneg_int(name: str, v: Any) -> int:
     if isinstance(v, bool) or not isinstance(v, int) or v < 0:
@@ -281,62 +275,28 @@ def post_pass_evidence_payload(
     }
 
 
-# ONE seam for the transport.  Two channels carry the SAME event; the choice is the constant below (one line):
-#   "direct_insert"  (current, closure-free): this module INSERTs the register row itself, payload = exactly the frozen keys.
-#                    It imports nothing from pipeline.orchestrator, so the only writer closure it touches is ga_vichara's.
-#   "persist_event"  (the designed channel; becomes the default when the owner has approved the ONE allowlist line in
-#                    pipeline/orchestrator/events.py): the orchestrator's own never-raising audit helper, whose stored payload is
-#                    the whole event dict (the frozen keys plus type/chart_id/asset_id/run_id/rows_present).  Importing events.py
-#                    puts that module into this writer's source closure (and so into ga_vichara's window; events.py is already
-#                    in the closure of 38 other writers).  A False return (not allowlisted, no cursor, failed insert) RAISES here.
-EVIDENCE_CHANNEL = "direct_insert"
-
-
 def _write_evidence_event(conn: Any, event: dict[str, Any], payload: dict[str, Any]) -> None:
-    """THE seam: persist one evidence event or raise RuntimeError.  `event` is the flat event dict (type, chart_id, asset_id, run_id,
-    rows_present + the payload keys); `payload` is the frozen payload alone."""
+    """Persist one evidence event through the orchestrator's own audit helper `persist_event`, or raise RuntimeError.
+
+    `event` is the flat event dict (type, chart_id, asset_id, run_id, rows_present + the payload keys); the register row's payload
+    is that WHOLE dict (a superset of the frozen `post_pass_evidence/1` keys; the register row carries the same type/chart/asset/run
+    in its own columns).  `persist_event` never raises and returns False for a non-allowlisted type, a missing cursor or a failed
+    insert; this seam turns every non-True outcome into a RuntimeError, so a lost record fails the substep (the rows roll back).
+    """
     chart_id, ayanamsha_id = event["chart_id"], payload["ayanamsha_id"]
-    if EVIDENCE_CHANNEL == "persist_event":
-        from pipeline.orchestrator.events import persist_event       # lazy: only the designed channel pulls the orchestrator module in
-        try:
-            ok = persist_event(conn.cursor(), event)
-        except Exception as exc:
-            raise RuntimeError(
-                f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
-                f"{ayanamsha_id}: {exc}; failing the substep (the rows roll back with it)"
-            ) from exc
-        if ok is not True:
-            raise RuntimeError(
-                f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
-                f"{ayanamsha_id}: persist_event returned {ok!r} (event type not allowlisted, or the insert failed); "
-                "failing the substep (the rows roll back with it)"
-            )
-        return
-    if EVIDENCE_CHANNEL != "direct_insert":
-        raise RuntimeError(f"[ga_daridra_postpass] unknown EVIDENCE_CHANNEL {EVIDENCE_CHANNEL!r}")
-    params = (
-        event["type"], str(chart_id), event["asset_id"], str(event["run_id"]),
-        event["rows_present"], None, POST_PASS_EMITTED_BY, json.dumps(payload, sort_keys=True),
-    )
     try:
-        conn.execute("SAVEPOINT post_pass_evidence")
+        ok = persist_event(conn.cursor(), event)
     except Exception as exc:
-        raise RuntimeError(
-            f"[ga_daridra_postpass] could not open the evidence savepoint for chart {chart_id} ayanamsha {ayanamsha_id}: {exc}"
-        ) from exc
-    try:
-        conn.execute(_EVIDENCE_INSERT_SQL, params)
-        conn.execute("RELEASE SAVEPOINT post_pass_evidence")
-    except Exception as exc:
-        try:
-            conn.execute("ROLLBACK TO SAVEPOINT post_pass_evidence")
-            conn.execute("RELEASE SAVEPOINT post_pass_evidence")
-        except Exception:                                          # the caller's savepoint rolls everything back anyway
-            pass
         raise RuntimeError(
             f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
-            f"{ayanamsha_id} build {event['run_id']}: {exc}; failing the substep (the rows roll back with it)"
+            f"{ayanamsha_id}: {exc}; failing the substep (the rows roll back with it)"
         ) from exc
+    if ok is not True:
+        raise RuntimeError(
+            f"[ga_daridra_postpass] the post-pass evidence record could NOT be written for chart {chart_id} ayanamsha "
+            f"{ayanamsha_id}: persist_event returned {ok!r} (event type not allowlisted, or the insert failed); "
+            "failing the substep (the rows roll back with it)"
+        )
 
 
 def record_post_pass_evidence(

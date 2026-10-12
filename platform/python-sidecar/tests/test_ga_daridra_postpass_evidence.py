@@ -3,7 +3,8 @@
 Contract: the frozen `post_pass_evidence/1` (N431/post_pass_evidence_record_v1.md). When daridra does not form the post-pass writes no chart_facts row,
 so an empty slice is indistinguishable from "the post-pass never ran"; the census may only call the slice empty-by-conditional when the run itself
 recorded "evaluated N entries, found nothing". These tests pin: ONE record per ayanamsha on BOTH branches; no chart_facts write when not formed;
-no record on dry run / the substep's early returns / any raise; a failed evidence write FAILS the substep (never passes quietly); the record's exact keys.
+no record on dry run / the substep's early returns / any raise; a failed evidence write FAILS the substep (never passes quietly); the record's frozen keys
+(the register row stores the whole persist_event dict: the frozen keys plus type/chart_id/asset_id/run_id/rows_present) and ONE transport only (persist_event).
 Pure unit tests, no database (W1-W8 of the design, section 4.1).
 """
 from __future__ import annotations
@@ -53,8 +54,9 @@ def test_w1_not_formed_writes_one_record_and_nothing_to_chart_facts(monkeypatch)
     assert (event_type, chart_id, asset_id, run_id, rows_present, substeps_remaining) == (
         "writer.post_pass_evaluated", CHART_ID, "ga_vichara", BUILD_ID, 0, None)
     p = json.loads(payload)
-    assert set(p) == PAYLOAD_KEYS
-    assert p == {"schema": "post_pass_evidence/1", "post_pass": "daridra_dosha_label", "ayanamsha_id": AYA,
+    assert PAYLOAD_KEYS <= set(p)                                   # persist_event stores the WHOLE event dict: a superset of the frozen keys
+    assert set(p) - PAYLOAD_KEYS == {"type", "chart_id", "asset_id", "run_id", "rows_present"}
+    assert {k: p[k] for k in PAYLOAD_KEYS} == {"schema": "post_pass_evidence/1", "post_pass": "daridra_dosha_label", "ayanamsha_id": AYA,
                  "slice": {"table": "chart_facts", "fact_category": "dosha_label", "fact_subject": "daridra"},
                  "entries_evaluated": 1, "formed": False, "rows_written": 0, "prior_rows_deleted": 1}
     cf = [s for s, _ in conn.executed if "chart_facts" in s]
@@ -113,35 +115,37 @@ def test_w5_early_returns_emit_no_evidence(monkeypatch):
     assert not [s for s in getattr(conn, "executed", []) if "orchestrator_event_register" in str(s)]
 
 
-# W6: a failing evidence write FAILS the substep (loud), after a savepoint rollback; nothing is committed here
+# W6: a failing evidence write FAILS the substep (loud); persist_event's own savepoint is rolled back; nothing is committed here
 def test_w6_a_failed_evidence_write_raises(monkeypatch):
     _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
 
-    class _Failing(_RecConn):
-        def execute(self, sql, params=None):
-            s = " ".join(sql.split())
-            if s.startswith("INSERT INTO orchestrator_event_register"):
-                self.executed.append((s, params))
-                raise RuntimeError('permission denied for table orchestrator_event_register')
-            return super().execute(sql, params)
-    conn = _Failing()
+    class _Conn(_RecConn):
+        def cursor(self, row_factory=None):
+            cur = super().cursor(row_factory)
+            real = cur.execute
+
+            def execute(sql, params=None):
+                if " ".join(sql.split()).startswith("INSERT INTO orchestrator_event_register"):
+                    raise RuntimeError("permission denied for table orchestrator_event_register")
+                return real(sql, params)
+            cur.execute = execute
+            return cur
+    conn = _Conn()
     with pytest.raises(RuntimeError, match="evidence record could NOT be written"):
         _emit(conn)
-    sqls = [s for s, _ in conn.executed]
-    assert "ROLLBACK TO SAVEPOINT post_pass_evidence" in sqls and "RELEASE SAVEPOINT post_pass_evidence" in sqls
+    sqls = [" ".join(s.split()) for s, _ in conn.executed]
     assert not any(s.upper().startswith(("COMMIT", "ROLLBACK;")) for s in sqls)
 
 
-def test_w6b_no_savepoint_means_a_loud_failure_too(monkeypatch):
+def test_w6b_persist_event_returning_false_fails_the_substep(monkeypatch):
+    """Not allowlisted / no cursor / failed insert: persist_event answers False and never raises; the seam must turn that into a raise."""
     _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
-
-    class _NoSavepoint(_RecConn):
-        def execute(self, sql, params=None):
-            if "SAVEPOINT post_pass_evidence" in sql and sql.startswith("SAVEPOINT"):
-                raise RuntimeError("no transaction")
-            return super().execute(sql, params)
-    with pytest.raises(RuntimeError, match="evidence savepoint"):
-        _emit(_NoSavepoint())
+    monkeypatch.setattr(pp, "persist_event", lambda cur, event: False)
+    with pytest.raises(RuntimeError, match="persist_event returned False"):
+        _emit(_RecConn())
+    monkeypatch.setattr(pp, "persist_event", lambda cur, event: None)
+    with pytest.raises(RuntimeError, match="persist_event returned None"):
+        _emit(_RecConn())
 
 
 # W7: structure: both branches of emit record evidence AFTER the delete and BEFORE returning; the substep calls the post-pass unguarded after its insert
@@ -184,68 +188,38 @@ def test_w8_payload_shape_and_footprint():
     assert not (calls & {"commit", "close", "rollback"})                          # never commits, closes or rolls back the orchestrator's connection
 
 
-def test_event_register_insert_columns_match_the_orchestrator_register():
-    """The evidence INSERT uses the register's own eight columns: a drift of `events._INSERT_SQL` (or of this text) turns this red."""
+# ── the one transport: persist_event, with the allowlist line in events.py (owner-approved) ──
+
+def test_the_event_type_is_on_the_orchestrators_allowlist_and_nothing_else_was_added():
     from pipeline.orchestrator import events
-    cols = lambda s: [c.strip() for c in s.split("(", 1)[1].split(")", 1)[0].split(",")]      # noqa: E731
-    assert cols(" ".join(pp._EVIDENCE_INSERT_SQL.split())) == cols(" ".join(events._INSERT_SQL.split()))
+    assert pp.POST_PASS_EVENT_TYPE in events.DEFAULT_DURABLE_EVENT_TYPES
+    assert events.DEFAULT_DURABLE_EVENT_TYPES == {"asset.noop_completion", "asset.noop_completion_rejected", "writer.post_pass_evaluated"}
 
 
-# ── the designed channel (persist_event) behind the same seam; the default stays closure-free until the owner approves the ONE allowlist line ──
+def test_there_is_exactly_one_evidence_path_no_direct_insert_and_no_switch():
+    src = (SIDECAR / "ga_writers/ga_daridra_postpass.py").read_text()
+    tree = ast.parse(src)
+    strings = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+    assert not any("orchestrator_event_register" in s and "INSERT" in s.upper() for s in strings)
+    assert "EVIDENCE_CHANNEL" not in src and "direct_insert" not in src
+    assert not hasattr(pp, "EVIDENCE_CHANNEL") and not hasattr(pp, "_EVIDENCE_INSERT_SQL")
+    assert pp.persist_event.__module__ == "pipeline.orchestrator.events"
 
-def test_channel_and_allowlist_cannot_drift_apart():
-    """Flipping EVIDENCE_CHANNEL to the designed channel without the allowlist line would make every substep fail loudly in production: this test refuses that state."""
-    from pipeline.orchestrator import events
-    assert pp.EVIDENCE_CHANNEL in ("direct_insert", "persist_event")
-    if pp.EVIDENCE_CHANNEL == "persist_event":
-        assert pp.POST_PASS_EVENT_TYPE in events.DEFAULT_DURABLE_EVENT_TYPES
 
-
-def test_designed_channel_writes_through_persist_event_when_allowlisted(monkeypatch):
+def test_the_record_is_written_through_persist_event_with_the_default_allowlist(monkeypatch):
     _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
-    monkeypatch.setattr(pp, "EVIDENCE_CHANNEL", "persist_event")
-    monkeypatch.setenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", pp.POST_PASS_EVENT_TYPE)
+    monkeypatch.delenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", raising=False)
     conn = _RecConn()
     assert _emit(conn) == 0
     (sql, params), = _evidence(conn)
-    event_type, chart_id, asset_id, run_id, rows_present, substeps_remaining, emitted_by, stored = params
-    assert (event_type, chart_id, asset_id, run_id, rows_present) == ("writer.post_pass_evaluated", CHART_ID, "ga_vichara", BUILD_ID, 0)
-    stored = json.loads(stored)
-    assert PAYLOAD_KEYS <= set(stored)                                  # the stored payload is the whole event: the frozen keys + type/chart_id/asset_id/run_id/rows_present
-    assert stored["formed"] is False and stored["entries_evaluated"] == 1 and stored["ayanamsha_id"] == AYA
-    assert not any(s.startswith("INSERT INTO chart_facts") for s, _ in conn.executed)
+    assert params[0] == "writer.post_pass_evaluated" and params[2] == "ga_vichara" and params[3] == BUILD_ID
 
 
-def test_designed_channel_without_the_allowlist_line_fails_the_substep_loudly(monkeypatch):
+def test_an_operator_override_that_drops_the_event_type_fails_the_substep_loudly(monkeypatch):
     _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
-    monkeypatch.setattr(pp, "EVIDENCE_CHANNEL", "persist_event")
-    monkeypatch.delenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", raising=False)
+    monkeypatch.setenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", "asset.noop_completion")        # widen/narrow switch of the register
     with pytest.raises(RuntimeError, match="persist_event returned False"):
         _emit(_RecConn())
-
-
-def test_designed_channel_a_failing_insert_fails_the_substep(monkeypatch):
-    _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
-    monkeypatch.setattr(pp, "EVIDENCE_CHANNEL", "persist_event")
-    monkeypatch.setenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", pp.POST_PASS_EVENT_TYPE)
-
-    class _Conn(_RecConn):
-        def cursor(self, row_factory=None):
-            cur = super().cursor(row_factory)
-            real = cur.execute
-
-            def execute(sql, params=None):
-                if " ".join(sql.split()).startswith("INSERT INTO orchestrator_event_register"):
-                    raise RuntimeError("permission denied for table orchestrator_event_register")
-                return real(sql, params)
-            cur.execute = execute
-            return cur
+    monkeypatch.setenv("ORCHESTRATOR_DURABLE_EVENT_TYPES", "")                             # persistence disabled
     with pytest.raises(RuntimeError, match="persist_event returned False"):
-        _emit(_Conn())
-
-
-def test_unknown_channel_is_refused(monkeypatch):
-    _setup(monkeypatch, [DARIDRA_ENTRY], MOCK_CHART_OUTPUT)
-    monkeypatch.setattr(pp, "EVIDENCE_CHANNEL", "somewhere_else")
-    with pytest.raises(RuntimeError, match="unknown EVIDENCE_CHANNEL"):
         _emit(_RecConn())
