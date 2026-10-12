@@ -1,5 +1,6 @@
 """B-0c: the surrogate decision schema, the veto handler and the surrogate card agree on one record."""
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -88,3 +89,35 @@ def test_the_card_states_the_same_record_keys():
     card = (FLEET / "cards" / "OWNER_SURROGATE.md").read_text(encoding="utf-8")
     for key in SCHEMA["required"]:
         assert '"%s"' % key in card, key
+
+
+def surrogate_action_problems(card):
+    problems = []
+    for name in ("KY_RUN_ID", "KY_ROLE", "KY_CONTROLLER_ID"):
+        if name in card:
+            problems.append("action namespace: " + name)
+    if "Never write or request an action record" not in card:
+        problems.append("missing action-record prohibition")
+    for line in card.splitlines():
+        positive = line.replace("Never write or request an action record", "")
+        if re.search(r"\b(?:write|request|begin|complete|fail|act through)\b[^.;\n]*\baction record\b", positive, re.I):
+            problems.append("surrogate action instruction")
+        if re.search(r"kyaction(?:\.py)?\s+(?:begin|complete|fail)\b", line):
+            problems.append("job action command")
+    return problems
+
+
+def test_r19_surrogate_returns_a_decision_and_never_orders_an_action_record():
+    card = (FLEET / "cards" / "OWNER_SURROGATE.md").read_text(encoding="utf-8")
+    assert surrogate_action_problems(card) == []
+    assert "Routine decisions have no side effect of their own" in card
+    assert "under its own identity" in card
+    assert "the controller appends its decision log line" in card
+    assert "Only an owner veto stops a proposal" in card
+    assert "after the handler began" in card and "anomaly" in card and "never act on that line" in card
+    assert "then move the awaiting item" not in card and "--as steward --delegated" not in card
+    for instruction in ("write", "request", "begin", "complete", "fail", "act through"):
+        assert "surrogate action instruction" in surrogate_action_problems(
+            card + "\n- OS-11 " + instruction + " an action record.\n")
+    for name in ("KY_RUN_ID", "KY_ROLE", "KY_CONTROLLER_ID"):
+        assert "action namespace: " + name in surrogate_action_problems(card + "\n" + name)
