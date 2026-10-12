@@ -30,8 +30,11 @@ PLAN = FLEET.parent / "KALAYANTRA_RELAUNCH_PLAN_v2_7.md"
 AGENT = REPO / ".claude" / "agents" / "kalayantra-owner-surrogate.md"
 PREFIX = {"BOOTSTRAP": "BS", "BOOTSTRAP_REVIEWER": "BR", "FIXTURE_BUILDER": "FB", "FIXTURE_VERIFIER": "FV",
           "OWNER_SURROGATE": "OS"}
+CAMPAIGN_PREFIX = {"KARAKA": "KA", "PARIKSAKA": "PA", "ADHIKARIN": "AD"}
+ALL_PREFIX = dict(PREFIX, **CAMPAIGN_PREFIX)
+CAMPAIGN_BYTE_CAP = 5200  # B-4 job's accepted proxy; bootstrap token measurements remain unchanged.
 TOKEN_CAP, BYTE_CAP = 1500, 3500
-ID = re.compile(r"\b(BS|BR|FB|FV|OS)-(\d{2})\b")
+ID = re.compile(r"\b(BS|BR|FB|FV|OS|KA|PA|AD)-(\d{2})\b")
 SCHEMAS = {n: json.loads((FLEET / "schemas" / (n + ".json")).read_text()) for n in ("surrogate_decision", "job_result")}
 
 
@@ -45,7 +48,7 @@ def flat(text):
 
 def line_ids(text):
     """the ids of a card's own rule lines, in order ('- BS-01 …')"""
-    return [m.group(1) for m in re.finditer(r"(?m)^- ((?:BS|BR|FB|FV|OS)-\d{2}) ", text)]
+    return [m.group(1) for m in re.finditer(r"(?m)^- ((?:BS|BR|FB|FV|OS|KA|PA|AD)-\d{2}) ", text)]
 
 
 def rule_line(text, needle):
@@ -58,12 +61,12 @@ def rule_line(text, needle):
 # --------------------------------------------------------------------------------------------------------------
 # the card set and its front matter
 # --------------------------------------------------------------------------------------------------------------
-def test_the_card_set_is_exactly_the_five_roles():
-    found = sorted(p.stem for p in CARDS_DIR.glob("*.md") if not p.name.startswith("COVERAGE_"))
-    assert found == sorted(PREFIX)
+def test_the_card_set_is_exactly_the_eight_roles():
+    found = sorted(p.stem for p in CARDS_DIR.glob("*.md") if not p.name.startswith("COVERAGE"))
+    assert found == sorted(ALL_PREFIX)
 
 
-@pytest.mark.parametrize("name", sorted(PREFIX))
+@pytest.mark.parametrize("name", sorted(ALL_PREFIX))
 def test_front_matter_and_line_ids(name):
     text = card_text(name)
     head = re.match(r"---\n(.*?)\n---\n", text, re.S)
@@ -72,8 +75,8 @@ def test_front_matter_and_line_ids(name):
     assert list(meta) == ["card", "version", "role", "model", "effort", "plan", "status"]
     assert meta["card"] == name and meta["version"] == "2.7" and meta["plan"] == PLAN.name
     ids = line_ids(text)
-    assert ids == ["%s-%02d" % (PREFIX[name], n) for n in range(1, len(ids) + 1)] and ids, ids
-    assert {m.group(1) for m in ID.finditer(text)} == {PREFIX[name]}, "a card cites only its own line ids"
+    assert ids == ["%s-%02d" % (ALL_PREFIX[name], n) for n in range(1, len(ids) + 1)] and ids, ids
+    assert {m.group(1) for m in ID.finditer(text)} == {ALL_PREFIX[name]}, "a card cites only its own line ids"
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -127,6 +130,57 @@ def test_a_measurement_check_refuses_missing_stale_unknown_and_oversized_records
 def test_b_card_is_within_the_byte_target(name):
     size = (CARDS_DIR / (name + ".md")).stat().st_size
     assert size <= BYTE_CAP, "%s is %d bytes" % (name, size)
+
+
+@pytest.mark.parametrize("name", sorted(CAMPAIGN_PREFIX))
+def test_b_campaign_card_is_within_the_accepted_byte_proxy(name):
+    assert (CARDS_DIR / (name + ".md")).stat().st_size <= CAMPAIGN_BYTE_CAP
+
+
+def campaign_coverage_problems(text, card_ids):
+    """Check references/explicit exceptions, not whether prose substantively carries a MUST."""
+    out, gaps, cited, count = [], set(), set(), 0
+    for ln in text.splitlines():
+        if not re.match(r"\| \d+ \|", ln):
+            continue
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        if len(cells) != 6:
+            out.append("wrong column count")
+            continue
+        count += 1
+        if cells[0] != str(count):
+            out.append("row numbering")
+        if not re.search(r"\b(?:R|P|D|C|G|A|J)\b.*:\d+", cells[1]):
+            out.append("source without section/line")
+        for prefix, cell in zip(("KA", "PA", "AD"), cells[3:]):
+            if cell.startswith("GAP — "):
+                gaps.add(cells[0] + "." + prefix)
+            elif cell.startswith("N/A — "):
+                continue
+            elif not ID.search(cell):
+                out.append("unexplained cell")
+            for cid in ID.finditer(cell):
+                if cid.group(1) != prefix or cid.group(0) not in card_ids.get(prefix, ()):
+                    out.append("invalid card line: " + cid.group(0))
+                cited.add(cid.group(0))
+    if count < 100:
+        out.append("missing obligation rows")
+    expected = {cid for ids in card_ids.values() for cid in ids}
+    if cited != expected:
+        out.append("uncited or unknown rule")
+    footer = re.search(r"(?m)^GAP cells \((\d+)\): (.*)$", text)
+    if not footer or int(footer[1]) != len(gaps) or set(re.findall(r"\d+\.(?:KA|PA|AD)", footer[2])) != gaps:
+        out.append("incorrect GAP footer")
+    return out
+
+
+def test_c_campaign_coverage_references_and_honest_exceptions():
+    text = (CARDS_DIR / "COVERAGE.md").read_text(encoding="utf-8")
+    ids = {prefix: line_ids(card_text(name)) for name, prefix in CAMPAIGN_PREFIX.items()}
+    assert campaign_coverage_problems(text, ids) == []
+    assert campaign_coverage_problems(text.replace("KA-08", "KA-99", 1), ids)
+    assert campaign_coverage_problems(text.replace("| N/A —", "| N/A", 1), ids)
+    assert campaign_coverage_problems(text.replace("GAP cells (", "GAP cells:", 1), ids)
 
 
 # --------------------------------------------------------------------------------------------------------------
