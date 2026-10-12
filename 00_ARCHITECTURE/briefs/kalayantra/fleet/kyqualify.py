@@ -1338,12 +1338,28 @@ def judge(cfg, recs, texts, facts):
                 per_tool[rec["tool"]] = fn(rec, texts[run_id])
                 runs.append(run_id)
         observed = {"tools": per_tool}
+        results = [t["result"] for t in per_tool.values()]
         if not per_tool:
             observed["why"] = "the configuration declares no %s tool" % kind
-        if name == "denied_tools" and base["tools_offered"] is not None:
-            observed["disallowed_tools_still_offered"] = sorted(
-                t for t in cfg["disallowed_tools"] if NAME_RE.match(t) and t in base["tools_offered"])
-        put(name, worst([t["result"] for t in per_tool.values()]), observed, files_of(*runs))
+        if name == "denied_tools":
+            # A tool disallowed BY NAME is judged from the program's own tool list in the base run: absent = it
+            # cannot be called; still listed = only a canary that showed its denial clears it; list not observed
+            # = unknown. Recording it without judging it would let a program that stopped honouring a name pass.
+            bare = bare_disallowed(cfg)
+            observed["disallowed_names"] = bare
+            if base["tools_offered"] is None:
+                observed["disallowed_tools_still_offered"] = None
+                if bare:
+                    results.append("unknown")
+            else:
+                still = sorted(t for t in bare if t in base["tools_offered"])
+                observed["disallowed_tools_still_offered"] = still
+                if bare:
+                    cleared = {t for t, v in per_tool.items() if v["result"] == "pass"}
+                    results.append("pass" if all(t in cleared for t in still) else "unknown")
+            if bare:
+                observed.pop("why", None)
+        put(name, worst(results), observed, files_of(*runs) or files_of("base"))
 
     # denied commands: each in its own scratch repository inside a canary project
     per_command, runs = {}, []
@@ -1516,11 +1532,13 @@ def judge(cfg, recs, texts, facts):
           "cannot be simulated without touching credentials (it would mean locking or altering the login keychain)")
 
     denied, denied_bash = checks["denied_tools"], checks["denied_bash"]
-    if cfg["denied_tools"] or cfg.get("denied_bash"):
-        parts = ([denied["result"]] if cfg["denied_tools"] else []) + ([denied_bash["result"]] if cfg.get("denied_bash") else [])
+    if cfg["denied_tools"] or cfg.get("denied_bash") or bare_disallowed(cfg):
+        parts = (([denied["result"]] if (cfg["denied_tools"] or bare_disallowed(cfg)) else [])
+                 + ([denied_bash["result"]] if cfg.get("denied_bash") else []))
         probe("denied_tools", "no effect and an observed denial for every denied tool and every denied command",
               worst(parts),
               {"tools": {t: {"effect": v["effect"], "denial": v["denial"]} for t, v in denied["observed"]["tools"].items()},
+               "disallowed_tools_still_offered": denied["observed"].get("disallowed_tools_still_offered"),
                "commands": {c: {"effect": v["effect"], "denial": v["denial"]}
                             for c, v in denied_bash["observed"]["commands"].items()}},
               "the denied_tools and denied_bash checks, which are this negative probe")
@@ -1621,9 +1639,14 @@ def observations(cfg, recs, facts, binds):
                     "of this configuration exercises.")}
 
 
+def bare_disallowed(cfg):
+    """the tool NAMES the configuration disallows (rules such as `Bash(git add*)` are not names)"""
+    return sorted(t for t in cfg["disallowed_tools"] if NAME_RE.match(t))
+
+
 def required_checks(cfg, context):
     names = list(BASE_REQUIRED)
-    if cfg["denied_tools"]:
+    if cfg["denied_tools"] or bare_disallowed(cfg):
         names.append("denied_tools")
     if cfg.get("denied_bash"):
         names.append("denied_bash")
@@ -1634,8 +1657,10 @@ def required_checks(cfg, context):
 
 def skippable_probes(cfg):
     """the negative probes that may be 'not_simulated' without blocking: the keychain probe (an exemption, see
-    `exemptions`), and the denied-tools probe of a configuration that denies nothing"""
-    return {"inaccessible_keychain"} | (set() if (cfg["denied_tools"] or cfg.get("denied_bash")) else {"denied_tools"})
+    `exemptions`), and the denied-tools probe of a configuration that denies nothing — no denied tool, no denied
+    command and no tool disallowed by name"""
+    denies = cfg["denied_tools"] or cfg.get("denied_bash") or bare_disallowed(cfg)
+    return {"inaccessible_keychain"} | (set() if denies else {"denied_tools"})
 
 
 def overall(checks, probes, cfg, context):

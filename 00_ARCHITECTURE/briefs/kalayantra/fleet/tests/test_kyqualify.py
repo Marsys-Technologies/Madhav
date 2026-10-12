@@ -898,13 +898,33 @@ def test_an_intended_tool_without_an_effect_fails(rig):
     assert rc["checks"]["excluded_user_hooks"]["result"] == "pass"      # a hook fires on the attempt, landed or not
 
 
+def test_a_tool_disallowed_by_name_that_the_program_still_offers_never_earns_pass(rig):
+    """review round 4, Q4-01: the builder disallows thirteen tools by name and has no canary for them"""
+    r, rc, _ = rig.qualify(rig.config(disallowed_tools=BUILDER_OFF))     # the default: names are honoured
+    denied = rc["checks"]["denied_tools"]
+    assert r.returncode == PASS and denied["required"] is True and denied["result"] == "pass"
+    assert denied["observed"]["disallowed_names"] and denied["observed"]["disallowed_tools_still_offered"] == []
+    assert rc["negative_probes"]["denied_tools"]["result"] == "pass"     # no longer skipped as "denies nothing"
+    rig.configure(disallow_mode="deny_on_call")                           # the program stops honouring the names
+    r, rc, _ = rig.qualify(rig.config(disallowed_tools=BUILDER_OFF))
+    denied = rc["checks"]["denied_tools"]
+    assert denied["observed"]["disallowed_tools_still_offered"] == denied["observed"]["disallowed_names"]
+    assert denied["result"] == "unknown" and rc["negative_probes"]["denied_tools"]["result"] == "unknown"
+    assert r.returncode == UNKNOWN and rc["result"] == "unknown"
+
+
 @pytest.mark.parametrize("mode", ["not_offered", "deny_on_call"])
 def test_denied_tools_need_no_effect_and_an_observed_denial(rig, mode):
     rig.configure(disallow_mode=mode)
     r, rc, _ = rig.qualify(rig.config(**REVIEWER))
     denied, off = rc["checks"]["denied_tools"], REVIEWER_OFF + BASH_DENY
-    assert denied["required"] is True and denied["result"] == "pass"
-    assert rc["negative_probes"]["denied_tools"]["result"] == "pass"
+    assert denied["required"] is True
+    # Every tool disallowed BY NAME is judged from the program's own list: absent = cleared; still listed = only
+    # a canary that showed its denial clears it. Write and Edit have canaries; the other names do not.
+    assert denied["result"] == ("pass" if mode == "not_offered" else "unknown")
+    assert rc["negative_probes"]["denied_tools"]["result"] == ("pass" if mode == "not_offered" else "unknown")
+    assert denied["observed"]["disallowed_names"] == sorted(REVIEWER_OFF)
+    assert all(v["result"] == "pass" for v in denied["observed"]["tools"].values())      # the two canaries themselves
     seen = {t: v["denial"] for t, v in denied["observed"]["tools"].items()}
     if mode == "not_offered":
         # The tool is absent from the harness's own tool list, so no Write can be attempted and the user's
@@ -915,9 +935,9 @@ def test_denied_tools_need_no_effect_and_an_observed_denial(rig, mode):
     else:
         assert seen == {"Write": ["permission_denial", "tool_result_error"], "Edit": ["permission_denial", "tool_result_error"]}
         assert rc["checks"]["excluded_user_hooks"]["result"] == "pass"   # the attempt fires the control's hook
-        assert r.returncode == PASS and rc["result"] == "PASS"
+        assert r.returncode == UNKNOWN and rc["result"] == "unknown"     # names still listed without a canary
     assert rc["binds"]["disallowed_tools"] == off and rc["binds"]["extra_flags"] == [ALLOW]
-    # an observation, not a verdict: bare disallowed names the program still lists (rules are not names)
+    # bare disallowed names the program still lists (rules are not names) — judged above, never merely recorded
     assert denied["observed"]["disallowed_tools_still_offered"] == ([] if mode == "not_offered" else sorted(REVIEWER_OFF))
     assert rc["offered_tools"] == [t for t in REAL_TOOLS if mode == "deny_on_call" or t not in REVIEWER_OFF]
     argv = rc["binds"]["argv"]
