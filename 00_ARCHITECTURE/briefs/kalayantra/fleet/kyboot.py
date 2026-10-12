@@ -119,7 +119,7 @@ codex_min_version), sandbox, network, writable_dirs, the disabled features, --ig
 and $HOME/.codex/hooks.json; the provider session id is the stream's thread.started thread_id; the final result
 event is the last turn.completed / turn.failed; and a job with an output_schema that leaves no result.json is
 judged on its final message (final_message.txt) by the same rules when it left no result.json. A launch input
-with "work_root": "job" (the reviewers, cockpit ruling E1) runs with -C <job_scratch> — the only writable root —
+with "work_root": "job" (the reviewers, cockpit ruling E1) runs with -C <job_scratch> — with its TMPDIR all it may write; /tmp is excluded on every Codex line —
 and --skip-git-repo-check; it names the item's working copy in item_worktree (= worktree) and its prompt carries
 the line ITEM_WORKTREE=<item_worktree>; after the job that copy's HEAD and `git status` must be what they were
 before. After every Codex job the common git directory (derived with `git rev-parse --git-common-dir`) must have
@@ -277,10 +277,13 @@ OUTPUT_SCHEMA_FILE = ("output_schema", "output_schema_sha256")   # optional; has
 CODEX_DISABLED_FEATURES = ("memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin",
                            "browser_use", "browser_use_external", "in_app_browser", "computer_use", "hooks",
                            "daemon_auto_start", "goals", "tool_suggest", "worktrees", "image_generation",
-                           "in_app_local_automation", "chronicle")
+                           "in_app_local_automation", "chronicle", "enable_fanout", "agent_message_board",
+                           "send_async_message", "web_search_request", "standalone_web_search", "skill_search",
+                           "plugin_hooks", "recommended_plugins", "remote_control", "js_repl")
 CODEX_BOUND_FACTS = ("engine", "codex_bin", "codex_bin_sha256", "model", "effort", "sandbox", "network",
                      "work_root", "writable_dirs", "env_names", "child_path", "output_schema_sha256", "codex_disabled_features",
-                     "ignore_user_config", "ignore_rules", "persistent_mode", "project_agents_md_sha256",
+                     "ignore_user_config", "ignore_rules", "persistent_mode", "exclude_slash_tmp",
+                     "exclude_tmpdir_env_var", "project_agents_md_sha256",
                      "user_codex_agents_md_sha256",
                      "user_codex_hooks_sha256", "zdotdir_sha256", "harness_sha256")
 FINAL_MESSAGE = "final_message.txt"                        # codex exec -o, in the job's own folder
@@ -356,15 +359,32 @@ def tree_digest(directory):
 
 
 def git_guard(worktree, environ):
-    """{common_dir, config_sha256, hooks_digest} of the worktree's common git directory, derived with `git rev-parse
-    --git-common-dir` (cockpit ruling E2: a builder may write it for its commits, no job may change its config or
-    hooks), or None when it cannot be read"""
+    """{common_dir, config_files, hooks} of the worktree's common git directory, derived with `git rev-parse
+    --git-common-dir` (cockpit ruling E2 as amended after review finding B2: a builder may write it for its
+    commits, no job may change its configuration or hooks) — kyqualify.py's `git_guard`: config_files is the
+    sha256 (or "absent") of config, config.worktree and every worktrees/<name>/config.worktree; hooks a tree digest
+    of <common>/hooks and of the effective hooks folder (`git rev-parse --git-path hooks`), by path. None when it
+    cannot be read."""
     code, common = _git(worktree, environ, "rev-parse", "--path-format=absolute", "--git-common-dir")
     if code != 0 or not os.path.isabs(common):
         return None
     common = os.path.realpath(common)
-    return {"common_dir": common, "config_sha256": file_digest(os.path.join(common, "config")),
-            "hooks_digest": tree_digest(os.path.join(common, "hooks"))}
+    files = {"config": file_digest(os.path.join(common, "config")),
+             "config.worktree": file_digest(os.path.join(common, "config.worktree"))}
+    try:
+        names = sorted(os.listdir(os.path.join(common, "worktrees")))
+    except OSError:
+        names = []
+    for name in names:
+        path = os.path.join(common, "worktrees", name, "config.worktree")
+        if os.path.lexists(path):
+            files[f"worktrees/{name}/config.worktree"] = file_digest(path)
+    code, shown = _git(worktree, environ, "rev-parse", "--git-path", "hooks")
+    if code != 0 or not shown:
+        return None
+    effective = os.path.realpath(os.path.join(worktree, shown))
+    hooks = {path: tree_digest(path) for path in sorted({os.path.join(common, "hooks"), effective})}
+    return {"common_dir": common, "config_files": files, "hooks": hooks}
 
 
 def worktree_guard(worktree, environ):
@@ -851,7 +871,7 @@ def _codex_findings(launch, environ, facts) -> list:
                 out.append(f"prompt_path: the prompt does not tell the job its item's working copy (a line "
                            f"{ITEM_LINE}{item})")
         if dirs:
-            out.append("writable_dirs: a job-rooted run's only writable root is its own folder")
+            out.append("writable_dirs: a job-rooted run writes its own folder and its TMPDIR; no other root")
     if launch["sandbox"] == "read-only":
         if dirs:
             out.append("writable_dirs: a read-only job writes nowhere; writable_dirs must be empty")
@@ -1225,7 +1245,8 @@ def expected_codex_binds(launch, components, facts) -> dict:
             "env_names": sorted(launch["env"]), "child_path": launch["env"]["PATH"],
             "output_schema_sha256": launch.get(OUTPUT_SCHEMA_FILE[1], "absent"),
             "codex_disabled_features": list(CODEX_DISABLED_FEATURES), "ignore_user_config": True,
-            "ignore_rules": True, "persistent_mode": False, "project_agents_md_sha256": facts.get("project_agents_md_sha256"),
+            "ignore_rules": True, "persistent_mode": False, "exclude_slash_tmp": True,
+            "exclude_tmpdir_env_var": False, "project_agents_md_sha256": facts.get("project_agents_md_sha256"),
             "user_codex_agents_md_sha256": facts.get("user_codex_agents_md_sha256"),
             "user_codex_hooks_sha256": facts.get("user_codex_hooks_sha256"),
             "zdotdir_sha256": facts.get("zdotdir_sha256"), "harness_sha256": components.get(harness)}
@@ -1434,7 +1455,8 @@ def build_codex_launch(launch) -> dict:
              "-m", launch["model"],
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
-            "-c", "sandbox_workspace_write.network_access=" + ("true" if launch["network"] is True else "false")]
+            "-c", "sandbox_workspace_write.network_access=" + ("true" if launch["network"] is True else "false"),
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
     for feature in CODEX_DISABLED_FEATURES:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:

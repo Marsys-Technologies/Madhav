@@ -4481,7 +4481,9 @@ def test_the_template_readme_explains_every_field_and_every_gate_within_sixty_li
 # --------------------------------------------------------------------------------------------------------------
 CODEX_FEATURES = ["memories", "multi_agent", "multi_agent_v2", "apps", "plugins", "remote_plugin", "browser_use",
                   "browser_use_external", "in_app_browser", "computer_use", "hooks", "daemon_auto_start", "goals",
-                  "tool_suggest", "worktrees", "image_generation", "in_app_local_automation", "chronicle"]
+                  "tool_suggest", "worktrees", "image_generation", "in_app_local_automation", "chronicle", "enable_fanout", "agent_message_board", "send_async_message",
+    "web_search_request", "standalone_web_search", "skill_search", "plugin_hooks", "recommended_plugins",
+    "remote_control", "js_repl"]
 CLAUDE_ONLY_LAUNCH_FIELDS = ("claude_bin", "claude_min_version", "permission_mode", "max_turns", "mcp_config",
                              "mcp_config_sha256", "extra_lean_flags", "disallowed_tools")
 THREAD = "0199c0de-0000-7000-8000-00000000c0de"
@@ -4497,7 +4499,8 @@ def codex_launch_line(launch, job="<JOB_DIR>") -> list:
             "-m", launch["model"],
             "-c", f'model_reasoning_effort="{launch["effort"]}"', "-c", 'approval_policy="never"',
             "-c", 'web_search="disabled"',
-            "-c", "sandbox_workspace_write.network_access=" + str(launch["network"]).lower()]
+            "-c", "sandbox_workspace_write.network_access=" + str(launch["network"]).lower(),
+            "-c", "sandbox_workspace_write.exclude_slash_tmp=true"]
     for feature in CODEX_FEATURES:
         argv += ["--disable", feature]
     for directory in launch["writable_dirs"]:
@@ -4559,7 +4562,8 @@ class CodexWorld(World):
                           "prompt_sha256": launch["prompt_sha256"],
                           "output_schema_sha256": launch.get("output_schema_sha256", "absent"),
                           "codex_disabled_features": list(CODEX_FEATURES), "ignore_user_config": True,
-                          "ignore_rules": True, "persistent_mode": False,
+                          "ignore_rules": True, "persistent_mode": False, "exclude_slash_tmp": True,
+                          "exclude_tmpdir_env_var": False,
                           "work_root": launch.get("work_root", "worktree"),
                           "project_agents_md_sha256": digest_or_absent(Path(launch["worktree"]) / "AGENTS.md"),
                           "user_codex_agents_md_sha256": digest_or_absent(home / ".codex" / "AGENTS.md"),
@@ -4673,7 +4677,7 @@ CODEX_BIND_CHANGES = [
     ("network", "true"), ("writable_dirs", ["/Users/Dev/Vibe-Coding/Apps/Madhav/.git"]),
     ("env_names", ["HOME", "PATH"]), ("child_path", "/opt/homebrew/bin:/usr/bin:/bin"), ("output_schema_sha256", "9" * 64),
     ("codex_disabled_features", CODEX_FEATURES[:-1]), ("ignore_user_config", False), ("ignore_rules", False),
-    ("persistent_mode", True), ("work_root", "job"),
+    ("persistent_mode", True), ("work_root", "job"), ("exclude_slash_tmp", False), ("exclude_tmpdir_env_var", True),
     ("project_agents_md_sha256", "9" * 64), ("user_codex_agents_md_sha256", "absent"),
     ("user_codex_hooks_sha256", "9" * 64), ("zdotdir_sha256", "9" * 64), ("harness_sha256", "9" * 64),
 ]
@@ -4847,10 +4851,11 @@ def test_a_reviewer_that_changes_the_items_working_copy_fails_its_job(codex):
     assert codex.action()["state"] == "FAILED" and codex.action()["result"]["guard_failures"]
 
 
-@pytest.mark.parametrize("where", ["config", "hooks/post-checkout"])
+@pytest.mark.parametrize("where", ["config", "hooks/post-checkout", "config.worktree",
+                                   "worktrees/another/config.worktree"])
 def test_a_codex_job_that_changes_the_common_git_directorys_config_or_hooks_fails(codex, where):
-    path = codex.repo / ".git" / where
-    path.parent.mkdir(exist_ok=True)
+    path = codex.repo / ".git" / where              # review finding B2: every configuration file git reads there
+    path.parent.mkdir(parents=True, exist_ok=True)
     codex.set_prompt(f"FAKE_TOUCH:{path}\n")                  # a builder: it may commit, never reconfigure git
     assert codex.run() == kyboot.EXIT_JOB_FAILED
     state = codex.state()

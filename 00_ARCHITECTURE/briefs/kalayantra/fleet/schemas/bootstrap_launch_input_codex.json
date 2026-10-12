@@ -116,7 +116,7 @@
       "type": "boolean"
     },
     "work_root": {
-      "description": "Where -C points (default \"worktree\"). \"job\": the job_scratch is -C and the only writable root (workspace-write, no writable_dirs, --skip-git-repo-check); the item's working copy is read by absolute path, named by item_worktree and in the prompt as a line ITEM_WORKTREE=<item_worktree>, and its HEAD and git status must be the same after the job (cockpit ruling E1: the reviewers).",
+      "description": "Where -C points (default \"worktree\"). \"job\": the job_scratch is -C and, with its TMPDIR, all the job may write (/tmp is excluded on every line) (workspace-write, no writable_dirs, --skip-git-repo-check); the item's working copy is read by absolute path, named by item_worktree and in the prompt as a line ITEM_WORKTREE=<item_worktree>, and its HEAD and git status must be the same after the job (cockpit ruling E1: the reviewers).",
       "enum": [
         "worktree",
         "job"
