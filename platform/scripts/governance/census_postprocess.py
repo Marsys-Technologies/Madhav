@@ -132,8 +132,14 @@ _V_UNREAD = (re.compile(r"([\w.]+): part of the column could not be sampled \(le
 
 
 # SS N-431/N-545: a Vocab.alias record whose conditional produced slice is VERIFIED EMPTY ends with ONE last segment "; <table>: verified empty conditional slice ..." (asset_census.empty_slice_text). It is evidence, not a
-# finding: it is stripped before the named ceilings are matched. The ZERO-ROW wording ("the table holds NO rows in the read scope", an `unread:` item) is not in it and stays a finding.
-_ES_VOCAB_SEGMENT = re.compile(r"; [a-z_][a-z0-9_]*: verified empty conditional slice .*\Z", re.S)
+# finding: it is stripped before the named ceilings are matched, but ONLY when it is exactly the sentence asset_census.empty_slice_text builds (anchored at the END of the text and at its own words: a verified-empty
+# claim of any other shape, or ANY finding appended after it, is not stripped and stays visible to the matchers). The ZERO-ROW wording ("the table holds NO rows in the read scope", an `unread:` item) is not in it and stays a finding.
+_ES_ID = r"[a-z_][a-z0-9_]*"
+_ES_VOCAB_SEGMENT = re.compile(
+    rf"; {_ES_ID}: verified empty conditional slice {_ES_ID}\[fact_category={_ES_ID}, fact_subject={_ES_ID}\]: the post-pass {_ES_ID} ran to completion in build run "
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} \(the chart's newest complete build, inside the Build.history window that opens [^;()]*\); "
+    r"\d+/\d+ ayanamsha partitions each carry one [\w.]+ record \([a-z0-9_, ]+\); entries evaluated \d+(?:/\d+)*; formed false and 0 rows written in every partition; "
+    rf"the live slice holds 0 row\(s\) for the chart; the {_ES_ID} rows \(\d+\) all come from that run\Z")
 
 
 def m_vocab(aid: str, text: str):

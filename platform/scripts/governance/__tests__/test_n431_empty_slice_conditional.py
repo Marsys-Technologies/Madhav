@@ -277,13 +277,14 @@ class DB:
         self.records = [_rec(p) for p in PARTS][::-1]
         self.slice_rows = 0
         self.vichara = {p: (str(1550 + i), "1", R, R) for i, p in enumerate(PARTS)}
+        self.throughput = [["lit", str(T0 + 1060)]]
         self.errors = {}
         self.ragged = set()
         self.sql = []
 
     def psql(self, sql, *a, **k):
         self.sql.append(sql)
-        for key, tag in (("FROM build_run_assets", "attempts"), ("FROM orchestrator_event_register", "register"), ('FROM "chart_facts"', "slice"), ('FROM "chart_vichara"', "vichara")):
+        for key, tag in (("FROM build_run_assets", "attempts"), ("FROM asset_throughput", "throughput"), ("FROM orchestrator_event_register", "register"), ('FROM "chart_facts"', "slice"), ('FROM "chart_vichara"', "vichara")):
             if key in sql:
                 break
         else:
@@ -293,6 +294,8 @@ class DB:
         if tag == "attempts":
             rows = [[a["run"], a["chart"], a["state"], a["disp"], "t" if a["started"] else "f", str(a["created"]), "" if a.get("st") is None else str(a["st"]), "" if a.get("en") is None else str(a["en"])]
                     for a in reversed(self.attempts)]
+        elif tag == "throughput":
+            rows = [list(r) for r in self.throughput]
         elif tag == "register":
             rows = [[str(100 + i), r["run"], r["chart"], r["asset"], str(r["at"]), r["rows"], json.dumps(r["payload"])] for i, r in enumerate(self.records)]
         elif tag == "slice":
@@ -364,7 +367,7 @@ def test_the_record_may_be_the_whole_flat_event_or_the_nested_design_shape(db, f
     assert _run()["state"] == "holds"
 
 
-def test_direct_insert_shape_the_exact_frozen_keys_only_holds(db):
+def test_a_record_with_exactly_the_frozen_keys_and_nothing_else_holds_too(db):
     db.records = [_rec(p, flat=False) for p in PARTS]
     assert _run()["state"] == "holds"
 
@@ -509,6 +512,18 @@ def _phantom_world(d):                                                   # a wor
     d.records = [_rec(p, chart=PHANTOM) for p in PARTS][::-1]
 
 
+def _stale_record(d):                                                    # an upstream was rebuilt after the evidenced build: the engine marked the asset's own record stale
+    d.throughput = [["stale", str(T0 + 1060)]]
+
+
+def _errored_record(d):
+    d.throughput = [["error", str(T0 + 1060)]]
+
+
+def _no_record(d):
+    d.throughput = []
+
+
 def _unplanned_partition(d):
     d.records = [_rec(p) for p in PARTS][::-1] + [_rec("made_up")]
 
@@ -546,6 +561,9 @@ CASES = [
     ("M14 window not supplied", None, dict(window=None), "unverified", "window", ("window",)),
     ("M15 the phantom chart", _phantom_world, dict(chart=PHANTOM), "unverified", "chart", ("chart",)),
     ("M15 a malformed chart", None, dict(chart="not-a-chart"), "unverified", "chart", ("chart", "attempts")),
+    ("fresh-build: the asset's own record is stale (an upstream rebuilt after R)", _stale_record, {}, "unverified", "fresh-build", ("fresh-build",)),
+    ("fresh-build: the asset's own record is error", _errored_record, {}, "unverified", "fresh-build", ("fresh-build",)),
+    ("fresh-build: no asset_throughput record", _no_record, {}, "unverified", "fresh-build", ("fresh-build",)),
     ("record not a JSON object", _record_json_broken, {}, "does_not_hold", "record-shape", None),            # structural: the parse step itself, no guard clause to delete
     ("record names another post-pass", _wrong_post_pass, {}, "does_not_hold", "record-shape", ("record-shape",)),
     ("record names another slice", _wrong_slice, {}, "does_not_hold", "record-shape", ("record-shape",)),
@@ -775,7 +793,7 @@ def test_mark_empty_scopes_exempts_only_the_slice_table_and_only_when_it_holds(m
     _both_empty(monkeypatch)
     sc = ac.mark_empty_scopes(_scopes(), exempt_fn=ac.empty_slice_exempt_fn(ES, _outcome_holds))
     cf, cv = sc["chart_facts"], sc["chart_vichara"]
-    assert cf["exempt"]["run_id"] == R and "block" not in cf and cf["empty"] is True and "EMPTY BY VERIFIED CONDITIONAL" in cf["label"] and "NO ROWS" not in cf["label"] and "5/5 ayanamsha partitions" in cf["label"]
+    assert cf["exempt"]["run_id"] == R and "block" in cf and cf["empty"] is True and "EMPTY BY VERIFIED CONDITIONAL" in cf["label"] and "NO ROWS" not in cf["label"] and "5/5 ayanamsha partitions" in cf["label"]
     assert cv.get("exempt") is None and "NO rows" in cv["block"] and "NO ROWS" in cv["label"]                 # chart_vichara empty: its block stands (M17)
 
 
@@ -943,7 +961,7 @@ def _vocab(monkeypatch, scopes):
 def test_vocab_alias_an_exempt_table_is_neither_read_nor_unread(monkeypatch):
     blocked = _vocab(monkeypatch, {"chart_facts": dict(where="x", label="chart 482012f1; NO ROWS in this scope", block="the table holds NO rows in the read scope (c): vacuous")})
     assert "NO rows" in blocked["measured"] and "empty_slice" not in blocked                      # today: the zero-row text is an unread finding
-    ok = _vocab(monkeypatch, {"chart_facts": dict(where="x", label="l", exempt=_block())})
+    ok = _vocab(monkeypatch, {"chart_facts": dict(where="x", label="l", exempt=_block(), block="the table holds NO rows in the read scope (c): vacuous")})      # the real shape: the block is KEPT beside the exemption
     assert "NO rows" not in ok["measured"] and "unread" not in ok["measured"], ok["measured"]
     assert ok["empty_slice"]["run_id"] == R and ok["measured"].endswith(ac.empty_slice_text(_block())) and R in ok["measured"]
     leaky = _vocab(monkeypatch, {"chart_facts": dict(where="x", label="l", exempt=_block(criteria=["Narr.checkable"]), block="the table holds NO rows in the read scope (c): vacuous")})
@@ -1077,7 +1095,7 @@ def test_measure_hands_the_verified_exemption_to_the_prose_and_vocabulary_reader
     assert seen["asked"][0][2]["window"] == WINDOW and seen["asked"][0][2]["code_paths"] == PATHS
     for where in ("vocab", "prose"):
         sc = seen[where]
-        assert sc["chart_facts"]["exempt"]["run_id"] == R and "block" not in sc["chart_facts"], (where, sc["chart_facts"])
+        assert sc["chart_facts"]["exempt"]["run_id"] == R and "block" in sc["chart_facts"], (where, sc["chart_facts"])      # the block STAYS: only Vocab.alias skips it for its own read
         assert "exempt" not in sc["chart_vichara"]
     assert "empty_slice_declined" not in m["Narr.checkable"]
     assert "EMPTY BY VERIFIED CONDITIONAL" in m["Narr.checkable"]["read_scope"]["chart_facts"]
@@ -1116,12 +1134,7 @@ def test_the_ga_vichara_patch_applies_its_guards_and_validates_once_the_writer_s
     es = e["empty_slice_by_conditional"]
     assert es["slice"] == SLICE and es["entries"] == ["citation_human"] and es["post_pass"] == "daridra_dosha_label" and es["run_evidence"]["emitter"]["function"] == "record_post_pass_evidence"
     assert es["run_evidence"]["caller"] == dict(file=EMIT, function="emit_daridra_label_post_pass") and es["run_evidence"]["partitions_from"] == dict(file=ADAPT, constant="CANONICAL_AYANAMSHAS")
-    # the writer side (pr #3448) is not in this tree: the validator refuses the declaration here, exactly as it must (a declaration without its emitter) ...
-    with pytest.raises(ac.DeclarationsError, match="record_post_pass_evidence"):
-        ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", es, e)
-    # ... and, with only the pointer check stood in for, every other rule of the form holds
-    monkeypatch.setattr(ac, "empty_slice_static_problem", lambda d: (None, list(PARTS)))
-    ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", es, e)
+    # (the validator side of the patch is asserted on either tree by test_the_ga_vichara_declaration_is_refused_without_its_emitter_and_accepted_with_it_on_either_tree)
 
 
 def test_a_writer_that_inserts_the_evidence_record_does_not_write_an_undeclared_table(monkeypatch):
@@ -1161,14 +1174,155 @@ def test_evidence_of_a_run_that_is_not_a_complete_build_is_never_read(db):
 _REAL_WRITER = "platform/python-sidecar/ga_writers/ga_daridra_postpass.py"
 
 
-def test_the_fixture_is_exactly_what_the_real_writer_emits_when_the_writer_side_is_in_the_tree():
-    """Parity with the REAL emitter: runs `record_post_pass_evidence` (its source, extracted by AST, with persist_event faked) and compares the stored event with `_rec`. Skipped on a tree
-    that does not carry the writer side yet (pr #3448)."""
-    import ast as _ast
+# ───────────────────────── review fixes: the block is kept; the vocabulary segment is anchored; merge-order tests ─────────────────────────
+
+def test_the_exempt_scope_keeps_its_block_for_every_other_consumer(monkeypatch):
+    """(review 2) An exemption is per criterion: a label read, prose_none closure, forwarded_leaves or corpus_derived read of the same table must still be stopped by the block."""
+    _both_empty(monkeypatch)
+    sc = ac.mark_empty_scopes(_scopes(), exempt_fn=ac.empty_slice_exempt_fn(ES, _outcome_holds))
+    assert sc["chart_facts"]["exempt"]["run_id"] == R and "NO rows" in sc["chart_facts"]["block"]
+    ac.set_read_scope(sc)
+    try:
+        assert "NO rows" in ac._scope_block("chart_facts")
+        assert "NO rows" in ac.label_read("chart_facts", "citation_human", ["x"])["blocked"]          # a real consumer of the block (label reads) is still stopped
+    finally:
+        ac.set_read_scope(None)
+
+
+def test_a_mutant_that_lifts_the_block_for_everyone_is_caught(monkeypatch):
+    src = inspect.getsource(ac.mark_empty_scopes)
+    line = next(l for l in src.splitlines() if "# <keep-block>" in l)
+    mutated = src.replace(line, " " * (len(line) - len(line.lstrip())) + 'del v["block"]')
+    assert mutated != src
+    g = dict(vars(ac))
+    exec(compile(mutated, "<mutant keep-block>", "exec"), g)
+    _both_empty(monkeypatch)
+    sc = g["mark_empty_scopes"](_scopes(), exempt_fn=ac.empty_slice_exempt_fn(ES, _outcome_holds))
+    assert "block" not in sc["chart_facts"]                       # the mutant reintroduces the vacuous lift ...
+    ac.set_read_scope(sc)
+    try:
+        assert not ac.label_read.__globals__["_scope_block"]("chart_facts")    # ... so the label read would NOT be stopped: test_the_exempt_scope_keeps_its_block_for_every_other_consumer kills it
+    finally:
+        ac.set_read_scope(None)
+
+
+def test_vocab_alias_skips_the_exempt_tables_block_only_inside_its_own_read_and_the_clause_is_what_does_it(monkeypatch):
+    sc = {"chart_facts": dict(where="x", label="l", exempt=_block(), block="the table holds NO rows in the read scope (c): vacuous")}
+    ok = _vocab(monkeypatch, sc)
+    assert "NO rows" not in ok["measured"] and "unread" not in ok["measured"]
+    mut = _mutant(ac.vocab_value_detect, "vocab-exempt-skip")
+    monkeypatch.setattr(ac, "vocab_lexicon", lambda *a, **k: None)
+    monkeypatch.setattr(ac, "vocab_registered_load", lambda *a, **k: None)
+    own = {"chart_facts": (["citation_human", "fact_value_text"], {"citation_human": "text", "fact_value_text": "text"})}
+    got = mut(own, None, scopes=sc)
+    assert "NO rows" in got["measured"]                           # without the clause the exempt table's block is an `unread` finding again
+
+
+def test_the_vocabulary_segment_is_exactly_the_sentence_the_engine_builds_and_only_that():
+    seg = "; chart_facts: " + ac.empty_slice_text(_block())
+    assert cp._ES_VOCAB_SEGMENT.search(seg) and cp._ES_VOCAB_SEGMENT.sub("", seg) == ""
+    base = VOCAB_CELL.format(unread="")
+    named = cp.m_vocab("ga_vichara", base)
+    assert named and cp.m_vocab("ga_vichara", base + seg) == named
+    # a finding appended AFTER the segment is not hidden by it
+    for extra in ("; embedded vocabulary, spelling unchecked: chart_vichara.zzz ('Sun')", "; unread: chart_vichara.zzz: the rest of the column was not read (the existence probe failed: boom)",
+                  "; MIXED canonical spelling families in one column: chart_vichara.zzz (Sun, SUN: no single spelling family)"):
+        text = base + seg + extra
+        assert cp.m_vocab("ga_vichara", text) is None, extra
+    # a claim of another shape, or one that says the live slice is not empty, is not stripped either
+    assert cp._ES_VOCAB_SEGMENT.search(seg.replace("holds 0 row(s)", "holds 3 row(s)")) is None
+    assert cp._ES_VOCAB_SEGMENT.search(seg.replace("formed false", "formed true")) is None
+    assert cp.m_vocab("ga_vichara", base + "; chart_facts: verified empty conditional slice and then some") is None
+
+
+# ---- merge order: the ga_vichara declaration against whichever tree this is ----
+
+GA_VICHARA_ES = {
+    "slice": dict(SLICE), "post_pass": "daridra_dosha_label",
+    "run_evidence": {"source": {"table": "orchestrator_event_register", "event_type": "writer.post_pass_evaluated"},
+                     "emitter": {"file": EMIT, "function": "record_post_pass_evidence"}, "caller": {"file": EMIT, "function": "emit_daridra_label_post_pass"},
+                     "partitions_from": {"file": ADAPT, "constant": "CANONICAL_AYANAMSHAS"}},
+    "cross_check": {"table": "chart_vichara", "partition_column": "ayanamsha_id", "build_column": "build_id"},
+    "entries": ["citation_human"], "criteria": ["Narr.checkable", "Null.blank_rows", "Vocab.alias"],
+    "why": ("the daridra post-pass writes its one chart_facts row (fact_category dosha_label, fact_subject daridra) only on a chart on which daridra forms, so on a chart where it does not form the slice is empty by construction "
+            "and no stand-in row is ever written; the post-pass instead records, once per ayanamsha and build, that it ran to completion, evaluated the catalog entry and found the dosha not formed, "
+            "and the census reads that record before it reads the empty slice as verified"),
+    "evidence": "platform/python-sidecar/ga_writers/ga_vichara_writer.py:1238"}
+
+
+def _real_emitter_in_tree() -> bool:
     p = ac.ROOT / _REAL_WRITER
-    src = p.read_text(encoding="utf-8") if p.is_file() else ""
-    if "def record_post_pass_evidence" not in src:
-        pytest.skip("the writer side (post_pass_evidence/1) is not in this tree")
+    return p.is_file() and "def record_post_pass_evidence" in p.read_text(encoding="utf-8")
+
+
+def test_the_ga_vichara_declaration_is_refused_without_its_emitter_and_accepted_with_it_on_either_tree():
+    """Holds before and after pr #3448 (never skipped): the expectation is built from whether the REAL emitter is in this tree. The declaration is the embedded copy of the patch file's value."""
+    if PATCH.is_file():                                                                      # the embedded copy IS the patch value (drift = red)
+        assert [o["value"] for o in json.loads(PATCH.read_text(encoding="utf-8"))["ops"] if o["path"] == ["empty_slice_by_conditional"]] == [GA_VICHARA_ES]
+    e = copy.deepcopy(ac.load_asset_declarations()["ga_vichara"])
+    e["empty_slice_by_conditional"] = copy.deepcopy(GA_VICHARA_ES)
+    if _real_emitter_in_tree():
+        ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", e["empty_slice_by_conditional"], e)       # accepted
+        doc = dict(version="x", kind_enum=list(ac.DECLARED_KINDS), assets={"ga_vichara": e})
+        assert ac.empty_slice_static_problem(e["empty_slice_by_conditional"])[0] is None and doc
+    else:
+        with pytest.raises(ac.DeclarationsError, match="record_post_pass_evidence"):
+            ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", e["empty_slice_by_conditional"], e)
+    # every other rule of the form holds on both trees (only the pointer check stood in for)
+    orig = ac.empty_slice_static_problem
+    ac.empty_slice_static_problem = lambda d: (None, list(PARTS))
+    try:
+        ac.validate_empty_slice_by_conditional_declaration("assets['ga_vichara']", "ga_vichara", e["empty_slice_by_conditional"], e)
+    finally:
+        ac.empty_slice_static_problem = orig
+
+
+# a faithful copy of the evidence block of #3448 (head 6825ea6bc): the parity test below runs against it where the real writer is not in the tree, and against the real file where it is
+_PR3448_EVIDENCE_BLOCK = '''
+DARIDRA = "daridra"
+POST_PASS_EVENT_TYPE = "writer.post_pass_evaluated"
+POST_PASS_SCHEMA = "post_pass_evidence/1"
+POST_PASS_NAME = "daridra_dosha_label"
+POST_PASS_ASSET_ID = "ga_vichara"
+POST_PASS_SLICE = {"table": "chart_facts", "fact_category": "dosha_label", "fact_subject": DARIDRA}
+
+
+def _nonneg_int(name, v):
+    if isinstance(v, bool) or not isinstance(v, int) or v < 0:
+        raise ValueError(f"evidence field {name} must be a non-negative integer, got {v!r}")
+    return v
+
+
+def post_pass_evidence_payload(ayanamsha_id, *, entries_evaluated, formed, rows_written, prior_rows_deleted):
+    if not isinstance(ayanamsha_id, str) or not ayanamsha_id:
+        raise ValueError("evidence ayanamsha_id must be a non-empty string")
+    if not isinstance(formed, bool):
+        raise ValueError(f"evidence field formed must be a bool, got {formed!r}")
+    return {"schema": POST_PASS_SCHEMA, "post_pass": POST_PASS_NAME, "ayanamsha_id": ayanamsha_id, "slice": dict(POST_PASS_SLICE),
+            "entries_evaluated": _nonneg_int("entries_evaluated", entries_evaluated), "formed": formed,
+            "rows_written": _nonneg_int("rows_written", rows_written), "prior_rows_deleted": _nonneg_int("prior_rows_deleted", prior_rows_deleted)}
+
+
+def _write_evidence_event(conn, event, payload):
+    ok = persist_event(conn.cursor(), event)
+    if ok is not True:
+        raise RuntimeError("the post-pass evidence record could NOT be written")
+
+
+def record_post_pass_evidence(conn, chart_id, build_id, ayanamsha_id, *, entries_evaluated, formed, rows_written, prior_rows_deleted):
+    payload = post_pass_evidence_payload(ayanamsha_id, entries_evaluated=entries_evaluated, formed=formed, rows_written=rows_written, prior_rows_deleted=prior_rows_deleted)
+    if formed != (rows_written > 0) or (not formed and rows_written != 0):
+        raise ValueError("evidence is inconsistent")
+    event = {"type": POST_PASS_EVENT_TYPE, "chart_id": str(chart_id), "asset_id": POST_PASS_ASSET_ID, "run_id": str(build_id), "rows_present": rows_written, **payload}
+    _write_evidence_event(conn, event, payload)
+'''
+
+
+def test_the_fixture_is_exactly_what_the_writer_emits_on_either_tree():
+    """(review 5b) Never skipped: parity of `_rec` with the stored event of the REAL `record_post_pass_evidence` when #3448 is in the tree, else with the embedded copy of its evidence block."""
+    import ast as _ast
+    real = ac.ROOT / _REAL_WRITER
+    src = real.read_text(encoding="utf-8") if _real_emitter_in_tree() else _PR3448_EVIDENCE_BLOCK
     want = {"POST_PASS_EVENT_TYPE", "POST_PASS_SCHEMA", "POST_PASS_NAME", "POST_PASS_ASSET_ID", "POST_PASS_SLICE", "DARIDRA"}
     nodes = [n for n in _ast.parse(src).body if (isinstance(n, _ast.Assign) and any(getattr(t, "id", None) in want for t in n.targets))
              or (isinstance(n, _ast.FunctionDef) and n.name in ("_nonneg_int", "post_pass_evidence_payload", "record_post_pass_evidence", "_write_evidence_event"))]
@@ -1177,7 +1331,7 @@ def test_the_fixture_is_exactly_what_the_real_writer_emits_when_the_writer_side_
     seen = []
     ns = {"persist_event": lambda cur, event: seen.append(json.loads(json.dumps(event))) or True}
     exec("from __future__ import annotations\nfrom typing import Any\n", ns)
-    exec(compile(mod, "real_postpass", "exec"), ns)
+    exec(compile(mod, "writer_evidence_block", "exec"), ns)
 
     class _C:
         def cursor(self):
@@ -1185,7 +1339,17 @@ def test_the_fixture_is_exactly_what_the_real_writer_emits_when_the_writer_side_
     ns["record_post_pass_evidence"](_C(), CH, R, "raman", entries_evaluated=1, formed=False, rows_written=0, prior_rows_deleted=0)
     assert seen[0] == _rec("raman")["payload"]
     ev = ac.ROOT / "platform/python-sidecar/pipeline/orchestrator/events.py"
-    if ev.is_file():
+    if _real_emitter_in_tree() and ev.is_file():                         # the allowlist line must come with the writer
         tree = _ast.parse(ev.read_text(encoding="utf-8"))
         durable = next((n for n in tree.body if isinstance(n, _ast.Assign) and any(getattr(t, "id", None) == "DEFAULT_DURABLE_EVENT_TYPES" for t in n.targets)), None)
         assert durable is not None and ac.ES_EVENT_TYPE in {c.value for c in _ast.walk(durable.value) if isinstance(c, _ast.Constant)}
+
+
+def test_a_failed_read_of_the_assets_own_build_record_is_unverified(db):
+    db.errors["throughput"] = "permission denied for table asset_throughput"
+    out = _run()
+    assert out["state"] == "unverified" and out["clause"] == "fresh-build" and out.get("cause") == "permission-denied"
+    assert _wrongly_credited("fresh-build")
+    del db.errors["throughput"]
+    db.ragged.add("throughput")
+    assert _run()["clause"] == "fresh-build"
