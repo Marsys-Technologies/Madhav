@@ -17403,7 +17403,7 @@
      "Null.blank_rows",
      "Vocab.alias"
     ],
-    "why": "the daridra post-pass writes its one chart_facts row (fact_category dosha_label, fact_subject daridra) only on a chart on which daridra forms, so on a chart where it does not form the slice is empty by construction and no stand-in row is ever written; the post-pass instead records, once per ayanamsha and build, that it ran to completion, evaluated the catalog entry and found the dosha not formed, and the census reads that record before it reads the empty slice as verified",
+    "why": "the daridra post-pass writes its one chart_facts row (fact_category dosha_label, fact_subject daridra) only on a chart on which daridra forms, so on a chart where it does not form the slice is empty by construction and no stand-in row is ever written; the post-pass instead records, once per ayanamsha and build, that it ran to completion, evaluated the catalog entry and found the dosha not formed, and the census reads that record before it reads the empty slice as verified; ownership and order: the category dosha_label is owned by ga_structural, while ga_vichara is the producer of the daridra row (its post-pass in ga_vichara_writer.py deletes only the daridra subject and inserts the row with ga_vichara's own build id) and the owner of the run evidence; a ga_structural rebuild deletes the whole dosha_label category including the daridra row, so ga_structural must be rebuilt before ga_vichara",
     "evidence": "platform/python-sidecar/ga_writers/ga_vichara_writer.py:1238"
    }
   },

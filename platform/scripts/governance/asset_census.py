@@ -13030,7 +13030,7 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
                                                          "a record planted or replayed outside the run is not evidence of it")
     #</clause bracket-upper>
     try:
-        n = scalar(f"SELECT count(*)::text FROM \"{sl['table']}\" WHERE chart_id::text = '{chart_id}' AND fact_subject = '{sl['fact_subject']}'")
+        n = scalar(f"SELECT count(*)::text FROM \"{sl['table']}\" WHERE chart_id::text = '{chart_id}' AND fact_category = '{sl['fact_category']}' AND fact_subject = '{sl['fact_subject']}'")
     except Unknown as exc:
         return _es_read_failure(exc, f"the live slice {tag}", clause="slice-read")
     #<clause slice-empty>
