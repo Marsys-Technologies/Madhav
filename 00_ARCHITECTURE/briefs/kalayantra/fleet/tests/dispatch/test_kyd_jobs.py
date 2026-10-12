@@ -778,3 +778,72 @@ def test_the_launch_is_one_new_session_with_no_input_and_the_ctx_paths(world, mo
     assert set(env) <= {"HOME", "USER", "LANG", "TERM", "PATH", "KY_ROOT", "KY_RUN", "KY_FLEET", "KY_SCRATCH"}
     assert after["pid"] == after["pgid"] == J._CHILDREN[job["job_id"]].pid and after["process_start"]
     assert J.launch(world.ctx, after) == world.state("K-1") and len(J._CHILDREN) == 1     # never a second start
+
+
+def test_codex_launch_action_and_activity_are_annotated(tmp_path, monkeypatch):
+    """A Codex launch must persist its mode on inputs, observations and checkpoint."""
+    import kyjob_engines as engines
+    w = World(tmp_path, monkeypatch)
+    try:
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', w.facts({}))
+        (Path(job['job_scratch']) / 'behaviour').write_text('done')
+        (Path(job['job_scratch']) / 'item').write_text(job['item'])
+        monkeypatch.setattr(engines, 'prepare', lambda ctx, value: None)
+        job.update(engine='codex', sandbox_mode='full', stall_seconds=300)
+        J._save(w.ctx, job)
+        live = J.launch(w.ctx, job)
+        proc = J._CHILDREN[live['job_id']]
+        w.procs[live['job_id']] = proc
+        w.lstart[proc.pid] = live['process_start']
+        doc = json.loads((w.run / 'actions' / ('ACT-launch-' + job['job_id'] + '.json')).read_text())
+        for key in ('inputs', 'target', 'result'):
+            assert doc[key]['engine'] == 'codex'
+            assert doc[key]['sandbox'] == 'full (owner direction 2026-10-12)'
+        assert live['checkpoint']['codex_activity']['sandbox_mode'] == 'full'
+    finally:
+        w.cleanup()
+
+
+def test_codex_surviving_group_stalls_before_deadline(tmp_path, monkeypatch):
+    """A gone leader cannot exempt its silent tool group from Codex's stall limit."""
+    w = World(tmp_path, monkeypatch)
+    try:
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', w.facts({}))
+        job.update(engine='codex', sandbox_mode='locked', stall_seconds=1,
+                   pid=234567, pgid=234567, process_start='test-owned', phase='live')
+        job['checkpoint'] = {'codex_activity': {'launched_at': 1, 'last_growth_at': 1, 'bytes': [0, 0]}}
+        J._save(w.ctx, job)
+        monkeypatch.setattr(J, '_now', lambda: 100)
+        states = ['survivors']
+        monkeypatch.setattr(J, '_process', lambda j: states[0])
+        def reap(j):
+            states[0] = 'gone'
+            return 'gone'
+        monkeypatch.setattr(J, '_terminate', reap)  # state probe only: never signal this synthetic pid
+        ended = J.supervise(w.ctx)
+        assert ended and ended[0]['failure_fp'] == 'codex_stalled'
+        assert ended[0]['outcome'] == 'failed'
+    finally:
+        w.cleanup()
+
+
+def test_codex_claim_release_and_failure_records_name_mode(tmp_path, monkeypatch):
+    import kyjob_engines as engines
+    w = World(tmp_path, monkeypatch)
+    try:
+        monkeypatch.setattr(engines, 'prepare', lambda ctx, value: None)
+        facts = w.facts({})
+        facts['launch'].update(engine='codex', sandbox_mode='full', launch_config_path=str(tmp_path/'cfg.json'))
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', facts)
+        assert job is not None
+        ended = J.close(w.ctx, job, {'outcome': 'failed', 'failure_fp': 'codex_stalled'})
+        assert ended['phase'] == 'ended'
+        for path in (w.run/'actions').glob('ACT-*.json'):
+            doc = json.loads(path.read_text())
+            for key in ('inputs', 'target', 'result'):
+                assert doc[key]['engine'] == 'codex'
+                assert doc[key]['sandbox'] == 'full (owner direction 2026-10-12)'
+        failure = json.loads((w.run/'jobs/failures.json').read_text())['KV3-T']['codex_stalled']
+        assert failure['engine'] == 'codex' and failure['sandbox_mode'] == 'full'
+    finally:
+        w.cleanup()

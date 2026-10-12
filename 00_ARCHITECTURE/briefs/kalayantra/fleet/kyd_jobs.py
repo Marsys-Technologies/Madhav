@@ -84,6 +84,7 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
     `outcome` non-null on a returned job is the controller's own finding (timed_out, refused, interrupted, or an
     earlier close); null means the job ended by itself and its kind's finish decides.
   * an owner-wait is raised once per job and reason (checkpoint.awaiting remembers).
+Changelog: v1.1 (2026-10-13): optional Codex selection, collection, landing and silence timeout.
 Python >= 3.9, standard library only; kyaction.py, kyloop.py, kyschema.py and schemas/ beside this file.
 """
 from __future__ import annotations
@@ -108,6 +109,7 @@ if str(HERE) not in sys.path:
 import kyaction as ka  # noqa: E402
 import kyloop  # noqa: E402
 import kyschema  # noqa: E402
+import kyjob_engines as engines  # noqa: E402
 
 SCHEMA = "ky.job/1"
 RESULT_SCHEMA = "ky.job_result/1"
@@ -203,6 +205,25 @@ def _text(value):
     return isinstance(value, str) and bool(value)
 
 
+def _act(ctx, job, action_id, kind, inputs, target, effect, observer):
+    """Annotate controller-owned Codex records; Claude's record bytes retain their shape."""
+    if job.get("engine") != "codex":
+        return ctx.act(action_id, kind, inputs, target, effect, observer)
+    meta = engines.metadata(job)
+
+    def annotated(fn, *args, observing=False):
+        try:
+            status, detail = fn(*args)
+        except engines.Hold as exc:
+            status, detail = "unknown", {"reason": str(exc)}
+        except engines.Refusal as exc:
+            status, detail = ("unknown" if observing else "failed"), {"reason": str(exc)}
+        return status, dict(detail, **meta)
+
+    return ctx.act(action_id, kind, dict(inputs, **meta), dict(target, **meta),
+                   lambda: annotated(effect), lambda record: annotated(observer, record, observing=True))
+
+
 def _real_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
@@ -265,6 +286,8 @@ def _checkpoint(job):
         cp = job["checkpoint"] = {}
     cp.setdefault("steps", {})
     cp.setdefault("awaiting", [])
+    if job.get("engine") == "codex":
+        cp.update(engines.metadata(job))
     return cp
 
 
@@ -430,6 +453,8 @@ def _account(ctx, job):
     if entry.get("last_job") == job["job_id"]:
         return
     entry.update(count=entry["count"] + 1, evidence_fp=job.get("evidence_fp"), last_job=job["job_id"])
+    if job.get("engine") == "codex":
+        entry.update(engines.metadata(job))
     os.makedirs(_run(ctx) / "jobs", exist_ok=True)
     ka.write_json(_run(ctx) / "jobs" / "failures.json", table)
 
@@ -465,6 +490,18 @@ def _plan(ctx, intent, slot, facts):
     state.update({k: intent.get(k) for k in INTENT_KEYS})
     state.update({k: launch.get(k) for k in LAUNCH_FACTS})
     state.update({k: v for k, v in header.items() if k in LAUNCH_KEYS and k not in PROTECTED})
+    # Optional fields are kept only when provided: legacy Claude state/prompt bytes stay unchanged.
+    choices = {k: launch[k] for k in engines.FIELDS if k in launch}
+    choices.update({k: header[k] for k in engines.FIELDS if k in header})
+    try:
+        engines.selection(dict(state, **choices))
+    except engines.Refusal as exc:
+        return None, str(exc)
+    state.update(choices)
+    if state.get("engine") == "codex":
+        state.setdefault("sandbox_mode", "locked")
+        state.setdefault("stall_seconds", 300)
+        state.update(engines.metadata(state))
     for k in LIST_KEYS:
         state[k] = [] if state[k] is None else state[k]
         if not isinstance(state[k], list):
@@ -574,7 +611,7 @@ def _claim(ctx, job):
             return "unknown", {"rc": rc, "reason": "ky claim did not say whether a claim was made"}
         return "failed", {"rc": rc, "stderr": ka.flat(err, 300)}
 
-    outcome, result = ctx.act("ACT-claim-%s" % job["job_id"], "ky_claim",
+    outcome, result = _act(ctx, job, "ACT-claim-%s" % job["job_id"], "ky_claim",
                               {"item": job["item"], "worker": job["slot"], "lease_s": LEASE_S},
                               {"claims": str(_claims_path(ctx, job))}, effect,
                               lambda record: ("unknown", {"reason": "a claim is reconciled from the claim file"}))
@@ -625,6 +662,9 @@ def _migration(ctx, job, plan):
 def _prompt(job, plan):
     """card bytes, packet bytes, the header line, one JSON object (plan §7 header fields, then the intent's)."""
     header = dict(plan["header"])
+    if job.get("engine") == "codex":
+        header.update({k: job[k] for k in engines.FIELDS})
+        header.update(engines.metadata(job))
     header.update({"job_id": job["job_id"], "item": job["item"], "kind": job["kind"], "slot": job["slot"],
                    "worktree": job["worktree"], "branch": job["branch"], "base_sha": job["base_sha"],
                    "prerequisite_heads": job["prerequisites"], "migration_number": job["migration_number"],
@@ -645,8 +685,10 @@ def _prepare(ctx, job, plan):
         why = why or _worktree(ctx, job, plan) or _migration(ctx, job, plan)
         if why is None:
             _prompt(job, plan)
+            if job.get("engine") == "codex":
+                engines.prepare(ctx, job)
             _save(ctx, job)
-    except (OSError, ka.ActionError) as e:
+    except (OSError, ka.ActionError, engines.Refusal) as e:
         why = "%s: %s" % (type(e).__name__, ka.flat(e, 200))
     if why is not None and plan["added_worktree"]:
         rc, _, err = ctx.sh(["git", "-C", str(ctx.repo), "worktree", "remove", job["worktree"]])
@@ -734,8 +776,12 @@ def launch(ctx, job):
                     % (job["job_id"], job["deadline"]))
         return job
     argv = ["/bin/bash", str(_fleet(ctx) / "kyjob.sh"), job["job_id"]]
+    meta = engines.metadata(job) if job.get("engine") == "codex" else {}
 
     def effect():
+        if job.get("engine") == "codex":
+            engines.prepare(ctx, job)
+            engines.stalled(job, _now())
         job["pid"] = PENDING
         _save(ctx, job)
         env = {k: os.environ[k] for k in ("HOME", "USER", "LANG", "TERM", "PATH") if k in os.environ}
@@ -750,19 +796,19 @@ def launch(ctx, job):
         _CHILDREN[job["job_id"]] = child
         job.update(pid=child.pid, pgid=child.pid, process_start=_identity(child.pid), phase="live")
         _save(ctx, job)
-        return "done", {"pid": job["pid"], "pgid": job["pgid"], "process_start": job["process_start"]}
+        return "done", dict(pid=job["pid"], pgid=job["pgid"], process_start=job["process_start"], **meta)
 
     def observer(record):
         seen = _fresh(ctx, job)
         if _real_int(seen["pid"]):
-            return "done", {"pid": seen["pid"], "pgid": seen["pgid"], "process_start": seen["process_start"]}
+            return "done", dict(pid=seen["pid"], pgid=seen["pgid"], process_start=seen["process_start"], **meta)
         if seen["pid"] is None:
             return "not_done", {"pid": None}
         return "unknown", {"pid": seen["pid"]}
 
     try:
-        outcome, result = ctx.act("ACT-launch-%s" % job["job_id"], "launch", {"job_id": job["job_id"], "argv": argv},
-                                  {"state": str(_state_path(ctx, job["job_id"]))}, effect, observer)
+        outcome, result = _act(ctx, job, "ACT-launch-%s" % job["job_id"], "launch", dict(job_id=job["job_id"], argv=argv, **meta),
+                                  dict(state=str(_state_path(ctx, job["job_id"])), **meta), effect, observer)
     except ka.ActionError as e:                          # the record, not the start: the state says what happened
         outcome, result = "unknown", {"error": "%s: %s" % (type(e).__name__, ka.flat(e, 200))}
     if outcome != "done":
@@ -787,7 +833,11 @@ def _result_schema():
 def _result(job):
     """The job's own result.json when it is a regular file (never a symbolic link), valid as ky.job_result/1 and
     naming this job and item; else None."""
-    schema, path = _result_schema(), os.path.join(job["job_scratch"], "result.json")
+    try:
+        schema = engines.result_schema(job) if job.get("engine") == "codex" else _result_schema()
+    except (OSError, ValueError):
+        return None
+    path = os.path.join(job["job_scratch"], "result.json")
     if schema is None:
         return None
     try:
@@ -906,15 +956,40 @@ def _collect(ctx, job):
     child = _CHILDREN.pop(job["job_id"], None)
     job["exit_code"] = child.poll() if child is not None else None       # null for a job this process adopted
     job["result_path"] = os.path.join(job["job_scratch"], "result.json") if _result(job) is not None else None
-    job["provider_session_id"] = job.get("provider_session_id") or kyloop.provider_session(job["stdout_path"])
-    job["result_event"] = _result_event(job["stdout_path"])
+    if job.get("engine") == "codex":
+        job["provider_session_id"] = job.get("provider_session_id") or engines.boot.first_thread_id(job["stdout_path"])
+        job["result_event"] = engines.boot.final_codex_turn(job["stdout_path"])
+    else:
+        job["provider_session_id"] = job.get("provider_session_id") or kyloop.provider_session(job["stdout_path"])
+        job["result_event"] = _result_event(job["stdout_path"])
     refusal = os.path.join(job["job_scratch"], "kyjob.refusal.json")
     if job.get("outcome") is None and os.path.isfile(refusal) and not os.path.islink(refusal):
         job["outcome"] = "refused"
     if kyloop.detect_quota(job["stdout_path"], job["stderr_path"])["refusal"]:
         job["failure_fp"] = QUOTA
     _checkpoint(job)["collected"] = _stamp()
+    if job.get("engine") == "codex":
+        job["phase"] = "terminating"
+        _save(ctx, job)  # exit/turn evidence survives a crash between a landing effect and its action record
+        _engine_finish(ctx, job)
     _settle(ctx, job)
+
+
+def _engine_finish(ctx, job):
+    cp = _checkpoint(job)
+    if job.get("outcome") is not None or cp.get("codex_finished"):
+        return True
+    result = engines.finish(ctx, job, _result(job))
+    if result and result.get("outcome") == "held":
+        cp["codex_finish_pending"] = result
+        _await(ctx, job, "codex-finish", result["detail"])
+        return False
+    cp.pop("codex_finish_pending", None)
+    cp["codex_finished"] = dict(result or {}, **engines.metadata(job))
+    if result:
+        job.update(outcome=result["outcome"], failure_fp=result.get("failure_fp"))
+    _save(ctx, job)
+    return True
 
 
 # ───────────────────────────────────────── supervise ─────────────────────────────────────────
@@ -967,7 +1042,8 @@ def _overdue(ctx, job):
     if "exited" in cp["steps"] or not _real_int(job.get("pid")):
         return
     deadline = _when(job["deadline"])
-    if deadline is None or _now() < deadline or _process(job) != "live":
+    stalled = job.get("engine") == "codex" and job.get("failure_fp") == "codex_stalled"
+    if (not stalled and (deadline is None or _now() < deadline)) or _process(job) not in (("live", "survivors") if job.get("engine") == "codex" else ("live",)):
         return
     if _terminate(job) == "gone" and not cp.get("collected"):
         _collect(ctx, job)
@@ -994,6 +1070,21 @@ def supervise(ctx):
             _save(ctx, job)
             out.append(job)
             continue
+        if job.get("engine") == "codex" and state in ("live", "survivors"):
+            if not _checkpoint(job).get("codex_activity"):
+                _await(ctx, job, "codex-activity", "launch/activity times are unknown; no stall decision is possible")
+                continue
+            silent = engines.stalled(job, _now())
+            _save(ctx, job)
+            if silent:
+                job.update(phase="terminating", outcome="failed", failure_fp="codex_stalled")
+                _checkpoint(job)["codex_activity"]["reason"] = "codex_stalled"
+                _save(ctx, job)  # no renewal once terminating
+                if _terminate(job) == "gone":
+                    _collect(ctx, job)
+                    _save(ctx, job)
+                out.append(job)
+                continue
         if state != "live":
             _await_process(ctx, job, state)
             continue
@@ -1043,6 +1134,7 @@ def recover(ctx):
             continue
         state = _process(job)
         if state == "gone":
+            # An adopted Codex job has no observable exit code; preserve strict refusal at collection.
             job.update(phase="terminating", outcome="interrupted")
             _collect(ctx, job)
             _save(ctx, job)
@@ -1064,6 +1156,15 @@ def recover(ctx):
 # ───────────────────────────────────────── close ─────────────────────────────────────────
 
 def _step_result(ctx, job, result):
+    if job.get("engine") == "codex" and job.get("pid") is not None and not _checkpoint(job).get("collected"):
+        state = _process(job)
+        if state != "gone":
+            _await_process(ctx, job, state)
+            return False
+        _collect(ctx, job)  # a caller's done cannot precede the engine's exit/turn/guard detectors
+    if job.get("engine") == "codex" and _checkpoint(job).get("collected"):
+        if not _engine_finish(ctx, job):
+            return False
     result = result if isinstance(result, dict) else {}
     fp = job.get("failure_fp") or result.get("failure_fp")
     fp = fp if _text(fp) else None
@@ -1164,7 +1265,7 @@ def _step_claim(ctx, job, result):
             ("unknown", {"reason": "the claim file no longer names this claim"})
 
     try:
-        outcome, detail = ctx.act("ACT-release-%s" % job["job_id"], "ky_release",
+        outcome, detail = _act(ctx, job, "ACT-release-%s" % job["job_id"], "ky_release",
                                   {"item": job["item"], "worker": job["slot"], "claim_id": cid},
                                   {"claims": str(path)}, effect, observer)
     except ka.ActionError as e:
@@ -1200,7 +1301,8 @@ def _step_handled(ctx, job, result):
             "schema": HANDLED_SCHEMA, "id": "job.%s" % job["key"], "handled_at": _stamp(),
             "by": {"role": "dispatcher", "controller_id": ctx.controller_id},
             "checkpoint": {k: job.get(k) for k in ("job_id", "item", "kind", "outcome", "head", "digest",
-                                                    "evidence_fp", "result_path")}})
+                                                    "evidence_fp", "result_path")},
+            **(engines.metadata(job) if job.get("engine") == "codex" else {})})
     return True
 
 
