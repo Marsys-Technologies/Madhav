@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T07:39:25.880Z",
+  "generated_at": "2026-10-12T12:02:25.275Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
   "total": 192,
