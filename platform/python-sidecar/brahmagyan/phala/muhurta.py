@@ -54,6 +54,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from brahmagyan.graha_vocabulary import norm_graha, to_title
+from brahmagyan.nakshatra_vocabulary import canonical_nakshatra, normalize_nakshatra  # SS N-568: stored nakshatra names are normalised on read
 
 logger = logging.getLogger(__name__)
 
@@ -332,6 +333,38 @@ def compute_muhurta_score(
     return float(max(0.0, min(1.0, raw)))
 
 
+# SS N-568: the action-nakshatra sets are canonicalised through the ONE normaliser at import (a literal that is not a registered
+# spelling fails loudly here, never silently at scoring time). They used to be function-local, space-less legacy literals
+# ('Mrigashira', 'Uttaraphalguni', 'Uttarashada' [a typo: the lexicon alias is 'Uttarashadha'], 'Uttarabhadra') compared against
+# panchanga_daily.moon_nakshatra as stored, so
+# the spaced / lexicon spellings never matched; the stored name is normalised on read (see _panchanga_quality_for_action).
+def _canon_naks(names: set[str]) -> frozenset[str]:
+    return frozenset(normalize_nakshatra(n) for n in names)
+
+
+_MARRIAGE_NAKS = _canon_naks({
+    "Rohini", "Revati", "Mrigashira", "Hasta", "Swati",
+    "Anuradha", "Magha", "Uttaraphalguni", "Uttarashadha", "Uttarabhadra",
+})
+_EDUCATION_NAKS = _canon_naks({
+    "Pushya", "Hasta", "Ashwini", "Rohini", "Uttaraphalguni",
+    "Shravana", "Mrigashira",
+})
+_BUSINESS_NAKS = _canon_naks({
+    "Rohini", "Hasta", "Pushya", "Ashwini", "Uttaraphalguni", "Mrigashira",
+})
+_TRAVEL_NAKS = _canon_naks({
+    "Ashwini", "Mrigashira", "Pushya", "Hasta", "Anuradha",
+    "Shatabhisha", "Punarvasu",
+})
+_MEDICAL_NAKS = _canon_naks({"Pushya", "Ashwini"})
+_MEDICAL_BAD_NAKS = _canon_naks({"Krittika", "Ardra", "Vishakha"})
+_PROPERTY_NAKS = _canon_naks({
+    "Rohini", "Uttaraphalguni", "Uttarashadha", "Uttarabhadra",
+    "Hasta", "Anuradha",
+})
+
+
 def _panchanga_quality_for_action(
     tithi_name: str,
     vara_lord: str,
@@ -341,7 +374,9 @@ def _panchanga_quality_for_action(
 ) -> float:
     """
     Derive a panchanga quality score [0.0, 1.0] for a given action_type
-    from the five panchanga limbs.
+    from the five panchanga limbs. `moon_nakshatra` is a stored panchanga_daily name
+    (the adapter's spelling, e.g. 'Mrigashira'): it is normalised to the lexicon's
+    spelling on read (SS N-568); an unregistered name scores as no nakshatra.
 
     Classical rules per BPHS ch.46 (muhurta adhyaya) and Muhurta Chintamani:
       - marriage: Rohini, Revati, Mrigashira, Hasta, Swati, Anuradha, Magha auspicious
@@ -361,28 +396,8 @@ def _panchanga_quality_for_action(
 
     Returns a score in [0.0, 1.0].
     """
+    moon_nakshatra = canonical_nakshatra(moon_nakshatra) or ""   # SS N-568: normalise the stored name on read; unknown -> no nakshatra boost
     # Auspicious nakshatra sets per action type (classical BPHS sources)
-    _MARRIAGE_NAKS = {
-        "Rohini", "Revati", "Mrigashira", "Hasta", "Swati",
-        "Anuradha", "Magha", "Uttaraphalguni", "Uttarashada", "Uttarabhadra",
-    }
-    _EDUCATION_NAKS = {
-        "Pushya", "Hasta", "Ashwini", "Rohini", "Uttaraphalguni",
-        "Shravana", "Mrigashira",
-    }
-    _BUSINESS_NAKS = {
-        "Rohini", "Hasta", "Pushya", "Ashwini", "Uttaraphalguni", "Mrigashira",
-    }
-    _TRAVEL_NAKS = {
-        "Ashwini", "Mrigashira", "Pushya", "Hasta", "Anuradha",
-        "Shatabhisha", "Punarvasu",
-    }
-    _MEDICAL_NAKS = {"Pushya", "Ashwini"}
-    _MEDICAL_BAD_NAKS = {"Krittika", "Ardra", "Vishakha"}
-    _PROPERTY_NAKS = {
-        "Rohini", "Uttaraphalguni", "Uttarashada", "Uttarabhadra",
-        "Hasta", "Anuradha",
-    }
 
     _MARRIAGE_VARA = {"Monday", "Wednesday", "Thursday", "Friday"}
     _EDUCATION_VARA = {"Wednesday", "Thursday"}
@@ -1006,14 +1021,15 @@ _NAK_NAME_TO_SHORT: dict[str, str] = {}
 
 
 def _nakshatra_short_code(name: str) -> Optional[str]:
-    """Map a panchanga_daily.moon_nakshatra full name to its NAKSHATRA_SHORT
-    code (ga_panchanga_writer's own table — imported once, cached module-level;
-    §N.5 — never re-invent a second nakshatra-naming table)."""
+    """Map a panchanga_daily.moon_nakshatra full name (any registered spelling: the stored
+    adapter spelling, the lexicon's, an alias) to its NAKSHATRA_SHORT code (ga_panchanga_writer's
+    own table — imported once, cached module-level; §N.5 — never re-invent a second
+    nakshatra-naming table). None for a name that is none of the 27, never a default."""
     global _NAK_NAME_TO_SHORT
     if not _NAK_NAME_TO_SHORT:
         from ga_writers.ga_panchanga_writer import NAKSHATRA_NAMES, NAKSHATRA_SHORT
         _NAK_NAME_TO_SHORT = dict(zip(NAKSHATRA_NAMES, NAKSHATRA_SHORT))
-    return _NAK_NAME_TO_SHORT.get(name)
+    return _NAK_NAME_TO_SHORT.get(canonical_nakshatra(name) or "")   # SS N-568: panchanga_daily stores the adapter's spelling ('Mrigashira'); the table is the lexicon's
 
 
 _TARA_BASELINE_CACHE: dict[tuple[str, str], dict[str, str]] = {}

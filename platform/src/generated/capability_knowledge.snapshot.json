@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:feda7ac45b23b88b4645a447d5223a56e3e0a306c554c8d6de95551a13b147f6",
-  "source_catalog_fingerprint": "sha256:8f57223f4a9d531f34a343c6c5de944c20209ce027a5887222b1c03071e916d0",
+  "content_hash": "sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85",
+  "source_catalog_fingerprint": "sha256:49e53ed3e426e7e7b12af47a54d28b4b9758e62c1a9b0d4f37fbc6d75f10c215",
   "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [

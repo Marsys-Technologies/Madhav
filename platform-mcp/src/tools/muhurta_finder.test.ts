@@ -260,3 +260,45 @@ describe('EL-53 file_as_prediction', () => {
     expect(NAKSHATRAS.length).toBe(27)
   })
 })
+
+// ── nakshatra spelling: canonical (L0 lexicon) AND old L1 spellings both resolve (SS N-471) ──────────
+describe('nakshatraNumber -- canonical + legacy spellings', () => {
+  it.each([
+    [5, 'Mrigasira'], [5, 'Mrigashira'],
+    [19, 'Moola'], [19, 'Mula'],
+    [23, 'Dhanishtha'], [23, 'Dhanishta'],
+  ])('number %i resolves from "%s"', (num, name) => {
+    expect(nakshatraNumber(name)).toBe(num)
+    expect(nakshatraNumber(name.toUpperCase())).toBe(num)
+    expect(nakshatraNumber(`  ${name.toLowerCase()} `)).toBe(num)
+  })
+
+  it('NAKSHATRAS carries the canonical spelling at numbers 5 / 19 / 23', () => {
+    expect(NAKSHATRAS[4]).toBe('Mrigasira')
+    expect(NAKSHATRAS[18]).toBe('Moola')
+    expect(NAKSHATRAS[22]).toBe('Dhanishtha')
+  })
+
+  it('every NAKSHATRAS entry resolves back to its own number', () => {
+    NAKSHATRAS.forEach((nm, i) => expect(nakshatraNumber(nm)).toBe(i + 1))
+  })
+
+  it('unknown / empty names are null, never a guess', () => {
+    for (const bad of ['', '   ', 'Abhijit', 'Purva', 'not a nakshatra', undefined, null]) {
+      expect(nakshatraNumber(bad as string | null | undefined)).toBeNull()
+    }
+  })
+
+  it('tara bala is identical whether the native / day nakshatra arrives canonical or old-L1 spelled', () => {
+    const canon = enrichWindowsLaneF(
+      [win('2026-08-10T00:00:00Z', 0.8, 'Dhanishtha')], baseInput({ native_janma_nakshatra: 'Moola' }),
+    )
+    const old = enrichWindowsLaneF(
+      [win('2026-08-10T00:00:00Z', 0.8, 'Dhanishta')], baseInput({ native_janma_nakshatra: 'Mula' }),
+    )
+    expect(canon.lane_f.tara_bala_status).toBe('applied')
+    expect(old.lane_f.tara_bala_status).toBe('applied')
+    expect(canon.windows[0]!.tara_bala).toEqual(old.windows[0]!.tara_bala)
+    expect(canon.windows[0]!.tara_bala?.count_from_janma).toBe(5)   // Moola(19) -> Dhanishtha(23), inclusive
+  })
+})
