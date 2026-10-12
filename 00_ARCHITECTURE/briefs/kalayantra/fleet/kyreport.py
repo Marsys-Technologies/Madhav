@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """kyreport.py — the measured status report of KĀLA-YANTRA v3 (relaunch plan v2.7 §13 "Measurement"; packet
-KV3-B-KYREPORT, rulings P14 and P15). version: 1.0 · status: DRAFT — pending independent review.
+KV3-B-KYREPORT, rulings P14 and P15). version: 1.1 · status: DRAFT — pending independent review.
 
     kyreport.py [--today] [--events E] [--model M]      one JSON report on stdout (P15: the status report of the
                                                         cockpit prompt's step 4; `--today` is its alias)
@@ -38,7 +38,8 @@ tokens        the four `usage` classes kyprobe.py reads from a stream `result` e
               payloads it is not added. A session without a result event (a killed job, an interactive planner or
               conductor) is counted only from the verified baseline. A child session (`parent_session_id`) is
               added only if the baseline receipt's `parent_includes_children` is exactly false, left out when it
-              is exactly true, and uncovered otherwise. A total exists only while the baseline is verified and
+              is exactly true AND the parent it names (parent_session_id, or parent_job_id's session) is a
+              session counted in this report, and uncovered otherwise. A total exists only while the baseline is verified and
               every session is covered; otherwise it is `unknown` and what was measured is labelled `partial`.
 signals       each from the source the packet names, else `unknown`:
               loop_healthy        STOPPED · HEALTHY · UNHEALTHY · unknown (see loop_health)
@@ -60,6 +61,9 @@ is `python3 -B <installed_path> --json OUT` (keys sources, grand_total, by_role,
 
 Changelog
   1.0 (2026-10-12)  first version (KV3-B-KYREPORT).
+  1.1 (2026-10-12)  review round 1, B-01: a child is left out as inside its parent only when that parent resolves
+                    to a session counted here, else it is uncovered; no counted session → the total is unknown,
+                    and per_guarded_completion cannot raise.
 """
 from __future__ import annotations
 
@@ -477,9 +481,10 @@ def owners(run, jobs):
                 uncovered.append({"owner": owner, "session": None,
                                   "why": "no provider_session_id is recorded for this job"})
             continue
+        parent = {k: doc[k] for k in ("parent_session_id", "parent_job_id") if doc.get(k) is not None}
         claims.append({"session": session, "owner": owner, "role": text(doc.get("role")) or UNKNOWN,
-                       "kind": text(doc.get("kind")) or UNKNOWN, "event": event,
-                       "child": doc.get("parent_session_id") is not None or doc.get("parent_job_id") is not None})
+                       "kind": text(doc.get("kind")) or UNKNOWN, "event": event, "child": bool(parent),
+                       "parent": parent, "jobs": {name, text(doc.get("job_id"))} - {None}})
     for role, name in ROLE_STATES:
         doc, err = kyaction.read_json(Path(run) / name)
         if err == "missing":
@@ -495,8 +500,27 @@ def owners(run, jobs):
                                      % (name, len(ids))})
             continue
         claims.append({"session": ids[0], "owner": owner, "role": role, "kind": "interactive", "event": None,
-                       "child": False})
+                       "child": False, "parent": {}, "jobs": set()})
     return claims, uncovered, not_started
+
+
+def parent_session(parent, job_sessions):
+    """the one session a child's recorded parent names — its parent_session_id, or the session of its
+    parent_job_id — → (session, None) or (None, why)."""
+    found = set()
+    sid, jid = parent.get("parent_session_id"), parent.get("parent_job_id")
+    if sid is not None:
+        if text(sid) is None:
+            return None, "its parent_session_id %s is not a session id" % json.dumps(sid)
+        found.add(sid)
+    if jid is not None:
+        hits = job_sessions.get(jid, set()) if text(jid) else set()
+        if len(hits) != 1:
+            return None, "its parent_job_id %s names no one recorded job session" % json.dumps(jid)
+        found |= hits
+    if len(found) != 1:
+        return None, "its parent_session_id and parent_job_id name different sessions"
+    return found.pop(), None
 
 
 def add(total, use):
@@ -523,7 +547,11 @@ def tokens_section(run, jobs, jobs_problem, observed, guarded):
         from_baseline, baseline_run_why = run_baseline(receipt["installed_path"], run)
         from_baseline = from_baseline or {}
     includes = receipt["parent_includes_children"] if receipt else None
-    sessions = []
+    job_sessions = {}
+    for claim in claims:
+        for job in claim["jobs"]:
+            job_sessions.setdefault(job, set()).add(claim["session"])
+    sessions, inside = [], []
     for session, group in by_session.items():
         first = group[0]
         entry = {"session": session, "owner": first["owner"], "role": first["role"], "kind": first["kind"],
@@ -531,7 +559,8 @@ def tokens_section(run, jobs, jobs_problem, observed, guarded):
         payloads = {kyaction.canonical(c["event"]) for c in group if c["event"] is not None}
         why = None
         if entry["child"] and includes is True:
-            entry["source"] = "included_in_parent"   # proven to be inside its parent's usage: never added again
+            entry["source"] = "included_in_parent"   # inside its parent's usage: never added again …
+            inside.append((entry, group))            # … once that parent is shown to be counted here (below)
         elif entry["child"] and includes is not False:
             why = "a child session, and the baseline receipt's parent_includes_children is not proven (it is %s)" \
                   % json.dumps(includes)
@@ -557,6 +586,17 @@ def tokens_section(run, jobs, jobs_problem, observed, guarded):
             entry["source"] = None
             uncovered.append({"owner": first["owner"], "session": session, "why": why})
         sessions.append(entry)
+    counted_sessions = {s["session"] for s in sessions if s["usage"] is not None}
+    for entry, group in inside:
+        for claim in (c for c in group if c["child"]):
+            parent, why = parent_session(claim["parent"], job_sessions)
+            if why is None and parent not in counted_sessions:
+                why = "its parent session %s is not counted in this report" % json.dumps(parent)
+            if why:
+                entry["source"] = None
+                uncovered.append({"owner": claim["owner"], "session": entry["session"],
+                                  "why": "a child session left out as inside its parent, but %s" % why})
+                break
 
     counted = [s for s in sessions if s["usage"] is not None]
     total, by_role, by_kind = {}, {}, {}
@@ -574,6 +614,8 @@ def tokens_section(run, jobs, jobs_problem, observed, guarded):
         why = "%d session(s) or owner(s) are not covered" % len(uncovered)
     elif not sessions:
         why = "no provider session is recorded: nothing was measured"
+    elif not counted:
+        why = "no session's usage is counted"
     if why:
         def part(value):
             return unknown(why, den, observed, partial=value) if counted else unknown(why, den, observed)
@@ -583,7 +625,7 @@ def tokens_section(run, jobs, jobs_problem, observed, guarded):
                    "by_kind": fig(by_kind, den, observed)}
     completed = guarded.get("count") if guarded.get("value") != UNKNOWN else None
     per_den = scope("distinct guarded-completed item ids", completed)
-    if why:
+    if why or any(k not in total for k in CLASSES):
         figures["per_guarded_completion"] = unknown("the token total is unknown", per_den, observed)
     elif not is_int(completed) or completed < 1:
         figures["per_guarded_completion"] = unknown("no guarded completion is measured to divide by", per_den,

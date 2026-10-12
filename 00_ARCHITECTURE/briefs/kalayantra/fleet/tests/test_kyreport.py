@@ -540,6 +540,46 @@ def test_tokens_children_are_added_only_when_the_parent_is_proven_not_to_include
     assert w.report()["tokens"]["total"]["value"] == "unknown"
 
 
+def test_tokens_an_orphan_child_is_uncovered_even_when_parents_include_children(w):
+    w.import_baseline([], parent_includes_children=True)
+    w.job("J-1", result_event=result_event("sess-J-1"))
+    w.job("J-1c", parent_session_id="sess-nobody", result_event=result_event("sess-J-1c", 1000, 1000, 1000, 1000))
+    t = w.report()["tokens"]                                              # its parent is counted nowhere here
+    assert t["total"]["value"] == "unknown" and t["total"]["partial"] == dict(usage(10, 20, 30, 40), total=100)
+    assert [u["session"] for u in t["uncovered"]] == ["sess-J-1c"] and "sess-nobody" in t["uncovered"][0]["why"]
+    assert [s["source"] for s in t["sessions"]] == ["result_event", None]
+    # the parent named by its job: counted → left out as inside it; a job nobody recorded → uncovered
+    w.job("J-1c", parent_job_id="J-1", result_event=result_event("sess-J-1c", 1000, 1000, 1000, 1000))
+    t = w.report()["tokens"]
+    assert t["total"]["value"] == dict(usage(10, 20, 30, 40), total=100) and t["uncovered"] == []
+    assert [s["source"] for s in t["sessions"]] == ["result_event", "included_in_parent"]
+    w.job("J-1c", parent_job_id="J-nobody", result_event=result_event("sess-J-1c"))
+    t = w.report()["tokens"]
+    assert t["total"]["value"] == "unknown" and [u["session"] for u in t["uncovered"]] == ["sess-J-1c"]
+    # the two parent fields disagree
+    w.job("J-1c", parent_job_id="J-1", parent_session_id="sess-other", result_event=result_event("sess-J-1c"))
+    assert w.report()["tokens"]["total"]["value"] == "unknown"
+    # the parent is recorded but its own usage is not counted (a killed job the baseline does not cover)
+    w.job("J-1", result_event=None)
+    w.job("J-1c", parent_session_id="sess-J-1", result_event=result_event("sess-J-1c"))
+    t = w.report()["tokens"]
+    assert t["total"]["value"] == "unknown" and "partial" not in t["total"]
+    assert sorted(u["session"] for u in t["uncovered"]) == ["sess-J-1", "sess-J-1c"]
+
+
+def test_tokens_only_an_uncounted_child_with_a_guarded_completion_reads_unknown(w):
+    w.import_baseline([], parent_includes_children=True)
+    w.job("J-1c", parent_session_id="sess-gone", result_event=result_event("sess-J-1c", 1000, 1000, 1000, 1000))
+    write(w.run / "EVENTS.jsonl", events_text())
+    model = write_json(w.tmp / "model.json", MODEL)
+    t = w.report("--model", model)["tokens"]
+    assert t["total"]["value"] == "unknown" and t["total"]["why"] and "partial" not in t["total"]
+    assert t["by_role"]["value"] == "unknown" and t["by_kind"]["value"] == "unknown"
+    assert t["per_guarded_completion"]["value"] == "unknown"
+    assert t["per_guarded_completion"]["denominator"]["count"] == 1
+    assert w.cli_report("--model", model)["tokens"]["total"]["value"] == "unknown"     # a report, not a traceback
+
+
 def test_tokens_interactive_planner_and_conductor_sessions(w):
     w.import_baseline([row("sess-planner"), row("sess-conductor", i=10, o=10, cc=10, cr=10)])
     write_json(w.run / "PLANNER_STATE.json", {"schema": "ky.role_state/1", "role": "planner", "active": {},
