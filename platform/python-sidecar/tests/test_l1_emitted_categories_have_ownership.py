@@ -529,6 +529,22 @@ def test_a_real_row_shape_is_still_read_and_never_taken_for_a_slice_descriptor(s
     assert set(res["ga_zz_row_probe.py"]) == {"zz_cat"}, shape
 
 
+def test_a_module_level_dict_with_a_spread_or_extra_keys_is_still_read():
+    """The two loosenings the function-level mutants cannot see, at MODULE level: a spread (could supply fact_key) and a key SUPERSET."""
+    trees = parse_all()
+    fake = R / "ga_writers" / "ga_zz_module_probe.py"
+    trees[fake] = ast.parse("BASE = {'fact_key': 'k'}\n"
+                            "WITH_SPREAD = {'table': 'chart_facts', 'fact_category': 'zz_spread', 'fact_subject': 'S', **BASE}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_spread"}
+    trees[fake] = ast.parse("EXTRA_KEYS = {'table': 'chart_facts', 'fact_category': 'zz_extra', 'fact_subject': 'S', 'fact_value_text': 'v'}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_extra"}
+    trees[fake] = ast.parse("MISSING_KEY = {'table': 'chart_facts', 'fact_category': 'zz_missing'}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_missing"}      # a key SUBSET is not the frozen descriptor either
+
+
 def test_only_a_module_level_exact_key_descriptor_is_skipped():
     trees = parse_all()
     fake = R / "ga_writers" / "ga_zz_descriptor_probe.py"
