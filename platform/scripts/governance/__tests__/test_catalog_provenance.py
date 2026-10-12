@@ -1381,7 +1381,7 @@ def test_committed_artifact_summary_agrees_with_its_entries():
 # explain any drop in the PR body.
 PINNED_PRODUCERS_BY_DISPOSITION = {
     "derived_from_service_probe": 8,  # SS N-373: ephemeris_cache_native_lifetime retired (9 -> 8)
-    "derived_from_source_query": 290,
+    "derived_from_source_query": 286,  # K7-1a canonical regeneration: current source ranges (290 -> 286)
     "reviewed_output": 14,
     "route_evidence_only": 1,
 }

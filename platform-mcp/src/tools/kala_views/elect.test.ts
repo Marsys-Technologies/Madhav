@@ -15,13 +15,18 @@ it('K7 public aliases, authentic registry adapters and legacy goldens pass in th
   const { fileURLToPath } = await import('node:url')
   const output = execFileSync(process.execPath, [
     'node_modules/vitest/vitest.mjs', 'run',
+    '--reporter=json',
     '--config', 'src/tools/kala_views/registry_alias.vitest.config.ts',
     'src/tools/kala_views/registry_alias.test.ts',
     'src/tools/kala_views/legacy_alias_golden.test.ts',
     'src/tools/kala_views/registry_contract.test.ts',
   ], { cwd: fileURLToPath(new URL('../../../', import.meta.url)), encoding: 'utf8', timeout: 30000,
     maxBuffer: 2 * 1024 * 1024 })
-  expect(output).toMatch(/Test Files\s+3 passed/)
+  // CI colours the text summary; JSON preserves the actual suite verdict.
+  expect(JSON.parse(output)).toMatchObject({
+    success: true, numFailedTestSuites: 0,
+    testResults: [{ status: 'passed' }, { status: 'passed' }, { status: 'passed' }],
+  })
 }, 35000)
 
 const mockHandleMuhurtaFinder = vi.fn()
