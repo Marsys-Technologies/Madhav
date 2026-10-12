@@ -6,6 +6,7 @@ themselves are untouched; on main their text was forwarded verbatim (Mula / Mrig
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import sys
 from datetime import datetime, timezone
@@ -90,3 +91,27 @@ def test_ga_panchanga_every_engine_name_emits_its_canonical_name():
 def test_ga_panchanga_refuses_an_unregistered_engine_name():
     with pytest.raises(UnknownNakshatraError):
         _panchanga_rows("NotANakshatra", 1)
+
+
+def test_ga_nakshatra_conjunction_subject_is_the_lexicon_spelling():
+    """SS N-568: ga_nakshatra used to write the adapter's spelling ('Mula') as the fact_subject of its
+    nakshatra_conjunction rows; the subject is now the lexicon's name. Fails on base."""
+    from ga_writers.ga_nakshatra_emitters import PLANET_TO_SUBJECT, emit_dispositor_graph
+
+    chart_output = {"grahas": [{"name": "Moon", "nakshatra": "Mula"}, {"name": "Jupiter", "nakshatra": "Mula"},
+                               {"name": "Mars", "nakshatra": "Dhanishta"}, {"name": "Venus", "nakshatra": "Dhanishta"},
+                               {"name": "Sun", "nakshatra": "Mrigashira"}],
+                    "ascendant": {"nakshatra": "Mrigashira"}}
+    rows = emit_dispositor_graph("test-chart", "lahiri_chitrapaksha", "test-build", chart_output,
+                                 body_nak_lord={b: b for b in PLANET_TO_SUBJECT})
+    conj = {r["fact_subject"]: json.loads(r["fact_value_text"]) for r in rows if r["fact_category"] == "nakshatra_conjunction"}
+    assert conj == {"Moola": ["Moon", "Jupiter"], "Dhanishtha": ["Mars", "Venus"], "Mrigasira": ["Sun", "Lagna"]}
+    assert not {"Mula", "Dhanishta", "Mrigashira"} & set(conj)
+
+
+def test_ga_nakshatra_conjunction_refuses_an_unregistered_adapter_name():
+    from ga_writers.ga_nakshatra_emitters import PLANET_TO_SUBJECT, emit_dispositor_graph
+
+    with pytest.raises(UnknownNakshatraError):
+        emit_dispositor_graph("c", "lahiri_chitrapaksha", "b", {"grahas": [{"name": "Moon", "nakshatra": "NotANakshatra"}], "ascendant": {}},
+                              body_nak_lord={b: b for b in PLANET_TO_SUBJECT})
