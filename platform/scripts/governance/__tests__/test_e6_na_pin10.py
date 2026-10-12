@@ -251,11 +251,11 @@ def test_NS_measure_emits_the_candidate_only_for_a_declared_non_service_kind(mon
 
 def test_NS_with_the_real_declarations_file_119_assets_read_na_8_services_and_1_undeclared_do_not():
     kinds = {a: ac._declared_kind(ac.load_asset_declarations(), a) for a in ac.load_asset_declarations()}
-    assert len(kinds) == 128                  # 127 snapshot assets + ga_fact_identity (kind data, 1.37.0)
+    assert len(kinds) == 127                  # 127 snapshot assets + ga_fact_identity (kind data, 1.37.0) - bg_sarvatobhadra_grid (retired by migration 1360, declaration dropped at rev28b: kind static)
     na = [a for a, k in kinds.items() if ac._service_state_na(k, "data") is not None]
     svc = [a for a, k in kinds.items() if k == "service"]
     unk = [a for a, k in kinds.items() if k is None]
-    assert (len(na), len(svc), len(unk)) == (119, 8, 1) and unk == ["mi_vistara"]      # the "119 expected" includes mi_vistara, whose kind is undeclared
+    assert (len(na), len(svc), len(unk)) == (118, 8, 1) and unk == ["mi_vistara"]      # (id kept; was 119 incl. the retired grid, now 118) the expectation includes mi_vistara, whose kind is undeclared
 
 
 def test_NS_ledger_closes_an_open_earn_service_state_row_only_for_a_released_na(monkeypatch, tmp_path):
@@ -330,5 +330,6 @@ def test_saved_censuses_exactly_ten_gate_cells_move_and_no_cell_reads_na_or_lowe
                 if c["v"] == NA and bc[c["criterion"]]["v"] != NA:
                     released[c["criterion"]] += 1
                     assert (M[aid].get(c["criterion"]) or {}).get("v") == NA, (aid, c["criterion"])       # only a measured N/A is released
-    assert dict(released) == {"Build.dep_liveness": 28, "Earn.service_state": 118}, released
+    # Earn.service_state was 118 when the saved censuses' bg_sarvatobhadra_grid still had a declared kind (static); the asset is retired (migration 1360), its declaration was dropped at rev28b, so its undeclared kind (None) is no longer released: 117.
+    assert dict(released) == {"Build.dep_liveness": 28, "Earn.service_state": 117}, released
     assert not [aid for aid in assets if not E[aid] and M[aid]["Build.dep_liveness"]["v"] != NA]       # 28 no-dependency assets, none withheld there

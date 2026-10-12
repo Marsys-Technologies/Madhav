@@ -923,7 +923,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 8 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 6      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151); ALIAS 4 (N-176 the value reading) and LDGR 6 (N-177 the UNSOURCED_DECLARED residual) at the engine-fixes-II re-pin of pin 26
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 9 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 6      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151); ALIAS 4 (N-176 the value reading) and LDGR 6 (N-177 the UNSOURCED_DECLARED residual) at the engine-fixes-II re-pin of pin 26
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]

@@ -36,15 +36,15 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
         assert e["gate"] == crit.split(".")[0] and e["check"] == crit.split(".")[1]
         assert e["detector"] == "asset_census.py:measure()", crit
         assert e["layers"] == ac.ALL_LAYERS and e["columns_any"] is None and e["asset_kinds"] is None, crit
-        assert e["revision"] == (9 if crit in NULL else 7 if crit in ("Narr.lint", "Narr.agree") else 6), crit          # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2          # Narr.agree is bumped once more by SS R-e (stack integration: 5 + 1)          # FORM-GAP (SS N-191 / N-192): +1 each of the six (the applicability text names the checked forms)
+        assert e["revision"] == (10 if crit in NULL else 8 if crit == "Narr.agree" else 7), crit      # registry revision 28 (ONE bump): Null +1 (9 to 10), Narr.agree +1 (7 to 8), Narr.checkable / Narr.fidelity_test +1 (6 to 7), Narr.lint unchanged (7)      # +1 each at pin 26 (N-150 R1/R2: the checked declared-none form)          # S1 (pin 13) bumped the two Null checks to 2; STAMP (pin 15) to 3; NARR-GUARD (pin 16) bumped the four Narr checks to 2          # Narr.agree is bumped once more by SS R-e (stack integration: 5 + 1)          # FORM-GAP (SS N-191 / N-192): +1 each of the six (the applicability text names the checked forms)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"} == set(NARR)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
 
 def test_only_the_narr_no_prose_rules_are_declared_and_the_no_prose_causes_are_registered():
     # N-22 row 33: the Null criteria carry no N/A rule; row 17 (Narr no-prose) is declared since REGISTRY_REVISION 9 (SS N-65)
-    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == sorted([f"{c}#measured:no-prose-declared" for c in NULL] + [f"{c}#measured:no-table-no-prose" for c in NULL])      # N-150 R1; SS 2026-10-05 no-table-no-prose: released only through the checked prose_none block
-    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR} | {"Narr.lint#measured:lint-not-applicable"} | {f"{c}#measured:no-table-no-prose" for c in NARR}     # N-150 R2; SS 2026-10-05
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == sorted([f"{c}#measured:no-prose-declared" for c in NULL] + [f"{c}#measured:no-table-no-prose" for c in NULL] + [f"{c}#measured:corpus-derived" for c in NULL])      # SS N-431 (registry revision 28): the corpus-derived rule row on both Null criteria; N-150 R1; SS 2026-10-05 no-table-no-prose: released only through the checked prose_none block
+    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR} | {"Narr.lint#measured:lint-not-applicable"} | {f"{c}#measured:no-table-no-prose" for c in NARR} | {f"{c}#measured:corpus-derived" for c in ("Narr.agree", "Narr.checkable", "Narr.fidelity_test")}     # SS N-431 (registry revision 28): corpus-derived on the three checks that a verbatim-slice table cannot fail (not Narr.lint); N-150 R2; SS 2026-10-05
     for crit in NARR:
         assert "no-prose" in ac.NA_CAUSES[crit], crit
     for crit in NULL:

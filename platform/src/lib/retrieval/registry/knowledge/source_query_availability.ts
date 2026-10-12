@@ -1,5 +1,7 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
+import { ayanamshaServeOrderBy } from '../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT } from '../layers/L1_ganita/citation_narration'
 import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../generation/served_generation'
 
 export type SourceQueryParameterBinding =
@@ -73,14 +75,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = ANY(ARRAY['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY fact_category, ayanamsha_id, fact_key
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = ANY(ARRAY['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts:53-84',
@@ -105,14 +107,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM ga_condition_composite
              WHERE chart_id = $1::uuid
                AND (NULL::text IS NULL OR graha = NULL::text)
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY graha, ayanamsha_id
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY graha, ${ayanamshaServeOrderBy()}
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM ga_condition_composite
              WHERE chart_id = $1::uuid
                AND (NULL::text IS NULL OR graha = NULL::text)
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:75-107',
@@ -136,9 +138,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'bhava_bala_total_extended', 'house_bhava_bala_subscore',
                'house_bhava_bala_total', 'house_strength_classification_rollup'
              ]::text[])
-             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND (NULL::text IS NULL OR fact_key ILIKE NULL::text)
-           ORDER BY fact_category, ayanamsha_id, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts:54-79',
@@ -162,8 +164,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'bhava_arudha', 'karaka_house_lord_overlap_flag', 'karakatva_strength_per_significance',
                  'kp_cuspal_significators', 'kp_ruling_planets_natal', 'jaimini_tri_deva_role_per_graha'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY fact_category, ayanamsha_id, fact_key
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
@@ -173,7 +175,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'bhava_arudha', 'karaka_house_lord_overlap_flag', 'karakatva_strength_per_significance',
                  'kp_cuspal_significators', 'kp_ruling_planets_natal', 'jaimini_tri_deva_role_per_graha'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123',
@@ -197,9 +199,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'graha_sign_attributes', 'graha_vargottama_amplification_factor',
                  'vargottama_per_varga', 'graha_functional_class_per_ascendant'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR fact_key ILIKE NULL::text)
-             ORDER BY fact_category, ayanamsha_id, fact_key
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
@@ -209,7 +211,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'graha_sign_attributes', 'graha_vargottama_amplification_factor',
                  'vargottama_per_varga', 'graha_functional_class_per_ascendant'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR fact_key ILIKE NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
@@ -234,8 +236,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'conjunction_within_orb', 'conjunction_per_varga',
                'lord_aspects_lord_per_varga', 'lord_in_house_per_varga'
              ]::text[])
-             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-           ORDER BY fact_category, ayanamsha_id, fact_key
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91',
@@ -253,14 +255,15 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = ANY(ARRAY[
                'ashtakavarga_bindu', 'ashtakavarga_anubindu', 'ashtakavarga_bindu_sign',
                'ashtakavarga_pinda_bhinna', 'ashtakavarga_pinda_sarva', 'ashtakavarga_pinda_sodhita',
                'ashtakavarga_pinda_raasi', 'ashtakavarga_trikona_shodhana',
                'ashtakavarga_ekadhipathya_shodhana', 'ashtakavarga_kakshya_boundary'
              ]::text[])
-             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-           ORDER BY fact_category, ayanamsha_id, fact_key
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:88-124',
@@ -284,8 +287,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary',
                  'graha_avastha_sayanadi'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY fact_category, ayanamsha_id, fact_key
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
@@ -295,7 +298,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary',
                  'graha_avastha_sayanadi'
                ]::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100',
@@ -315,15 +318,15 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = ANY(ARRAY['argala_natal_matrix', 'virodha_argala_natal_matrix']::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR fact_subject LIKE NULL::text || '%')
-             ORDER BY ayanamsha_id, fact_subject, fact_key
+             ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = ANY(ARRAY['argala_natal_matrix', 'virodha_argala_natal_matrix']::text[])
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR fact_subject LIKE NULL::text || '%')
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
@@ -346,8 +349,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
                'parivartana_per_varga', 'kala_sarpa_per_varga'
              ]::text[])
-             AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-           ORDER BY fact_category, ayanamsha_id, fact_key
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts:20-79',
@@ -365,8 +368,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = 'eclipse_proximity_natal'
-           ORDER BY ayanamsha_id, fact_key
+           ORDER BY ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts:38-62',
@@ -1363,17 +1367,19 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
-                   fact_value_jsonb, unit, ayanamsha_id, citation_ref
+                   fact_value_jsonb, unit, ayanamsha_id, citation_ref, ${CITATION_HUMAN_SELECT}
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
-             ORDER BY ayanamsha_id, fact_subject, fact_key
+             ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
           )
@@ -1396,17 +1402,19 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
-                   fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
+                   fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
-             ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
+             ORDER BY ${ayanamshaServeOrderBy()}, fact_category, fact_subject, fact_key
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
           )
@@ -1553,9 +1561,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
              AND fact_category = ANY(ARRAY[
                'graha_nakshatra_join', 'graha_pada_join', 'graha_kp_lords',
                'cusp_kp_lords', 'graha_gandanta', 'graha_degree_flags', 'nakshatra_dispositor',
@@ -1563,7 +1572,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'graha_tara_bala', 'nakshatra_statistics', 'nakshatra_cross_ayanamsha',
                'kp_house_significators', 'kp_planet_significations'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:76-115',
@@ -1579,9 +1588,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                  fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
-                 verification_pass_status, citation_ref
+                 verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = ANY(ARRAY[
                'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
                'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
@@ -1592,7 +1602,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'bhrigu_nadi_point', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint',
                'saham_position', 'saturn_derived_point', 'nakshatra_pada_sensitive'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_key, formula_id
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124',
@@ -1607,9 +1617,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = ANY(ARRAY[
                'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
                'sade_sati_modifier_overlay', 'sade_sati_cancellation_check',
@@ -1618,7 +1629,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'anumukha_shani_period', 'ardha_ashtama_shani_period', 'ashtama_shani_period',
                'dhaiya_period', 'vishakha_shani_period', 'kantaka_shani_period'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, fact_id
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, fact_subject, fact_id
            LIMIT 0 OFFSET 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:77-118',
@@ -1636,6 +1647,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT fact_id
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND fact_category = ANY(ARRAY[
                  'tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific'
                ]::text[])
@@ -1644,6 +1656,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT chart_id
               FROM l1_tajik_varsha_year_lords
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
              LIMIT 0
           ), birth_date_probe AS (
             SELECT id
@@ -1717,7 +1730,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = 'graha_yuddha'
-             ORDER BY ayanamsha_id, fact_subject, fact_key
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key
              LIMIT 0
           ), birth_date_probe AS (
             SELECT birth_date
@@ -1752,9 +1766,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
-                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
                AND fact_category = ANY(ARRAY[
                  'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
                  'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
@@ -1768,12 +1783,13 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'panchanga_varjyam', 'panchanga_vijaya_muhurta', 'panchanga_visha_ghati',
                  'panchanga_yamaganda_kalam', 'panchanga_yamakantaka', 'panchanga_yoga'
                ]::text[])
-             ORDER BY fact_category, ayanamsha_id, fact_key
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
                AND fact_category = ANY(ARRAY[
                  'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
                  'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
@@ -1862,12 +1878,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    indication_tier, not_diagnosis, classical_citation
               FROM ga_medical
              WHERE chart_id = $1::uuid
-             ORDER BY graha, ayanamsha_id
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY graha, ${ayanamshaServeOrderBy()}
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM ga_medical
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           )
           SELECT handler_page.*, handler_count.total
             FROM handler_page
@@ -1901,12 +1919,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  WHERE direction = m.direction
               ) r ON true
              WHERE m.chart_id = $1::uuid
-             ORDER BY m.graha, m.ayanamsha_id
+               AND m.ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY m.graha, ${ayanamshaServeOrderBy('m.ayanamsha_id')}
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM ga_vastu_planet_direction_map m
              WHERE m.chart_id = $1::uuid
+               AND m.ayanamsha_id = 'lahiri_chitrapaksha'
           )
           SELECT handler_page.*, handler_count.total
             FROM handler_page
@@ -1929,7 +1949,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    natal_sign, natal_house_from_moon, natal_degree_absolute, computed_at
               FROM ga_transit_anchors
              WHERE chart_id = $1::uuid
-             ORDER BY ayanamsha_id, graha
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY ${ayanamshaServeOrderBy()}, graha
              LIMIT 0
           ), constituent_facts_probe AS (
             SELECT ayanamsha_id, fact_subject, fact_id
@@ -1982,16 +2003,19 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    source_citation, computed_at
               FROM chart_vichara
              WHERE chart_id = $1::uuid
-             ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY vichara_family, domain NULLS FIRST, subject, ${ayanamshaServeOrderBy()}, varga_id NULLS FIRST, id
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM chart_vichara
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           ), family_counts_probe AS (
             SELECT vichara_family, COUNT(*)::text AS n
               FROM chart_vichara
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
              GROUP BY vichara_family
              LIMIT 0
           )
@@ -2012,9 +2036,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = ANY(ARRAY[
                'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
                'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
@@ -2023,7 +2048,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'kendradhipati_dosha', 'bhava_significance_link', 'net_argala_per_varga', 'panchadha_maitri',
                'tara_bala'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key
            LIMIT 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:72-89',
@@ -2043,16 +2068,18 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND fact_category = ANY(ARRAY[
                  'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
                ]::text[])
                AND NOT (fact_category = 'dosha_label' AND (fact_value_jsonb->>'fire_reason') = 'requires_pass')
-             ORDER BY fact_category, ayanamsha_id, fact_key
+             ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND fact_category = ANY(ARRAY[
                  'yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag'
                ]::text[])
@@ -2060,15 +2087,17 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM ga_yoga_firings
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND fired = true
           ), kala_sarpa_probe AS (
             SELECT fact_id, ayanamsha_id, fact_value_jsonb, fact_value_text,
                    verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND fact_category = 'kala_sarpa_per_varga'
                AND fact_key = 'ks_detection'
-             ORDER BY ayanamsha_id, (fact_value_jsonb->>'varga')
+             ORDER BY ${ayanamshaServeOrderBy()}, (fact_value_jsonb->>'varga')
              LIMIT 0
           )
           SELECT handler_page.*, handler_count.total
@@ -2094,6 +2123,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id = 'lahiri_chitrapaksha'
              AND fact_category = ANY(ARRAY[
                'ashtakavarga_bindu', 'ashtakavarga_anubindu', 'ashtakavarga_bindu_sign',
                'ashtakavarga_pinda_bhinna', 'ashtakavarga_pinda_sarva', 'ashtakavarga_pinda_sodhita',
@@ -2101,7 +2131,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'ashtakavarga_ekadhipathya_shodhana', 'ashtakavarga_kakshya_boundary',
                'ashtakavarga_bindu_per_varga', 'ashtakavarga_pinda_sarva_per_varga'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
            LIMIT 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts:27-42',
@@ -2119,7 +2149,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     sql: `WITH handler_page AS (
             SELECT * FROM chart_divisionals
              WHERE chart_id = $1::uuid
-             ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key
+               AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
+             ORDER BY varga, ${ayanamshaServeOrderBy()}, graha, fact_category, fact_key
              LIMIT 0
           ), own_varga_lagna_probe AS (
             SELECT varga, ayanamsha_id, sign
@@ -2144,11 +2175,12 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
             FROM chart_facts
            WHERE chart_id = $1::uuid
+             AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
              AND fact_category = 'graha_position'
-           ORDER BY ayanamsha_id,
+           ORDER BY ${ayanamshaServeOrderBy()},
                     CASE fact_category WHEN 'graha_position' THEN 0 WHEN 'upagraha_position' THEN 1
                                        WHEN 'aprakasha_position' THEN 2 ELSE 3 END,
                     fact_category, fact_key
@@ -2172,13 +2204,15 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM ga_yoga_firings f
               LEFT JOIN brahma_yoga_catalog c ON c.canonical_id = f.yoga_canonical_id
              WHERE f.chart_id = $1::uuid
+               AND f.ayanamsha_id = 'lahiri_chitrapaksha'
                AND f.fired = true
-             ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, f.ayanamsha_id, f.id
+             ORDER BY f.strength DESC NULLS LAST, f.yoga_canonical_id, ${ayanamshaServeOrderBy('f.ayanamsha_id')}, f.id
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM ga_yoga_firings f
              WHERE f.chart_id = $1::uuid
+               AND f.ayanamsha_id = 'lahiri_chitrapaksha'
                AND f.fired = true
           )
           SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
@@ -2322,12 +2356,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    is_primary, classical_citation
               FROM ga_prashna_lagna
              WHERE chart_id = $1::uuid
-             ORDER BY ayanamsha_id, lagna_method
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY ${ayanamshaServeOrderBy()}, lagna_method
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM ga_prashna_lagna
              WHERE chart_id = $1::uuid
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
           )
           SELECT handler_page.*, handler_count.total
             FROM handler_page CROSS JOIN handler_count`,
@@ -2400,16 +2436,16 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_pratijna
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR status = NULL::text)
                AND (NULL::text IS NULL OR event_class_id = NULL::text)
-             ORDER BY event_class_id, ayanamsha_id
+             ORDER BY event_class_id, ${ayanamshaServeOrderBy()}
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM bodha_pratijna
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR status = NULL::text)
                AND (NULL::text IS NULL OR event_class_id = NULL::text)
           )
@@ -2435,8 +2471,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    pattern_cluster_markers_jsonb, verification_pass_status, citation_ref, citation_human
               FROM bodha_cdlm_chart_summary
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY ayanamsha_id
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY ${ayanamshaServeOrderBy()}
              LIMIT 0
           ), domain_rollups_page AS (
             SELECT rollup_id, ayanamsha_id, snapshot_type, domain, total_inbound_linkage,
@@ -2445,9 +2481,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    pattern_markers_for_domain_array, verification_pass_status, citation_ref, citation_human
               FROM bodha_cdlm_domain_rollups
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR domain = NULL::text)
-             ORDER BY ayanamsha_id, domain
+             ORDER BY ${ayanamshaServeOrderBy()}, domain
              LIMIT 0
           ), pattern_clusters_page AS (
             SELECT pattern_id, ayanamsha_id, snapshot_type, pattern_marker_type,
@@ -2457,7 +2493,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human
               FROM bodha_cdlm_pattern_clusters
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
              ORDER BY cluster_strength_total DESC NULLS LAST
              LIMIT 0
           ), evolution_gradients_page AS (
@@ -2467,8 +2503,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human
               FROM bodha_cdlm_evolution_gradients
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY ayanamsha_id, domain_row, domain_col
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
+             ORDER BY ${ayanamshaServeOrderBy()}, domain_row, domain_col
              LIMIT 0
           )
           SELECT 1
@@ -2495,7 +2531,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    classical_citation_id, verification_pass_status, citation_ref, citation_human
               FROM bodha_cgm_motifs
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR motif_class = NULL::text)
              ORDER BY motif_strength DESC NULLS LAST, motif_name
              LIMIT 0
@@ -2503,7 +2539,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM bodha_cgm_motifs
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR motif_class = NULL::text)
           )
           SELECT handler_page.*, handler_count.total
@@ -2527,7 +2563,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human
               FROM bodha_cgm_paths
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR path_type = NULL::text)
              ORDER BY path_strength DESC NULLS LAST, path_length
              LIMIT 0
@@ -2535,7 +2571,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM bodha_cgm_paths
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR path_type = NULL::text)
           )
           SELECT handler_page.*, handler_count.total
@@ -2568,15 +2604,15 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_question_lenses
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR question_type = NULL::text)
-             ORDER BY question_type, ayanamsha_id
+             ORDER BY question_type, ${ayanamshaServeOrderBy()}
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total
               FROM bodha_question_lenses
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR question_type = NULL::text)
           )
           SELECT handler_page.*, handler_count.total
@@ -2603,14 +2639,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_chart_summary
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR snapshot_type = NULL::text)
              ORDER BY computed_at DESC
              LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_chart_summary
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR snapshot_type = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:62-88'],
@@ -2631,14 +2667,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_resonances
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR graha = NULL::text)
              ORDER BY resonance_score DESC NULLS LAST, weakness_score DESC NULLS LAST
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_resonances
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR graha = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts:57-82'],
@@ -2662,7 +2698,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_remedy_prescriptions
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR tradition = NULL::text)
                AND (NULL::text IS NULL OR remedy_category = NULL::text)
                AND (NULL::text IS NULL OR target_graha = NULL::text)
@@ -2671,7 +2707,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_remedy_prescriptions
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR tradition = NULL::text)
                AND (NULL::text IS NULL OR remedy_category = NULL::text)
                AND (NULL::text IS NULL OR target_graha = NULL::text)
@@ -2690,13 +2726,13 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human,
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_dasha_windowed_prescriptions
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR dasha_system = NULL::text)
                AND (NULL::text IS NULL OR dasha_lord = NULL::text)
              ORDER BY window_start_iso LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_dasha_windowed_prescriptions
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR dasha_system = NULL::text)
                AND (NULL::text IS NULL OR dasha_lord = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
@@ -2714,12 +2750,12 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human,
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_dosha_remedy_bundles
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR dosha_class = NULL::text)
              ORDER BY intensity_score DESC NULLS LAST LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_dosha_remedy_bundles
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR dosha_class = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:68-96'],
@@ -2735,12 +2771,12 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    verification_pass_status, citation_ref, citation_human,
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_rm_pattern_remedies
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR source_kind = NULL::text)
              ORDER BY theme_strength DESC NULLS LAST LIMIT 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_rm_pattern_remedies
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR source_kind = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:59-81'],
@@ -2759,7 +2795,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    constituent_refs_jsonb, cross_subsystem_refs_jsonb,
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_discoveries
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR discovery_class = NULL::text)
              ORDER BY composite_discovery_rank DESC NULLS LAST, non_obviousness_score DESC NULLS LAST, discovery_id ASC
              LIMIT 0 OFFSET 0
@@ -2767,7 +2803,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT discovery_class, discovery_subsystem, hypothesis_text, COUNT(*) AS member_count,
                    COUNT(DISTINCT ayanamsha_id) AS ayanamsha_count
               FROM bodha_discoveries
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR discovery_class = NULL::text)
              GROUP BY discovery_class, discovery_subsystem, hypothesis_text
              ORDER BY MAX(composite_discovery_rank) DESC NULLS LAST,
@@ -2775,7 +2811,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM bodha_discoveries
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR discovery_class = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: ['platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:104-181'],
@@ -3751,7 +3787,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    to_char(computed_at, 'YYYY-MM-DD') AS computed_date
               FROM bodha_triangulation
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR question_class = NULL::text)
                AND (NULL::text IS NULL OR tradition = NULL::text)
              ORDER BY question_class, tradition
@@ -3760,7 +3796,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM bodha_triangulation
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR question_class = NULL::text)
                AND (NULL::text IS NULL OR tradition = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
@@ -3893,7 +3929,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    pagerank_score, hub_flag, primary_domain, strength_score
               FROM bodha_cgm_nodes
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR snapshot_type = NULL::text)
              ORDER BY pagerank_score DESC NULLS LAST
              LIMIT 0
@@ -3902,7 +3938,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    is_cross_subsystem, underlying_msr_signal_ids_array
               FROM bodha_cgm_edges
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR snapshot_type = NULL::text)
              ORDER BY computed_strength DESC NULLS LAST
              LIMIT 0
@@ -3911,7 +3947,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
               FROM bodha_cgm_chart_topology_summary
              WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+               AND ayanamsha_id = 'lahiri_chitrapaksha'
                AND (NULL::text IS NULL OR snapshot_type = NULL::text)
              LIMIT 0
           ), contradictions AS (
@@ -3919,7 +3955,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    tension_class, domains_affected_array, combined_salience,
                    resolution_hint_jsonb, verification_pass_status, ayanamsha_id, build_id
               FROM bodha_contradictions
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
              ORDER BY combined_salience DESC NULLS LAST
              LIMIT 0
           ), participant_signals AS (
@@ -3927,7 +3963,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    computed_salience, valence, domains_affected_array, signature_tier,
                    constituent_facts_array
               FROM bodha_msr_signals
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
              ORDER BY computed_salience DESC NULLS LAST
              LIMIT 0
           ), subgraphs AS (
@@ -3935,7 +3971,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    subgraph_density, classical_archetype_match, verification_pass_status,
                    citation_ref, citation_human
               FROM bodha_cgm_sub_graphs
-             WHERE chart_id = $1::uuid AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             WHERE chart_id = $1::uuid AND ayanamsha_id = 'lahiri_chitrapaksha'
              ORDER BY subgraph_density DESC NULLS LAST
              LIMIT 0
           ) SELECT (SELECT COUNT(*) FROM graph_nodes) AS nodes,

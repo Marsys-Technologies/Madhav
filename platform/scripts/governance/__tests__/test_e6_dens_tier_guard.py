@@ -537,17 +537,17 @@ def test_the_pin_the_revision_the_criterion_and_the_declarations_file():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["version"] == _decl_version.CURRENT and raw["density_tier_declaration_fields"] == ["column", "why", "evidence"] == list(ac.DENS_TIER_DECL_FIELDS)
     assert "density_tier_columns" in raw["description"] and "N-98" in raw["description"]
-    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_class_priors", "bg_formula_constants", "bg_muhurta_lattice"], "DENS-SERVED: bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156); DENS-F: bg_class_priors.contested (confidence tier, counted per page at query_class_priors.ts); DENS-A: bg_formula_constants.class (an authority class)"
+    assert [a for a, d in raw["assets"].items() if "density_tier_columns" in d] == ["bg_class_priors", "bg_formula_constants", "bg_gochara_citation_resolution", "bg_muhurta_lattice", "bg_remedies", "bo_anveshana", "bo_pramana_mapa", "ga_yoga"], "DENS-SERVED: bg_muhurta_lattice.corpus_status (citation-verification tier, cited at query_muhurta_lattice.ts:156); DENS-F: bg_class_priors.contested (confidence tier, counted per page at query_class_priors.ts); DENS-A: bg_formula_constants.class (an authority class)"
 
 
 def test_only_dens_served_changed_in_the_criterion_registry_at_23():
-    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Vocab.alias"} and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14 and {"Null.schema_default", "Null.blank_rows"} <= {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 9}      # Dens.served rev 14 (DENS-SERVED); the two Null checks are 8 at N-189 and 9 with FORM-GAP
+    assert {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 8} == {"Narr.agree"} and ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 9 and ac.CRITERION_REGISTRY["Dens.served"]["revision"] == 14 and {"Null.schema_default", "Null.blank_rows"} <= {k for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] == 10}      # Dens.served rev 14 (DENS-SERVED); the two Null checks are 8 at N-189 and 9 with FORM-GAP
     assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface", "dens-not-served", "dens-owned-by-sibling"} and list(r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")) == ["Dens.served#measured:no-served-surface", "Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"]      # SS N-211
 
 
-def test_the_real_tree_moves_exactly_three_pass_cells_to_partial_and_nothing_else(monkeypatch):
+def test_the_real_tree_moves_exactly_four_pass_cells_to_partial_and_nothing_else(monkeypatch):
     """The measured effect of the closed list on the committed 127-asset inputs (they re-measure to the saved censuses of adb0db2 on 126 of 127 assets). The three are
-    the assets whose PASS rested on a `*_tier` column outside the vocabulary and with no declaration; each is an SS decision (declare it, or accept PARTIAL)."""
+    the assets whose PASS rested on a `*_tier` column outside the vocabulary and with no declaration; each is an SS decision (declare it, or accept PARTIAL). bg_remedies is the fourth since its served select became readable (cost_tier price bucket; `confidence` is the tier it declares)."""
     import test_e6_dens_label_select as ls
     new_fn = ac.dens_tier_counts
     real_read, cache = pathlib.Path.read_text, {}
@@ -576,7 +576,7 @@ def test_the_real_tree_moves_exactly_three_pass_cells_to_partial_and_nothing_els
     monkeypatch.setattr(ac, "dens_tier_counts", new_fn)
     assert set(old) == set(new) and len(old) >= 9                                              # the candidate assets (a `*_tier` column outside the closed list), both ways
     moved = {a: (old[a], new[a]) for a in old if old[a] != new[a]}
-    assert moved == {"ga_medical": (PASS, PARTIAL), "ga_vastu": (PASS, PARTIAL), "mi_kula": (PASS, PARTIAL)}, moved
+    assert moved == {"bg_remedies": (PASS, PARTIAL), "ga_medical": (PASS, PARTIAL), "ga_vastu": (PASS, PARTIAL), "mi_kula": (PASS, PARTIAL)}, moved
 
 
 def test_bg_remedies_cost_tier_is_not_a_tier_column_on_the_real_inputs():

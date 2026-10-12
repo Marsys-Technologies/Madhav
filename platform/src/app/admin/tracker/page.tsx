@@ -240,6 +240,7 @@ function AyanamshaMatrix({ rows }: { rows: AyanamshaMatrixRow[] }) {
               {AYANAMSHAS.map((a) => (
                 <th key={a} className="px-2 py-2 border border-gray-200 font-mono">
                   {a}
+                  {a === 'lahiri' ? ' (primary)' : ''}
                 </th>
               ))}
             </tr>

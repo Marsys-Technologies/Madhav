@@ -13,6 +13,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { resolveAyanamshaArg, INVARIANT_AYANAMSHA, STORED_AYANAMSHA_IDS } from '../../lib/ayanamsha.js'
 
 // ── Shared birth data schema ──────────────────────────────────────────────────
 
@@ -24,10 +25,29 @@ const BirthDataSchema = {
   longitude_deg: z.number().describe('Geographic longitude in decimal degrees (E positive)'),
   tz_offset_hours: z.number().default(5.5).describe('Timezone offset hours (e.g. 5.5 for IST)'),
   place_name: z.string().optional().describe('Place name (informational)'),
+  // SS N-342: every STORED ayanamsha id (lahiri_chitrapaksha | true_chitra | krishnamurti | raman |
+  // surya_siddhanta_classical) and the historical short spellings (lahiri, kp, true_citra, ...) are
+  // accepted, any case; omitted = Lahiri (primary). The old four-value enum rejected every stored id.
   ayanamsha_id: z
-    .enum(['lahiri', 'raman', 'kp', 'true_citra'])
-    .default('lahiri')
-    .describe('Ayanamsha to use for sidereal computation'),
+    .string()
+    .optional()
+    .describe(
+      "Ayanamsha for sidereal computation (default: 'lahiri_chitrapaksha'). Stored ids and short " +
+      'aliases (lahiri, kp, true_citra, ...) are accepted, any case.',
+    ),
+}
+
+/** One real ayanamsha for the sidecar recompute: Lahiri when omitted, a stored id otherwise. */
+function resolveBirthAyanamsha(raw: unknown): { ok: true; id: string } | { ok: false; message: string } {
+  const r = resolveAyanamshaArg(raw)
+  if (!r.ok) return { ok: false, message: r.message }
+  if (r.ayanamsha_id === null || r.ayanamsha_id === INVARIANT_AYANAMSHA) {
+    return {
+      ok: false,
+      message: `Birth-data recompute needs one real ayanamsha, got ${JSON.stringify(raw)}. Stored ids: ${STORED_AYANAMSHA_IDS.join(', ')}.`,
+    }
+  }
+  return { ok: true, id: r.ayanamsha_id }
 }
 
 // ── Sidecar caller ────────────────────────────────────────────────────────────
@@ -73,7 +93,11 @@ export function registerComputeNatalPositionsTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await callPyHora(params)
+        const aya = resolveBirthAyanamsha(params.ayanamsha_id)
+        if (!aya.ok) {
+          return { content: [{ type: 'text', text: aya.message }], isError: true }
+        }
+        const data = await callPyHora({ ...params, ayanamsha_id: aya.id })
 
         const grahas = Array.isArray(data.graha_sthana) ? data.graha_sthana : []
         const bhava_lagna = data.bhava_lagna ?? {}
@@ -89,7 +113,7 @@ export function registerComputeNatalPositionsTool(server: McpServer): void {
 
         const text =
           `# Natal Chart — graha_sthana\n` +
-          `Engine: ${data.engine ?? 'PyJHora'} | Ayanamsha: ${params.ayanamsha_id ?? 'lahiri'}\n\n` +
+          `Engine: ${data.engine ?? 'PyJHora'} | Ayanamsha: ${aya.id}\n\n` +
           `Planet   | Sign        | Nakshatra          | Pd | Hs | Longitude\n` +
           `---------|-------------|--------------------|----|----|-----------\n` +
           planetTable +
@@ -133,7 +157,11 @@ export function registerQuerySpecialLagnasTool(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await callPyHora(params)
+        const aya = resolveBirthAyanamsha(params.ayanamsha_id)
+        if (!aya.ok) {
+          return { content: [{ type: 'text', text: aya.message }], isError: true }
+        }
+        const data = await callPyHora({ ...params, ayanamsha_id: aya.id })
 
         const lagna = (data.bhava_lagna ?? {}) as Record<string, unknown>
         const specialPoints = (data.special_lagnas ?? {}) as Record<string, unknown>
@@ -154,7 +182,7 @@ export function registerQuerySpecialLagnasTool(server: McpServer): void {
 
         const text =
           `# Special Lagnas & Upagrahas\n` +
-          `Engine: ${data.engine ?? 'PyJHora'} | Ayanamsha: ${params.ayanamsha_id ?? 'lahiri'}\n\n` +
+          `Engine: ${data.engine ?? 'PyJHora'} | Ayanamsha: ${aya.id}\n\n` +
           `Point        | Sign        | Longitude\n` +
           `-------------|-------------|----------\n` +
           lagnaLine +
