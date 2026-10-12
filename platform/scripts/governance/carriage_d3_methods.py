@@ -246,6 +246,17 @@ def positions_ref(r, ctx):
 _AU_KM = 149597870.7
 _RS, _RM, _RE = 696000.0, 1738.15, 6378.137          # swecl.c DSUN / 2, DMOON / 2, DEARTH / 2 (km)
 _ECL_ENL = 1.0 / 0.99                                   # the lunar umbra / penumbra enlargement swecl.c applies (measured: 1.0 mismatches 12 of 311, 1/0.99 mismatches 2 boundary cases)
+_DE_KM, _FLAT = 6378.140, 1.0 / 298.25642               # swecl.c eclipse_where: the Earth equatorial radius and flattening of its oblate-Earth axis test
+_CENTRAL_AMBIG_KM = 1.0                                 # 1.5e-4 Earth radii (0.96 km): a central-limit margin inside it is a boundary case the method lists
+# Contact classes (the method's own `tol_classes`, N-538 item 4 / N-544). Measured over all 622 stored eclipses 1900-2036 (pinned Swiss ephemeris, the real method): the begin/end
+# contact deviation from swisseph's own contacts reaches 345.6 s (solar begin), 409.9 s (solar end), 296.5 s (lunar begin), 229.8 s (lunar end) ONLY on shallow PARTIAL eclipses, where the
+# contact is near-tangent and a small shadow-model difference (geometric vectors, sphere Earth and 1/0.99 umbra here; apparent vectors, oblate Earth and swecl.c umbra factors there) is divided by a
+# vanishing contact slope. The penetration depth at greatest eclipse (solar: Earth radii of overlap of the penumbra limit with the Earth disc, 1 + l1 - gamma; lunar: arcsec of overlap of the Moon's
+# limb with the umbra, umbra radius + Moon radius - Moon to anti-Sun angle) separates them: every row beyond 180 s has depth <= 0.0421 R_E (solar) / 24.7 arcsec (lunar); the thresholds below are
+# 3.6x and 4.9x those, and every eclipse deeper than its threshold (n=293 solar, 189 lunar contacts) deviates by at most 117.7 s (headroom 1.5x under 180 s). An empirical bound, not a theorem.
+_SHALLOW_SOLAR_DEPTH_RE = 0.15
+_SHALLOW_LUNAR_DEPTH_RAD = 120.0 / 206264.806247
+ECL_CLASSES = ("shallow_partial_solar", "shallow_partial_lunar", "other")
 SKY_COLUMNS = ("event_datetime_s", "target_sign", "sign", "nakshatra_num", "longitude_deg", "speed_dps", "ayanamsha_key", "edge_distance_deg", "station_type", "station_zero_speed", "conj_orb_deg", "conj_offset_deg",
                "planet_b_lon", "eclipse_type", "is_central", "ecl_time_offset_s", "begin_offset_s", "end_offset_s")
 _STATION_BODIES = ("Mars", "Mercury", "Jupiter", "Venus", "Saturn")
@@ -411,6 +422,34 @@ def _lunar_state(t):
     return rho, m, _ECL_ENL * (pm + ps - s), _ECL_ENL * (pm + ps + s)
 
 
+def _solar_axis_margin_km(t):
+    """swecl.c's central criterion at JD t, km: de * cos(f1) - r0 >= 0 means the shadow AXIS touches the OBLATE Earth (the eclipse is central), r0 = the axis distance from the Earth's centre
+    on the fundamental plane. Apparent equator-of-date vectors, the z axis scaled by 1/(1 - flattening) and a second pass with the latitude-dependent flattening at the axis' surface point
+    (the oblate Earth is defined in the equator of date, so no J2000 frame here). The contact functions above keep the sphere: only this central-limit test needs the oblateness."""
+    swe = _swe()
+    fl = swe.FLG_SWIEPH | swe.FLG_EQUATORIAL | swe.FLG_XYZ
+    rm0 = [x * _AU_KM for x in swe.calc_ut(t, swe.MOON, fl)[0][:3]]
+    rs0 = [x * _AU_KM for x in swe.calc_ut(t, swe.SUN, fl)[0][:3]]
+    ob = 1.0 - _FLAT
+    for niter in (0, 1):
+        rm = [rm0[0], rm0[1], rm0[2] / ob]
+        rs = [rs0[0], rs0[1], rs0[2] / ob]
+        dm = _norm(rm)
+        e = [rm[k] - rs[k] for k in range(3)]
+        dsm = _norm(e)
+        e = [x / dsm for x in e]
+        cosf1 = math.sqrt(1.0 - ((_RS - _RM) / dsm) ** 2)
+        s0 = -_dot(rm, e)
+        r0 = math.sqrt(max(0.0, dm * dm - s0 * s0))
+        if niter == 0:
+            d = s0 * s0 + _DE_KM * _DE_KM - dm * dm
+            d = math.sqrt(d) if d > 0 else 0.0
+            xs = [rm[k] + (s0 - d) * e[k] for k in range(3)]
+            lat = math.atan2(xs[2] * ob, math.hypot(xs[0], xs[1]))
+            ob = (1.0 - _FLAT) ** 2 / math.sqrt(math.cos(lat) ** 2 + (1.0 - _FLAT) ** 2 * math.sin(lat) ** 2)
+    return _DE_KM * cosf1 - r0
+
+
 def _bisect(f, a, b, it=60):
     fa = f(a)
     if fa * f(b) > 0:
@@ -446,6 +485,7 @@ def sky_ref(r, ctx):
     swe = _swe()
     _sid(ctx)
     ref = {c: None for c in SKY_COLUMNS}
+    ref["ecl_depth_class"] = None                  # the method's own tolerance class (`tol_classes`): set below for an eclipse, None (the default tolerance) otherwise
     et, body, j = r["event_type"], r["primary_body"], r["event_jd"]
     if not isinstance(j, float):
         raise ValueError("event_jd is not a number")
@@ -498,9 +538,12 @@ def sky_ref(r, ctx):
             ref["_ambiguous"] = {"eclipse_type": {"note": f"within {_m:.6f} Earth radii of a solar type boundary", "neighbours": list(_SOLAR_NEIGHBOURS[ty])}}
         elif ty is None and abs(g - (1 + l1)) <= 1.5e-4:
             ref["_ambiguous"] = {"eclipse_type": {"note": "within 1.5e-4 Earth radii of the penumbral limit", "neighbours": ["partial"]}}
-        if ty is not None and abs(g - (1 - abs(u))) <= 1.5e-4:
-            ref.setdefault("_ambiguous", {})["is_central"] = {"note": "within 1.5e-4 Earth radii of the central limit", "neighbours": [not (g < 1 - abs(u) + 1e-9)]}
-        ref.update(eclipse_type=ty, is_central=bool(ty and g < 1 - abs(u) + 1e-9) if ty else None, ecl_time_offset_s=(tg - j) * 86400.0,
+        cm_km = _solar_axis_margin_km(tg) if ty is not None else None          # swecl.c: central = the shadow axis touches the oblate Earth (a type-less non-eclipse is not tested)
+        central = (cm_km >= 0.0) if ty is not None else None
+        if ty is not None and abs(cm_km) <= _CENTRAL_AMBIG_KM:
+            ref.setdefault("_ambiguous", {})["is_central"] = {"note": "within 1 km (1.5e-4 Earth radii) of the central limit", "neighbours": [not central]}
+        ref["ecl_depth_class"] = "shallow_partial_solar" if (ty == "partial" and (1 + l1 - g) < _SHALLOW_SOLAR_DEPTH_RE) else "other"
+        ref.update(eclipse_type=ty, is_central=central, ecl_time_offset_s=(tg - j) * 86400.0,
                    begin_offset_s=(b - sb) * 86400.0 if (b is not None and sb) else None, end_offset_s=(e - se) * 86400.0 if (e is not None and se) else None,
                    longitude_deg=l, speed_dps=sp, sign=_SIGNS[int(l // 30.0) % 12])
     elif et == "eclipse_lunar":
@@ -511,6 +554,7 @@ def sky_ref(r, ctx):
             ref["_ambiguous"] = {"eclipse_type": {"note": "within 62 arcsec of a lunar type boundary", "neighbours": list(_LUNAR_NEIGHBOURS[ty])}}
         elif ty is None and abs(rho - m - rp) <= 3.0e-4:
             ref["_ambiguous"] = {"eclipse_type": {"note": "within 62 arcsec of the penumbral limit", "neighbours": ["penumbral"]}}
+        ref["ecl_depth_class"] = "shallow_partial_lunar" if (ty == "partial" and (ru + m - rho) < _SHALLOW_LUNAR_DEPTH_RAD) else "other"
         fu = lambda x: (lambda s: s[0] - s[1] - s[2])(_lunar_state(x))
         sb, se = r["_detail"].get("begin_jd"), r["_detail"].get("end_jd")
         b = _bisect(fu, tg - 0.3, tg) if ty in ("total", "partial") else None
@@ -657,15 +701,22 @@ def register_all(d3) -> None:
         "swisseph_sky_events_v1", tables=("bg_sky_calendar",), assets=("bg_sky_calendar",), independence="independent_formula",
         max_tol={"edge_distance_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}}, "longitude_deg": {"default": 0.002, "values": {"Rahu": 0.01, "Ketu": 0.01}},
                  "speed_dps": 0.01, "event_datetime_s": 2.0, "target_sign": 0, "sign": 0, "nakshatra_num": 0, "ayanamsha_key": 0, "station_type": 0, "station_zero_speed": 0.002, "conj_orb_deg": 0.002, "conj_offset_deg": 0.002,
-                 "planet_b_lon": 0.002, "eclipse_type": 0, "is_central": 0, "ecl_time_offset_s": 240.0, "begin_offset_s": 240.0, "end_offset_s": 240.0},
+                 "planet_b_lon": 0.002, "eclipse_type": 0, "is_central": 0, "ecl_time_offset_s": 240.0,
+                 # the begin/end contact caps are per CLASS of eclipse (N-538 item 4 / N-544): 240 s for every eclipse the method does not class as a shallow partial; the shallow-partial classes
+                 # carry their MEASURED bound (all 622 stored eclipses 1900-2036: solar max 409.9 s x 1.5 = 615 s, lunar max 296.5 s x 1.5 = 445 s, see the ECL_CLASSES comment) and no other class does.
+                 "begin_offset_s": {"default": 240.0, "by": "ecl_depth_class", "values": {"shallow_partial_solar": 615.0, "shallow_partial_lunar": 445.0}},
+                 "end_offset_s": {"default": 240.0, "by": "ecl_depth_class", "values": {"shallow_partial_solar": 615.0, "shallow_partial_lunar": 445.0}}},
+        tol_classes={"ecl_depth_class": ECL_CLASSES},
         required_conventions={"position_model": ("apparent",), "node_model": ("true_node",), "ayanamsha": ("lahiri",), "eclipse_geometry": ("swecl_radii_fundamental_plane",),
                               "shadow_enlargement": ("1_over_0.99",), "history_start": ("1900-01-01",)},
         reads=("bg_sky_calendar: the declared columns of every row (all event families)",),
-        logical_rows=sky_logical_rows, context=sky_context, ref=sky_ref, completeness=sky_completeness, version="2", backend_probe=backend_probe, backends=BACKENDS, inputs_table=None,
+        logical_rows=sky_logical_rows, context=sky_context, ref=sky_ref, completeness=sky_completeness, version="3", backend_probe=backend_probe, backends=BACKENDS, inputs_table=None,
         rule_text=("per stored event, by pyswisseph called directly: ingress = the body's distance from the nearest sign edge at the stored instant (claimed 0), a crossing of that edge within "
                    "0.2 day, the longitude, speed, sign entered and nakshatra; station = speed at the stored instant (claimed 0), a zero of the speed within 0.5 day, the type from the speed "
                    "before, longitude, sign, nakshatra; double transit = the pair's minimum separation within 2 days, the separation at the stored instant, the stored orb and second "
                    "longitude; eclipse = the greatest-eclipse instant by minimising the shadow-axis distance (solar: fundamental-plane gamma and umbra radius with the swecl.c radii, "
                    "hybrid when the umbra radius changes sign between the limb and the nearest surface point; lunar: Moon to anti-Sun angle against the umbra and penumbra with the 1/0.99 "
-                   "enlargement), the type, is_central, the begin and end contacts, the Sun or Moon longitude and speed; completeness = independent counts of sign entries (0.25 day Moon, "
+                   "enlargement), the type, is_central (solar: the shadow axis touches the oblate Earth, swecl.c's central test on apparent equator-of-date vectors), the begin and end contacts "
+                   "(with a tolerance class the method derives from its own geometry: a shallow partial, whose near-tangent contact amplifies the shadow-model difference, is solar below 0.15 Earth radii "
+                   "of penumbra overlap or lunar below 2 arcminutes of umbra overlap at greatest eclipse), the Sun or Moon longitude and speed; completeness = independent counts of sign entries (0.25 day Moon, "
                    "1 day others), station and minimum windows, and the eclipse condition on every new and full moon, over [history_start, the family's latest stored event]"))
