@@ -44,6 +44,10 @@ describe('get_dashas lord_graha filter at the handler (SU/Sun/sun, sign names, u
     expect(result.is_error).toBe(false)
     const values = boundValues()
     expect(values).toContain('Sun')
+    const applied = (result.content as { facets_applied: { lord_graha?: unknown } }).facets_applied.lord_graha
+    expect(applied).toEqual({ requested: spelling, stored: 'Sun' })      // the resolution is echoed, not silent
+    const flags = (result as typeof result & { judgment_flags?: Array<{ code: string }> }).judgment_flags ?? []
+    expect(flags.some(f => f.code === 'lord_graha_resolved')).toBe(spelling !== 'Sun')   // a different spelling is disclosed; an exact stored form is not
     expect(values).not.toContain(spelling === 'Sun' ? '__never__' : spelling)
   })
 
