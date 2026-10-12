@@ -12817,11 +12817,27 @@ def empty_slice_conditional_outcome(decl: dict, aid: str, chart_id: str, *, wind
     partitions) · single-record (one per partition) · evaluated (entries_evaluated >= 1) · not-formed (formed false, rows_written 0) · time-bracket (inside R's start..end) · slice-empty (the live slice holds no
     row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees)."""
     try:
+        bad = _es_decl_problem(decl, aid)
+        if bad:                                                 # every identifier that reaches a statement is checked HERE, whatever built the declaration (the validator, a test, a caller)
+            return _es_res("unverified", "declaration", f"the declaration is not in the validated shape ({bad}): nothing is read")
         return _es_outcome(decl, aid, chart_id, window, code_paths)
     except Unknown as exc:
         return _es_read_failure(exc, "the evidence", clause="read-failed")
     except Exception as exc:                                    # noqa: BLE001 -- a claim that cannot be measured is never earned, and a detector never raises
         return _es_res("unverified", "read-failed", f"NO_DETECTOR — the empty-slice detector could not run ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})", no_detector=True, cause="read-failed")
+
+
+def _es_decl_problem(decl, aid) -> str | None:
+    """None when every declared value that the detector interpolates into a statement is a validated identifier (a defence in depth beside the validator; pure)."""
+    try:
+        sl, cc, pp = decl["slice"], decl["cross_check"], decl["post_pass"]
+        ok = (isinstance(aid, str) and _ASSET_ID.fullmatch(aid) and sl["table"] in ES_SLICE_TABLES and _ES_IDENT.fullmatch(sl["fact_category"]) and _ES_IDENT.fullmatch(sl["fact_subject"])
+              and all(isinstance(cc[k], str) and _DECL_IDENT.fullmatch(cc[k]) for k in ES_CROSS_CHECK_FIELDS) and isinstance(pp, str) and _ES_POST_PASS.fullmatch(pp)
+              and isinstance(decl["entries"], list) and isinstance(decl["criteria"], list) and decl["run_evidence"]["source"]["event_type"] == ES_EVENT_TYPE
+              and decl["run_evidence"]["source"]["table"] == ES_SOURCE_TABLE)
+    except (KeyError, TypeError):
+        return "a field is missing or mistyped"
+    return None if ok else "an identifier, the event type or the register table is not the validated value"
 
 
 def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
