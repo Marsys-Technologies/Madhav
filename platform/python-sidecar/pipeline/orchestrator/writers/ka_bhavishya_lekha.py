@@ -75,8 +75,8 @@ def _planned_claim(row: tuple) -> dict:
     }
 
 
-@register('ka_bhavishya_lekha')
-class KaBhavishyaLekhaWriter(WriterBase):
+# Legacy implementation retained until the qualified K9-4b cutover.
+class _LegacyKaBhavishyaLekhaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
@@ -592,3 +592,18 @@ def _build_projection_narrative(tier: str, domain: str, peak_date, eff_score: fl
         'domain_context': domain_ctx,
         'caveat': caveat,
     }
+
+
+@register('ka_bhavishya_lekha')
+class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
+    """Explicit fixture preparation; default legacy computation stays intact."""
+
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
+    def run(self, ctx) -> WriterResult:
+        if 'jury_reader_generation' in ctx.config:
+            from services.ka_sangam.jury.reader import preparation_result
+            return preparation_result(ctx, 'ka_bhavishya_lekha')
+        return super().run(ctx)
