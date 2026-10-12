@@ -4315,7 +4315,7 @@
             "type": "number"
           },
           "lord_graha": {
-            "description": "Filter by lord graha abbreviation (e.g. SU, MO, MA).",
+            "description": "Filter by dasha lord. Accepts a graha code, alias or name (SU, Sun and sun are the same; MO, MA, Rahu, Ketu ...), a sign name for the rashi dasha systems (chara_karaka, kalachakra, narayana: e.g. Taurus), or a yogini deity name (e.g. Mangala); resolved to the stored form. An unrecognised value returns an invalid_lord_graha error listing the recognised values, never an empty page.",
             "type": "string"
           },
           "offset": {
@@ -21075,7 +21075,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "c64a2c6a236ed6fc1053ed1a42467e5608629d6a570ac078679da0cb1ff08bdf"
+        "sha256": "47a506a33e63b3060c206d7a7df6fa30709da6402d821314ca16a98d5d4d1d35"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21468,7 +21468,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "ee42231c58b9e3b235d52f4ae3668c0901e3346ef7097b85c29f802df3561f0a"
+        "sha256": "4ef0932afe06188beaa884bcf14a23572f12925f6d23e95f32f26b57c123ab4a"
       },
       {
         "id": "public_registrar_source_set",
@@ -21636,7 +21636,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "63f366f517405811fc565facb9df22c33279da555a6aebd803d7bc4566b11aa0"
+            "sha256": "a23e12659d2cd08f74c2d2c61fa156c8ba5e431dcdc4769c18e8f249f9f9f7ff"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21672,7 +21672,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "51be676c8e6784836fb366966be5f3428e22f4c503ae7c3778fa2c87756a472d"
+        "sha256": "97a5d2a248a477fd41569b9158202d8e8145afd95b65392bf8c7604c39f722c1"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22046,7 +22046,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "54bcb8218561f0afd8495ce693abc58648589d638fe2f0d2d178129dff0bda81"
+            "sha256": "e1dc6ae0f6abfcfdc46c75d6d0fb1db412bd5ad89ad984dbbf5bd920e9af6db7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22522,7 +22522,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "001e41e0833a8c37b8498597dcb6ab0da209e958313e4b631eaa50a39c6794a4"
+        "sha256": "d3f8975b77899ee1967de08999c16d4095d521035c0ababe316c4d94d816a088"
       },
       {
         "id": "service_effect_contracts",
@@ -22542,7 +22542,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "244c59e4cd7901670b363380da99b4388c3f244e0ae2f5aa8d3ee4ee3592d1e5"
+        "sha256": "20a3054d1ffca0049f56192533fbe9a615486d4932cf6401e8fde5547125a7fa"
       }
     ]
   },
