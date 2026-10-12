@@ -1135,3 +1135,13 @@ def test_a_writer_that_inserts_the_evidence_record_does_not_write_an_undeclared_
     monkeypatch.setattr(ac, "_delegation_scope", lambda aid, files, hops=None: (units, []))
     got = ac.produced_set_written("ga_vichara", ["w.py"])
     assert "orchestrator_event_register" not in got["written"] and got["written"] == ["chart_vichara", "some_other_table"]
+
+
+@pytest.mark.parametrize("patch", [dict(cross_check=dict(table="chart_vichara; drop", partition_column="ayanamsha_id", build_column="build_id")),
+                                   dict(slice=dict(SLICE, fact_subject="daridra' OR '1'='1")), dict(post_pass="X Y"), dict(slice="x"),
+                                   dict(run_evidence=dict(ES["run_evidence"], source=dict(table="chart_facts", event_type="writer.post_pass_evaluated")))])
+def test_a_declaration_that_was_not_validated_is_never_interpolated_into_a_statement(db, patch):
+    d = _es(**patch)
+    out = ac.empty_slice_conditional_outcome(d, "ga_vichara", CH, window=WINDOW, code_paths=PATHS)
+    assert out["state"] == "unverified" and out["clause"] == "declaration" and db.sql == []
+    assert ac.empty_slice_conditional_outcome(ES, "ga_vichara; x", CH, window=WINDOW, code_paths=PATHS)["state"] == "unverified"
