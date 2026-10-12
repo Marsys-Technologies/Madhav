@@ -231,7 +231,7 @@ def observe_probes(run_dir):
             "extra_lean_flags": (doc.get("extra_lean_flags") or {}).get("chosen")}
 
 
-def observe_qualifications(repo, run_dir):
+def observe_qualifications(repo, run_dir, bound=None):
     qdir = os.path.join(run_dir, "QUALIFICATIONS")
     names = sorted(n for n in os.listdir(qdir) if n.endswith(".json")) if os.path.isdir(qdir) else []
     if not names:
@@ -246,6 +246,8 @@ def observe_qualifications(repo, run_dir):
         config = os.path.join(repo, LAUNCH_CONFIG % role) if isinstance(role, str) else None
         if not config or not os.path.isfile(config):
             raise Refused("no launch configuration in the reviewed source for the receipt's role: " + name)
+        if bound is not None and LAUNCH_CONFIG % role not in bound:
+            raise Refused("the receipt's launch configuration is not a bound component (deferred or unlisted): " + name)
         # -I: the harness must not import a module planted beside it or named by the environment.
         harness = subprocess.run([sys.executable, "-I", "-B", os.path.join(repo, HARNESS), "check", path, "--config", config,
                                   "--require-context", "launchd"], capture_output=True, text=True)
@@ -319,7 +321,8 @@ def observe(repo, run_dir, approved, review_path, components_commit=None):
             "approved_source_commit": approved, "entrypoints": entrypoints,
             "entrypoints_digest": entrypoints_digest(entrypoints), "components_commit": components_commit,
             "components": components, "generated_pairs": observe_pairs(repo), "probes": observe_probes(run_dir),
-            "qualifications": observe_qualifications(repo, run_dir), "qualifications_all_pass": True,
+            "qualifications": observe_qualifications(repo, run_dir, {c["path"] for c in components}),
+            "qualifications_all_pass": True,
             "review": observe_review(repo, review_path, approved, components)}
 
 

@@ -77,6 +77,17 @@ def test_check_passes_only_for_measured_unchanged_cards_under_the_cap(rig):
     assert "missing or unreadable" in rig.cli("check", "--cards-dir", rig.cards, "--record", rig.record).stderr
 
 
+def test_a_count_below_one_is_not_a_measurement(rig):
+    rig.configure(tokens_per_word=3)
+    assert rig.measure().returncode == 0
+    doc = json.loads(rig.record.read_text())
+    for bad in (0, -5, True):
+        doc["cards"]["SMALL.md"]["tokens"] = bad
+        rig.record.write_text(json.dumps(doc))
+        r = rig.cli("check", "--cards-dir", rig.cards, "--record", rig.record)
+        assert r.returncode == 1 and "SMALL.md: tokens unknown" in r.stderr, bad
+
+
 def test_a_failed_run_is_unknown_never_a_number(rig):
     rig.configure(tokens_per_word=3, break_marked=True)
     (rig.cards / "SMALL.md").write_text("BROKEN " * 10)

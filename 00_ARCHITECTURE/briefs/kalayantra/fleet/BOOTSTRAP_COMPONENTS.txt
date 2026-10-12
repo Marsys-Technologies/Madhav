@@ -49,7 +49,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
 
@@ -59,7 +59,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/TOKEN_MEASUREMENT.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/KU_REPLACEMENTS_v2_7.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/ku_bindings.json
@@ -101,3 +100,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/crash_tick.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_git
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_ky
+
+# area: surrogate — owner-surrogate charter card and its launch configuration (review round 2: card vs job environment)
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json

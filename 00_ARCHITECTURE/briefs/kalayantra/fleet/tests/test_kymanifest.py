@@ -131,6 +131,12 @@ def test_deferred_files_are_listed_and_pinned_but_neither_bound_nor_reviewed(rig
     (rig.repo / later).write_text("edited after the manifest\n")
     r = rig.check()
     assert r.returncode == 1 and "differs from the components commit" in r.stderr   # deferred, yet pinned
+    # a receipt whose launch configuration is only a deferred component cannot be recorded
+    cfg = km.LAUNCH_CONFIG % "bootstrap-builder"
+    (rig.repo / later).write_text("a loop prompt whose review is still running\n")
+    (rig.repo / km.COMPONENT_LIST).write_text("\n".join(c for c in rig.comps if c != cfg) + "\n# tranche: deferred\n" + later + "\n" + cfg + "\n")
+    rig.commit("defer the launch configuration")
+    assert "not a bound component" in rig.build().stderr
     (rig.repo / km.COMPONENT_LIST).write_text("# tranche: later\n" + "\n".join(rig.comps) + "\n")
     assert "unknown tranche marker" in rig.build().stderr
     (rig.repo / km.COMPONENT_LIST).write_text("# tranche: deferred\n" + "\n".join(rig.comps) + "\n")

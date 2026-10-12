@@ -73,7 +73,7 @@ def cmd_measure(a):
            "measured_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "cards": {}}
     for n in names:
         p = os.path.join(a.cards_dir, n)
-        tokens = got[n] - base if isinstance(got[n], int) and isinstance(base, int) else "unknown"
+        tokens = got[n] - base if isinstance(got[n], int) and isinstance(base, int) and got[n] > base else "unknown"
         out["cards"][n] = {"sha256": sha(p), "bytes": os.path.getsize(p), "tokens": tokens}
     tmp = a.out + ".tmp"
     with open(tmp, "w") as f:
@@ -96,7 +96,7 @@ def problems(cards_dir, record):
             out.append("%s: never measured" % n)
         elif rec.get("sha256") != sha(os.path.join(cards_dir, n)):
             out.append("%s: changed since it was measured" % n)
-        elif not isinstance(rec.get("tokens"), int) or isinstance(rec.get("tokens"), bool):
+        elif not isinstance(rec.get("tokens"), int) or isinstance(rec.get("tokens"), bool) or rec["tokens"] < 1:
             out.append("%s: tokens unknown" % n)
         elif rec["tokens"] > CAP:
             out.append("%s: %d tokens exceeds the cap of %d" % (n, rec["tokens"], CAP))

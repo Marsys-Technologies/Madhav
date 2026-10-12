@@ -2087,6 +2087,9 @@ TEMPLATE_FACTS = {
     "bootstrap-reviewer": ("default", 60, 3600, BOOT_ENV, [ALLOW], REVIEWER_OFF + BASH_DENY, ["Read", "Bash"], ["Write", "Edit"],
                            "BOOTSTRAP_REVIEWER.md", {"bash_canary": "readonly", "shell_canary": "python3",
                                                      "denied_bash": DENIED_BASH}),
+    "area-reviewer": ("default", 120, 7200, BOOT_ENV, [ALLOW], REVIEWER_OFF + BASH_DENY, ["Read", "Bash"], ["Write", "Edit"],
+                      "BOOTSTRAP_REVIEWER.md", {"bash_canary": "readonly", "shell_canary": "python3",
+                                                "denied_bash": DENIED_BASH}),
     "surrogate": ("bypassPermissions", 30, 1800, SURROGATE_ENV, [], BUILDER_OFF, ["Read", "Write", "Bash"], [],
                   "OWNER_SURROGATE.md", {"shell_canary": "python3"}),
 }

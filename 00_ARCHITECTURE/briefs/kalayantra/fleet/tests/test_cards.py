@@ -100,8 +100,7 @@ def measurement_problems(cards, record):
 
 
 def test_a_every_card_has_a_current_measurement_at_or_under_the_cap():
-    """EXPECTED TO FAIL until the cockpit measures the reworked cards with the real program and writes
-    fleet/cards/TOKEN_MEASUREMENT.json. A byte count is never accepted in its place."""
+    """Every card has a measurement record bound to its current bytes, at or under the cap (written by kycardtokens.py)."""
     cards = {name: (CARDS_DIR / (name + ".md")).read_bytes() for name in PREFIX}
     try:
         record = json.loads(MEASUREMENT.read_text())
