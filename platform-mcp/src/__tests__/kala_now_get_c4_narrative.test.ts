@@ -91,6 +91,8 @@ const GOCHARA_WINDOW_GAIN = {
   suppression_state: {},
   peak_basis: 'peak_date',
   calibration_state: 'calibrated',
+  generation: '5.0',
+  resolution_disclosure: { resolution: 'day', resolution_source: 'stored', is_timing_window: true, timing_window_blocked_reason: null },
   source: 'live',
   computed_at: '2026-08-01T00:00:00Z',
   continuity_state: null,
