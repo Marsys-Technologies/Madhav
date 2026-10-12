@@ -103,6 +103,29 @@ def _parse_birth_date_utc(birth_params: dict[str, Any] | None) -> datetime | Non
     offset_hours = birth_params.get("tz_offset_hours") or 0.0
     return (local_dt - timedelta(hours=float(offset_hours))).replace(tzinfo=timezone.utc)
 
+# SS N-341 item 2 / F15 (CLAUDE.md §N.8), SS rulings N-389 / N-410: Saturn's sign changes and retrogrades
+# are scanned ONCE with the Lahiri sidereal mode (`_saturn_sign_at_jd`, `_saturn_speed_at_jd`) and applied
+# to each ayanamsha's OWN natal Moon sign. So a non-Lahiri id's Sade Sati / Dhaiya rows are computed with
+# that id's own Moon sign (they differ where the Moon sign differs: on production the
+# surya_siddhanta_classical Moon is in Pisces while the other four are Aquarius) but with Saturn ingress dates
+# in the LAHIRI frame. Those dates are not recomputed in the other ayanamshas' frames and differ from them
+# by days (swisseph scan of 2017-2025: Raman 11-21 days earlier, Surya Siddhanta 24-43 days earlier).
+# Every such row is KEPT and says so in `source_calculation` (LAHIRI_FRAME_SATURN_NOTE); no validity claim is
+# made and nothing is deleted (an earlier draft compared Moon signs and replaced differing ids with a marker:
+# withdrawn, SS N-410, because those rows were genuinely computed and two Kāla readers read them).
+REFERENCE_AYANAMSHA = "lahiri_chitrapaksha"
+LAHIRI_FRAME_SATURN_NOTE = (
+    "Saturn ingress dates in the Lahiri frame (not recomputed in this ayanamsha's frame; "
+    "Raman/Surya Siddhanta ingresses differ by days); Moon sign is this ayanamsha's own"
+)
+# (category, key) pairs in the cycle emitters that are PURE reads of this ayanamsha's own natal Moon
+# facts (no Saturn transit scan output involved): genuinely per-ayanamsha, so they are not labelled.
+PER_AYANAMSHA_NATAL_READS: frozenset[tuple[str, str]] = frozenset({
+    ("sade_sati_cycle", "moon_sign_for_cycle"),
+    ("sade_sati_phase", "pada_specific_modifier"),
+    ("sade_sati_phase", "natal_saturn_aspects_natal_moon_flag"),
+})
+
 # Canonical 5 ayanamshas (same as GA3 / GA4 / GA8)
 CANONICAL_AYANAMSHAS: list[str] = [
     "lahiri_chitrapaksha",
@@ -876,6 +899,10 @@ def _make_row(
         computed_at = datetime.now(timezone.utc).isoformat()
     fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id)
     cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id)
+    source_calculation = f"ga_sade_sati_writer/{ENGINE_VERSION}"
+    if ayanamsha_id != REFERENCE_AYANAMSHA and (category, key) not in PER_AYANAMSHA_NATAL_READS:
+        # SS N-410: a non-Lahiri row built from the Lahiri-frame Saturn scan says so (see the constants).
+        source_calculation = f"{source_calculation}; {LAHIRI_FRAME_SATURN_NOTE}"
     return {
         "fact_id": fid,
         "chart_id": chart_id,
@@ -894,7 +921,7 @@ def _make_row(
         "unit": unit,
         "citation_ref": cref,
         "citation_human": citation_human,
-        "source_calculation": f"ga_sade_sati_writer/{ENGINE_VERSION}",
+        "source_calculation": source_calculation,
         "verification_pass_status": verification,
         "engine_version": ENGINE_VERSION,
         "computed_at": computed_at,

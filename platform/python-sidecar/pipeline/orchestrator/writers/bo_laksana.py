@@ -49,7 +49,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
-from brahmagyan.graha_vocabulary import norm_graha, to_title
+from brahmagyan.graha_vocabulary import graha_subject_code, norm_graha, to_title
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
 from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.formulas import (
@@ -2487,12 +2487,12 @@ def _build_signal_row(
         )
         if resolved_graha:
             tags["graha"] = resolved_graha
-            config["graha"] = resolved_graha
+            config["graha"] = _compose_graha_name(resolved_graha)
             if resolved_house is not None and "house" not in tags:
                 tags["house"] = resolved_house
                 config["house"] = resolved_house
             subject_resolution = {
-                "resolved_graha": resolved_graha,
+                "resolved_graha": _compose_graha_name(resolved_graha),
                 "resolved_house": resolved_house,
                 "rule": rule,
             }
@@ -2520,7 +2520,7 @@ def _build_signal_row(
             subj = raw_subj[len(varga_id) + 1:]
         if subj:
             tags["graha"] = subj
-            config["graha"] = subj
+            config["graha"] = _compose_graha_name(subj)
         if "target_house" not in tags and "house" not in tags:
             m = re.match(r"house_(\d{1,2})$", fact_key or "", re.IGNORECASE)
             if m:
@@ -2550,7 +2550,7 @@ def _build_signal_row(
         if "graha" not in config or config.get("graha") is None:
             inferred_graha = _infer_graha_for_yoga_dosha(fact_cat, fvj, fact_value_text)
             if inferred_graha:
-                config["graha"] = inferred_graha
+                config["graha"] = _compose_graha_name(inferred_graha)
                 tags["graha"] = inferred_graha
 
     # Classical citation bridge (P3B fix) — deterministic join, see _build_classical_sources.
@@ -4229,3 +4229,27 @@ class BoLaksanaRerankWriter(WriterBase):
                 f"contradicts_array_rows={total_contradicts}"
             ),
         )
+
+
+def _compose_graha_name(raw: Any) -> Any:
+    """Spell a graha this writer COMPOSES in the one family the rest of the row
+    already uses (Title long form: 'Mars', 'Jupiter', 'Rahu').
+
+    The writer resolves a position-class / aspect / yoga-dosha subject from
+    `_SIGN_LORD`, `_resolve_position_subject` and `_infer_graha_for_yoga_dosha`,
+    all of which hold canonical 3-letter subject codes ('MAR', 'JUP').  Only the
+    COMPOSED copies in `configuration_jsonb.graha` and
+    `epistemic_jsonb.subject_resolution.resolved_graha` go through here; the
+    working `tags['graha']` stays a code because the salience / valence lookups
+    are keyed by code, and fields forwarded from an L1 jsonb leaf (`lord`,
+    `primary_graha`, a jsonb `graha`) are never re-spelled (CLAUDE.md §N.5).
+
+    A non-string or an unrecognised token is returned UNCHANGED, never
+    title-cased: an honest pass-through beats an invented spelling (§N.7.6).
+    """
+    if not isinstance(raw, str):
+        return raw
+    try:
+        return to_title(graha_subject_code(raw))
+    except ValueError:
+        return raw

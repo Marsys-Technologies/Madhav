@@ -69,13 +69,12 @@ function buildCapabilitiesMarkdown(
 
 ---
 
-## Available Tools (21 total)
+## Available Tools (20 total)
 
 ### Tier 2 — Composite Bundles (MCPT v3.1.0-S2)
 | Tool | Status |
 |---|---|
 | \`holistic_bundle\` | Active — 8-tool parallel read |
-| \`multi_school_bundle\` | Degraded — per-school evidence active; \`cross_school_lookup\` sub-tool PARKED (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Coverage Note |
@@ -251,13 +250,12 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 
 ---
 
-## Available Tools (21 total)
+## Available Tools (20 total)
 
 ### Tier 2 — Composite Bundles
 | Tool | Description |
 |---|---|
 | \`holistic_bundle\` | 8-tool parallel holistic read (MSR + CGM + UCN + RM + CDLM + LEL + Panchang + Dasha) |
-| \`multi_school_bundle\` | Per-school evidence (Parashara + Jaimini + KP + Tajaka); \`cross_school_lookup\` sub-tool PARKED pending native review (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Description |

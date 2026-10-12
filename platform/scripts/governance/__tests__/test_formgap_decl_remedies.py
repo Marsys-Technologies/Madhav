@@ -1,8 +1,9 @@
 """test_formgap_decl_remedies.py: the FORM-GAP (N-192) curated-corpus declaration of bg_remedies, shown on rows the REAL writer builds.
 
 bg_remedies keeps `prose_fields [prescription_text, charity_action]` (the table also holds composed rows: the planet-matrix f-strings, classical-text sweep slices, tantric YAML rows). Its 31 hand-typed charity actions
-are declared as a curated corpus in CONTAINED mode (count and sha256 pin, the five committed remedy tables as the per-key seed, a `constant_write` waiver pin of 31). What this does and does not do is stated, not
-hidden: it adds the drift check (a pinned sentence removed from the table or edited FAILs Narr.agree) and it does NOT lift the Null cells.
+are declared as a curated corpus in CONTAINED mode (count and sha256 pin, the five committed remedy tables as the per-key seed, a `constant_write` waiver pin of 31; 172 for the prescriptions). What this does and does not do is stated, not
+hidden: it adds the drift check (a pinned sentence removed from the table or edited FAILs Narr.agree). SS N-431 / N-450: with the prescription corpus waived too (172 constant writes over l0_remedy_corpus.py and
+citation_pass2_remedies.py) and nothing unresolved in the scan, both Null cells lift to PASS.
 The hand-typed PRESCRIPTION sentences are pinned too (SS N-210): citation pass 2 (`apply_pass2`, brahmagyan/citation_pass2_remedies.py, #3210) removes rows and rewrites sentences, so the 136 committed literals are
 not what reaches the table. The curated seed reads them THROUGH the overlay (a `seed.overlay` of the removed ids and the edits, by AST): 136 literals - 13 removed - 9 replaced + 9 + 27 overlay sentences = 150 pinned
 sentences, contained mode. The tests show the pin against the writer's own `build_all_remedies()` rows and the live table, and that one edited sentence reads FAIL.
@@ -50,8 +51,19 @@ def test_the_declaration_is_sound_and_keeps_the_prose_fields_it_had():
     e = DECLS[AID]
     assert ac.curated_corpus_problem(e) is None and e["prose_fields"] == ["prescription_text", "charity_action"] and e["lint_none"] and e["fidelity_tests"]
     assert [(c["column"], c["mode"], c["count"], (c.get("waiver") or {}).get("covers"), (c.get("waiver") or {}).get("pin")) for c in e["curated_corpus"]] == [
-        ("prescription_text", "contained", 150, None, None), ("charity_action", "contained", 31, ["constant_write"], {"constant_write": 31})]
+        ("prescription_text", "contained", 150, ["constant_write"], {"constant_write": 172}), ("charity_action", "contained", 31, ["constant_write"], {"constant_write": 31})]
+    # SS N-431 / N-450: the prescription waiver covers BOTH writer files that hold the 172 literal constant writes (136 in the committed remedy tables, 36 the citation pass 2 overlay writes)
+    assert _cc("prescription_text")["waiver"]["files"] == ["brahmagyan/l0_remedy_corpus.py", "brahmagyan/citation_pass2_remedies.py"]
+    assert _cc("charity_action")["waiver"]["files"] == ["brahmagyan/l0_remedy_corpus.py"] and 136 + 36 == _cc("prescription_text")["waiver"]["pin"]["constant_write"]
     assert _cc("charity_action")["seed"] == dict(file=S, constants=CONSTS, key="charity_action")
+    # the waiver hides no database-derived write path: the writer scan over the real scope finds exactly the 172 + 31 literal constant writes and leaves nothing unresolved
+    files = ac.registered_ids("")[AID]
+    _units, _beyond = ac.writer_scan_scope(AID, files)
+    _cols = ["remedy_id", "prescription_text", "charity_action"]
+    _own3 = {T: (_cols, {c: "text" for c in _cols}, {})}
+    _holders = {ac.parse_prose_field(x)[0]: ac._holders(ac.parse_prose_field(x)[0], _own3) for x in e["prose_fields"]}
+    ws = ac._lint_module("writer_literal_scan").scan(_units, list(e["prose_fields"]), _holders, is_placeholder=ac.ldgr_placeholder_py, sql_texts=ac._sql_texts, parse_entry=ac.parse_prose_field, beyond=_beyond)
+    assert ws["unresolved"] == [] and collections.Counter((ac.parse_prose_field(p_["entry"])[0], p_["kind"]) for p_ in ws["problems"]) == collections.Counter({("prescription_text", "constant_write"): 172, ("charity_action", "constant_write"): 31})
     ov = _cc("prescription_text")["seed"]["overlay"]
     assert {k: v for k, v in ov.items() if k != "apply_sha256"} == dict(file="platform/python-sidecar/brahmagyan/citation_pass2_remedies.py", removed="REMOVED_REMEDY_IDS", edits="PASS2_EDITS", id_key="remedy_id", apply_function="apply_pass2")
     assert ov["apply_sha256"] == pf.function_source_sha256(pf._parse_source(fs.REPO, ov["file"]), "apply_pass2", ov["file"])
@@ -114,14 +126,14 @@ def test_REAL_WRITER_every_pinned_charity_action_is_in_the_table_the_writer_buil
     assert int(fs.psql(db, f"SELECT count(*) FROM {T}").strip()) == 263
 
 
-def test_REAL_WRITER_narr_agree_passes_and_the_null_cells_keep_their_cap_with_the_reason_named(db, monkeypatch):
-    """The 31 charity constant_write findings are covered by the waiver pin; the 136 prescription constant writes (and the ones citation pass 2 adds) are covered by no corpus, and the sweep's
-    `content_en` read from the database (l0_remedy_corpus.py:3259) is unresolved: the cap stays and says so."""
+def test_REAL_WRITER_narr_agree_passes_and_both_null_cells_read_pass_on_the_rows_the_writer_built(db, monkeypatch):
+    """The 31 charity and the 172 prescription constant_write findings are covered by their waiver pins (SS N-431 / N-450) and the scan leaves nothing unresolved (the sweep's `content_en` read from the
+    database, l0_remedy_corpus.py ~3259, is `source_row.get(...)`, a followed read): both Null cells read PASS."""
     got = _m(db, monkeypatch)
     assert got["Narr.agree"]["v"] == PASS
     for c in ("Null.schema_default", "Null.blank_rows"):
         m = got[c]["measured"]
-        assert got[c]["v"] == PARTIAL and "declared curated corpus not applied:" in m and "outside every declared waiver" in m and "prescription_text" in m, (c, m[-400:])
+        assert got[c]["v"] == PASS and "PASS earned by the writer scan after the pinned curated corpus replaced" in m and "outside every declared waiver" not in m, (c, m[-400:])
 
 
 @pytest.mark.parametrize("col", ["charity_action"])

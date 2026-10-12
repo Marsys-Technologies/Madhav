@@ -68,7 +68,7 @@ def _make_repo(root, fmt=None):
     (gov / "tool.py").write_text("x = 1\n", encoding="utf-8")
     (gov / "sibling_lint.py").write_text("y = 1\n", encoding="utf-8")
     (guard / "dag_edge_guard.py").write_text("z = 1\n", encoding="utf-8")
-    for sib in ("carriage_d3.py", "carriage_d3_methods.py"):      # the census loads the D3 engine from its own directory (Carr.D3): the fixture repo carries the real sibling modules
+    for sib in ("carriage_d3.py", "carriage_d3_methods.py", "prose_forms.py"):      # the census loads the D3 engine (Carr.D3) and the FORM-GAP helpers (prose_forms.py, the `_prose_forms()` loader) from its own directory: the fixture repo carries the real sibling modules
         shutil.copyfile(HERE.parent / sib, gov / sib)
     (root / "README.md").write_text("r\n", encoding="utf-8")
     _g(root, "add", "-A")
@@ -164,7 +164,7 @@ def test_the_new_keys_are_only_those_and_no_measurement_or_asset_is_touched(monk
     h = copy.deepcopy(doc["L0"])
     h.pop("generated")
     extra = set(h) - set(raw)
-    assert extra == STAMP_KEYS | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()) \
+    assert extra == STAMP_KEYS | {"read_timings"} | ({"tool_commit_unavailable"} if h["tool_commit"] is None else set()) \
         | ({"declarations_unavailable"} if h["declarations_sha256"] is None or h["declarations_version"] is None else set()), extra
     assert h["tool_commit"] is None or h["tool_dirty"] is False
     assert {k: v for k, v in h.items() if k in raw} == json.loads(json.dumps(raw, default=str))
