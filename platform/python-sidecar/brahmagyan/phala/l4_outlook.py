@@ -60,7 +60,6 @@ router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 DEFAULT_HORIZON_DAYS = 90
 
 # MC-003 (SODHANA T1): FORENSIC v8.0 markdown was deleted in PR #187 Legacy Teardown —

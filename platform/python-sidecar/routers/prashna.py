@@ -15,6 +15,7 @@ import logging
 from typing import Any, Optional
 import psycopg
 from panchang_engine.swiss_backend import OutOfCorpusRangeError
+from services.ayanamsha_ids import CROSS_CHECK_AYANAMSHA_IDS, PRIMARY_AYANAMSHA_ID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -41,6 +42,31 @@ class PrashnaResponse(BaseModel):
     validation_reason: str
     rows_inserted: int
     primary_judgment: Optional[dict[str, Any]]
+    # Lahiri-primary (N-339): primary_judgment IS the Lahiri reading and the
+    # answer. judgment_by_ayanamsha is the labelled cross-check: exactly the
+    # four other stored ayanamshas, each under its own id (null when that
+    # ayanamsha produced no judgment), never merged into or averaged with the
+    # primary. Additive fields: older callers that read primary_judgment are
+    # unaffected.
+    primary_ayanamsha_id: str = PRIMARY_AYANAMSHA_ID
+    judgment_by_ayanamsha: dict[str, Optional[dict[str, Any]]] = Field(default_factory=dict)
+    cross_check_label: str = ""
+
+
+CROSS_CHECK_LABEL = (
+    "Cross-check, not the reading: judgment_by_ayanamsha holds the four other stored "
+    "ayanamshas (true_chitra, krishnamurti, raman, surya_siddhanta_classical) for comparison "
+    "with primary_judgment (lahiri_chitrapaksha). They are never merged into it."
+)
+
+
+def split_primary_and_cross_check(
+    judgment_by_ayanamsha: Optional[dict[str, Any]],
+) -> tuple[Optional[dict[str, Any]], dict[str, Optional[dict[str, Any]]]]:
+    """(Lahiri judgment, {each of the four others: judgment or None}), in serve order."""
+    all_j = judgment_by_ayanamsha or {}
+    cross = {aid: all_j.get(aid) for aid in CROSS_CHECK_AYANAMSHA_IDS}
+    return all_j.get(PRIMARY_AYANAMSHA_ID), cross
 
 
 @router.post("/cast", response_model=PrashnaResponse)
@@ -90,10 +116,14 @@ async def cast_prashna(req: PrashnaRequest):
         logger.exception("[prashna router] cast failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
+    lahiri_judgment, cross_check = split_primary_and_cross_check(result.get("judgment_by_ayanamsha"))
     return PrashnaResponse(
         chart_id=result["chart_id"],
         valid=True,
         validation_reason="",
         rows_inserted=result["rows_inserted"],
-        primary_judgment=result.get("primary_judgment"),
+        primary_judgment=lahiri_judgment if lahiri_judgment is not None else result.get("primary_judgment"),
+        primary_ayanamsha_id=PRIMARY_AYANAMSHA_ID,
+        judgment_by_ayanamsha=cross_check,
+        cross_check_label=CROSS_CHECK_LABEL,
     )

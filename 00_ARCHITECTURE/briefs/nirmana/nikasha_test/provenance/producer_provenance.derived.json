@@ -2,10 +2,10 @@
   "generated_at": "2026-10-02T09:53:35.237921+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
   "snapshot_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
-  "snapshot_scu_count": 182,
+  "snapshot_scu_count": 181,
   "summary": {
-    "total_scus": 182,
-    "scus_with_producers": 111,
+    "total_scus": 181,
+    "scus_with_producers": 110,
     "scus_no_detector": 71,
     "no_detector_reason_counts": {
       "derived_kind_no_source_query": 11,
@@ -17,7 +17,7 @@
       "source_ref_unresolvable_shape": 1
     },
     "producers_by_disposition": {
-      "derived_from_service_probe": 9,
+      "derived_from_service_probe": 8,
       "derived_from_source_query": 290,
       "reviewed_output": 14,
       "route_evidence_only": 1
@@ -292,21 +292,6 @@
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
-        }
-      ]
-    },
-    "scu.catalog.ephemeris_cache_native_lifetime": {
-      "requirement_kinds": [
-        "service_probe"
-      ],
-      "producers": [
-        {
-          "asset_id": "bg_ephemeris_engine",
-          "table": null,
-          "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe",
-          "disposition": "derived_from_service_probe",
-          "via_helper": null,
-          "shared": false
         }
       ]
     },

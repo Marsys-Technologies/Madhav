@@ -52,6 +52,10 @@ WORKDIR /app/python-sidecar
 COPY python-sidecar/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY python-sidecar/ .
-COPY scripts/temporal/ /app/scripts/temporal/
+# Only the files the sidecar actually imports (proved by an AST import-graph walk, SS N-380):
+# services/ka_graha_sancara/engine.py imports `temporal.compute_transits`, which imports nothing
+# from its sibling files. The other scripts/temporal CLIs are never imported by sidecar code, so
+# they are not shipped (they used to be copied wholesale).
+COPY scripts/temporal/__init__.py scripts/temporal/compute_transits.py /app/scripts/temporal/
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

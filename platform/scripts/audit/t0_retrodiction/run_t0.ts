@@ -42,12 +42,11 @@ import { LOSS_SIGNIFICATORS, WINDFALL_SIGNIFICATORS, significatorsForCategory } 
 import { scoreEvent, runBlindBattery, runShuffledControls, checkCurveNotDegenerate, PROXIMITY_DAYS } from './lib/checks'
 import { parseDate } from './lib/dates'
 
-const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYANAMSHA = 'lahiri_chitrapaksha'
 const DEFAULT_TARGET = 'https://amjis-mcp-qm256lasva-el.a.run.app/mcp'
 const LOSS_EVENT_ID = 'd81fae4e-edf4-58d9-b201-cced7eae19d7' // loss/financial_deception 2025-05-15
 const WINDFALL_EVENT_ID = 'bd7f5711-8668-5315-8e25-94dc94f2a101' // finance/family_windfall 2010-07-01
-const BIRTH_DATE = '1984-02-05'
 const HORIZON_END = '2034-12-31'
 const SHUFFLE_COUNT = 7
 
@@ -69,16 +68,29 @@ function resolveClient(target: string): McpClient {
   process.exit(2)
 }
 
-function parseArgs(argv: string[]): { target: string } {
+function parseArgs(argv: string[]): { target: string; birthDate: string } {
   let target = DEFAULT_TARGET
+  let birthDate = process.env.BIRTH_DATE ?? ''
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--target') target = argv[++i]
+    else if (argv[i] === '--birth-date') birthDate = argv[++i]
   }
-  return { target }
+  // No birth date is embedded in this script: it comes from the chart's `charts` row (read it
+  // with the catalog/ganita tools or the DB) and is passed explicitly.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    console.error(
+      JSON.stringify({
+        error: 'BIRTH_DATE_REQUIRED',
+        message: 'Pass --birth-date YYYY-MM-DD (or set BIRTH_DATE): the birth date of the chart under test, taken from its charts row. It is not embedded in this script.',
+      })
+    )
+    process.exit(2)
+  }
+  return { target, birthDate }
 }
 
 async function main() {
-  const { target } = parseArgs(process.argv.slice(2))
+  const { target, birthDate: BIRTH_DATE } = parseArgs(process.argv.slice(2))
   const client = resolveClient(target)
   const boundsStart = parseDate(BIRTH_DATE)
   const boundsEnd = parseDate(HORIZON_END)
@@ -86,9 +98,9 @@ async function main() {
   // ── Substrate fetch ────────────────────────────────────────────────
   const [{ periods, total: dashaTotal, pagesFetched: dashaPages }, { events, expectedTotal, pagesFetched: lelPages }, ratifications] =
     await Promise.all([
-      fetchAllDashaPeriods(client, ABHISEK_CHART_ID, AYANAMSHA, BIRTH_DATE, HORIZON_END),
-      fetchAllLelEvents(client, ABHISEK_CHART_ID),
-      fetchDashaLordRatifications(client, ABHISEK_CHART_ID),
+      fetchAllDashaPeriods(client, CANONICAL_CHART_ID, AYANAMSHA, BIRTH_DATE, HORIZON_END),
+      fetchAllLelEvents(client, CANONICAL_CHART_ID),
+      fetchDashaLordRatifications(client, CANONICAL_CHART_ID),
     ])
 
   const { scorable, excluded } = partitionScorable(events)
@@ -166,7 +178,7 @@ async function main() {
     harness: 't0_retrodiction_gate',
     wave: 'D-3',
     lane: 'T-0',
-    chart_id: ABHISEK_CHART_ID,
+    chart_id: CANONICAL_CHART_ID,
     ayanamsha_id: AYANAMSHA,
     run_at: new Date().toISOString(),
     proximity_days: PROXIMITY_DAYS,

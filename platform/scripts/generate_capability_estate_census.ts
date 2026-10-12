@@ -33,7 +33,7 @@ import {
 } from './manifest/extract_registrar_capability_bridge'
 import { resolveType } from './manifest/projection_builders'
 
-const GENERATOR_VERSION = 'capability-estate-census/v1.2'
+const GENERATOR_VERSION = 'capability-estate-census/v1.3'
 const DEFAULT_REPO_ROOT = resolve(__dirname, '..', '..')
 const DEFAULT_OUTPUT_PATH = join(DEFAULT_REPO_ROOT, 'platform', 'src', 'generated', 'capability_estate_census.json')
 const ASSET_ID_PATTERN = /'(?:bg|ga|bo|ka|ph|mi|lel)_[a-z0-9_]+'/g
@@ -130,8 +130,6 @@ interface ProvenanceSource {
 
 export interface CapabilityEstateCensus {
   schema_version: typeof GENERATOR_VERSION
-  generated_at: string
-  source_revision: string
   caveats: string[]
   denominators: {
     runtime_descriptors: {
@@ -234,7 +232,6 @@ export interface CapabilityEstateCensus {
     method: string
     sources: ProvenanceSource[]
   }
-  content_sha256: string
 }
 
 function normalizeForCanonicalJson(value: unknown): JsonValue {
@@ -547,55 +544,6 @@ function readReviewedFullProfileToolNames(authorityPath: string): Set<string> {
   return new Set([...block[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((match) => match[1]!))
 }
 
-export interface CapabilityEstateCensusProvenance {
-  generatedAt: string
-  sourceRevision: string
-}
-
-function normalizedGeneratedAt(value: unknown): string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new Error('generated_at must be a non-empty ISO timestamp')
-  }
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) throw new Error('generated_at must be a valid ISO timestamp')
-  return parsed.toISOString()
-}
-
-function normalizedSourceRevision(value: unknown, allowUnavailable = false): string {
-  if (typeof value !== 'string') throw new Error('source_revision must be a string')
-  if (allowUnavailable && value === 'unavailable') return value
-  if (!/^[a-f0-9]{40}$/.test(value)) throw new Error('source_revision must be a 40-character lowercase Git SHA')
-  return value
-}
-
-/**
- * The reviewed artifact owns its non-authoritative display provenance. Semantic
- * freshness is enforced independently by the rendered artifact comparison,
- * content_sha256, and complete source fingerprints. Reading the committed
- * values makes the artifact stable across GitHub's synthetic merge-group and
- * squash commits, which attribute every changed path to a new queue SHA.
- */
-export function readCommittedCapabilityEstateCensusProvenance(repoRoot: string): CapabilityEstateCensusProvenance {
-  const outputPath = join(repoRoot, 'platform', 'src', 'generated', 'capability_estate_census.json')
-  try {
-    const artifact = JSON.parse(readFileSync(outputPath, 'utf8')) as {
-      generated_at?: unknown
-      source_revision?: unknown
-    }
-    return {
-      generatedAt: normalizedGeneratedAt(artifact.generated_at),
-      sourceRevision: normalizedSourceRevision(artifact.source_revision),
-    }
-  } catch {
-    // A source archive without the reviewed artifact remains deterministic.
-    // Check mode still fails because the artifact is absent or differs.
-    return {
-      generatedAt: '1970-01-01T00:00:00.000Z',
-      sourceRevision: 'unavailable',
-    }
-  }
-}
-
 async function loadAssetSeedWithoutRunningWriter(): Promise<AssetDefShape[]> {
   const priorNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'test'
@@ -609,12 +557,9 @@ async function loadAssetSeedWithoutRunningWriter(): Promise<AssetDefShape[]> {
 }
 
 export async function buildCapabilityEstateCensus(options: {
-  generatedAt?: string
-  sourceRevision?: string
   repoRoot?: string
 } = {}): Promise<CapabilityEstateCensus> {
   const repoRoot = resolve(options.repoRoot ?? DEFAULT_REPO_ROOT)
-  const committedProvenance = readCommittedCapabilityEstateCensusProvenance(repoRoot)
   const catalog = getCatalog()
 
   const plannerExcluded = catalog
@@ -904,17 +849,9 @@ export async function buildCapabilityEstateCensus(options: {
       digestMigrationFiles,
     ),
   ].sort((a, b) => a.id.localeCompare(b.id))
-  const generatedAt = options.generatedAt === undefined
-    ? committedProvenance.generatedAt
-    : normalizedGeneratedAt(options.generatedAt)
-  const sourceRevision = options.sourceRevision === undefined
-    ? committedProvenance.sourceRevision
-    : normalizedSourceRevision(options.sourceRevision)
 
   const base = {
     schema_version: GENERATOR_VERSION,
-    generated_at: generatedAt,
-    source_revision: sourceRevision,
     caveats: [
       'This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.',
       'Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.',
@@ -1032,7 +969,16 @@ export async function buildCapabilityEstateCensus(options: {
       sources,
     },
   }
-  return { ...base, content_sha256: sha256(canonicalJson(base)) }
+  return base
+}
+
+/**
+ * The census's SHA-256 over its canonical JSON. NOT stored in the artifact (N-301): a stored whole-file hash, a generation timestamp and a
+ * source revision were rewritten by every hand refresh, so any two PRs that both refreshed the census collided on those three lines. Freshness is
+ * still proven by the rendered-artifact comparison in `--check` and by `provenance.sources[].sha256`; this value is printed, never committed.
+ */
+export function censusContentSha256(census: CapabilityEstateCensus): string {
+  return sha256(canonicalJson(census))
 }
 
 export function renderCapabilityEstateCensus(census: CapabilityEstateCensus): string {
@@ -1041,15 +987,11 @@ export function renderCapabilityEstateCensus(census: CapabilityEstateCensus): st
 
 async function main(): Promise<void> {
   const check = process.argv.includes('--check')
-  const generatedAtArg = process.argv.find((arg) => arg.startsWith('--generated-at='))?.slice('--generated-at='.length)
-  const sourceRevisionArg = process.argv.find((arg) => arg.startsWith('--source-revision='))?.slice('--source-revision='.length)
-  if (check && (generatedAtArg !== undefined || sourceRevisionArg !== undefined)) {
-    throw new Error('check mode does not accept provenance overrides')
+  const retired = process.argv.filter((arg) => arg === '--generated-at' || arg.startsWith('--generated-at=') || arg === '--source-revision' || arg.startsWith('--source-revision='))
+  if (retired.length > 0) {
+    throw new Error('--generated-at and --source-revision were retired (N-301): the census no longer stores a timestamp or a source revision')
   }
-  const census = await buildCapabilityEstateCensus({
-    generatedAt: generatedAtArg,
-    sourceRevision: sourceRevisionArg,
-  })
+  const census = await buildCapabilityEstateCensus()
   const rendered = renderCapabilityEstateCensus(census)
   if (check) {
     if (!existsSync(DEFAULT_OUTPUT_PATH)) {
@@ -1059,23 +1001,17 @@ async function main(): Promise<void> {
     }
     const current = readFileSync(DEFAULT_OUTPUT_PATH, 'utf8')
     if (current !== rendered) {
-      console.error(`[capability-estate-census] drift: regenerate ${DEFAULT_OUTPUT_PATH}`)
+      console.error(`[capability-estate-census] drift: ${DEFAULT_OUTPUT_PATH} is stale; run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)`)
       process.exitCode = 1
       return
     }
-    console.log(`[capability-estate-census] OK ${census.content_sha256}`)
+    console.log(`[capability-estate-census] OK ${censusContentSha256(census)}`)
     return
-  }
-  if (existsSync(DEFAULT_OUTPUT_PATH)) {
-    const current = readFileSync(DEFAULT_OUTPUT_PATH, 'utf8')
-    if (current !== rendered && (generatedAtArg === undefined || sourceRevisionArg === undefined)) {
-      throw new Error('semantic census refresh requires explicit --generated-at and --source-revision provenance')
-    }
   }
   mkdirSync(dirname(DEFAULT_OUTPUT_PATH), { recursive: true })
   writeFileSync(DEFAULT_OUTPUT_PATH, rendered, 'utf8')
   console.log(`[capability-estate-census] wrote ${DEFAULT_OUTPUT_PATH}`)
-  console.log(`[capability-estate-census] SHA-256 ${census.content_sha256}`)
+  console.log(`[capability-estate-census] SHA-256 ${censusContentSha256(census)}`)
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : ''

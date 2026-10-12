@@ -310,4 +310,4 @@ def test_the_latest_attempts_docstring_states_the_real_order():
 
 def test_the_registry_text_states_the_short_alias_collisions_the_fold_and_the_scope():
     t = ac.CRITERION_REGISTRY["Vocab.alias"]["applicability"]
-    assert "weekday" in t and "locale-independent" in t.lower() and "SHARED" in t and ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 8
+    assert "weekday" in t and "locale-independent" in t.lower() and "SHARED" in t and ac.CRITERION_REGISTRY["Vocab.alias"]["revision"] == 9      # 8 before registry revision 28 (ONE bump)

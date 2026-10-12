@@ -206,6 +206,8 @@ class Chunks:
         self.n, self.clock, self.cost, self.bad_at, self.fail_at, self.sql, self.pos, self.asked = n, clock, cost, bad_at, fail_at, [], 0, []
 
     def __call__(self, q):
+        if "pg_index" in q:                                                          # the keyed-read planner's index catalog (a table past KEYED_READ_MIN_ROWS): this table has no usable index, so the older walk runs
+            return "[]"
         i = len(self.sql)
         self.sql.append(q)
         if self.fail_at is not None and i == self.fail_at:

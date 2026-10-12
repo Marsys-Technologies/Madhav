@@ -135,6 +135,12 @@ export type FeatureFlag =
   // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
   // Default false — cost risk (retry doubles LLM cost); opt-in only.
   | 'R10_AUTO_RETRY'
+  // X-S8 / SS N-376: selective share. When ON, the "hide reasoning" / "hide
+  // methodology" options offered by the Share dialog are accepted by the share
+  // route AND applied by the share page (server-side, before the messages reach
+  // the client). Default TRUE: the dialog offers the options, so they must work.
+  // Set MARSYS_FLAG_R10_SELECTIVE_SHARE=false to switch both off (emergency only).
+  | 'R10_SELECTIVE_SHARE'
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true (foundation sealed 2026-05-22).
   // Gates the v3.1 tool surface (21 tools, holistic_bundle, multi_school_bundle,
   // tier-conditioned house-rules, perf system, operator dashboard) vs the v1 path.
@@ -505,6 +511,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R10_REASONING_STEPS: true,
   // R10-Y-S9: default false — cost risk; opt-in only.
   R10_AUTO_RETRY: false,
+  // X-S8 / SS N-376: default true — the Share dialog offers hide_reasoning /
+  // hide_methodology, so they are honoured unless an operator turns them off.
+  R10_SELECTIVE_SHARE: true,
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
   // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
   MCP_V3_ENABLED: true,

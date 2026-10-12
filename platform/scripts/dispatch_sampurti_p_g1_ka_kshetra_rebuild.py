@@ -1,7 +1,7 @@
 """
 dispatch_sampurti_p_g1_ka_kshetra_rebuild.py — SAMPŪRTI Wave 1 P-G1 proof rebuild.
 
-Dispatches a ka_kshetra rebuild for chart 482012f1 (Abhisek Mohanty, canonical) to
+Dispatches a ka_kshetra rebuild for chart 482012f1 (canonical native chart) to
 verify the G1 CLOCKLESS FIELD fix (PR #1139 — stages 0–3 wired into
 _optional_stage_plugins in dependency order: stage0→stage2→stage3→stage1).
 

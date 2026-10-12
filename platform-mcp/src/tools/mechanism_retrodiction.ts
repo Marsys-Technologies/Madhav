@@ -23,6 +23,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { callPlatformPrimitive } from '../client.js'
+import { AYANAMSHA_ALL, resolveAyanamshaArg } from '../lib/ayanamsha.js'
 
 // ── Payload unwrap ────────────────────────────────────────────────────────────
 //
@@ -78,7 +79,7 @@ export function registerMechanismRetrodictionTool(server: McpServer, principal: 
       ayanamsha_id: z
         .string()
         .optional()
-        .describe("Ayanamsha filter (default: 'lahiri_chitrapaksha')."),
+        .describe("Ayanamsha filter (default: 'lahiri_chitrapaksha'). Stored ids or short aliases (lahiri, kp, ...), any case; unknown ids are an error."),
       domain: z
         .string()
         .optional()
@@ -117,11 +118,22 @@ export function registerMechanismRetrodictionTool(server: McpServer, principal: 
         }
       }
 
+      // SS N-342: normalise through the shared resolver (short ids / any case -> the stored long
+      // id; omitted -> Lahiri). An unknown id is an error that lists the stored ids, never an
+      // empty result that looks like "no data".
+      const aya = resolveAyanamshaArg(params.ayanamsha_id)
+      if (!aya.ok) {
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: aya.message, stored_ids: aya.stored_ids, tool: 'mechanism_retrodiction_get' }, null, 2) }],
+          isError: true as const,
+        }
+      }
+
       const { status, envelope } = await callPlatformPrimitive(
         'mechanism_retrodiction_get',
         {
           chart_id: params.chart_id,
-          ayanamsha_id: params.ayanamsha_id ?? null,
+          ayanamsha_id: aya.ayanamsha_id ?? AYANAMSHA_ALL,
           domain: params.domain ?? null,
           house: params.house ?? null,
           dasha_level: params.dasha_level ?? null,

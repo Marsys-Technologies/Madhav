@@ -47,7 +47,6 @@ const MCP_TOOL_TO_URI: Record<string, CapabilityUri> = {
   'query_aspects_at_time':             'marsys://tool/L0/query_aspects_at_time',
   'query_retrograde_periods':          'marsys://tool/L0/query_retrograde_periods',
   'ephemeris_cache_year':              'marsys://resource/L0/ephemeris_cache_year',
-  'ephemeris_cache_native_lifetime':   'marsys://resource/L0/ephemeris_cache_native_lifetime',
   // L0 corpus query tools (Wave 3 R2)
   'query_yoga_catalog':                'marsys://tool/L0/query_yoga_catalog',
   'query_dosha_catalog':               'marsys://tool/L0/query_dosha_catalog',

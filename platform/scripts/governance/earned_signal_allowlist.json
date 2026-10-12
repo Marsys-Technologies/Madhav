@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md \u00a7N.8 Earned-Signal Principle; SAM\u0100PTI v2.0 \u00a77.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither \u2014 a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys \u2014 they may drift and are not used for matching.",
   "generated_by": "check_earned_signal.py initial-rollout scan, 2026-07-31, base a7dfefcb",
-  "entry_count": 87,
+  "entry_count": 85,
   "violation_count_at_rollout": 169,
   "entries": [
     {
@@ -450,30 +450,6 @@
         671
       ],
       "sample_snippet": "\"b3_citation_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/phala/l4_rectification.py",
-      "field": "b10_compliant",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        948
-      ],
-      "sample_snippet": "\"b10_compliant\": True,",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/phala/l4_rectification.py",
-      "field": "preliminary_lagna_verdict",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        877
-      ],
-      "sample_snippet": "\"preliminary_lagna_verdict\": \"Aries (confidence 0.72)\",",
       "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
     },
     {

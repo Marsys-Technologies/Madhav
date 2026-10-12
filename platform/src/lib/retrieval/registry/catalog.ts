@@ -30,11 +30,10 @@ import { registerRouterCapabilities } from './layers/router_registration'
 // Each import executes the layer's index.ts which calls registerCapability() for
 // each capability in that wave. Imports are idempotent (re-register overwrites).
 
-// L0 Brahmagyan (15 capabilities: resolve_entity, list_entities, intent_classify,
+// L0 Brahmagyan (14 capabilities: resolve_entity, list_entities, intent_classify,
 // asset_registry_all, asset_registry_l0, query_classical_texts, query_yoga_catalog,
 // query_dosha_catalog, query_remedy_corpus, query_planet_transit, query_planet_position,
-// query_aspects_at_time, query_retrograde_periods, ephemeris_cache_year,
-// ephemeris_cache_native_lifetime)
+// query_aspects_at_time, query_retrograde_periods, ephemeris_cache_year)
 import './layers/L0_brahmagyan/index'
 
 // L1 Gaṇita (19 capabilities: get_positions, get_strength, get_ashtakavarga,

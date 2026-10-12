@@ -13,6 +13,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { scan, fetchByIds, type ScanFetchConfig } from '../lib/scan_fetch.js'
 import { budgetMcpContent } from '../lib/response_budget.js'
+import { AYANAMSHA_ALL, resolveAyanamshaArg } from '../lib/ayanamsha.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -72,7 +73,7 @@ export function registerScanFetchTool(server: McpServer, principal: Principal): 
       chart_id: z.string().uuid().describe('Chart UUID'),
       mode: z.enum(['scan', 'fetch']).describe('scan = dense index lines; fetch = full rows by id'),
       ids: z.array(z.string()).optional().describe('fetch mode: the ids (from a prior scan) to resolve to full rows'),
-      ayanamsha_id: z.string().optional(),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha'). Stored ids or short aliases (lahiri, kp, ...), any case; unknown ids are an error."),
       domain: z.string().optional(),
       signal_type_class: z.string().optional(),
       min_salience: z.number().min(0).max(1).optional(),
@@ -85,9 +86,16 @@ export function registerScanFetchTool(server: McpServer, principal: Principal): 
         return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'chart_id is required' }) }], isError: true }
       }
       try {
+        // SS N-342: this tool calls /api/retrieval/capability directly, so it normalises here
+        // (short ids / any case -> stored id; omitted -> Lahiri; unknown -> an error listing the
+        // stored ids instead of a silent empty scan).
+        const aya = resolveAyanamshaArg(p['ayanamsha_id'])
+        if (!aya.ok) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: aya.message, stored_ids: aya.stored_ids, chart_id }) }], isError: true }
+        }
         const args: Record<string, unknown> = {
           chart_id,
-          ayanamsha_id: (p['ayanamsha_id'] as string) ?? 'lahiri_chitrapaksha',
+          ayanamsha_id: aya.ayanamsha_id ?? AYANAMSHA_ALL,
           limit: 25000, offset: 0,
         }
         for (const k of ['domain', 'signal_type_class', 'min_salience']) if (p[k] != null) args[k] = p[k]

@@ -147,6 +147,8 @@ class FakeCursor:
         self.rows = []
         if s.startswith("SELECT fact_id"):
             self.rows = self.c.facts
+        elif s.startswith("SELECT yoga_canonical_id"):
+            self.rows = getattr(self.c, "firings", [])
         elif s.startswith("SELECT constant_key"):
             self.rows = self.c.consts
         elif s.startswith("SELECT lord_graha"):
@@ -897,3 +899,106 @@ if __name__ == "__main__":
         import ga_writers.ga_daridra_postpass as _pp  # the dump child is not under pytest: stub as the fixture does
         _pp.emit_daridra_label_post_pass = lambda *a, **k: 0
         print(json.dumps(_dump(legacy="--legacy" in sys.argv), default=str))
+
+
+# ── (8) TIME-INDEXING CONTRACT (SS N-300): only the runway/as-of fields move across dates ──
+
+_RUNWAY_AND_ASOF_KEYS = {
+    "dasha_runway_weight", "dasha_runway_found", "years_to_start", "md_duration_years",
+    "dasha_runway_systems", "dasha_runway_setting_system", "as_of", "as_of_source",
+}
+
+
+def _strip_time_dependent(p):
+    """A leverage row with the fields that legitimately depend on the as-of removed."""
+    j = json.loads(p[I_JSONB])
+    j = {k: v for k, v in j.items() if k not in _RUNWAY_AND_ASOF_KEYS}
+    row = list(p)
+    row[I_JSONB] = json.dumps(j, sort_keys=True)
+    row[I_VNUM] = None            # leverage = (weight / capability) * runway: moves with the runway by construction
+    return tuple(row)
+
+
+def test_new_date_moves_only_the_runway_and_asof_fields_of_leverage_rows(monkeypatch):
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    c1, _ = run_writer(_conn_with_run(datetime(2026, 9, 8, 8, 0, tzinfo=timezone.utc)))
+    c2, _ = run_writer(_conn_with_run(datetime(2027, 3, 1, 8, 0, tzinfo=timezone.utc)))
+    l1, l2 = _leverage(c1), _leverage(c2)
+    assert len(l1) == len(l2) and l1
+    assert [p[I_VNUM] for p in l1] != [p[I_VNUM] for p in l2]                       # it does move...
+    assert [_strip_time_dependent(p) for p in l1] == [_strip_time_dependent(p) for p in l2]   # ...and only there
+    # the keys that moved are all declared time-dependent
+    for p1, p2 in zip(l1, l2):
+        j1, j2 = json.loads(p1[I_JSONB]), json.loads(p2[I_JSONB])
+        moved = {k for k in set(j1) | set(j2) if j1.get(k) != j2.get(k)}
+        assert moved <= _RUNWAY_AND_ASOF_KEYS
+
+
+def test_same_asof_is_independent_of_the_scan_order_of_the_inputs(monkeypatch):
+    import random
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    base, _ = run_writer(_conn_with_run(RUN_CREATED))
+    for seed in (1, 2, 3):
+        conn = _conn_with_run(RUN_CREATED)
+        rnd = random.Random(seed)
+        rnd.shuffle(conn.facts)
+        rnd.shuffle(conn.dashas)
+        got, _ = run_writer(conn)
+        assert got.inserted == base.inserted            # byte-identical, ALL families, any arrival order
+
+
+def test_the_inputs_are_read_with_a_total_order():
+    import inspect
+    src = inspect.getsource(gw)
+    assert "ORDER BY fact_id" in src
+    assert "ORDER BY yoga_canonical_id" in src
+    assert "ORDER BY constant_key" in src
+
+
+def test_dasha_ties_on_start_system_and_lord_do_not_depend_on_arrival_order(monkeypatch):
+    """Two periods of the SAME lord with identical start date and system but different length: the runway keeps
+    the first nearest period, so the loader must give them a total order (end/duration), not rely on SQL alone."""
+    import random
+    monkeypatch.setattr(gw, "datetime", _FrozenDT)
+    start = datetime(2027, 1, 1, tzinfo=timezone.utc)
+    ties = [
+        {"lord_graha": "Jupiter", "start_iso": start, "end_iso": start + timedelta(days=365), "duration_days": 365.0,
+         "system_id": "vimshottari"},
+        {"lord_graha": "Jupiter", "start_iso": start, "end_iso": start + timedelta(days=3650), "duration_days": 3650.0,
+         "system_id": "vimshottari"},
+    ]
+    outs = []
+    for order in ([0, 1], [1, 0]):
+        conn = _conn_with_run(RUN_CREATED)
+        conn.dashas = [d for d in dasha_rows() if d["lord_graha"] != "Jupiter"] + [ties[i] for i in order]
+        got, _ = run_writer(conn)
+        outs.append(got.inserted)
+    assert outs[0] == outs[1]
+
+
+def test_yoga_firings_loader_returns_a_total_order_whatever_the_scan_order():
+    class Cur:
+        def __init__(self, rows):
+            self.rows = rows
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def execute(self, sql, params=None):
+            assert "ORDER BY yoga_canonical_id" in " ".join(sql.split())
+        def fetchall(self):
+            return self.rows
+    class Conn:
+        def __init__(self, rows):
+            self.rows = rows
+        def cursor(self):
+            return Cur(self.rows)
+    rows = [
+        {"yoga_canonical_id": "B", "constituent_planets": ["Sun", "Mars"]},
+        {"yoga_canonical_id": "A", "constituent_planets": ["Moon"]},
+        {"yoga_canonical_id": "A", "constituent_planets": ["Jupiter"]},
+    ]
+    import itertools
+    results = [gw._load_yoga_firings(Conn(list(perm)), CHART, AYA) for perm in itertools.permutations(rows)]
+    assert all(r == results[0] for r in results)
+    assert [r["yoga_canonical_id"] for r in results[0]] == ["A", "A", "B"]

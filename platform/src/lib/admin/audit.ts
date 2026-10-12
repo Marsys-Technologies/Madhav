@@ -3,6 +3,7 @@ import { query } from '@/lib/db/client'
 
 export type AuditAction =
   | 'create_user'
+  | 'approve_user'
   | 'edit_username'
   | 'disable_user'
   | 'enable_user'
