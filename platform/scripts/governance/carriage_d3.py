@@ -93,13 +93,15 @@ def compare_value(kind: str, stored, ref, tol):
     return r <= tol, r
 
 
-def tol_for(tol, row: dict):
-    """The tolerance in force for one logical row: a number, or {default, by: {column, values: {value: number}}} (a tolerance DECLARED per key value, e.g. per body: a
-    true node and a planet do not share one ephemeris envelope)."""
+def tol_for(tol, row: dict, ref=None, classes=()):
+    """The tolerance in force for one logical row: a number, or {default, by: {column, values: {value: number}}} (a tolerance DECLARED per value of a class column, e.g. per body:
+    a true node and a planet do not share one ephemeris envelope). The class column is a key column of the logical row, or a column the METHOD itself derives for the row
+    (a name in `classes`, the method's `tol_classes`): that one is read from `ref`, the method's own re-derivation, and never from the stored row, so a class the method
+    computes from its own geometry can never be chosen by the stored row. A class the method did not derive for the row (None) falls to the default tolerance."""
     if isinstance(tol, dict):
         by = tol.get("by")
         if by is not None:
-            v = row.get(by["column"])
+            v = (ref.get(by["column"]) if isinstance(ref, dict) else None) if by["column"] in classes else row.get(by["column"])
             if isinstance(v, str) and v in by["values"]:
                 return by["values"][v]
         return tol["default"]
@@ -200,11 +202,12 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
         elif _num_ok(d["tol"]):
             pass
         elif (isinstance(d["tol"], dict) and set(d["tol"]) == {"default", "by"} and _num_ok(d["tol"]["default"]) and isinstance(d["tol"]["by"], dict)
-              and set(d["tol"]["by"]) == {"column", "values"} and d["tol"]["by"]["column"] in spec["key"] and isinstance(d["tol"]["by"]["values"], dict)
+              and set(d["tol"]["by"]) == {"column", "values"} and (d["tol"]["by"]["column"] in spec["key"] or d["tol"]["by"]["column"] in m.get("tol_classes", {}))
+              and isinstance(d["tol"]["by"]["values"], dict)
               and d["tol"]["by"]["values"] and all(isinstance(k, str) and _num_ok(v) for k, v in d["tol"]["by"]["values"].items())):
             pass
         else:
-            raise SpecError(f"{where}.spec.columns[{c}].tol must be a finite non-negative number or {{default, by: {{column: a key column, values: {{value: number}}}}}}")
+            raise SpecError(f"{where}.spec.columns[{c}].tol must be a finite non-negative number or {{default, by: {{column: a key column or a class column of the method, values: {{value: number}}}}}}")
         mx = m["max_tol"].get(c)
         if mx is None:
             raise SpecError(f"{where}.spec.columns[{c}]: method {spec['method']!r} does not re-derive column {c!r} (its columns: {sorted(m['max_tol'])})")
@@ -213,6 +216,14 @@ def validate_spec(spec, where: str, methods=None, asset_id=None) -> dict:
         keyed = [(None, d["tol"] if not isinstance(d["tol"], dict) else d["tol"]["default"])]
         if isinstance(d["tol"], dict):
             keyed += list(d["tol"]["by"]["values"].items())
+        mx_by = mx.get("by") if isinstance(mx, dict) else None
+        if isinstance(d["tol"], dict):
+            col = d["tol"]["by"]["column"]
+            classes = m.get("tol_classes", {}).get(col)
+            if classes is not None and not (mx_by == col and set(d["tol"]["by"]["values"]) <= set(classes)):
+                raise SpecError(f"{where}.spec.columns[{c}].tol is keyed by the method's class column {col!r}, which is reviewed only for a column whose cap is keyed by it, with values among {list(classes)}")
+            if mx_by is not None and col != mx_by:
+                raise SpecError(f"{where}.spec.columns[{c}].tol must be keyed by {mx_by!r}: the method's reviewed cap for this column is declared per class of that column")
         for kv, t in keyed:
             cap = mx if not isinstance(mx, dict) else (mx["values"].get(kv, mx["default"]) if kv is not None else mx["default"])
             if t > cap:
@@ -345,7 +356,7 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
             continue
         bad = []
         for c, d in spec["columns"].items():
-            ok, res = compare_value(d["kind"], r.get(c), ref.get(c), tol_for(d["tol"], r))
+            ok, res = compare_value(d["kind"], r.get(c), ref.get(c), tol_for(d["tol"], r, ref, m.get("tol_classes", {})))
             if res is not None:
                 resid[c] = max(resid[c], res)
             if not ok and c in spec.get("boundary", {}):
@@ -356,7 +367,7 @@ def d3_measure(spec: dict, rows, table, method=None, inputs=None, asset_rows=Non
                             and (sv - rv) % b["cells"] in (1, b["cells"] - 1))        # the stored cell is the NEIGHBOUR of the reference cell, never a distant one
                 if adjacent and isinstance(lon, (int, float)) and not isinstance(lon, bool) and math.isfinite(lon):
                     edge = min(lon % b["width"], b["width"] - (lon % b["width"]))
-                    if edge <= tol_for(spec["columns"][b["source"]]["tol"], r):
+                    if edge <= tol_for(spec["columns"][b["source"]]["tol"], r, ref, m.get("tol_classes", {})):
                         tolerated.append(dict(row=keyf(r), column=c, edge_distance=edge))
                         continue
             amb = ref.get("_ambiguous", {}).get(c) if isinstance(ref.get("_ambiguous"), dict) else None
