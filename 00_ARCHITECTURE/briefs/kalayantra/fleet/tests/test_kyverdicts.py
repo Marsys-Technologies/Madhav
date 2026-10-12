@@ -395,6 +395,113 @@ def test_predicate_false_for_ancestry_alone(scenario):
     refused(scenario.check(new), "patch_differs")
 
 
+def test_predicate_false_once_the_heads_landed_by_a_merge_commit(scenario):
+    """Review B-01 (a): once main contains a head, its derived base IS that head and both patches are empty —
+    an empty comparison proves nothing, so the unreviewed added commit does not inherit."""
+    new = commit(scenario.repo, "one more, unreviewed", {"c.txt": "unreviewed\n"})
+    refused(scenario.check(new), "patch_differs")                   # before landing
+    git(scenario.repo, "checkout", "-q", "main")
+    git(scenario.repo, "merge", "-q", "--no-ff", "--no-edit", "feat")
+    result = scenario.check(new)
+    refused(result, "unproven_base")
+    assert result["old_base"] == scenario.old and result["new_base"] == new
+    assert K.inherits(str(scenario.repo), scenario.old, new) is False
+
+
+def test_predicate_false_once_the_heads_landed_by_a_fast_forward(scenario):
+    merged = scenario.merge_main()
+    new = commit(scenario.repo, "one more, unreviewed", {"c.txt": "unreviewed\n"})
+    git(scenario.repo, "checkout", "-q", "main")
+    git(scenario.repo, "merge", "-q", "--ff-only", "feat")
+    assert git(scenario.repo, "rev-parse", "main") == new
+    refused(scenario.check(new), "unproven_base")
+    refused(scenario.check(merged), "unproven_base")                # even the merge of main: nothing is compared
+    assert K.inherits(str(scenario.repo), scenario.old, new) is False
+
+
+def test_predicate_false_for_a_later_main_commit_after_the_old_head_landed(scenario):
+    git(scenario.repo, "checkout", "-q", "main")
+    git(scenario.repo, "merge", "-q", "--no-ff", "--no-edit", "feat")
+    later = commit(scenario.repo, "unrelated, unreviewed work on main", {"d.txt": "unreviewed\n"})
+    result = scenario.check(later)
+    refused(result, "unproven_base")
+    assert result["old_base"] == scenario.old
+    assert K.inherits(str(scenario.repo), scenario.old, later) is False
+
+
+def test_predicate_false_for_a_given_base_equal_to_its_head_or_an_empty_reviewed_patch(scenario):
+    new = scenario.merge_main()
+    refused(scenario.check(new, old_base=scenario.old, new_base=new), "unproven_base")
+    refused(scenario.check(new, old_base=scenario.b1, new_base=new), "unproven_base")
+    refused(scenario.check(new, old_base=scenario.old, new_base=scenario.m2), "unproven_base")
+    # base ≠ head, and still nothing reviewed: two empty commits compare equal, and prove nothing
+    empty_old = commit(scenario.repo, "empty, reviewed")
+    empty_new = commit(scenario.repo, "empty, not reviewed")
+    refused(K.inheritance(str(scenario.repo), empty_old, empty_new, old_base=new, new_base=empty_old),
+            "unproven_base")
+
+
+def test_predicate_same_head_is_decided_by_the_same_rules(scenario):
+    """old_head == new_head gets no shortcut: it inherits with a real, non-empty patch over a proper base, and is
+    refused like any other head once its base degenerates."""
+    result = scenario.check(scenario.old)
+    assert result["inherits"] is True and result["reason"] == "identical_patch" and result["old_base"] == scenario.b1
+    git(scenario.repo, "checkout", "-q", "main")
+    git(scenario.repo, "merge", "-q", "--no-ff", "--no-edit", "feat")
+    refused(scenario.check(scenario.old), "unproven_base")
+
+
+STANZA = ["# section %d", "alpha", "beta", "gamma", "enabled = false", "delta", "epsilon", "zeta", ""]
+
+
+def stanzas(enabled=()):
+    rows = []
+    for number in (1, 2, 3):
+        block = [row % number if "%d" in row else row for row in STANZA]
+        if number in enabled:
+            block[4] = "enabled = true"
+        rows += block
+    return "\n".join(rows) + "\n"
+
+
+def test_predicate_false_when_an_added_commit_moves_the_change_to_identical_context(tmp_path):
+    """Review B-02: three stanzas whose lines around the flag are identical. OLD turns stanza 1 on; one added
+    commit turns stanza 1 back off and stanza 3 on. With the @@ headers dropped both patches read alike — the
+    change is bound to WHERE it applies by the three-way check, and refused."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    base = commit(repo, "base", {"conf.ini": stanzas()})
+    git(repo, "checkout", "-q", "-b", "feat")
+    old = commit(repo, "turn stanza 1 on", {"conf.ini": stanzas(enabled=(1,))})
+    new = commit(repo, "move it to stanza 3", {"conf.ini": stanzas(enabled=(3,))})
+    flags = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames"]
+    strip = lambda text: [x for x in text.splitlines() if not x.startswith(("index ", "@@"))]  # noqa: E731
+    assert strip(git(repo, *flags, base, old)) == strip(git(repo, *flags, base, new)), \
+        "the fixture's stripped patches are identical"
+    result = K.inheritance(str(repo), old, new)
+    refused(result, "patch_differs")
+    assert result["old_base"] == base and result["new_base"] == base
+    assert K.inherits(str(repo), old, new) is False
+
+
+def test_predicate_true_when_main_shifts_a_change_among_identical_stanzas(tmp_path):
+    """Binding the position must still tolerate the line shift main causes: main inserts a stanza above."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    commit(repo, "base", {"conf.ini": stanzas()})
+    git(repo, "checkout", "-q", "-b", "feat")
+    old = commit(repo, "turn stanza 2 on", {"conf.ini": stanzas(enabled=(2,))})
+    git(repo, "checkout", "-q", "main")
+    commit(repo, "main adds a preamble", {"conf.ini": "; preamble\n; two\n\n" + stanzas()})
+    git(repo, "checkout", "-q", "feat")
+    git(repo, "merge", "-q", "--no-ff", "--no-edit", "main")
+    new = git(repo, "rev-parse", "HEAD")
+    result = K.inheritance(str(repo), old, new)
+    assert result["inherits"] is True and result["reason"] == "identical_patch", result
+
+
 def test_predicate_false_for_an_indentation_only_change(scenario):
     merged = scenario.merge_main()
     new = commit(scenario.repo, "indent", {"a.txt": lines("a", {10: "    a10 feature"})})
@@ -456,7 +563,7 @@ def test_predicate_false_when_the_base_is_ambiguous(scenario):
 def test_predicate_false_when_a_base_is_not_an_ancestor_of_its_head(scenario):
     new = scenario.merge_main()
     refused(scenario.check(new, old_base=scenario.m2, new_base=scenario.m2), "base_not_ancestor")
-    refused(scenario.check(new, old_base=scenario.b1, new_base=new + ""), "patch_differs")
+    refused(scenario.check(new, old_base=scenario.b1, new_base=new + ""), "unproven_base")    # review B-01
     stray = git(scenario.repo, "commit-tree", new + "^{tree}", "-m", "unrelated root")
     refused(scenario.check(new, old_base=scenario.b1, new_base=stray), "base_not_ancestor")
 
@@ -525,16 +632,32 @@ def test_predicate_false_outside_a_repository_and_for_a_bad_timeout(scenario, tm
         refused(scenario.check(new, timeout=timeout), "git_failed")
 
 
-def test_forcing_the_comparison_equal_fails_a_test(scenario, monkeypatch):
-    """The mutation check the packet asks for: with the byte comparison forced equal, the negative cases above no
-    longer hold — so it is that comparison, and nothing beside it, that refuses a changed patch."""
-    scenario.merge_main()
-    new = commit(scenario.repo, "one more", {"c.txt": "new file\n"})
-    refused(scenario.check(new), "patch_differs")
+def test_forcing_the_comparison_equal_fails_a_test(tmp_path, monkeypatch):
+    """The mutation check the packet asks for: with the byte comparison forced equal, a negative case above no
+    longer holds — so it is that comparison that refuses a changed patch. (Main changing the context of the
+    reviewed hunk merges cleanly, so the three-way check beside it does not see it.)"""
+    s = Scenario(tmp_path, main_change={"a.txt": lines("a", {13: "a13 main"})})
+    new = s.merge_main()
+    refused(s.check(new), "patch_differs")
     monkeypatch.setattr(K, "_same_patch", lambda old, new: True)
     with pytest.raises(AssertionError):
-        refused(scenario.check(new), "patch_differs")
-    assert scenario.check(new)["inherits"] is True   # the mutant inherits: the detector is the comparison
+        refused(s.check(new), "patch_differs")
+    assert s.check(new)["inherits"] is True          # the mutant inherits: the detector is the comparison
+
+
+def test_forcing_the_position_check_equal_fails_a_test(tmp_path, monkeypatch):
+    """The same mutation check for the three-way position check (review B-02): forced equal, the relocation
+    fixture inherits."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    commit(repo, "base", {"conf.ini": stanzas()})
+    git(repo, "checkout", "-q", "-b", "feat")
+    old = commit(repo, "turn stanza 1 on", {"conf.ini": stanzas(enabled=(1,))})
+    new = commit(repo, "move it to stanza 3", {"conf.ini": stanzas(enabled=(3,))})
+    refused(K.inheritance(str(repo), old, new), "patch_differs")
+    monkeypatch.setattr(K, "_same_tree", lambda reviewed, observed: True)
+    assert K.inheritance(str(repo), old, new)["inherits"] is True
 
 
 def test_inherits_is_fail_closed_on_any_internal_error(scenario, monkeypatch):

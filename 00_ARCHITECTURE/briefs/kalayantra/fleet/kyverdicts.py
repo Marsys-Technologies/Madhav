@@ -15,15 +15,23 @@ either: nothing was reviewed that a rejection could be about). Importing this mo
   A verdict at old_head still holds at new_head ("identical_patch") only if ALL of this is observed:
     * the four commits are 40-hex commits in `repo`; a base that is not given is `git merge-base <main> <head>`,
       <main> = origin/main, else main (no such ref, no common ancestor or more than one: "unproven_base");
+    * no base equals its head, given or derived ("unproven_base": a head main already contains derives itself as
+      its base, and an empty comparison proves nothing);
     * each base is an ancestor of its head ("base_not_ancestor"), and old_head of new_head ("not_descendant":
       an equal patch on another line of history — a rebase — is a new head to review);
     * nothing binary changed on either side ("binary_change": "Binary files differ" says nothing about content);
+    * the reviewed patch is not empty ("unproven_base");
     * patch(old_base, old_head) == patch(new_base, new_head) byte for byte ("patch_differs" otherwise), where
       patch(b, h) = `git diff --no-color --no-ext-diff --no-textconv --no-renames b h` minus its `index` lines
-      and its `@@` hunk headers. White space counts; so do context lines.
-  Anything else — an unknown commit ("unknown_commit"), a git that cannot be run, fails or times out
-  ("git_failed") — is False. Ancestry alone is never enough: a merge commit whose conflict resolution or whose
-  own content changes the reviewed patch does not inherit, and neither does one added commit.
+      and its `@@` hunk headers. White space counts; so do context lines;
+    * and, because dropping the `@@` headers drops WHERE a hunk applies, new_head's tree is exactly the clean
+      three-way result of the reviewed change on new_base (`git merge-tree --write-tree --merge-base=old_base
+      new_base old_head`, no rename detection); a conflict or any other tree is "patch_differs". This still
+      tolerates the line shifts main causes, and refuses a hunk moved to another occurrence of its context.
+  old_head == new_head has no shortcut: it is held to the same rules. Anything else — an unknown commit
+  ("unknown_commit"), a git that cannot be run, fails or times out ("git_failed") — is False. Ancestry alone is
+  never enough: a merge commit whose conflict resolution or whose own content changes the reviewed patch does not
+  inherit, and neither does one added commit.
 
 ── Contract B: the verbs — stdout is ONE JSON object {"published", "result", "reasons", "action_id"} ─────────
     snapshot   --worktree W --out S
@@ -76,6 +84,8 @@ either: nothing was reviewed that a rejection could be about). Importing this mo
 
 INTERPRETATION (packet KV3-B-KYVERDICTS; each is stricter than the text, never laxer):
   * the patch comparison above, descent besides the equal patch, and the base derivation;
+  * a degenerate comparison (a base equal to its head, an empty reviewed patch) is "unproven_base", and the
+    three-way position check beside the byte comparison (review round 1, B-01 and B-02);
   * an unmet publication requirement publishes nothing, not REJECTED;
   * the proposal's phase and artifact_digest are bound like its head; RES must be job J's result for item I;
   * `git status` is asked with --untracked-files=all, so a work-tree config cannot hide a file from it;
@@ -275,6 +285,26 @@ def _same_patch(old, new):
     return old == new
 
 
+def _reviewed_onto(git, old_base, new_base, old_head):
+    """The tree the reviewed change (old_base → old_head) yields on new_base, by a three-way merge; None when it
+    does not apply cleanly there."""
+    code, out = git("merge-tree", "--write-tree", "--no-messages", "-X", "no-renames",
+                    "--merge-base=" + old_base, new_base, old_head)
+    if code == 1:
+        return None
+    if code != 0:
+        raise _GitFailed("git merge-tree: exit %d" % code)
+    tree = out.decode("ascii", "replace").split("\n", 1)[0].strip()
+    if not _hex40(tree):
+        raise _GitFailed("git merge-tree: no tree")
+    return tree
+
+
+def _same_tree(reviewed, observed):
+    """THE position check: the new head is exactly what the reviewed change yields on the new base."""
+    return reviewed is not None and reviewed == observed
+
+
 def _compare(repo, result, timeout):
     """→ IDENTICAL or one of REFUSALS; fills the derived bases into `result`. Raises _GitFailed."""
     git = _Git(_git_program(), repo, timeout)
@@ -295,6 +325,8 @@ def _compare(repo, result, timeout):
                 return "unproven_base"
         elif not _hex40(result[key]) or not _is_commit(git, result[key]):
             return "unknown_commit"
+    if result["old_base"] == old_head or result["new_base"] == new_head:
+        return "unproven_base"                      # a head already in main, or a base given as its head
     if not git.yes("merge-base", "--is-ancestor", result["old_base"], old_head) \
             or not git.yes("merge-base", "--is-ancestor", result["new_base"], new_head):
         return "base_not_ancestor"
@@ -304,7 +336,13 @@ def _compare(repo, result, timeout):
     new_patch, new_binary = _patch(git, result["new_base"], new_head)
     if old_binary or new_binary:
         return "binary_change"
-    return IDENTICAL if _same_patch(old_patch, new_patch) is True else "patch_differs"
+    if not old_patch.strip():
+        return "unproven_base"                      # nothing was reviewed: an empty patch equals any empty patch
+    if _same_patch(old_patch, new_patch) is not True:
+        return "patch_differs"
+    reviewed = _reviewed_onto(git, result["old_base"], result["new_base"], old_head)
+    observed = git.ok("rev-parse", "--verify", new_head + "^{tree}").decode("ascii", "replace").strip()
+    return IDENTICAL if _same_tree(reviewed, observed) is True else "patch_differs"
 
 
 def inheritance(repo, old_head, new_head, *, old_base=None, new_base=None, timeout=60):
