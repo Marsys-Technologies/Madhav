@@ -65,7 +65,6 @@ KINDS = ("REGEN", "MERGE", "COMPLETE")
 
 UNKNOWN = "unknown"
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")
-HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 ITEM_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
 REVIEW_RE = re.compile(r"PR #([0-9]+) @ ([0-9a-f]{40})(?![0-9a-f])")
 VSLOT_RE = re.compile(r"stream-V:([A-Za-z0-9._-]+)\Z")
