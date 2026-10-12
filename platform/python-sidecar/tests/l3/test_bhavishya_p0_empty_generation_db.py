@@ -29,6 +29,7 @@ import pytest
 
 from tests.l3._p0_harness import (
     CANONICAL_CHART_ID,
+    assert_disposable_connection,
     connect,
     content_digest,
     make_ctx,
@@ -66,6 +67,8 @@ def writer():
 
 
 def _reset(conn):
+    # DELETEs the canonical chart's rows from four Kala tables: refuse any non-disposable database.
+    assert_disposable_connection(conn)
     with conn.cursor() as cur:
         for table in ("phala_anchors", "kala_bhavishya", "kala_darshana", "kala_convergence"):
             cur.execute(f"DELETE FROM {table} WHERE chart_id = %s", (CANONICAL_CHART_ID,))
