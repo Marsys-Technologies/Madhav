@@ -281,6 +281,14 @@ def sql_literals(s):
         return {"?SQL:" + vals[idx].strip()}
     return set()
 
+def is_slice_descriptor(node):
+    """A dict literal that DESCRIBES a slice of a table (the frozen post_pass_evidence/1 `slice`: {table, fact_category, fact_subject}) is
+    not a chart_facts row. The test is structural, not a name allow-list: it carries a constant 'table' key (chart_facts has no such
+    column) and NO 'fact_key' (every chart_facts row dict has its natural key). A real row dict can never satisfy both."""
+    keys = {k.value for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+    return 'table' in keys and 'fact_category' in keys and 'fact_key' not in keys
+
+
 def extract(trees=None):
     trees = trees or parse_all()
     sinks, imap = sink_functions(trees)
@@ -311,6 +319,7 @@ def extract(trees=None):
             for x in b: unresolved.append((f.name, node.lineno, why, x))
         for node in ast.walk(t):
             if isinstance(node, ast.Dict):
+                if is_slice_descriptor(node): continue
                 for k, v in zip(node.keys, node.values):
                     if isinstance(k, ast.Constant) and k.value == 'fact_category': emit(v, node, 'dict')
             elif isinstance(node, ast.Assign):
@@ -486,3 +495,17 @@ def test_mutation_a_new_writer_file_emitting_chart_facts_is_not_ignored():
     res, _, _ = extract(trees)
     with pytest.raises(AssertionError, match="not mapped to an L1 asset"):
         emitted_by_asset(res)
+
+
+def test_a_slice_descriptor_dict_is_not_an_emission_but_a_real_row_dict_still_is():
+    """ga_daridra_postpass.POST_PASS_SLICE is the frozen evidence `slice` ({table, fact_category, fact_subject}); it names a slice, it emits nothing.
+    The extractor must not read it as an emission (and the file therefore needs no FILE_TO_ASSET entry), while any dict carrying a fact_key (a real row) still is."""
+    trees = parse_all()
+    res, _, _ = extract(trees)
+    assert "ga_daridra_postpass.py" not in res
+    fake = R / "ga_writers" / "ga_zz_slice_probe.py"
+    trees[fake] = ast.parse("SLICE = {'table': 'chart_facts', 'fact_category': 'zz_slice', 'fact_subject': 'S'}\n"
+                            "def f():\n    return {'fact_category': 'zz_row', 'fact_key': 'k'}\n"
+                            "def g():\n    return {'table': 'chart_facts', 'fact_category': 'zz_row_with_table', 'fact_key': 'k'}\n")
+    res2, _, _ = extract(trees)
+    assert set(res2["ga_zz_slice_probe.py"]) == {"zz_row", "zz_row_with_table"}      # the descriptor is skipped, both real rows are read

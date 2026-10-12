@@ -1138,6 +1138,8 @@ export const getDashasCapability: CapabilityDescriptor = {
             // F-0471/0485: echo the point-in-time / date_from filters that `window` alone omitted,
             // so a requested date/window is provably reflected back and never silently dropped.
             date_filter: dateFilterApplied,
+            // The caller's lord_graha as asked and as resolved to the stored form (never applied verbatim, never silently dropped).
+            ...(lordGrahaApplied ? { lord_graha: lordGrahaApplied } : {}),
             fields: fieldsApplied,
             ayanamsha: ayanamshaId ?? 'all',
           },
