@@ -14,7 +14,7 @@ Chandrāṣṭama is ABSENT as a generic rule (predicate count 0) — context-bo
 """
 from __future__ import annotations
 
-from brahmagyan.nakshatra_vocabulary import UnknownNakshatraError, nakshatra_index as _nakshatra_index
+import unicodedata
 
 from .ashtakavarga import NAKSHATRAS
 
@@ -28,18 +28,36 @@ TARA_CLASSES = {
 CHANDRASHTAMA_GENERIC_RULE = None  # absent as a generic rule (predicate count 0)
 
 
+def _normalise_name(text: str) -> str:
+    """NFKD-decompose, drop combining marks, case-fold, keep alphanumerics only
+    (IDENTITY_CANONICAL_BYTES_CONTRACT_v1_0 §5)."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return "".join(c for c in stripped.casefold() if c.isalnum())
+
+
+# Exact-match table: the normalised form of each of the 27 CANONICAL names in
+# ashtakavarga.NAKSHATRAS (Ashwini = 1 … Revati = 27). No alias, no fuzzy
+# matching, nothing from memory.
+_NAKSHATRA_BY_KEY: dict[str, int] = {
+    _normalise_name(name): index for index, name in enumerate(NAKSHATRAS, start=1)}
+assert len(_NAKSHATRA_BY_KEY) == 27, "canonical nakshatra names must normalise to 27 distinct keys"
+
+
 def nakshatra_index(name: str) -> int:
-    """The 1-based nakṣatra number (1..27) of a nakṣatra name, resolved by the vocabulary's ONE
-    normaliser (SS N-548): the canonical names, the legacy-L1 spellings and the lexicon / ontology
-    aliases, ignoring case, whitespace / punctuation and combining diacritics. A name that is not a
-    registered spelling raises ValueError — a null key must never reach `tara()` (defect #5, the
-    case-mismatch null); a non-string raises TypeError."""
+    """The 1-based nakṣatra number (1..27) of a canonical nakṣatra name, matched
+    EXACTLY after normalisation (case, whitespace/punctuation and combining
+    diacritics are ignored). A name that does not match a canonical name raises
+    ValueError — a null key must never reach `tara()` (defect #5, the case-mismatch
+    null); a non-string raises TypeError."""
     if not isinstance(name, str):
         raise TypeError(f"nakṣatra name must be a string, got {type(name).__name__}")
+    key = _normalise_name(name)
     try:
-        return _nakshatra_index(name)
-    except UnknownNakshatraError as exc:
-        raise ValueError(f"unknown nakṣatra name {name!r}: no registered spelling matches") from exc
+        return _NAKSHATRA_BY_KEY[key]
+    except KeyError:
+        raise ValueError(f"unknown nakṣatra name {name!r} (normalised {key!r}): "
+                         "no canonical name matches") from None
 
 
 def tara(natal_star_index: int, transit_star_index: int) -> dict:

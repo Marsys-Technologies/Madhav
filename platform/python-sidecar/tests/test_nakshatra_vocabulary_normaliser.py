@@ -246,20 +246,21 @@ def test_every_touched_writers_own_name_table_is_the_lexicon_in_order():
     from bodha_writers import nakshatra_semantic_emitter as nse
     from services.ka_sangam import engine as sangam
     from services.kala_permission import permission as perm
-    from services.gochara_rules import ashtakavarga as av
 
     for table in (gs5.NAKSHATRAS, gstr.NAKSHATRA_NAMES_27, nse.NAKSHATRA_ORDER,
-                  sangam._NAKSHATRAS_ORDERED, perm.NAKSHATRA_NAMES_27, av.NAKSHATRAS):
+                  sangam._NAKSHATRAS_ORDERED, perm.NAKSHATRA_NAMES_27):
         assert list(table) == CANON
 
 
 def test_the_untouched_kala_literals_map_one_to_one_onto_the_lexicon():
     from pipeline.transit_search import NAKSHATRAS as TS
     from services.ka_graha_sancara.engine import NAKSHATRAS as GS
+    from services.gochara_rules.ashtakavarga import NAKSHATRAS as AV
 
     assert (TS[4], TS[18], TS[22]) == ("Mrigashira", "Moola", "Dhanishta")      # byte-identical (SS N-548)
     assert (GS[4], GS[18], GS[22]) == ("Mrigashira", "Mula", "Dhanishta")
-    for literal in (TS, GS):
+    assert (AV[4], AV[18], AV[22]) == ("Mrigashira", "Mula", "Dhanishta")       # byte-identical (SS N-593; Kala's post-round change)
+    for literal in (TS, GS, AV):
         assert [normalize_nakshatra(n) for n in literal] == CANON
         assert [nakshatra_index(n) for n in literal] == list(range(1, 28))
 
@@ -270,8 +271,7 @@ _TOUCHED_NAME_READERS = [
     "ga_writers/ga_medical_writer.py", "bodha_writers/nakshatra_semantic_emitter.py",
     "pipeline/orchestrator/writers/ka_sangam.py", "pipeline/orchestrator/writers/ph_muhurta.py",
     "services/ka_sangam/engine.py", "services/kala_permission/permission.py",
-    "services/gochara_rules/ashtakavarga.py", "services/gochara_rules/p6.py",
-]
+]   # gochara_rules/ashtakavarga.py and p6.py are out of this round (SS N-593: byte-identical to main)
 
 
 @pytest.mark.parametrize("rel", _TOUCHED_NAME_READERS)
