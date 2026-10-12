@@ -912,10 +912,14 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   })
 
   it('pins the v26 source-successor artifact to the current executable report without claiming live acceptance (K7-1a / OSR-009)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v26.json',
       import.meta.url,
-    ), 'utf8')) as Record<string, unknown>
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+    // The report hash excludes packet_id and provenance_note; pin their reviewed artifact bytes too.
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`)
+      .toBe('sha256:ffe465e3d25d796c0c657123112a2ac1dab9b9e2c163f0a3f7c78cb2eae963de')
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
     const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
