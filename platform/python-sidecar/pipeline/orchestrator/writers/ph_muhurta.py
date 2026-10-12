@@ -26,7 +26,7 @@ import logging
 from datetime import datetime, timedelta, date
 
 import psycopg
-
+from brahmagyan.graha_vocabulary import graha_subject_code  # SS N-574: the subject code L1 emits ('MOON'), never a literal
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from panchang_engine.swiss_backend import records_swiss_backend
 from brahmagyan.nakshatra_vocabulary import UnknownNakshatraError, nakshatra_index
@@ -557,22 +557,31 @@ class PhMuhurtaWriter(WriterBase):
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_muhurta_moon_nak_id")
             with conn.cursor() as cur:
+                # SS N-574: chart_facts holds the Moon under the graha-vocabulary subject code ('MOON', the code
+                # ga_positions emits); the former literal 'Moon' matched no row, so the natal star silently fell
+                # to a default. Category pinned (ga_positions writes the name under graha_position) and a total
+                # ORDER BY (fact_id) with LIMIT 1 (CLAUDE.md §N.7 item 2).
                 cur.execute(
                     """
                     SELECT fact_value_text FROM chart_facts
                     WHERE chart_id = %s
                       AND ayanamsha_id = 'lahiri_chitrapaksha'
-                      AND fact_subject = 'Moon'
+                      AND fact_category = 'graha_position'
+                      AND fact_subject = %s
                       AND fact_key = 'nakshatra'
+                    ORDER BY fact_id
                     LIMIT 1
                     """,
-                    (chart_id,),
+                    (chart_id, graha_subject_code('Moon')),
                 )
                 row = cur.fetchone()
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_nak_id")
             if row and row[0]:
                 name = row[0]
+            else:
+                logger.warning("ph_muhurta: no natal Moon nakshatra fact for chart %s (graha_position / %s / nakshatra, lahiri): "
+                               "tarabala is NOT computed for this chart (placeholder recorded), never defaulted", chart_id, graha_subject_code('Moon'))
         except Exception as exc:
             try:
                 with conn.cursor() as sp:
@@ -595,8 +604,8 @@ class PhMuhurtaWriter(WriterBase):
     def _load_natal_moon_sign_id(self, conn, chart_id: str):
         """Natal Moon sign as a 1-indexed id (1=Aries..12=Pisces), or None if unavailable.
 
-        Same source pattern as _resolve_career_lord's lagna-sign query, but for
-        fact_subject='Moon' — reads the L1 chart_facts value, never recomputes it.
+        Same source pattern as _resolve_career_lord's lagna-sign query, for the Moon's
+        graha-vocabulary subject code — reads the L1 chart_facts value, never recomputes it.
         """
         try:
             with conn.cursor() as sp:
@@ -607,17 +616,21 @@ class PhMuhurtaWriter(WriterBase):
                     SELECT fact_value_text FROM chart_facts
                     WHERE chart_id = %s
                       AND ayanamsha_id = 'lahiri_chitrapaksha'
-                      AND fact_subject = 'Moon'
+                      AND fact_category = 'graha_position'
+                      AND fact_subject = %s
                       AND fact_key = 'sign'
+                    ORDER BY fact_id
                     LIMIT 1
                     """,
-                    (chart_id,),
+                    (chart_id, graha_subject_code('Moon')),  # SS N-574: subject code 'MOON', category pinned, total ORDER BY (see the nakshatra loader)
                 )
                 row = cur.fetchone()
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_sign")
             if row and row[0]:
                 return self._LAGNA_SIGN_NUM.get(row[0])
+            logger.warning("ph_muhurta: no natal Moon sign fact for chart %s (graha_position / %s / sign, lahiri): chandrabala is NOT computed "
+                           "for this chart (placeholder recorded), never defaulted", chart_id, graha_subject_code('Moon'))
         except Exception as exc:
             try:
                 with conn.cursor() as sp:
