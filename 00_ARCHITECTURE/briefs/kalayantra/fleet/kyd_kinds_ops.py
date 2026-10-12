@@ -610,9 +610,8 @@ def _finish_request_prep(ctx, job):
     if found is None:
         return _fail("REQUEST-PREP", job.get("item"), "evidence_changed", "the operation or the table changed during the job")
     _, payload = found
-    boundary = _boundary(ctx, job)
-    if boundary is not None:
-        return boundary
+    # No kyboundary check: a builder-pool job gets no prepared view, so `check` could only answer 3 (review r2 KO2-B1);
+    # the packet names the boundary for PRE-ACCEPT and POST-READBACK. The binding checks and the digest read-back gate this.
     if request.get("item_id") != job["item"] or request.get("kind") != payload["op"]["kind"]:
         return _fail("REQUEST-PREP", job["item"], "request_for_another_operation", "item_id/kind do not match the item's operation")
     unbound = request_unbound(request, job["item"], payload["op"], payload["entry"])

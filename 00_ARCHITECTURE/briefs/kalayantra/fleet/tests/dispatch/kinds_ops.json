@@ -1206,93 +1206,6 @@
      "mutate": {
       "files": {
        "$JOB_SCRATCH/request.json": {
-        "$ref": "req_pub2"
-       }
-      },
-      "sh": [
-       {
-        "match": [
-         "bash",
-         "$FLEET/kyboundary.sh",
-         "check",
-         "J-test-1"
-        ],
-        "rc": 1,
-        "out": {
-         "result": "violated"
-        }
-       }
-      ]
-     },
-     "result": {
-      "outcome": "failed",
-      "failure_fp": "$any"
-     },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
-     "absent": [
-      "$RUN/ops/prepared/OP-N-PUB-2.json"
-     ]
-    },
-    {
-     "op": "finish",
-     "job": {
-      "slot": "b3"
-     },
-     "mutate": {
-      "sh": [
-       {
-        "match": [
-         "bash",
-         "$FLEET/kyboundary.sh",
-         "check",
-         "J-test-1"
-        ],
-        "rc": 3,
-        "out": {
-         "result": "unknown"
-        }
-       }
-      ]
-     },
-     "result": {
-      "outcome": "interrupted"
-     },
-     "absent": [
-      "$RUN/ops/prepared/OP-N-PUB-2.json"
-     ]
-    },
-    {
-     "op": "finish",
-     "job": {
-      "slot": "b3"
-     },
-     "mutate": {
-      "sh": [
-       {
-        "match": [
-         "bash",
-         "$FLEET/kyboundary.sh",
-         "check",
-         "J-test-1"
-        ],
-        "rc": 0,
-        "out": {
-         "result": "intact"
-        }
-       }
-      ],
-      "files": {
-       "$JOB_SCRATCH/request.json": {
         "operation_id": "OP-N-RB-1",
         "kind": "readback_sql",
         "item_id": "N-PUB-2",
@@ -1401,15 +1314,6 @@
      },
      "calls": [
       {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      },
-      {
        "fn": "act",
        "kind": "request_prep"
       }
@@ -1452,20 +1356,7 @@
       }
      }
     ],
-    "sh": [
-     {
-      "match": [
-       "bash",
-       "$FLEET/kyboundary.sh",
-       "check",
-       "J-test-1"
-      ],
-      "rc": 0,
-      "out": {
-       "result": "intact"
-      }
-     }
-    ]
+    "sh": []
    },
    "steps": [
     {
@@ -1503,17 +1394,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1544,17 +1425,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1585,17 +1456,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1626,17 +1487,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1667,17 +1518,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1709,17 +1550,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1750,17 +1581,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-RB-9.json",
       "$RUN/ops/prepared/OP-ELSEWHERE.json"
@@ -1790,15 +1611,6 @@
       "outcome": "done"
      },
      "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      },
       {
        "fn": "act",
        "kind": "request_prep"
@@ -2031,20 +1843,7 @@
       }
      }
     ],
-    "sh": [
-     {
-      "match": [
-       "bash",
-       "$FLEET/kyboundary.sh",
-       "check",
-       "J-test-1"
-      ],
-      "rc": 0,
-      "out": {
-       "result": "intact"
-      }
-     }
-    ]
+    "sh": []
    },
    "steps": [
     {
@@ -2087,17 +1886,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-PUB-3.json"
      ]
@@ -2132,17 +1921,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-PUB-3.json"
      ]
@@ -2177,17 +1956,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-PUB-3.json"
      ]
@@ -2222,17 +1991,7 @@
       "outcome": "failed",
       "failure_fp": "$any"
      },
-     "calls": [
-      {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      }
-     ],
+     "calls": [],
      "absent": [
       "$RUN/ops/prepared/OP-N-PUB-3.json"
      ]
@@ -2267,15 +2026,6 @@
      },
      "calls": [
       {
-       "fn": "sh",
-       "argv": [
-        "bash",
-        "$FLEET/kyboundary.sh",
-        "check",
-        "J-test-1"
-       ]
-      },
-      {
        "fn": "act",
        "kind": "request_prep"
       }
@@ -2301,6 +2051,187 @@
        "prepared_by_slot": "b3"
       }
      }
+    }
+   ]
+  },
+  {
+   "name": "rp_a_model_authored_request_finishes_with_no_boundary_view",
+   "covers": "REQUEST-PREP",
+   "note": "review r2 KO2-B1: a model REQUEST-PREP runs in the builder pool, so kyboundary.sh prepare never builds a view for it and check could only answer 3 unknown; the finish relies on the binding checks and the digest read-back, not on a boundary",
+   "ctx": {
+    "next": [
+     {
+      "id": "N-RB-7",
+      "owner": "N",
+      "status": "ready",
+      "completion_kind": "operation",
+      "brief": {
+       "op": {
+        "kind": "readback_sql",
+        "args": {
+         "sql_file": "/a/seven.sql"
+        }
+       }
+      }
+     }
+    ],
+    "sh": [
+     {
+      "match": [
+       "bash",
+       "$FLEET/kyboundary.sh",
+       "check",
+       "J-test-1"
+      ],
+      "rc": 3,
+      "out": {
+       "job_id": "J-test-1",
+       "mechanism": null,
+       "head_unchanged": null,
+       "status_clean": null,
+       "tracked_hashes_unchanged": null,
+       "mechanism_intact": null,
+       "result": "unknown"
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "REQUEST-PREP",
+       "item": "N-RB-7",
+       "runner": "model",
+       "pool": "builder"
+      }
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "binding still refuses a request for another operation",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-ELSEWHERE",
+        "kind": "readback_sql",
+        "item_id": "N-RB-7",
+        "idempotency_key": "OP-ELSEWHERE",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-7",
+        "args": {
+         "sql_file": "/a/seven.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-7.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-7",
+        "kind": "readback_sql",
+        "item_id": "N-RB-7",
+        "idempotency_key": "OP-N-RB-7",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-7",
+        "args": {
+         "sql_file": "/a/seven.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "done"
+     },
+     "calls": [
+      {
+       "fn": "act",
+       "kind": "request_prep"
+      }
+     ],
+     "files": {
+      "$RUN/ops/prepared/OP-N-RB-7.json": {
+       "operation_id": "OP-N-RB-7",
+       "item": "N-RB-7",
+       "prepared_by_slot": "b3",
+       "request": {
+        "operation_id": "OP-N-RB-7",
+        "kind": "readback_sql",
+        "item_id": "N-RB-7",
+        "idempotency_key": "OP-N-RB-7",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-7",
+        "args": {
+         "sql_file": "/a/seven.sql"
+        }
+       },
+       "request_sha256": {
+        "$canon_sha": {
+         "operation_id": "OP-N-RB-7",
+         "kind": "readback_sql",
+         "item_id": "N-RB-7",
+         "idempotency_key": "OP-N-RB-7",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-7",
+         "args": {
+          "sql_file": "/a/seven.sql"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "a repeated finish reads the record back",
+     "result": {
+      "outcome": "done"
+     },
+     "calls": []
+    },
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "EXECUTE",
+       "item": "N-RB-7",
+       "digest": {
+        "$canon_sha": {
+         "operation_id": "OP-N-RB-7",
+         "kind": "readback_sql",
+         "item_id": "N-RB-7",
+         "idempotency_key": "OP-N-RB-7",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-7",
+         "args": {
+          "sql_file": "/a/seven.sql"
+         }
+        }
+       }
+      }
+     ]
     }
    ]
   },

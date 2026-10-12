@@ -383,7 +383,8 @@ def test_the_cases_cover_each_named_negative():
                      "sg_start_refuses_an_item_the_owner_answered_under_the_lock",
                      "rp_a_model_authored_request_is_bound_to_the_derived_fields",          # review r1 KO-B2
                      "rp_a_model_authored_production_request_keeps_the_stated_fields",
-                     "rp_any_prepared_record_of_the_item_counts_as_prepared"):
+                     "rp_any_prepared_record_of_the_item_counts_as_prepared",
+                     "rp_a_model_authored_request_finishes_with_no_boundary_view"):         # review r2 KO2-B1
         assert required in names, required
 
 
