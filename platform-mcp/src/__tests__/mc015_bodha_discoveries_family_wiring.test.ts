@@ -62,7 +62,9 @@ const RAW_ROWS = AYANAMSHAS.map((ayanamsha_id, i) => ({
   discovery_subsystem: 'graha_drishti',
   non_obviousness_score: 0.71,
   consequence_score: 0.64,
-  composite_discovery_rank: i + 1,
+  // composite_discovery_rank is a SCORE (higher = more salient), served strongest-first (SS N-354):
+  // 1.2, 1.1, 1.0, 0.9, 0.8 — listed in descending order, not a 1..N rank.
+  composite_discovery_rank: Number((1.2 - i * 0.1).toFixed(1)),
   novelty_class: 'cross_house_amplification',
   corroboration_count: 3,
   corroborating_methods_array: ['parashari', 'jaimini'],
@@ -89,7 +91,7 @@ const DISCOVERY_FAMILIES = [{
   ayanamsha_ids: AYANAMSHAS,
   ayanamsha_agreement: '5/5 ayanamshas agree',
   member_discovery_ids: RAW_ROWS.map(r => r.discovery_id),
-  best_composite_discovery_rank: 1,
+  best_composite_discovery_rank: 1.2, // the MAX score among the members (higher = better)
   max_non_obviousness_score: 0.71,
   max_consequence_score: 0.64,
   affected_domains_array: ['wealth'],

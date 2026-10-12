@@ -27,9 +27,13 @@ import {
   READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
   fetchOrientationContext,
 } from './registry_bridge.js'
+import {
+  AYANAMSHA_ALL, INVARIANT_AYANAMSHA, STORED_AYANAMSHA_IDS, resolveAyanamshaArg,
+} from '../lib/ayanamsha.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
+import { ayanamshaArgForKpReach, categoryFilterReachesKpFrame, dashaSystemReachesKpFrame } from '../lib/kp_frame.js'
 // F-176 (PARISESA-V4): `kala_windows_get` and `kala_projections_get` are the raw L3
 // primitives `kala_ahead_get` (F-110) already wraps and gates against `pact_query` — but
 // `grep -n "promise\|pact"` over both underlying capability files returns zero hits, so an
@@ -457,7 +461,32 @@ const BirthBase = {
   latitude_deg:  z.number().describe('Latitude decimal degrees (N positive)'),
   longitude_deg: z.number().describe('Longitude decimal degrees (E positive)'),
   tz_offset_hours: z.number().default(5.5).describe('TZ offset hours (e.g. 5.5 for IST)'),
-  ayanamsha_id: z.enum(['lahiri', 'raman', 'kp', 'true_citra']).default('lahiri'),
+  // SS N-342: accepts every STORED ayanamsha id (lahiri_chitrapaksha | true_chitra | krishnamurti |
+  // raman | surya_siddhanta_classical) as well as the historical short spellings (lahiri, kp,
+  // true_citra, ...), any case. Omitted = Lahiri (primary). Normalised by `resolveAyanamshaArg`
+  // in each handler; an unknown id is an error that lists the stored ids.
+  ayanamsha_id: z.string().optional().describe(
+    "Ayanamsha. Omit for the primary 'lahiri_chitrapaksha'. Stored ids: lahiri_chitrapaksha, " +
+    'true_chitra, krishnamurti, raman, surya_siddhanta_classical (short aliases lahiri, kp, ' +
+    'true_citra, surya_siddhanta also accepted, any case).'),
+}
+
+/**
+ * Resolve the ayanamsha for the sidecar-recompute (birth data) mode, which computes ONE real
+ * ayanamsha: Lahiri when omitted, a stored id otherwise. `"all"` and the INVARIANT sentinel are
+ * not computable, and an unknown id is an error listing the stored ids (SS N-342).
+ */
+function resolveBirthModeAyanamsha(raw: unknown): { ok: true; id: string } | { ok: false; message: string } {
+  const r = resolveAyanamshaArg(raw)
+  if (!r.ok) return { ok: false, message: r.message }
+  if (r.ayanamsha_id === null || r.ayanamsha_id === INVARIANT_AYANAMSHA) {
+    return {
+      ok: false,
+      message: `Birth-data recompute needs one real ayanamsha, got ${JSON.stringify(raw)} (` +
+        `"${AYANAMSHA_ALL}" and ${INVARIANT_AYANAMSHA} cannot be recomputed). Stored ids: ${STORED_AYANAMSHA_IDS.join(', ')}.`,
+    }
+  }
+  return { ok: true, id: r.ayanamsha_id }
 }
 
 // ── D7 Registry bridge aliases (20 tools) ─────────────────────────────────────
@@ -487,7 +516,10 @@ function regAlias(
   // members of this alias family (bodha_domain_reading_get, bodha_remedies_get,
   // bodha_remedies_search, bodha_quality_get — spec §2c/§4). The remaining regAlias
   // registrations are RS-4-exempt factual lookups and leave this flag absent/false.
-  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean },
+  // `kpReach` (SS N-368): true when THIS call can reach a KP-frame read (e.g. a dasha `system` facet naming
+  // vimshottari_kp). For such a call an OMITTED ayanamsha_id is not sent, so the platform handler's own
+  // default applies and no false "does not apply" KP note is drawn; every other call keeps the Lahiri pin.
+  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean; kpReach?: (rest: Record<string, unknown>) => boolean },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -506,7 +538,8 @@ function regAlias(
           }
         }
         const data = await callRegistryCap(uri, {
-          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          chart_id,
+          ...ayanamshaArgForKpReach(ayanamsha_id as string | undefined, opts?.kpReach?.(resolvedRest) ?? false, resolveChartFactsAyanamsha),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
         let finalData = data
@@ -560,11 +593,14 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
   ayanamsha_id: z.string().optional().describe(
     'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
     'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
-    'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
+    'Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
+    'KP exception (one frame by doctrine): the KP dasha system (system=vimshottari_kp) is always read at ' +
+    'krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever is passed here.'),
+  include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check for the current Vimshottari Mahadasha lord even when the page does not serve it: the other four ayanamshas as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
   as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
-  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system; vimshottari_kp = the KP sub-period chain, read in the KP frame at krishnamurti).'),
   system_id:     z.string().optional().describe('Alias for `system` using the raw column name (F-0354). Same vocabulary; precedence system > dasha_system > system_id.'),
   dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
   level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
@@ -573,6 +609,11 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
   window_end:    z.string().optional().describe('ISO date — window facet upper bound (overlap). Echoed in facets_applied.window.'),
   lord_graha:    z.string().optional(),
   fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+}
+
+/** Dasha facet precedence is system > dasha_system > system_id (see DASHA_FACET_SCHEMA). */
+function dashaKpReach(rest: Record<string, unknown>): boolean {
+  return dashaSystemReachesKpFrame(rest['system'] ?? rest['dasha_system'] ?? rest['system_id'])
 }
 
 export function registerP1AliasTools(server: McpServer, principal: Principal): void {
@@ -771,16 +812,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       ...ChartBase,
       status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional' | 'no_evidence'."),
       event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
+      include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check to each row: the same event class's status and varga dignity under the other four ayanamshas, as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, status, event_class_id, limit, offset } = params as Record<string, unknown>
+      const { chart_id, ayanamsha_id, status, event_class_id, include_cross_check, limit, offset } = params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_pratijna_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L2/query_pratijna', {
           chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           status, event_class_id,
+          ...(include_cross_check === true ? { include_cross_check: true } : {}),
           limit: (limit as number) ?? 50, offset: (offset as number) ?? 0,
         }, principal) as Record<string, unknown>
         // CL-11 guard: pass the real tool name explicitly — do NOT call bare dualOutput(data),
@@ -868,6 +911,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet: z.string().optional().describe(
         'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
         'had no planet param at all, so a caller had no way to narrow the payload.'),
+      include_cross_check: z.boolean().optional().describe("Lahiri-primary PR-3: add ayanamsha_cross_check for every graha on the page: the sign and nakshatra under the other four ayanamshas as a LABELLED cross-check (categorical equality only; \"Cross-check, not the reading\"). Default false. Not applied under ayanamsha_id:\"all\"."),
       include_upagrahas: z.boolean().optional().describe(
         'CR-50: when true, also serves upagraha_position/aprakasha_position rows AFTER the 9 ' +
         'grahas + Lagna. Default false — the default page is grahas + Lagna only.'),
@@ -1072,12 +1116,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     // contradiction on the surface an LLM caller reads first. Corrected to match.
     'ayanamsha_id defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
     'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ' +
-    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
+    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha ' +
+    '(except system=vimshottari_kp, the KP sub-period chain: always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)"). ' +
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
     'as_of_date=<today> — ayanamsha_id may be omitted; it already resolves to the gate\'s ' +
     'canonical single-row shape.',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   // get_temporal_windows → kala_windows_get
   // R-18 fix: the primitive (query_temporal_activation.ts) reads date_from/date_to/top_k, not
@@ -1555,10 +1600,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // pagination so this alias is at full parity with query_chart_facts.
   server.tool(
     'ganita_chart_facts_get',
-    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT); discloses pagination (total + more_available) over the 5,566 subjects.',
+    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), except that KP-frame categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti ("KP frame (Krishnamurti ayanamsha)") whatever ayanamsha_id is passed; discloses pagination (total + more_available) over the 5,566 subjects.',
     {
       chart_id:         z.string().uuid().describe('Chart UUID'),
-      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable."),
+      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable. " +
+        'KP exception (one frame by doctrine): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, ' +
+        'kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled ' +
+        '"KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied).'),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -1585,7 +1633,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://tool/L1/chart_facts_query', {
           chart_id,
-          ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          // no category filter / a KP category: the page carries KP-frame rows, so an omitted id is not sent (SS N-368)
+          ...ayanamshaArgForKpReach(ayanamsha_id as string | undefined, categoryFilterReachesKpFrame(rest['category']), resolveChartFactsAyanamsha),
           ...rest,
         }, principal)
         return dualOutput(data, 'ganita_chart_facts_get')
@@ -1642,7 +1691,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet:      z.string().describe('Planet to query (Sun..Saturn/Rahu/Ketu).'),
       start_date:  z.string().describe('Start date YYYY-MM-DD.'),
       end_date:    z.string().describe('End date YYYY-MM-DD.'),
-      sign_number: z.number().int().min(1).max(12).optional().describe('Optional tropical sign filter (1=Aries..12=Pisces).'),
+      sign_number: z.number().int().min(1).max(12).optional().describe('Optional SIDEREAL (Lahiri) sign filter (1=Aries..12=Pisces).'),
     },
     async ({ planet, start_date, end_date, sign_number }) => {
       try {
@@ -2155,7 +2204,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     BirthBase,
     async (params) => {
       try {
-        const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
+        const birth = params as Record<string, unknown>
+        const aya = resolveBirthModeAyanamsha(birth['ayanamsha_id'])
+        if (!aya.ok) return errOut('ganita_natal_positions_compute', aya.message)
+        const data = await callSidecarPath('/api/pyhora/compute', { ...birth, ayanamsha_id: aya.id })
         return dualOutput(data, 'ganita_natal_positions_compute')
       } catch (err) { return errOut('ganita_natal_positions_compute', String(err)) }
     }
@@ -2174,18 +2226,20 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     // GA-5 review finding on #1393: matched to DASHA_FACET_SCHEMA's own updated
     // ayanamsha_id describe() (same self-contradiction fix as ganita_dashas_get above).
     'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id defaults server-side ' +
-    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape.',
+    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape. ' +
+    'Exception: system=vimshottari_kp (the KP sub-period chain) is always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)".',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   regAlias(server, 'query_dasha_periods',
     'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
     'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
     'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
     'level<=3, window=now±5y. ayanamsha_id defaults server-side to "lahiri_chitrapaksha" when ' +
-    'omitted — a bare call already returns the single-row current-dasha gate shape.',
+    'omitted — a bare call already returns the single-row current-dasha gate shape. ' +
+    'Exception: system=vimshottari_kp (the KP sub-period chain) is always read at krishnamurti, labelled "KP frame (Krishnamurti ayanamsha)".',
     'marsys://tool/L1/get_dashas',
-    DASHA_FACET_SCHEMA, principal)
+    DASHA_FACET_SCHEMA, principal, { kpReach: dashaKpReach })
 
   // CR-16 (D-2 V-3, ledger row 26): special-lagna access was birth-data-ONLY — a caller holding a
   // built chart_id had no path to that chart's STORED special-lagna facts and was forced to
@@ -2227,6 +2281,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       const p = params as Record<string, unknown>
       const chartId = p['chart_id'] as string | undefined
       try {
+        // SS N-342: validate the ayanamsha up front in BOTH modes (unknown id -> error listing the
+        // stored ids). chart_id mode may also take "all"/INVARIANT; birth-data mode needs one real id.
+        const ayaCheck = resolveAyanamshaArg(p['ayanamsha_id'])
+        if (!ayaCheck.ok) {
+          return errOut('ganita_special_lagnas_get', ayaCheck.message, chartId ? { chart_id: chartId } : undefined)
+        }
         if (chartId) {
           // Chart-keyed path: stored special-lagna facts via the entitlement-gated capability.
           const requestedAliases = (p['categories'] as string[] | undefined) ?? ['special_lagna', 'upagraha']
@@ -2254,7 +2314,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           return errOut('ganita_special_lagnas_get',
             'Provide either chart_id (stored facts, preferred) or birth data (datetime_iso/latitude_deg/longitude_deg).')
         }
-        const data = await callSidecarPath('/api/pyhora/compute', p)
+        const birthAya = resolveBirthModeAyanamsha(p['ayanamsha_id'])
+        if (!birthAya.ok) return errOut('ganita_special_lagnas_get', birthAya.message)
+        const data = await callSidecarPath('/api/pyhora/compute', { ...p, ayanamsha_id: birthAya.id })
         return dualOutput(data, 'ganita_special_lagnas_get')
       } catch (err) { return errOut('ganita_special_lagnas_get', String(err), chartId ? { chart_id: chartId } : undefined) }
     }

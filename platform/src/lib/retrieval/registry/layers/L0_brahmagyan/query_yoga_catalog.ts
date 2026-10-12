@@ -78,4 +78,11 @@ export const queryYogaCatalogCapability: CapabilityDescriptor = {
       return { content: String(err), is_error: true }
     }
   },
+  // §N.6 serving-density contract (DENS-SERVED): offset / limit paginated (limit capped at 500, `more_available` + `total_matching` disclosed); the filters are the facets below (all real
+  // input_schema keys); a filtered query that matches nothing carries `empty_reason` naming the applied filters and the stored vocabulary (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['yoga_name', 'tradition', 'domain'],
+    empty_reason: true,
+  },
 }

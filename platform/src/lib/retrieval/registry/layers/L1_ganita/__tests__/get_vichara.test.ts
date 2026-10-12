@@ -57,7 +57,7 @@ describe('getVicharaCapability (ganita_vichara_get)', () => {
     await getVicharaCapability.handler({ chart_id: CHART_ID }, undefined)
     const rowsSql = mockQuery.mock.calls[0][0] as string
     expect(rowsSql).toMatch(
-      /ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id/,
+      /ORDER BY vichara_family, domain NULLS FIRST, subject, array_position\(ARRAY\[[^\]]*\]::text\[\], ayanamsha_id::text\), ayanamsha_id, varga_id NULLS FIRST, id/,
     )
   })
 

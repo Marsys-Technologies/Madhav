@@ -20,6 +20,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/firebase/server'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { isMcpOwnerActive } from '@/lib/mcp/auth'
 
 export async function POST(request: Request) {
   if (!validateServiceToken(request)) {
@@ -39,6 +40,11 @@ export async function POST(request: Request) {
 
   try {
     const decoded = await verifySessionCookie(body.session)
+    // This uid becomes the owner of an OAuth authorization code; a disabled or
+    // pending account must not be able to mint one with a still-valid cookie.
+    if (!(await isMcpOwnerActive(decoded.uid))) {
+      return NextResponse.json({ error: 'Invalid or expired session cookie' }, { status: 401 })
+    }
     return NextResponse.json({ uid: decoded.uid })
   } catch (err) {
     // verifySessionCookie throws on invalid/expired cookies.

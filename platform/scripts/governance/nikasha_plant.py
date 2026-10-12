@@ -284,6 +284,8 @@ def tree_files(assets=ASSETS) -> dict:
              "platform-mcp/src/tools/README.md": "fixture serving root (no capability here)\n",
              "platform-mcp/src/lib/README.md": "fixture serving root (no capability here)\n",
              "00_ARCHITECTURE/control/README.md": "fixture control directory\n",
+             # the committed registry of cluster identities (a byte copy): the inspector's target proof needs it to rule production lineage OUT for a disposable declaration (Kāla note on #3372)
+             "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json": (REPO / "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json").read_text(encoding="utf-8"),
              # Build.history window (SS): the registry identity of each fixture asset is dated by the migration that registers it
              "platform/migrations/001_t1_fixture_registry.sql": "".join(
                  f"INSERT INTO asset_registry (asset_id) VALUES ('{a.aid}');\n" for a in assets)}
@@ -384,7 +386,7 @@ def run_census(db: Db, tree: Path, dbname: str, layer: str = LAYER, assets: str 
     if out.exists():
         out.unlink()
     env = {"PATH": f"{db.cl.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin", "PYTHONHASHSEED": "0", "LC_ALL": "C", "HOME": str(tree),
-           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), **db.cl.env(), "PGDATABASE": dbname}
+           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), "SUVARNA_CENSUS_TARGET": "disposable", **db.cl.env(), "PGDATABASE": dbname}      # SS N-332/Kāla: a throw-away cluster says what it is
     cmd = [sys.executable, str(tree / INSPECTOR_REL), "--layer", layer, "--out", str(out)]
     if assets:
         cmd += ["--assets", assets]
