@@ -43,6 +43,7 @@ import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { budgetMcpContent } from '../lib/response_budget.js'
 import { CANONICAL_NAKSHATRA_NAMES, nakshatraNumberOf } from '../lib/nakshatra_names.js'
+import { MUHURTA_UNDERTAKINGS } from '../lib/muhurta_undertakings.js'
 
 // ── MCP response wrapping (T-7 fix) ─────────────────────────────────────────
 //
@@ -82,11 +83,7 @@ export const MuhurtaFinderInputSchema = z.object({
     ),
 
   action_type: z
-    .enum([
-      'marriage', 'travel', 'business', 'medical', 'education', 'property', 'general',
-      // ── Lane F (EL-50) taxonomy extension — spiritual/remedial classes ──
-      'spiritual_initiation', 'remedial_ritual', 'japa_start',
-    ])
+    .enum(MUHURTA_UNDERTAKINGS)
     .describe(
       'The type of action to find auspicious windows for. ' +
       'marriage — vivah muhurta (Rohini/Guruvara auspicious per BPHS ch.46); ' +

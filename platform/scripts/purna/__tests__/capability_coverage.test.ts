@@ -16,9 +16,10 @@ describe('Purna capability coverage projection', () => {
     // dry_run) — the coverage denominator is per-BINDING, so 186 -> 188 rows even though the
     // SCU count (182) is unchanged. SS N-373: ephemeris_cache_native_lifetime retired (one SCU, one
     // binding) — 188 -> 187 rows, 182 -> 181 SCUs.
-    expect(rows).toHaveLength(187)
-    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(187)
-    expect(new Set(rows.map((row) => row.scu_id)).size).toBe(181)
+    // K7-1a: fourteen additive L3 view bindings and SCUs; the corpus denominator stays fixed.
+    expect(rows).toHaveLength(201)
+    expect(new Set(rows.map((row) => row.coverage_id)).size).toBe(201)
+    expect(new Set(rows.map((row) => row.scu_id)).size).toBe(195)
     // synergy_pipeline is no longer missing: its executed mode is now contracted (derived,
     // 6 legs) and its dry_run mode is contracted (snapshot_resource, proof_kind 'plan') —
     // genuine per-mode proof typing closed the type-system gap the prior comment described.
@@ -35,7 +36,14 @@ describe('Purna capability coverage projection', () => {
     // separately, statically proven and counted under "authored" above).
     expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(2)
     expect(rows.filter((row) => row.availability_contract === 'authored')).toHaveLength(182)
-    expect(rows.filter((row) => row.availability_contract === 'deliberately_dark')).toHaveLength(3)
+    // K7-1a's fourteen views deliberately retain unavailable execution until their serving admission.
+    const k7ViewScus = new Set(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain']
+      .flatMap((view) => [`scu.catalog.${view}_read`, `scu.catalog.kala_${view}_get`]))
+    const darkRows = rows.filter((row) => row.availability_contract === 'deliberately_dark')
+    expect(darkRows).toHaveLength(17)
+    expect(darkRows.filter((row) => k7ViewScus.has(row.scu_id)).map((row) => row.scu_id).sort())
+      .toEqual([...k7ViewScus].sort())
+    expect(darkRows.filter((row) => !k7ViewScus.has(row.scu_id))).toHaveLength(3)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {

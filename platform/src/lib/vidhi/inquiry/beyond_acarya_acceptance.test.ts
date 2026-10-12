@@ -188,6 +188,13 @@ function withoutScu(
   }
 }
 
+// OSR-009: v25 is the immutable predecessor of K7-1a's evaluator-derived v26.
+const historicalV25 = {
+  capability_content_hash: 'sha256:f8382015b7de8a314cf984bada267e56903657b91f4dde68324542e7360f61c4',
+  report_hash: 'sha256:fb722f208488bfb3d928938a6a4bb05bdd1669c7119b4ce1ec70c84fb13cf14d',
+  artifact_hash: 'sha256:6b657095c3e5407a06d0ce97225ce8a483b4ce93de50611318748fc2f5ef84da',
+} as const
+
 describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   it('closes the unchanged frozen route denominator through receipted transit derivation', () => {
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -282,7 +289,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // text follows the one-frame KP rule; get_prashna_lagna no longer claims a kp_sub_lord for kp_249. That moved source_catalog_fingerprint, hence capability_content_hash and
     // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's and every metric assertion above is unchanged.
     // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
-    expect(report.report_hash).toBe('sha256:fb722f208488bfb3d928938a6a4bb05bdd1669c7119b4ce1ec70c84fb13cf14d')
+    // OSR-009 / K7-1a v26: fourteen additive L3 views move catalog provenance; corpus metrics stay fixed.
+    expect(report.report_hash).toBe('sha256:0596e9e00f64c24d4613b40512455c40cd6115abcf1cd9b6fecf7b2d2b98dcc6')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -882,9 +890,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v25 source-successor artifact to the current executable report without claiming live acceptance (Lahiri-primary combined batch, SS N-339..N-404)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v25 source-successor artifact immutable after the K7-1a catalog advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v25.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV25.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
+        capability_content_hash: historicalV24.capability_content_hash,
+        report_hash: historicalV24.report_hash,
+      },
+      capability_content_hash: historicalV25.capability_content_hash,
+      report_hash: historicalV25.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v26 source-successor artifact to the current executable report without claiming live acceptance (K7-1a / OSR-009)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v26.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -892,12 +921,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v26',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v25.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV24.capability_content_hash,
-        report_hash: historicalV24.report_hash,
+        capability_content_hash: historicalV25.capability_content_hash,
+        report_hash: historicalV25.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -940,9 +969,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Lahiri-primary combined batch (SS N-339..N-404): the five held PRs plus the descriptor-text corrections; the snapshot is regenerated with its committed generated_at.
-      // Base: origin/main at af9e6b8c674f68dd815ff2e3cead067f60ba7dae (highest acceptance artifact v24); re-evaluate at the real batch if main has moved.
-      evaluated_source_revision: 'af9e6b8c674f68dd815ff2e3cead067f60ba7dae',
+      // OSR-009: merge-only current-main base; the evaluator and corpus remain unchanged.
+      evaluated_source_revision: '67afae086018d53abcd2248f54f08a15baf7aeb2',
     })
   })
 })

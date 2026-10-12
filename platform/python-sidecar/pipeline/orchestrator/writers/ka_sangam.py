@@ -421,23 +421,15 @@ class _LegacyKaSangamWriter(WriterBase):
         # this method only returns a (possibly shorter) substep list).
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         self._resume_skipped = 0
+        self._reset_pending = False
         if getattr(ctx, 'dry_run', False):
             return steps  # dry runs never delete data or touch the ledger
 
         completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
         if completed is None:
-            # First run, or a prior/changed build (fingerprint mismatch). Delete-and-
-            # replan-all: clear EVERY kala_convergence row for this chart + the stale
-            # ledger, then run all substeps fresh — no stale accretion possible. (These
-            # deletes ride the orchestrator's ambient transaction and commit atomically
-            # with the first substep; if the connection dies before that commit they
-            # roll back, leaving the prior data intact for the next attempt.)
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
-                cur.execute(
-                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                    (chart_id,),
-                )
+            # Planning/re-probing is read-only. The first executing substep owns
+            # reset and replacement in the same orchestrator transaction.
+            self._reset_pending = True
             logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
             return steps
 
@@ -456,11 +448,21 @@ class _LegacyKaSangamWriter(WriterBase):
         chart_id = self._chart_id
         dry_run  = getattr(ctx, 'dry_run', False)
 
+        if self._reset_pending and not dry_run:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute(
+                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                    (chart_id,),
+                )
         if step.key == 'near':
-            return self._substep_near(conn, chart_id, dry_run)
-
-        idx = int(step.key.split(':', 1)[1])
-        return self._substep_lifetime(conn, chart_id, idx, dry_run)
+            result = self._substep_near(conn, chart_id, dry_run)
+        else:
+            idx = int(step.key.split(':', 1)[1])
+            result = self._substep_lifetime(conn, chart_id, idx, dry_run)
+        if not dry_run:
+            self._reset_pending = False
+        return result
 
     # ── resumption helpers (migration 436) ────────────────────────────────────
 
