@@ -1045,11 +1045,14 @@ def test_the_registry_text_proposals_are_data_with_the_shape_the_earlier_forms_u
             assert word in adds[crit], (crit, word)
 
 
-def test_this_branch_did_not_bump_the_registry_or_change_criterion_text():
-    assert ac.REGISTRY_REVISION == 29
-    for crit in ac.ES_APPLICABILITY_ADDITIONS:
-        assert ac.CRITERION_REGISTRY[crit]["revision"] == ac.ES_REVISION_BUMPS[crit][0]
-        assert "empty_slice_by_conditional" not in ac.CRITERION_REGISTRY[crit]["applicability"]
+def test_the_one_registry_bump_consumed_the_data_constants_exactly_once():
+    """The ONE bump (REGISTRY_REVISION 29 -> 30, engine stack of the vocabulary round) appended each sentence to its criterion's applicability, once, and moved each revision old -> new,
+    once (it replaces the pre-bump pin `this branch did not bump`, which the bump itself falsifies)."""
+    assert ac.REGISTRY_REVISION == 30
+    for crit, tail in ac.ES_APPLICABILITY_ADDITIONS.items():
+        assert ac.CRITERION_REGISTRY[crit]["revision"] == ac.ES_REVISION_BUMPS[crit][1]
+        assert ac.CRITERION_REGISTRY[crit]["applicability"].count(tail) == 1, crit
+        assert ac.CRITERION_REGISTRY[crit]["applicability"].endswith(tail), crit
 
 
 def test_the_event_register_is_an_orchestrator_bookkeeping_table():
@@ -1066,8 +1069,12 @@ def test_the_pinned_constants_are_the_frozen_contract():
 PATCH = pathlib.Path("/Users/Dev/suvarna-evidence/N431/declaration_patches_ga_vichara_empty_slice.json")
 
 
-def test_the_committed_declarations_do_not_declare_the_form_yet():
-    assert [a for a, e in ac.load_asset_declarations().items() if ac.ES_FORM in e] == []
+def test_only_ga_vichara_declares_the_form_in_the_committed_declarations():
+    """Declarations 1.77.0 (the engine stack of the vocabulary round) is the ONE walk that declares the form; the committed entry is the embedded copy of the patch value (and load_asset_declarations
+    validated it against the real emitter in this tree)."""
+    decl = ac.load_asset_declarations()
+    assert [a for a, e in decl.items() if ac.ES_FORM in e] == ["ga_vichara"]
+    assert decl["ga_vichara"][ac.ES_FORM] == GA_VICHARA_ES
 
 
 def test_the_form_is_inert_for_an_asset_that_does_not_declare_it(monkeypatch):
@@ -1157,22 +1164,20 @@ def test_measure_without_a_declaration_never_asks_the_detector(monkeypatch, tmp_
 
 
 @pytest.mark.skipif(not PATCH.is_file(), reason="the declaration patch file lives in the suvarna evidence folder, outside the repository")
-def test_the_ga_vichara_patch_applies_its_guards_and_validates_once_the_writer_side_is_in_the_tree(monkeypatch):
+def test_the_ga_vichara_patch_is_applied_in_the_committed_declarations():
+    """Declarations 1.77.0 applied the patch (every `expect` guard held at that time, against the 1.76.0 file): each op's value is now the committed value at its path."""
     patch = json.loads(PATCH.read_text(encoding="utf-8"))
     assert patch["version"] == "0" and all(o["asset"] == "ga_vichara" and o["op"] == "set" and "expect" in o for o in patch["ops"])
-    e = copy.deepcopy(ac.load_asset_declarations()["ga_vichara"])
+    e = ac.load_asset_declarations()["ga_vichara"]
     for op in patch["ops"]:
         node = e
-        for k in op["path"][:-1]:
+        for k in op["path"]:
             node = node[k]
-        k = op["path"][-1]
-        cur = node[k] if ((isinstance(node, dict) and k in node) or (isinstance(node, list) and isinstance(k, int) and k < len(node))) else None
-        assert cur == op["expect"], op["path"]                                    # the guard
-        node[op["path"][-1]] = op["value"]
+        assert node == op["value"], op["path"]
     es = e["empty_slice_by_conditional"]
     assert es["slice"] == SLICE and es["entries"] == ["citation_human"] and es["post_pass"] == "daridra_dosha_label" and es["run_evidence"]["emitter"]["function"] == "record_post_pass_evidence"
     assert es["run_evidence"]["caller"] == dict(file=EMIT, function="emit_daridra_label_post_pass") and es["run_evidence"]["partitions_from"] == dict(file=ADAPT, constant="CANONICAL_AYANAMSHAS")
-    # (the validator side of the patch is asserted on either tree by test_the_ga_vichara_declaration_is_refused_without_its_emitter_and_accepted_with_it_on_either_tree)
+    # (the validator side is asserted on either tree by test_the_ga_vichara_declaration_is_refused_without_its_emitter_and_accepted_with_it_on_either_tree)
 
 
 def test_a_writer_that_inserts_the_evidence_record_does_not_write_an_undeclared_table(monkeypatch):
