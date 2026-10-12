@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T11:49:55.885Z",
+  "generated_at": "2026-10-12T11:49:43.983Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
   "total": 178,
@@ -1278,7 +1278,7 @@
           },
           "lord_graha": {
             "type": "string",
-            "description": "Filter by lord graha abbreviation (e.g. SU, MO, MA)."
+            "description": "Filter by dasha lord. Accepts a graha code, alias or name (SU, Sun and sun are the same; MO, MA, Rahu, Ketu ...), a sign name for the rashi dasha systems (chara_karaka, kalachakra, narayana: e.g. Taurus), or a yogini deity name (e.g. Mangala); resolved to the stored form. An unrecognised value returns an invalid_lord_graha error listing the recognised values, never an empty page."
           },
           "include_cross_check": {
             "type": "boolean",
