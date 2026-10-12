@@ -550,9 +550,13 @@ export const queryRectificationCapability: CapabilityDescriptor = {
     'Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas).',
     'Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated.',
     'Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification.',
-    "ayanamsha_id is an OPTIONAL filter — the table stores short codes",
-    "(lahiri | kp | raman | surya_siddhanta | true_chitra); OMIT it to return candidates",
-    'across ALL ayanamshas. Bounded (LIMIT ≤50) with a disclosed total + offset pagination.',
+    "ayanamsha_id: the table stores short codes (lahiri | kp | raman | surya_siddhanta | true_chitra);",
+    "the stored long ids (e.g. lahiri_chitrapaksha) are accepted. The default is the PRIMARY reading",
+    "'lahiri_chitrapaksha' (Lahiri-only candidate list, labelled `candidates_basis`); pass \"all\" for the",
+    'explicit raw candidates across all five ayanamshas. The chart-level best-offset values',
+    '(best_lel_fit_score, confidence_*, win_margin, competing_candidates) are pooled over all five',
+    'ayanamshas and are labelled `best_candidate_basis`: "consensus over five ayanamshas".',
+    'Bounded (LIMIT ≤50) with a disclosed total + offset pagination.',
     'emits_references: false (rectification is a meta-analysis, not a signal reference).',
   ].join(' '),
 
@@ -568,7 +572,7 @@ export const queryRectificationCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID (<chart_uuid>). Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas." },
+    ayanamsha_id: { type: 'string', description: "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored id or short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Pass \"all\" for the explicit raw five-ayanamsha candidate list." },
     top_k: { type: 'number', description: 'Max candidates to return (default: 50, max: 50).' },
     offset: { type: 'number', description: 'Pagination offset (default: 0).' },
   },
@@ -721,6 +725,18 @@ export const queryRectificationCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id, ayanamsha_id,
+          // SS N-342/N-343: say which reading the candidate list is, and that the chart-level "best"
+          // values below are a pooled consensus (mean over five ayanamshas, ph_rectification
+          // engine) rather than a Lahiri-only value. Labels only; the engine/writer is unchanged.
+          candidates_basis: ayanamsha_id === 'lahiri'
+            ? 'Lahiri (lahiri_chitrapaksha), the primary reading'
+            : ayanamsha_id
+              ? `${ayanamsha_id} only (cross-check, not the primary reading)`
+              : 'raw rows for all five ayanamshas (explicit "all")',
+          best_candidate_basis: 'consensus over five ayanamshas',
+          best_candidate_basis_note:
+            'best_lel_fit_score, confidence_low/high, win_margin and competing_candidates are chart-level ' +
+            'values pooled over all five ayanamshas, not the Lahiri-only reading.',
           candidates: result.rows, count: result.rows.length,
           total_matching,
           more_available: offset + result.rows.length < total_matching,

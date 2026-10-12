@@ -80,8 +80,10 @@ def test_an_asset_with_a_writer_never_reads_na_through_the_old_causes():
 
 
 def test_the_declared_assets_among_the_saved_rev25_cells_are_the_four_has_writer_false_assets():
+    # test id kept, now THREE (name is historical): bg_sarvatobhadra_grid was retired (migration 1360) and its declaration dropped at declarations rev28b, so it is no longer declared has_writer:false.
     decl = ac.load_asset_declarations()
-    assert sorted(a for a, e in decl.items() if e.get("has_writer") is False) == ["bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga", "bg_sarvatobhadra_grid"]
+    assert sorted(a for a, e in decl.items() if e.get("has_writer") is False) == ["bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga"]
+    assert "bg_sarvatobhadra_grid" not in decl
 
 
 # ───────────── SS R-c: legacy attempts older than the registry row's current definition do not contradict the declaration ─────────────

@@ -174,6 +174,24 @@ def test_jaimini_sutram_not_deleted(db_conn, after_run):
     )
 
 
+def test_jaimini_sutram_converged_to_registry_vocabulary(db_conn, after_run):
+    """The retained legacy row's tradition / source_edition must sit inside the declared closed sets
+    (tradition = the registry value, source_edition NULL); bg_texts converges it on every run."""
+    from brahmagyan.l0_texts import TEXTS
+
+    registry_traditions = {t["tradition"] for t in TEXTS}
+    cur = db_conn.cursor()
+    cur.execute(
+        "SELECT tradition, source_edition FROM classical_texts WHERE text_id = 'jaimini_sutram'"
+    )
+    row = cur.fetchone()
+    assert row is not None, "jaimini_sutram row missing (it must be retained, never deleted)"
+    assert row["tradition"] in registry_traditions, (
+        f"jaimini_sutram tradition {row['tradition']!r} is outside the registry vocabulary"
+    )
+    assert row["source_edition"] is None, "jaimini_sutram source_edition must be NULL after bg_texts"
+
+
 def test_no_jaimini_sutram_chunks(db_conn, after_run):
     """No chunks must be written under jaimini_sutram; all Jaimini chunks use bphs_jaimini."""
     cur = db_conn.cursor()

@@ -6159,6 +6159,10 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **OWNER-PATH chart_facts divergence DROP DEFAULT, N-349 (2026-10-10) — PREPARED, NOT RUN.** Not a migration number: `chart_facts` is owned by `data_plane_l1_owner` (catalog read as suvarna_reader, N-347), so the change is an owner-path package (D6 in-process pattern), outside `platform/migrations`.
+> One statement under `lock_timeout = '5s'`: `ALTER TABLE public.chart_facts ALTER COLUMN cross_ayanamsha_divergence_arcsec DROP DEFAULT` (column nullable, default `0.0`; metadata only, no backfill). Guards: nullable, owner, default exactly `0.0`; already dropped = idempotent no-op; exact before/after diff.
+> Exec executes it in the protected window with the owner's approval at run time (`--dry-run`, then `--apply --expect-plan H`). Package: `briefs/suvarna/exec/divergence_default/divergence_default_drop.py`; test `test_n349_divergence_default_owner_path.py` (disposable PostgreSQL).
+
 > **MADHAV PORTAL JOURNEY 6 — DEPLOYED, READ-ONLY VERIFIED (2026-10-06).**
 > CCD-025; PR3201 and corrective PR3202 and the normal protected deployment deliver one Administration overview and four blocks.
 > Journey5 personal preferences, AI setup/personas and activity remain authoritative; operator scopes use the same ledger.

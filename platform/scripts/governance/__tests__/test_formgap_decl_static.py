@@ -1,9 +1,9 @@
 """test_formgap_decl_static.py: the FORM-GAP declarations of the three static / view assets are TRUE on the REAL DDL (and, for the seeded table, the REAL migration data) (SS N-191).
 
-  * bg_sarvatobhadra_grid: created deliberately empty by migration 529, no writer. `static_read zero_rows`: one live EXISTS stands in for the observed write; a row is a FAIL.
+  * bg_sarvatobhadra_grid (RETIRED by migration 1360; its declaration was dropped from asset_declarations.json at declarations rev28b, and no other committed declaration uses `zero_rows`): the checked zero-rows FORM is still exercised, on SG_DECL, a synthetic declaration built in this file in the exact shape of the dropped one, against the REAL migration-529 DDL. `static_read zero_rows`: one live EXISTS stands in for the observed write; a row is a FAIL.
   * bo_samvada: the view vw_chart_digest; its writer runs no DDL / DML. `static_read closed_read`: the view's four closed columns are read live in place of the write.
   * bg_gochara_citation_resolution: created AND seeded by migration 565 (executed whole here), no writer. Review fix HIGH 1: it declares NO static_read (its transcription / identifier columns are exemptions no read verifies), so it reads NO_DETECTOR; a forged closed_read declaration is refused.
-The COMMITTED declarations (asset_declarations.json) are used as they are; every claim has a mutation that must turn the reading red.
+The COMMITTED declarations (asset_declarations.json) are used as they are (except the retired grid's, which is the synthetic SG_DECL); every claim has a mutation that must turn the reading red.
 """
 from __future__ import annotations
 
@@ -33,12 +33,34 @@ def _own(aid):
     return json.loads(json.dumps(DECLS[aid]))
 
 
+def _own_sg():
+    return json.loads(json.dumps(SG_DECL))
+
+
 # ═════════════════════════════════════════ bg_sarvatobhadra_grid ═════════════════════════════════════════
 SG = "bg_sarvatobhadra_grid"
+# The declaration dropped at rev28b, reproduced verbatim in shape (git: 093094add^:platform/scripts/governance/asset_declarations.json), so the checked zero-rows form keeps its coverage.
+SG_DECL = {
+    "kind": "static", "has_writer": False, "carriage": {"served_surface": None}, "prose_fields": [], "terminal_by_construction": None,
+    "cross_asset_writes": None, "read_evidence": None, "read_table": None, "read_kind": None,
+    "evidence": {
+        "kind": "migration supabase/529 creates it deliberately empty (ADJUDICATION-11); seed only; has_writer=false and no @register (census writer_files empty); T0 execution_obligation static_acceptance/empty_acceptance; registry asset_kind reads data",
+        "carriage": "served_surface null (unknown): the only evidence is a provenance LABEL; Dens.served N/A.",
+        "prose_fields": "stores nothing: the table is created DELIBERATELY EMPTY by migration 529 (platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql, line 65: ADJUDICATION-11: no school-keyed grid is source-verified), no writer exists and the only reader is a SELECT. The three open text columns of the schema (cell_value, source_text_id, source_citation) can hold no prose while the table holds no row; a row would contradict this declaration.",
+    },
+    "source": {"na": "not_built", "why": "the sarvatobhadra grid table exists but no writer builds it and it holds no rows, so the asset is declared not built and reads as a failure of the build", "evidence": "platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql:1"},
+    "evidence_kind": "writer",
+    "prose_none": {
+        "why": "the table is empty by design and no writer exists, so it holds no text at all; the live read of the table decides, and a single row contradicts the declaration",
+        "closed_columns": [],
+        "static_read": {"mode": "zero_rows", "why": "no writer fills this table (registry has_writer false, no @register, no INSERT anywhere in the repository) and migration 529 inserts no row, so one live read of the table (it holds no row) stands in for the write the prose check needs",
+                        "evidence": "platform/supabase/migrations/529_bg_sarvatobhadra_grid.sql:65"},
+    },
+}
 
 
 def test_sarvatobhadra_declaration_is_the_checked_zero_rows_form():
-    e = DECLS[SG]
+    e = _own_sg()
     assert ac.prose_none_problem(e) is None and e["prose_fields"] == [] and e["kind"] == "static" and e["has_writer"] is False
     assert e["prose_none"]["static_read"]["mode"] == "zero_rows" and e["prose_none"]["closed_columns"] == []
 
@@ -69,7 +91,7 @@ def sg(monkeypatch, disposable_pg):
 
 def _m_sg(pg, monkeypatch, decl=None, registry=None):
     monkeypatch.setattr(ac, "register_call_mentions", lambda aid: [])
-    return fs.measure(SG, pg, monkeypatch, [], SG, [SG], decl or _own(SG), registry=dict({"has_writer": False}, **(registry or {})))
+    return fs.measure(SG, pg, monkeypatch, [], SG, [SG], decl or _own_sg(), registry=dict({"has_writer": False}, **(registry or {})))
 
 
 def test_REAL_DDL_the_committed_declaration_reads_na_on_all_six_on_the_empty_table(sg, monkeypatch):
