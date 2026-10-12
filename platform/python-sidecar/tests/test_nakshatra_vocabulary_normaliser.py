@@ -22,10 +22,14 @@ sys.path.insert(0, str(SIDECAR))
 
 from brahmagyan.l0_nakshatra import NAKSHATRAS_ENRICHED  # noqa: E402
 from brahmagyan.l0_ontology import NAK_DATA  # noqa: E402
+from brahmagyan.nakshatra_vocabulary import _fold  # noqa: E402  (the fold the module itself uses)
 from brahmagyan.nakshatra_vocabulary import (  # noqa: E402
+    AMBIGUOUS_BARE_TOKENS,
     CANONICAL_NAKSHATRA_NAMES,
     LEGACY_L1_SPELLINGS,
     NAKSHATRA_SYNONYMS,
+    SUPPRESSED_AMBIGUOUS_ALIASES,
+    AmbiguousNakshatraError,
     UnknownNakshatraError,
     canonical_nakshatra,
     nakshatra_index,
@@ -78,17 +82,97 @@ def test_registered_spellings_resolve_to_the_canonical_name_and_number(spelling,
     assert canonical_nakshatra(spelling) == canon and nakshatra_number(spelling) == n
 
 
-def test_every_lexicon_alias_and_every_ontology_synonym_resolves():
+def test_every_lexicon_alias_and_every_ontology_synonym_resolves_except_the_suppressed_bare_tokens():
+    suppressed = set(SUPPRESSED_AMBIGUOUS_ALIASES)
     for row in NAKSHATRAS_ENRICHED:
         if not 1 <= row["nakshatra_id"] <= 27:
             continue
         assert normalize_nakshatra(row["name_sa_iast"]) == row["name_en"]
         for alt in row["alt_names"]:
-            assert normalize_nakshatra(alt) == row["name_en"], alt
+            if alt in suppressed:
+                with pytest.raises(AmbiguousNakshatraError):
+                    normalize_nakshatra(alt)
+            else:
+                assert normalize_nakshatra(alt) == row["name_en"], alt
     for _nid, name_en, name_sa, synonyms in NAK_DATA:
         assert normalize_nakshatra(name_sa) == name_en
         for syn in synonyms:
-            assert normalize_nakshatra(syn) == name_en, syn
+            if syn in suppressed:
+                with pytest.raises(AmbiguousNakshatraError):
+                    normalize_nakshatra(syn)
+            else:
+                assert normalize_nakshatra(syn) == name_en, syn
+
+
+# ── SS N-561: ambiguous bare names ──────────────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_AMBIGUOUS = {"purva", "uttara", "poorva", "phalguni", "ashadha", "asadha", "bhadrapada", "bhadra"}
+
+
+def test_the_ambiguity_set_is_computed_from_the_l0_sources_and_pinned():
+    assert {"purva", "uttara"} <= AMBIGUOUS_BARE_TOKENS
+    assert AMBIGUOUS_BARE_TOKENS == EXPECTED_AMBIGUOUS, sorted(AMBIGUOUS_BARE_TOKENS ^ EXPECTED_AMBIGUOUS)
+    # independently re-derived: every word of every registered spelling owned by two or more nakshatras
+    owners: dict[str, set[str]] = {}
+    for row in NAKSHATRAS_ENRICHED:
+        if 1 <= row["nakshatra_id"] <= 27:
+            for sp in [row["name_en"], row["name_sa_iast"], *row["alt_names"]]:
+                for w in sp.replace("_", " ").replace("-", " ").split():
+                    owners.setdefault(_fold(w), set()).add(row["name_en"])
+    for _nid, name_en, name_sa, synonyms in NAK_DATA:
+        for sp in [name_sa, *synonyms]:
+            for w in sp.replace("_", " ").replace("-", " ").split():
+                owners.setdefault(_fold(w), set()).add(name_en)
+    assert {t for t, cs in owners.items() if len(cs) > 1} == AMBIGUOUS_BARE_TOKENS
+
+
+@pytest.mark.parametrize("bare", ["Purva", "Uttara", "uttara", "Poorva", "Phalguni", "Ashadha", "Asadha", "Bhadrapada", "Bhadra",
+                                  " PURVA ", "purva_", "Uttara-", "Phalgunī"])
+def test_an_ambiguous_bare_token_raises_a_distinct_error_and_never_resolves(bare):
+    with pytest.raises(AmbiguousNakshatraError) as exc:
+        normalize_nakshatra(bare)
+    assert isinstance(exc.value, UnknownNakshatraError) and isinstance(exc.value, ValueError)
+    with pytest.raises(AmbiguousNakshatraError):
+        nakshatra_index(bare)
+    assert canonical_nakshatra(bare) is None and nakshatra_number(bare) is None
+
+
+@pytest.mark.parametrize("token", sorted(EXPECTED_AMBIGUOUS))
+def test_every_token_of_the_ambiguity_set_raises(token):
+    with pytest.raises(AmbiguousNakshatraError):
+        normalize_nakshatra(token)
+    assert token not in NAKSHATRA_SYNONYMS
+
+
+def test_the_full_names_that_contain_an_ambiguous_token_still_resolve():
+    assert normalize_nakshatra("Purva Phalguni") == "Purva Phalguni" and nakshatra_index("Uttara Ashadha") == 21
+    assert normalize_nakshatra("Purva Bhadra") == "Purva Bhadrapada" and normalize_nakshatra("UttaraBhadrapada") == "Uttara Bhadrapada"
+    assert normalize_nakshatra("Pubba") == "Purva Phalguni" and normalize_nakshatra("Uthiram") == "Uttara Phalguni"   # the unambiguous alt_names of 11 / 12
+
+
+def test_the_suppressed_registrations_are_exactly_the_bare_purva_uttara_and_are_reported_for_the_lexicon_owner():
+    assert dict(SUPPRESSED_AMBIGUOUS_ALIASES) == {
+        "Purva": ("Purva Phalguni", "lexicon alt_names"),
+        "Uttara": ("Uttara Phalguni", "lexicon alt_names"),
+        "uttara": ("Uttara Phalguni", "ontology synonym"),
+    }
+
+
+def test_no_alias_in_the_resolved_map_is_shared_by_two_nakshatras():
+    """Independently of the module's own build: fold every registered spelling of every source and check each key has ONE owner."""
+    owners: dict[str, set[str]] = {}
+    for row in NAKSHATRAS_ENRICHED:
+        if 1 <= row["nakshatra_id"] <= 27:
+            for sp in [row["name_en"], row["name_sa_iast"], *row["alt_names"]]:
+                owners.setdefault(_fold(sp), set()).add(row["name_en"])
+    for _nid, name_en, name_sa, synonyms in NAK_DATA:
+        for sp in [name_sa, *synonyms]:
+            owners.setdefault(_fold(sp), set()).add(name_en)
+    shared = {k: sorted(v) for k, v in owners.items() if len(v) > 1}
+    assert shared == {}, shared
+    for key, canon in NAKSHATRA_SYNONYMS.items():
+        assert owners[key] == {canon}, key
+        assert key not in AMBIGUOUS_BARE_TOKENS
 
 
 def test_the_three_legacy_l1_spellings_are_registered_aliases_of_the_lexicon_or_ontology():
