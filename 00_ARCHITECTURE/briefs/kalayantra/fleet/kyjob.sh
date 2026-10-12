@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kyjob.sh v1.0 — the worker launch (relaunch plan v2.7 §7; packet KV3-B-KYJOB v1). status: built, pending independent review.
+# kyjob.sh v1.1 — the worker launch (relaunch plan v2.7 §7; packet KV3-B-KYJOB v1). status: built, pending independent review.
 #
 #   bash $KY_FLEET/kyjob.sh <job_id>
 #
@@ -78,6 +78,7 @@
 # Limits: the files are hashed and compared when checked, not again at the instant of the exec; the helper below runs
 # under /opt/homebrew/bin/python3 (else /usr/bin/python3), isolated (-I -B), with a six-name environment.
 #
+# Changelog: v1.1 (2026-10-13) — explicit Codex job adapter; Claude planning unchanged.
 # Changelog: v1.0 (2026-10-12) — first version (KV3-B-KYJOB v1).
 set -u
 umask 077
@@ -113,8 +114,12 @@ refuse() {   # refuse <code> <reason>: the record (when the job's scratch folder
 
 # 78 — names only: a value is never read, compared or printed
 credentials=""
+codex_credentials=""
 for name in $(compgen -e); do
-  case "$name" in DATABASE_URL|*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY) credentials="$credentials $name" ;; esac
+  case "$name" in
+    DATABASE_URL|*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY) credentials="$credentials $name" ;;
+    OPENAI_API_KEY|CODEX_API_KEY|AZURE_OPENAI_API_KEY|OPENAI_*TOKEN*|CODEX_*TOKEN*) codex_credentials="$codex_credentials $name" ;;
+  esac
 done
 [ -z "$credentials" ] || refuse 78 "credential variable name set in kyjob.sh's own environment:$credentials"
 
@@ -126,7 +131,7 @@ for name in KY_ROOT KY_RUN KY_FLEET KY_SCRATCH HOME; do
 done
 [ -n "$PY" ] || { say 65 "state: no python3 at /opt/homebrew/bin/python3 or /usr/bin/python3; the job state cannot be read"; exit 65; }
 
-helper plan "$JOB_ID"
+helper plan "$JOB_ID" "$codex_credentials"
 status=$?
 case "$status" in
   0) ;;
@@ -466,7 +471,14 @@ def read_state(job_id, own):
     for key in LAUNCH_KEYS:
         if key not in state:
             raise Refuse(65, "state: launch key %s is absent" % key)
+    engine = state.get("engine", "claude")
+    if engine not in ("claude", "codex"):
+        raise Refuse(65, "engine: null/unknown engine refuses before launch")
+    if engine == "claude" and any(k in state for k in ("launch_config_path", "sandbox_mode", "stall_seconds")):
+        raise Refuse(65, "engine: Claude job carries Codex-only launch fields")
     for key in REQUIRED_TEXT:
+        if engine == "codex" and key in ("claude_bin", "mcp_config"):
+            continue
         if not is_text(state[key]):
             raise Refuse(65, "state: %s is not a non-empty text" % key)
     if state["job_id"] != job_id:
@@ -732,6 +744,18 @@ def plan(job_id, own):
     state = read_state(job_id, own)
     if not os.path.isdir(state["worktree"]) or not os.access(state["worktree"], os.X_OK):
         raise Refuse(70, "cd %s failed" % state["worktree"])
+    if state.get("engine", "claude") == "codex":
+        global CODEX_JOB
+        CODEX_JOB = state
+        if len(ARGV) > 2 and ARGV[2]:
+            raise Refuse(78, "credential variable name set in kyjob.sh's own environment:" + ARGV[2])
+        sys.path.insert(0, own["KY_FLEET"])
+        try:
+            import kyjob_engines
+            kyjob_engines.plan(state, own, globals())
+        except (kyjob_engines.Refusal, OSError, ValueError) as error:
+            raise Refuse(65, "codex: %s" % error) from None
+        return
     deadline = check_limits(state)
     check_flags(state)
     bounded = check_boundary_form(state)
@@ -767,6 +791,11 @@ def report(job_id, refusal):
             except OSError:
                 pass
         record = {"job_id": job_id, "code": refusal.code, "reason": refusal.reason, "at": utc_now_text()}
+        codex = globals().get("CODEX_JOB")
+        if codex and codex.get("sandbox_mode", "locked") in ("locked", "full"):
+            mode = codex.get("sandbox_mode", "locked")
+            record.update(engine="codex", sandbox_mode=mode,
+                          sandbox="full (owner direction 2026-10-12)" if mode == "full" else "locked")
         try:
             write_atomic(os.path.join(scratch, "kyjob.refusal.json"),
                          (json.dumps(record, ensure_ascii=False, sort_keys=True, indent=1) + "\n").encode("utf-8"))

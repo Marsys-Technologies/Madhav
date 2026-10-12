@@ -1358,3 +1358,12 @@ def test_the_script_is_valid_bash_and_carries_no_relative_program():
     source = KYJOB.read_text()
     for word in ("setsid", "nohup", "disown"):
         assert word not in source, f"kyjob.sh must not detach anything ({word})"
+
+
+@pytest.mark.parametrize('engine', [None, 'unknown'])
+def test_explicit_invalid_engine_refuses_before_claude(world, engine):
+    """The extension cannot reinterpret an explicit null/unknown engine as legacy Claude."""
+    w = world.build()
+    w.state['engine'] = engine
+    write_json(w.state_path, w.state)
+    assert_refused(w.launch(), 65, 'engine:')

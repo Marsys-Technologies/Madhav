@@ -778,3 +778,211 @@ def test_the_launch_is_one_new_session_with_no_input_and_the_ctx_paths(world, mo
     assert set(env) <= {"HOME", "USER", "LANG", "TERM", "PATH", "KY_ROOT", "KY_RUN", "KY_FLEET", "KY_SCRATCH"}
     assert after["pid"] == after["pgid"] == J._CHILDREN[job["job_id"]].pid and after["process_start"]
     assert J.launch(world.ctx, after) == world.state("K-1") and len(J._CHILDREN) == 1     # never a second start
+
+
+def test_codex_launch_action_and_activity_are_annotated(tmp_path, monkeypatch):
+    """A Codex launch must persist its mode on inputs, observations and checkpoint."""
+    import kyjob_engines as engines
+    w = World(tmp_path, monkeypatch)
+    try:
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', w.facts({}))
+        (Path(job['job_scratch']) / 'behaviour').write_text('done')
+        (Path(job['job_scratch']) / 'item').write_text(job['item'])
+        monkeypatch.setattr(engines, 'prepare', lambda ctx, value: None)
+        job.update(engine='codex', sandbox_mode='full', stall_seconds=300)
+        J._save(w.ctx, job)
+        live = J.launch(w.ctx, job)
+        proc = J._CHILDREN[live['job_id']]
+        w.procs[live['job_id']] = proc
+        w.lstart[proc.pid] = live['process_start']
+        doc = json.loads((w.run / 'actions' / ('ACT-launch-' + job['job_id'] + '.json')).read_text())
+        for key in ('inputs', 'target', 'result'):
+            assert doc[key]['engine'] == 'codex'
+            assert doc[key]['sandbox'] == 'full (owner direction 2026-10-12)'
+        assert live['checkpoint']['codex_activity']['sandbox_mode'] == 'full'
+    finally:
+        w.cleanup()
+
+
+def test_codex_surviving_group_stalls_before_deadline(tmp_path, monkeypatch):
+    """A gone leader cannot exempt its silent tool group from Codex's stall limit."""
+    w = World(tmp_path, monkeypatch)
+    try:
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', w.facts({}))
+        job.update(engine='codex', sandbox_mode='locked', stall_seconds=1,
+                   pid=234567, pgid=234567, process_start='test-owned', phase='live')
+        job['checkpoint'] = {'codex_activity': {'launched_at': 1, 'last_growth_at': 1, 'bytes': [0, 0]}}
+        for key in ('stdout_path', 'stderr_path'):
+            Path(job[key]).write_text('')
+        J._save(w.ctx, job)
+        monkeypatch.setattr(J, '_now', lambda: 100)
+        states = ['survivors']
+        monkeypatch.setattr(J, '_process', lambda j: states[0])
+        def reap(j):
+            states[0] = 'gone'
+            return 'gone'
+        monkeypatch.setattr(J, '_terminate', reap)  # state probe only: never signal this synthetic pid
+        ended = J.supervise(w.ctx)
+        assert ended and ended[0]['failure_fp'] == 'codex_stalled'
+        assert ended[0]['outcome'] == 'failed'
+    finally:
+        w.cleanup()
+
+
+def test_codex_claim_release_and_failure_records_name_mode(tmp_path, monkeypatch):
+    import kyjob_engines as engines
+    w = World(tmp_path, monkeypatch)
+    try:
+        monkeypatch.setattr(engines, 'prepare', lambda ctx, value: None)
+        facts = w.facts({})
+        facts['launch'].update(engine='codex', sandbox_mode='full', launch_config_path=str(tmp_path/'cfg.json'))
+        job = J.open(w.ctx, w.intent({'item': 'KV3-T'}), 'k1', facts)
+        assert job is not None
+        ended = J.close(w.ctx, job, {'outcome': 'failed', 'failure_fp': 'codex_stalled'})
+        assert ended['phase'] == 'ended'
+        for path in (w.run/'actions').glob('ACT-*.json'):
+            doc = json.loads(path.read_text())
+            for key in ('inputs', 'target', 'result'):
+                assert doc[key]['engine'] == 'codex'
+                assert doc[key]['sandbox'] == 'full (owner direction 2026-10-12)'
+        failure = json.loads((w.run/'jobs/failures.json').read_text())['KV3-T']['codex_stalled']
+        assert failure['engine'] == 'codex' and failure['sandbox_mode'] == 'full'
+    finally:
+        w.cleanup()
+
+
+@pytest.mark.parametrize('growth', [None, 'stdout_path', 'stderr_path'])
+def test_codex_recovered_real_survivors_are_supervised(world, monkeypatch, growth):
+    """Restart loses child handles, but not silence or the identity-safe TERM/KILL obligation."""
+    import kyjob_engines as engines
+    job = opened(world)
+    (world.fleet / 'kyjob.sh').write_text(
+        '#!/bin/bash\ntrap "" TERM\n/bin/sleep 600 &\n'
+        'while [ ! -f "$KY_SCRATCH/jobs/$1/exit-leader" ]; do /bin/sleep .02; done\nexit 0\n')
+    monkeypatch.setattr(engines, 'prepare', lambda ctx, value: None)
+    job.update(engine='codex', sandbox_mode='full', stall_seconds=10)
+    J._save(world.ctx, job)
+    job = J.launch(world.ctx, job)
+    proc = J._CHILDREN[job['job_id']]
+    world.procs[job['job_id']] = proc
+    world.lstart[proc.pid] = job['process_start']
+    assert job['process_start'] is not None
+    Path(job['job_scratch'], 'exit-leader').touch()
+    proc.wait(timeout=5)
+    assert J._process(job) == 'survivors'
+    # Persist observed bytes and silence, then discard every controller child handle.
+    job['checkpoint']['codex_activity'].update(launched_at=100, last_growth_at=100, bytes=[0, 0])
+    J._save(world.ctx, job)
+    J._CHILDREN.clear()
+    world.ctx = Ctx(world, 'CTL-codex-restarted')
+    now = [111]
+    monkeypatch.setattr(J, '_now', lambda: now[0])
+    signals = []
+    real_signal = J._signal
+    def recording(value, sig):
+        signals.append(sig)
+        return real_signal(value, sig)
+    monkeypatch.setattr(J, '_signal', recording)
+    if growth:
+        Path(job[growth]).write_text('new output')
+    adopted = J.recover(world.ctx)
+    assert len(adopted) == 1 and adopted[0]['controller_id'] == world.ctx.controller_id
+    for name in ['job.' + job['key']] + job['locks']:
+        owner = json.loads((world.run / 'locks' / name / 'owner.json').read_text())
+        assert owner['session_or_run_id'] == world.ctx.controller_id + ':job.' + job['key']
+    if growth:
+        assert J.supervise(world.ctx) == []
+        assert signals == [] and J._process(job) == 'survivors'
+        persisted = J._fresh(world.ctx, job)
+        assert persisted['checkpoint']['codex_activity']['last_growth_at'] == 111
+        assert persisted['failure_fp'] is None
+        assert json.loads((world.run / 'claims/b1.json').read_text())['state'] == 'acquired'
+        now[0] = 121
+    stopped = J.supervise(world.ctx)
+    assert len(stopped) == 1 and stopped[0]['failure_fp'] == 'codex_stalled'
+    assert signals == [signal.SIGTERM, signal.SIGKILL]
+    assert J._process(stopped[0]) == 'gone'
+    ended = J.close(world.ctx, stopped[0])
+    assert ended['phase'] == 'ended' and ended['outcome'] == 'failed'
+    assert ended['checkpoint']['codex_activity']['reason'] == 'codex_stalled'
+    failure = json.loads((world.run / 'jobs/failures.json').read_text())[job['item']]['codex_stalled']
+    assert failure['count'] == 1 and failure['last_job'] == job['job_id']
+    assert J.close(world.ctx, ended)['phase'] == 'ended'
+    assert json.loads((world.run / 'jobs/failures.json').read_text())[job['item']]['codex_stalled']['count'] == 1
+    assert json.loads((world.run / 'claims/b1.json').read_text())['state'] == 'released'
+    assert not (world.run / ('locks/item.' + job['item'])).exists()
+    assert not (world.run / ('locks/job.' + job['key'])).exists()
+
+
+@pytest.mark.parametrize('phase', ['live', 'terminating'])
+@pytest.mark.parametrize('condition', ['silent', 'deadline', 'unknown', 'foreign_lock', 'survives',
+                                      'activity_missing', 'activity_invalid', 'deadline_unknown'])
+def test_codex_restart_supervision_fences(world, monkeypatch, phase, condition):
+    """Known groups resume clocks/stops; unknown evidence and unsuccessful stops retain resources."""
+    job = opened(world)
+    job.update(engine='codex', sandbox_mode='locked', stall_seconds=10,
+               pid=234567, pgid=234567, process_start='test-owned', phase=phase)
+    activity = dict(launched_at=1, last_growth_at=1, bytes=[0, 0])
+    J._checkpoint(job)['codex_activity'] = activity
+    for key in ('stdout_path', 'stderr_path'):
+        Path(job[key]).write_text('')
+    if phase == 'terminating':
+        job.update(outcome='failed', failure_fp='codex_stalled')
+    if condition == 'deadline_unknown':
+        job.update(deadline='unknown', outcome=None, failure_fp=None)
+        activity.update(launched_at=90, last_growth_at=99)
+    if condition == 'deadline':
+        job.update(deadline=ka.utc(50), outcome='timed_out' if phase == 'terminating' else None,
+                   failure_fp=None)
+        activity.update(launched_at=90, last_growth_at=99)
+    if condition == 'activity_missing':
+        job['checkpoint'].pop('codex_activity')
+        job.update(outcome=None, failure_fp=None)
+    if condition == 'activity_invalid':
+        activity['last_growth_at'] = None
+        job.update(outcome=None, failure_fp=None)
+    J._save(world.ctx, job)
+    if condition == 'foreign_lock':
+        rewrite_owner(world, 'item.' + job['item'], session_or_run_id='CTL-foreign')
+    state = ['unknown' if condition == 'unknown' else 'survivors']
+    stops = []
+    monkeypatch.setattr(J, '_process', lambda value: state[0])
+    def stop(value):
+        stops.append(value['job_id'])
+        if condition != 'survives':
+            state[0] = 'gone'
+        return state[0]
+    monkeypatch.setattr(J, '_terminate', stop)  # synthetic identity is never signalled
+    monkeypatch.setattr(J, '_now', lambda: 100)
+    world.ctx = Ctx(world, 'CTL-codex-restarted')
+    J.recover(world.ctx)
+    for _ in range(2):
+        for pending in J.supervise(world.ctx):
+            J.close(world.ctx, pending)
+    after = J._fresh(world.ctx, job)
+    held = condition in ('unknown', 'foreign_lock', 'survives', 'activity_missing', 'activity_invalid', 'deadline_unknown')
+    if held:
+        assert after['phase'] != 'ended'
+        assert json.loads((world.run / 'claims/b1.json').read_text())['state'] == 'acquired'
+        assert (world.run / ('locks/item.' + job['item'])).exists()
+        if condition == 'survives':
+            assert stops and after['failure_fp'] == 'codex_stalled'
+        else:
+            assert stops == []
+        assert world.log.awaiting
+    else:
+        assert stops and after['phase'] == 'ended'
+        assert after['outcome'] == ('timed_out' if condition == 'deadline' else 'failed')
+        assert json.loads((world.run / 'claims/b1.json').read_text())['state'] == 'released'
+
+
+def test_claude_survivors_keep_legacy_recovery(world, monkeypatch):
+    job = opened(world)
+    job.update(pid=234567, pgid=234567, process_start='test-owned', phase='live')
+    J._save(world.ctx, job)
+    monkeypatch.setattr(J, '_process', lambda value: 'survivors')
+    monkeypatch.setattr(J, '_terminate', lambda value: pytest.fail('Claude survivor was signalled'))
+    world.ctx = Ctx(world, 'CTL-claude-restarted')
+    assert J.recover(world.ctx) == [] and J.supervise(world.ctx) == []
+    assert J._fresh(world.ctx, job)['controller_id'] == job['controller_id']
+    assert len(world.log.awaiting) == 1
