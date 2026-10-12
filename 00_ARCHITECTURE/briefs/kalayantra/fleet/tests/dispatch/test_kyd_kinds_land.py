@@ -335,6 +335,12 @@ def test_fixture_covers_the_packet():
         "cancel_after_head_change_then_rejected", "parked_request_across_a_restart",
         "complete_code", "complete_artifact", "complete_operation", "complete_packet",
         "complete_refusals", "complete_waits_for_strict_dependencies",
+        # review round 1, KL-B1: a queue authorisation is bound to the head it was given at
+        "cancel_when_the_queued_head_moved_to_a_registered_inheriting_head",
+        "cancel_when_the_queued_head_moved_to_a_directly_accepted_head",
+        "cancel_when_the_queued_head_moved_under_hold_merges", "cancel_when_the_queued_head_is_unknown",
+        # review round 1, KL-B2: an unknown inheritance answer invalidates nothing
+        "cancel_inherit_unknown_invalidates_nothing", "queued_head_unchanged_acceptance_unknown_is_left_alone",
     }
     assert required <= names(), sorted(required - names())
     kinds = {i["kind"] for c in CASES for s in c["steps"] for i in s.get("intents", [])}

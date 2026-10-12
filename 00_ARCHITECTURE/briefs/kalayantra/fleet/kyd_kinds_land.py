@@ -30,12 +30,18 @@ INTERPRETATION (each is the packet's "(I)" or is needed to make a row executable
   I1  `regen` is the model item's `brief.regen` = {outputs[], generator{}, tests[]}; an item without it has no
       declared generated output, so its conflict is `dirty_outside_generated`.
   I2  A REGEN needs the PR head to be the registered head (kyregen.sh starts from it) and no queue authorisation.
-  I3  A queued PR is authorised only while accepted_head gives its head. Otherwise the intent is a cancel
-      (`queue` false: it submits nothing, so HOLD_MERGES does not park it). A queued PR that became dirty at an
-      unchanged head is cancelled too, without invalidation: REGEN may not push under a queue authorisation.
-  I4  The acceptance a cancel invalidates is the latest pre_merge verdict when it is ACCEPTED; the verifier slot is
-      read from that verdict's actor (`stream-V:<slot>`). Invalidation is issued even when the cancel itself could
-      not be confirmed: the new head is unreviewed either way.
+  I3  A queue authorisation is bound to the head it was given at: a submission first records that head in
+      merge_requests/queued/<item>.json (`ky.merge_queued/1`). A queued PR (`auto_merge` set) is cancelled
+      (`queue` false: it submits nothing, so HOLD_MERGES does not park it) with a reason that names what was
+      measured: `head_changed` when the PR head is not the recorded head, whatever accepted_head says (the new head
+      needs fresh admission); `queued_head_unknown` when no readable record for this PR exists; at the recorded
+      head, `dirty` when it is in conflict (REGEN may not push under a queue authorisation) and `not_accepted` when
+      accepted_head measures it not accepted. An unknown acceptance at the unchanged recorded head cancels nothing.
+  I4  Only a `head_changed` cancel can invalidate, and only the latest pre_merge verdict when it is ACCEPTED at
+      another head and the shared predicate measures that the new head does not inherit it (exit 1). Exit 0 keeps
+      it; any other answer invalidates nothing, journals `inherit unknown` and fails the job (`inherit_unknown`).
+      The verifier slot is read from that verdict's actor (`stream-V:<slot>`). Invalidation is issued even when
+      the cancel itself could not be confirmed: the new head is unreviewed either way.
   I5  Under a `[PROTECTED-WINDOW]` title every `platform/migrations/*.sql` path of the PR must be named in
       `platform/scripts/kala_protected_migrations.txt` as it is at the PR head (the PR observation does not say
       which files are added, so every migration file of the PR counts).
@@ -75,6 +81,7 @@ PROTECTED_TAG = "[PROTECTED-WINDOW]"
 PROTECTED_LIST = "platform/scripts/kala_protected_migrations.txt"
 MIGRATIONS = "platform/migrations/"
 REQUEST_SCHEMA = "ky.merge_request/1"
+QUEUED_SCHEMA = "ky.merge_queued/1"
 MERGE_OPTIONS = [{"id": "merge", "text": "Submit the PR to the merge queue at that head."},
                  {"id": "hold", "text": "Do not merge; the request stays parked."}]
 REGEN_TIMEOUT = 3600            # kyregen.sh merges, regenerates, tests and pushes inside one call
@@ -389,6 +396,19 @@ def _valid_request(doc, item):
             and type(doc.get("pr")) is int and _is_hex40(doc.get("registered_head")))
 
 
+def _queued_path(ctx, item):
+    return _path(ctx, "run") / "merge_requests" / "queued" / ("%s.json" % item)
+
+
+def _queued_head(ctx, item, number):
+    """The head this PR's queue authorisation was given at, from the submission's own record (I3), or None."""
+    doc = _read_json(str(_queued_path(ctx, item)))
+    if (isinstance(doc, dict) and doc.get("schema") == QUEUED_SCHEMA and doc.get("item") == item
+            and type(doc.get("pr")) is int and doc["pr"] == number and _is_hex40(doc.get("queued_head"))):
+        return doc["queued_head"]
+    return None
+
+
 def _awaiting_ids(ctx, item, head):
     """The ids of the awaiting items (open or done) that ask about merging this item at this head."""
     ids = []
@@ -433,21 +453,29 @@ def _authorising_decision(ctx, awaiting_ids):
     return None
 
 
-def _merge(ctx, item, owner, pr, events):
+def _merge(ctx, item, owner, pr):
     number, head = pr.get("number"), pr.get("head")
     if type(number) is not int or not _is_hex40(head):
         return None
-    if pr.get("auto_merge"):
-        accepted = accepted_head(ctx, item)
-        changed = not (isinstance(accepted, dict) and accepted.get("head") == head)
-        if not changed and not _dirty(pr):
-            return None                                           # queued at the accepted head: GitHub's turn
-        latest = _latest_accepted(events)
-        old = latest["head"] if latest else None
-        reason = "head_changed" if changed else "dirty"
-        return _intent("MERGE", item, owner, head=old or head, verdict_phase="pre_merge",
-                       evidence={"action": "cancel", "pr": number, "new_head": head, "reason": reason},
-                       header={"action": "cancel", "reason": reason, "pr": number, "registered_head": old,
+    if pr.get("auto_merge"):                                      # I3
+        queued = _queued_head(ctx, item, number)
+        if queued is None:
+            reason = "queued_head_unknown"
+        elif queued != head:
+            reason = "head_changed"
+        elif _dirty(pr):
+            reason = "dirty"
+        else:
+            accepted = accepted_head(ctx, item)
+            if accepted == UNKNOWN:
+                return None                                       # unknown at the queued head: neither yes nor no
+            if isinstance(accepted, dict) and accepted.get("head") == head:
+                return None                                       # queued at the accepted head: GitHub's turn
+            reason = "not_accepted"
+        return _intent("MERGE", item, owner, head=queued or head, verdict_phase="pre_merge",
+                       evidence={"action": "cancel", "pr": number, "queued_head": queued, "new_head": head,
+                                 "reason": reason},
+                       header={"action": "cancel", "reason": reason, "pr": number, "registered_head": queued,
                                "new_head": head, "queue_authorised": True})
     if _dirty(pr) or _held(ctx, "HOLD", "root"):
         return None
@@ -507,8 +535,12 @@ def _start_submit(ctx, job, intent):
         queued = now.get("head") == head and (now.get("auto_merge") or now.get("state") == "MERGED")
         return ("done" if queued else "not_done"), seen
 
+    action_id = "ACT-merge-%s" % job["job_id"]
+    _write_json(_queued_path(ctx, item), {"schema": QUEUED_SCHEMA, "item": item, "pr": number, "queued_head": head,
+                                          "job_id": job["job_id"], "action_id": action_id,
+                                          "decision": intent["header"].get("decision"), "recorded_at": _utc()})
     status, rc, _out, err, ran = _acted(
-        ctx, "ACT-merge-%s" % job["job_id"], "merge",
+        ctx, action_id, "merge",
         {"argv": argv, "pr": number, "registered_head": head, "decision": intent["header"].get("decision")},
         {"kind": "pull_request", "item": item, "pr": number, "head": head},
         lambda: ctx.sh(argv, cwd=str(_path(ctx, "repo"))), observer)
@@ -547,10 +579,18 @@ def _start_cancel(ctx, job, intent, events):
     fp = None if cancelled else ("cancel_unknown" if status == "unknown" else "cancel_failed")
     done = ["auto-merge of PR #%d disabled" % number] if cancelled else []
     latest = _latest_accepted(events)
-    if header["reason"] == "head_changed" and latest and latest["head"] != new_head:
+    if header["reason"] == "head_changed" and latest and latest["head"] != new_head:      # I4
         old = latest["head"]
-        if _inherit(ctx, item, old, new_head) == 0:
-            done.append("%s inherits the acceptance at %s" % (new_head, old))
+        inherits = _inherit(ctx, item, old, new_head)
+        if inherits == 0:
+            done.append("%s inherits the acceptance at %s; it needs fresh admission" % (new_head, old))
+        elif inherits != 1:
+            text = ("PR #%d head changed from %s to %s after queueing; whether the new head inherits the acceptance "
+                    "at %s is unknown (kyverdicts.py inherit exit %s): nothing invalidated"
+                    % (number, header["registered_head"], new_head, old, "unknown" if inherits is None else inherits))
+            problems.append(text)
+            fp = fp or "inherit_unknown"
+            ctx.journal("inherit unknown", "%s: %s" % (item, text))
         else:
             slot = VSLOT_RE.match(latest.get("actor") or "")
             reason = "PR #%d head changed to %s after queueing; the new head does not inherit the review" \
@@ -735,7 +775,7 @@ def _item_intent(ctx, row, model, journal):
         return _complete_code(ctx, item, completer, row, pr)
     if pr.get("state") != "OPEN":
         return None
-    intent = _merge(ctx, item, owner, pr, events)
+    intent = _merge(ctx, item, owner, pr)
     if intent is None and _dirty(pr) and not pr.get("auto_merge"):
         intent = _regen(ctx, item, owner, decl, pr, events, journal)
     return intent
