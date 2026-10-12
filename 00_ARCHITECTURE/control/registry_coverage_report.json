@@ -2,7 +2,7 @@
  "schema": 2,
  "registry_revision": 29,
  "registry_fingerprint": "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
- "inspector_commit": "829d8db1df1005e414623cf21b7e0999a6f9bf31",
+ "inspector_commit": "9bd4fe7f39fae8b49a830e16867adf42916c6741",
  "inspector_commit_note": "the last commit touching asset_census.py when this report was generated; a provenance pointer, not a reachability claim (it may be unreachable after a squash or rebase); --check never compares it",
  "expected_cells": 54,
  "covered_cells": 48,
@@ -228,10 +228,12 @@
    "emitted_by_measure": true,
    "sites": [
     "_measure_prose",
+    "grade_narr_checkable",
     "grade_prose_none",
     "measure",
     "prose_checks",
-    "stamp_read_scope"
+    "stamp_read_scope",
+    "validate_empty_slice_by_conditional_declaration"
    ]
   },
   {
@@ -269,10 +271,13 @@
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
+    "empty_slice_problem",
+    "grade_null_blank_rows",
     "grade_prose_none",
     "measure",
     "prose_checks",
-    "stamp_read_scope"
+    "stamp_read_scope",
+    "validate_empty_slice_by_conditional_declaration"
    ]
   },
   {
@@ -288,6 +293,7 @@
     "_measure_null_convention",
     "_measure_prose",
     "earn_null_lift",
+    "empty_slice_problem",
     "grade_prose_none",
     "measure",
     "prose_checks",
@@ -307,9 +313,12 @@
    "detector": "asset_census.py:measure()",
    "emitted_by_measure": true,
    "sites": [
+    "mark_empty_scopes",
     "measure",
     "stamp_read_scope",
-    "vocab_alias_declared_check"
+    "validate_empty_slice_by_conditional_declaration",
+    "vocab_alias_declared_check",
+    "vocab_value_detect"
    ]
   },
   {
