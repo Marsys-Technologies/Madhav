@@ -944,6 +944,208 @@
    }
   },
   {
+   "name": "lock_resume_never_releases_another_jobs_lock",
+   "covers": [
+    "kt07.restart",
+    "review.KYDJOBS-R1-B1"
+   ],
+   "why": "KYDJOBS-R1-B1. The close dies after its locks were released and before the step `locks` was persisted; a REWORK job of the same item takes item.K-1 in the meantime. The resumed close ends the first job and leaves that lock with the job that holds it now, so no VERIFY job can open on the item while the REWORK job holds its worktree.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_before_persist": "locks"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    },
+    {
+     "op": "expect",
+     "locks": {
+      "item.K-1": true
+     }
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": true
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "lock_resume_after_a_restart_never_releases_another_jobs_lock",
+   "covers": [
+    "kt07.restart",
+    "review.KYDJOBS-R1-B1"
+   ],
+   "why": "KYDJOBS-R1-B1 across a restart: the new controller opens the REWORK job (item.K-1 under its own identity) and then recovers the first job; the resumed close leaves item.K-1 with the REWORK job.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_before_persist": "locks"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "locks": {
+      "item.K-1": true
+     }
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": true
+    },
+    "awaiting": []
+   }
+  },
+  {
    "name": "kt07_restart_after_close_step_handled",
    "covers": [
     "kt07.restart"
@@ -1807,7 +2009,7 @@
    "covers": [
     "negative.unknown_process"
    ],
-   "why": "A start identity that cannot be compared makes the job's state unknown: an owner-wait and nothing else — no timeout kill although the deadline has passed, no renewal, no claim release, the slot kept.",
+   "why": "A start identity that cannot be compared makes the job's state unknown: an owner-wait and nothing else \u2014 no timeout kill although the deadline has passed, no renewal, no claim release, the slot kept.",
    "steps": [
     {
      "op": "open",
@@ -1912,7 +2114,7 @@
   {
    "name": "neg_a_leader_that_left_members_behind_is_not_gone",
    "covers": [],
-   "why": "The leader has exited but its process group still has a member: survivors — an owner-wait only; the group is not signalled and the job is not finished.",
+   "why": "The leader has exited but its process group still has a member: survivors \u2014 an owner-wait only; the group is not signalled and the job is not finished.",
    "steps": [
     {
      "op": "open",
@@ -2042,7 +2244,7 @@
   {
    "name": "timeout_reaps_the_group_sleep",
    "covers": [],
-   "why": "Past its deadline the job's group gets TERM, then — still there after the wait — KILL; gone, it is closed timed_out and its claim released.",
+   "why": "Past its deadline the job's group gets TERM, then \u2014 still there after the wait \u2014 KILL; gone, it is closed timed_out and its claim released.",
    "steps": [
     {
      "op": "open",
@@ -2117,7 +2319,7 @@
   {
    "name": "timeout_reaps_the_group_ignore_term",
    "covers": [],
-   "why": "Past its deadline the job's group gets TERM, then — still there after the wait — KILL; gone, it is closed timed_out and its claim released.",
+   "why": "Past its deadline the job's group gets TERM, then \u2014 still there after the wait \u2014 KILL; gone, it is closed timed_out and its claim released.",
    "steps": [
     {
      "op": "open",
@@ -2517,7 +2719,7 @@
    "covers": [
     "recover.live"
    ],
-   "why": "Recorded live by an earlier controller and still running with its start identity: adopted — supervised by this controller from now on (deadline, renewal), its exit code unknown.",
+   "why": "Recorded live by an earlier controller and still running with its start identity: adopted \u2014 supervised by this controller from now on (deadline, renewal), its exit code unknown.",
    "steps": [
     {
      "op": "open",
@@ -2620,7 +2822,7 @@
    "covers": [
     "recover.unknown"
    ],
-   "why": "Recorded live by an earlier controller and its state cannot be told: neither interrupted nor adopted — an owner-wait, asked once; the process is not touched.",
+   "why": "Recorded live by an earlier controller and its state cannot be told: neither interrupted nor adopted \u2014 an owner-wait, asked once; the process is not touched.",
    "steps": [
     {
      "op": "open",
@@ -2752,7 +2954,7 @@
    "covers": [
     "recover.terminating"
    ],
-   "why": "Found terminating by an earlier controller: its close is carried through; with no result handed in, the outcome is what the job's own valid result.json says.",
+   "why": "KYDJOBS-R1-B2. Found terminating by an earlier controller that recorded no outcome: its kind finish never ran, so nothing has checked what the job's own result.json asserts. The plan \u00a76 recovery rule applies: interrupted, the claim released, re-queued once, no handled record; the same key opens again.",
    "steps": [
     {
      "op": "open",
@@ -2787,6 +2989,14 @@
      "expect": [
       "j1"
      ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
     }
    ],
    "expect": {
@@ -2795,15 +3005,19 @@
       "prepared",
       "live",
       "terminating",
-      "ended:done"
+      "ended:interrupted"
+     ],
+     "j2": [
+      "prepared"
      ]
     },
     "ky": [
      "claim K-1 --worker b1 --lease 10800 [K/b1]",
-     "release [K/b1]"
+     "release [K/b1]",
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
     ],
     "handled": {
-     "j1": true
+     "j1": false
     },
     "job": {
      "j1": {
@@ -2815,9 +3029,12 @@
        "usage": {
         "input_tokens": 7
        }
-      }
+      },
+      "outcome": "interrupted",
+      "requeued": true
      }
-    }
+    },
+    "awaiting": []
    }
   },
   {
@@ -3357,7 +3574,7 @@
   {
    "name": "open_releases_a_claim_whose_answer_was_lost",
    "covers": [],
-   "why": "`ky claim` made the claim and its output was lost: the claim id is unknown to the job (\"pending\"). The claim file shows an active claim of this item by this slot — the job's own — and it is released.",
+   "why": "`ky claim` made the claim and its output was lost: the claim id is unknown to the job (\"pending\"). The claim file shows an active claim of this item by this slot \u2014 the job's own \u2014 and it is released.",
    "steps": [
     {
      "op": "ky_reply",

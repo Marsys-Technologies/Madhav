@@ -627,9 +627,37 @@ def test_the_locks_of_a_controller_that_is_gone_are_taken_over_and_released(worl
     assert after["phase"] == "terminating" and os.path.isdir(world.run / "locks" / "item.K-2")
     assert [a["slug"] for a in world.log.awaiting] == ["job-%s-locks" % world.slug("K-2")]
     assert J.open(world.ctx, world.intent({"item": "K-3"}), "b2", world.facts(None)) is None      # the slot is kept
-    rewrite_owner(world, "item.K-2", session_or_run_id=world.ctx.controller_id)
+    after = J.close(world.ctx, world.state("K-2"), None)                         # asked again: still not this job's
+    assert after["phase"] == "terminating" and os.path.isdir(world.run / "locks" / "item.K-2")
+    assert len(world.log.awaiting) == 1
+    rewrite_owner(world, "item.K-2", session_or_run_id="CTL-dispatcher-20261012T010000Z-2:job.%s" % job["key"])
     assert J.supervise(world.ctx)[0]["job_id"] == job["job_id"]                  # still terminating: closed again
     assert J.close(world.ctx, job, None)["phase"] == "ended"
+
+
+def test_a_lock_released_just_before_a_crash_and_taken_by_another_job_is_never_released_again(world, monkeypatch):
+    """KYDJOBS-R1-B1, the narrowest window: the controller dies after item.K-1 was released and before that release
+    was recorded; a REWORK job of the item takes item.K-1; the resumed close leaves it with that job."""
+    first = opened(world, "K-1", "b1")
+    real = ka.release_lock
+
+    def dying(lock):
+        released = real(lock)
+        if lock.path.name == "item.K-1":
+            monkeypatch.setattr(ka, "release_lock", real)
+            raise Crash("after the release of item.K-1, before it was recorded")
+        return released
+
+    monkeypatch.setattr(ka, "release_lock", dying)
+    with pytest.raises(Crash):
+        J.close(world.ctx, first, {"outcome": "refused", "detail": "x", "failure_fp": None})
+    second = J.open(world.ctx, world.intent({"kind": "REWORK", "item": "K-1"}), "b2", world.facts(None))
+    assert second is not None, world.log.journal
+    taken = json.loads((world.run / "locks" / "item.K-1" / "owner.json").read_text())
+    assert J.close(world.ctx, world.state("K-1"), None)["phase"] == "ended"
+    assert json.loads((world.run / "locks" / "item.K-1" / "owner.json").read_text()) == taken
+    assert J.open(world.ctx, world.intent({"kind": "VERIFY", "item": "K-1"}), "v1", world.facts(None)) is None
+    assert world.states[second["job_id"]] == ["prepared"] and world.log.awaiting == []
 
 
 def test_an_adopted_job_gets_its_locks_under_the_new_controller(world):
@@ -642,7 +670,8 @@ def test_an_adopted_job_gets_its_locks_under_the_new_controller(world):
     assert [j["job_id"] for j in J.recover(world.ctx)] == [job["job_id"]]
     for name in ("job.%s" % job["key"], "item.K-1"):
         owner = json.loads((world.run / "locks" / name / "owner.json").read_text())
-        assert owner["session_or_run_id"] == "CTL-dispatcher-20261012T010000Z-2" and owner["pid"] == os.getpid()
+        assert owner["session_or_run_id"] == "CTL-dispatcher-20261012T010000Z-2:job.%s" % job["key"]
+        assert owner["pid"] == os.getpid()                                       # bound to the job, not only its controller
     assert world.state("K-1")["controller_id"] == "CTL-dispatcher-20261012T010000Z-2"
     assert J.recover(world.ctx) == []                                            # it is this controller's job now
 

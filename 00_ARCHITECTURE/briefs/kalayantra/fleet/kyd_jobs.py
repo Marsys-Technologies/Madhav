@@ -40,7 +40,7 @@ controller resumes at the first unfinished one:
                before `ky release` (which releases whatever that file names). Already released for this
                claim_id → nothing is released again. Anything else → no release, the slot stays unavailable,
                owner-wait "reconciliation required".
-    locks      the job's locks[] and its job lock
+    locks      the job's locks[] and its job lock — only a lock that is provably this job's (see below)
     handled    outcome done: $KY_RUN/handled/job.<key>.json
     ended      phase ended, ended_at — only now is the slot free (open refuses a slot whose job has not ended)
 The steps from `claim` on run under the lock slot.<slot>, which open holds while it looks, claims and writes.
@@ -62,7 +62,13 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
     carry last_job beside count and evidence_fp, so that a restart between counting and persisting counts once.
   * requeued: true for the first interrupted job of a key, false for a later one, null otherwise.
   * outcome when close is given none and the controller recorded none: quota → failed; never started → refused;
-    the status of the job's own valid result.json; else interrupted (plan §6 table: "else interrupted").
+    else interrupted (plan §6 table: "else interrupted"; §6 recovery: gone → interrupted, re-queue once). The
+    job's own result.json is never an outcome — only the kind's finish, which checks what it asserts, says done.
+  * a job's locks are bound to the job: their owner id is "<controller_id>:job.<key>" (one job of a key is
+    not ended at a time), so another job's lock of the same name never reads as this job's. Its locks step keeps a
+    ledger (checkpoint.lock_release, name → releasing | released, persisted before and after each release): a
+    lock found held by another owner was released by this job when the ledger says releasing, and is left
+    alone; one never released by this job and held by another owner is an owner-wait.
   * a header key that is a launch key overrides the fact — except the keys this module determines itself
     (PROTECTED: identity, paths, locks, boundary).
   * a job action record (JOB-<job_id>-*) left INTENDED is settled when the job is first seen gone, by supervise
@@ -288,10 +294,16 @@ def _await_pending(ctx, job):
 
 # ───────────────────────────────────────── locks ─────────────────────────────────────────
 
-def _take(ctx, name):
-    """The lock, or None when it is held or its owner cannot be judged (journalled; never taken over then)."""
+def _owner(controller_id, key):
+    """The owner id of a job's locks: its controller and its key (one job of a key is not ended at a time)."""
+    return "%s:job.%s" % (controller_id, key)
+
+
+def _take(ctx, name, owner=None):
+    """The lock, or None when it is held or its owner cannot be judged (journalled; never taken over then).
+    `owner`: a job's owner id (_owner); a controller's own short-lived lock (slot.<slot>) is taken as itself."""
     try:
-        lock = ka.acquire_lock(_run(ctx), name, ctx.controller_id,
+        lock = ka.acquire_lock(_run(ctx), name, owner or ctx.controller_id,
                                log=lambda text: ctx.journal("lock", text))
     except ka.ActionError as e:
         ctx.journal("lock", ka.flat(e, 300))
@@ -309,18 +321,27 @@ def _lock_holder(ctx, name):
     return "unknown", None
 
 
-def _drop(ctx, job, name):
-    """Release one lock of this job. True: it is not held (any more). False: it is another owner's, or its owner
-    cannot be judged, or it could not be removed. A lock left by this job's controller that is positively gone
-    is taken over (kyaction's rule) and then released."""
+def _drop(ctx, job, name, ledger):
+    """Release one lock of this job. True: this job does not hold it (any more). False: it is held by an owner that
+    is not this job although this job never released it, or its owner cannot be judged, or it could not be
+    removed. `ledger` (checkpoint.lock_release) is marked "releasing" and persisted only once the lock is shown
+    to be this job's, before it is removed; a lock of another owner found after that mark is one taken since —
+    never touched. A lock this job's controller left behind, positively gone, is taken over (kyaction's rule)
+    and then released."""
     state, owner = _lock_holder(ctx, name)
     if state == "free":
         return True
-    if state != "owned" or owner.get("session_or_run_id") not in (job.get("controller_id"), ctx.controller_id):
+    if state != "owned":
         return False
+    mine = _owner(ctx.controller_id, job["key"])
+    if owner.get("session_or_run_id") not in (_owner(job.get("controller_id"), job["key"]), mine):
+        return ledger.get(name) == "releasing"
+    if ledger.get(name) != "releasing":
+        ledger[name] = "releasing"
+        _save(ctx, job)
     if owner.get("pid") == os.getpid():
         return ka.release_lock(ka.Lock(ka.lock_path(_run(ctx), name), owner["session_or_run_id"]))
-    lock = _take(ctx, name)
+    lock = _take(ctx, name, mine)
     return lock is not None and ka.release_lock(lock)
 
 
@@ -329,15 +350,16 @@ def _own(ctx, job, name):
     state, owner = _lock_holder(ctx, name)
     if state == "unknown":
         return False
+    mine = _owner(ctx.controller_id, job["key"])
     if state == "owned":
-        if owner.get("session_or_run_id") not in (job.get("controller_id"), ctx.controller_id):
+        if owner.get("session_or_run_id") not in (_owner(job.get("controller_id"), job["key"]), mine):
             return False
         if owner.get("pid") == os.getpid():
-            if owner["session_or_run_id"] == ctx.controller_id:
+            if owner["session_or_run_id"] == mine:
                 return True
             if not ka.release_lock(ka.Lock(ka.lock_path(_run(ctx), name), owner["session_or_run_id"])):
                 return False
-    return _take(ctx, name) is not None
+    return _take(ctx, name, mine) is not None
 
 
 # ───────────────────────────────────────── failure accounting ─────────────────────────────────────────
@@ -619,7 +641,7 @@ def open(ctx, intent, slot, facts):                      # noqa: A001 — the pa
     plan["state"]["attempt"] = attempts(ctx, intent)["attempt"]
     key = plan["state"]["key"]
     held, slot_lock, job = [], None, None
-    lock = _take(ctx, "job.%s" % key)
+    lock = _take(ctx, "job.%s" % key, _owner(ctx.controller_id, key))
     if lock is None:
         return None
     held.append(lock)
@@ -630,7 +652,7 @@ def open(ctx, intent, slot, facts):                      # noqa: A001 — the pa
             why = None if slot_lock is not None else "slot %s is being released or opened" % slot
         if why is None:
             for name in plan["state"]["locks"]:
-                lock = _take(ctx, name)
+                lock = _take(ctx, name, _owner(ctx.controller_id, key))
                 if lock is None:
                     why = "lock %s is held" % name
                     break
@@ -984,7 +1006,10 @@ def recover(ctx):
                 _await_pending(ctx, job)
             continue
         if job["phase"] == "terminating":
-            out.append(close(ctx, job, None))
+            out.append(close(ctx, job, None if job.get("outcome") in OUTCOMES else {
+                "outcome": "interrupted", "failure_fp": None,
+                "detail": "terminating under controller %s with no outcome recorded: its kind's finish never ran"
+                          % job.get("controller_id")}))
             continue
         state = _process(job)
         if state == "gone":
@@ -1013,10 +1038,8 @@ def _step_result(ctx, job, result):
     fp = job.get("failure_fp") or result.get("failure_fp")
     fp = fp if _text(fp) else None
     outcome = job.get("outcome") if job.get("outcome") in OUTCOMES else result.get("outcome")
-    if outcome not in OUTCOMES:
-        own = _result(job) if _real_int(job.get("pid")) else None
-        outcome = "failed" if fp == QUOTA else "refused" if job.get("pid") is None else \
-            own["status"] if own is not None else "interrupted"
+    if outcome not in OUTCOMES:                          # never the job's own result.json: nothing checked it
+        outcome = "failed" if fp == QUOTA else "refused" if job.get("pid") is None else "interrupted"
     if outcome == "interrupted" and fp != QUOTA:
         job["requeued"] = not _interrupted(load(ctx), job["key"], but=job["job_id"])
     job.update(outcome=outcome, failure_fp=fp, phase="terminating")
@@ -1122,8 +1145,16 @@ def _step_claim(ctx, job, result):
 
 
 def _step_locks(ctx, job, result):
-    names = list(job.get("locks") or []) + ["job.%s" % job["key"]]
-    kept = [name for name in names if not _drop(ctx, job, name)]
+    ledger = _checkpoint(job).setdefault("lock_release", {})
+    kept = []
+    for name in list(job.get("locks") or []) + ["job.%s" % job["key"]]:
+        if ledger.get(name) == "released":
+            continue
+        if _drop(ctx, job, name, ledger):
+            ledger[name] = "released"
+            _save(ctx, job)
+        else:
+            kept.append(name)
     if not kept:
         return True
     _await(ctx, job, "locks", "its lock(s) %s could not be released: another owner holds them, or their owner "
