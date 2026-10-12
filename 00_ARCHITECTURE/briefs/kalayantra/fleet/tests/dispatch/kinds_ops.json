@@ -1433,6 +1433,878 @@
    ]
   },
   {
+   "name": "rp_a_model_authored_request_is_bound_to_the_derived_fields",
+   "covers": "REQUEST-PREP",
+   "ctx": {
+    "next": [
+     {
+      "id": "N-RB-9",
+      "owner": "N",
+      "status": "ready",
+      "completion_kind": "operation",
+      "brief": {
+       "op": {
+        "kind": "readback_sql",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     }
+    ],
+    "sh": [
+     {
+      "match": [
+       "bash",
+       "$FLEET/kyboundary.sh",
+       "check",
+       "J-test-1"
+      ],
+      "rc": 0,
+      "out": {
+       "result": "intact"
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "REQUEST-PREP",
+       "item": "N-RB-9",
+       "runner": "model"
+      }
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "the reviewer's probe: another operation and another SQL file",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-ELSEWHERE",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-ELSEWHERE",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/some/other.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "operation_id differs from the derived one",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-ELSEWHERE",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "args differ from brief.op",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/some/other.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "idempotency_key differs",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "IK-OTHER",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "requested_by differs (v1 is an admitted requester, but not the derived one)",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "v1",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "a field brief.op does not state and is not missing",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        },
+        "timeout_s": 60
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "the missing field left empty",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-RB-9.json",
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "done"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      },
+      {
+       "fn": "act",
+       "kind": "request_prep"
+      }
+     ],
+     "files_exact": {
+      "$RUN/ops/prepared/OP-N-RB-9.json": {
+       "schema": "ky.op_prepared/1",
+       "operation_id": "OP-N-RB-9",
+       "item": "N-RB-9",
+       "request": {
+        "operation_id": "OP-N-RB-9",
+        "kind": "readback_sql",
+        "item_id": "N-RB-9",
+        "idempotency_key": "OP-N-RB-9",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-RB-9",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        }
+       },
+       "request_sha256": {
+        "$canon_sha": {
+         "operation_id": "OP-N-RB-9",
+         "kind": "readback_sql",
+         "item_id": "N-RB-9",
+         "idempotency_key": "OP-N-RB-9",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-9",
+         "args": {
+          "sql_file": "/a/stated.sql"
+         }
+        }
+       },
+       "prepared_by": "ctl-1",
+       "prepared_by_slot": "b3"
+      }
+     },
+     "absent": [
+      "$RUN/ops/prepared/OP-ELSEWHERE.json"
+     ]
+    },
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "EXECUTE",
+       "item": "N-RB-9",
+       "digest": {
+        "$canon_sha": {
+         "operation_id": "OP-N-RB-9",
+         "kind": "readback_sql",
+         "item_id": "N-RB-9",
+         "idempotency_key": "OP-N-RB-9",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-9",
+         "args": {
+          "sql_file": "/a/stated.sql"
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "rp_any_prepared_record_of_the_item_counts_as_prepared",
+   "covers": "REQUEST-PREP",
+   "ctx": {
+    "next": [
+     {
+      "id": "N-RB-9",
+      "owner": "N",
+      "status": "ready",
+      "completion_kind": "operation",
+      "brief": {
+       "op": {
+        "kind": "readback_sql",
+        "args": {
+         "sql_file": "/a/stated.sql"
+        },
+        "kyd": "KYD-RB-9"
+       }
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "EXECUTE",
+       "item": "N-RB-9",
+       "digest": {
+        "$canon_sha": {
+         "operation_id": "OP-ELSEWHERE",
+         "kind": "readback_sql",
+         "item_id": "N-RB-9",
+         "idempotency_key": "OP-ELSEWHERE",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-9",
+         "args": {
+          "sql_file": "/some/other.sql"
+         }
+        }
+       }
+      }
+     ],
+     "calls": []
+    },
+    {
+     "op": "mutate",
+     "mutate": {
+      "next": [
+       {
+        "id": "N-RB-9",
+        "owner": "N",
+        "status": "ready",
+        "completion_kind": "operation",
+        "brief": {
+         "op": {
+          "kind": "readback_sql",
+          "args": {
+           "sql_file": "/a/stated.sql"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "EXECUTE",
+       "item": "N-RB-9",
+       "digest": {
+        "$canon_sha": {
+         "operation_id": "OP-ELSEWHERE",
+         "kind": "readback_sql",
+         "item_id": "N-RB-9",
+         "idempotency_key": "OP-ELSEWHERE",
+         "requested_by": "adhikarin",
+         "kyd": "KYD-RB-9",
+         "args": {
+          "sql_file": "/some/other.sql"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "op": "mutate",
+     "mutate": {
+      "files": {
+       "$RUN/ops/prepared/OP-ELSEWHERE.json": "not json"
+      }
+     }
+    },
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "REQUEST-PREP",
+       "item": "N-RB-9",
+       "runner": "model"
+      }
+     ]
+    }
+   ],
+   "files": {
+    "$RUN/ops/prepared/OP-ELSEWHERE.json": {
+     "schema": "ky.op_prepared/1",
+     "operation_id": "OP-ELSEWHERE",
+     "item": "N-RB-9",
+     "request": {
+      "operation_id": "OP-ELSEWHERE",
+      "kind": "readback_sql",
+      "item_id": "N-RB-9",
+      "idempotency_key": "OP-ELSEWHERE",
+      "requested_by": "adhikarin",
+      "kyd": "KYD-RB-9",
+      "args": {
+       "sql_file": "/some/other.sql"
+      }
+     },
+     "request_sha256": {
+      "$canon_sha": {
+       "operation_id": "OP-ELSEWHERE",
+       "kind": "readback_sql",
+       "item_id": "N-RB-9",
+       "idempotency_key": "OP-ELSEWHERE",
+       "requested_by": "adhikarin",
+       "kyd": "KYD-RB-9",
+       "args": {
+        "sql_file": "/some/other.sql"
+       }
+      }
+     },
+     "prepared_by": "ctl-1",
+     "prepared_by_slot": "b3"
+    }
+   }
+  },
+  {
+   "name": "rp_a_model_authored_production_request_keeps_the_stated_fields",
+   "covers": "REQUEST-PREP",
+   "ctx": {
+    "next": [
+     {
+      "id": "N-PUB-3",
+      "owner": "N",
+      "status": "ready",
+      "completion_kind": "operation",
+      "brief": {
+       "op": {
+        "kind": "layer_publish",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "kyd": "KYD-PUB-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-14T00:00:00Z"
+       }
+      }
+     }
+    ],
+    "sh": [
+     {
+      "match": [
+       "bash",
+       "$FLEET/kyboundary.sh",
+       "check",
+       "J-test-1"
+      ],
+      "rc": 0,
+      "out": {
+       "result": "intact"
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "REQUEST-PREP",
+       "item": "N-PUB-3",
+       "runner": "model"
+      }
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "reviewed_commit differs from brief.op",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-PUB-3",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "3333333333333333333333333333333333333333",
+        "expires_at": "2026-10-14T00:00:00Z"
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-PUB-3.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "expires_at differs from brief.op",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-PUB-3",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-20T00:00:00Z"
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-PUB-3.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "chart_id differs from the derived chart",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-PUB-3",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "00000000-0000-0000-0000-000000000000",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-14T00:00:00Z"
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-PUB-3.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "note": "kyd differs from brief.op",
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-OTHER",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-14T00:00:00Z"
+       }
+      }
+     },
+     "result": {
+      "outcome": "failed",
+      "failure_fp": "$any"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      }
+     ],
+     "absent": [
+      "$RUN/ops/prepared/OP-N-PUB-3.json"
+     ]
+    },
+    {
+     "op": "finish",
+     "job": {
+      "slot": "b3"
+     },
+     "mutate": {
+      "files": {
+       "$JOB_SCRATCH/request.json": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-PUB-3",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-14T00:00:00Z"
+       }
+      }
+     },
+     "result": {
+      "outcome": "done"
+     },
+     "calls": [
+      {
+       "fn": "sh",
+       "argv": [
+        "bash",
+        "$FLEET/kyboundary.sh",
+        "check",
+        "J-test-1"
+       ]
+      },
+      {
+       "fn": "act",
+       "kind": "request_prep"
+      }
+     ],
+     "files": {
+      "$RUN/ops/prepared/OP-N-PUB-3.json": {
+       "request": {
+        "operation_id": "OP-N-PUB-3",
+        "kind": "layer_publish",
+        "item_id": "N-PUB-3",
+        "idempotency_key": "OP-N-PUB-3",
+        "requested_by": "adhikarin",
+        "kyd": "KYD-PUB-3",
+        "args": {
+         "run-id": "R1",
+         "generation": "G1"
+        },
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "lease_id": "LEASE-3",
+        "reviewed_commit": "4444444444444444444444444444444444444444",
+        "expires_at": "2026-10-14T00:00:00Z"
+       },
+       "prepared_by_slot": "b3"
+      }
+     }
+    }
+   ]
+  },
+  {
    "name": "pa_a_prepared_production_request_gets_an_independent_verifier_job",
    "covers": "PRE-ACCEPT",
    "ctx": {},
@@ -7090,7 +7962,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -7164,7 +8036,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n",
@@ -7288,7 +8160,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n",
@@ -7401,7 +8273,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n",
@@ -7761,7 +8633,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -7888,7 +8760,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8017,7 +8889,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8163,7 +9035,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8306,7 +9178,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8449,7 +9321,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8601,7 +9473,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n"
@@ -8980,7 +9852,7 @@
      "class_hint": "veto",
      "blocks": "item"
     },
-    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+    "$RUN/awaiting/AW-20261012T090000Z-earlier.owner_decision.json": {
      "decision": "x"
     },
     "$RUN/evidence/e1.txt": "window plan v1\n",
@@ -8995,6 +9867,181 @@
      "class": "veto",
      "state": "PENDING_VETO"
     }
+   }
+  },
+  {
+   "name": "sg_an_item_the_owner_answered_gets_no_surrogate_job",
+   "covers": "SURROGATE",
+   "ctx": {
+    "veto": {
+     "decisions": []
+    }
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [],
+     "calls": []
+    },
+    {
+     "op": "mutate",
+     "mutate": {
+      "files": {
+       "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": null
+      }
+     }
+    },
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-protected-window",
+       "runner": "model",
+       "key": {
+        "$key": [
+         "SURROGATE",
+         "AW-20261012T100000Z-protected-window",
+         {
+          "$ref": "fp_aw"
+         },
+         {
+          "$ref": "fp_aw"
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "files": {
+    "$RUN/awaiting/AW-20261012T100000Z-protected-window.json": {
+     "schema": "ky.awaiting/1",
+     "id": "AW-20261012T100000Z-protected-window",
+     "created_at": "2026-10-12T10:00:00Z",
+     "raised_by": {
+      "role": "adhikarin",
+      "session_id": "s1",
+      "job_id": null
+     },
+     "item": "N-PUB-1",
+     "question": "Authorise the protected window?",
+     "options": [
+      {
+       "id": "yes",
+       "text": "Yes"
+      },
+      {
+       "id": "no",
+       "text": "No"
+      }
+     ],
+     "recommendation": null,
+     "evidence": [
+      "$RUN/evidence/e1.txt"
+     ],
+     "deadline": null,
+     "class_hint": "veto",
+     "blocks": "item"
+    },
+    "$RUN/evidence/e1.txt": "window plan v1\n",
+    "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+     "decision": "yes",
+     "applied_by": {
+      "role": "conductor"
+     }
+    }
+   }
+  },
+  {
+   "name": "sg_start_refuses_an_item_the_owner_answered_under_the_lock",
+   "covers": "SURROGATE",
+   "ctx": {
+    "veto": {
+     "decisions": []
+    }
+   },
+   "steps": [
+    {
+     "op": "intents",
+     "expect": [
+      {
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-protected-window",
+       "runner": "model",
+       "key": {
+        "$key": [
+         "SURROGATE",
+         "AW-20261012T100000Z-protected-window",
+         {
+          "$ref": "fp_aw"
+         },
+         {
+          "$ref": "fp_aw"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "op": "start",
+     "mutate": {
+      "files": {
+       "$RUN/awaiting/AW-20261012T100000Z-protected-window.owner_decision.json": {
+        "decision": "yes",
+        "applied_by": {
+         "role": "conductor"
+        }
+       }
+      }
+     },
+     "result": {
+      "outcome": "refused"
+     },
+     "calls": [],
+     "unchanged": true,
+     "absent": [
+      "$RUN/handled/awaiting.AW-20261012T100000Z-protected-window.json",
+      "$RUN/awaiting/done/AW-20261012T100000Z-protected-window.json"
+     ]
+    },
+    {
+     "op": "intents",
+     "expect": []
+    }
+   ],
+   "files": {
+    "$RUN/awaiting/AW-20261012T100000Z-protected-window.json": {
+     "schema": "ky.awaiting/1",
+     "id": "AW-20261012T100000Z-protected-window",
+     "created_at": "2026-10-12T10:00:00Z",
+     "raised_by": {
+      "role": "adhikarin",
+      "session_id": "s1",
+      "job_id": null
+     },
+     "item": "N-PUB-1",
+     "question": "Authorise the protected window?",
+     "options": [
+      {
+       "id": "yes",
+       "text": "Yes"
+      },
+      {
+       "id": "no",
+       "text": "No"
+      }
+     ],
+     "recommendation": null,
+     "evidence": [
+      "$RUN/evidence/e1.txt"
+     ],
+     "deadline": null,
+     "class_hint": "veto",
+     "blocks": "item"
+    },
+    "$RUN/evidence/e1.txt": "window plan v1\n"
    }
   },
   {

@@ -378,7 +378,12 @@ def test_the_cases_cover_each_named_negative():
                      "prb_b_pre_acceptance_record_publishes_nothing",
                      "prb_b_script_head_verdict_does_not_complete",
                      "prb_b_executor_exit_without_semantic_readback",
-                     "sg_one_job_across_ticks_and_restarts"):
+                     "sg_one_job_across_ticks_and_restarts",
+                     "sg_an_item_the_owner_answered_gets_no_surrogate_job",                 # review r1 KO-B1
+                     "sg_start_refuses_an_item_the_owner_answered_under_the_lock",
+                     "rp_a_model_authored_request_is_bound_to_the_derived_fields",          # review r1 KO-B2
+                     "rp_a_model_authored_production_request_keeps_the_stated_fields",
+                     "rp_any_prepared_record_of_the_item_counts_as_prepared"):
         assert required in names, required
 
 

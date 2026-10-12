@@ -27,6 +27,8 @@ INTERPRETATIONS (the packet's "(I)" — what the plan leaves open, and what is d
        operation. operation_id defaults to OP-<item>; idempotency_key to the operation_id; requested_by to
        `adhikarin` (the N lane) when the entry admits it; chart_id to the canonical chart. A field that cannot be
        derived (kyd; for a production kind lease_id, reviewed_commit, expires_at) makes the job a model job.
+       That job's request must carry every derived field unchanged and add nothing; it fills only the missing
+       ones. An item with any valid prepared record, under any operation id, is prepared.
   I-3  A request is "accepted by executor.validate" if `static_validate` — its field, entry, requester, argument and
        production-field checks, kept equal to executor.py by a test that imports both — passes. What only the executor
        can know (lease liveness, ancestry of reviewed_commit, idempotency, capability) stays the executor's.
@@ -407,6 +409,19 @@ def derive_request(item_id, op, entry):
     return req, missing
 
 
+def request_unbound(request, item_id, op, entry):
+    """A model-authored request may fill only the fields derive_request left missing; every field it fixes (and no
+    other) must be there with its derived value. The first difference, or None."""
+    derived, missing = derive_request(item_id, op, entry)
+    extra = sorted(k for k in request if k not in derived)
+    if extra:
+        return "fields neither derived nor missing: %s" % extra
+    for k in sorted(derived):
+        if k not in missing and (k not in request or request[k] != derived[k]):
+            return "%s differs from the value brief.op and the table fix" % k
+    return None
+
+
 # ───────────────────────────────────────── prepared / accepted / submitted state ─────────────────────────────────────────
 
 def prepared_dir(run):
@@ -525,6 +540,8 @@ def _c_request_prep(ctx):
         opid = req["operation_id"]
         if not SAFE_ID.match(str(opid)) or (prepared_dir(run) / (opid + ".json")).exists():
             continue
+        if any(doc["item"] == item["id"] for _, doc in all_prepared(run)):
+            continue                                     # a prepared request of the item, under any operation id
         if missing:
             digest = sha_canonical({"item": item["id"], "op": op, "entry": entry, "missing": missing})
             intent = _intent(ctx, "REQUEST-PREP", item["id"], stream="N", runner="model", pool="builder", tier="opus", digest=digest,
@@ -598,6 +615,9 @@ def _finish_request_prep(ctx, job):
         return boundary
     if request.get("item_id") != job["item"] or request.get("kind") != payload["op"]["kind"]:
         return _fail("REQUEST-PREP", job["item"], "request_for_another_operation", "item_id/kind do not match the item's operation")
+    unbound = request_unbound(request, job["item"], payload["op"], payload["entry"])
+    if unbound:
+        return _fail("REQUEST-PREP", job["item"], "request_not_bound", unbound)
     reason = static_validate(request, payload["entry"])
     if reason:
         return _fail("REQUEST-PREP", job["item"], "request_invalid", reason)
@@ -1171,6 +1191,11 @@ def _awaiting_docs(ctx):
     return out
 
 
+def _owner_answered(run, aid):
+    """kyloop.open_awaiting's test: the owner has answered the item when <id>.owner_decision.json sits beside it."""
+    return (run / "awaiting" / (aid + OWNER_DECISION_SUFFIX)).exists()
+
+
 def _c_surrogate(ctx):
     run, out, rows = _run(ctx), [], False
     for doc in _awaiting_docs(ctx):
@@ -1186,6 +1211,8 @@ def _c_surrogate(ctx):
                 out.append((_intent(ctx, "SURROGATE", aid, stream="steward", runner="script", digest=digest, evidence_fp=move_fp,
                                     locks=["awaiting." + aid]), {"variant": "move", "doc": doc}))
             continue                                                    # handled at this fingerprint: no further job
+        if _owner_answered(run, aid):
+            continue                                                    # resolved by the owner: not the surrogate's
         out.append((_intent(ctx, "SURROGATE", aid, stream="steward", runner="model", pool="builder", tier="opus", digest=fp,
                             evidence_fp=fp, locks=["awaiting." + aid], card=_card(ctx, "surrogate"), effort="high"),
                     {"variant": "decide", "doc": doc}))
@@ -1202,6 +1229,8 @@ def _start_surrogate(ctx, job):
         handled = read_json(_handled_path(run, "awaiting.%s.json" % aid))
         if isinstance(handled, dict) and handled.get("fingerprint") == fp:
             return _result("done", "awaiting item %s is already handled at this fingerprint" % aid)
+        if _owner_answered(run, aid):
+            return _result("refused", "the owner has answered awaiting item %s" % aid)
         return None
     found = _find(ctx, "SURROGATE", job)
     if found is None or found[1]["variant"] != "move":
