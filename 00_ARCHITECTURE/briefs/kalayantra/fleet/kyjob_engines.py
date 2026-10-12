@@ -5,6 +5,7 @@ commands use ctx.sh/ky/act; no tool runs on import. The reviewed kyqualify/kyboo
 producers own argv, guards and stream parsing. (I) denotes a conservative packet
 interpretation: linked worktrees, exact file scope, no unproved action replay.
 Changelog: v1.0 (2026-10-13): engine selection, guarded landing and silence timeout.
+Campaign add-on (2026-10-13): launch-pinned kyroute owns/shared scope and blocking landing checks.
 """
 from __future__ import annotations
 
@@ -161,6 +162,11 @@ def plan(job, own, helper):
     record = dict(job_id=job['job_id'], cwd=job['worktree'], argv=command,
                   env_names=sorted(cfg['env_names']), launch_config_path=job['launch_config_path'],
                   launch_config_sha256=cfg_hash, at=helper['utc_now_text'](), **metadata(job))
+    if before:
+        # Controller checkpoint is prepared before spawn (fleet/kyd_jobs.py:683-690, 782-787).
+        for key in ('packet_sha256', 'scope_kind', 'paths', 'model_sha256', 'patterns', 'scope_ignored'):
+            if key in before:
+                record[key] = before[key]
     helper['write_atomic'](os.path.join(job['job_scratch'], 'kyjob.plan'),
                            b''.join(p.encode() + b'\0' for p in parts))
     helper['write_atomic'](os.path.join(job['job_scratch'], 'kyjob.launch.json'),
@@ -237,6 +243,84 @@ def packet_scope(job):
     return paths
 
 
+def launch_scope(ctx, job):
+    """Bootstrap exact files; campaign compiled patterns, never re-parsed at landing."""
+    try:
+        text = Path(job['packet_path']).read_text()
+        doc = kyschema.load_json_text(text.split('```json\n', 1)[1].split('\n```', 1)[0])
+        kind = doc['kind']
+    except (OSError, ValueError, KeyError, IndexError) as exc:
+        raise Refusal('packet has no readable kind') from exc
+    if kind == 'bootstrap':
+        return dict(scope_kind='bootstrap', paths=packet_scope(job))
+    if kind not in ('feature', 'artifact', 'operation', 'schema-prerequisite'):
+        raise Refusal('packet kind cannot authorize a Codex builder')
+    import kyroute as route
+    try:
+        # ctx.model is the dispatcher model path (fleet/kydispatch.py:144, 376).
+        # Use its own brief reader and entry parser (fleet/kyroute.py:286-346, 406-417).
+        model_hash = digest(ctx.model)
+        brief = route.model_brief(ctx.model, job['item']) or {}
+        patterns, ignored = [], []
+        for field in ('owns', 'shared'):
+            entries = route.string_list(brief.get(field), 'brief.' + field)
+            for entry in entries:
+                text, prose = route.normalise(entry, job['worktree'])
+                pats = None if prose else route.entry_patterns(text, job['worktree'])
+                if not pats:
+                    ignored.append(dict(source='brief.' + field, entry=entry))
+                    continue
+                for pat in pats:
+                    if pat not in patterns:
+                        patterns.append(pat)
+        # (I) INTERPRETATION: refuse a model that changes while its launch scope is read,
+        # so the pinned digest cannot name different bytes from the parsed authority.
+        if digest(ctx.model) != model_hash:
+            raise Refusal('plan model changed while preparing Codex scope')
+    except (OSError, AttributeError, route.InputError) as exc:
+        raise Refusal('plan model scope cannot be read: ' + str(exc)) from exc
+    if not patterns:
+        raise Refusal('item owns/shared enumerate no machine-readable path; '
+                      'run this item on Claude or normalise its owns')
+    # JSON transport of kyroute's compiled tuple/frozenset representation
+    # (fleet/kyroute.py:96-156); this preserves directory expansion at launch.
+    encoded = json.loads(json.dumps(patterns, default=lambda chars: sorted(chars)))
+    return dict(scope_kind='campaign', paths=[], model_sha256=model_hash,
+                patterns=encoded, scope_ignored=ignored)
+
+
+def campaign_violation(launch, paths):
+    """Return a tracker block detail before any stage/commit/push effect."""
+    import kyroute as route
+    try:
+        # Exact manifest, failing closed if unreadable (fleet/kyroute.py:35, 218-242).
+        frozen = route.read_manifest(route.DEFAULT_MANIFEST)
+    except route.InputError as exc:
+        raise Refusal('frozen manifest cannot be read: ' + str(exc)) from exc
+    # FROZEN wins over any other violation, as in fleet/kyd_kinds_build.py:483-487.
+    for path in paths:
+        if path in frozen:
+            return 'freeze: ' + path
+    patterns = [tuple(segment if isinstance(segment, str) else
+                      tuple(token if isinstance(token, str) else frozenset(token)
+                            for token in segment)
+                      for segment in pat) for pat in launch['patterns']]
+    for path in paths:
+        # Literal matcher (fleet/kyroute.py:159-197), and its existing control-plane
+        # rule table / matcher (fleet/kyroute.py:54-57, 200-205).
+        literal = route.literal(path)
+        if any(rule in ('00_ARCHITECTURE/briefs/kalayantra/fleet/**',
+                        'platform/scripts/governance/**', '.github/workflows/**', 'infra/**')
+               for rule in route.path_rules([literal])):
+            return 'control_plane: ' + path
+        parts = path.split('/')
+        test = (any(p in ('tests', '__tests__', 'test') for p in parts[:-1])
+                or re.fullmatch(r'test_.*\.py|.*_test\.py|.*\.test\.tsx?|.*\.spec\.ts', parts[-1], flags=re.DOTALL))
+        if not test and not any(route.overlaps(pat, literal) for pat in patterns):
+            return 'outside_owns: ' + path
+    return None
+
+
 def changed_paths(status):
     """Both endpoints of every rename/copy, individual untracked files, no shell quoting."""
     parts, i, paths = status.split('\0'), 0, []
@@ -276,10 +360,11 @@ def prepare(ctx, job):
     before = guards(job)
     if guard_differences(before, before):
         raise Refusal('launch guards cannot be observed')
+    scope = launch_scope(ctx, job) if builder else dict(paths=[])
     cp['codex_launch'] = dict(pointer=ptr, branch=branch, head=head,
                              git_dir=git(ctx, job, 'rev-parse', '--absolute-git-dir').strip(),
                              remote_head=remote_head(ctx, job) if builder else None, packet_sha256=digest(job['packet_path']),
-                             paths=packet_scope(job) if builder else [], guards=before,
+                             **scope, guards=before,
                              config_sha256=digest(job['launch_config_path']) if job.get('launch_config_path') else None,
                              **metadata(job))
 
@@ -522,7 +607,15 @@ def _land(ctx, job, launch, result):
             raise Refusal('origin changed since launch (self-push or concurrent update)')
         status = git(ctx, job, 'status', '--porcelain=v1', '-z', '--untracked-files=all')
         paths = changed_paths(status)
-        if not paths or any(p not in launch['paths'] for p in paths):
+        if launch.get('scope_kind') == 'campaign':
+            if not paths:
+                raise Refusal('no changes to land')
+            detail = campaign_violation(launch, paths)
+            if detail:
+                # Same ky block --detail freeze: call shape as the Claude flow
+                # (fleet/kyd_kinds_build.py:487, 670-673); _register retains job ownership.
+                return _register(ctx, job, launch, 'block', detail, None, None)
+        elif not paths or any(p not in launch['paths'] for p in paths):
             raise Refusal('no changes or changed/rename/untracked path outside packet d1_paths')
         prs = _prs(ctx, job)
         if prs and prs[0]['headRefOid'] != head:
