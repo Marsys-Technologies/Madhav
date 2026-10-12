@@ -1,7 +1,16 @@
 #!/bin/bash
 # install.sh — B-2: install the independently reviewed KĀLA-YANTRA v3 bootstrap bundle (plan v2.7 §14 B-2, D-9; rulings
-# P6, P9, P29, P39, P40). version 1.0, status DRAFT — pending the independent review of KV3-B-INSTALL.
+# P6, P9, P29, P39, P40). version 1.1, status DRAFT — pending the independent review of KV3-B-INSTALL.
 # changelog: 1.0 (2026-10-12) first version.
+#            1.1 (2026-10-12) review round 1. B-01: nothing ends as exit 1 once writing has begun — a refusal inside a
+#                step is a failure of that step (exit 3, rollback, the action FAILED). B-02: --action must be INTENDED.
+#                Sweep: a git lookup that fails is not "absent"; the campaign branch must track origin/main; a claim in an
+#                unknown state or of a worker that is not a legacy lane is unresolved, never released; a release counts
+#                only when the event log shows it; unreadable event lines adopt no PR; a foreign legacy-<n> state file is
+#                not an adoption; staged actions are published as the steward only; the health answer must be this root's
+#                tracker in the shape server.py emits; an action that cannot be completed leaves no receipt; KY_SCRATCH is
+#                never defaulted; the account's own LaunchAgents and any value inside the real root are E_REAL;
+#                kyversion.sh's exit code is its whole interface; kyloop.py runs under python -I.
 #
 #   bash install.sh --manifest M --source S [--root ROOT] [--action ID]        all paths absolute
 #
@@ -11,10 +20,16 @@
 #   ID     an INTENDED kyaction record of kind `install` whose inputs bind M's file sha256 (`manifest_sha256`) and S's
 #          commit (`source_commit`) (I). ROOT = the real root REQUIRES it; any root accepts it. install.sh completes the
 #          record when the receipt exists and kyversion.sh accepts it, and fails it when the installation fails after
-#          writing began. A refusal (exit 1) leaves it INTENDED. A FAILED record must be retried by its owner first.
+#          writing began. A refusal (exit 1) leaves it INTENDED. A record in any other state (DONE, FAILED, unknown) is
+#          refused with E_ACTION_STATE: a FAILED record must be retried by its owner first, and a later run after a DONE
+#          one needs a fresh INTENDED record — a finished id opens nothing.
 #
 # Exit 0 installed, receipt written and accepted · 1 refused, NOTHING written (a STOP file is never written in a refusal) ·
 #      3 failed after writing began (trees restored while the tracker has not yet been restarted; no receipt) · 64 usage.
+#      Exit 1 is decided before the first write only (verification, or the installation lock). From the STOP files on,
+#      whatever stops a step — a refusal included — is exit 3 `FAILED step <n>`. The STOP files and a campaign checkout
+#      created at step 5 are never removed by a failure (the second is named on stderr); an installation whose action
+#      record cannot be completed has its receipt renamed `.refused`.
 # stdout on exit 0: one JSON object {installed, receipt, receipt_sha256, changed, model_actions[{id, status}]}.
 # stderr: `install.sh: REFUSED <code>: …` (exit 1) or `install.sh: FAILED step <n>: …` (exit 3).
 #
@@ -22,10 +37,13 @@
 #  * Decided FIRST, before M, S or any path under ROOT is read or written (ruling P39), each with its stderr code:
 #      E_ACTION            ROOT is the real root and --action is missing;
 #      E_UNSET <VAR>       ROOT is not the real root and VAR is not given — VAR in KY_LAUNCHAGENTS_DIR, KY_LAUNCHCTL,
-#                          KY_CAMPAIGN_CHECKOUT, PRAVAHA_URL (ruling P29: fail closed);
+#                          KY_CAMPAIGN_CHECKOUT, PRAVAHA_URL (ruling P29: fail closed); or, for any root, KY_SCRATCH is not
+#                          given (it is recorded in the loop plists and the receipt, so it is never defaulted);
 #      E_REAL <VAR>        … or VAR equals its real default (a symlink to the real launchctl, a spelling of the real tracker
-#                          URL, the real campaign checkout) — or ROOT lies inside the real root (code E_REAL ROOT);
-#      E_VALUE <VAR>       … or VAR is not an absolute path / a loopback http URL on a port;
+#                          URL, the real campaign checkout, Library/LaunchAgents under $HOME or under the account's home in
+#                          the password database) or lies inside the real root — or ROOT does (code E_REAL ROOT);
+#      E_VALUE <VAR>       … or VAR is not an absolute path / a loopback http URL on a port; for the real root also HOME
+#                          when it is not the account's home in the password database;
 #      E_HOOK <VAR>        ROOT is the real root and a test hook is set (KY_PS, KY_GH, KY_GIT, KY_CURL, KY_PREFLIGHT_TIMEOUT,
 #                          KY_INSTALL_WAIT_S, KY_LOOP_SLEEP_SCALE, KY_LOOP_TEST_CONTEXT, KY_TEST_ASSUME_ROOT) or one of the
 #                          four variables differs from its real default. For a scratch ROOT the hooks KY_PS (ps), KY_GH (gh),
@@ -41,6 +59,13 @@
 #  * Every child program gets a WHITELISTED environment (fixed PATH, HOME, USER, LANG, TMPDIR and the KY_* it needs); no
 #    credential, PYTHON*, GIT_* or proxy variable is passed on. The campaign checkout's policy root is the directory that
 #    holds it; registrations directly under it are counted (≤ 14 before the checkout is added).
+#  * A STOP file counts only as a regular file, as kalayantra_fleet.sh's `[ -f … ]` reads it; anything else at that path
+#    refuses before the first write.
+#  * The process evidence (e) has two stated limits, recorded in receipt `old_supervisors.processes.limits`: this
+#    program's own ancestor processes are not examined, and `codex exec` is matched on its command line only.
+#  * The health answer counts only in the shape pravaha_tracker/server.py emits and only from THIS root's tracker:
+#    `event_log.path` is R/EVENTS.jsonl and `server_started_at` is not before the start of the launchd job's process.
+#  * kyversion.sh and preflight.sh: exit 0 = pass (the packet's interface); nothing is read from their output.
 #  * The receipt is a record of the FINAL observed state (no per-run wording), so a rerun that changes nothing rewrites
 #    nothing; `installed_at` is kept when the rest of the receipt is byte-identical. What a run DID (swapped, published,
 #    skipped) is reported on stdout. Event identity in `model_actions` is the matching event's line number and sha256.
@@ -49,11 +74,15 @@
 #    restart waits for the next whole second first, so "started after the swap" is strict at ps's one-second resolution.
 #  * A staged action's event "already exists" when an event with the same kind, subject, state, actor and detail is in
 #    R/EVENTS.jsonl; a publish that exits 0 without that event appearing is a failure.
-#  * Legacy: a claim file whose state is acquired/renewed is released with `KY_LANE=<worker> ky release` after the process
-#    check (e) and counts as released only when the file then says `released`; an open `kalayantra/*` PR is adopted (one
-#    R/jobs/legacy-<n>/state.json, never overwritten) only when the tracker's latest `PR #<n> @ <head>` review registration
-#    names the PR's current head; everything else is listed in legacy.unresolved[]. A PR listing that cannot be obtained
-#    fails the installation. The `legacy-<n>` state file is not the dispatcher's job-state schema (not in this base): its
+#  * Legacy: a claim file of one of the 13 legacy lanes whose state is acquired/renewed is released with
+#    `KY_LANE=<lane> ky release` after the process check (e) and counts as released only when the file then says `released`
+#    AND the event log (the tracker's authority, claims.py) holds that claim's `released` event; a claim of any other
+#    worker (a v3 job) is never released, and a state claims.py does not write is not "ended". An open `kalayantra/*` PR
+#    is adopted (one R/jobs/legacy-<n>/state.json, never overwritten) only when the tracker's latest `PR #<n> @ <head>`
+#    review registration names the PR's current head, every line of the event log could be read, and a state file already
+#    at that path is this PR's own adoption record; everything else is listed in legacy.unresolved[]. A PR listing that
+#    cannot be obtained fails the installation. The `legacy-<n>` state file is not the dispatcher's job-state schema (not
+#    in this base): its
 #    schema is `ky.legacy_job_state/1` and every unknown field is null.
 #  * After a failure BEFORE the tracker restart the trees (F, tracker_live, bin, VERSIONS.bootstrap.json and a superseded
 #    receipt) are restored; once the tracker has been restarted on the new trees nothing is undone (the loaded revision would
@@ -79,11 +108,13 @@ exec(compile(program, sys.argv[0], "exec"))' "$SELF" "$@" </dev/null
 exit $?
 : <<'KYINSTALL_PY'
 import calendar
+import datetime
 import fcntl
 import hashlib
 import json
 import os
 import plistlib
+import pwd
 import re
 import shutil
 import stat
@@ -129,6 +160,10 @@ CHECKPOINT = re.compile(r"^(sutradhara|adhikarin|v[1-3]|k[1-8])\.cycle([0-9]+)\.
 PR_REGISTRATION = re.compile(r"PR #([0-9]+)\s*@\s*([0-9a-f]{7,40})")
 HOOK_ONLY = ("KY_PS", "KY_GH", "KY_GIT", "KY_CURL", "KY_PREFLIGHT_TIMEOUT", "KY_INSTALL_WAIT_S", "KY_LOOP_SLEEP_SCALE",
              "KY_LOOP_TEST_CONTEXT", "KY_TEST_ASSUME_ROOT")
+CLAIM_ACTIVE = ("acquired", "renewed")            # pravaha_tracker/claims.py: the four states a claim event can carry
+CLAIM_ENDED = ("released", "expired")
+PROCESS_LIMITS = ["the installer's own ancestor processes are not examined",
+                  "codex exec is matched on its command line only; its working directory is not observed"]
 HOOK_NAMES = set(HOOK_ONLY) | {"KY_LAUNCHCTL", "KY_LAUNCHAGENTS_DIR"}
 USAGE = ("usage: install.sh --manifest <abs path> --source <abs path> [--root <abs path>] [--action <id>]\n"
          "       exit 0 installed · 1 refused, nothing written · 3 failed after writing began · 64 usage")
@@ -313,20 +348,28 @@ def decide_environment(opts, env):
         refuse("ROOT %s lies inside the real installation root; nothing may be installed there" % ctx.root, "E_REAL ROOT")
     home = env.get("HOME", "")
     ctx.home = home
+    try:
+        account_home = pwd.getpwuid(os.getuid()).pw_dir
+    except KeyError:
+        account_home = ""
+    agents = [os.path.join(h, "Library", "LaunchAgents") for h in (home, account_home) if h and os.path.isabs(h)]
     if ctx.is_real:
         if not ctx.action:
             refuse("the real installation root needs --action <id> (an INTENDED kyaction record of kind install)", "E_ACTION")
         for name in HOOK_ONLY:
             if name in env:
                 refuse("%s is a test hook; it is not honoured for the real root" % name, "E_HOOK " + name)
-        defaults = {"KY_LAUNCHAGENTS_DIR": os.path.join(home, "Library", "LaunchAgents") if home else None,
+        if not home or not os.path.isabs(home):
+            refuse("HOME is not an absolute path", "E_VALUE HOME")
+        if not account_home or real(home) != real(account_home):
+            refuse("HOME is not the account's home in the password database; the real LaunchAgents directory is unknown",
+                   "E_VALUE HOME")
+        defaults = {"KY_LAUNCHAGENTS_DIR": os.path.join(home, "Library", "LaunchAgents"),
                     "KY_LAUNCHCTL": REAL_LAUNCHCTL, "KY_CAMPAIGN_CHECKOUT": REAL_CAMPAIGN,
                     "PRAVAHA_URL": "http://127.0.0.1:%d" % REAL_PORT}
         for name, default in defaults.items():
-            if name in env and not same_as_default(name, env[name], default):
+            if name in env and not same_as_default(name, env[name], [default]):
                 refuse("%s differs from its real default; it is not honoured for the real root" % name, "E_HOOK " + name)
-        if not home or not os.path.isabs(home):
-            refuse("HOME is not an absolute path", "E_VALUE HOME")
         ctx.launchctl, ctx.la_dir, ctx.campaign = REAL_LAUNCHCTL, defaults["KY_LAUNCHAGENTS_DIR"], REAL_CAMPAIGN
         ctx.url, ctx.port = defaults["PRAVAHA_URL"], REAL_PORT
         ctx.ps, ctx.git, ctx.gh, ctx.wait_s = REAL_PS, REAL_GIT, find_gh(), 90
@@ -343,11 +386,12 @@ def decide_environment(opts, env):
                     refuse("PRAVAHA_URL: %s" % why, "E_VALUE " + name)
             elif not os.path.isabs(value):
                 refuse("%s is not an absolute path" % name, "E_VALUE " + name)
-            default = {"KY_LAUNCHAGENTS_DIR": os.path.join(home, "Library", "LaunchAgents") if home else None,
-                       "KY_LAUNCHCTL": REAL_LAUNCHCTL, "KY_CAMPAIGN_CHECKOUT": REAL_CAMPAIGN,
-                       "PRAVAHA_URL": "http://127.0.0.1:%d" % REAL_PORT}[name]
-            if same_as_default(name, value, default):
+            reals = {"KY_LAUNCHAGENTS_DIR": agents, "KY_LAUNCHCTL": [REAL_LAUNCHCTL], "KY_CAMPAIGN_CHECKOUT": [REAL_CAMPAIGN],
+                     "PRAVAHA_URL": ["http://127.0.0.1:%d" % REAL_PORT]}[name]
+            if same_as_default(name, value, reals):
                 refuse("%s equals its real default; a root other than the real one may not reach it" % name, "E_REAL " + name)
+            if name != "PRAVAHA_URL" and inside_real_root(value):
+                refuse("%s lies inside the real installation root" % name, "E_REAL " + name)
         ctx.launchctl, ctx.la_dir, ctx.campaign = env["KY_LAUNCHCTL"], norm(env["KY_LAUNCHAGENTS_DIR"]), norm(env["KY_CAMPAIGN_CHECKOUT"])
         ctx.url = env["PRAVAHA_URL"].rstrip("/")
         ctx.port = url_port(ctx.url)[0]
@@ -358,11 +402,15 @@ def decide_environment(opts, env):
         except ValueError:
             refuse("KY_INSTALL_WAIT_S is not a whole number of seconds", "E_VALUE KY_INSTALL_WAIT_S")
         ctx.pass_through = {n: env[n] for n in ("KY_CURL", "KY_PREFLIGHT_TIMEOUT", "SE_EPHE_PATH") if n in env}
-    ctx.scratch = env.get("KY_SCRATCH") or "/Users/Dev/scratch.noindex/claude/madhav/%s-kalayantra-v3" % time.strftime("%Y%m%d")
+    if not env.get("KY_SCRATCH"):
+        refuse("KY_SCRATCH must be given: the loop plists and the receipt record it, so it is never defaulted", "E_UNSET KY_SCRATCH")
+    ctx.scratch = env["KY_SCRATCH"]
     ctx.claude_bin = env.get("CLAUDE_BIN") or DEFAULT_CLAUDE
     for name, value in (("KY_SCRATCH", ctx.scratch), ("CLAUDE_BIN", ctx.claude_bin)):
         if not os.path.isabs(value):
             refuse("%s is not an absolute path" % name, "E_VALUE " + name)
+    if not ctx.is_real and inside_real_root(ctx.scratch):
+        refuse("KY_SCRATCH lies inside the real installation root", "E_REAL KY_SCRATCH")
     ctx.scratch = norm(ctx.scratch)
     ctx.user = env.get("USER", "")
     ctx.lang = env.get("LANG", "en_US.UTF-8")
@@ -379,16 +427,20 @@ def decide_environment(opts, env):
     ctx.superseded = False
     ctx.changed = {}
     ctx.lock_fd = None
+    ctx.step = 0
+    ctx.campaign_created = False
     return ctx
 
 
-def same_as_default(name, value, default):
-    if default is None:
-        return False
+def same_as_default(name, value, defaults):
     if name == "PRAVAHA_URL":
         port, _ = url_port(value)
         return port == REAL_PORT
-    return norm(value) == norm(default) or real(value) == real(default)
+    return any(norm(value) == norm(d) or real(value) == real(d) for d in defaults)
+
+
+def inside_real_root(path):
+    return is_under(path, REAL_ROOT) or is_under(real(path), real(REAL_ROOT))
 
 
 def find_gh():
@@ -450,6 +502,19 @@ def git_ok(ctx, repo, *args):
     if r.rc != 0:
         refuse("git %s failed in %s: %s" % (args[0], repo, r.last_error()))
     return r.out.strip()
+
+
+def ref_tip(ctx, repo, ref):
+    """The commit a ref names, or None when git answers that there is no such ref (`rev-parse --verify --quiet`: exit 1,
+    nothing printed). Any other answer — git could not be run, another exit code, output that is not a commit — refuses:
+    a lookup that failed is not an absent ref."""
+    r = git(ctx, repo, "rev-parse", "--verify", "--quiet", ref)
+    out = (r.out or "").strip()
+    if r.rc == 0 and HEX40.match(out):
+        return out
+    if r.rc == 1 and not out:
+        return None
+    refuse("whether %s exists cannot be told (git rev-parse exited %s): %s" % (ref, r.rc, r.last_error()))
 
 
 # ------------------------------------------------------------------------------------------------ verification (nothing is written)
@@ -754,8 +819,8 @@ def verify_staged(ctx):
         for row in rows:
             if not isinstance(row, dict) or any(not isinstance(row.get(f), str) or not row[f] for f in fields):
                 refuse("staged %s entry is malformed: %r" % (kind, row))
-            if row["as"] not in ("steward", "native"):
-                refuse("staged %s entry names an unknown actor %r" % (kind, row["as"]))
+            if row["as"] != "steward":             # the packet publishes every staged action `--as steward`
+                refuse("staged %s entry is to be published as %r; the installer publishes as the steward only" % (kind, row["as"]))
             entries.append({"kind": kind, "id": row.get("decision") or row["item"], "as": row["as"], "detail": row["detail"],
                             "outcome": row.get("outcome"), "delegated": row.get("delegated") is True})
     if not entries:
@@ -819,7 +884,8 @@ def scan_processes(ctx):
         pid = parents.get(pid, 0)
     matching = [{"pid": pid, "command": flat(cmd, 200)} for pid, _pp, cmd in rows if pid not in mine and legacy_match(ctx, cmd)]
     return {"answered": True, "examined": len(rows), "matching": matching,
-            "patterns": ["kalayantra_fleet.sh", "claude_cycle.py", "conductor/sweep.py", "codex exec under %s/wt/" % ctx.root]}
+            "patterns": ["kalayantra_fleet.sh", "claude_cycle.py", "conductor/sweep.py", "codex exec under %s/wt/" % ctx.root],
+            "limits": list(PROCESS_LIMITS)}
 
 
 def verify_processes(ctx):
@@ -829,11 +895,22 @@ def verify_processes(ctx):
                                                                                     scan["matching"][0]["command"]))
 
 
+def verify_stop_files(ctx):
+    """A STOP file stops a legacy lane only as a regular file: kalayantra_fleet.sh tests `[ -f "$RUN/STOP_$lane" ]`.
+    A directory, a dangling link or anything else at that path is not a stop, whatever its presence suggests."""
+    for lane in LANES:
+        p = os.path.join(ctx.run_dir, "STOP_" + lane)
+        if os.path.lexists(p) and not os.path.isfile(p):
+            refuse("%s exists but is not a regular file: the legacy supervisor's `-f` test would not see it as a stop" % p)
+
+
 def inspect_campaign(ctx):
     """Read-only: ('exists'|'absent', branch tip or None)."""
     s, camp = ctx.source, ctx.campaign
-    tip = git(ctx, s, "rev-parse", "--verify", "--quiet", "refs/heads/" + CAMPAIGN_BRANCH)
-    tip = tip.out.strip() if tip.rc == 0 else None
+    try:
+        tip = ref_tip(ctx, s, "refs/heads/" + CAMPAIGN_BRANCH)
+    except Refused as e:
+        refuse("the campaign branch: %s" % e)
     wl = git(ctx, s, "worktree", "list", "--porcelain")
     if wl.rc != 0:
         refuse("git worktree list failed in S: %s" % wl.last_error())
@@ -881,11 +958,12 @@ def verify_action(ctx):
         refuse("action %s: inputs.manifest_sha256 does not bind this manifest file" % ctx.action)
     if inputs.get("source_commit") != ctx.components_commit:
         refuse("action %s: inputs.source_commit does not bind this source commit" % ctx.action)
-    if rec.get("state") == "FAILED":
-        refuse("action %s is FAILED; its owner must retry it (kyaction retry) before it is run again" % ctx.action)
-    if rec.get("state") not in ("INTENDED", "DONE"):
-        refuse("action %s: unknown state %r" % (ctx.action, rec.get("state")))
-    ctx.action_state = rec["state"]
+    state = rec.get("state")
+    if state != "INTENDED":                          # this run completes or fails the record: only an open one can be
+        hint = {"FAILED": "its owner must retry it (kyaction retry) before it is run again",
+                "DONE": "it has been completed; a later run needs a fresh INTENDED record"}.get(state, "unknown state")
+        refuse("action %s is %r, not INTENDED: %s" % (ctx.action, state, hint), "E_ACTION_STATE")
+    ctx.action_state = state
 
 
 def verify(ctx):
@@ -897,6 +975,7 @@ def verify(ctx):
     verify_manifest_check(ctx)
     verify_staged(ctx)
     verify_claude(ctx)
+    verify_stop_files(ctx)
     verify_processes(ctx)
     ctx.campaign_state = inspect_campaign(ctx)
 
@@ -1045,7 +1124,9 @@ def step_stop(ctx):
             fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
             with os.fdopen(fd, "w") as f:
                 f.write("stopped by install.sh at %s (bootstrap installation); legacy lane %s must not dispatch\n" % (utc_now(), lane))
-        rows.append({"lane": lane, "path": p, "present": os.path.lexists(p)})
+        if not os.path.isfile(p):
+            raise Failed(0, "%s is not a regular file after the STOP files were written" % p)
+        rows.append({"lane": lane, "path": p, "present": True})
     scan = scan_processes(ctx)
     if scan["matching"]:
         raise Failed(0, "a legacy supervisor is alive after the STOP files were written (pid %s: %s); nothing was signalled"
@@ -1105,21 +1186,28 @@ def step_campaign(ctx):
         r = git(ctx, ctx.source, *args)
         if r.rc != 0:
             raise Failed(5, "git worktree add of the campaign checkout failed: %s" % r.last_error())
-        created = True
+        created = ctx.campaign_created = True
     head = git(ctx, ctx.campaign, "rev-parse", "HEAD").out.strip()
     branch = git(ctx, ctx.campaign, "symbolic-ref", "--short", "HEAD").out.strip()
     if head != ctx.components_commit or branch != CAMPAIGN_BRANCH:
         raise Failed(5, "the campaign checkout is at %s on %s, not at the components commit on %s" % (head, branch, CAMPAIGN_BRANCH))
-    if git(ctx, ctx.source, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/main").rc == 0:
+    if ref_tip(ctx, ctx.source, "refs/remotes/origin/main") is None:
+        raise Failed(5, "S has no origin/main for %s to track (plan §5: upstream origin/main)" % CAMPAIGN_BRANCH)
+    upstream = git(ctx, ctx.campaign, "rev-parse", "--abbrev-ref", CAMPAIGN_BRANCH + "@{upstream}")
+    if upstream.rc != 0 or upstream.out.strip() != "origin/main":
         up = git(ctx, ctx.campaign, "branch", "--set-upstream-to=origin/main", CAMPAIGN_BRANCH)
         if up.rc != 0:
-            raise Failed(5, "setting the upstream of %s failed: %s" % (CAMPAIGN_BRANCH, up.last_error()))
-    upstream = git(ctx, ctx.campaign, "rev-parse", "--abbrev-ref", CAMPAIGN_BRANCH + "@{upstream}")
+            raise Failed(5, "setting the upstream of %s to origin/main failed: %s" % (CAMPAIGN_BRANCH, up.last_error()))
+        upstream = git(ctx, ctx.campaign, "rev-parse", "--abbrev-ref", CAMPAIGN_BRANCH + "@{upstream}")
+    if upstream.rc != 0 or upstream.out.strip() != "origin/main":
+        raise Failed(5, "the upstream of %s reads %r, not origin/main" % (CAMPAIGN_BRANCH, upstream.out.strip() or None))
+    if git_ok(ctx, ctx.campaign, "rev-parse", "HEAD") != ctx.components_commit:
+        raise Failed(5, "the campaign checkout moved while its upstream was set")
     if not os.path.isfile(os.path.join(ctx.campaign, PLAN_MODEL)):
         raise Failed(5, "the campaign checkout holds no plan model at %s" % PLAN_MODEL)
     ctx.changed["campaign_checkout"] = created
     ctx.campaign_info = {"path": ctx.campaign, "branch": branch, "head": head, "components_commit": ctx.components_commit,
-                         "upstream": upstream.out.strip() if upstream.rc == 0 else None, "policy_root": parent}
+                         "upstream": upstream.out.strip(), "policy_root": parent}
     ctx.registrations = count + 1                                # volatile: reported on stdout, not part of the stable receipt
 
 
@@ -1179,25 +1267,49 @@ def fetch_health(ctx):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def judge_health(ctx, h):
+    """(what the receipt records, None) for a healthy answer of THIS root's tracker in the shape server.py emits
+    ({ok, model_error, server_started_at, event_log{path}, …}); else (None, why). An unrecognised shape is unknown."""
+    if not isinstance(h, dict) or "model_error" not in h:
+        return None, "the answer carries no model_error field"
+    if h["model_error"] not in (None, ""):
+        return None, "the tracker reports model_error: %s" % flat(h["model_error"], 160)
+    if h.get("ok") is not True:
+        return None, "ok is not true"
+    log = h.get("event_log")
+    if not isinstance(log, dict) or not isinstance(log.get("path"), str) or not log["path"]:
+        return None, "the answer names no event_log.path (not the shape the tracker emits)"
+    events = os.path.join(ctx.run_dir, "EVENTS.jsonl")
+    if real(log["path"]) != real(events):
+        return None, "the answering tracker serves another event log (%s), not %s" % (flat(log["path"], 200), events)
+    try:
+        started = datetime.datetime.fromisoformat(h.get("server_started_at"))
+        if started.tzinfo is None:
+            raise ValueError("no timezone")
+    except (TypeError, ValueError):
+        return None, "the answer carries no usable server_started_at (not the shape the tracker emits)"
+    return {"ok": True, "model_error": None, "server_started_at": h["server_started_at"], "event_log": events,
+            "started_epoch": int(started.timestamp())}, None
+
+
 def wait_health(ctx):
     deadline = time.time() + ctx.wait_s
     last = "no answer"
     while True:
         try:
-            h = fetch_health(ctx)
-            if not isinstance(h, dict) or "model_error" not in h:
-                last = "the answer carries no model_error field"
-            elif h["model_error"] not in (None, ""):
-                last = "the tracker reports model_error: %s" % flat(h["model_error"], 160)
-            elif h.get("ok") is not True:
-                last = "ok is not true"
-            else:
-                return {"ok": True, "model_error": None}
+            health, last = judge_health(ctx, fetch_health(ctx))
+            if health is not None:
+                return health
         except (OSError, ValueError, urllib.error.URLError) as e:
             last = "no usable answer (%s)" % type(e).__name__
         if time.time() >= deadline:
             raise Failed(6, "tracker health at %s/api/health: %s (waited %ds)" % (ctx.url, last, ctx.wait_s))
         time.sleep(0.5)
+
+
+def answered_by(proc, health):
+    """The health answer can be the recorded process's only when the server in it started no earlier than that process."""
+    return health["started_epoch"] >= proc["start_epoch"]
 
 
 def newest_mtime(paths):
@@ -1219,8 +1331,10 @@ def step_tracker(ctx):
     health = None
     if proc is not None and proc["start_epoch"] >= boundary:
         try:
-            health = wait_health_once(ctx)
-        except Failed:
+            health = judge_health(ctx, fetch_health(ctx))[0]
+        except (OSError, ValueError, urllib.error.URLError):
+            health = None
+        if health is not None and not answered_by(proc, health):
             health = None
     restarted = False
     if health is None:
@@ -1241,25 +1355,15 @@ def step_tracker(ctx):
         if proc["start_epoch"] < boundary:
             raise Failed(6, "the tracker process %s started at %s, not after the swap of the files it loads" %
                          (proc["pid"], proc["process_start"]))
+        if not answered_by(proc, health):
+            raise Failed(6, "the health answer's server_started_at %s is before the start of the tracker process %s (%s): "
+                            "it is not that process's answer" % (health["server_started_at"], proc["pid"], proc["process_start"]))
     ctx.changed["tracker_restarted"] = restarted
     pkg = tracker_entries(ctx)
     ctx.tracker_info = {"package_sha256": tree_digest(pkg), "package_dir": os.path.join(ctx.tracker_live, "pravaha_tracker"),
                         "pid": proc["pid"], "process_start": proc["process_start"], "plist": plist_path,
-                        "plist_sha256": sha_file(plist_path), "health": health, "url": ctx.url}
-
-
-def wait_health_once(ctx):
-    h = fetch_health_safe(ctx)
-    if isinstance(h, dict) and "model_error" in h and h["model_error"] in (None, "") and h.get("ok") is True:
-        return {"ok": True, "model_error": None}
-    raise Failed(6, "tracker health: not ok")
-
-
-def fetch_health_safe(ctx):
-    try:
-        return fetch_health(ctx)
-    except (OSError, ValueError, urllib.error.URLError):
-        return None
+                        "plist_sha256": sha_file(plist_path), "url": ctx.url,
+                        "health": {k: v for k, v in health.items() if k != "started_epoch"}}
 
 
 def read_events(path):
@@ -1352,29 +1456,40 @@ def step_legacy(ctx):
             claims.append(row)
             unresolved.append({"kind": "claim", "worker_id": stem, "path": p, "reason": row["reason"]})
             continue
+        state = doc.get("state")
         row.update(item=doc.get("item"), claim_id=doc.get("claim_id"), branch=doc.get("branch"), head=doc.get("head"),
-                   state_before=doc.get("state"))
+                   state_before=state, state_after=state)
         by_item.setdefault(doc.get("item"), []).append(row)
-        if doc.get("state") in ("acquired", "renewed"):
+        if state in CLAIM_ENDED:
+            row["action"] = "already_ended"
+        elif state not in CLAIM_ACTIVE:
+            row.update(action="unresolved", reason="the claim record carries the state %r, which the tracker does not write: "
+                                                   "whether the claim has ended is unknown" % (state,))
+        elif stem not in LANES:
+            row.update(action="unresolved", reason="an active claim of %s, which is not a legacy lane: it is not this "
+                                                   "installation's to release" % stem)
+        else:
             r = run([os.path.join(ctx.bin_dir, "ky"), "release"], ky_env(ctx, lane=stem), timeout=120)
             after = None
             try:
                 after = json.loads(open(p, "rb").read()).get("state")
-            except (OSError, ValueError):
+            except (OSError, ValueError, AttributeError):
                 pass
             row["state_after"] = after
-            if r.rc == 0 and after == "released":
-                row["action"] = "released"
+            event = release_event(ctx, doc) if r.rc == 0 and after == "released" else None
+            if event is not None:
+                row.update(action="released", release_event=event)
+            elif r.rc == 0 and after == "released":
+                row.update(action="unresolved", reason="ky release exited 0 and the claim record reads 'released', but the "
+                                                       "event log holds no released event as that claim's latest")
             else:
-                row["action"] = "unresolved"
-                row["reason"] = "ky release exited %s and the claim reads %r afterwards: %s" % (r.rc, after, r.last_error())
-                unresolved.append({"kind": "claim", "worker_id": stem, "path": p, "reason": row["reason"]})
-        else:
-            row["state_after"] = doc.get("state")
-            row["action"] = "already_ended"
+                row.update(action="unresolved", reason="ky release exited %s and the claim reads %r afterwards: %s"
+                                                       % (r.rc, after, r.last_error()))
+        if row["action"] == "unresolved":
+            unresolved.append({"kind": "claim", "worker_id": stem, "path": p, "reason": row["reason"]})
         claims.append(row)
     prs = list_prs(ctx)
-    events, _bad = read_events(os.path.join(ctx.run_dir, "EVENTS.jsonl"))
+    events, bad = read_events(os.path.join(ctx.run_dir, "EVENTS.jsonl"))
     registered = {}
     for n, ev, raw in events:
         if ev.get("kind") == "item" and ev.get("state") == "review" and isinstance(ev.get("detail"), str):
@@ -1383,14 +1498,19 @@ def step_legacy(ctx):
     adopted = []
     for pr in prs:
         reg = registered.get(pr["number"])
-        if reg is None:
-            unresolved.append({"kind": "pr", "number": pr["number"], "branch": pr["branch"], "head": pr["head"],
-                               "reason": "the tracker has no review registration for this PR"})
+        why = None
+        if bad:                                      # a line that cannot be read may be a later registration
+            why = "the event log has %d unreadable line(s): the tracker's latest registration for this PR is unknown" % bad
+        elif reg is None:
+            why = "the tracker has no review registration for this PR"
         elif not pr["head"].startswith(reg["head"]):
-            unresolved.append({"kind": "pr", "number": pr["number"], "branch": pr["branch"], "head": pr["head"],
-                               "reason": "the PR head moved since the tracker registered %s" % reg["head"]})
+            why = "the PR head moved since the tracker registered %s" % reg["head"]
         else:
-            adopted.append(adopt_pr(ctx, pr, reg, by_item.get(reg["item"], [])))
+            row, why = adopt_pr(ctx, pr, reg, by_item.get(reg["item"], []))
+            if row is not None:
+                adopted.append(row)
+        if why:
+            unresolved.append({"kind": "pr", "number": pr["number"], "branch": pr["branch"], "head": pr["head"], "reason": why})
     cps = []
     for name in sorted(os.listdir(ctx.run_dir)):
         m = CHECKPOINT.match(name)
@@ -1403,6 +1523,19 @@ def step_legacy(ctx):
         unresolved.append({"kind": "checkpoints", "count": len(cps),
                            "reason": "a legacy cycle checkpoint maps to no job: no adoption rule applies, they are listed with hashes"})
     ctx.legacy = {"claims": claims, "prs": {"listed": prs, "adopted": adopted}, "checkpoints": checkpoints, "unresolved": unresolved}
+
+
+def release_event(ctx, claim):
+    """{line, sha256} of the `released` event that is the latest claim event of this claim's item and carries its
+    claim_id (what claims.release_claim appends before it rewrites the worker's record), else None."""
+    events, _bad = read_events(os.path.join(ctx.run_dir, "EVENTS.jsonl"))
+    for n, ev, raw in reversed(events):
+        if ev.get("kind") == "claim" and ev.get("item") == claim.get("item"):
+            if ev.get("state") == "released" and ev.get("claim_id") == claim.get("claim_id") \
+                    and ev.get("worker_id") == claim.get("worker_id"):
+                return {"line": n, "sha256": sha_bytes(raw)}
+            return None
+    return None
 
 
 def list_prs(ctx):
@@ -1441,11 +1574,20 @@ def adopt_pr(ctx, pr, reg, claim_rows):
              "claim": claim, "session_id": None, "evidence_fp": None, "attempts": None, "adopted_by": "install.sh",
              "registration": {"events_line": reg["line"], "event_sha256": reg["sha256"]}}
     existing = os.path.lexists(path)
-    if not existing:
+    if existing:                                     # never overwritten; it counts only when it is this PR's own adoption record
+        try:
+            with open(path, "rb") as f:
+                have = json.loads(f.read())
+        except (OSError, ValueError):
+            have = None
+        same = isinstance(have, dict) and all(have.get(k) == state[k] for k in ("schema", "job_id", "kind", "item", "pr", "branch", "head"))
+        if not same:
+            return None, "a job state already at %s is not this PR's adoption record at this head; it was left untouched" % path
+    else:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         write_atomic(path, (json.dumps(state, indent=1, sort_keys=True) + "\n").encode())
     return {"number": pr["number"], "job_id": job_id, "item": reg["item"], "state_path": path, "state_sha256": sha_file(path),
-            "registered_head": reg["head"], "existing_state_kept": existing}
+            "registered_head": reg["head"], "existing_state_kept": existing}, None
 
 
 # ---- step 8-9: loop plists and qualifications
@@ -1495,8 +1637,7 @@ def step_qualify(ctx):
         if re.match(r"^LAUNCH_CONFIG\..+\.json$", name):
             configs.append(os.path.join(tdir, name))
     for role in ("planner", "conductor"):
-        r = run([sys.executable, "-B", os.path.join(ctx.fleet_live, "kyloop.py"), "admin", "launch-config", role], ky_dir_env(ctx),
-                timeout=120)
+        r = run(py + [os.path.join(ctx.fleet_live, "kyloop.py"), "admin", "launch-config", role], ky_dir_env(ctx), timeout=120)
         if r.rc != 0:
             raise Failed(9, "kyloop.py admin launch-config %s exited %s: %s" % (role, r.rc, r.last_error()))
         p = os.path.join(ctx.scratch, "install", "launch-config.%s.json" % role)     # a stable path: the receipt records it
@@ -1588,7 +1729,10 @@ def build_receipt(ctx):
             ("tracker_revision.package_sha256", receipt["tracker_revision"]["package_sha256"]),
             ("tracker_revision.pid", receipt["tracker_revision"]["pid"]),
             ("tracker_revision.process_start", receipt["tracker_revision"]["process_start"]),
-            ("campaign_checkout.head", receipt["campaign_checkout"]["head"]), ("components", receipt["components"]),
+            ("campaign_checkout.head", receipt["campaign_checkout"]["head"]),
+            ("campaign_checkout.upstream", receipt["campaign_checkout"]["upstream"]), ("components", receipt["components"]),
+            ("tracker_revision.health.server_started_at", receipt["tracker_revision"]["health"].get("server_started_at")),
+            ("reviews", receipt["reviews"]), ("old_supervisors", receipt["old_supervisors"]), ("legacy", receipt["legacy"]),
             ("qualifications", receipt["qualifications"]), ("plists", receipt["plists"]),
             ("model_actions.entries", receipt["model_actions"]["entries"])]
     unknown = [name for name, value in need if value in (None, "", [], {})]
@@ -1624,15 +1768,22 @@ def step_receipt(ctx):
     write_receipt(ctx, receipt)
     v = run(["/bin/bash", os.path.join(ctx.fleet_live, "kyversion.sh"), "--bootstrap"],
             child_env(ctx, KY_ROOT=ctx.root, KY_RUN=ctx.run_dir, KY_FLEET=ctx.fleet_live, KY_SOURCE_REPO=ctx.campaign), timeout=600)
-    if v.rc != 0 or not v.out.startswith("kyversion: OK mode=bootstrap"):
-        try:
-            os.replace(ctx.receipt_path, ctx.receipt_path + ".refused")
-        except OSError:
-            pass
-        raise Failed(10, "kyversion.sh --bootstrap refused the installation (exit %s): %s" % (v.rc, v.last_error()))
+    if v.rc != 0:                                    # KV3-B-KYVERSION: exit 0 = pass; nothing is read from its output
+        left = refuse_receipt(ctx)
+        raise Failed(10, "kyversion.sh --bootstrap refused the installation (exit %s): %s%s" % (v.rc, v.last_error(), left))
     if os.path.lexists(ctx.receipt_path + ".superseded"):
         os.unlink(ctx.receipt_path + ".superseded")
     return receipt
+
+
+def refuse_receipt(ctx):
+    """Rename the receipt `.refused`. → "" or, when the rename failed, the words that say the file is still there."""
+    try:
+        os.replace(ctx.receipt_path, ctx.receipt_path + ".refused")
+    except OSError as e:
+        if os.path.lexists(ctx.receipt_path):
+            return "; THE RECEIPT COULD NOT BE RENAMED AND IS STILL AT %s (%s): it grants nothing" % (ctx.receipt_path, type(e).__name__)
+    return ""
 
 
 # ---- the action record
@@ -1658,25 +1809,53 @@ def rollback(ctx):
     return problems
 
 
-def write_phase(ctx):
+STEPS = ((0, step_stop), (1, step_fleet), (2, step_tracker_tree), (3, step_bin), (4, step_versions), (5, step_campaign),
+         (6, step_tracker), (6, step_publish), (7, step_legacy), (8, step_loops), (9, step_qualify), (10, step_receipt))
+
+
+def take_lock(ctx):
+    """The last thing that may still refuse (exit 1): it precedes the STOP files, the first write of an installation."""
     os.makedirs(ctx.run_dir, exist_ok=True)
     ctx.lock_fd = os.open(ctx.run_dir, os.O_RDONLY)
     try:
         fcntl.flock(ctx.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        refuse("another installation holds the lock on %s" % ctx.run_dir)
-    step_stop(ctx)
-    step_fleet(ctx)
-    step_tracker_tree(ctx)
-    step_bin(ctx)
-    step_versions(ctx)
-    step_campaign(ctx)
-    step_tracker(ctx)
-    step_publish(ctx)
-    step_legacy(ctx)
-    step_loops(ctx)
-    step_qualify(ctx)
-    return step_receipt(ctx)
+        refuse("another installation holds the lock on %s" % ctx.run_dir, "E_LOCK")
+
+
+def write_phase(ctx):
+    """Writing has begun: nothing in here ends as a refusal. A step that refuses has failed (exit 3, its step number)."""
+    result = None
+    for number, step in STEPS:
+        ctx.step = number
+        try:
+            result = step(ctx)
+        except Refused as e:
+            raise Failed(number, str(e))
+    return result
+
+
+def report_failure(ctx, step, message):
+    """Exit 3: restore what may be restored, say what was left, fail the action. Never a receipt."""
+    restored = []
+    if not ctx.committed:
+        restored = rollback(ctx)
+    sys.stderr.write("install.sh: FAILED step %d: %s\n" % (step, flat(message, 600)))
+    if ctx.committed:
+        sys.stderr.write("install.sh: the tracker was restarted on the new trees: nothing was undone, there is no receipt; "
+                         "a rerun resumes (published actions are skipped)\n")
+    else:
+        sys.stderr.write("install.sh: trees restored%s\n" % ("; restore problems: %s" % "; ".join(restored) if restored else ""))
+        if ctx.campaign_created:
+            sys.stderr.write("install.sh: the campaign checkout created at step 5 was left in place: %s (branch %s)\n"
+                             % (ctx.campaign, CAMPAIGN_BRANCH))
+    if ctx.action:
+        ok, why = action_finish(ctx, "fail", {"step": step, "error": flat(message, 400), "exit": 3,
+                                              "trees_restored": not ctx.committed and not restored,
+                                              "campaign_checkout_left": ctx.campaign if ctx.campaign_created else None})
+        if not ok:
+            sys.stderr.write("install.sh: the action record could not be marked FAILED: %s\n" % why)
+    return 3
 
 
 def main(argv):
@@ -1685,46 +1864,32 @@ def main(argv):
         env = dict(os.environ)
         ctx = decide_environment(opts, env)
         verify(ctx)
+        take_lock(ctx)
     except Usage:
         sys.stderr.write(USAGE + "\n")
         return 64
     except Refused as e:
         sys.stderr.write("install.sh: REFUSED %s: %s\n" % (e.code, e))
         return 1
-    step = 0
     try:
-        receipt = write_phase(ctx)
-    except Refused as e:
-        sys.stderr.write("install.sh: REFUSED %s: %s\n" % (e.code, e))
-        return 1
+        write_phase(ctx)
     except BaseException as e:                    # noqa: BLE001 — anything after writing began is a failed installation
         if isinstance(e, KeyboardInterrupt):
             raise
-        step = e.step if isinstance(e, Failed) else 0
+        step = e.step if isinstance(e, Failed) else ctx.step
         message = str(e) if isinstance(e, (Failed, Refused)) else "%s: %s" % (type(e).__name__, e)
-        restored = []
-        if not ctx.committed:
-            restored = rollback(ctx)
-        sys.stderr.write("install.sh: FAILED step %d: %s\n" % (step, flat(message, 600)))
-        sys.stderr.write("install.sh: %s\n" % ("trees restored" + ("; restore problems: %s" % "; ".join(restored) if restored else "")
-                                              if not ctx.committed else
-                                              "the tracker was restarted on the new trees: nothing was undone, there is no receipt; "
-                                              "a rerun resumes (published actions are skipped)"))
-        if ctx.action:
-            ok, why = action_finish(ctx, "fail", {"step": step, "error": flat(message, 400), "exit": 3,
-                                                  "trees_restored": not ctx.committed})
-            if not ok:
-                sys.stderr.write("install.sh: the action record could not be marked FAILED: %s\n" % why)
-        return 3
+        return report_failure(ctx, step, message)
     summary = {"installed": True, "receipt": ctx.receipt_path, "receipt_sha256": sha_file(ctx.receipt_path),
                "changed": ctx.changed, "model_actions": ctx.model_report, "processes_examined": ctx.processes_examined,
                "campaign_registrations": ctx.registrations}
-    if ctx.action and ctx.action_state == "INTENDED":
+    if ctx.action:
         ok, why = action_finish(ctx, "complete", {"receipt": ctx.receipt_path, "receipt_sha256": summary["receipt_sha256"],
                                                   "manifest_sha256": ctx.m["manifest_sha256"],
                                                   "components_commit": ctx.components_commit})
-        if not ok:
-            sys.stderr.write("install.sh: FAILED step 10: installed, but the action record could not be completed: %s\n" % why)
+        if not ok:                                # exit 3 means no receipt: an installation nobody could record has none
+            left = refuse_receipt(ctx)
+            sys.stderr.write("install.sh: FAILED step 10: installed, but the action record could not be completed: %s%s\n"
+                             % (why, left or "; the receipt was renamed .refused"))
             return 3
     print(json.dumps(summary, sort_keys=True))
     return 0

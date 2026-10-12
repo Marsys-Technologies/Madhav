@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import plistlib
+import pwd
 import shutil
 import signal
 import socket
@@ -84,7 +85,7 @@ print(json.dumps({"ok": True, "manifest_sha256": manifest.get("manifest_sha256")
 FAKE_KYLOOP = r'''#!@PYBIN@
 import json, sys
 argv = sys.argv[1:]
-open("@CALLS@", "a").write(json.dumps({"tool": "kyloop", "argv": argv}) + "\n")
+open("@CALLS@", "a").write(json.dumps({"tool": "kyloop", "argv": argv, "isolated": bool(sys.flags.isolated)}) + "\n")
 if argv[:2] == ["admin", "launch-config"] and argv[2] in ("planner", "conductor"):
     print(json.dumps({"schema": "ky.launch_config/1", "role": argv[2], "model": "claude-opus-5-5"}))
     sys.exit(0)
@@ -159,7 +160,13 @@ env = {k: os.environ[k] for k in ("KY_ROOT", "KY_RUN", "KY_FLEET", "KY_SCRATCH",
        if k in os.environ}
 open("@CALLS@", "a").write(json.dumps({"tool": "preflight", "argv": sys.argv[1:], "env": env,
                                         "receipt_present": os.path.exists(os.path.join(run, "INSTALL_RECEIPT.json"))}) + "\n")
-sys.exit(json.load(open("@CONTROL@")).get("preflight_rc", 0))
+control = json.load(open("@CONTROL@"))
+if control.get("preflight_spoils_action"):       # another actor ends the record while the installation runs
+    path = os.path.join(run, "actions", control["preflight_spoils_action"] + ".json")
+    rec = json.load(open(path))
+    rec.update(state="FAILED", result={"by": "someone else"}, completed_at="2026-10-12T00:00:00Z")
+    json.dump(rec, open(path, "w"), indent=1)
+sys.exit(control.get("preflight_rc", 0))
 PYEOF
 '''
 
@@ -171,10 +178,14 @@ receipt = os.path.join(run, "INSTALL_RECEIPT.json")
 doc = json.load(open(receipt)) if os.path.exists(receipt) else {}
 open("@CALLS@", "a").write(json.dumps({"tool": "kyversion", "argv": sys.argv[1:], "receipt_present": bool(doc),
                                         "receipt_mode": doc.get("mode")}) + "\n")
-rc = json.load(open("@CONTROL@")).get("kyversion_rc", 0)
+control = json.load(open("@CONTROL@"))
+rc = control.get("kyversion_rc", 0)
 if rc:
     sys.stderr.write("kyversion: REFUSED B4: fake\n")
     sys.exit(rc)
+if control.get("kyversion_stdout") is not None:
+    print(control["kyversion_stdout"])
+    sys.exit(0)
 print("kyversion: OK mode=bootstrap manifest_sha256=%s authorises=bootstrap-only" % doc.get("manifest", {}).get("manifest_sha256"))
 PYEOF
 '''
@@ -199,6 +210,8 @@ def opt(name, default=None):
 
 
 def append(ev):
+    # cli.py write(): keys whose value is None or "" are dropped, `ts` is added, the stored event is printed
+    ev = {k: v for k, v in ev.items() if v not in (None, "")}
     ev["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
     with open(events, "a") as f:
         f.write(json.dumps(ev, ensure_ascii=False, separators=(",", ":")) + "\n")
@@ -208,29 +221,52 @@ def append(ev):
         json.dump(control, open("@CONTROL@", "w"))
         sys.stderr.write("fake ky: crashed after appending %s\n" % after)
         sys.exit(1)
+    return ev
 
 
 if argv[0] == "decide":
-    append({"kind": "decision", "actor": opt("--as", "native"), "decision": argv[1],
-            "state": "delegated" if "--delegated" in argv else "decided", "outcome": opt("--outcome"),
-            "detail": opt("--detail")})
+    out = append({"kind": "decision", "actor": opt("--as", "native"), "decision": argv[1],
+                  "state": "delegated" if "--delegated" in argv else "decided", "outcome": opt("--outcome"),
+                  "detail": opt("--detail")})
 elif argv[0] in ("park", "block"):
     if control.get("ky_swallow"):
         print(json.dumps({"ok": True}))
         sys.exit(0)
-    append({"kind": "item", "actor": opt("--as"), "item": argv[1], "state": "parked" if argv[0] == "park" else "blocked",
-            "detail": opt("--detail")})
+    out = append({"kind": "item", "actor": opt("--as"), "item": argv[1], "state": "parked" if argv[0] == "park" else "blocked",
+                  "detail": opt("--detail"), "evidence": None})
 elif argv[0] == "release":
+    # cli.py cmd_claim_lifecycle + claims.release_claim: the worker's record names item and claim_id; the claim must be
+    # the item's latest claim event in the log and active; the released event is appended, then the record rewritten
     worker = os.environ.get("KY_LANE", "")
     path = os.path.join(os.path.dirname(events), "claims", worker + ".json")
-    claim = json.load(open(path))
+    try:
+        current = json.load(open(path))
+        log = []
+        for line in open(events):                  # claims._read: an unreadable line is skipped
+            try:
+                log.append(json.loads(line))
+            except ValueError:
+                continue
+    except (OSError, ValueError) as exc:
+        sys.stderr.write("refused: %s\n" % exc)
+        sys.exit(2)
     if control.get("ky_release_noop"):
         sys.exit(0)
-    claim["state"] = "released"
-    json.dump(claim, open(path, "w"), indent=2)
+    last = next((e for e in reversed(log) if e.get("kind") == "claim" and e.get("item") == current.get("item")), None)
+    if not last or last.get("claim_id") != current.get("claim_id") or last.get("worker_id") != worker \
+            or last.get("state") not in ("acquired", "renewed"):
+        sys.stderr.write("refused: claim is not active for this worker\n")
+        sys.exit(2)
+    out = dict(last, state="released", ts=time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()))
+    if not control.get("ky_release_record_only"):
+        with open(events, "a") as f:
+            f.write(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n")
+    with open(path, "w") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 else:
     sys.exit(2)
-print(json.dumps({"ok": True}))
+print(json.dumps(out, ensure_ascii=False))
 '''
 
 FAKE_KYBRIEF = r'''#!@PYBIN@
@@ -286,7 +322,8 @@ elif verb == "bootstrap":
         doc = plistlib.load(f)
     args = doc["ProgramArguments"]
     port = args[args.index("--port") + 1]
-    child = subprocess.Popen([sys.executable, "@TRACKER@", port], start_new_session=True,
+    events = doc.get("EnvironmentVariables", {}).get("PRAVAHA_EVENTS", "")
+    child = subprocess.Popen([sys.executable, "@TRACKER@", port, events], start_new_session=True,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
     open(pidfile, "w").write(str(child.pid))
     for _ in range(100):
@@ -302,8 +339,11 @@ else:
 '''
 
 FAKE_TRACKER = r'''#!@PYBIN@
-import json, sys
+import datetime, json, os, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+STARTED = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+EVENTS = sys.argv[2] if len(sys.argv) > 2 else ""
 
 
 class H(BaseHTTPRequestHandler):
@@ -313,7 +353,16 @@ class H(BaseHTTPRequestHandler):
             self.send_response(control.get("health_status", 404))
             self.end_headers()
             return
-        body = json.dumps(control.get("health", {"ok": True, "model_error": None, "engine_tick_age_s": 0.4})).encode()
+        # server.py: {"ok": tick age < 10, "version": …, **engine.health()}
+        health = {"ok": True, "version": 3, "server_started_at": control.get("health_started_at", STARTED),
+                  "engine_tick_age_s": 0.4, "db_proxy": False, "db_credentials": False, "power": "ac", "hold": False,
+                  "event_log": {"path": control.get("health_events_path", EVENTS), "events": 0, "malformed": 0,
+                                "exists": os.path.exists(EVENTS)},
+                  "backup": None, "model_error": None, "detector_errors": [], "git_activity_age_s": None, "tick_errors": []}
+        health.update(control.get("health_update", {}))
+        for key in control.get("health_drop", []):
+            health.pop(key, None)
+        body = json.dumps(control.get("health", health)).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -335,6 +384,14 @@ if control.get("ps_fail"):
     sys.stderr.write("ps: fake failure\n")
     sys.exit(1)
 if "-axo" in argv:
+    nth = sum(1 for l in open("@CALLS@").read().splitlines() if '"tool": "ps"' in l and "-axo" in l)
+    if control.get("ps_fail_from_listing") and nth >= control["ps_fail_from_listing"]:
+        sys.stderr.write("ps: fake failure at listing %d\n" % nth)
+        sys.exit(1)
+    if control.get("ps_link_at_listing") and nth == control["ps_link_at_listing"][0]:
+        victim = control["ps_link_at_listing"][1]          # the source changes under the installer after verification
+        os.rename(victim, victim + ".moved")
+        os.symlink(victim + ".moved", victim)
     lines = ["    1     0 /sbin/launchd", "  100     1 /usr/bin/something --harmless"] + list(control.get("ps_extra", []))
     if control.get("ps_garbage"):
         lines.append("this is not a process line")
@@ -352,6 +409,21 @@ if control.get("gh_rc"):
     sys.stderr.write("gh: fake failure\n")
     sys.exit(control["gh_rc"])
 print(json.dumps(control.get("prs", [])))
+'''
+
+FAKE_GIT = r'''#!@PYBIN@
+import json, os, sys
+argv = sys.argv[1:]
+control = json.load(open("@CONTROL@"))
+rule = control.get("git_fail")                     # {"match": text in the joined arguments, "from_call": n, "rc": code}
+if rule and rule["match"] in " ".join(argv):
+    counter = os.path.join("@STATE@", "git_fail.count")
+    n = int(open(counter).read()) + 1 if os.path.exists(counter) else 1
+    open(counter, "w").write(str(n))
+    if n >= rule.get("from_call", 1):
+        sys.stderr.write("fatal: fake git failure\n")
+        sys.exit(rule.get("rc", 128))
+os.execv("/usr/bin/git", ["/usr/bin/git"] + argv)
 '''
 
 FAKE_CLAUDE = '''#!/bin/sh
@@ -431,7 +503,8 @@ class World:
         self.control_path.write_text(json.dumps(cur))
 
     def write_tools(self):
-        for name, tpl in (("launchctl", FAKE_LAUNCHCTL), ("ps", FAKE_PS), ("gh", FAKE_GH), ("fake_tracker.py", FAKE_TRACKER)):
+        for name, tpl in (("launchctl", FAKE_LAUNCHCTL), ("ps", FAKE_PS), ("gh", FAKE_GH), ("git", FAKE_GIT),
+                          ("fake_tracker.py", FAKE_TRACKER)):
             p = self.tools / name
             p.write_text(render(tpl, self))
             p.chmod(0o755)
@@ -563,6 +636,8 @@ class World:
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "components")
         self.components_commit = self.git("rev-parse", "HEAD")
+        self.git("remote", "add", "origin", str(self.base / "no-such-origin.git"))      # never fetched: no network
+        self.git("update-ref", "refs/remotes/origin/main", self.approved)
         self.bound = sorted({FL + "/" + n for names in self.AREAS.values() for n in names}
                             | {TRK + "/" + n for n in ("__init__.py", "server.py", "cli.py", "static/app.js")})
         self.write_reviews()
@@ -676,6 +751,31 @@ class World:
     def action_record(self, action_id="INSTALL-1"):
         return json.loads((self.run / "actions" / (action_id + ".json")).read_text())
 
+    def old_installation(self):
+        """A previous installation's trees and receipt, so a test can prove they come back."""
+        (self.root / "fleet_live").mkdir(parents=True)
+        (self.root / "fleet_live" / "old.txt").write_text("old fleet\n")
+        (self.root / "bin").mkdir()
+        (self.root / "bin" / "ky").write_text("old ky\n")
+        (self.root / "bin" / "ky").chmod(0o755)
+        (self.run / "VERSIONS.bootstrap.json").write_text("old manifest\n")
+        (self.run / "INSTALL_RECEIPT.json").write_text('{"old": true}\n')
+
+    def assert_old_installation_whole(self):
+        root = self.root
+        assert (root / "fleet_live" / "old.txt").read_text() == "old fleet\n" and not (root / "fleet_live" / "kyctl.sh").exists()
+        assert (root / "bin" / "ky").read_text() == "old ky\n" and not (root / "bin" / "kybrief").exists()
+        assert (self.run / "VERSIONS.bootstrap.json").read_text() == "old manifest\n"
+        assert (self.run / "INSTALL_RECEIPT.json").read_text() == '{"old": true}\n', "the previous receipt is back in place"
+        assert not (self.run / "INSTALL_RECEIPT.json.superseded").exists()
+        for name in ("fleet_live.new", "fleet_live.old", "tracker_live", "tracker_live.new", "tracker_live.old"):
+            assert not (root / name).exists(), name
+
+    def append_event(self, ev):
+        self.run.mkdir(parents=True, exist_ok=True)
+        with open(self.run / "EVENTS.jsonl", "a") as f:
+            f.write(json.dumps(ev, ensure_ascii=False, separators=(",", ":")) + "\n")
+
 
 @pytest.fixture
 def w(tmp_path):
@@ -771,6 +871,7 @@ def test_receipt_records_every_measured_value(w):
     # the running tracker
     tr = rc["tracker_revision"]
     assert tr["pid"] == w.tracker_pid() and tr["package_sha256"] and tr["process_start"]
+    assert tr["health"]["event_log"] == str(w.run / "EVENTS.jsonl") and tr["health"]["server_started_at"]
     # plists
     labels = {p["label"] for p in rc["plists"]}
     assert labels == {TRACKER_LABEL} | {"in.marsys.kalayantra." + lp for lp in LOOPS}
@@ -783,9 +884,12 @@ def test_receipt_records_every_measured_value(w):
     osup = rc["old_supervisors"]
     assert sorted(s["lane"] for s in osup["stop_files"]) == sorted(LANES)
     assert osup["processes"]["matching"] == [] and osup["processes"]["answered"] is True
+    limits = " ".join(osup["processes"]["limits"])
+    assert "ancestor" in limits and "command line" in limits, "what the process evidence does not show is stated"
     # campaign checkout
     cc = rc["campaign_checkout"]
     assert cc["path"] == str(w.camp) and cc["branch"] == "kalayantra/campaign" and cc["head"] == w.components_commit
+    assert cc["upstream"] == "origin/main"
     # model actions: 2 decisions, 8 parks, 1 block — each with its event
     kinds = [(m["kind"], m["id"]) for m in rc["model_actions"]["entries"]]
     assert [k for k, _ in kinds].count("decision") == 2 and [k for k, _ in kinds].count("park") == 8
@@ -987,6 +1091,46 @@ def test_a_symlink_to_the_real_launchctl_is_the_real_launchctl(w):
     refused(r, 1, "E_REAL KY_LAUNCHCTL")
 
 
+def first_decision(w, env, *extra):
+    return subprocess.run(["/bin/bash", str(INSTALL), "--manifest", "/nonexistent/m.json", "--source", "/nonexistent/s"] + list(extra),
+                          capture_output=True, text=True, env=env, cwd=str(w.base))
+
+
+def test_a_scratch_root_refuses_the_accounts_launchagents_whatever_home_says(w):
+    account = Path(pwd.getpwuid(os.getuid()).pw_dir) / "Library" / "LaunchAgents"
+    assert str(w.home) != str(account.parents[1]), "HOME points elsewhere in this test, as in every test here"
+    r = first_decision(w, w.env(KY_LAUNCHAGENTS_DIR=str(account)), "--root", str(w.root))
+    refused(r, 1, "E_REAL KY_LAUNCHAGENTS_DIR")
+    assert "nonexistent" not in r.stderr and not list(w.run.glob("STOP_*"))
+
+
+@pytest.mark.parametrize("var,value", [("KY_LAUNCHAGENTS_DIR", REAL_ROOT + "/LaunchAgents"),
+                                       ("KY_CAMPAIGN_CHECKOUT", REAL_ROOT + "/wt/campaign"),
+                                       ("KY_LAUNCHCTL", REAL_ROOT + "/bin/launchctl"),
+                                       ("KY_SCRATCH", REAL_ROOT + "/run/scratch")])
+def test_a_scratch_root_refuses_a_value_inside_the_real_root(w, var, value):
+    r = first_decision(w, w.env(**{var: value}), "--root", str(w.root))
+    refused(r, 1, "E_REAL " + var)
+    assert "nonexistent" not in r.stderr and not list(w.run.glob("STOP_*"))
+
+
+def test_ky_scratch_is_never_defaulted(w):
+    r = first_decision(w, w.env(KY_SCRATCH=None), "--root", str(w.root))
+    refused(r, 1, "E_UNSET KY_SCRATCH")
+    assert "nonexistent" not in r.stderr
+    real = {"PATH": "/usr/bin:/bin:/opt/homebrew/bin", "HOME": pwd.getpwuid(os.getuid()).pw_dir, "LANG": "en_US.UTF-8"}
+    r = first_decision(w, real, "--root", REAL_ROOT, "--action", "INSTALL-1")
+    refused(r, 1, "E_UNSET KY_SCRATCH")
+    assert "nonexistent" not in r.stderr, "decided before M, S or the action record is read"
+
+
+def test_the_real_root_needs_the_accounts_own_home(w):
+    env = {"PATH": "/usr/bin:/bin:/opt/homebrew/bin", "HOME": str(w.home), "LANG": "en_US.UTF-8", "KY_SCRATCH": str(w.scratch)}
+    r = first_decision(w, env, "--root", REAL_ROOT, "--action", "INSTALL-1")
+    refused(r, 1, "E_VALUE HOME")
+    assert "nonexistent" not in r.stderr
+
+
 def test_a_root_inside_the_real_root_is_refused(w):
     r = subprocess.run(["/bin/bash", str(INSTALL), "--manifest", "/nonexistent/m.json", "--source", "/nonexistent/s",
                         "--root", REAL_ROOT + "/sub"], capture_output=True, text=True, env=w.env(), cwd=str(w.base))
@@ -1178,6 +1322,17 @@ def test_the_staged_actions_file_must_be_the_committed_one(w):
     refuse_cleanly(w, "clean")
 
 
+def test_a_staged_action_published_as_the_native_is_refused(w):
+    p = w.src / STAGED
+    doc = json.loads(p.read_text())
+    doc["parks"][0]["as"] = "native"                  # the installer never speaks as the owner
+    p.write_text(json.dumps(doc))
+    w.commit_src()
+    w.components_commit = w.git("rev-parse", "HEAD")
+    w.assemble()
+    refuse_cleanly(w, "steward")
+
+
 def test_claude_bin_not_executable(w):
     (w.tools / "claude").chmod(0o644)
     refuse_cleanly(w, "CLAUDE_BIN")
@@ -1247,6 +1402,18 @@ def test_stop_files_absent_are_created_but_existing_ones_are_left_alone(w):
     assert by["k1"]["path"] == str(w.run / "STOP_k1")
 
 
+@pytest.mark.parametrize("kind", ["directory", "dangling_link"])
+def test_a_stop_path_the_legacy_supervisor_would_not_read_as_a_stop_is_refused(w, kind):
+    p = w.run / "STOP_k1"                              # kalayantra_fleet.sh: [ -f "$RUN/STOP_$lane" ]
+    if kind == "directory":
+        p.mkdir()
+    else:
+        p.symlink_to(w.base / "nowhere")
+    before = w.snapshot()
+    refused(w.install(), 1, "STOP_k1")
+    assert w.snapshot() == before, "nothing written: no other STOP file either"
+
+
 def test_a_process_that_appears_after_the_stop_files_fails_the_install(w):
     # the double of ps answers differently from the second listing on: the first sees nothing, the second a supervisor
     ps = w.tools / "ps"
@@ -1266,23 +1433,80 @@ def test_a_deferred_component_listed_in_the_manifest_is_never_installed(w):
 
 
 def test_failure_at_the_campaign_step_restores_the_trees(w):
-    (w.root / "fleet_live").mkdir(parents=True)
-    (w.root / "fleet_live" / "old.txt").write_text("old fleet\n")
-    (w.root / "bin").mkdir()
-    (w.root / "bin" / "ky").write_text("old ky\n")
-    (w.root / "bin" / "ky").chmod(0o755)
-    (w.run / "VERSIONS.bootstrap.json").write_text("old manifest\n")
-    (w.run / "INSTALL_RECEIPT.json").write_text('{"old": true}\n')
+    w.old_installation()
     for i in range(15):                               # the Claude/Madhav worktree count is already over the ceiling
         w.git("worktree", "add", "-q", "-b", "filler-%d" % i, str(w.wtroot / ("filler-%d" % i)))
-    r = refused(w.install(), 3, "capacity")
-    assert (w.root / "fleet_live" / "old.txt").read_text() == "old fleet\n" and not (w.root / "fleet_live" / "kyctl.sh").exists()
-    assert (w.root / "bin" / "ky").read_text() == "old ky\n"
-    assert (w.run / "VERSIONS.bootstrap.json").read_text() == "old manifest\n"
-    assert (w.run / "INSTALL_RECEIPT.json").read_text() == '{"old": true}\n', "the old installation is whole again, so is its receipt"
-    assert not (w.root / "fleet_live.new").exists() and not (w.root / "tracker_live").exists()
+    refused(w.install(), 3, "capacity")
+    w.assert_old_installation_whole()
     assert not w.camp.exists() and w.ky_calls() == []
     assert [c for c in w.calls("launchctl") if c["argv"][0] != "print"] == []
+
+
+def test_fifteen_registrations_are_over_the_ceiling(w):
+    for i in range(14):                                # with src: exactly 15, one more than the 14 the packet allows
+        w.git("worktree", "add", "-q", "-b", "filler-%d" % i, str(w.wtroot / ("filler-%d" % i)))
+    refused(w.install(), 3, "capacity")
+    assert not w.camp.exists() and not (w.run / "INSTALL_RECEIPT.json").exists()
+
+
+# ---- B-01: after the first write nothing ends as exit 1
+def test_an_unanswerable_second_process_listing_is_a_failure_not_a_refusal(w):
+    w.begin_action()
+    w.control(ps_fail_from_listing=2)                  # verification's listing answers; the one after the STOP files does not
+    r = refused(w.install(action="INSTALL-1"), 3, "FAILED step 0")
+    assert "process listing" in r.stderr and "REFUSED" not in r.stderr
+    assert sorted(p.name for p in w.run.glob("STOP_*")) == sorted("STOP_" + lane for lane in LANES), "writing had begun"
+    assert not (w.root / "fleet_live").exists() and not (w.run / "INSTALL_RECEIPT.json").exists()
+    rec = w.action_record()
+    assert rec["state"] == "FAILED" and rec["result"]["step"] == 0 and rec["result"]["exit"] == 3
+
+
+def test_a_refusal_at_the_wrappers_step_restores_the_trees_and_fails_the_action(w):
+    w.old_installation()
+    w.begin_action()
+    w.control(ps_link_at_listing=[2, str(w.src / FL / "bin" / "ky")])     # bin/ky becomes a link after verification
+    r = refused(w.install(action="INSTALL-1"), 3, "FAILED step 3")
+    assert "not a regular file" in r.stderr and "REFUSED" not in r.stderr and "trees restored" in r.stderr
+    w.assert_old_installation_whole()
+    assert not w.camp.exists() and w.ky_calls() == []
+    rec = w.action_record()
+    assert rec["state"] == "FAILED" and rec["result"]["step"] == 3 and rec["result"]["trees_restored"] is True
+
+
+def test_a_refusal_at_the_campaign_step_restores_the_trees_and_fails_the_action(w):
+    w.old_installation()
+    w.begin_action()
+    w.control(git_fail={"match": "worktree list", "from_call": 2, "rc": 128})      # verification's listing answers, step 5's does not
+    r = refused(w.install(action="INSTALL-1", env={"KY_GIT": str(w.tools / "git")}), 3, "FAILED step 5")
+    assert "worktree list" in r.stderr and "REFUSED" not in r.stderr and "trees restored" in r.stderr
+    w.assert_old_installation_whole()
+    assert not w.camp.exists() and w.ky_calls() == []
+    assert [c for c in w.calls("launchctl") if c["argv"][0] != "print"] == []
+    rec = w.action_record()
+    assert rec["state"] == "FAILED" and rec["result"]["step"] == 5 and rec["result"]["trees_restored"] is True
+
+
+def test_a_failure_before_the_tracker_restart_names_the_campaign_checkout_it_leaves(w):
+    w.old_installation()
+    r = refused(w.install(env={"KY_LAUNCHCTL": str(w.base / "no-such-launchctl")}), 3, "FAILED step 6")
+    w.assert_old_installation_whole()
+    assert w.camp.is_dir(), "step 5 created it; a failure does not remove a checkout"
+    assert "campaign checkout" in r.stderr and str(w.camp) in r.stderr and "left in place" in r.stderr
+    assert not (w.la / (TRACKER_LABEL + ".plist")).exists()
+
+
+def test_a_campaign_branch_lookup_that_fails_is_not_read_as_no_branch(w):
+    w.control(git_fail={"match": "refs/heads/kalayantra/campaign", "rc": 128})
+    before = w.snapshot()
+    r = refused(w.install(env={"KY_GIT": str(w.tools / "git")}), 1, "campaign")
+    assert_nothing_written(w, before)
+    assert "cannot be told" in r.stderr
+
+
+def test_a_campaign_branch_that_cannot_track_origin_main_means_no_receipt(w):
+    w.git("update-ref", "-d", "refs/remotes/origin/main")
+    refused(w.install(), 3, "origin/main")
+    assert not (w.run / "INSTALL_RECEIPT.json").exists()
 
 
 def test_fourteen_registrations_leave_room_for_the_campaign_checkout(w):
@@ -1356,6 +1580,7 @@ def test_a_qualification_receipt_that_passes_the_check_is_not_redone(w):
 def test_the_loop_roles_are_qualified_from_the_config_kyloop_prints(w):
     ok(w.install())
     assert [c["argv"] for c in w.calls("kyloop")] == [["admin", "launch-config", "planner"], ["admin", "launch-config", "conductor"]]
+    assert all(c["isolated"] is True for c in w.calls("kyloop")), "python -I, like every other reviewed program"
 
 
 def test_preflight_failure_means_no_receipt(w):
@@ -1371,8 +1596,33 @@ def test_kyversion_failure_renames_the_receipt_refused(w):
     assert (w.run / "INSTALL_RECEIPT.json.refused").is_file()
 
 
+def test_kyversion_exit_zero_is_the_pass_whatever_it_prints(w):
+    w.control(kyversion_stdout="kyversion: accepted (bootstrap)")       # the packet's interface is the exit code
+    ok(w.install())
+    assert (w.run / "INSTALL_RECEIPT.json").is_file() and not (w.run / "INSTALL_RECEIPT.json.refused").exists()
+
+
+def test_a_health_answer_from_a_tracker_serving_another_event_log_is_not_this_installation(w):
+    w.control(health_events_path="/somewhere/else/run/EVENTS.jsonl")
+    refused(w.install(env={"KY_INSTALL_WAIT_S": "2"}), 3, "another event log")
+    assert not (w.run / "INSTALL_RECEIPT.json").exists() and w.ky_calls() == []
+
+
+@pytest.mark.parametrize("drop", ["event_log", "server_started_at"])
+def test_a_health_answer_in_a_shape_the_tracker_does_not_emit_is_unknown(w, drop):
+    w.control(health_drop=[drop])
+    refused(w.install(env={"KY_INSTALL_WAIT_S": "2"}), 3, drop)
+    assert not (w.run / "INSTALL_RECEIPT.json").exists() and w.ky_calls() == []
+
+
+def test_a_health_answer_older_than_the_recorded_process_is_not_its_answer(w):
+    w.control(health_started_at="2020-01-01T00:00:00+00:00")
+    refused(w.install(env={"KY_INSTALL_WAIT_S": "2"}), 3, "server_started_at")
+    assert not (w.run / "INSTALL_RECEIPT.json").exists()
+
+
 def test_unhealthy_tracker_means_no_receipt(w):
-    w.control(health={"ok": True, "model_error": "plan model rejected", "engine_tick_age_s": 0.1})
+    w.control(health_update={"model_error": "plan model rejected"})
     refused(w.install(env={"KY_INSTALL_WAIT_S": "2"}), 3, "model_error")
     assert not (w.run / "INSTALL_RECEIPT.json").exists() and w.ky_calls() == []
 
@@ -1384,7 +1634,8 @@ def test_a_tracker_that_never_answers_means_no_receipt(w):
 
 
 def test_a_tracker_process_older_than_the_swap_is_not_the_installed_revision(w):
-    (w.base / "pre.plist").write_bytes(plistlib.dumps({"Label": TRACKER_LABEL, "ProgramArguments": ["x", "--port", str(w.port)]}))
+    (w.base / "pre.plist").write_bytes(plistlib.dumps({"Label": TRACKER_LABEL, "ProgramArguments": ["x", "--port", str(w.port)],
+                                                       "EnvironmentVariables": {"PRAVAHA_EVENTS": str(w.run / "EVENTS.jsonl")}}))
     w.start_tracker()
     old_pid = w.tracker_pid()
     time.sleep(1.2)
@@ -1401,12 +1652,16 @@ def test_launchctl_bootstrap_failure_means_no_receipt(w):
 
 
 # ================================================================================ the legacy step
-def claim(w, worker, item, state="acquired", branch="kalayantra/x", head="a" * 40):
+def claim(w, worker, item, state="acquired", branch="kalayantra/x", head="a" * 40, log=True):
+    """A claim as claims.py leaves it: the event in the log and the same event as the worker's record."""
     d = w.run / "claims"
     d.mkdir(parents=True, exist_ok=True)
-    (d / (worker + ".json")).write_text(json.dumps({"kind": "claim", "actor": "stream-K", "item": item, "state": state,
-                                                     "worker_id": worker, "claim_id": "c-" + worker, "branch": branch, "head": head,
-                                                     "expires_at": "2026-10-12T10:53:12+00:00"}))
+    ev = {"kind": "claim", "actor": "stream-K:" + worker, "item": item, "state": state, "worker_id": worker,
+          "claim_id": "c-" + worker, "lease_s": 10800, "expires_at": "2026-10-12T10:53:12+00:00",
+          "ts": "2026-10-12T07:53:12+00:00", "branch": branch, "head": head, "step": None}
+    if log:
+        w.append_event(ev)
+    (d / (worker + ".json")).write_text(json.dumps(ev, ensure_ascii=False, indent=2) + "\n")
 
 
 def test_active_legacy_claims_are_released_with_ky_after_the_supervisors_are_known_gone(w):
@@ -1424,6 +1679,58 @@ def test_active_legacy_claims_are_released_with_ky_after_the_supervisors_are_kno
     assert legacy["unresolved"] == []
     order = [c["tool"] for c in w.calls()]
     assert order.index("ps") < order.index("ky"), "a legacy claim is released only after the process check"
+    assert by["k1"]["release_event"]["line"] >= 1 and by["k1"]["release_event"]["sha256"]
+    released = [e for e in w.events() if e.get("kind") == "claim" and e.get("state") == "released"]
+    assert [e["claim_id"] for e in released] == ["c-k2", "c-k1"], "the fixture's k2, then the one release this run made"
+
+
+def test_a_release_the_event_log_does_not_show_is_unresolved(w):
+    claim(w, "k1", "K8-R26")
+    w.control(ky_release_record_only=True)             # the record says released, the log (the authority) does not
+    ok(w.install())
+    legacy = w.receipt()["legacy"]
+    assert legacy["claims"][0]["action"] == "unresolved" and legacy["claims"][0]["state_after"] == "released"
+    assert [u["worker_id"] for u in legacy["unresolved"]] == ["k1"] and "event log" in legacy["unresolved"][0]["reason"]
+
+
+def test_a_claim_in_a_state_the_tracker_does_not_write_is_unresolved_not_already_ended(w):
+    claim(w, "k2", "K1-1", state="handed-over", log=False)
+    (w.run / "claims" / "k3.json").write_text(json.dumps({"worker_id": "k3", "item": "K1-2"}))     # no state at all
+    ok(w.install())
+    legacy = w.receipt()["legacy"]
+    by = {c["worker_id"]: c for c in legacy["claims"]}
+    assert by["k2"]["action"] == "unresolved" and by["k3"]["action"] == "unresolved"
+    assert sorted(u["worker_id"] for u in legacy["unresolved"]) == ["k2", "k3"]
+    assert [c for c in w.calls("ky") if c["argv"] == ["release"]] == []
+
+
+def test_a_claim_of_a_worker_that_is_not_a_legacy_lane_is_never_released(w):
+    claim(w, "J-20261012T000000Z-kyroute", "KV3-B-KYROUTE")
+    claim(w, "k1", "K8-R26")
+    ok(w.install())
+    assert [c["env"]["KY_LANE"] for c in w.calls("ky") if c["argv"] == ["release"]] == ["k1"]
+    job = json.loads((w.run / "claims" / "J-20261012T000000Z-kyroute.json").read_text())
+    assert job["state"] == "acquired", "a v3 job's claim is its own, not a legacy claim"
+    legacy = w.receipt()["legacy"]
+    by = {c["worker_id"]: c for c in legacy["claims"]}
+    assert by["J-20261012T000000Z-kyroute"]["action"] == "unresolved" and by["k1"]["action"] == "released"
+    assert [u["worker_id"] for u in legacy["unresolved"]] == ["J-20261012T000000Z-kyroute"]
+
+
+def test_unreadable_event_lines_mean_no_pr_is_adopted(w):
+    head = "b" * 40
+    ok(w.install())                                    # every staged action is published: step 6 owes the log nothing more
+    w.append_event({"kind": "item", "actor": "stream-K:k1", "item": "K1-1", "state": "review",
+                    "detail": "PR #3300 @ %s. ready" % head, "ts": "2026-10-12T00:00:00+00:00"})
+    with open(w.run / "EVENTS.jsonl", "a") as f:
+        f.write("{a later registration that cannot be read\n")
+    w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
+    ok(w.install())
+    assert not (w.run / "jobs" / "legacy-3300").exists()
+    legacy = w.receipt()["legacy"]
+    assert legacy["prs"]["adopted"] == []
+    assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
+    assert "unreadable" in legacy["unresolved"][0]["reason"]
 
 
 def test_a_release_that_did_not_end_the_claim_is_unresolved_not_reported_released(w):
@@ -1481,6 +1788,23 @@ def test_an_existing_legacy_job_state_is_never_overwritten(w):
     w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
     ok(w.install())
     assert (w.run / "jobs" / "legacy-3300" / "state.json").read_text() == '{"dispatcher": "was here"}'
+    legacy = w.receipt()["legacy"]
+    assert legacy["prs"]["adopted"] == [], "a file that is not this PR's adoption record is not an adoption"
+    assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
+
+
+def test_a_second_run_keeps_the_adoption_it_wrote(w):
+    head = "b" * 40
+    w.append_event({"kind": "item", "actor": "stream-K:k1", "item": "K1-1", "state": "review",
+                    "detail": "PR #3300 @ %s" % head, "ts": "2026-10-12T00:00:00+00:00"})
+    w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
+    ok(w.install())
+    first = (w.run / "jobs" / "legacy-3300" / "state.json").read_bytes()
+    ok(w.install())
+    assert (w.run / "jobs" / "legacy-3300" / "state.json").read_bytes() == first
+    adopted = w.receipt()["legacy"]["prs"]["adopted"]
+    assert [(a["number"], a["existing_state_kept"]) for a in adopted] == [(3300, True)]
+    assert w.receipt()["legacy"]["unresolved"] == []
 
 
 def test_an_unanswerable_pr_listing_means_no_receipt(w):
@@ -1508,13 +1832,62 @@ def test_an_install_action_is_completed_with_the_receipt(w):
     assert rec["result"]["receipt_sha256"] == sha_file(w.run / "INSTALL_RECEIPT.json")
 
 
+def installed_state(w):
+    """The snapshot without the action records and their locks (a new record is the one thing a later run adds)."""
+    snap = w.snapshot()
+    snap["root"] = {k: v for k, v in snap["root"].items()
+                    if k != "run" and not k.startswith(("run/actions", "run/locks"))}
+    return snap
+
+
 def test_a_rerun_with_a_done_action_changes_nothing(w):
     w.begin_action()
     ok(w.install(action="INSTALL-1"))
-    before = w.snapshot()
-    ok(w.install(action="INSTALL-1"))
+    assert w.action_record()["state"] == "DONE"
+    claim(w, "k1", "K8-R26")                           # work a second run WOULD do: it must not be done under a DONE record
+    before, record = w.snapshot(), (w.run / "actions" / "INSTALL-1.json").read_bytes()
+    r = refused(w.install(action="INSTALL-1"), 1, "E_ACTION_STATE")
+    assert "DONE" in r.stderr and "INTENDED" in r.stderr
     after = w.snapshot()
-    assert after["root"] == before["root"] and after["ky"] == before["ky"]
+    assert after == before, "a completed action id opens nothing: no tree, receipt, tracker or claim was touched"
+    assert (w.run / "actions" / "INSTALL-1.json").read_bytes() == record
+    assert json.loads((w.run / "claims" / "k1.json").read_text())["state"] == "acquired"
+
+
+def test_a_second_run_under_a_fresh_intended_action_changes_and_republishes_nothing(w):
+    w.begin_action()
+    ok(w.install(action="INSTALL-1"))
+    before = installed_state(w)
+    receipt = (w.run / "INSTALL_RECEIPT.json").read_bytes()
+    w.begin_action("INSTALL-2")
+    ok(w.install(action="INSTALL-2"))
+    after = installed_state(w)
+    assert after["ky"] == before["ky"] and after["launchctl"] == before["launchctl"]
+    assert after["root"] == before["root"] and after["la"] == before["la"]
+    assert (w.run / "INSTALL_RECEIPT.json").read_bytes() == receipt
+    rec = w.action_record("INSTALL-2")
+    assert rec["state"] == "DONE" and rec["result"]["receipt_sha256"] == sha_bytes(receipt), "the later run is on record"
+    assert w.action_record("INSTALL-1")["state"] == "DONE"
+
+
+def test_an_action_in_a_state_other_than_intended_is_refused_before_anything_is_written(w):
+    w.begin_action()
+    path = w.run / "actions" / "INSTALL-1.json"
+    rec = json.loads(path.read_text())
+    rec["state"] = "PAUSED"
+    path.write_text(json.dumps(rec))
+    before = w.snapshot()
+    refused(w.install(action="INSTALL-1"), 1, "E_ACTION_STATE")
+    assert w.snapshot() == before
+
+
+def test_an_action_that_cannot_be_completed_leaves_no_receipt(w):
+    w.begin_action()
+    w.control(preflight_spoils_action="INSTALL-1")     # the record is ended by someone else while the installation runs
+    r = refused(w.install(action="INSTALL-1"), 3, "action record could not be completed")
+    assert not (w.run / "INSTALL_RECEIPT.json").exists(), "exit 3 means no receipt"
+    assert (w.run / "INSTALL_RECEIPT.json.refused").is_file()
+    assert r.stdout.strip() == ""
 
 
 def test_a_failed_install_fails_its_action(w):
@@ -1531,7 +1904,7 @@ def test_a_failed_action_must_be_retried_by_its_owner_first(w):
     refused(w.install(action="INSTALL-1"), 3)
     w.control(preflight_rc=0)
     before = w.snapshot()
-    refused(w.install(action="INSTALL-1"), 1, "FAILED")
+    refused(w.install(action="INSTALL-1"), 1, "E_ACTION_STATE")
     assert w.snapshot()["root"] == before["root"]
     kyaction.retry(str(w.run), "INSTALL-1")
     ok(w.install(action="INSTALL-1"))
