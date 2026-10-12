@@ -297,7 +297,15 @@ class DB:
         elif tag == "throughput":
             rows = [list(r) for r in self.throughput]
         elif tag == "register":
-            rows = [[str(1000 - i), r["run"], r["chart"], r["asset"], str(r["at"]), r["rows"], json.dumps(r["payload"])] for i, r in enumerate(self.records)]
+            recs = list(self.records)
+            if getattr(self, "honor", False):                             # emulate the SQL filter on this run (case- and whitespace-insensitive) plus the records with no run id
+                m = re.search(r"IN \(\'\', lower\(btrim\(\'([^\']*)\'\)\)\)", sql)
+                keep = {"", m.group(1).strip().lower()} if m else None
+                recs = [r for r in recs if keep is None or (r["run"] or "").strip().lower() in keep]
+            lim = re.search(r"LIMIT (\d+)", sql)
+            if lim:
+                recs = recs[:int(lim.group(1))]
+            rows = [[str(1000 - i), r["run"], r["chart"], r["asset"], "" if r["at"] is None else str(r["at"]), r["rows"], json.dumps(r["payload"])] for i, r in enumerate(recs)]
         elif tag == "slice":
             rows = [[str(self.slice_rows)]]
         else:
@@ -1491,3 +1499,163 @@ def test_an_eight_record_retry_three_first_pass_and_five_final_pass_with_five_di
     # the same retry with one first-pass record contradicting is refused, naming it
     db.records = ([_rec(PARTS[0], at=T0 + 900, formed=True, rows_written=1)] + first[1:] + final)[::-1]
     assert _run()["clause"] == "not-formed"
+
+
+# ───────────────────────── second review: F1 strict lower bound, F2 run-filtered read and cap, F3 wording, test gaps ─────────────────────────
+
+S_START = T0 + 1001            # the final attempt's started_at in the fake
+
+
+def _mutant_src(*pairs, clauses=()):
+    """`_es_outcome` re-defined with source substitutions (old -> new) and optional clause deletions: for a guard that is a VALUE, not a block."""
+    src = inspect.getsource(ac._es_outcome)
+    for old, new in pairs:
+        assert src.count(old) == 1, old
+        src = src.replace(old, new)
+    for c in clauses:
+        src, n = re.subn(rf"^[ ]*#<clause {re.escape(c)}>\n.*?^[ ]*#</clause {re.escape(c)}>\n", "", src, flags=re.S | re.M)
+        assert n == 1
+    g = dict(vars(ac))
+    exec(compile(src, "<mutant src>", "exec"), g)
+    return g["_es_outcome"]
+
+
+def _call(fn, **kw):
+    a = dict(window=WINDOW, code_paths=PATHS)
+    a.update(kw)
+    try:
+        return fn(ES, "ga_vichara", a.pop("chart", CH), a["window"], a["code_paths"])
+    except Exception as exc:                                     # noqa: BLE001
+        return dict(state="crash", exc=exc)
+
+
+@pytest.mark.parametrize("gap", [1.2, 0.5, 0.001])
+def test_f1_a_first_pass_followed_within_the_old_skew_by_a_retry_whose_final_attempt_emitted_nothing_is_not_credited(db, gap):
+    """NAMED (F1): first pass emitted 5 formed-false records at T; the run was retried immediately (started_at = T + gap) and the final attempt took an early return. All three stamps are the DB's own
+    NOW(): there is one clock, so the lower bound has tolerance 0. A symmetric +-2 s skew would credit this."""
+    db.records = [_rec(p, at=S_START - gap) for p in PARTS][::-1]
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "time-bracket" and "tolerance 0" in out["detail"] and all(p in out["detail"] for p in PARTS), out
+    sym = _mutant_src(('r["at"] < lo)', 'r["at"] < lo - ES_CLOCK_SKEW_S)'))
+    assert _call(sym)["state"] == "holds"                         # the symmetric skew would credit the first-pass records
+    assert _wrongly_credited("bracket-lower")
+
+
+@pytest.mark.parametrize("delta", [0.0, 0.001, 0.2])
+def test_f1_a_record_at_or_after_the_attempts_start_is_inside_the_lower_bound(db, delta):
+    db.records = [_rec(p, at=S_START + delta) for p in PARTS][::-1]
+    assert _run()["state"] == "holds"                             # equal passes (a deferred commit shares the timestamp); the real records land 0.001-0.2 s after started_at
+
+
+def test_f1_the_upper_bound_keeps_its_tolerance(db):
+    db.records = [_rec(p, at=T0 + 1060 + 1.5) for p in PARTS][::-1]
+    assert _run()["state"] == "holds"
+    db.records = [_rec(p, at=T0 + 1060 + 2.5) for p in PARTS][::-1]
+    assert _run()["clause"] == "time-bracket"
+
+
+# ---- F2: the register is read in SQL by run, chart, asset and type; the cap counts this run's records; a record with no run id is a disagreement ----
+
+def _many(n, formed_first=True):
+    """n records of run R for partition 0 (the OLDEST, lowest id, says formed true), plus the five final records."""
+    old = [_rec(PARTS[0], at=T0 + 1002 + i * 0.001, **(dict(formed=True, rows_written=1) if (formed_first and i == 0) else {})) for i in range(n)]
+    return (old + [_rec(p, at=T0 + 1030) for p in PARTS])[::-1]
+
+
+def test_f2_the_sql_filters_on_this_run_chart_asset_and_type_and_the_run_id_is_validated(db):
+    _run()
+    q = next(s for s in db.sql if "FROM orchestrator_event_register" in s)
+    assert f"asset_id = 'ga_vichara' AND chart_id = '{CH}'" in q and "event_type = 'writer.post_pass_evaluated'" in q
+    assert f"IN ('', lower(btrim('{R}')))" in q and "LIMIT 51" in q
+    db.attempts[-1]["run"] = "x'; drop table t; --"
+    out = _run()
+    assert out["state"] == "unverified" and out["clause"] == "register-read" and not any("drop table" in s for s in db.sql[-2:] if "orchestrator_event_register" in s)
+
+
+def test_f2_more_than_the_cap_of_records_for_the_run_is_unverified_never_a_silent_cut(db):
+    db.honor = True
+    db.records = _many(60)
+    out = _run()
+    assert out["state"] == "unverified" and out["clause"] == "record-cap" and "never silent" in out["detail"], out
+    assert _call(_mutant(ac._es_outcome, "record-cap"))["state"] == "holds"       # without the cap the oldest (formed-true) record falls off the LIMIT window and the survivors agree
+
+
+def test_f2_at_the_cap_exactly_the_run_is_still_read(db):
+    db.honor = True
+    db.records = _many(45, formed_first=False)                                  # 45 + 5 = 50 records: not over the cap
+    assert _run()["state"] == "holds"
+
+
+def test_f2_other_runs_rows_interleaved_in_the_register_cannot_push_this_runs_records_out_of_the_window(db):
+    db.honor = True
+    other = [_rec(PARTS[i % 5], run=R0, at=T0 - 400 + i) for i in range(80)]
+    mine = [_rec(p, at=T0 + 1030) for p in PARTS]
+    db.records = other[::-1] + mine[::-1]                          # NEWEST first: the other run's 80 rows come before this run's 5 (an unfiltered LIMIT 51 window holds only them)
+    assert _run()["state"] == "holds"
+    nofilter = _mutant_src(("AND lower(btrim(coalesce(run_id,''))) IN ('', lower(btrim('{run_id}')))", ""))
+    assert _call(nofilter)["state"] != "holds"                    # without the run filter this run's records are not even read
+
+
+@pytest.mark.parametrize("variant", ["upper", "padded", "padded_upper"])
+def test_f2_a_run_id_that_differs_only_in_case_or_whitespace_is_this_runs_record_not_another_runs(db, variant):
+    db.honor = True
+    rid = {"upper": R.upper(), "padded": f"  {R} ", "padded_upper": f" {R.upper()}\t"}[variant]
+    bad = _rec(PARTS[2], run=rid, formed=True, rows_written=1, at=T0 + 1020)
+    db.records = [bad] + db.records
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "not-formed", out
+    exact = _mutant_src(("if r_run.strip().lower() != run_id.lower():", "if r_run != run_id:"))
+    assert _call(exact)["state"] == "holds"                       # an exact comparison would skip the contradicting record as another run's
+
+
+def test_f2_a_record_with_no_run_id_is_a_disagreement_named_by_its_id(db):
+    db.honor = True
+    for blank in ("", "   "):
+        d = DB()
+        d.honor = True
+        d.records = [_rec(PARTS[1], run=blank, at=T0 + 1020)] + d.records                 # an agreeing record, but bound to no run
+        ac.psql = d.psql
+        out = _run()
+        assert out["state"] == "does_not_hold" and out["clause"] == "unbound-record" and "no run id" in out["detail"], out
+        assert _wrongly_credited("unbound-record")
+
+
+def test_f2_the_empty_run_id_rows_of_another_chart_or_asset_are_not_asked_for(db):
+    db.honor = True
+    _run()
+    q = next(s for s in db.sql if "FROM orchestrator_event_register" in s)
+    assert q.count("chart_id =") == 1 and q.count("asset_id =") == 1
+
+
+# ---- F3: the cause says "not marked stale", never "fresh"; states beyond lit/stale/error/absent ----
+
+@pytest.mark.parametrize("state", ["stale", "dormant", "building", "mature", "incomplete", "service_ok", ""])
+def test_f3_any_state_but_lit_is_refused_with_a_named_cause_that_never_claims_freshness(db, state):
+    db.throughput = [[state, str(T0 + 1060)]]
+    out = _run()
+    assert out["state"] == "unverified" and out["clause"] == "fresh-build", out
+    assert (state or "-") in out["detail"] and "NOT MARKED STALE" in out["detail"] and "not proof of freshness" in out["detail"] and "fresh " not in out["detail"].replace("freshness", "")
+    assert _wrongly_credited("fresh-build")
+
+
+def test_f3_one_row_not_lit_among_several_refuses(db):
+    db.throughput = [["lit", "1"], ["stale", "2"]]
+    assert _run()["clause"] == "fresh-build"
+
+
+def test_f3_the_applicability_proposal_says_not_marked_stale():
+    for crit in ("Vocab.alias", "Null.blank_rows", "Narr.checkable"):
+        assert "not marked stale" in ac.ES_APPLICABILITY_ADDITIONS[crit] and "proxy" in ac.ES_APPLICABILITY_ADDITIONS[crit]
+
+
+# ---- NULL occurred_at ----
+
+def test_a_record_with_no_occurred_at_is_refused_whether_latest_or_not(db):
+    db.records = [_rec(PARTS[0], at=None)] + db.records                          # highest id, NULL time (it would sort as the OLDEST: a non-latest record)
+    out = _run()
+    assert out["state"] == "does_not_hold" and out["clause"] == "record-shape" and "occurred_at" in out["detail"]
+    assert _wrongly_credited("record-shape")                                       # without the check a NULL-time record is silently ordered first and never time-checked
+    d = DB()
+    d.records = [_rec(p, at=None) for p in PARTS][::-1]                           # all NULL: the latest is NULL too
+    ac.psql = d.psql
+    assert _run()["clause"] == "record-shape"

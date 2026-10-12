@@ -12539,7 +12539,7 @@ ES_PAYLOAD_OPTIONAL = ("chart_vichara_rows_inserted",)
 # `persist_event` stores the WHOLE flat event dict as the payload column: beside the frozen keys a record may carry the event's own keys (type, chart_id, asset_id, run_id, rows_present ...), which are
 # cross-checked against the register's columns. SUPERSET RULE: the contract names the 8 frozen keys, but the register stores the whole flat event (persist_event is the ONLY writer channel of pr #3448), so extra keys
 # are tolerated; a MISSING or mistyped frozen key never is
-ES_CLOCK_SKEW_S = 2.0                          # a record's occurred_at (the register's DEFAULT NOW() = its transaction's start) may precede the attempt's started_at / follow its ended_at by this much
+ES_CLOCK_SKEW_S = 2.0                          # a record's occurred_at (the register's DEFAULT NOW() = its transaction's start) may FOLLOW the attempt's ended_at by this much; it may NOT precede started_at at all (one DB clock)
 ES_MAX_RECORDS = 50                            # evidence rows read for ONE run (5 per run is the design: more is a read that cannot be trusted)
 ES_MAX_ATTEMPTS = 200
 _ES_IDENT = re.compile(r"[a-z][a-z0-9_]{1,60}")
@@ -12551,8 +12551,8 @@ _ES_APPLIC_HEAD = ("; SS N-431/N-545 (opt-in): an asset that DECLARES `empty_sli
                    "emitter, the entries the slice alone holds, a cross-check table) has that slice read as EMPTY BY A VERIFIED CONDITIONAL, never as vacuous, ONLY when the census EARNS it by a detector over the writer's own "
                    "evidence records (one record per chart, ayanamsha partition and build in orchestrator_event_register, event writer.post_pass_evaluated, schema post_pass_evidence/1): ALL of: the measured chart's NEWEST "
                    "complete build run (no later attempt that errored, aborted, is queued, running or cascade-blocked, ordered by run creation with never-started attempts included) lies inside the Build.history window "
-                   "of the current writer code; at least one record for every partition of the declared partition constant for THAT run and chart (the latest, by time then id, is read; every record of the run for the partition must agree), each naming the declared post-pass and slice, with entries_evaluated >= 1, "
-                   "formed false and rows_written 0; the latest record of each partition inside the final attempt's start..end time bracket (a retry of the run resets its start; earlier records are checked for agreement only); the asset's own build record for the chart reads lit (a stale record means an upstream was rebuilt after the evidenced build); the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
+                   "of the current writer code; at least one record for every partition of the declared partition constant for THAT run and chart (the latest, by time then id, is read; every record of the run for the partition must agree); the register is read in SQL by run id, chart, asset and event type, more than 50 such records or a record of the chart and asset that carries no run id is never credited, each naming the declared post-pass and slice, with entries_evaluated >= 1, "
+                   "formed false and rows_written 0; the latest record of each partition inside the final attempt's start..end time bracket (no tolerance before the start, a small one after the end; a retry of the run resets its start; earlier records are checked for agreement only); the asset's own build record for the chart is not marked stale (state lit: a proxy for freshness, not a proof of it; a stale mark means an upstream was rebuilt after the evidenced build); the slice holds no row for the chart now; the cross-check table's rows of the chart all carry that run id; the "
                    "declaration names an emitter and a caller that exist in the writer's code, the caller reaching the emitter on every return path, and the event type and partition constant in the writer source; a register "
                    "the census role cannot read, an unreadable attempt log or an unknown window reads NO_DETECTOR for the claim and never earns it. ")
 ES_APPLICABILITY_ADDITIONS = {
@@ -12818,9 +12818,9 @@ def empty_slice_conditional_outcome(decl: dict, aid: str, chart_id: str, *, wind
     chart (a real, non-phantom chart) · declaration (the pointers hold in the code tree) · closure (emitter and caller are in the writer closure the window dates) · window (known) · attempts (readable) ·
     latest-build (a complete `build` attempt exists; R = the newest) · newer-attempt (nothing later errored, aborted, is queued, running, blocked) · in-window (R is inside the window) · register-read ·
     evidence-present (records exist for R, this chart, this asset) · record-shape (every record is the contract shape and agrees with its register columns) · partition-complete (exactly the declared
-    partitions) · latest-record (>= 1 record per partition: the LATEST by occurred_at then id is the credited one) · evaluated / not-formed (EVERY record of the run for the partition agrees: entries_evaluated >= 1, formed false, rows_written 0; a repeat is a retry of the same run, the register is append-only) · bracket-missing / bracket-lower / bracket-upper (the LATEST record of each partition lies inside the FINAL attempt's start..end with the +-2 s skew: the lower bound refuses a retried run whose final attempt emitted nothing; earlier records of the same run are checked for agreement and binding only, because a retry resets started_at) · slice-empty (the live slice holds no
+    partitions) · latest-record (>= 1 record per partition: the LATEST by occurred_at then id is the credited one) · evaluated / not-formed (EVERY record of the run for the partition agrees: entries_evaluated >= 1, formed false, rows_written 0; a repeat is a retry of the same run, the register is append-only) · bracket-missing / bracket-lower / bracket-upper (the LATEST record of each partition lies inside the FINAL attempt's start..end: the UPPER bound allows ES_CLOCK_SKEW_S, the LOWER bound none (one database clock), and refuses a retried run whose final attempt emitted nothing; earlier records of the same run are checked for agreement and binding only, because a retry resets started_at) · slice-empty (the live slice holds no
     row for the chart) · same-build (the cross-check table's rows of the chart all carry R's id, per partition; the optional per-partition row count agrees) · fresh-build (the asset's own asset_throughput record for
-    the chart is `lit`: a `stale` record means an upstream was rebuilt after R; no other census cell grades the asset's OWN staleness, Build.dep_liveness reads the staleness of its DEPENDENCIES).
+    the chart is not marked stale (`lit`; a proxy, not proof of freshness): a `stale` record means an upstream was rebuilt after R; no other census cell grades the asset's OWN staleness, Build.dep_liveness reads the staleness of its DEPENDENCIES).
 
     SUPERSET RULE: the contract names the 8 frozen keys of post_pass_evidence/1, but the register stores the whole flat event (`persist_event`, the only writer channel of pr #3448: the frozen keys plus type,
     chart_id, asset_id, run_id, rows_present), so a record is read as a SUBSET check: every frozen key present with its exact type and value, extra keys tolerated, the event's own keys cross-checked against
@@ -12907,19 +12907,28 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
     if any(len(x) != 2 for x in trows):
         return _es_res("unverified", "fresh-build", "NO_DETECTOR — the asset's build record answered with rows that do not parse: not read", no_detector=True, cause="read-failed")
     if not trows or any(x[0] != "lit" for x in trows):
-        return _es_res("unverified", "fresh-build", f"the asset's own build record for this chart is {sorted({x[0] or '-' for x in trows}) or 'absent'}, not lit: a `stale` record means an upstream was rebuilt after the build run {run_id[:8]} "
-                                                    "the evidence describes (the post-pass may now find otherwise), so the evidence is not taken for the data as it stands")
+        return _es_res("unverified", "fresh-build", f"the asset's own build record for this chart is {sorted({x[0] or '-' for x in trows}) or 'absent'}: the claim needs it NOT MARKED STALE by the engine (state lit; a proxy, not proof of freshness): a `stale` mark means an "
+                                                    f"upstream was rebuilt after the build run {run_id[:8]} the evidence describes (the post-pass may now find otherwise), so the evidence is not taken for the data as it stands")
     #</clause fresh-build>
+    if not _UUID.fullmatch(run_id):                               # the run id is interpolated into the register statement below: a value that is not a UUID is never interpolated
+        return _es_res("unverified", "register-read", f"the build run id {run_id!r} is not a UUID: the register is not read")
     #<clause register-read>
     try:
+        # the SQL filters on THIS run (case- and whitespace-insensitively), the chart, the asset and the event type, plus the records of the same chart/asset/type that carry NO run id (they cannot be shown to belong to
+        # another run); the cap is then a count of THIS run's records, never a window over everybody's rows
         raw = psql("SELECT id::text, coalesce(run_id,''), coalesce(chart_id,''), coalesce(asset_id,''), coalesce(extract(epoch FROM occurred_at)::text,''), coalesce(rows_present::text,''), payload::text "
-                   f"FROM {ES_SOURCE_TABLE} WHERE event_type = '{ES_EVENT_TYPE}' AND asset_id = '{aid}' AND chart_id = '{chart_id}' ORDER BY id DESC LIMIT {ES_MAX_RECORDS + 1}")
+                   f"FROM {ES_SOURCE_TABLE} WHERE event_type = '{ES_EVENT_TYPE}' AND asset_id = '{aid}' AND chart_id = '{chart_id}' "
+                   f"AND lower(btrim(coalesce(run_id,''))) IN ('', lower(btrim('{run_id}'))) ORDER BY id DESC LIMIT {ES_MAX_RECORDS + 1}")
     except Unknown as exc:
         return _es_read_failure(exc, f"the evidence register {ES_SOURCE_TABLE}", clause="register-read")
     if any(len(x) != 7 for x in raw):
         return _es_res("unverified", "register-read", "NO_DETECTOR — the evidence register answered with rows that do not parse into the 7 selected fields: not read", no_detector=True, cause="read-failed")
     #</clause register-read>
-    truncated = len(raw) > ES_MAX_RECORDS
+    #<clause record-cap>
+    if len(raw) > ES_MAX_RECORDS:
+        return _es_res("unverified", "record-cap", f"more than {ES_MAX_RECORDS} evidence records for run {run_id[:8]} of this chart (the read was cut at {ES_MAX_RECORDS + 1}): the oldest records, possibly a contradicting first pass, "
+                                                    "are not read, so the claim is not credited (a cut is never silent)")
+    #</clause record-cap>
     raw = raw[:ES_MAX_RECORDS]
     mine = []
     for row in raw:
@@ -12928,15 +12937,19 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
         if r_chart != chart_id or r_asset != aid:
             return _es_res("does_not_hold", "chart-binding", f"evidence record {rid} belongs to chart {r_chart[:8]!r} / asset {r_asset!r}, not to the measured chart {chart_id[:8]} / {aid}: a record of another chart is not evidence of this one")
         #</clause chart-binding>
+        #<clause unbound-record>
+        if not r_run.strip():
+            return _es_res("does_not_hold", "unbound-record", f"evidence record {rid} of this chart and asset has no run id: it cannot be shown to belong to another run, so it counts as a DISAGREEMENT (a record of no run is never ignored)")
+        #</clause unbound-record>
         #<clause run-binding>
-        if r_run != run_id:
+        if r_run.strip().lower() != run_id.lower():                        # the SAME run id up to case and surrounding whitespace is THIS run's record (it is read, never skipped as another run)
             continue
         #</clause run-binding>
         mine.append(row)
     #<clause evidence-present>
     if not mine:
         return _es_res("does_not_hold", "evidence-present", f"no {ES_EVENT_TYPE} record exists for chart {chart_id[:8]} in the newest complete build {run_id[:8]}"
-                                                            f"{' (the newest ' + str(ES_MAX_RECORDS) + ' records of the chart were read)' if truncated else ''}: the post-pass is not shown to have run "
+                                                            f": the post-pass is not shown to have run "
                                                             "(a slice that was merely not run is never credited)")
     #</clause evidence-present>
     recs: dict[str, list] = {}
@@ -12962,6 +12975,8 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
                 and _es_int(body.get("rows_written")) and body["rows_written"] >= 0 and _es_int(body.get("prior_rows_deleted")) and body["prior_rows_deleted"] >= 0
                 and ("chart_vichara_rows_inserted" not in body or (_es_int(body["chart_vichara_rows_inserted"]) and body["chart_vichara_rows_inserted"] >= 0))):
             return _es_res("does_not_hold", "record-shape", f"evidence record {rid} has a value of the wrong type")
+        if _epoch(r_at) == float("-inf"):
+            return _es_res("does_not_hold", "record-shape", f"evidence record {rid} has no readable occurred_at: it can be neither ordered nor placed in the run's bracket")
         if r_rows != "" and r_rows != str(body["rows_written"]):
             return _es_res("does_not_hold", "record-shape", f"evidence record {rid}: the register column rows_present {r_rows} differs from the record's rows_written {body['rows_written']}")
         #</clause record-shape>
@@ -12999,10 +13014,13 @@ def _es_outcome(decl, aid, chart_id, window, code_paths) -> dict:
     if lo is None or hi is None:
         return _es_res("does_not_hold", "time-bracket", f"the build attempt {run_id[:8]} has no start or no end time (started {lo}, ended {hi}): the evidence cannot be placed inside the run")
     #</clause bracket-missing>
+    # LOWER bound, tolerance 0 (strict): started_at, ended_at and occurred_at are all the database's own NOW() (a transaction start), so there is ONE clock and no skew to forgive. A retry resets started_at in a commit
+    # that precedes the writer, and persist_event inserts on the caller's cursor, so a record of the final attempt has occurred_at >= started_at (equal passes: a deferred commit shares the timestamp). A symmetric
+    # tolerance would credit first-pass records of a retry whose final attempt emitted nothing, when the retry follows within the skew (SS N-563's exact case). The UPPER bound keeps ES_CLOCK_SKEW_S.
     #<clause bracket-lower>
-    early = sorted(r["body"]["ayanamsha_id"] for r in checked if r["at"] < lo - ES_CLOCK_SKEW_S)
+    early = sorted(r["body"]["ayanamsha_id"] for r in checked if r["at"] < lo)      # tolerance 0, on purpose (below)
     if early:                                                                       # the LOWER bound: a retried run whose final attempt emitted nothing (an early return) leaves only first-pass records
-        return _es_res("does_not_hold", "time-bracket", f"the latest evidence record of partition(s) {early} of run {run_id[:8]} predates the final attempt's start (started {lo}, -{ES_CLOCK_SKEW_S:g}s): "
+        return _es_res("does_not_hold", "time-bracket", f"the latest evidence record of partition(s) {early} of run {run_id[:8]} predates the final attempt's start (started {lo}, tolerance 0: one database clock): "
                                                          "the final attempt did not emit it (an early return, a dry run or a partial retry): only a record of the final attempt describes its output")
     #</clause bracket-lower>
     #<clause bracket-upper>
