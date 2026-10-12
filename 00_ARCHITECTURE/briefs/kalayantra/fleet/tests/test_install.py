@@ -412,7 +412,7 @@ print(json.dumps(control.get("prs", [])))
 '''
 
 FAKE_GIT = r'''#!@PYBIN@
-import json, os, sys
+import json, os, shutil, sys
 argv = sys.argv[1:]
 control = json.load(open("@CONTROL@"))
 rule = control.get("git_fail")                     # {"match": text in the joined arguments, "from_call": n, "rc": code}
@@ -421,6 +421,8 @@ if rule and rule["match"] in " ".join(argv):
     n = int(open(counter).read()) + 1 if os.path.exists(counter) else 1
     open(counter, "w").write(str(n))
     if n >= rule.get("from_call", 1):
+        if rule.get("remove"):                     # something the rollback will need is gone when the call fails
+            shutil.rmtree(rule["remove"], ignore_errors=True)
         sys.stderr.write("fatal: fake git failure\n")
         sys.exit(rule.get("rc", 128))
 os.execv("/usr/bin/git", ["/usr/bin/git"] + argv)
@@ -752,7 +754,7 @@ class World:
         return json.loads((self.run / "actions" / (action_id + ".json")).read_text())
 
     def old_installation(self):
-        """A previous installation's trees and receipt, so a test can prove they come back."""
+        """A previous installation's trees and receipt, so a test can prove the trees come back and the receipt does not."""
         (self.root / "fleet_live").mkdir(parents=True)
         (self.root / "fleet_live" / "old.txt").write_text("old fleet\n")
         (self.root / "bin").mkdir()
@@ -766,8 +768,8 @@ class World:
         assert (root / "fleet_live" / "old.txt").read_text() == "old fleet\n" and not (root / "fleet_live" / "kyctl.sh").exists()
         assert (root / "bin" / "ky").read_text() == "old ky\n" and not (root / "bin" / "kybrief").exists()
         assert (self.run / "VERSIONS.bootstrap.json").read_text() == "old manifest\n"
-        assert (self.run / "INSTALL_RECEIPT.json").read_text() == '{"old": true}\n', "the previous receipt is back in place"
-        assert not (self.run / "INSTALL_RECEIPT.json.superseded").exists()
+        assert not (self.run / "INSTALL_RECEIPT.json").exists(), "exit 3 leaves no receipt, the previous one included"
+        assert (self.run / "INSTALL_RECEIPT.json.superseded").read_text() == '{"old": true}\n', "it is kept, moved aside"
         for name in ("fleet_live.new", "fleet_live.old", "tracker_live", "tracker_live.new", "tracker_live.old"):
             assert not (root / name).exists(), name
 
@@ -1652,12 +1654,12 @@ def test_launchctl_bootstrap_failure_means_no_receipt(w):
 
 
 # ================================================================================ the legacy step
-def claim(w, worker, item, state="acquired", branch="kalayantra/x", head="a" * 40, log=True):
+def claim(w, worker, item, state="acquired", branch="kalayantra/x", head="a" * 40, log=True, claim_id=None):
     """A claim as claims.py leaves it: the event in the log and the same event as the worker's record."""
     d = w.run / "claims"
     d.mkdir(parents=True, exist_ok=True)
     ev = {"kind": "claim", "actor": "stream-K:" + worker, "item": item, "state": state, "worker_id": worker,
-          "claim_id": "c-" + worker, "lease_s": 10800, "expires_at": "2026-10-12T10:53:12+00:00",
+          "claim_id": claim_id or "c-" + worker, "lease_s": 10800, "expires_at": "2026-10-12T10:53:12+00:00",
           "ts": "2026-10-12T07:53:12+00:00", "branch": branch, "head": head, "step": None}
     if log:
         w.append_event(ev)
@@ -1950,3 +1952,154 @@ def test_install_writes_nothing_outside_the_scratch_world(w):
     ok(w.install())
     assert tree_state(w.home) == before_home
     assert not Path(REAL_ROOT + "/fleet_live.new").exists()
+
+
+# ================================================================================ review round 2
+# ---- R2-B-01: exit 3 leaves no receipt — not this run's, and not an earlier run's that this run did not re-earn
+RECEIPT = "INSTALL_RECEIPT.json"
+
+
+def install_once(w):
+    ok(w.install())
+    return (w.run / RECEIPT).read_bytes()
+
+
+def assert_failed_without_a_receipt(w, r, step, earlier):
+    refused(r, 3, "FAILED step %d" % step)
+    assert not (w.run / RECEIPT).exists(), "exit 3 left a receipt this run did not earn:\n" + r.stderr
+    assert "there is no receipt" in r.stderr
+    assert (w.run / (RECEIPT + ".superseded")).read_bytes() == earlier, "the earlier receipt is kept, moved aside"
+
+
+def test_a_second_run_that_cannot_publish_a_staged_action_leaves_no_receipt(w):
+    earlier = install_once(w)
+    log = w.run / "EVENTS.jsonl"
+    lines = log.read_text().splitlines(keepends=True)
+    assert json.loads(lines[-1])["item"] == "KV3-SCHEMA-1"
+    log.write_text("".join(lines[:-1]))                # the block is unpublished again, and ky will refuse it
+    w.control(ky_fail_on="block")
+    assert_failed_without_a_receipt(w, w.install(), 6, earlier)
+    assert len(w.calls("preflight")) == 1 and len(w.calls("kyversion")) == 1, "the failed run reached neither"
+
+
+@pytest.mark.parametrize("step,control", [(7, {"gh_rc": 1}), (8, {"plist_hook": "KY_LOOP_TEST_CONTEXT"}),
+                                          (8, {"plist_hook": "KY_LOOP_SLEEP_SCALE"}), (8, {"kyctl_rc": 1}),
+                                          (10, {"preflight_rc": 1})])
+def test_a_second_run_that_fails_after_changing_nothing_leaves_no_receipt(w, step, control):
+    earlier = install_once(w)
+    w.control(**control)
+    assert_failed_without_a_receipt(w, w.install(), step, earlier)
+
+
+def test_a_second_run_whose_qualification_is_not_pass_leaves_no_receipt(w):
+    earlier = install_once(w)
+    for p in (w.run / "QUALIFICATIONS").iterdir():
+        p.unlink()
+    w.control(qualify_result="FAIL")
+    assert_failed_without_a_receipt(w, w.install(), 9, earlier)
+
+
+def test_a_second_run_that_restarts_a_dead_tracker_and_then_fails_leaves_no_receipt(w):
+    earlier = install_once(w)
+    dead = json.loads(earlier)["tracker_revision"]["pid"]
+    w.stop_tracker()
+    w.control(preflight_rc=1)
+    r = w.install()
+    assert_failed_without_a_receipt(w, r, 10, earlier)
+    assert w.tracker_pid() not in (None, dead), "the rerun restarted the tracker: the earlier receipt names a dead process"
+    assert "was restarted" in r.stderr
+
+
+def test_a_second_run_that_sees_a_legacy_supervisor_after_the_stop_files_leaves_no_receipt(w):
+    earlier = install_once(w)                          # listings 1 and 2; the second run's are 3 (verification) and 4 (step 0)
+    w.control(ps_fail_from_listing=4)
+    assert_failed_without_a_receipt(w, w.install(), 0, earlier)
+
+
+def test_a_second_run_that_fails_at_the_campaign_step_leaves_no_receipt(w):
+    earlier = install_once(w)
+    w.control(git_fail={"match": "worktree list", "from_call": 2, "rc": 128})
+    assert_failed_without_a_receipt(w, w.install(env={"KY_GIT": str(w.tools / "git")}), 5, earlier)
+
+
+def test_a_second_run_under_an_action_that_fails_leaves_no_receipt_and_says_so_in_the_record(w):
+    w.begin_action()
+    ok(w.install(action="INSTALL-1"))
+    earlier = (w.run / RECEIPT).read_bytes()
+    w.begin_action("INSTALL-2")
+    w.control(preflight_rc=1)
+    assert_failed_without_a_receipt(w, w.install(action="INSTALL-2"), 10, earlier)
+    rec = w.action_record("INSTALL-2")
+    assert rec["state"] == "FAILED" and rec["result"]["receipt_present"] is False
+
+
+def test_a_run_that_succeeds_after_a_failed_one_writes_its_own_receipt(w):
+    earlier = install_once(w)
+    w.control(preflight_rc=1)
+    assert_failed_without_a_receipt(w, w.install(), 10, earlier)
+    w.control(preflight_rc=0)
+    ok(w.install())
+    assert (w.run / RECEIPT).is_file() and not (w.run / (RECEIPT + ".superseded")).exists()
+    assert w.calls("kyversion")[-1]["receipt_present"] is True
+
+
+# ---- the sweep: a sentence, a state or a record is said only when this run observed it
+def test_a_restart_that_did_not_complete_is_not_reported_as_a_restart(w):
+    w.control(launchctl_bootstrap_rc=5)
+    r = refused(w.install(), 3, "FAILED step 6")
+    assert w.tracker_pid() is None
+    assert "was restarted" not in r.stderr, r.stderr
+    assert "restart was begun and did not complete" in r.stderr and "there is no receipt" in r.stderr
+
+
+def test_a_rollback_that_could_not_restore_a_tree_is_not_reported_as_restored(w):
+    w.old_installation()
+    w.begin_action()
+    w.control(git_fail={"match": "worktree list", "from_call": 2, "rc": 128, "remove": str(w.root / "fleet_live.old")})
+    r = refused(w.install(action="INSTALL-1", env={"KY_GIT": str(w.tools / "git")}), 3, "FAILED step 5")
+    assert "trees NOT restored" in r.stderr and "fleet_live.old" in r.stderr, r.stderr
+    assert "install.sh: trees restored" not in r.stderr
+    assert not (w.root / "fleet_live" / "old.txt").exists(), "the old fleet tree could not come back"
+    assert w.action_record()["result"]["trees_restored"] is False
+    assert not (w.run / RECEIPT).exists()
+
+
+def test_a_claim_record_that_reads_released_while_the_event_log_shows_it_active_is_unresolved(w):
+    claim(w, "k2", "K1-1")                             # the log (the tracker's authority): acquired
+    record = w.run / "claims" / "k2.json"
+    record.write_text(json.dumps(dict(json.loads(record.read_text()), state="released"), indent=2) + "\n")
+    claim(w, "k3", "K1-2", state="expired", log=False)     # a record no event backs at all
+    ok(w.install())
+    legacy = w.receipt()["legacy"]
+    by = {c["worker_id"]: c for c in legacy["claims"]}
+    assert by["k2"]["action"] == "unresolved" and by["k3"]["action"] == "unresolved"
+    assert "event log" in by["k2"]["reason"] and "'acquired'" in by["k2"]["reason"]
+    assert sorted(u["worker_id"] for u in legacy["unresolved"] if u["kind"] == "claim") == ["k2", "k3"]
+    assert [c for c in w.calls("ky") if c["argv"] == ["release"]] == []
+
+
+def test_an_active_claim_in_the_event_log_that_no_record_shows_is_unresolved(w):
+    claim(w, "k1", "K8-R25", claim_id="c-first")       # claims._record keeps ONE record per worker: the second claim
+    claim(w, "k1", "K8-R26", claim_id="c-second")      # overwrites it, and the first stays active in the log only
+    ok(w.install())
+    legacy = w.receipt()["legacy"]
+    assert [(c["worker_id"], c["claim_id"], c["action"]) for c in legacy["claims"]] == [("k1", "c-second", "released")]
+    assert [(u["kind"], u["item"], u["claim_id"], u["worker_id"]) for u in legacy["unresolved"]] == \
+        [("claim_event", "K8-R25", "c-first", "k1")]
+    assert "no record" in legacy["unresolved"][0]["reason"]
+    assert ok(w.install()) and w.receipt()["legacy"]["unresolved"][0]["claim_id"] == "c-first", "still owed on a rerun"
+
+
+def test_a_pr_registration_its_item_has_since_replaced_adopts_nothing(w):
+    old, new = "b" * 40, "c" * 40
+    for number, head in ((3300, old), (3305, new)):    # completion.py reads the item's LATEST review event, as here
+        w.append_event({"kind": "item", "actor": "stream-K:k1", "item": "K1-1", "state": "review",
+                        "detail": "PR #%d @ %s" % (number, head), "ts": "2026-10-12T00:00:00+00:00"})
+    w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": old, "url": "u"},
+                   {"number": 3305, "headRefName": "kalayantra/k1-1b", "headRefOid": new, "url": "u"}])
+    ok(w.install())
+    legacy = w.receipt()["legacy"]
+    assert [a["number"] for a in legacy["prs"]["adopted"]] == [3305]
+    assert not (w.run / "jobs" / "legacy-3300").exists()
+    assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
+    assert "latest review" in legacy["unresolved"][0]["reason"]

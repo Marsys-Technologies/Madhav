@@ -1,6 +1,6 @@
 #!/bin/bash
 # install.sh — B-2: install the independently reviewed KĀLA-YANTRA v3 bootstrap bundle (plan v2.7 §14 B-2, D-9; rulings
-# P6, P9, P29, P39, P40). version 1.1, status DRAFT — pending the independent review of KV3-B-INSTALL.
+# P6, P9, P29, P39, P40). version 1.2, status DRAFT — pending the independent review of KV3-B-INSTALL.
 # changelog: 1.0 (2026-10-12) first version.
 #            1.1 (2026-10-12) review round 1. B-01: nothing ends as exit 1 once writing has begun — a refusal inside a
 #                step is a failure of that step (exit 3, rollback, the action FAILED). B-02: --action must be INTENDED.
@@ -11,6 +11,14 @@
 #                tracker in the shape server.py emits; an action that cannot be completed leaves no receipt; KY_SCRATCH is
 #                never defaulted; the account's own LaunchAgents and any value inside the real root are E_REAL;
 #                kyversion.sh's exit code is its whole interface; kyloop.py runs under python -I.
+#            1.2 (2026-10-12) review round 2. R2-B-01: exit 3 leaves NO receipt — an earlier run's receipt is moved aside
+#                (`.superseded`) by every failure after writing began and is never put back, whichever step failed and
+#                whether or not a byte changed; the stderr sentence "there is no receipt" is written only when the path
+#                was looked at and is empty. Sweep: "the tracker was restarted" is said only of a restart this run
+#                confirmed; "trees restored" only when every undo ran (a kept `.old` tree that is gone is a restore
+#                problem, not a silent success); a claim record that reads released/expired counts as ended only when
+#                the event log shows that claim ended; an active claim in the event log that no record shows is
+#                unresolved; a PR is adopted only on its item's LATEST review event (as completion.py reads it).
 #
 #   bash install.sh --manifest M --source S [--root ROOT] [--action ID]        all paths absolute
 #
@@ -30,6 +38,9 @@
 #      whatever stops a step — a refusal included — is exit 3 `FAILED step <n>`. The STOP files and a campaign checkout
 #      created at step 5 are never removed by a failure (the second is named on stderr); an installation whose action
 #      record cannot be completed has its receipt renamed `.refused`.
+#      Exit 3 never leaves a file at R/INSTALL_RECEIPT.json: a receipt an EARLIER run wrote is renamed
+#      `INSTALL_RECEIPT.json.superseded` (kept for the operator, granting nothing) and is not put back by a rollback —
+#      every receipt key is "measured in this run", and this run failed. Only a later run that exits 0 writes a receipt.
 # stdout on exit 0: one JSON object {installed, receipt, receipt_sha256, changed, model_actions[{id, status}]}.
 # stderr: `install.sh: REFUSED <code>: …` (exit 1) or `install.sh: FAILED step <n>: …` (exit 3).
 #
@@ -77,17 +88,22 @@
 #  * Legacy: a claim file of one of the 13 legacy lanes whose state is acquired/renewed is released with
 #    `KY_LANE=<lane> ky release` after the process check (e) and counts as released only when the file then says `released`
 #    AND the event log (the tracker's authority, claims.py) holds that claim's `released` event; a claim of any other
-#    worker (a v3 job) is never released, and a state claims.py does not write is not "ended". An open `kalayantra/*` PR
+#    worker (a v3 job) is never released, and a state claims.py does not write is not "ended". A record that reads
+#    released/expired is "already ended" only when the latest event of that claim in the log is released/expired too.
+#    claims.py keeps ONE record per worker, so the log is also read for claims no record shows: an item whose latest
+#    claim event is active and is not a listed record's claim goes to legacy.unresolved[] (kind `claim_event`).
+#    An open `kalayantra/*` PR
 #    is adopted (one R/jobs/legacy-<n>/state.json, never overwritten) only when the tracker's latest `PR #<n> @ <head>`
-#    review registration names the PR's current head, every line of the event log could be read, and a state file already
+#    review registration names the PR's current head and is its item's latest review event, every line of the
+#    event log could be read, and a state file already
 #    at that path is this PR's own adoption record; everything else is listed in legacy.unresolved[]. A PR listing that
 #    cannot be obtained fails the installation. The `legacy-<n>` state file is not the dispatcher's job-state schema (not
 #    in this base): its
 #    schema is `ky.legacy_job_state/1` and every unknown field is null.
-#  * After a failure BEFORE the tracker restart the trees (F, tracker_live, bin, VERSIONS.bootstrap.json and a superseded
-#    receipt) are restored; once the tracker has been restarted on the new trees nothing is undone (the loaded revision would
-#    no longer match the files): the superseded receipt stays `INSTALL_RECEIPT.json.superseded`, there is no receipt, and a
-#    rerun resumes (published actions are skipped).
+#  * After a failure BEFORE the tracker restart the trees (F, tracker_live, bin, VERSIONS.bootstrap.json) are restored — the
+#    receipt is not; once the tracker restart has begun nothing is undone (the loaded revision would no longer match the
+#    files) and a rerun resumes (published actions are skipped). stderr says which of the two happened, whether the restart
+#    was confirmed, and — after looking — whether a receipt is at the active path.
 set -u
 
 PY=/opt/homebrew/bin/python3
@@ -424,6 +440,7 @@ def decide_environment(opts, env):
     ctx.versions_path = os.path.join(ctx.run_dir, "VERSIONS.bootstrap.json")
     ctx.undo = []
     ctx.committed = False
+    ctx.restart_confirmed = False
     ctx.superseded = False
     ctx.changed = {}
     ctx.lock_fd = None
@@ -1037,11 +1054,11 @@ def tree_digest(entries):
 
 
 def supersede_receipt(ctx):
-    if ctx.superseded or not os.path.lexists(ctx.receipt_path):
+    """Move an earlier run's receipt aside. No rollback puts it back: only a run that exits 0 leaves a receipt."""
+    if not os.path.lexists(ctx.receipt_path):
         return
     os.replace(ctx.receipt_path, ctx.receipt_path + ".superseded")
     ctx.superseded = True
-    ctx.undo.append(lambda: os.replace(ctx.receipt_path + ".superseded", ctx.receipt_path))
 
 
 def swap_tree(ctx, step, label, final, entries):
@@ -1081,9 +1098,11 @@ def swap_tree(ctx, step, label, final, entries):
     fsync_dir(os.path.dirname(final))
 
     def undo():
+        if had and not os.path.lexists(old):          # nothing to put back: say so, never report this tree restored
+            raise OSError("the kept tree %s is gone; %s still holds the new files" % (os.path.basename(old), final))
         if os.path.lexists(final):
             shutil.rmtree(final)
-        if had and os.path.lexists(old):
+        if had:
             os.rename(old, final)
     ctx.undo.append(undo)
     ctx.changed[label] = True
@@ -1358,6 +1377,7 @@ def step_tracker(ctx):
         if not answered_by(proc, health):
             raise Failed(6, "the health answer's server_started_at %s is before the start of the tracker process %s (%s): "
                             "it is not that process's answer" % (health["server_started_at"], proc["pid"], proc["process_start"]))
+        ctx.restart_confirmed = True            # a process started after the swap answered for this root
     ctx.changed["tracker_restarted"] = restarted
     pkg = tracker_entries(ctx)
     ctx.tracker_info = {"package_sha256": tree_digest(pkg), "package_dir": os.path.join(ctx.tracker_live, "pravaha_tracker"),
@@ -1442,6 +1462,8 @@ def step_publish(ctx):
 def step_legacy(ctx):
     claims_dir = os.path.join(ctx.run_dir, "claims")
     claims, unresolved, by_item = [], [], {}
+    events_path = os.path.join(ctx.run_dir, "EVENTS.jsonl")
+    logged_before, _ = read_events(events_path)
     names = sorted(n for n in os.listdir(claims_dir) if n.endswith(".json") and ".tmp." not in n) if os.path.isdir(claims_dir) else []
     for name in names:
         p = os.path.join(claims_dir, name)
@@ -1461,7 +1483,12 @@ def step_legacy(ctx):
                    state_before=state, state_after=state)
         by_item.setdefault(doc.get("item"), []).append(row)
         if state in CLAIM_ENDED:
-            row["action"] = "already_ended"
+            logged = claim_log_state(logged_before, doc)
+            if logged in CLAIM_ENDED:
+                row["action"] = "already_ended"
+            else:                                    # claims.py reads the log, never the record
+                row.update(action="unresolved", reason="the claim record reads %r but the event log, the tracker's authority, "
+                                                       "shows that claim as %r: whether it has ended is unknown" % (state, logged))
         elif state not in CLAIM_ACTIVE:
             row.update(action="unresolved", reason="the claim record carries the state %r, which the tracker does not write: "
                                                    "whether the claim has ended is unknown" % (state,))
@@ -1489,12 +1516,24 @@ def step_legacy(ctx):
             unresolved.append({"kind": "claim", "worker_id": stem, "path": p, "reason": row["reason"]})
         claims.append(row)
     prs = list_prs(ctx)
-    events, bad = read_events(os.path.join(ctx.run_dir, "EVENTS.jsonl"))
-    registered = {}
+    events, bad = read_events(events_path)           # read again: this run's releases are in it now
+    shown = {(c.get("worker_id"), c.get("claim_id")) for c in claims}
+    latest_claim, registered, latest_review = {}, {}, {}
     for n, ev, raw in events:
-        if ev.get("kind") == "item" and ev.get("state") == "review" and isinstance(ev.get("detail"), str):
-            for m in PR_REGISTRATION.finditer(ev["detail"]):
-                registered[int(m.group(1))] = {"head": m.group(2), "item": ev.get("item"), "line": n, "sha256": sha_bytes(raw)}
+        if ev.get("kind") == "claim" and isinstance(ev.get("item"), str):
+            latest_claim[ev["item"]] = (n, ev)
+        if ev.get("kind") == "item" and ev.get("state") == "review" and isinstance(ev.get("item"), str):
+            latest_review[ev["item"]] = n            # completion.py: the item's latest review event is its registration
+            if isinstance(ev.get("detail"), str):
+                for m in PR_REGISTRATION.finditer(ev["detail"]):
+                    registered[int(m.group(1))] = {"head": m.group(2), "item": ev["item"], "line": n, "sha256": sha_bytes(raw)}
+    for item, (n, ev) in sorted(latest_claim.items(), key=lambda kv: kv[1][0]):
+        if ev.get("state") in CLAIM_ACTIVE and (ev.get("worker_id"), ev.get("claim_id")) not in shown:
+            unresolved.append({"kind": "claim_event", "worker_id": ev.get("worker_id"), "item": item, "claim_id": ev.get("claim_id"),
+                               "state": ev.get("state"), "expires_at": ev.get("expires_at"), "events_line": n,
+                               "reason": "the event log's latest claim event of this item is active and no record under %s "
+                                         "shows that claim (the tracker keeps one record per worker): it was not released"
+                                         % claims_dir})
     adopted = []
     for pr in prs:
         reg = registered.get(pr["number"])
@@ -1505,6 +1544,9 @@ def step_legacy(ctx):
             why = "the tracker has no review registration for this PR"
         elif not pr["head"].startswith(reg["head"]):
             why = "the PR head moved since the tracker registered %s" % reg["head"]
+        elif latest_review.get(reg["item"]) != reg["line"]:
+            why = "the item %s has a later review event than this registration: its latest review registration is not this PR's" \
+                  % reg["item"]
         else:
             row, why = adopt_pr(ctx, pr, reg, by_item.get(reg["item"], []))
             if row is not None:
@@ -1523,6 +1565,15 @@ def step_legacy(ctx):
         unresolved.append({"kind": "checkpoints", "count": len(cps),
                            "reason": "a legacy cycle checkpoint maps to no job: no adoption rule applies, they are listed with hashes"})
     ctx.legacy = {"claims": claims, "prs": {"listed": prs, "adopted": adopted}, "checkpoints": checkpoints, "unresolved": unresolved}
+
+
+def claim_log_state(events, claim):
+    """The state the latest event of this claim (its claim_id, item and worker) carries in the event log, else None."""
+    for _n, ev, _raw in reversed(events):
+        if ev.get("kind") == "claim" and ev.get("claim_id") == claim.get("claim_id") and ev.get("item") == claim.get("item") \
+                and ev.get("worker_id") == claim.get("worker_id"):
+            return ev.get("state")
+    return None
 
 
 def release_event(ctx, claim):
@@ -1801,7 +1852,7 @@ def rollback(ctx):
         try:
             undo()
         except Exception as e:                    # noqa: BLE001 — keep restoring what can be restored
-            problems.append(flat(e, 120))
+            problems.append(flat(e, 400))
     ctx.undo = []
     for d in (ctx.fleet_live, ctx.tracker_live):
         if os.path.lexists(d + ".new"):
@@ -1835,23 +1886,50 @@ def write_phase(ctx):
     return result
 
 
+def drop_receipt(ctx):
+    """Exit 3 leaves no receipt. → None when the active path was looked at and holds nothing, else why something is there."""
+    why = None
+    try:
+        supersede_receipt(ctx)
+    except OSError as e:
+        why = type(e).__name__
+    if os.path.lexists(ctx.receipt_path):
+        return why or "it is still there"
+    return None
+
+
 def report_failure(ctx, step, message):
-    """Exit 3: restore what may be restored, say what was left, fail the action. Never a receipt."""
-    restored = []
+    """Exit 3: restore what may be restored, say what was observed, fail the action. Never a receipt — not this run's and
+    not an earlier run's: the receipt permits activation, its keys are "measured in this run", and this run failed."""
+    problems = []
     if not ctx.committed:
-        restored = rollback(ctx)
+        problems = rollback(ctx)
+    left = drop_receipt(ctx)                      # after the rollback, for every failure, whatever changed or did not
     sys.stderr.write("install.sh: FAILED step %d: %s\n" % (step, flat(message, 600)))
-    if ctx.committed:
-        sys.stderr.write("install.sh: the tracker was restarted on the new trees: nothing was undone, there is no receipt; "
+    if ctx.committed and ctx.restart_confirmed:
+        sys.stderr.write("install.sh: the tracker was restarted on the new trees: nothing was undone; "
                          "a rerun resumes (published actions are skipped)\n")
+    elif ctx.committed:
+        sys.stderr.write("install.sh: the tracker restart was begun and did not complete: whether a tracker is running, and on "
+                         "which trees, is unknown; nothing was undone; a rerun resumes (published actions are skipped)\n")
     else:
-        sys.stderr.write("install.sh: trees restored%s\n" % ("; restore problems: %s" % "; ".join(restored) if restored else ""))
+        if problems:
+            sys.stderr.write("install.sh: trees NOT restored: %s\n" % "; ".join(problems))
+        else:
+            sys.stderr.write("install.sh: trees restored\n")
         if ctx.campaign_created:
             sys.stderr.write("install.sh: the campaign checkout created at step 5 was left in place: %s (branch %s)\n"
                              % (ctx.campaign, CAMPAIGN_BRANCH))
+    if left:
+        sys.stderr.write("install.sh: A RECEIPT COULD NOT BE MOVED ASIDE AND IS STILL AT %s (%s): it grants nothing\n"
+                         % (ctx.receipt_path, left))
+    else:
+        sys.stderr.write("install.sh: there is no receipt%s\n" % (
+            " (the one found there was moved aside: %s.superseded)" % ctx.receipt_path if ctx.superseded else ""))
     if ctx.action:
         ok, why = action_finish(ctx, "fail", {"step": step, "error": flat(message, 400), "exit": 3,
-                                              "trees_restored": not ctx.committed and not restored,
+                                              "trees_restored": not ctx.committed and not problems,
+                                              "receipt_present": left is not None,
                                               "campaign_checkout_left": ctx.campaign if ctx.campaign_created else None})
         if not ok:
             sys.stderr.write("install.sh: the action record could not be marked FAILED: %s\n" % why)
