@@ -1307,7 +1307,7 @@ def test_the_ga_vichara_declaration_is_refused_without_its_emitter_and_accepted_
         ac.empty_slice_static_problem = orig
 
 
-# a faithful copy of the evidence block of #3448 (head 6825ea6bc): the parity test below runs against it where the real writer is not in the tree, and against the real file where it is
+# a faithful copy of the evidence block of #3448 (head 0bddc686d: persist_event only, APPEND-ONLY register, a repeat appends another record): the parity test below runs against it where the real writer is not in the tree, and against the real file where it is
 _PR3448_EVIDENCE_BLOCK = '''
 DARIDRA = "daridra"
 POST_PASS_EVENT_TYPE = "writer.post_pass_evaluated"
@@ -1334,12 +1334,15 @@ def post_pass_evidence_payload(ayanamsha_id, *, entries_evaluated, formed, rows_
 
 
 def _write_evidence_event(conn, event, payload):
-    ok = persist_event(conn.cursor(), event)
+    with conn.cursor() as cur:
+        ok = persist_event(cur, event)
     if ok is not True:
         raise RuntimeError("the post-pass evidence record could NOT be written")
 
 
 def record_post_pass_evidence(conn, chart_id, build_id, ayanamsha_id, *, entries_evaluated, formed, rows_written, prior_rows_deleted):
+    if not build_id or not str(build_id).strip():
+        raise ValueError("evidence needs a build id")
     payload = post_pass_evidence_payload(ayanamsha_id, entries_evaluated=entries_evaluated, formed=formed, rows_written=rows_written, prior_rows_deleted=prior_rows_deleted)
     if formed != (rows_written > 0) or (not formed and rows_written != 0):
         raise ValueError("evidence is inconsistent")
@@ -1363,9 +1366,16 @@ def test_the_fixture_is_exactly_what_the_writer_emits_on_either_tree():
     exec("from __future__ import annotations\nfrom typing import Any\n", ns)
     exec(compile(mod, "writer_evidence_block", "exec"), ns)
 
+    class _Cur:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, *a):
+            return False
+
     class _C:
         def cursor(self):
-            return None
+            return _Cur()
     ns["record_post_pass_evidence"](_C(), CH, R, "raman", entries_evaluated=1, formed=False, rows_written=0, prior_rows_deleted=0)
     assert seen[0] == _rec("raman")["payload"]
     ev = ac.ROOT / "platform/python-sidecar/pipeline/orchestrator/events.py"
