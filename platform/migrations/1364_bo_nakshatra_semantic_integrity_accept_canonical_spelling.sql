@@ -34,11 +34,11 @@
 -- integrity_check_sql for this asset), 450/660/905/908 (registry rows, output-digest spec, natural-key partition) and 1218/1296 (writer
 -- timeouts, comment-only mentions of integrity_check_sql); 591 only describes the column in a comment.
 --
--- GUARD AND WHAT HAPPENS WHEN IT DOES NOT MATCH (precedents 1326, 1340, 1324, 1363). The UPDATE is guarded by md5(integrity_check_sql) of the OLD
--- text. If the live text is anything else the migration is a NOTICE-and-NO-OP that does not fail the deploy (the NOTICE names the md5 found); the
--- check keeps whatever text it has until reconciled by hand. If the live text already equals the NEW text it is an idempotent no-op (NOTICE,
--- nothing rewritten, trigger not fired). The ONE case that RAISES: the UPDATE ran on the OLD text and the row does not carry the NEW md5
--- afterwards (the update silently did not take; never trust a silent no-op, CLAUDE.md N.4 / N.8).
+-- GUARD AND WHAT HAPPENS WHEN IT DOES NOT MATCH (precedents 1326, 1340, 1324, 1363; tightened by SS N-583). The UPDATE is guarded by
+-- md5(integrity_check_sql) of the OLD text. Three states: (1) the live text is migration 669's -> the UPDATE runs; (2) it already equals the NEW
+-- text -> an idempotent no-op (NOTICE, nothing rewritten, trigger not fired); (3) it is ANYTHING ELSE -> the migration RAISES and aborts the deploy,
+-- naming the md5 it found together with the two it expected (a silent no-op here would leave the old vocabulary live and reading FALSE after the
+-- rebuild). The other RAISE: the UPDATE ran on the OLD text and the row does not carry the NEW md5 afterwards (never trust a silent no-op, CLAUDE.md N.4 / N.8).
 --
 -- SERVING EFFECT AT APPLY (binding). UPDATE ... SET integrity_check_sql fires the live trigger nirmana_registry_receipt_invalidation (migration
 -- 596): AFTER UPDATE OF depends_on, natural_key_partition, health_probe, integrity_check_sql, target_floor, asset_kind, asset_type, scope,
@@ -147,8 +147,7 @@ BEGIN
     RAISE NOTICE '1364: bo_nakshatra_semantic integrity_check_sql already accepts both nakshatra spellings; nothing to do';
     RETURN;
   ELSIF v_md5 IS DISTINCT FROM c_old_md5 THEN
-    RAISE NOTICE '1364: bo_nakshatra_semantic integrity_check_sql is not the text this migration was written against (md5 %); NO-OP, integrity_check_sql left as is', v_md5;
-    RETURN;
+    RAISE EXCEPTION '1364: bo_nakshatra_semantic integrity_check_sql is neither migration 669''s text (md5 %) nor this migration''s (md5 %): found md5 %. Refusing to leave an unknown check live (SS N-583: a silent no-op would keep the old vocabulary and read FALSE after the rebuild); reconcile by hand, then redeploy', c_old_md5, c_new_md5, v_md5;
   END IF;
 
   UPDATE asset_registry
