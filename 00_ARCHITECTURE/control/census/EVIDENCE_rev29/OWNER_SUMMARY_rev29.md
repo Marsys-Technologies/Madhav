@@ -33,6 +33,10 @@ Written for: the owner (non-technical). This is the second measurement. The firs
 | bg_sky_calendar | A real measured disagreement: 10 of 31,104 eclipse rows are over the declared 180-second tolerance. The tolerance can only be changed with the measured deviations in hand. |
 | ga_vichara | **An owner decision.** The native chart has no row in the slice it is checked on (the post-pass wrote none), and one earlier error sits in its build-history window. This round it stays partial and no exception was added. |
 
+## Also in the residual (small, named)
+- **bg_ephemeris_engine and bg_panchanga baseline check:** needs the latest probe record id declared as their probe run in the declarations.
+- **bo_samvada fingerprint:** its output fingerprint reads unknown (probable timing clash while its view is re-created each build). Certification is unaffected; the fix is a later registry or permissions change.
+
 ## Five failures that block nothing (information-only checks)
 | Check | Why |
 |---|---|
