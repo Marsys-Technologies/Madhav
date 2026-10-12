@@ -13,6 +13,8 @@ const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_CONCORDANCE_TEST_DATABASE_URL
 const PRODUCTION_DIGEST = '9e2837388c783be0dc57361e52d8de344b2b041f9bb5e9eb39fa4b67412f5893'
 const CANONICAL_EXPLANATION = '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 3,002-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.'
+// The CURRENT seed (migration 1372 / the 2,994-rule release): the explanation names the rules table's current size. Migration 619's own text above is history.
+const SEED_EXPLANATION = '721 deterministic topic×school concordance rows from the frozen 10,651-chunk topic index and canonical 2,994-rule projection. The convergent rebuild repairs stale pointers and includes lord_1st_in_11th, whose tagged chunks existed in production while its historical concordance row was absent.'
 const LEGACY_EXPLANATION = '800 = topic×school concordance rows. Cross-product metric: cardinality is topic_count × school_count, not chunk-proportional. Chunk-pointer index per (topic, school); synthesis at L1+ query-time.'
 const CANONICAL_DEPENDENCIES = ['bg_texts', 'bg_text_index', 'bg_reference', 'bg_rules']
 
@@ -27,7 +29,7 @@ describe('migration 619 — concordance integrity contract', () => {
       sort_order: 8,
       target_table: 'classical_attributions',
       target_floor: 721,
-      volume_explanation: CANONICAL_EXPLANATION,
+      volume_explanation: SEED_EXPLANATION,
       depends_on: CANONICAL_DEPENDENCIES,
     })
   })
