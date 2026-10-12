@@ -134,6 +134,7 @@ def test_accepted_run_records_everything_it_claims():
         assert sorted(a['kind'] for a in actions.values()).count('reviewer_launch') == 2
         message = (w.run_dir / 'FINAL_MESSAGE.md').read_text()
         assert 'fixture final message' in message and str(w.run_dir / 'FINAL_RECEIPT.json') in message
+        assert 'test databases removed' in message and 'preserved' not in message
         assert all((w.pravaha / ('RUNNER_STOP_' + x)).exists() for x in 'ABC')
         for key in ('ts', 'result', 'lanes', 'branches', 'campaign_worktree', 'phase', 'v1', 'pravaha_writers', 'jobs'):
             assert key in drain
@@ -276,12 +277,15 @@ def test_a_job_whose_state_turns_ended_while_its_group_lives_is_not_called_gone(
         assert rc == 0 and w.drain['result'] == 'ACCEPTED' and w.final['absence']['processes'] == 'absent', (out, err)
 
 
-ENDED_BUT = [('alive', {}, 'survivor'), ('identity_unknown', {'process_start': None}, 'unknown')]
+ENDED_BUT = [('alive', {}, 'alive'), ('identity_unknown', {'process_start': None}, 'unknown'),
+             ('pid_pending', {'pid': 'pending', 'pgid': None}, 'unknown')]
 
 
 @pytest.mark.parametrize('name,override,measured', ENDED_BUT, ids=[n for n, *_ in ENDED_BUT])
-def test_a_job_recorded_ended_whose_group_is_not_proven_gone_fails_the_final_receipt(name, override, measured):
-    # B3: the drain does not signal an ended job, but absence is measured for EVERY recorded group, whatever its phase
+def test_a_job_recorded_ended_whose_group_is_not_proven_gone_fails_the_drain(name, override, measured):
+    # review r3 B1: the drain measures EVERY recorded group, whatever its phase. A state that says `ended` over a group
+    # that is alive, or cannot be measured (KV3-B-KYDJOBS records a launching pid as "pending"), is never signalled,
+    # is busy_kept, keeps its worktree and fails the drain: no review, no C-3, no removal
     with World('ended-' + name) as w:
         group = live_job(w, deadline_in=3000)
         state = w.run_dir / 'jobs' / 'J-k1' / 'state.json'
@@ -291,11 +295,82 @@ def test_a_job_recorded_ended_whose_group_is_not_proven_gone_fails_the_final_rec
         rc, out, err = w.finalize()
         assert rc == 1, (out, err)
         assert w.alive(group), 'an ended job is never signalled by the finalizer'
-        assert w.drain['jobs'] == [] and w.drain['result'] == 'ACCEPTED'
+        assert w.drain['result'] == 'FAILED' and w.final is None, w.drain
+        job = w.drain['jobs'][0]
+        assert (job['job_id'], job['phase'], job['result']) == ('J-k1', 'ended', 'busy_kept')
+        assert job['reason'] == 'recorded_ended_but_group_%s' % measured
+        assert w.drain['lanes'] == {'k1': 'busy_kept'} and (w.wt / 'k1').exists()
+        assert w.calls('kyjob') == [] and w.calls('kyverdicts') == [] and w.calls('ky') == [] and w.calls('local_db') == []
+        assert not done_events(w, 'C-3') and not w.events(kind='verdict') and not claim_events(w, 'C-4')
+
+
+def test_a_job_recorded_ended_whose_group_is_measured_gone_does_not_hold_the_drain():
+    # the other half of B1's detector: the same record over a group that IS gone is not busy, and is not listed
+    with World('ended-gone') as w:
+        group = live_job(w, deadline_in=3000, seconds=1)
+        state = w.run_dir / 'jobs' / 'J-k1' / 'state.json'
+        doc = json.loads(state.read_text())
+        doc.update(phase='ended')
+        state.write_text(json.dumps(doc))
+        assert gone(group['pid'])
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        assert w.drain['jobs'] == [] and w.drain['lanes'] == {'k1': 'clean'} and w.final['lanes'] == {'k1': 'removed'}
+
+
+def test_an_ended_record_over_a_live_group_that_appears_after_the_drain_keeps_its_worktree():
+    # review r3 B1, the step-6 busy set: the removal measures every recorded group too, whatever its phase
+    with World('ended-late') as w:
+        w.flag('reviewer_ended_straggler_C-3')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain['result'] == 'ACCEPTED', (out, err)
         assert w.final['result'] == 'FAILED' and w.final['failed_step'] == 'final_receipt'
-        assert w.final['absence']['processes'] == measured
-        assert {'job_id': 'J-k1', 'group': 'alive' if measured == 'survivor' else 'unknown'} in w.final['absence_detail']['processes']
-        assert not claim_events(w, 'C-4') and kyjob_items(w) == ['C-3'] and not done_events(w, 'C-4')
+        assert w.final['lanes'] == {'k1': 'busy_kept'} and (w.wt / 'k1' / '.git').exists()
+        assert w.final['absence']['processes'] == 'survivor'
+        assert not claim_events(w, 'C-4') and not done_events(w, 'C-4')
+
+
+def test_a_job_whose_ancestry_cannot_be_read_is_never_signalled():
+    # review r3 N4 (sweep): is_self_or_ancestor() answers None when the process tree is unreadable; unknown is not
+    # "not ours", so nothing is signalled and the job is busy_kept
+    with World('ancestry') as w:
+        w.patch_kyaction('def is_self_or_ancestor(pid):\n    return None\n')
+        group = live_job(w)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain['result'] == 'FAILED' and w.final is None, (out, err)
+        assert w.alive(group), 'a group was signalled although its relation to the finalizer was unknown'
+        job = w.drain['jobs'][0]
+        assert job['result'] == 'busy_kept' and job['reason'] == 'own_process_tree_or_unknown'
+        assert w.calls('kyjob') == [] and w.calls('ky') == []
+
+
+def test_a_job_directory_without_a_state_is_unknown_not_nothing():
+    # sweep: a directory under run/jobs that holds something but no state.json is a job this script cannot read
+    with World('nostate') as w:
+        odd = w.run_dir / 'jobs' / 'J-odd'
+        odd.mkdir()
+        (odd / 'state.json.tmp.4242').write_text('{"job_id": "J-odd", "phase": "live", "pid": 1')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain['result'] == 'FAILED' and w.final is None, (out, err)
+        assert {'path': str(odd), 'problem': 'job_directory_without_state'} in w.drain['problems']
+        assert w.calls('kyjob') == [] and w.calls('ky') == [] and (w.wt / 'k1').exists()
+
+
+def test_an_empty_job_directory_records_no_job():
+    with World('emptyjob') as w:
+        (w.run_dir / 'jobs' / 'J-empty').mkdir()
+        rc, out, err = w.finalize()
+        assert rc == 0 and w.drain['problems'] == [], (out, err)
+
+
+def test_a_loop_not_confirmed_stopped_fails_the_drain_even_with_no_job_alive():
+    # review r3 N1: dropping the loops from the drain's acceptance survived the suite
+    with World('loop-idle') as w:
+        w.flag('kyctl_fail_planner')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain['result'] == 'FAILED' and w.final is None, (out, err)
+        assert w.drain['loops']['planner'] == 'not_stopped' and w.drain['jobs'] == [] and w.drain['lanes'] == {'k1': 'clean'}
+        assert w.calls('kyjob') == [] and w.calls('ky') == [] and (w.wt / 'k1').exists()
 
 
 def test_a_loop_that_cannot_be_confirmed_stopped_blocks_every_signal():
@@ -553,6 +628,16 @@ def test_a_publisher_answer_without_the_trackers_verdict_event_is_no_verdict(fla
         assert (w.wt / 'k1').exists() and w.calls('local_db') == []
 
 
+def test_a_verdict_event_of_another_job_on_the_same_digest_is_not_this_reviews_verdict():
+    # review r3 N2: the latest verdict on (item, digest) counts only when it is THIS job's (detail `job <J>; …`)
+    with World('otherjob') as w:
+        w.flag('publish_as_other_job')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'drain_review', (out, err, w.final)
+        assert 'verdict_event_not_observed' in w.final['reason'], w.final['reason']
+        assert len(verdicts(w, 'C-3')) == 1 and w.calls('ky') == [] and (w.wt / 'k1').exists()
+
+
 def test_a_later_rejection_of_the_same_digest_revokes_the_acceptance_on_a_rerun():
     # the tracker's rule (verdicts.py accepted_verdict): the LATEST verdict at this identity decides
     with World('revoked') as w:
@@ -727,6 +812,41 @@ def test_a_receipt_without_a_session_leaves_the_databases_unknown():
         assert w.final['absence_detail']['databases']['unreadable_receipts'] == [str(w.run_dir / 'local_db' / 'v1.json')]
 
 
+def test_the_hand_over_record_names_a_session_whose_close_is_owed():
+    # BR-09 (KV3-B-LOCALDB): `close` records a hand-over in run/local_db/container.json as {owner, storage, from}. It
+    # is not a slot receipt: its owner is a session whose close must run, and the record must be gone afterwards
+    with World('handover') as w:
+        w.add_db_receipt('v1', 'sess-1')
+        w.add_handover(owner='sess-2', came_from='sess-0')
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        assert [c['argv'][2] for c in w.calls('local_db')] == ['sess-1', 'sess-2', 'sess-1', 'sess-2']
+        assert w.final['absence']['databases'] == 'absent' and not list((w.run_dir / 'local_db').glob('*.json'))
+        assert w.final['absence_detail']['databases']['unreadable_receipts'] == []
+
+
+def test_a_hand_over_record_that_outlives_its_owners_close_is_a_survivor():
+    with World('handover-kept') as w:
+        w.add_handover(owner='sess-2', came_from='sess-0')
+        w.flag('db_keep_handover')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'final_receipt' and w.final['absence']['databases'] == 'survivor', (out, err)
+        assert [c['argv'][2] for c in w.calls('local_db')] == ['sess-2']
+        assert w.final['absence_detail']['databases']['receipts_remaining'] == [str(w.run_dir / 'local_db' / 'container.json')]
+        assert not claim_events(w, 'C-4') and not done_events(w, 'C-4')
+
+
+@pytest.mark.parametrize('record', [{'owner': 5, 'storage': '/x', 'from': 'sess-0'}, {'owner': 'sess:2', 'storage': '/x', 'from': 'a'},
+                                    {'owner': 'sess-2'}, ['sess-2']], ids=['owner_type', 'owner_name', 'keys', 'not_object'])
+def test_a_hand_over_record_of_no_recognised_shape_leaves_the_databases_unknown(record):
+    with World('handover-odd') as w:
+        (w.run_dir / 'local_db' / 'container.json').write_text(json.dumps(record))
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'final_receipt' and w.final['absence']['databases'] != 'absent', (out, err)
+        assert w.final['absence_detail']['databases']['unreadable_receipts'] == [str(w.run_dir / 'local_db' / 'container.json')]
+        assert 'sess:2' not in [c['argv'][2] for c in w.calls('local_db')]
+
+
 def test_an_incompatible_container_is_preserved_and_reported_not_a_failure():
     with World('incompat') as w:
         w.add_db_receipt('v1', 'sess-1')
@@ -735,6 +855,10 @@ def test_an_incompatible_container_is_preserved_and_reported_not_a_failure():
         assert rc == 0, (out, err)
         assert w.final['absence']['databases'] == 'absent'
         assert 'incompatible' in json.dumps(w.final['absence_detail']['databases'])
+        # review r3 N7 (sweep): the message does not say "removed" of a container that was preserved
+        message = (w.run_dir / 'FINAL_MESSAGE.md').read_text()
+        assert 'incompatible pre-existing container preserved' in message and 'sess-1' in message
+        assert w.finalize()[0] == 0 and (w.run_dir / 'FINAL_MESSAGE.md').read_text() == message
 
 
 # ───────────────────────────────────────── close report, draft, claim ─────────────────────────────────────────────
@@ -827,6 +951,75 @@ def test_lines_of_the_event_log_that_are_not_events_are_passed_over_as_the_track
         rc, out, err = w.finalize()
         assert rc == 0, (out, err)
         assert w.drain['result'] == w.final['result'] == 'ACCEPTED' and 'internal_error' not in json.dumps(w.final)
+        assert 'EVENTS.jsonl: 5 lines' in out, 'what was passed over is journalled, not silent'
+
+
+NOT_TRACKER_EVENTS = [
+    ('no_actor', lambda e: {k: v for k, v in e.items() if k != 'actor'}),
+    ('no_evidence', lambda e: {k: v for k, v in e.items() if k != 'evidence'}),
+    ('ts_not_a_time', lambda e: dict(e, ts='yesterday')),
+]
+
+
+@pytest.mark.parametrize('name,spoil', NOT_TRACKER_EVENTS, ids=[n for n, _ in NOT_TRACKER_EVENTS])
+def test_a_done_line_the_trackers_reader_rejects_is_not_a_completion(name, spoil):
+    # BR-09: events.py validate() is applied by every tracker reader (claims.py _read, EventLog.refresh): a line
+    # without an actor, a done without evidence, or a ts that is no time is malformed to the tracker, so C-1 is NOT done
+    with World('c1-' + name) as w:
+        rows = w.events()
+        assert [e['item'] for e in rows] == ['C-1'] and rows[0]['actor'] and rows[0]['evidence']
+        (w.run_dir / 'EVENTS.jsonl').write_text(json.dumps(spoil(rows[0])) + '\n')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['result'] == 'FAILED' and w.final['close_report'] is None, (out, err, w.final)
+        assert 'EVENTS.jsonl: 1 line' in out, 'a line passed over is journalled'
+        assert not claim_events(w, 'C-4') and not done_events(w, 'C-4')
+
+
+def test_a_c4_done_line_the_tracker_rejects_does_not_end_the_finalization():
+    with World('c4-forged') as w:
+        (w.run_dir / 'FINAL_RECEIPT.json').write_text('{"result": "ACCEPTED"}\n')
+        w.append_event({'kind': 'item', 'item': 'C-4', 'state': 'done', 'guarded': True,
+                        'completion': {'type': 'artifact', 'artifact_digest': sha256(w.run_dir / 'FINAL_RECEIPT.json'),
+                                       'path': str(w.run_dir / 'FINAL_RECEIPT.json')}})
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        assert kyjob_items(w) == ['C-3', 'C-4'] and w.final['schema'] == 'ky.final_receipt/1'
+        assert [e['completion']['artifact_digest'] for e in done_events(w, 'C-4') if e.get('actor')] == \
+            [sha256(w.run_dir / 'FINAL_RECEIPT.json')]
+
+
+def test_the_fixture_events_are_events_to_the_real_tracker():
+    # BR-09: every line the fakes write must be one the real producer's validator (pravaha_tracker/events.py) keeps
+    tracker = Path(__file__).resolve().parents[5] / 'platform' / 'scripts' / 'governance'
+    sys.path.insert(0, str(tracker))
+    try:
+        from pravaha_tracker import events as tracker_events
+    finally:
+        sys.path.remove(str(tracker))
+    with World('real-shapes') as w:
+        assert w.finalize()[0] == 0
+        rows = w.events()
+        assert sorted({e['kind'] for e in rows}) == ['claim', 'item', 'verdict'] and len(rows) == 7
+        for row in rows:
+            tracker_events.validate(row)                       # raises EventError on a line the tracker would skip
+        assert 'EVENTS.jsonl:' not in w.last[1]
+
+
+def test_a_done_record_without_the_trackers_done_event_is_not_a_completion():
+    # sweep: a DONE kyaction record is this script's own note; the backing record is the tracker's guarded done event.
+    # Here the record of `ky done C-4` says DONE on this very digest and the tracker's log holds no such completion
+    with World('record-only') as w:
+        assert w.finalize()[0] == 0
+        digest = sha256(w.run_dir / 'FINAL_RECEIPT.json')
+        assert w.actions()['FIN-ky-done-C-4-' + digest[:12]]['state'] == 'DONE'
+        rows = [e for e in w.events() if not (e['kind'] == 'item' and e['item'] == 'C-4')]
+        (w.run_dir / 'EVENTS.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in rows))
+        done_calls = len([c for c in w.calls('ky') if c['argv'][0] == 'done'])
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert w.final['result'] == 'FAILED' and w.final['failed_step'] == 'done_C-4', w.final
+        assert 'record_done_but_not_observed' in w.final['reason'] and not done_events(w, 'C-4')
+        assert len([c for c in w.calls('ky') if c['argv'][0] == 'done']) == done_calls, 'nothing is repeated on a guess'
 
 
 def test_a_release_that_exits_0_but_records_nothing_is_not_a_release():

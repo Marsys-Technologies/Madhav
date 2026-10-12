@@ -84,14 +84,20 @@ def events():
         lines = (RUN / 'EVENTS.jsonl').read_text().splitlines()
     except OSError:
         return out
-    for line in lines:                 # as the tracker's reader (claims.py _read): a line that is not an event object is skipped
+    for line in lines:                 # as the tracker's reader (claims.py _read): a line events.py validate() refuses is skipped
         try:
             row = json.loads(line)
         except ValueError:
             continue
-        if isinstance(row, dict):
+        if isinstance(row, dict) and row.get('actor') and (row.get('state') != 'done' or row.get('kind') != 'item' or row.get('evidence')):
             out.append(row)
     return out
+
+
+def latest_verdict(item, digest):
+    """verdicts.py accepted_verdict: the LATEST artifact verdict at this identity decides."""
+    return next((e for e in reversed(events()) if e.get('kind') == 'verdict' and e.get('item') == item
+                 and e.get('phase') == 'artifact' and e.get('artifact_digest') == digest), None)
 
 
 def append(event):
@@ -175,14 +181,17 @@ def ky(argv):
             print('refused: item is already done', file=sys.stderr)
             return 2
         digest = sha(path)
-        if not any(e.get('kind') == 'verdict' and e.get('item') == item and e.get('artifact_digest') == digest
-                   and e.get('phase') == 'artifact' and e.get('result') == 'ACCEPTED' for e in events()):
+        verdict = latest_verdict(item, digest)
+        if not verdict or verdict.get('result') != 'ACCEPTED':
             print('refused: independent artifact verdict is missing', file=sys.stderr)
             return 2
         if take('crash_before_done_' + item):
             os.killpg(os.getpgrp(), signal.SIGKILL)
-        append({'kind': 'item', 'item': item, 'state': 'done', 'guarded': True,
-                'completion': {'type': 'artifact', 'artifact_digest': digest, 'path': os.path.realpath(path)}})
+        # the event completion.py guarded_done_event returns for typed artifact evidence (cli.py cmd_guarded_done)
+        append({'kind': 'item', 'actor': 'stream-S', 'item': item, 'state': 'done', 'guarded': True,
+                'evidence': 'artifact sha256 %s; verdict %s' % (digest, verdict['ts']),
+                'completion': {'type': 'artifact', 'artifact_digest': digest, 'path': os.path.realpath(path)},
+                'detail': 'guarded completion: dependencies, steps, detector and independent acceptance verified', 'ts': utc()})
         if take('crash_after_done_' + item):
             os.killpg(os.getpgrp(), signal.SIGKILL)
         return 0
@@ -223,6 +232,12 @@ def local_db(argv):
     log('local_db', argv)
     session = argv[2]
     mode = text('db_mode', 'removed')
+    handover = RUN / 'local_db' / 'container.json'      # KV3-B-LOCALDB: {owner, storage, from}, gone once its owner's close removes the container
+    try:
+        if json.loads(handover.read_text()).get('owner') == session and not flag('db_keep_handover'):
+            handover.unlink()
+    except (OSError, ValueError, AttributeError):
+        pass
     dropped = 0
     if (BEH / 'db_present').exists():
         (BEH / 'db_present').unlink()
@@ -305,10 +320,13 @@ def kyverdicts(argv):
         print(json.dumps([True]))
         return 0
     if not any(e.get('kind') == 'verdict' and str(e.get('detail', '')).startswith('job %s;' % job) for e in events()):
-        append({'kind': 'verdict', 'actor': 'stream-V:' + opt(argv, '--vslot'), 'item': item, 'phase': 'artifact',
-                'head': None, 'artifact_digest': digest, 'result': proposed, 'detail': 'job %s; fake' % job,
-                'external_review': {'path': opt(argv, '--external-review-path'), 'sha256': opt(argv, '--external-review-sha256')}
-                if '--external-review-path' in argv else None})
+        # `ky verdict` (cli.py write): a key without a value is not written, so an artifact verdict has no `head`
+        event = {'kind': 'verdict', 'actor': 'stream-V:' + opt(argv, '--vslot'), 'item': item, 'phase': 'artifact',
+                 'artifact_digest': digest, 'result': proposed, 'ts': utc(),
+                 'detail': 'job %s; fake' % ('J-other' if flag('publish_as_other_job') else job)}
+        if '--external-review-path' in argv:
+            event['external_review'] = {'path': opt(argv, '--external-review-path'), 'sha256': opt(argv, '--external-review-sha256')}
+        append(event)
     print(json.dumps({'published': True, 'result': proposed, 'reasons': [], 'action_id': 'VERDICT-' + job}))
     return 0
 
@@ -356,6 +374,16 @@ def kyjob(argv):
         (other / 'state.json').write_text(json.dumps({
             'job_id': 'J-straggler', 'item': 'K-1', 'slot': 'b1', 'worktree': None, 'phase': 'live', 'pid': proc.pid,
             'pgid': proc.pid, 'process_start': start, 'deadline': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + 3000))}))
+        (ROOT / 'straggler.pid').write_text(str(proc.pid))
+    if flag('reviewer_ended_straggler_' + item):         # a record that says `ended` over a group that is alive
+        proc = subprocess.Popen(['sleep', '600'], start_new_session=True)
+        start = subprocess.run(['ps', '-o', 'lstart=', '-p', str(proc.pid)], capture_output=True, text=True).stdout.strip()
+        other = RUN / 'jobs' / 'J-late'
+        other.mkdir(parents=True, exist_ok=True)
+        (other / 'state.json').write_text(json.dumps({
+            'job_id': 'J-late', 'item': 'K-1', 'slot': 'b1', 'worktree': str(ROOT / 'wt' / 'k1'), 'phase': 'ended',
+            'pid': proc.pid, 'pgid': proc.pid, 'process_start': start,
+            'deadline': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + 3000))}))
         (ROOT / 'straggler.pid').write_text(str(proc.pid))
     if flag('reviewer_adds_db_' + item):
         (BEH / 'db_present').write_text('1')
@@ -427,8 +455,11 @@ class World:
         report = self.root / 'close_report.md'
         report.write_text('close report fixture\n')
         self.report = report
-        self.append_event({'kind': 'item', 'item': 'C-1', 'state': 'done', 'guarded': True,
-                           'completion': {'type': 'artifact', 'artifact_digest': sha256(report), 'path': str(report)}})
+        self.append_event({'kind': 'item', 'actor': 'stream-S', 'item': 'C-1', 'state': 'done', 'guarded': True,
+                           'evidence': 'artifact sha256 %s; verdict fixture' % sha256(report),
+                           'completion': {'type': 'artifact', 'artifact_digest': sha256(report), 'path': str(report)},
+                           'detail': 'guarded completion: dependencies, steps, detector and independent acceptance verified',
+                           'ts': '2026-10-12T00:00:00+00:00'})
         (self.run_dir / 'FINAL_MESSAGE_DRAFT.md').write_text('fixture final message\n')
 
     # ── construction ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -503,6 +534,16 @@ class World:
     def add_db_receipt(self, slot='v1', session='sess-1'):
         (self.run_dir / 'local_db' / (slot + '.json')).write_text(json.dumps(
             {'schema': 'ky.slot_db/1', 'slot': slot, 'result': 'READY', 'session_id': session}))
+
+    def add_handover(self, owner, came_from):
+        """The record KV3-B-LOCALDB's `close` leaves when the container passes to a remaining session."""
+        (self.run_dir / 'local_db' / 'container.json').write_text(json.dumps(
+            {'owner': owner, 'storage': str(self.scratch / 'db' / came_from), 'from': came_from}))
+
+    def patch_kyaction(self, source):
+        """Append to the world's copy of kyaction.py (a fault the real module answers only when ps cannot be asked)."""
+        with open(self.fleet / 'kyaction.py', 'a') as handle:
+            handle.write('\n\n' + source)
 
     def flag(self, name, content='1'):
         (self.beh / name).write_text(content)

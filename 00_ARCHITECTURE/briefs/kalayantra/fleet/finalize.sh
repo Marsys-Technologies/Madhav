@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# External finalizer v3.2 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
+# External finalizer v3.3 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
 # and the close PR merged: ["bash", <temporary copy>], cwd $KY_ROOT, 21600 s. A lone copy: it reads nothing next to itself (no dirname "$0");
 # every collaborator is found under $KY_FLEET / $KY_ROOT. Exit 0 only after C-4's guarded completion, else 1; an argument exits 64.
 # TWO PHASES (v1.2's), and a failure in either is recorded as a failure, never as an accepted receipt:
 #   1. DRAIN  — kyctl.sh stop for the four loops (stop new admissions); each recorded job group in R/jobs/*/state.json that is not ended
 #               is waited for until its deadline (capped by KY_DRAIN_WAIT_MIN), then TERM -> KY_TERM_GRACE_S (20) -> KILL, ONLY when its
 #               recorded PID + process-start identity is proven (kyaction.process_matches is True); gone = leader False AND killpg(pgid,0) ESRCH.
-#               Unknown is never signalled and never gone (busy_kept). Each owned item worktree is classified absent | clean | dirty_kept |
+#               Unknown is never signalled and never gone (busy_kept). The group of a job recorded `ended` is measured too: never
+#               signalled, and busy_kept unless it is gone. Each owned item worktree is classified absent | clean | dirty_kept |
 #               unpushed_kept | busy_kept. -> R/DRAIN_RECEIPT.json (result ACCEPTED only when every loop stopped, every group is gone and
 #               nothing is kept). C-3 reads it.
 #   2. FINAL  — a finalizer-owned, bounded (60 turns, <= 3600 s) stream-V reviewer accepts the drain receipt's exact digest -> `KY_STREAM=S ky
@@ -22,7 +23,14 @@
 # KY_TERM_GRACE_S (20) KY_VERIFIER_SLOTS ("v1 v2 v3 v4") KY_C4_EXTERNAL_REVIEW (path; needed when only one verifier slot exists)
 # KY_FINAL_MODEL KY_FINAL_ROLE KY_SESSION_ID KY_EVENTS KY_GIT.
 # Re-run after C-4 is done: FINAL_RECEIPT.json is bound to C-4's digest and nothing is run, rewritten, claimed, reviewed or published.
-# Changelog: v3.2 (2026-10-12, KV3-B-FINALIZE loop 3, review b1-builds-r2 B1 + sweep) the reviewer's provider session is MEASURED
+# Changelog: v3.3 (2026-10-12, KV3-B-FINALIZE loop 4, review b1-builds-r3 B1 + sweep) the drain and the removal measure the group of
+# EVERY recorded job whatever its phase: `ended` over a group that is alive or unmeasurable is busy_kept (never signalled), keeps
+# its worktree and fails the drain. Unknown ancestry is not "not ours"; a recorded pid that is no number ("pending") is unknown,
+# not "no process"; a job directory holding no state is unknown. The event log is read as the tracker reads it (events.py
+# validate): a line it refuses is no event, and the count passed over is printed. A DONE record of `ky done` / `ky release` counts
+# only with the tracker's event behind it. local_db's hand-over record (local_db/container.json) names a session whose close is
+# owed. The final message names a preserved incompatible container instead of calling it removed.
+# v3.2 (2026-10-12, KV3-B-FINALIZE loop 3, review b1-builds-r2 B1 + sweep) the reviewer's provider session is MEASURED
 # from the init event of its stream-json output (kyjob.sh writes no state) and recorded in its job state by this script; unmeasured,
 # the author's, or another recorded job's is not independent. An acceptance counts only when the proposal names the exact digest,
 # the boundary evidence is this job's object, and the tracker's latest verdict event on that digest is this job's (a re-run finds it
@@ -181,6 +189,14 @@ def receipt(path, schema, result, lanes, extra, frozen_digest=None):
 
 def job_states():
     states, problems = [], []
+    for folder in sorted(glob.glob(str(RUN / "jobs" / "*"))):       # a job this script cannot read is not "no job"
+        if not os.path.isdir(folder):
+            continue                              # a file beside the job directories (kyd_jobs.py's failures.json) is no job
+        try:
+            if not os.path.lexists(os.path.join(folder, "state.json")) and os.listdir(folder):
+                problems.append({"path": folder, "problem": "job_directory_without_state"})
+        except OSError:
+            problems.append({"path": folder, "problem": "job_directory_unreadable"})
     for path in sorted(glob.glob(str(RUN / "jobs" / "*" / "state.json"))):
         doc, err = read_json(path)
         if err or not isinstance(doc, dict):
@@ -227,6 +243,20 @@ def group_state(pid, pgid, start):
     return "alive"
 
 
+def recorded_group(s):
+    """The group a job state records, measured now and whatever the state's phase says: 'none' (no pid and no pgid were
+    ever recorded: both null) · 'gone' · 'alive' · 'unknown' (an identity that cannot be compared, or a recorded pid that
+    is no number, as the "pending" kyd_jobs.py writes while it launches). A reviewer of this script whose start identity
+    was never read is judged by its group alone: this script started it as its own group leader."""
+    if s.get("pid") is None and s.get("pgid") is None:
+        return "none"
+    if identity_ok(s):
+        return group_state(s["pid"], s["pgid"], s["process_start"])
+    if posint(s.get("pgid")) and s["pgid"] > 1 and str(s.get("key", "")).startswith("finalize-"):
+        return "gone" if group_absent(s["pgid"]) else "alive"
+    return "unknown"
+
+
 def wait_gone(pid, pgid, start, seconds):
     end = time.time() + seconds
     while True:
@@ -270,8 +300,8 @@ def drain_one(path, s, signalling):
     if deadline is None:
         return "busy_kept", "deadline_not_utc_text"
     pid, pgid, start = s["pid"], s["pgid"], s["process_start"]
-    if pgid == os.getpgrp() or kyaction.is_self_or_ancestor(pid):
-        return "busy_kept", "own_process_tree"
+    if pgid == os.getpgrp() or kyaction.is_self_or_ancestor(pid) is not False:      # unknown ancestry is not "not ours"
+        return "busy_kept", "own_process_tree_or_unknown"
     state = group_state(pid, pgid, start)
     if state == "gone":
         return "exited", None
@@ -343,13 +373,16 @@ def worktree_state(path, busy):
 
 
 def busy_worktrees(states, job_results=None):
-    """Worktrees of a job that is not ended and whose group is not proven gone."""
+    """Worktrees of a recorded job whose group is not proven gone, whatever its phase: `job_results` are the drain's
+    own measurements; without them each group is measured now (an ended job that never recorded a process has none)."""
     busy = set()
     for path, s in states:
-        if s.get("phase") == "ended" or not isinstance(s.get("worktree"), str):
+        if not isinstance(s.get("worktree"), str):
             continue
         if job_results is not None:
             gone = job_results.get(s.get("job_id")) in GONE_JOB
+        elif s.get("phase") == "ended":
+            gone = recorded_group(s) in ("none", "gone")
         else:
             gone = identity_ok(s) and group_state(s["pid"], s["pgid"], s["process_start"]) == "gone"
         if not gone:
@@ -386,15 +419,11 @@ def measure_processes():
     states, bad = job_states()
     verdict, detail = "unknown" if bad else "absent", [dict(b) for b in bad]
     for path, s in states:
-        ours = str(s.get("key", "")).startswith("finalize-")
-        if s.get("phase") == "ended" and not posint(s.get("pid")) and not posint(s.get("pgid")):
+        state = recorded_group(s)
+        if state == "none" and s.get("phase") == "ended":
             continue                              # ended without ever recording a process: there is no group to measure
-        if identity_ok(s):
-            state = group_state(s["pid"], s["pgid"], s["process_start"])
-        elif posint(s.get("pgid")) and s["pgid"] > 1 and ours:
-            state = "gone" if group_absent(s["pgid"]) else "alive"
-        else:
-            state = "unknown"
+        if state == "none":
+            state = "unknown"                     # not ended and no process recorded: it may be starting
         if state != "gone":
             verdict = worse(verdict, "survivor" if state == "alive" else "unknown")
             detail.append({"job_id": s.get("job_id"), "group": state})
@@ -435,7 +464,14 @@ def db_close(prior=(), recheck=False):
     sessions, unreadable = set(prior), []
     for path in sorted(glob.glob(str(RUN / "local_db" / "*.json"))):
         doc, _ = read_json(path)
-        sid = doc.get("session_id") if isinstance(doc, dict) else None
+        if os.path.basename(path) == "container.json":
+            # not a slot receipt: the hand-over record `close` leaves, {"owner": T, "storage": <absolute path>, "from": S}
+            # (KV3-B-LOCALDB). Its owner is a session whose close is owed; while the file exists a container is on record.
+            known = isinstance(doc, dict) and {"owner", "storage", "from"} <= set(doc) \
+                and isinstance(doc["storage"], str) and os.path.isabs(doc["storage"])
+            sid = doc["owner"] if known else None
+        else:
+            sid = doc.get("session_id") if isinstance(doc, dict) else None
         if isinstance(sid, str) and SESSION_RE.match(sid):
             sessions.add(sid)
         else:
@@ -455,29 +491,77 @@ def db_close(prior=(), recheck=False):
             state = worse(state, "survivor" if row["dropped"] else "unknown")
     remaining = sorted(glob.glob(str(RUN / "local_db" / "*.json")))
     if remaining:
-        state = worse(state, "survivor")          # a READY receipt that outlives its close is stale or the close is untrue
+        state = worse(state, "survivor")          # a receipt or hand-over record that outlives its close: stale, or the close is untrue
     return state, {"sessions": results, "receipts_remaining": remaining, "unreadable_receipts": unreadable,
                    "incompatible_containers_preserved": [r["session"] for r in results if r["container"] == "incompatible"]}
 
 
 # ───────────────────────────── tracker events (observation) and kyaction records ─────────────────────────────
 
-def events():
-    """All events, or None when the log exists and cannot be read; a missing log is no events."""
+EVENT_KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim", "verdict"}
+ITEM_STATES = {"ready", "running", "review", "blocked", "parked", "failed", "done"}
+PASSED_OVER = [0]
+
+
+def iso_time(text):
     try:
-        text = EVENTS.read_text(encoding="utf-8")
+        datetime.datetime.fromisoformat(text)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def tracker_event(ev):
+    """True for a line the tracker's own readers keep (pravaha_tracker/events.py validate, applied by claims.py _read
+    and EventLog.refresh), for the kinds read here: item, claim, verdict. A line it refuses is malformed to the
+    tracker — it completes, claims and accepts nothing there, so it does nothing here."""
+    if not isinstance(ev, dict) or ev.get("kind") not in EVENT_KINDS or not ev.get("actor"):
+        return False
+    if ev.get("ts") and not iso_time(ev["ts"]):
+        return False
+    kind = ev["kind"]
+    if kind == "item":
+        state = ev.get("state")
+        return bool(ev.get("item")) and state in ITEM_STATES and not (state == "done" and not ev.get("evidence")) \
+            and not (state in ("blocked", "failed", "parked") and not ev.get("detail"))
+    if kind == "claim":
+        return ev.get("state") in ("acquired", "renewed", "released", "expired") \
+            and all(ev.get(k) for k in ("item", "worker_id", "claim_id", "expires_at")) and iso_time(ev["expires_at"])
+    if kind == "verdict":
+        head, digest = ev.get("head"), ev.get("artifact_digest")
+        if not ev.get("item") or ev.get("result") not in ("ACCEPTED", "REJECTED") or not ev.get("detail") \
+                or ev.get("phase") not in ("pre_merge", "post_deploy", "artifact") or bool(head) == bool(digest):
+            return False
+        if head and not (isinstance(head, str) and re.fullmatch(r"[0-9a-f]{40}", head)):
+            return False
+        if digest and not (isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest)):
+            return False
+        return bool(digest) if ev["phase"] == "artifact" else bool(head)
+    return True
+
+
+def events():
+    """The events the tracker itself reads from its log, or None when the log exists and cannot be read; a missing
+    log is no events. PASSED_OVER counts the non-empty lines of the latest read that are not events to the tracker."""
+    try:
+        data = EVENTS.read_bytes()
     except FileNotFoundError:
         return []
     except OSError:
         return None
-    out = []
-    for line in text.splitlines():
+    out, skipped = [], 0
+    for line in data.splitlines():                # line by line, as claims.py _read: one bad line is not an unreadable log
+        if not line.strip():
+            continue
         try:
             row = json.loads(line)
         except ValueError:
-            continue
-        if isinstance(row, dict):                 # as the tracker's own reader (claims.py _read): a line that is not an event object is no event
+            row = None
+        if tracker_event(row):
             out.append(row)
+        else:
+            skipped += 1
+    PASSED_OVER[0] = skipped
     return out
 
 
@@ -562,8 +646,10 @@ def observe_release(item, slot, claim_id):
 ACTOR = {"role": "finalizer", "holder_kind": "supervisor", "controller_id": CTRL}
 
 
-def act(action_id, kind, inputs, target, transition, effect, observer):
-    """One side effect under a kyaction record, reconciled by observation on a re-run → ('done'|'failed'|'unknown', result)."""
+def act(action_id, kind, inputs, target, transition, effect, observer, confirm=False):
+    """One side effect under a kyaction record, reconciled by observation on a re-run → ('done'|'failed'|'unknown', result).
+    `confirm`: a record found DONE is this script's own note of an earlier run; it counts only when the observer still
+    sees the tracker's event behind it (else unknown: nothing is repeated on a guess and nothing is called done)."""
     run_dir = str(RUN)
     try:
         status, rec = kyaction.begin(run_dir, action_id, kind, ACTOR, inputs, target, transition)
@@ -571,6 +657,10 @@ def act(action_id, kind, inputs, target, transition, effect, observer):
             kyaction.retry(run_dir, action_id, ACTOR)
             status = "new"
         if status == "done":
+            if confirm:
+                seen, detail = observer(rec)
+                if seen != "done":
+                    return "unknown", {"error": "record_done_but_not_observed", "observed": seen, "detail": detail, "action_id": action_id}
             return "done", rec["result"]
         if status == "in_progress":
             return "unknown", {"error": "another_process_holds_the_record", "action_id": action_id}
@@ -608,7 +698,7 @@ def ky_done(item, receipt_path, digest):
     return act("FIN-ky-done-%s-%s" % (item, digest[:12]), "ky_done", {"item": item, "artifact_path": str(receipt_path), "artifact_sha256": digest},
                {"verb": "done", "item": item}, "tracker marks %s done through its guarded completion" % item,
                lambda: ky_effect(["done", item, "--artifact-path", str(receipt_path)], "S", None, lambda: done_event(item, digest)),
-               lambda rec: done_event(item, digest))
+               lambda rec: done_event(item, digest), confirm=True)
 
 
 # ───────────────────────────── the reviewer: a finalizer-owned, bounded stream-V job ─────────────────────────────
@@ -982,9 +1072,14 @@ def phase_drain():
     problems += bad_trees
     jobs, job_result = [], {}
     for path, s in states:
-        if s.get("phase") == "ended":
-            continue
-        result, why = drain_one(path, s, signalling)
+        if s.get("phase") == "ended":             # the record is not the measurement: its group is measured, never signalled
+            group = recorded_group(s)
+            if group in ("none", "gone"):
+                job_result[s.get("job_id")] = "ended"
+                continue
+            result, why = "busy_kept", "recorded_ended_but_group_%s" % group
+        else:
+            result, why = drain_one(path, s, signalling)
         entry = {k: s.get(k) for k in ("job_id", "item", "slot", "worktree", "pid", "pgid", "process_start", "deadline")}
         entry.update(phase=s.get("phase"), result=result, reason=why)
         jobs.append(entry)
@@ -1040,8 +1135,16 @@ def close_report():
 
 def final_message(ok):
     if DRAFT_PATH.exists() and DRAFT_PATH.stat().st_size > 0:
+        done = "all job groups stopped, their worktrees and test databases removed"
+        final, _ = read_json(FINAL_PATH)          # KU-02: a preserved container is reported, not called removed
+        try:
+            kept = [k for k in final["absence_detail"]["databases"]["incompatible_containers_preserved"] if isinstance(k, str)]
+        except (KeyError, TypeError):
+            kept = []
+        if kept:
+            done += "; an incompatible pre-existing container preserved, not removed (reported by the close of: %s)" % ", ".join(kept)
         text = DRAFT_PATH.read_text() + "\n\n---\nPhysical shutdown (measured by the finalizer, not by an agent): %s. Receipt: %s\n" % (
-            "all job groups stopped, their worktrees and test databases removed" if ok else "INCOMPLETE — see the receipt", FINAL_PATH)
+            done if ok else "INCOMPLETE — see the receipt", FINAL_PATH)
         atomic_write(str(MESSAGE_PATH), text)
 
 
@@ -1149,7 +1252,7 @@ def phase_final(drain_digest):
         act("FIN-ky-abort-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot, "claim_id": claim_id, "why": step},
             {"verb": "release", "item": "C-4", "worker": claim_slot}, "V claim on C-4 released without completion",
             lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot, claim_id)),
-            lambda rec: observe_release("C-4", claim_slot, claim_id))
+            lambda rec: observe_release("C-4", claim_slot, claim_id), confirm=True)
         return fail(step, reason, **updates)
 
     status, res, slot, digest = review_run("final", "C-4", FINAL_PATH, claim_slot)
@@ -1178,7 +1281,7 @@ def phase_final(drain_digest):
     status, rres = act("FIN-ky-release-C-4-%s%s" % (tag, suffix), "ky_release", {"item": "C-4", "worker": claim_slot, "claim_id": claim_id},
                        {"verb": "release", "item": "C-4", "worker": claim_slot}, "V claim on C-4 released",
                        lambda: ky_effect(["release"], "V", claim_slot, lambda: observe_release("C-4", claim_slot, claim_id)),
-                       lambda rec: observe_release("C-4", claim_slot, claim_id))
+                       lambda rec: observe_release("C-4", claim_slot, claim_id), confirm=True)
     if status != "done":
         return fail("release_C-4", "the V claim on C-4 was not released: %s" % json.dumps(rres, sort_keys=True)[:300], **recheck)
     status, dres = ky_done("C-4", FINAL_PATH, final_digest)
@@ -1223,6 +1326,9 @@ if __name__ == "__main__":
         except Exception:
             pass
         code = 1
+    if PASSED_OVER[0]:
+        say("EVENTS.jsonl: %d line%s the tracker's reader refuses (pravaha_tracker/events.py validate) — not events, passed over"
+            % (PASSED_OVER[0], "" if PASSED_OVER[0] == 1 else "s"))
     sys.exit(code)
 PYEOF
 
