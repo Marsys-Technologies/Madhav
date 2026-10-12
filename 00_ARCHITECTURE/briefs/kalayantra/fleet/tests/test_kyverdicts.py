@@ -1439,15 +1439,122 @@ def test_invalidate_crash_before_ky_appends_one_rejected(world, monkeypatch):
     assert world.call(world.invalidate_argv())[0] == 0 and len(world.calls()) == 1
 
 
-def test_invalidate_refused_by_ky_is_not_an_invalidation(world):
+def accepted_in_force(world, head=None):
+    latest = [e for e in world.verdicts() if e.get("head") == (head or world.head) and e.get("phase") == "pre_merge"]
+    return bool(latest) and latest[-1]["result"] == "ACCEPTED"
+
+
+def test_invalidate_refused_by_ky_while_accepted_is_in_force_is_unknown(world):
+    """R2-B-01: exit 1 reads 'nothing to invalidate'. With ACCEPTED still in force it is exit 3, nothing may proceed."""
     world.seed("ACCEPTED")
     world.mode("refuse")
     code, out = world.call(world.invalidate_argv())
-    assert code == 1 and out["published"] is False and tokens(out) == ["ky_refused"]
-    assert [e["result"] for e in world.verdicts()] == ["ACCEPTED"]
-    world.mode("silent")
+    assert code == 3 and out["published"] is False and out["result"] is None and tokens(out) == ["ky_refused"]
+    assert accepted_in_force(world) and world.record(invalidation_id(world))["state"] == "FAILED"
+
+
+def test_invalidate_after_a_refused_attempt_retries_and_appends_exactly_one_rejected(world):
+    world.seed("ACCEPTED")
+    world.mode("refuse")
+    assert world.call(world.invalidate_argv())[0] == 3
+    world.mode("ok")
+    code, out = world.call(world.invalidate_argv(**{"--reason": "worded differently on the retry"}))
+    assert code == 0 and out["published"] is True and out["result"] == "REJECTED" and out["reasons"] == []
+    assert [e["result"] for e in world.verdicts()] == ["ACCEPTED", "REJECTED"]
+    assert world.verdicts()[-1]["detail"] == "invalidated: required check went red after acceptance"
+    record = world.record(invalidation_id(world))
+    assert record["state"] == "DONE" and len(record["attempts"]) == 1 and record["attempts"][0]["state"] == "FAILED"
     code, out = world.call(world.invalidate_argv())
-    assert code == 1 and tokens(out) == ["action_failed"] and len(world.calls()) == 1
+    assert code == 0 and tokens(out) == ["already_published"]
+    assert len(world.calls()) == 2 and len(world.verdicts()) == 2
+
+
+def test_invalidate_while_ky_keeps_refusing_stays_unknown(world):
+    world.seed("ACCEPTED")
+    world.mode("refuse")
+    for n in range(1, 4):
+        code, out = world.call(world.invalidate_argv())
+        assert code == 3 and tokens(out) == ["ky_refused"] and len(world.calls()) == n
+        assert accepted_in_force(world) and world.record(invalidation_id(world))["state"] == "FAILED"
+
+
+def test_invalidate_ky_timeout_while_accepted_is_in_force_is_unknown_then_retried(world, monkeypatch):
+    world.seed("ACCEPTED")
+    world.mode("hang")
+    monkeypatch.setattr(K, "KY_TIMEOUT_S", 0.5)
+    code, out = world.call(world.invalidate_argv())
+    assert code == 3 and tokens(out) == ["ky_timeout"] and accepted_in_force(world)
+    world.mode("ok")
+    code, out = world.call(world.invalidate_argv())
+    assert code == 0 and out["published"] is True
+    assert [e["result"] for e in world.verdicts()] == ["ACCEPTED", "REJECTED"] and len(world.calls()) == 2
+
+
+def test_invalidate_failed_attempt_is_not_retried_once_nothing_is_in_force(world):
+    world.seed("ACCEPTED")
+    world.mode("refuse")
+    assert world.call(world.invalidate_argv())[0] == 3
+    world.seed("REJECTED", detail="job J-OTHER; a later review rejected it")
+    world.mode("ok")
+    code, out = world.call(world.invalidate_argv())
+    assert code == 1 and out["published"] is False and tokens(out) == ["latest_not_accepted"]
+    assert len(world.calls()) == 1 and world.record(invalidation_id(world))["state"] == "FAILED"
+
+
+def test_invalidate_record_conflict_while_accepted_is_in_force_is_unknown(world):
+    """Two heads sharing 12 hex share a record id: the second identity cannot be recorded, and is not 'nothing'."""
+    twin = world.head[:12] + ("f" if world.head[12] != "f" else "e") * 28
+    world.seed("ACCEPTED", head=twin)
+    assert world.call(world.invalidate_argv(**{"--head": twin}))[0] == 0
+    code, out = world.call(world.invalidate_argv())
+    assert code == 1 and tokens(out) == ["no_prior_verdict"]
+    world.seed("ACCEPTED")
+    code, out = world.call(world.invalidate_argv())
+    assert code == 3 and out["published"] is False and tokens(out) == ["action_conflict"]
+    assert accepted_in_force(world) and len(world.calls()) == 1
+
+
+def test_invalidate_conflict_raised_by_begin_while_accepted_is_in_force_is_unknown(world, monkeypatch):
+    world.seed("ACCEPTED")
+
+    def conflict(*a, **k):
+        raise kyaction.ActionConflict("another invalidation of this identity was recorded first")
+    monkeypatch.setattr(kyaction, "begin", conflict)
+    code, out = world.call(world.invalidate_argv())
+    assert code == 3 and tokens(out) == ["action_conflict"] and world.calls() == []
+
+
+def test_invalidate_record_failed_while_reconciling_is_unknown(world, monkeypatch):
+    world.seed("ACCEPTED")
+
+    def die(*a, **k):
+        raise Crash()
+    monkeypatch.setattr(K, "_run_ky", die)
+    with pytest.raises(Crash):
+        world.call(world.invalidate_argv())
+    monkeypatch.undo()
+    monkeypatch.setattr(kyaction, "reconcile", lambda run_dir, action_id, *a, **k: (
+        "failed", kyaction.load(run_dir, action_id)))
+    code, out = world.call(world.invalidate_argv())
+    assert code == 3 and tokens(out) == ["action_failed"] and world.calls() == []
+
+
+@pytest.mark.parametrize("trouble", ["refuse", "hang", "silent", "conflict", "begin_conflict"])
+def test_invalidate_never_exits_1_while_accepted_is_in_force(world, monkeypatch, trouble):
+    world.seed("ACCEPTED")
+    monkeypatch.setattr(K, "KY_TIMEOUT_S", 0.5)
+    if trouble == "conflict":
+        kyaction.begin(world.run_dir, invalidation_id(world), "ky.verdict.invalidate", K._actor(
+            K._parse(world.invalidate_argv())), {"other": True}, {"other": True}, "another action under this id")
+    elif trouble == "begin_conflict":
+        def conflict(*a, **k):
+            raise kyaction.ActionConflict("raced")
+        monkeypatch.setattr(kyaction, "begin", conflict)
+    else:
+        world.mode(trouble)
+    for _ in range(2):
+        code, out = world.call(world.invalidate_argv())
+        assert accepted_in_force(world) and code == 3 and out["published"] is False, (code, out)
 
 
 def test_invalidate_an_acceptance_published_after_a_recorded_invalidation_is_unknown(world):

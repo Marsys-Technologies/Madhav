@@ -71,7 +71,10 @@ either: nothing was reviewed that a rejection could be about). Importing this mo
     another process is publishing it → exit 3 · FAILED → exit 1.
   invalidate appends REJECTED (detail "invalidated: <reason>", record INVALIDATE-<I>-<phase>-<first 12 hex of H
     or D>) only if the LATEST verdict of that identity in E is ACCEPTED; otherwise nothing is appended (exit 1:
-    no_prior_verdict, latest_not_accepted). The dispatcher runs it before any queue action. The record id is one
+    no_prior_verdict, latest_not_accepted — and only those). The dispatcher runs it before any queue action.
+    Whenever it ends without the REJECTED observed while ACCEPTED is in force (ky refused or timed out, a record
+    conflict, a FAILED record) it exits 3, never 1; a FAILED record is retried (kyaction.retry) by the next
+    call once a fresh read shows ACCEPTED still in force (review round 2, R2-B-01). The record id is one
     per identity: an acceptance published AFTER a recorded invalidation cannot be invalidated under it — that
     is reported as unknown (exit 3, accepted_again_after_invalidation), never appended outside a record.
   inherit publishes nothing: exit 0 inherits · 1 does not (VERIFY the new head).
@@ -755,12 +758,12 @@ def _actor(a):
     return {"role": "dispatcher", "holder_kind": "controller", "controller_id": a.as_}
 
 
-def _guarded(ka, action_id, body):
+def _guarded(ka, action_id, body, conflict=1):
     """Run a publishing verb; whatever the action records refuse or cannot tell becomes its exit code."""
     try:
         return body()
     except ka.ActionConflict:
-        return _refusal(1, action_id, "action_conflict")
+        return _refusal(conflict, action_id, "action_conflict")
     except ka.ActionUnreadable:
         return _refusal(3, action_id, "action_record_unreadable")
     except ka.LockBusy:
@@ -881,10 +884,16 @@ def _cmd_invalidate(a, environ):
     def not_accepted(event):
         return "no_prior_verdict" if event is None else "latest_not_accepted"
 
+    def in_force(event):
+        return event is not None and event.get("result") == "ACCEPTED"
+
     def run(inputs):
-        return _execute(ka, run_dir, action_id, ky, environ, inputs, ledger,
-                        lambda events: (lambda event: event if is_effect(event, inputs) else None)(
-                            _latest_verdict(events, identity)))
+        """Exit 1 means 'nothing to invalidate'; an attempt that appended nothing while ACCEPTED was in force is
+        not that (R2-B-01): exit 3, and the FAILED record is retried by the next call."""
+        code, out = _execute(ka, run_dir, action_id, ky, environ, inputs, ledger,
+                             lambda events: (lambda event: event if is_effect(event, inputs) else None)(
+                                 _latest_verdict(events, identity)))
+        return (3 if code == 1 else code), out
 
     def body():
         try:
@@ -893,7 +902,7 @@ def _cmd_invalidate(a, environ):
             return _refusal(3, action_id, "ledger_unreadable")
         record = ka.peek(run_dir, action_id)
         if record is None:
-            if last is None or last.get("result") != "ACCEPTED":
+            if not in_force(last):
                 return _refusal(1, action_id, not_accepted(last))
             inputs = dict(identity, result="REJECTED", detail="invalidated: " + _flat(a.reason, 600),
                           vslot=a.vslot, external_review=None)
@@ -903,10 +912,14 @@ def _cmd_invalidate(a, environ):
                 return run(inputs)
         if not _same_target(ka, record, KIND_INVALIDATE, target) or not isinstance(record.get("inputs"), dict) \
                 or not isinstance(record["inputs"].get("detail"), str):
-            return _refusal(1, action_id, "action_conflict")
+            return _refusal(3 if in_force(last) else 1, action_id,
+                            "action_conflict" if in_force(last) else not_accepted(last))
         inputs = record["inputs"]                    # the invalidation this record intends, whatever is asked now
         if record["state"] == "FAILED":
-            return _refusal(1, action_id, "action_failed")
+            if not in_force(last):
+                return _refusal(1, action_id, not_accepted(last))
+            ka.retry(run_dir, action_id, _actor(a))  # ACCEPTED in force, read just now: the REJECTED is still owed
+            return run(inputs)
         if record["state"] == "INTENDED":
             if ka.in_progress(record):
                 return _refusal(3, action_id, "action_in_progress")
@@ -923,12 +936,12 @@ def _cmd_invalidate(a, environ):
             outcome, record = ka.reconcile(run_dir, action_id, observer, by=a.as_)
             if outcome == "not_done":
                 last = seen.get("latest")
-                if last is None or last.get("result") != "ACCEPTED":
+                if not in_force(last):
                     ka.fail(run_dir, action_id, {"published": False, "reasons": [not_accepted(last)]})
                     return _refusal(1, action_id, not_accepted(last))
                 return run(inputs)
-            if outcome == "failed":
-                return _refusal(1, action_id, "action_failed")
+            if outcome == "failed":                  # failed meanwhile by another call: the next call decides
+                return _refusal(3, action_id, "action_failed")
             if outcome != "done":
                 return _refusal(3, action_id, "ledger_unreadable")
             return 0, _out(True, "REJECTED", ["already_published"], action_id)
@@ -936,11 +949,11 @@ def _cmd_invalidate(a, environ):
             return _refusal(3, action_id, "action_record_unreadable")
         if is_effect(last, inputs):
             return 0, _out(True, "REJECTED", ["already_published"], action_id)
-        if last is not None and last.get("result") == "ACCEPTED":
+        if in_force(last):
             return _refusal(3, action_id, "accepted_again_after_invalidation")
         return _refusal(1, action_id, not_accepted(last))
 
-    return _guarded(ka, action_id, body)
+    return _guarded(ka, action_id, body, conflict=3)
 
 
 def _write_exclusive(path, text):
