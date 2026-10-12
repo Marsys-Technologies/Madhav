@@ -15,7 +15,7 @@ This folder and the three `asset_census_*.json` files next to it are the committ
 | Registry | revision 29, fingerprint `834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79` |
 | Declarations | 1.76.0, sha256 `7bd69d89c12dc5654ed78a4ee2431268f43f24a3dbf7883e5f129c9f1881c9ee` |
 | Scope | chart `482012f1-710e-4a25-994a-93821f5871aa` plus the global L0 reference layer; layers L0, L1, L2 (39 + 20 + 23 = 82 assets) |
-| Limits | statement cap 600 s per census read, lock timeout 5 s, integrity runner 900 s (exempt from the statement cap); a cancelled read reads NO_DETECTOR; layers were run one after another (see `run_L*.log`, `read_timings_L*.txt`, `timeouts.txt`) |
+| Limits | statement cap 600 s per census read, lock timeout 5 s, integrity runner 900 s (exempt from the statement cap); a cancelled read reads NO_DETECTOR; layers were run staggered, at most two at a time: L1 and L0 together, L2 started when L0 finished (see `run_L*.log`, `read_timings_L*.txt`, `timeouts.txt`) |
 
 Census files, one per layer, archived byte-identically with `nikasha_certify.py --archive-census` (names are the tool's own, from each file's `generated` stamp):
 
