@@ -11,6 +11,7 @@ import signal
 import subprocess
 import shutil
 import sys
+import threading
 import time
 
 import pytest
@@ -64,6 +65,17 @@ def claim_record(w, worker='v1'):
 
 def claim_events(w, item):
     return w.events(kind='claim', item=item)
+
+
+def reviewer_states(w):
+    states = [json.loads(p.read_text()) for p in sorted((w.run_dir / 'jobs').glob('J-*/state.json'))]
+    return [s for s in states if s.get('stream') == 'V']
+
+
+def stream_session(state):
+    """The session the reviewer's program reported: the init event of its stream-json output."""
+    rows = [json.loads(line) for line in Path(state['stdout_path']).read_text().splitlines()]
+    return [r['session_id'] for r in rows if r.get('type') == 'system' and r.get('subtype') == 'init']
 
 
 def live_job(w, lane='k1', ignore_term=False, deadline_in=-60, seconds=600, **override):
@@ -238,6 +250,32 @@ def test_the_wait_is_capped_by_the_drain_knob():
         assert w.drain['jobs'][0]['result'] == 'terminated' and gone(group['pid'])
 
 
+def test_a_job_whose_state_turns_ended_while_its_group_lives_is_not_called_gone():
+    # sweep: the record saying `ended` is not the measurement; gone = leader False AND killpg(pgid, 0) ESRCH
+    with World('flip') as w:
+        group = live_job(w, deadline_in=3000)
+        state = w.run_dir / 'jobs' / 'J-k1' / 'state.json'
+
+        def flip():
+            end = time.time() + 30
+            while time.time() < end and len(w.calls('kyctl')) < 4:
+                time.sleep(0.02)
+            doc = json.loads(state.read_text())
+            doc.update(phase='ended')
+            tmp = state.with_suffix('.tmp')
+            tmp.write_text(json.dumps(doc))
+            os.replace(tmp, state)
+
+        thread = threading.Thread(target=flip, daemon=True)
+        thread.start()
+        rc, out, err = w.finalize(KY_DRAIN_WAIT_MIN='0.1')
+        thread.join(timeout=30)
+        job = w.drain['jobs'][0]
+        assert job['result'] != 'ended', 'a group that was alive was called gone because its state said ended'
+        assert job['result'] == 'terminated' and not w.alive(group) and gone(group['pid']), (job, out, err)
+        assert rc == 0 and w.drain['result'] == 'ACCEPTED' and w.final['absence']['processes'] == 'absent', (out, err)
+
+
 ENDED_BUT = [('alive', {}, 'survivor'), ('identity_unknown', {'process_start': None}, 'unknown')]
 
 
@@ -290,6 +328,19 @@ def test_dirty_or_unpushed_work_fails_the_drain_and_is_kept(how, state):
         assert rc == 1 and w.drain['result'] == 'FAILED' and w.final is None
         assert w.drain['lanes'] == {'k1': state} and sorted(p.name for p in (w.wt / 'k1').iterdir()) == before
         assert w.calls('kyjob') == [] and w.calls('ky') == [] and w.calls('local_db') == []
+
+
+def test_a_recorded_worktree_path_that_exists_without_git_metadata_is_not_absent():
+    # sweep: `absent` is the path not existing, not its `.git` not existing
+    with World('plain', lanes=()) as w:
+        plain = w.wt / 'k9'
+        plain.mkdir()
+        (plain / 'notes.txt').write_text('work of unknown state\n')
+        w.add_job('J-k9', worktree=plain)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain['result'] == 'FAILED' and w.final is None, (out, err)
+        assert w.drain['lanes'] == {'k9': 'dirty_kept'} and (plain / 'notes.txt').exists()
+        assert w.calls('kyjob') == [] and w.calls('ky') == [] and not done_events(w, 'C-3')
 
 
 def test_work_written_while_the_review_runs_is_kept_by_the_removal():
@@ -385,7 +436,7 @@ def test_publisher_refusal_stops_without_completion():
 
 @pytest.mark.parametrize('item,step', [('C-3', 'drain_review'), ('C-4', 'close_review')])
 def test_a_reviewer_under_the_authors_session_is_not_independent(item, step):
-    # B4: independence is measured from the reviewer's own job state: its provider session is the finalizer's
+    # B1 (r2): the session is MEASURED from the init event of the reviewer's stream-json output; here it is the author's
     with World('indep-session-' + item) as w:
         w.flag('reviewer_session_' + item, 'sess-author')
         rc, out, err = w.finalize(KY_SESSION_ID='sess-author')
@@ -403,6 +454,117 @@ def test_a_reviewer_under_its_own_session_is_independent():
         rc, out, err = w.finalize(KY_SESSION_ID='sess-author')
         assert rc == 0, (out, err)
         assert len(verdicts(w, 'C-3')) == 1 and len(verdicts(w, 'C-4')) == 1
+        # finalize.sh is the state writer: what it measured from the stream is what the job state records
+        first, second = reviewer_states(w)
+        assert (first['provider_session_id'], second['provider_session_id']) == ('sess-reviewer-1', 'sess-reviewer-2')
+        assert stream_session(first) == ['sess-reviewer-1'] and stream_session(second) == ['sess-reviewer-2']
+
+
+def test_a_default_run_records_the_session_each_reviewer_stream_reported():
+    with World('indep-measured') as w:
+        assert w.finalize()[0] == 0
+        first, second = reviewer_states(w)
+        for state in (first, second):
+            assert stream_session(state) == [state['provider_session_id']] and state['provider_session_id']
+        assert first['provider_session_id'] != second['provider_session_id']
+
+
+UNMEASURED = ['reviewer_no_stream_%s', 'reviewer_stream_without_init_%s', 'reviewer_init_without_session_%s',
+              'reviewer_two_sessions_%s', 'reviewer_session_in_state_only_%s']
+UNMEASURED_CASES = [(f, 'C-3', 'drain_review') for f in UNMEASURED] + [(UNMEASURED[0], 'C-4', 'close_review'),
+                                                                        (UNMEASURED[4], 'C-4', 'close_review')]
+
+
+@pytest.mark.parametrize('flag,item,step', UNMEASURED_CASES, ids=[(f % i) for f, i, _ in UNMEASURED_CASES])
+def test_a_reviewer_whose_session_cannot_be_measured_gets_no_verdict(flag, item, step):
+    # B1 (r2): no stream, no init event, an init event without a session, init events that disagree, or a session
+    # that exists only in the job state (which kyjob.sh never writes): unknown is not independent
+    with World('indep-unmeasured') as w:
+        w.flag(flag % item)
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert w.final['result'] == 'FAILED' and w.final['failed_step'] == step
+        assert 'reviewer_not_independent(provider_session_unmeasured' in w.final['reason'], w.final['reason']
+        assert publishes(w, item) == [] and not w.events(kind='verdict', item=item) and not done_events(w, item)
+        assert not done_events(w, 'C-4')
+        state = [s for s in reviewer_states(w) if s['item'] == item][0]
+        assert state['provider_session_id'] is None, 'an unmeasured session is recorded as null, never as a value'
+
+
+@pytest.mark.parametrize('item,step', [('C-3', 'drain_review'), ('C-4', 'close_review')])
+def test_a_reviewer_under_the_session_of_another_recorded_job_is_not_independent(item, step):
+    # the reviewer resumed the session of a job whose work the receipt covers: measured against run/jobs/*/state.json
+    with World('indep-other-job') as w:
+        w.add_job('J-builder', provider_session_id='sess-builder-9')
+        w.flag('reviewer_session_' + item, 'sess-builder-9')
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert w.final['failed_step'] == step and 'provider_session_is_another_jobs' in w.final['reason'], w.final['reason']
+        assert publishes(w, item) == [] and not w.events(kind='verdict', item=item) and not done_events(w, item)
+
+
+def test_the_close_reviewer_under_the_drain_reviewers_session_is_not_independent():
+    with World('indep-same-twice') as w:
+        w.flag('reviewer_session_C-3', 'sess-reviewer-1')
+        w.flag('reviewer_session_C-4', 'sess-reviewer-1')
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'close_review', (out, err)
+        assert 'provider_session_is_another_jobs' in w.final['reason'], w.final['reason']
+        assert len(verdicts(w, 'C-3')) == 1 and publishes(w, 'C-4') == [] and not done_events(w, 'C-4')
+
+
+# the proposal is bound to the digest; the boundary evidence is this job's; the verdict is the tracker's event
+BOUND = ['reviewer_other_digest_%s', 'reviewer_no_digest_%s']
+
+
+@pytest.mark.parametrize('flag', BOUND, ids=['other_digest', 'no_digest'])
+@pytest.mark.parametrize('item,step', [('C-3', 'drain_review'), ('C-4', 'close_review')])
+def test_an_acceptance_proposed_for_another_digest_or_for_none_is_not_published(flag, item, step):
+    # sweep: plan §12 "accepts its exact digest" — a model-written ACCEPTED that names no digest, or another, accepts nothing
+    with World('bound') as w:
+        w.flag(flag % item)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == step, (out, err, w.final)
+        assert 'reviewer_verdict_not_on_this_digest' in w.final['reason'], w.final['reason']
+        assert publishes(w, item) == [] and not w.events(kind='verdict', item=item) and not done_events(w, item)
+
+
+@pytest.mark.parametrize('flag', ['boundary_other_job', 'boundary_not_object'])
+def test_boundary_evidence_of_another_job_or_of_no_recognised_shape_publishes_nothing(flag):
+    # sweep: `kyboundary.sh check` exit 0 is evidence only as the object the producer prints, for THIS job
+    with World(flag) as w:
+        w.flag(flag)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'drain_review' and 'boundary_' in w.final['reason'], (out, err, w.final)
+        assert publishes(w) == [] and not w.events(kind='verdict') and not done_events(w, 'C-3')
+        assert [c['argv'][0] for c in w.calls('kyboundary')] == ['check', 'release']
+
+
+@pytest.mark.parametrize('flag', ['publish_answers_without_event', 'publish_answer_not_object'])
+def test_a_publisher_answer_without_the_trackers_verdict_event_is_no_verdict(flag):
+    # sweep: `published: true` on stdout is a log line; the backing record is the verdict event in the tracker's log
+    with World(flag) as w:
+        w.flag(flag)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'drain_review', (out, err, w.final)
+        assert 'verdict_event_not_observed' in w.final['reason'] or 'publish_' in w.final['reason'], w.final['reason']
+        assert len(publishes(w, 'C-3')) == 1 and not w.events(kind='verdict')
+        assert w.calls('ky') == [], 'no ky done is attempted on a verdict nothing recorded'
+        assert (w.wt / 'k1').exists() and w.calls('local_db') == []
+
+
+def test_a_later_rejection_of_the_same_digest_revokes_the_acceptance_on_a_rerun():
+    # the tracker's rule (verdicts.py accepted_verdict): the LATEST verdict at this identity decides
+    with World('revoked') as w:
+        w.flag('crash_before_done_C-3')
+        assert w.finalize()[0] == -signal.SIGKILL
+        accepted = verdicts(w, 'C-3')[0]
+        w.append_event(dict(accepted, result='REJECTED', detail='invalidated: fixture'))
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'drain_review', (out, err, w.final)
+        assert 'no accepted verdict' in w.final['reason'] and len(publishes(w, 'C-3')) == 1, w.final['reason']
+        assert not done_events(w, 'C-3') and (w.wt / 'k1').exists()
+        assert [c['argv'][0] for c in w.calls('ky')] == ['done'], 'only the first run reached ky done'
 
 
 def test_a_reviewer_recording_the_authors_process_as_its_own_is_not_independent():
@@ -493,6 +655,41 @@ def test_database_not_proven_absent_is_not_accepted(mode):
         assert w.final['absence']['databases'] in ('survivor', 'unknown')
         assert kyjob_items(w) == ['C-3'] and not done_events(w, 'C-4') and 'claim' not in [v for v, *_ in ky_verbs(w)]
         assert [c['argv'] for c in w.calls('local_db')][0] == ['close', '--session', 'sess-1']
+
+
+@pytest.mark.parametrize('mode', ['other_session_line', 'tokens_on_two_lines'])
+def test_a_close_line_that_is_not_this_sessions_report_proves_nothing(mode):
+    # sweep: the producer prints ONE line `close session=S dropped=<n> container=<c>`; anything else is unknown
+    with World('db-' + mode) as w:
+        w.add_db_receipt('v1', 'sess-1')
+        w.flag('db_mode', mode)
+        rc, out, err = w.finalize()
+        assert rc == 1, (out, err)
+        assert w.final['result'] == 'FAILED' and w.final['failed_step'] == 'final_receipt'
+        assert w.final['absence']['databases'] == 'unknown'
+        row = w.final['absence_detail']['databases']['sessions'][0]
+        assert row['session'] == 'sess-1' and row['exit'] == 0 and row['container'] is None and row['stdout']
+        assert kyjob_items(w) == ['C-3'] and not done_events(w, 'C-4')
+
+
+def test_a_session_name_local_db_accepts_is_closed_under_that_name():
+    # BR-09: local_db.sh's session rule is ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ (KV3-B-LOCALDB): an underscore is a session
+    with World('db-underscore') as w:
+        w.add_db_receipt('v1', 'CTL_20261012.a-1')
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        assert [c['argv'][2] for c in w.calls('local_db')] == ['CTL_20261012.a-1'] * 2
+        assert w.final['absence']['databases'] == 'absent'
+
+
+@pytest.mark.parametrize('session', ['sess:1', 'a..b', 'x' * 65])
+def test_a_session_name_local_db_would_refuse_is_never_passed_to_it(session):
+    with World('db-badname') as w:
+        w.add_db_receipt('v1', session)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['absence']['databases'] != 'absent', (out, err)
+        assert w.final['absence_detail']['databases']['unreadable_receipts'] == [str(w.run_dir / 'local_db' / 'v1.json')]
+        assert session not in [c['argv'][2] for c in w.calls('local_db')]
 
 
 def test_receipts_gone_but_a_database_survives_is_still_a_failure():
@@ -599,6 +796,37 @@ def test_a_claim_recorded_as_not_active_is_not_held(state):
         assert rc == 1, (out, err)
         assert w.final['failed_step'] == 'claim_C-4' and claim_record(w)['state'] == state
         assert kyjob_items(w) == ['C-3'] and publishes(w, 'C-4') == [] and not done_events(w, 'C-4')
+
+
+@pytest.mark.parametrize('flag,why', [('ky_claim_already_expired', 'lease_expired'),
+                                      ('ky_claim_record_differs', 'record_differs_from_event_log')])
+def test_an_expired_claim_or_one_whose_record_differs_from_the_log_is_not_held(flag, why):
+    # review r2 N1: mutations m6 (lease expiry) and m7 (record agreement) survived; each now has its fixture
+    with World(flag) as w:
+        w.flag(flag)
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.final['failed_step'] == 'claim_C-4' and why in w.final['reason'], (out, err, w.final)
+        assert kyjob_items(w) == ['C-3'] and publishes(w, 'C-4') == [] and not done_events(w, 'C-4')
+
+
+def test_an_event_log_that_cannot_be_read_stops_before_anything_is_run_or_written():
+    # review r2 N2 (mutation m8): whether C-4 is done cannot be observed
+    with World('noevents') as w:
+        (w.run_dir / 'EVENTS.jsonl').unlink()
+        (w.run_dir / 'EVENTS.jsonl').mkdir()
+        rc, out, err = w.finalize()
+        assert rc == 1 and w.drain is None and w.final is None, (out, err)
+        assert w.calls() == [] and (w.wt / 'k1').exists()
+
+
+def test_lines_of_the_event_log_that_are_not_events_are_passed_over_as_the_tracker_does():
+    # BR-09: claims.py _read skips a line that is not a valid event object; it is neither an event nor a crash
+    with World('oddlines') as w:
+        with open(w.run_dir / 'EVENTS.jsonl', 'a') as handle:
+            handle.write('[]\n"text"\n{torn\n7\nnull\n')
+        rc, out, err = w.finalize()
+        assert rc == 0, (out, err)
+        assert w.drain['result'] == w.final['result'] == 'ACCEPTED' and 'internal_error' not in json.dumps(w.final)
 
 
 def test_a_release_that_exits_0_but_records_nothing_is_not_a_release():

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# External finalizer v3.1 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
+# External finalizer v3.2 (relaunch plan v2.7 §12, KU-02 `finalize-v3`) — run by the executor on a `finalize` request after C-2 is done
 # and the close PR merged: ["bash", <temporary copy>], cwd $KY_ROOT, 21600 s. A lone copy: it reads nothing next to itself (no dirname "$0");
 # every collaborator is found under $KY_FLEET / $KY_ROOT. Exit 0 only after C-4's guarded completion, else 1; an argument exits 64.
 # TWO PHASES (v1.2's), and a failure in either is recorded as a failure, never as an accepted receipt:
@@ -22,7 +22,13 @@
 # KY_TERM_GRACE_S (20) KY_VERIFIER_SLOTS ("v1 v2 v3 v4") KY_C4_EXTERNAL_REVIEW (path; needed when only one verifier slot exists)
 # KY_FINAL_MODEL KY_FINAL_ROLE KY_SESSION_ID KY_EVENTS KY_GIT.
 # Re-run after C-4 is done: FINAL_RECEIPT.json is bound to C-4's digest and nothing is run, rewritten, claimed, reviewed or published.
-# Changelog: v3.1 (2026-10-12, KV3-B-FINALIZE loop 2, review b1-builds-r1 B1-B4) the C-4 claim and release are observed from the
+# Changelog: v3.2 (2026-10-12, KV3-B-FINALIZE loop 3, review b1-builds-r2 B1 + sweep) the reviewer's provider session is MEASURED
+# from the init event of its stream-json output (kyjob.sh writes no state) and recorded in its job state by this script; unmeasured,
+# the author's, or another recorded job's is not independent. An acceptance counts only when the proposal names the exact digest,
+# the boundary evidence is this job's object, and the tracker's latest verdict event on that digest is this job's (a re-run finds it
+# there and neither checks a released view nor publishes again). A state that says `ended` is not a group that is gone; a path
+# without `.git` is not absent; a `local_db.sh close` report counts only as this session's one line; its session rule is local_db's.
+# v3.1 (2026-10-12, KV3-B-FINALIZE loop 2, review b1-builds-r1 B1-B4) the C-4 claim and release are observed from the
 # tracker's claim event and kept record (state + claim_id), not from the record's presence; a done C-4 binds FINAL and ends the run by
 # observation; absence measures every recorded job group whatever its phase; reviewer independence is measured from its job state
 # (job id, provider session, process tree) against the finalizer's identity.
@@ -56,7 +62,7 @@ DRAIN_PATH, FINAL_PATH = RUN / "DRAIN_RECEIPT.json", RUN / "FINAL_RECEIPT.json"
 DRAFT_PATH, MESSAGE_PATH = RUN / "FINAL_MESSAGE_DRAFT.md", RUN / "FINAL_MESSAGE.md"
 LOOPS = ("dispatcher", "planner", "conductor", "veto")
 SLOT_RE = re.compile(r"^[a-z][a-z0-9]{0,15}\Z")
-SESSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}\Z")
+SESSION_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")    # local_db.sh's own rule for --session; it refuses any other
 TIME_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z")
 CTRL = "finalize.sh"                      # stable across re-runs: an action record is compared on kind/inputs/target, not on who
 AUTHOR_ID = "finalizer:" + CTRL
@@ -277,11 +283,9 @@ def drain_one(path, s, signalling):
     while time.time() < end:
         time.sleep(max(0.0, min(POLL_S, 5.0, end - time.time())))
         fresh, _ = read_json(path)
-        if isinstance(fresh, dict) and fresh.get("phase") == "ended":
-            return "ended", None
         state = group_state(pid, pgid, start)
-        if state == "gone":
-            return "exited", None
+        if state == "gone":                       # the record saying `ended` is not the measurement: only a gone group is
+            return ("ended" if isinstance(fresh, dict) and fresh.get("phase") == "ended" else "exited"), None
         if state == "unknown":
             return "busy_kept", "identity_unknown"
     return terminate(pid, pgid, start)
@@ -321,8 +325,10 @@ def lane_names(paths):
 def worktree_state(path, busy):
     if path in busy:
         return "busy_kept", "a_job_of_this_worktree_is_not_proven_gone"
-    if not os.path.lexists(os.path.join(path, ".git")):
+    if not os.path.lexists(path):
         return "absent", None
+    if not os.path.lexists(os.path.join(path, ".git")):
+        return "dirty_kept", "present_but_not_a_git_worktree"
     rc, out, _ = git(path, "status", "--porcelain")
     if rc != 0:
         return "dirty_kept", "git_status_failed"
@@ -404,6 +410,26 @@ def measure_worktrees(trees):
     return ("absent", []) if rc == 0 else ("unknown", ["git worktree list failed"])
 
 
+def close_report_line(out, sid):
+    """(container, dropped) from the ONE line local_db.sh prints for a close, `close session=S dropped=<n> container=<c>`,
+    and only when it names this session; any other output is unknown (None, None)."""
+    found = None
+    for line in (out or "").splitlines():
+        words = line.split()
+        if words[:1] != ["close"]:
+            continue
+        pairs = [w.split("=", 1) for w in words[1:] if "=" in w]
+        keys = [k for k, _ in pairs]
+        tokens = dict(pairs)
+        if len(keys) != len(set(keys)) or tokens.get("session") != sid:
+            continue
+        if tokens.get("container") and (tokens.get("dropped") or "").isdigit():
+            found = (tokens["container"], int(tokens["dropped"]))
+        else:
+            found = (None, None)
+    return found or (None, None)
+
+
 def db_close(prior=(), recheck=False):
     """local_db.sh close --session S per recorded session (none: once, our own session). → (state, detail)."""
     sessions, unreadable = set(prior), []
@@ -418,9 +444,8 @@ def db_close(prior=(), recheck=False):
     results, state = [], "unknown" if unreadable else "absent"
     for sid in sorted(sessions):
         rc, out, err = run(["bash", FLEET / "local_db.sh", "close", "--session", sid], timeout=900)
-        container = (re.findall(r"\bcontainer=(\S+)", out or "") or [None])[-1]
-        dropped = (re.findall(r"\bdropped=([0-9]+)", out or "") or [None])[-1]
-        row = {"session": sid, "exit": rc, "container": container, "dropped": int(dropped) if dropped else None}
+        container, dropped = close_report_line(out, sid)
+        row = {"session": sid, "exit": rc, "container": container, "dropped": dropped, "stdout": tail(out, 200)}
         results.append(row)
         if rc is None or rc != 0:                 # no call, or exit 1 / not proven: a survivor
             state = worse(state, "survivor")
@@ -448,9 +473,11 @@ def events():
     out = []
     for line in text.splitlines():
         try:
-            out.append(json.loads(line))
+            row = json.loads(line)
         except ValueError:
             continue
+        if isinstance(row, dict):                 # as the tracker's own reader (claims.py _read): a line that is not an event object is no event
+            out.append(row)
     return out
 
 
@@ -460,10 +487,28 @@ def done_event(item, digest=None):
         return "unknown", {"error": "events_unreadable"}
     for e in reversed(evs):
         if e.get("kind") == "item" and e.get("item") == item and e.get("state") == "done" and e.get("guarded") is True:
-            got = (e.get("completion") or {}).get("artifact_digest")
+            completion = e.get("completion") if isinstance(e.get("completion"), dict) else {}
+            got = completion.get("artifact_digest")
             if digest is None or got == digest:
-                return "done", {"item": item, "artifact_digest": got, "path": (e.get("completion") or {}).get("path")}
+                return "done", {"item": item, "artifact_digest": got, "path": completion.get("path")}
     return "not_done", {}
+
+
+def verdict_of(item, digest, job_id):
+    """The tracker's LATEST artifact verdict on (item, digest) — the event its guarded completion reads (verdicts.py
+    accepted_verdict; a later rejection at the same identity revokes). → ('published', result) when that event is job
+    `job_id`'s (detail `job <J>; …`, as kyverdicts.py publishes it) · ('none', result of another's or None) · ('unknown', None)."""
+    evs = events()
+    if evs is None:
+        return "unknown", None
+    last = next((e for e in reversed(evs) if e.get("kind") == "verdict" and e.get("item") == item and e.get("phase") == "artifact"
+                 and e.get("head") is None and e.get("artifact_digest") == digest), None)
+    if last is None:
+        return "none", None
+    mine = isinstance(last.get("detail"), str) and last["detail"].startswith("job %s;" % job_id)
+    if mine and last.get("result") in ("ACCEPTED", "REJECTED"):
+        return "published", last["result"]
+    return "none", last.get("result") if isinstance(last.get("result"), str) else None
 
 
 ACTIVE_CLAIM = ("acquired", "renewed")
@@ -556,7 +601,7 @@ def ky_effect(argv, stream, lane, observe):
     seen, detail = observe()
     if seen == "done":
         return True, dict(detail, exit=rc)
-    return False, {"exit": rc, "observed": seen, "stderr": tail(err)}
+    return False, {"exit": rc, "observed": seen, "detail": detail, "stderr": tail(err, 120)}
 
 
 def ky_done(item, receipt_path, digest):
@@ -659,6 +704,26 @@ def stop_started_group(proc):
     return group_absent(pgid)
 
 
+def provider_session(stdout_path):
+    """The provider session the reviewer's program itself reported: `session_id` of the init event of its stream-json
+    output (kyjob.sh redirects it to stdout_path and writes no state). None — unknown — when the stream is missing or
+    unreadable, carries no init event, an init event names no session, or its init events disagree."""
+    seen = set()
+    try:
+        with open(stdout_path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(row, dict) and row.get("type") == "system" and row.get("subtype") == "init":
+                    sid = row.get("session_id")
+                    seen.add(sid if isinstance(sid, str) and sid.strip() else None)
+    except OSError:
+        return None
+    return next(iter(seen)) if len(seen) == 1 and None not in seen else None
+
+
 def save_state(path, state):
     atomic_write(str(path), json.dumps(state, indent=1) + "\n")
 
@@ -740,6 +805,7 @@ def launch_reviewer(phase, item, receipt_path, digest, slot):
     if not isinstance(disk, dict):
         return False, {"job_id": job_id, "error": "reviewer_state_unreadable_after_exit", "exit_code": rc}
     disk.update(phase="ended", exit_code=rc, outcome=outcome, ended_at=kyaction.utc(),
+                provider_session_id=provider_session(scratch / "stdout.jsonl"),      # measured now, or null: never a default
                 result_path=str(scratch / "result.json") if (scratch / "result.json").is_file() else None)
     save_state(state_path, disk)
     result = result_of(disk, slot, timed_out, group_gone, scratch)
@@ -781,15 +847,29 @@ def review_run(phase, item, receipt_path, claim_slot):
     return status, result, (result.get("vslot") if isinstance(result, dict) and result.get("vslot") else slot), digest
 
 
-def not_independent(state, job_id):
-    """Why the reviewer is NOT independent of the receipt's author, measured from the job state the reviewer left against
-    the finalizer's own recorded identity (its id, its session, its process tree); [] when nothing ties them."""
+def not_independent(state, job_id, scratch):
+    """Why the reviewer is NOT proven independent of the receipt's author; [] only when its identity was measured and
+    ties it to no one. The identity is the provider session its program reported in its own output stream (read again
+    here, and equal to what this script recorded in the job state), compared with the finalizer's identities and with
+    the session of every other recorded job (the jobs whose work the receipt covers, and the other review). A session
+    that cannot be measured is not independent."""
     why = []
     authors = {AUTHOR_ID, CTRL, OWN_SESSION} | ({E["KY_SESSION_ID"]} if E.get("KY_SESSION_ID") else set())
     if job_id in authors or state.get("job_id") != job_id:
         why.append("reviewer_id")
-    if state.get("provider_session_id") in authors:
-        why.append("provider_session_is_the_authors")
+    session = provider_session(Path(scratch) / "stdout.jsonl") if scratch else None
+    if session is None:
+        why.append("provider_session_unmeasured")
+    else:
+        if state.get("provider_session_id") != session:
+            why.append("provider_session_differs_from_its_record")
+        if session in authors:
+            why.append("provider_session_is_the_authors")
+        states, bad = job_states()
+        if bad:
+            why.append("other_job_states_unreadable")
+        if session in {s.get("provider_session_id") for _p, s in states if s.get("job_id") != job_id}:
+            why.append("provider_session_is_another_jobs")
     pid, pgid = state.get("pid"), state.get("pgid")
     if not posint(pid) or not posint(pgid):
         why.append("process_unrecorded")
@@ -809,7 +889,7 @@ def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, ext
         reasons.append("receipt_changed_after_review")
     if state.get("stream") != "V" or state.get("slot") not in VSLOTS or state.get("item") != item or state.get("key") != "finalize-%s-%s" % (phase, digest[:12]):
         reasons.append("reviewer_not_stream_v_or_not_this_review")
-    dependent = not_independent(state, job_id)
+    dependent = not_independent(state, job_id, res.get("scratch"))
     if dependent:
         reasons.append("reviewer_not_independent(%s)" % "+".join(dependent))
     if res.get("exit_code") != 0 or res.get("timed_out") or res.get("group_gone") is not True:
@@ -823,10 +903,13 @@ def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, ext
     result_path = res.get("result_path")
     doc, _ = read_json(result_path) if result_path else (None, None)
     if not (isinstance(doc, dict) and doc.get("schema") == "ky.job_result/1" and doc.get("job_id") == job_id and doc.get("item") == item
-            and doc.get("status") == "done" and (doc.get("proposed_verdict") or {}).get("verdict") in ("ACCEPTED", "REJECTED")):
+            and doc.get("status") == "done" and isinstance(doc.get("proposed_verdict"), dict)
+            and doc["proposed_verdict"].get("verdict") in ("ACCEPTED", "REJECTED")):
         reasons.append("reviewer_result_missing_or_not_this_job")
     else:
         proposed = doc["proposed_verdict"]["verdict"]
+        if doc["proposed_verdict"].get("artifact_digest") != digest:       # §12: the reviewer accepts this exact digest, or nothing
+            reasons.append("reviewer_verdict_not_on_this_digest")
     need_external = claim_slot is not None and slot == claim_slot
     ext_args = []
     if need_external:
@@ -834,16 +917,26 @@ def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, ext
             reasons.append("external_review_required_no_separate_verifier_lane")
         else:
             ext_args = ["--external-review-path", external, "--external-review-sha256", sha_file(external)]
-    boundary_path = Path(state["job_scratch"]) / "finalize.boundary.json"
-    rc, out, err = run(["bash", FLEET / "kyboundary.sh", "check", job_id], timeout=900)
-    boundary_path.write_text(out or "", encoding="utf-8")
-    try:
-        intact = rc == 0 and json.loads(out).get("result") == "intact"
-    except ValueError:
-        intact = False
-    if not intact:
-        reasons.append("boundary_%s" % ("unobservable" if rc is None else "exit_%s" % rc))
-    if not reasons:
+    seen, observed = verdict_of(item, digest, job_id)
+    if seen == "unknown":
+        reasons.append("events_unreadable")
+    if seen == "published":
+        # a re-run: the tracker's latest verdict on this digest is already this job's. Its boundary was checked before
+        # that publication and its view released since, so there is nothing to check again and nothing to publish.
+        published = True
+    else:
+        boundary_path = Path(state["job_scratch"]) / "finalize.boundary.json"
+        rc, out, err = run(["bash", FLEET / "kyboundary.sh", "check", job_id], timeout=900)
+        boundary_path.write_text(out or "", encoding="utf-8")
+        try:
+            evidence = json.loads(out)
+        except ValueError:
+            evidence = None
+        if rc != 0:
+            reasons.append("boundary_%s" % ("unobservable" if rc is None else "exit_%s" % rc))
+        elif not (isinstance(evidence, dict) and evidence.get("result") == "intact" and evidence.get("job_id") == job_id):
+            reasons.append("boundary_evidence_not_this_jobs_intact_object")
+    if not reasons and not published:
         env = dict(os.environ, KY_RUN=str(RUN), KY_BIN=KY, KY_GIT=GIT)
         argv = [sys.executable, FLEET / "kyverdicts.py", "publish", "--job-id", job_id, "--item", item, "--phase", "artifact",
                 "--artifact-digest", digest, "--artifact-path", receipt_path, "--vslot", state["slot"], "--author-id", AUTHOR_ID,
@@ -853,15 +946,24 @@ def review_publish(phase, item, receipt_path, res, digest, slot, claim_slot, ext
         try:
             answer = json.loads((out or "").strip().splitlines()[-1])
         except (ValueError, IndexError):
-            answer = {}
-        published = rc == 0 and answer.get("published") is True
-        if not published:
-            reasons.append("publish_%s" % ("unknown" if rc in (None, 3) else "refused") + (":" + ",".join(answer.get("reasons") or []) if answer.get("reasons") else ""))
+            answer = None
+        answer = answer if isinstance(answer, dict) else {}
+        refusal = [r for r in answer.get("reasons") or [] if isinstance(r, str)] if isinstance(answer.get("reasons"), list) else []
+        if not (rc == 0 and answer.get("published") is True):
+            reasons.append("publish_%s" % ("unknown" if rc in (None, 3) else "refused") + (":" + ",".join(refusal) if refusal else ""))
+        else:
+            seen, observed = verdict_of(item, digest, job_id)      # the answer is a line of output; the verdict is the tracker's event
+            published = seen == "published"
+            if not published:
+                reasons.append("verdict_event_not_observed(%s)" % seen)
+    if published and observed != proposed:
+        reasons.append("verdict_event_is_%s_proposal_is_%s" % (observed, proposed))
     rc, _, _ = run(["bash", FLEET / "kyboundary.sh", "release", job_id], timeout=900)
     view_released = rc == 0
     if not view_released:
         reasons.append("boundary_view_release_failed")
-    return {"accepted": not reasons and proposed == "ACCEPTED", "published": published, "proposed": proposed, "reasons": reasons,
+    return {"accepted": not reasons and published and observed == "ACCEPTED" and proposed == "ACCEPTED", "published": published,
+            "proposed": proposed, "observed": observed, "reasons": reasons,
             "job_id": job_id, "vslot": state.get("slot"), "view_released": view_released}
 
 

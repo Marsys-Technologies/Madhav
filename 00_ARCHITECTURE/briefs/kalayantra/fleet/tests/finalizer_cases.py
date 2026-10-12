@@ -45,7 +45,7 @@ def git(*args, cwd=None):
 
 
 FAKE_TOOLS = r'''
-import glob, hashlib, json, os, signal, subprocess, sys, time
+import glob, hashlib, json, os, signal, subprocess, sys, time, uuid
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,10 +81,16 @@ def log(tool, argv, **extra):
 def events():
     out = []
     try:
-        for line in (RUN / 'EVENTS.jsonl').read_text().splitlines():
-            out.append(json.loads(line))
-    except (OSError, ValueError):
-        pass
+        lines = (RUN / 'EVENTS.jsonl').read_text().splitlines()
+    except OSError:
+        return out
+    for line in lines:                 # as the tracker's reader (claims.py _read): a line that is not an event object is skipped
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            out.append(row)
     return out
 
 
@@ -133,9 +139,10 @@ def ky(argv):
         claim = {'kind': 'claim', 'actor': 'stream-%s:%s' % (os.environ.get('KY_STREAM'), worker), 'item': item,
                  'state': text('ky_claim_records_state', 'acquired'), 'worker_id': worker,
                  'claim_id': hashlib.sha256(os.urandom(16)).hexdigest()[:32], 'lease_s': lease,
-                 'expires_at': utc(time.time() + lease), 'ts': utc(), 'branch': None, 'head': None, 'step': None}
+                 'expires_at': utc(time.time() + (-5 if flag('ky_claim_already_expired') else lease)), 'ts': utc(),
+                 'branch': None, 'head': None, 'step': None}
         append(claim)
-        record_claim(claim)
+        record_claim(dict(claim, claim_id='0' * 32) if flag('ky_claim_record_differs') else claim)
         return 0
     if verb == 'release':
         worker = os.environ.get('KY_LANE', '')
@@ -190,12 +197,25 @@ def kyctl(argv):
 def kyboundary(argv):
     verb, job = argv[0], argv[1]
     log('kyboundary', argv)
+    released = ROOT / 'boundary_released' / job
     if verb == 'check':
-        code = int(text('boundary_exit', '0'))
-        print(json.dumps({'job_id': job, 'result': {0: 'intact', 1: 'violated'}.get(code, 'unknown')}))
+        # KV3-B-KYBOUNDARY: one JSON object {job_id, mechanism, head_unchanged, status_clean, tracked_hashes_unchanged,
+        # mechanism_intact, result}; exit 0 intact, 1 violated, 3 unknown (anything unobservable: a released view is)
+        code = 3 if released.exists() else int(text('boundary_exit', '0'))
+        if flag('boundary_not_object'):
+            print(json.dumps(['intact']))
+            return 0
+        seen = code == 0
+        print(json.dumps({'job_id': 'J-other' if flag('boundary_other_job') else job, 'mechanism': 'fake',
+                          'head_unchanged': seen, 'status_clean': seen, 'tracked_hashes_unchanged': seen,
+                          'mechanism_intact': seen, 'result': {0: 'intact', 1: 'violated'}.get(code, 'unknown')}))
         return code
     if verb == 'release':
-        return 1 if flag('boundary_release_fail') else 0
+        if flag('boundary_release_fail'):
+            return 1
+        released.parent.mkdir(exist_ok=True)
+        released.write_text('1')
+        return 0
     return 64
 
 
@@ -225,6 +245,12 @@ def local_db(argv):
         return 1
     if mode == 'no_token':
         print('close session=%s dropped=%d' % (session, dropped))
+        return 0
+    if mode == 'other_session_line':
+        print('close session=%s-other dropped=0 container=removed' % session)
+        return 0
+    if mode == 'tokens_on_two_lines':
+        print('close session=%s dropped=%d\ncontainer=removed' % (session, dropped))
         return 0
     container = {'stale_ready': 'removed', 'stop_without_removal': 'stopped'}.get(mode, mode)
     print('close session=%s dropped=%d container=%s' % (session, dropped, container))
@@ -272,9 +298,15 @@ def kyverdicts(argv):
     if reasons:
         print(json.dumps({'published': False, 'result': None, 'reasons': reasons, 'action_id': 'VERDICT-' + job}))
         return 1
+    if flag('publish_answers_without_event'):
+        print(json.dumps({'published': True, 'result': proposed, 'reasons': [], 'action_id': 'VERDICT-' + job}))
+        return 0
+    if flag('publish_answer_not_object'):
+        print(json.dumps([True]))
+        return 0
     if not any(e.get('kind') == 'verdict' and str(e.get('detail', '')).startswith('job %s;' % job) for e in events()):
         append({'kind': 'verdict', 'actor': 'stream-V:' + opt(argv, '--vslot'), 'item': item, 'phase': 'artifact',
-                'artifact_digest': digest, 'result': proposed, 'detail': 'job %s; fake' % job,
+                'head': None, 'artifact_digest': digest, 'result': proposed, 'detail': 'job %s; fake' % job,
                 'external_review': {'path': opt(argv, '--external-review-path'), 'sha256': opt(argv, '--external-review-sha256')}
                 if '--external-review-path' in argv else None})
     print(json.dumps({'published': True, 'result': proposed, 'reasons': [], 'action_id': 'VERDICT-' + job}))
@@ -292,6 +324,22 @@ def kyjob(argv):
         prompt_has_header='--- job header ---' in Path(state['prompt_path']).read_text(),
         database_url_set='DATABASE_URL' in os.environ, own_pgid=os.getpgrp(), own_pid=os.getpid())
     receipt = RUN / ('DRAIN_RECEIPT.json' if item == 'C-3' else 'FINAL_RECEIPT.json')
+    reviewed = sha(receipt)
+    # kyjob.sh writes no state (KV3-B-KYJOB): what a real run leaves of its identity is the init event of the program's
+    # stream-json output, redirected to stdout_path. The session is a fresh one unless a flag names it.
+    session = text('reviewer_session_' + item) or str(uuid.uuid4())
+    init = {'type': 'system', 'subtype': 'init', 'cwd': os.getcwd(), 'session_id': session, 'tools': [], 'model': state['model']}
+    stream = [init, {'type': 'assistant', 'session_id': session, 'message': {'content': []}}]
+    if flag('reviewer_no_stream_' + item) or flag('reviewer_session_in_state_only_' + item):
+        stream = None
+    elif flag('reviewer_stream_without_init_' + item):
+        stream = [{'type': 'result', 'subtype': 'success', 'session_id': session}]
+    elif flag('reviewer_two_sessions_' + item):
+        stream.append(dict(init, session_id=str(uuid.uuid4())))
+    elif flag('reviewer_init_without_session_' + item):
+        stream = [{'type': 'system', 'subtype': 'init', 'cwd': os.getcwd()}]
+    if stream is not None:
+        Path(state['stdout_path']).write_text(''.join(json.dumps(row) + '\n' for row in stream))
     if flag('reviewer_hang_' + item):
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         time.sleep(600)
@@ -325,10 +373,10 @@ def kyjob(argv):
     if flag('reviewer_tamper_stream_' + item):
         state['stream'] = 'S'
         state_path.write_text(json.dumps(state))
-    if flag('reviewer_session_' + item):                 # the provider session the model ran under, as kyjob records it
-        state['provider_session_id'] = text('reviewer_session_' + item)
+    if flag('reviewer_session_in_state_only_' + item):   # a model that edits its own job state: no stream evidence behind it
+        state['provider_session_id'] = str(uuid.uuid4())
         state_path.write_text(json.dumps(state))
-    if flag('reviewer_is_author_process_' + item):       # records the process that launched it (the finalizer) as its own
+    if flag('reviewer_is_author_process_' + item):       # a model that edits its job state to name the finalizer's process
         parent = os.getppid()
         start = subprocess.run(['ps', '-o', 'lstart=', '-p', str(parent)], capture_output=True, text=True).stdout.strip()
         state.update(pid=parent, pgid=os.getpgid(parent), process_start=start)
@@ -336,7 +384,11 @@ def kyjob(argv):
     verdict = 'REJECTED' if flag('reviewer_reject_' + item) else 'ACCEPTED'
     result = {'schema': 'ky.job_result/1', 'job_id': 'J-other' if flag('reviewer_wrong_job_' + item) else job,
               'item': item, 'status': 'done', 'branch': None, 'head_sha': None, 'pr_number': None, 'tests': [],
-              'blocked_reason': None, 'notes': 'fake', 'proposed_verdict': {'verdict': verdict}}
+              'blocked_reason': None, 'notes': 'fake', 'proposed_verdict': {'verdict': verdict, 'artifact_digest': reviewed, 'blocking': []}}
+    if flag('reviewer_other_digest_' + item):
+        result['proposed_verdict']['artifact_digest'] = 'e' * 64
+    if flag('reviewer_no_digest_' + item):
+        del result['proposed_verdict']['artifact_digest']
     if not flag('reviewer_no_result_' + item):
         (scratch / 'result.json').write_text(json.dumps(result))
     return 0
