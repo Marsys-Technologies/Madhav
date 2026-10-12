@@ -22664,7 +22664,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "902f926042752579d682ad27b325fa08ee487259971e151a403f7d3d813f6180"
+            "sha256": "814ae2eea664f8d411b4484f13fbcd28576f1d258297e881fd315dff6647f4a4"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
@@ -22824,7 +22824,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "18ce12820e4472511501c7216c878e04f91d2a3880c5f2f1f6cbc7152397c160"
+        "sha256": "b3a557485fe3efb81f9eae23aececc205c74ca626cf3d2947218a289526e93c6"
       },
       {
         "id": "registrar_bridge_extractor",

@@ -29,7 +29,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   resolveFieldSnapshot,
@@ -50,7 +49,7 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput, round3 } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
-
+import { kalaViewAlias } from './registry_alias.js'
 // ── W2.7: kala_field_salience DB read (item 25) ──────────────────────────────
 // Reads the NEWEST field_snapshot's salience rows for a chart via the whitelisted
 // read-only DB proxy (platform/src/app/api/mcp/db/query/route.ts — kala_field_salience
