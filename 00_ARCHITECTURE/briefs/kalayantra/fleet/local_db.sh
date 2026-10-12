@@ -15,7 +15,9 @@
 #                                          three seed hashes and the database's session mark, observed now, equal it;
 #                                          otherwise `ky_<slot> STALE: <reason>`, exit 1
 #   local_db.sh close --session S          KU-02 clean-up; prints `close session=S dropped=<n> container=<c>`. Exit 0 with
-#                                          c = absent | incompatible (untouched) | removed (S's databases and receipts gone,
+#                                          c = absent (no container: S's receipts and S's storage — R/db/S unless it is on
+#                                          record as handed over, and any storage on record as handed to S — removed and seen
+#                                          gone) | incompatible (untouched) | removed (S's databases and receipts gone,
 #                                          no other session's database left: container and its storage directory gone too)
 #                                          | handed_over (another session's database remains: container and storage pass to
 #                                          it, on record in $KY_RUN/local_db/container.json). Exit 1 with c =
@@ -39,6 +41,8 @@
 # source lies below a direct child of R/db, and no other mount is a volume or leaves R.
 # Changelog: v2.0 (2026-10-12, KV3-B-LOCALDB) session-bound slots, bind-mounted storage, bound receipts, check, close,
 #   registry-mandatory seed, no url command; lanes and KY_REPO retired. v1.1 lane databases (charter §7).
+#   v2.0 review round 1 (2026-10-12, B-01): close without a container removes S's receipts and storage and observes
+#   their absence before it exits 0.
 set -uo pipefail
 export LC_ALL=C
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; KY_RUN="${KY_RUN:-$KY_ROOT/run}"
@@ -236,6 +240,15 @@ def record_owner(path, storage):
     out(r["owner"])
 
 
+def record_held(path, session):
+    """The storage a hand-over record leaves to this session; nothing when the record names another owner."""
+    r = load(path)
+    if (not isinstance(r, dict) or set(r) != {"owner", "storage", "from"} or r["owner"] != session
+            or not isinstance(r["storage"], str) or not os.path.isabs(r["storage"])):
+        sys.exit(1)
+    out(r["storage"])
+
+
 def record_write(path, owner, storage, source):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic(path, {"owner": owner, "storage": storage, "from": source})
@@ -262,7 +275,7 @@ def realpath(path):
 
 
 COMMANDS = {"judge": judge, "sha": sha, "receipt": receipt, "receipt-read": receipt_read, "forget": forget,
-            "unlink": unlink, "record-owner": record_owner, "record-write": record_write,
+            "unlink": unlink, "record-owner": record_owner, "record-held": record_held, "record-write": record_write,
             "restore-errors": restore_errors, "scrub": scrub, "realpath": realpath}
 try:
     COMMANDS[sys.argv[1]](*sys.argv[2:])
@@ -501,12 +514,29 @@ remove_storage() {   # the resolved direct child of R/db that held the bind moun
   rm -rf -- "$s"
 }
 
+close_absent() {   # close_absent <record>: no container — what is left of S is its receipts and its storage: removed, then looked for again
+  local rec="$1" own="$R/db/$S" held t left
+  left="$(py forget "$KY_RUN/local_db" "$S")" || left=""
+  held="$(py record-held "$rec" "$S" 2>/dev/null)" || held=""    # storage a hand-over left to S
+  t="$(py record-owner "$rec" "$own" 2>/dev/null)" || t="$S"     # R/db/S on record as handed to another session is no longer S's
+  [ "$t" != "$S" ] || remove_storage "$own"
+  [ -z "$held" ] || remove_storage "$held"
+  [ "$left" = 0 ] || { said 0 receipts_remain; return 1; }
+  if [ "$t" = "$S" ] && { [ -e "$own" ] || [ -L "$own" ]; }; then said 0 storage_remains; return 1; fi
+  if [ -n "$held" ]; then
+    if [ -e "$held" ] || [ -L "$held" ]; then said 0 storage_remains; return 1; fi
+    py unlink "$rec"
+    [ ! -e "$rec" ] || { said 0 record_remains; return 1; }
+  fi
+  said 0 absent; return 0
+}
+
 cmd_close() {
   local n=0 before left id0 store owner back t="" db q='"' rec="$KY_RUN/local_db/container.json"
   said() { echo "close session=$S dropped=$1 container=$2"; }
   observe
   if [ "$C_STATE" = unobservable ]; then note "docker cannot be observed"; said 0 unobservable; return 1; fi
-  if [ "$C_STATE" = absent ]; then said 0 absent; return 0; fi
+  if [ "$C_STATE" = absent ]; then close_absent "$rec"; return $?; fi
   if [ "$C_OK" != compatible ]; then report_incompatible; said 0 incompatible; return 0; fi
   id0="$C_ID"; store="$C_STORE"
   [ "$C_RUNNING" = true ] || "$DOCKER" start "$C_ID" >/dev/null 2>&1 </dev/null     # a stopped server cannot say whose databases it holds
