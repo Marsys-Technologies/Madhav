@@ -35,7 +35,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..', '..', '..')
 
 // ---- Canonical charts (charter §B; second resolved via catalog_charts_list) -----------------
-const PRIMARY_CHART = '482012f1-710e-4a25-994a-93821f5871aa' // Abhisek
+const PRIMARY_CHART = '482012f1-710e-4a25-994a-93821f5871aa' // canonical native chart
 const SECOND_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a' // Abhinandan
 
 // ---- Mechanism classes: the 10-class design enum grounded in the bo_yantra_mechanism writer /

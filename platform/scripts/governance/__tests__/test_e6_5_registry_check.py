@@ -467,7 +467,8 @@ def test_committed_report_equals_fresh_regeneration():
     assert COMMITTED.exists(), "00_ARCHITECTURE/control/registry_coverage_report.json must be committed"
     rep = _report()
     rep["inspector_commit"] = SHA_A
-    assert ac.registry_report_drift(COMMITTED.read_text(encoding="utf-8"), ac.registry_report_text(rep)) is None
+    HOW = "registry_coverage_report.json is stale: run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)"
+    assert ac.registry_report_drift(COMMITTED.read_text(encoding="utf-8"), ac.registry_report_text(rep)) is None, HOW
     committed = json.loads(COMMITTED.read_text(encoding="utf-8"))
-    assert committed["registry_fingerprint"] == ac.registry_fingerprint()
-    assert committed["registry_revision"] == ac.REGISTRY_REVISION and committed["expected_cells"] == 54
+    assert committed["registry_fingerprint"] == ac.registry_fingerprint(), HOW
+    assert committed["registry_revision"] == ac.REGISTRY_REVISION and committed["expected_cells"] == 54, HOW

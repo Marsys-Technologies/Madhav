@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 /**
  * probe_11c_b — post-deploy verification for RETRIEVAL_11C_b.
  *

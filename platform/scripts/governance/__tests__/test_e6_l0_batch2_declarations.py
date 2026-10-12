@@ -116,7 +116,7 @@ L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_
 
 
 RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
-FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_sarvatobhadra_grid", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0)
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0); bg_sarvatobhadra_grid left it in declarations 1.74.0 (retired by #3414 / migration 1360: no declaration for an inactive asset)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
@@ -1102,7 +1102,7 @@ def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_la
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 44 + 2   # prose batch 1 added 3 (44); + value_text and source_citation (ga_vichara, prose batch 2): a literal pin;      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
+    assert len(vocab) == 44 + 2 + 1   # + predicate_jsonb (bg_rules, SS N-457: the composed predicate_jsonb.$.description declared as prose beside corpus_derived); prose batch 1 added 3 (44); + value_text and source_citation (ga_vichara, prose batch 2): a literal pin;      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid

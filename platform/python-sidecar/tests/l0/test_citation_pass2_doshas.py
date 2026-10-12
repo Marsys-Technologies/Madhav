@@ -163,7 +163,7 @@ def test_kemadruma_compat_kuja_is_renamed():
 
 
 def test_chandra_grahan_formation_is_the_well_formed_shape():
-    assert AFTER["chandra_grahan_dosha"]["formation_rule_jsonb"] == {"conjunction": [["moon", "rahu"], ["moon", "ketu"]]}
+    assert AFTER["chandra_grahan_dosha"]["formation_rule_jsonb"] == {"conjunction": [["Moon", "Rahu"], ["Moon", "Ketu"]]}      # one spelling family (migration 1361)
     assert "or" not in AFTER["chandra_grahan_dosha"]["formation_rule_jsonb"]
 
 

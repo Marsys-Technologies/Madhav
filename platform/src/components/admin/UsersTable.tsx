@@ -123,7 +123,7 @@ export function UsersTable({
         const successMsg: Record<typeof kind, string> = {
           delete:  'User deleted.',
           disable: 'User disabled.',
-          enable:  'User enabled.',
+          enable:  user.status === 'pending' ? 'User approved.' : 'User enabled.',
           promote: 'Promoted to super admin.',
           demote:  'Demoted to guest.',
         }
@@ -247,7 +247,7 @@ export function UsersTable({
                               <DropdownMenuItem
                                 onClick={() => setConfirmAction({ user: u, kind: 'enable' })}
                               >
-                                Re-enable account
+                                {u.status === 'pending' ? 'Approve' : 'Re-enable account'}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
@@ -294,7 +294,7 @@ export function UsersTable({
         title={
           confirmAction?.kind === 'delete'  ? 'Delete user?'              :
           confirmAction?.kind === 'disable' ? 'Disable user?'             :
-          confirmAction?.kind === 'enable'  ? 'Enable user?'              :
+          confirmAction?.kind === 'enable'  ? (confirmAction.user.status === 'pending' ? 'Approve user?' : 'Enable user?') :
           confirmAction?.kind === 'promote' ? 'Promote to super admin?'   :
                                               'Demote to guest?'
         }
@@ -305,7 +305,9 @@ export function UsersTable({
               : confirmAction.kind === 'disable'
                 ? `Disable ${confirmAction.user.username ?? confirmAction.user.email}? They will not be able to sign in until re-enabled.`
                 : confirmAction.kind === 'enable'
-                  ? `Re-enable ${confirmAction.user.username ?? confirmAction.user.email}?`
+                  ? confirmAction.user.status === 'pending'
+                    ? `Approve ${confirmAction.user.username ?? confirmAction.user.email}? They will be able to sign in and use the instrument.`
+                    : `Re-enable ${confirmAction.user.username ?? confirmAction.user.email}?`
                   : confirmAction.kind === 'promote'
                     ? `Grant ${confirmAction.user.username ?? confirmAction.user.email} super admin access? They will be able to manage all users and access all admin surfaces.`
                     : `Remove super admin access from ${confirmAction.user.username ?? confirmAction.user.email}? They will be demoted to guest.`
@@ -314,7 +316,7 @@ export function UsersTable({
         confirmLabel={
           confirmAction?.kind === 'delete'  ? 'Delete'   :
           confirmAction?.kind === 'disable' ? 'Disable'  :
-          confirmAction?.kind === 'enable'  ? 'Enable'   :
+          confirmAction?.kind === 'enable'  ? (confirmAction.user.status === 'pending' ? 'Approve' : 'Enable') :
           confirmAction?.kind === 'promote' ? 'Promote'  :
                                               'Demote'
         }

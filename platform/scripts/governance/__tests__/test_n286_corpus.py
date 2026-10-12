@@ -5,11 +5,12 @@ aggregated from bodha_cdlm_cells by bo_sangati'). Each is declared as a `curated
 FROM THE WRITER SOURCE (never typed), plus a `constant_write` waiver pinned to the number of findings the writer scan reports. The new seed form `{file, functions, key}` (prose_forms) reads the plain string literals a
 named writer function assigns to a dict key, by AST. Anything else the scan finds, any drifted literal, any extra literal, an unresolved path: the cap stays or the cell reads red.
 The real writers' `_write_aya` run on a throw-away PostgreSQL (real DDL of the written tables, stub read tables with the columns the writer reads), the engine's `_measure_prose` reads the cells.
-NOT declared (and why) is pinned at the bottom: bo_pratijna, bo_chart_gestalt (JSON-leaf literals; absence reasons), bg_remedies (unresolved DB-derived write path).
+NOT declared (and why) is pinned at the bottom: bo_pratijna, bo_chart_gestalt (JSON-leaf literals; absence reasons), (bg_remedies WAS here as an unresolved DB-derived write path; the scan now follows it and the prescription waiver is declared, SS N-431 / N-450, tested at the bottom).
 """
 from __future__ import annotations
 
 import ast
+import collections
 import copy
 import json
 import pathlib
@@ -279,11 +280,135 @@ def test_the_same_literal_under_another_key_or_function_is_not_part_of_the_seed(
 
 # ───────────────────────── what stays undeclared ─────────────────────────
 
-def test_bg_remedies_stays_capped_by_an_unresolved_database_derived_write_path_so_no_waiver_is_added():
-    e = DECLS["bg_remedies"]
-    assert [c["column"] for c in e["curated_corpus"]] == ["prescription_text", "charity_action"] and e["curated_corpus"][0].get("waiver") is None
-    src = (fs.REPO / "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py").read_text(encoding="utf-8")
-    assert "content_en" in src                                                                                     # the sweep reads classical_text_chunks.content_en from the database (l0_remedy_corpus.py ~3259): an unresolved path no waiver lifts
+BGR = "bg_remedies"
+BGR_WAIVER_FILES = ["brahmagyan/l0_remedy_corpus.py", "brahmagyan/citation_pass2_remedies.py"]
+# Synthetic DATABASE-DERIVED write paths to the declared prose column, the two shapes the scan cannot read as a literal: an INSERT ... SELECT that takes the value from another table's column, and a value
+# returned by a callee defined outside the scanned scope.
+DB_DERIVED_WRITES = {
+    "insert_select": ("def sweep_sql(cur):\n"
+                      "    cur.execute(\"INSERT INTO brahma_remedy_corpus (remedy_id, prescription_text) SELECT chunk_id, content_en FROM classical_text_chunks\")\n"),
+    "fetched_then_outside_callee": ("def sweep_fetch(cur):\n"
+                                    "    cur.execute(\"SELECT chunk_id, content_en FROM classical_text_chunks\")\n"
+                                    "    for cid, txt in cur.fetchall():\n"
+                                    "        cur.execute(\"INSERT INTO brahma_remedy_corpus (remedy_id, prescription_text) VALUES (%s, %s)\", (cid, mystery_lookup(cid)))\n"),
+}
+
+
+def _bgr_scan_units(extra_src=None):
+    """The scope the Null writer scan reads for bg_remedies (the census's own `writer_scan_scope`), plus, when given, one synthetic module (a hop-1 unit) holding an extra write path."""
+    files = ac.registered_ids("")[BGR]
+    units, beyond = ac._delegation_scope(BGR, files)
+    scan_units, scan_beyond = ac.writer_scan_scope(BGR, files)
+    scan_units = list(scan_units)
+    if extra_src:
+        tree = ast.parse(extra_src)
+        scan_units.append(dict(rel="brahmagyan/synthetic_db_write.py", path=fs.REPO / "synthetic_db_write.py", tree=tree, nodes=ac._closure([tree], ac._top_defs(tree)), hop=1, via="synthetic"))
+    return units, beyond, scan_units, scan_beyond
+
+
+def _bgr_null_cells(decl, extra_src=None):
+    """The REAL `prose_checks` of bg_remedies, with NO database: the live reads are stubbed (no blank among 500 checkable rows; the live prescription / charity tables hold exactly the committed seed
+    sentences), so what is graded is the declaration against the writer SOURCE. Returns the prose-check records."""
+    tbl = "brahma_remedy_corpus"
+    cols = ["remedy_id", "prescription_text", "charity_action", "planet", "domain"]
+    units, beyond, scan_units, scan_beyond = _bgr_scan_units(extra_src)
+    ctx = dict(table=tbl, own={tbl: (cols, {c: "text" for c in cols}, {})}, tests=[], vocabulary=set(), paths=[u["path"] for u in units], written=ac.written_columns(units, [tbl]), root=str(fs.REPO),
+               units=units, beyond=beyond, scan_units=scan_units, scan_beyond=scan_beyond,
+               counts={e: dict(blank=0, checkable=500, scope="chart") for e in decl["prose_fields"]})
+    reads = {}
+    for e in decl["curated_corpus"]:
+        sents, err = ac.formgap_seed(e)
+        assert not err, err
+        reads[(e["table"], e["column"])] = dict(sentences=list(sents), chart_scoped=False)
+    ctx["curated_reads"] = reads
+    return ac.prose_checks(BGR, decl, ctx)
+
+
+@pytest.fixture(scope="module")
+def bgr_scan():
+    """The static writer scan of the declared entries over the real scope, once."""
+    decl = _own(BGR)
+    units, beyond, scan_units, scan_beyond = _bgr_scan_units()
+    cols = ["remedy_id", "prescription_text", "charity_action"]
+    own = {"brahma_remedy_corpus": (cols, {c: "text" for c in cols}, {})}
+    holders = {ac.parse_prose_field(e)[0]: ac._holders(ac.parse_prose_field(e)[0], own) for e in decl["prose_fields"]}
+    return ac._lint_module("writer_literal_scan").scan(scan_units, list(decl["prose_fields"]), holders, is_placeholder=ac.ldgr_placeholder_py, sql_texts=ac._sql_texts, parse_entry=ac.parse_prose_field, beyond=scan_beyond)
+
+
+# ───────────────────────── bg_remedies: the prescription waiver (SS N-431 / N-450), and what it must never hide ─────────────────────────
+
+def test_bg_remedies_prescription_text_carries_the_exact_waiver_pinned_to_the_scan_counts(bgr_scan):
+    """bg_remedies used to stay capped ("172 scan finding(s) outside every declared waiver"). The walk declared the waiver for the 172 hand-typed prescription literals (136 in the committed remedy tables
+    + 36 the citation pass 2 overlay writes) beside the existing charity_action one (31). The pin is the engine's own count, per kind over ALL waiver files, and the scan leaves NOTHING unresolved: a waiver
+    may only replace literal `constant_write` findings, never a write path the scan could not follow."""
+    e = _own(BGR)
+    assert [c["column"] for c in e["curated_corpus"]] == ["prescription_text", "charity_action"]
+    presc, charity = e["curated_corpus"]
+    assert presc["waiver"] == dict(files=BGR_WAIVER_FILES, covers=["constant_write"], pin={"constant_write": 172})
+    assert charity["waiver"]["covers"] == ["constant_write"] and charity["waiver"]["pin"] == {"constant_write": 31}
+    assert ac.curated_corpus_problem(e) is None
+    # the pin is what the scan finds, by column, kind and file: 136 + 36 prescription literals, 31 charity actions, nothing else, nothing unresolved
+    got = collections.Counter((ac.parse_prose_field(p["entry"])[0], p["kind"], ac._scan_file_of(p["where"])) for p in bgr_scan["problems"])
+    assert got == collections.Counter({("prescription_text", "constant_write", "brahmagyan/l0_remedy_corpus.py"): 136,
+                                       ("prescription_text", "constant_write", "brahmagyan/citation_pass2_remedies.py"): 36,
+                                       ("charity_action", "constant_write", "brahmagyan/l0_remedy_corpus.py"): 31})
+    assert 136 + 36 == presc["waiver"]["pin"]["constant_write"] and {f for (_c, _k, f) in got if _c == "prescription_text"} == set(presc["waiver"]["files"])
+    assert bgr_scan["unresolved"] == [], bgr_scan["unresolved"]
+    # the database read the old pin named is in the source and is NOT an unresolved path any more: the scan follows `source_row.get("content_en")` as a read, not as a literal
+    assert "content_en" in (fs.REPO / "platform/python-sidecar/brahmagyan/l0_remedy_corpus.py").read_text(encoding="utf-8")
+
+
+def test_bg_remedies_both_null_cells_read_pass_in_the_declared_state():
+    got = _bgr_null_cells(_own(BGR))
+    for c in ("Null.schema_default", "Null.blank_rows"):
+        assert got[c]["v"] == PASS and "PASS earned by the writer scan after the pinned curated corpus replaced 203" in got[c]["measured"], (c, got[c]["measured"][-300:])
+        assert [(i["column"], i["files"], i["waived"], i["pin"]) for i in got[c]["writer_scan"]["curated_corpus"]] == [
+            ("charity_action", BGR_WAIVER_FILES[:1], {"constant_write": 31}, {"constant_write": 31}),
+            ("prescription_text", BGR_WAIVER_FILES, {"constant_write": 172}, {"constant_write": 172})]
+    assert got["Narr.agree"]["v"] == PASS
+
+
+@pytest.mark.parametrize("shape", sorted(DB_DERIVED_WRITES))
+def test_FORGERY_a_database_derived_write_path_added_to_the_scan_still_caps_both_null_cells(shape):
+    """The meaning the old pin guarded, kept: a waiver must not hide a database-derived write path. A write of the declared column whose value comes from the database (an INSERT ... SELECT of another
+    table's column, or the return of a callee outside the scanned scope) is UNRESOLVED to the scan; with the waiver in place the cell stays PARTIAL naming it, and never reads PASS."""
+    got = _bgr_null_cells(_own(BGR), DB_DERIVED_WRITES[shape])
+    for c in ("Null.schema_default", "Null.blank_rows"):
+        assert got[c]["v"] == PARTIAL, (shape, c, got[c]["v"])
+        assert "declared curated corpus not applied: the scan left 1 write path(s) unresolved" in got[c]["measured"] and "synthetic_db_write.py" in got[c]["measured"], (shape, c, got[c]["measured"][-400:])
+        assert "writer_scan" not in got[c]
+
+
+def test_FORGERY_the_real_classical_text_sweep_is_inside_the_scan_so_an_opaque_value_there_would_cap_the_cells():
+    """The sweep reads `classical_text_chunks.content_en` from the database and writes a slice of it into prescription_text (l0_remedy_corpus.py ~3307). The scan reads it (it is not out of scope):
+    replace that one expression with a call the scan cannot follow and the waiver no longer applies."""
+    old = "prescription_text = content_en[:400].rsplit(' ', 1)[0] if len(content_en) > 400 else content_en"
+    d = _own(BGR)
+    units, beyond, scan_units, scan_beyond = _bgr_scan_units()
+    patched = []
+    for u in scan_units:
+        if u["rel"].endswith("brahmagyan/l0_remedy_corpus.py"):
+            src = u["path"].read_text(encoding="utf-8")
+            assert old in src
+            tree = ast.parse(src.replace(old, "prescription_text = mystery_lookup(content_en)"))
+            u = dict(u, tree=tree, nodes=ac._closure([tree], ac._top_defs(tree)))
+        patched.append(u)
+    tbl = "brahma_remedy_corpus"
+    cols = ["remedy_id", "prescription_text", "charity_action"]
+    reads = {(e["table"], e["column"]): dict(sentences=list(ac.formgap_seed(e)[0]), chart_scoped=False) for e in d["curated_corpus"]}
+    ctx = dict(table=tbl, own={tbl: (cols, {c: "text" for c in cols}, {})}, tests=[], vocabulary=set(), paths=[u["path"] for u in units], written=ac.written_columns(units, [tbl]), root=str(fs.REPO),
+               units=units, beyond=beyond, scan_units=patched, scan_beyond=scan_beyond, counts={e: dict(blank=0, checkable=500, scope="chart") for e in d["prose_fields"]}, curated_reads=reads)
+    got = ac.prose_checks(BGR, d, ctx)
+    for c in ("Null.schema_default", "Null.blank_rows"):
+        assert got[c]["v"] == PARTIAL and "the scan left 1 write path(s) unresolved" in got[c]["measured"] and "mystery_lookup" in got[c]["measured"], (c, got[c]["measured"][-400:])
+
+
+def test_FORGERY_a_waiver_that_leaves_the_overlay_file_out_keeps_the_cap():
+    d = _own(BGR)
+    d["curated_corpus"][0]["waiver"]["files"] = BGR_WAIVER_FILES[:1]
+    got = _bgr_null_cells(d)
+    for c in ("Null.schema_default", "Null.blank_rows"):
+        assert got[c]["v"] == PARTIAL and "36 scan finding(s) are outside every declared waiver" in got[c]["measured"] and "citation_pass2_remedies.py" in got[c]["measured"], (c, got[c]["measured"][-300:])
 
 
 # ───────────────────────── the two small engine changes this needs ─────────────────────────

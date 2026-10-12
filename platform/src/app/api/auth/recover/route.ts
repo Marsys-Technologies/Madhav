@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { query } from "@/lib/db/client";
 import { checkRpm } from "@/lib/mcp/rate_limiter_core";
+import { getTrustedClientIp, ipRateLimitKey } from "@/lib/security/client_ip";
 
 // Resolve on the server: recovery never returns an account's email or existence.
 // Firebase's sendOobCode delivers the email; generatePasswordResetLink alone does not.
@@ -8,9 +9,9 @@ export async function POST(request: Request) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin)
     return Response.json({ error: "forbidden" }, { status: 403 });
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "anonymous";
+  // SS N-373: key on the TRUSTED hop of X-Forwarded-For (the one our own
+  // infrastructure appended), never the client-controlled leftmost entry.
+  const ip = ipRateLimitKey(getTrustedClientIp(request.headers));
   const rate = checkRpm(
     `account-recovery:${createHash("sha256").update(ip).digest("hex")}`,
     10,

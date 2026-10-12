@@ -1739,10 +1739,11 @@ try:
     from pydantic import BaseModel as _BaseModel, Field as _Field
 
     class _LelQueryRequest(_BaseModel):
-        chart_id: str | None = _Field(
-            default=None,
+        chart_id: str = _Field(
+            ...,
             description=(
-                "Chart UUID. Real per-chart filter since migration 423 — "
+                "Chart UUID (required; there is no default chart and no all-charts query). "
+                "Real per-chart filter since migration 423 — "
                 "life_events is chart-scoped; only this chart's events are returned."
             ),
         )

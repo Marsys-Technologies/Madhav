@@ -8,7 +8,7 @@ bo_laksana, ka_yojaka, ga_structural, ga_dashas, bo_yantra_mechanism,
 bo_laksana_rerank, bo_nakshatra_semantic, bo_arudha, bo_special_lagna,
 bo_vargottama_dhana). asset_set scope, action='rebuild' (force every listed
 asset back to 'dormant' regardless of current 'lit' state, per the D-1.5b/D-1.6
-precedent scripts in this directory). Abhisek's chart (482012f1) ONLY;
+precedent scripts in this directory). The native's chart (482012f1) ONLY;
 Abhinandan is never rebuilt by this campaign.
 
 Uses the already-running local Cloud SQL Auth Proxy (127.0.0.1:5433) for THIS

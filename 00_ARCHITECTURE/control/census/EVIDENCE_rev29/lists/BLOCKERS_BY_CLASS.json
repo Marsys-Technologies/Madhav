@@ -1,0 +1,127 @@
+{
+ "assets": 6,
+ "assets_only": {
+  "GENUINE DEFECT": 1,
+  "MISSING DECLARATION": 0,
+  "STRUCTURAL": 1,
+  "UNCLASSIFIED": 1
+ },
+ "assets_with": {
+  "GENUINE DEFECT": 3,
+  "MISSING DECLARATION": 1,
+  "STRUCTURAL": 2,
+  "UNCLASSIFIED": 3
+ },
+ "bar_label": "bar: N-268 (named ceilings and disclosure gaps)",
+ "blockers": {
+  "GENUINE DEFECT": 3,
+  "MISSING DECLARATION": 2,
+  "STRUCTURAL": 6,
+  "UNCLASSIFIED": 3
+ },
+ "census_target": "evaluation_copy",
+ "evaluation_copy": {
+  "backup_id": "1791769727082",
+  "backup_time": "2026-10-12T01:50:08.186Z",
+  "instance": "amjis-ri02-validation-c720f1832",
+  "source_instance": "amjis-postgres"
+ },
+ "per_asset": {
+  "bg_sky_calendar": [
+   {
+    "cls": "UNCLASSIFIED",
+    "criterion": "Carr.D3",
+    "verdict": "PARTIAL",
+    "why": "no classification rule matches this blocker"
+   }
+  ],
+  "bo_laksana": [
+   {
+    "cls": "UNCLASSIFIED",
+    "criterion": "Ldgr.source_presence",
+    "verdict": "ERRORED",
+    "why": "no classification rule matches this blocker"
+   },
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   }
+  ],
+  "bo_laksana_rerank": [
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   }
+  ],
+  "bo_samskara": [
+   {
+    "cls": "UNCLASSIFIED",
+    "criterion": "Narr.agree",
+    "verdict": "PARTIAL",
+    "why": "no classification rule matches this blocker"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.blank_rows",
+    "verdict": "PARTIAL",
+    "why": "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.schema_default",
+    "verdict": "PARTIAL",
+    "why": "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)"
+   }
+  ],
+  "ga_structural": [
+   {
+    "cls": "MISSING DECLARATION",
+    "criterion": "Ldgr.source_presence",
+    "verdict": "NO_DETECTOR",
+    "why": "the Ldgr target-table / applicability ruling is not written"
+   },
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   },
+   {
+    "cls": "MISSING DECLARATION",
+    "criterion": "Vocab.identity",
+    "verdict": "NO_DETECTOR",
+    "why": "the identity key declaration is not written"
+   }
+  ],
+  "ga_vichara": [
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Build.history",
+    "verdict": "PARTIAL",
+    "why": "nothing has exercised the current code and contract yet: a build run is needed"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.blank_rows",
+    "verdict": "PARTIAL",
+    "why": "no row data was read / unknown or empty entries in the checkable-row count"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.schema_default",
+    "verdict": "PARTIAL",
+    "why": "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "no whole value is a term / unread columns: the spelling cannot be graded"
+   }
+  ]
+ }
+}

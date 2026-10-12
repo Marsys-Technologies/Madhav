@@ -23,7 +23,7 @@ const rendered = `${JSON.stringify(snapshot, null, 2)}\n`
 if (check) {
   const existing = readFileSync(outputPath, 'utf8')
   if (existing !== rendered) {
-    throw new Error('capability_knowledge.snapshot.json is stale; run npm run codegen:capability-knowledge -- --generated-at=<reviewed ISO timestamp>')
+    throw new Error('capability_knowledge.snapshot.json is stale; run platform/scripts/regenerate_generated.sh (never hand-merge generated files: take either side and run it)')
   }
   console.log(`capability knowledge snapshot current: ${snapshot.content_hash}; ${snapshot.census.semantic_capabilities} SCUs`)
 } else {

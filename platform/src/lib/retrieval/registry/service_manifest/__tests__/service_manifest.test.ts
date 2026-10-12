@@ -41,9 +41,9 @@ describe('service_manifest — W1 L1c', () => {
     }
   })
 
-  it('reports 20 mounted routers with 49 total endpoints (+ /health = 50, matching the snapshot total)', () => {
+  it('reports 20 mounted routers with 48 total endpoints (+ /health = 49, matching the snapshot total)', () => {
     expect(serviceManifest.routers.length).toBe(20)
-    expect(getTotalRouterEndpointCount()).toBe(49)
+    expect(getTotalRouterEndpointCount()).toBe(48)
     const totalOpenapiPaths = Object.values(openapiSnapshot.paths).reduce(
       (n, methods) => n + Object.keys(methods as object).length,
       0,
