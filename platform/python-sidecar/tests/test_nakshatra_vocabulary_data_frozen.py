@@ -6,6 +6,12 @@ conn.commit()), so l0_ontology.py entered the gochara writers' whole-closure no-
 The normaliser now reads brahmagyan/nakshatra_vocabulary_data.py, a generated constants-only copy; this test keeps
 that copy honest (byte-equal to a fresh derivation from the L0 modules) and keeps the vocabulary's import closure
 free of any module that touches a connection.
+
+WHO REGENERATES (CLAUDE.md N.7 item 3): the L0 OWNER, in the same change that edits brahmagyan/l0_nakshatra.py or
+brahmagyan/l0_ontology.py, runs `python platform/scripts/governance/freeze_nakshatra_vocabulary_data.py` (and its `--check`)
+as part of that change's own tests; until then this test is red -- drift is a failing test, never a silent divergence.
+Verified by mutation: one character in the frozen module, one alt_name in l0_nakshatra.py and one synonym in l0_ontology.py
+each turn this file red.
 """
 from __future__ import annotations
 

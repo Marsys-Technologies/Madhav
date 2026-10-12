@@ -6,7 +6,12 @@ Kala and ga_* writers import it and the writer-closure conformance tests (test_a
 walker) scan every imported file, function-level imports included. The L0 seed modules it used to import
 (`l0_nakshatra.py`, `l0_ontology.py`) carry the seeders' SQL and a `conn.commit()`. This script copies exactly the data
 the normaliser needs out of them into a constants-only module; `tests/test_nakshatra_vocabulary_data_frozen.py`
-re-derives the same rows from the L0 modules and fails when the frozen copy drifts. Run from the repo root:
+re-derives the same rows from the L0 modules and fails when the frozen copy drifts.
+
+WHO REGENERATES (CLAUDE.md N.7 item 3; Engine condition on #3460): the L0 OWNER, in the same change that edits
+l0_nakshatra.py or l0_ontology.py, runs this generator (and `--check`, which exits 1 on any byte difference) as part of that
+change's own tests. The normaliser never reads the L0 modules at runtime, so a stale frozen copy is a RED test
+(tests/test_nakshatra_vocabulary_data_frozen.py), never a silent divergence. Run from the repo root:
 
     python platform/scripts/governance/freeze_nakshatra_vocabulary_data.py
 """
