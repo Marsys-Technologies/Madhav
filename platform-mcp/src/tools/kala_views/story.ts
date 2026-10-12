@@ -224,7 +224,8 @@ interface RawParva {
   end_year: number | null
   parva_quality: string
   theme_keywords: string[]
-  high_convergence_count: number
+  high_convergence_count: number | null
+  convergence_null_reason?: string | null
   avg_effective_score: number | null
   narrative: Record<string, unknown>
   source_citation: string
@@ -244,7 +245,8 @@ export interface StoryChapter {
   parva_quality: string
   theme_keywords: string[]
   narrative: Record<string, unknown>
-  high_convergence_count: number
+  high_convergence_count: number | null
+  convergence_null_reason?: string | null
   avg_effective_score: number | null
   source_citation: string
   temporal_position: 'past' | 'current' | 'future'
@@ -538,6 +540,7 @@ export function dedupParvas(rows: RawParva[]): { chapters: DedupedChapter[]; rep
       theme_keywords: row.theme_keywords,
       narrative: row.narrative,
       high_convergence_count: row.high_convergence_count,
+      convergence_null_reason: row.convergence_null_reason ?? null,
       avg_effective_score: row.avg_effective_score,
       source_citation: row.source_citation,
       collapsed_duplicate_count: collapsedCountByKept.get(row.parva_index) ?? 0,
