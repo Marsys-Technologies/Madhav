@@ -47,7 +47,7 @@ set -euo pipefail
 usage() {
   echo "usage: kyctl.sh status | install | uninstall | start <loop> [--clear-stop] | stop <loop> | restart <loop> [--clear-stop]" >&2
   echo "       <loop> = dispatcher | planner | conductor | veto | all" >&2
-  echo "       the veto loop is stopped and observed here only: its role takes no queued command but \`veto <decision-id>\`" >&2
+  echo "       the veto loop: stopped here, or by a queued command its running controller applies (\`status\`, \`loops stop|status veto\`, \`decide\`); \`veto <decision-id>\` is settled by the veto handler" >&2
   exit 64
 }
 

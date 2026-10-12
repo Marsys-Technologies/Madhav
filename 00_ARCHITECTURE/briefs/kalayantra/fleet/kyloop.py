@@ -121,6 +121,7 @@ SIBLINGS = ("kyaction", "kycommands", "kyveto")  # read-only modules beside this
 HARNESS = "kyqualify"                           # optional sibling: when installed, ITS check_receipt judges a receipt
 LABEL_PREFIX = "in.marsys.kalayantra."          # + <role>: the launchd label of a loop (kyctl.sh label_of)
 TEST_CONTEXT_ENV = "KY_LOOP_TEST_CONTEXT"       # TEST-ONLY, see Controller.context()
+TEST_CONTEXT_PREFIX = "test-hook:"              # what an injected context is reported as: never a proven context
 MIN_CLAUDE = (2, 1, 296)
 BACKOFF_MINUTES = (5, 10, 20, 30)
 NO_PROGRESS_LIMIT = 3
@@ -761,6 +762,7 @@ class Controller:
         self.dispatcher_checked = False
         self.harness = None         # kyqualify, when it is installed beside this file (see load_harness)
         self.qualification_check = None     # which layer judged the receipt at the last verify_launch (N-05)
+        self.inbox_keys = set()     # conductor: the message ids of the last inbox poll that are not handled yet
 
     # ---- plumbing
     def log(self, msg):
@@ -824,10 +826,16 @@ class Controller:
         ONLY while the test sleep-scale override is active (KY_LOOP_SLEEP_SCALE < 1). At the production scale
         (1, or unset) the variable is ignored — a `launchd`-labelled context is REFUSED there — so a real loop
         can never be told which context it runs in. Its use is recorded (test_hooks()), and a controller that
-        really runs under launchd refuses to launch with either hook set (verify_launch)."""
+        really runs under launchd refuses to launch with either hook set (verify_launch).
+
+        An injected context is never reported as a proven one (N3-04): it is `test-hook:launchd` /
+        `test-hook:shell`, a context of its own. A receipt earned in the real `launchd` or `shell` context
+        therefore never qualifies a controller that was merely TOLD where it runs (qualification_context_mismatch),
+        and a receipt written for a hook context qualifies no real controller — nor does kyqualify.py's own
+        check_receipt know such a context."""
         injected = os.environ.get(TEST_CONTEXT_ENV)
         if injected in ("launchd", "shell") and self.scale < 1:
-            return injected
+            return TEST_CONTEXT_PREFIX + injected
         return self.real_context()
 
     def admitted(self):
@@ -1541,7 +1549,9 @@ class Controller:
         own `check_receipt(receipt, launch configuration, require_context=…)` — which re-evaluates the receipt's
         checks and negative probes, its launchd receipt, its tool coverage and the binds recomputed from disk —
         must return no reason either. Which layer judged is recorded in loops/<role>.json
-        (`qualification_check.mode`: "kyqualify.check_receipt" or "controller_only")."""
+        (`qualification_check.mode`: "kyqualify.check_receipt" or "controller_only"). Under launchd — where the
+        installed loops run — a missing harness refuses the launch (`qualification_harness_missing`, N3-05);
+        `controller_only` is left to a controller started by hand from a shell."""
         self.qualification_check = None
         path = self.qualification_path(cfg)
         doc, err = read_json(path)
@@ -1571,6 +1581,12 @@ class Controller:
         if diff:
             return ["qualification_mismatch: %s" % ", ".join(diff)]
         mode = "controller_only"
+        if harness is None and self.real_context() == "launchd":
+            # N3-05: an installed loop is judged by the harness or not at all. The controller's own, weaker
+            # comparison stays for a controller run by hand from a shell (recorded as `controller_only`).
+            return ["qualification_harness_missing: %s.py is not installed beside %s — under launchd the receipt "
+                    "is judged by its check_receipt, never by the controller's own comparison alone"
+                    % (HARNESS, os.path.abspath(__file__))]
         if harness is not None:
             config = self.launch_config(cfg)
             missing = sorted(set(getattr(harness, "CONFIG_KEYS", ())) - set(config))
@@ -1665,12 +1681,15 @@ class Controller:
                 out[entry["id"]] = entry
         return out
 
-    def awaiting_blocks(self, authored=None):
+    def awaiting_blocks(self, authored=None, scope=None):
         """(loop_blocked, blocked item keys, ids) from open owner-waits. Everything the controller raised itself
         is excluded (its items act through STOP, the breaker or as plain attention, and resolving them is not
         changed evidence). `authored`, when given, is filled with the ids of the items a JOB of this role raised
         (raised_by.role is this role and raised_by.job_id is set) — they block like any other, but a run is never
-        credited with a "changed dependency" for an owner-wait a job wrote (N-02)."""
+        credited with a "changed dependency" for an owner-wait a job wrote (N-02). `scope`, when given, is the
+        keys of the items THIS role can work on (item_keys()): an item-level owner-wait about anything else —
+        another role's wait for another item — is left out altogether (L3-01), judged by the very comparison
+        is_blocked() makes. A loop-level wait counts only when it names this loop or this role raised it."""
         loop_blocked, items, ids = False, set(), []
         directory = self.run / "awaiting"
         for p in sorted(directory.glob("*.json")) if directory.is_dir() else []:
@@ -1689,7 +1708,10 @@ class Controller:
             if blocks == "loop" and (item == "loop.%s" % self.role or raised.get("role") == self.role):
                 loop_blocked = counted = True
             elif blocks == "item" and item:
-                items.add(item.split(".", 1)[1] if item.startswith(("step.", "msg.")) else item)
+                key = item.split(".", 1)[1] if item.startswith(("step.", "msg.")) else item
+                if scope is not None and not any(self.is_blocked(k, (key,)) for k in scope):
+                    continue                    # not a wait of this role: it neither blocks nor counts here
+                items.add(key)
                 counted = True
             if counted:
                 ids.append(aid)
@@ -1745,27 +1767,62 @@ class Controller:
         msgs = self.poll_inboxes()
         if msgs is None or loop_blocked:
             return []
-        items, seen = [], set()
+        items, seen, keys = [], set(), set()
         for stream, m in msgs:
             mid = str(m.get("msg_id", ""))
-            if not ID_RE.match(mid) or mid in seen or self.is_blocked(mid, blocked) \
-                    or (self.run / "handled" / ("msg.%s.json" % mid)).exists():
+            if not ID_RE.match(mid) or mid in seen or (self.run / "handled" / ("msg.%s.json" % mid)).exists():
+                continue
+            keys.add(mid)                       # asked of is_blocked() just below: a wait about it is this role's
+            if self.is_blocked(mid, blocked):
                 continue
             seen.add(mid)
             items.append({"id": "msg." + mid, "kind": "message", "key": mid, "stream": stream, "message": m})
+        self.inbox_keys = keys
         return items[:BATCH_MAX]
 
-    def verify_wave_b_done(self):
-        """WAVE_B_DONE is derived, never believed from a file's existence (plan §13)."""
-        receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
-        if err or not isinstance(receipt, dict) or receipt.get("mode") != "final":
-            return False, "the installation receipt is not a final receipt"
-        marker, _ = read_json(self.run / "WAVE_B_DONE")
-        if not isinstance(marker, dict) or marker.get("final_receipt_sha256") != sha_file(self.run / "INSTALL_RECEIPT.json"):
-            return False, "the marker does not bind the current final receipt"
-        return True, "final receipt %s" % marker["final_receipt_sha256"][:12]
+    def item_keys(self, items=()):
+        """The keys of the items this role can work on — exactly what eligible_items() asks is_blocked() about:
+        the Wave B steps (planner), or the unhandled messages of the last inbox poll together with the given
+        work items (conductor). An owner-wait about any other item is not a dependency of this role (L3-01)."""
+        if self.role == "planner":
+            return [step for step, _ in PLANNER_STEPS]
+        return sorted(self.inbox_keys | {str(it["key"]) for it in items if isinstance(it, dict) and it.get("key")})
 
-    def derive_completion(self, accepted):
+    def verify_wave_b_done(self):
+        """WAVE_B_DONE is derived, never believed from a file's existence or from what it says of itself (plan
+        §13, L3-02). The marker is re-derived each time it is met: every Wave B step is accepted in the role
+        state with the very evidence hash the marker records, the marker binds the current final receipt and the
+        current VERSIONS.json, and what derive_completion() itself requires holds NOW (completion_problems():
+        a final receipt, VERSIONS.json, a passing normal kyversion.sh). → (True, what was verified) or
+        (False, the first thing that does not hold)."""
+        marker, _ = read_json(self.run / "WAVE_B_DONE")
+        if not isinstance(marker, dict):
+            return False, "the marker is not a JSON object"
+        steps = [s for s, _ in PLANNER_STEPS]
+        state, err = self.read_role_state()
+        if err:
+            return False, "the role state cannot be read (%s)" % err
+        accepted, recorded = self.accepted_steps(state), marker.get("step_evidence")
+        if marker.get("steps") != steps or not isinstance(recorded, dict):
+            return False, "the marker does not record the evidence of %s" % ", ".join(steps)
+        for step in steps:
+            if step not in accepted:
+                return False, "%s is not accepted in %s" % (step, self.state_path.name)
+            if recorded.get(step) != accepted[step]["evidence_sha256"]:
+                return False, "the marker's evidence for %s differs from the accepted evidence" % step
+        for name, field in (("INSTALL_RECEIPT.json", "final_receipt_sha256"), ("VERSIONS.json", "versions_sha256")):
+            now = sha_file(self.run / name)
+            if now is None or marker.get(field) != now:
+                return False, "the marker does not bind the current %s" % name
+        problems = self.completion_problems()
+        if problems:
+            return False, "; ".join(problems)
+        return True, "accepted %s, final receipt %s, kyversion.sh passed" % (", ".join(steps), marker["final_receipt_sha256"][:12])
+
+    def completion_problems(self):
+        """What completion needs besides the accepted steps — the ONE list derive_completion() and
+        verify_wave_b_done() both judge by: a final installation receipt, VERSIONS.json and a passing normal
+        (argument-less) kyversion.sh, which is run only when the files are there (a missing helper is not a pass)."""
         receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
         problems = []
         if err or not isinstance(receipt, dict) or receipt.get("mode") != "final":
@@ -1776,6 +1833,10 @@ class Controller:
             rc = self.run_helper("kyversion.sh", [], 300)
             if rc != 0:
                 problems.append("normal kyversion.sh did not pass (rc=%s)" % rc)
+        return problems
+
+    def derive_completion(self, accepted):
+        problems = self.completion_problems()
         if problems:
             raise Refusal(["completion_unverified: B-3, B-4 and B-5 are recorded as accepted but " + "; ".join(problems)])
         steps = [s for s, _ in PLANNER_STEPS]
@@ -1787,13 +1848,14 @@ class Controller:
         self.log("WAVE_B_DONE derived from accepted B-3…B-5 evidence and the final receipt")
 
     # ---- progress and breaker evidence
-    def dependency_fingerprint(self, external_only=False):
+    def dependency_fingerprint(self, external_only=False, keys=None):
         """A digest of the external dependencies a run may be waiting for: the open owner-waits that block this
-        role, the installation receipt, the manifests, the owner's resume, the release receipt and the
-        activation chain. With `external_only`, owner-waits a job of this role raised are left out: a run that
-        only wrote an owner-wait has changed nothing it did not author (N-02)."""
+        loop or an item this role can work on (`keys`, default item_keys() — never another role's wait for
+        another item, L3-01), the installation receipt, the manifests, the owner's resume, the release receipt
+        and the activation chain. With `external_only`, owner-waits a job of this role raised are left out: a run
+        that only wrote an owner-wait has changed nothing it did not author (N-02)."""
         authored = set()
-        _, _, ids = self.awaiting_blocks(authored)
+        _, _, ids = self.awaiting_blocks(authored, scope=self.item_keys() if keys is None else keys)
         parts = {"awaiting": [i for i in ids if i not in authored] if external_only else ids}
         for name in ("INSTALL_RECEIPT.json", "VERSIONS.bootstrap.json", "VERSIONS.json", "OWNER_RESUME.json",
                      "RELEASE_RECEIPT.json"):
@@ -1818,12 +1880,17 @@ class Controller:
                 out.append([p.name, sha_file(p)])
         return out
 
-    def accepted_summary(self):
+    def accepted_summary(self, keys=None):
+        """Accepted work and the two dependency fingerprints, taken over `keys` (default item_keys()). The keys
+        are part of the summary: a run's "after" is taken over the keys of its "before", so that the two differ
+        only when a dependency of this role did (L3-01)."""
         state, _ = read_json(self.state_path)
         ids = sorted(self.accepted_steps(state)) if isinstance(state, dict) else []
+        keys = self.item_keys() if keys is None else sorted(str(k) for k in keys)
         return {"accepted_count": len(ids), "accepted_digest": sha_bytes("\n".join(ids).encode()),
-                "dependency_fingerprint": self.dependency_fingerprint(),
-                "external_fingerprint": self.dependency_fingerprint(external_only=True)}
+                "item_keys": keys,
+                "dependency_fingerprint": self.dependency_fingerprint(keys=keys),
+                "external_fingerprint": self.dependency_fingerprint(external_only=True, keys=keys)}
 
     def evidence_fingerprint(self):
         """What must change before an open breaker may be reopened: accepted work, external dependencies,
@@ -2715,7 +2782,7 @@ class Controller:
         state_bytes = self.state_path.read_bytes()
         snap = rs / "state.snapshot.json"
         write_atomic(snap, state_bytes, 0o444)
-        before = self.accepted_summary()
+        before = self.accepted_summary(self.item_keys(items))
         deadline = time.time() + cfg["deadline_seconds"] * self.scale
         fence = secrets.token_hex(16)
         caps, evidence = self.ls().get("substeps") or {}, self.substep_evidence()
@@ -3074,10 +3141,13 @@ class Controller:
         self.state_sha = sha_file(self.state_path)
         seen = detect_quota(record.get("stdout_path", ""), record.get("stderr_path", ""))
         quota, backoff = seen["refusal"], [None]
-        after = self.accepted_summary()         # before the controller raises anything of its own below
-        before = record.get("progress_before") or {}
+        before = record.get("progress_before") if isinstance(record.get("progress_before"), dict) else {}
+        keys = before.get("item_keys")          # the same items as "before": only a dependency OF THIS ROLE counts
+        keys = keys if isinstance(keys, list) and all(isinstance(k, str) for k in keys) else None
+        after = self.accepted_summary(keys)     # before the controller raises anything of its own below
         # a changed external dependency counts only when the run did not author it (N-02): owner-waits raised by
-        # a job of this role are in neither fingerprint
+        # a job of this role are in neither fingerprint — nor is any role's wait for an item that is not this
+        # role's to work on (L3-01)
         basis = "external_fingerprint" if before.get("external_fingerprint") else "dependency_fingerprint"
         dependency_changed = bool(before.get(basis)) and before[basis] != after[basis]
         progressed = (bool(accepted) or dependency_changed) and not refuse_all
@@ -3190,7 +3260,7 @@ class Controller:
                 if not ok:
                     raise Refusal(["wave_b_done_unverified: " + why])
                 self.disable("WAVE_B_DONE verified (%s)" % why)
-                self.log("Wave B complete (verified): exiting")
+                self.log("Wave B complete (verified: %s): exiting" % why)
                 return 0
             if self.role == "conductor" and self.owner_resume() is None:
                 self.log("no valid OWNER_RESUME.json: nothing to do, nothing raised")
@@ -3383,6 +3453,8 @@ class VetoController(Controller):
       * decisions HELD because the authorised bundle cannot be read raise ONE attention item and the loop goes
         on: the hold ends by itself, and an owner veto is honoured meanwhile."""
 
+    COMMANDS = ("status", "loops", "decide")    # the queued commands this controller applies (kyctl.sh's usage
+                                                # text names exactly these; `veto` is the handler's)
     receipt_verified = None     # sha256 of the installation receipt the installed bundle was verified under
     authority_seen = None       # the authority source last logged (logged only when it changes)
     authority_source = None     # {"known", "source"} of the authority given to the last tick
@@ -3706,7 +3778,7 @@ class VetoController(Controller):
         """What the veto CONTROLLER carries out itself: `status` (its `kyctl.sh status` line), `loops stop veto`
         (the switch, tagged with the command id — the loop then ends at its next look), `loops status veto`, and
         `decide` for an awaiting item this loop raised. Everything else is rejected by name."""
-        if cmd.get("command") in ("status", "loops", "decide"):
+        if cmd.get("command") in self.COMMANDS:
             return super().handle_command(role, cmd)
         raise self.kc.Reject("unsupported_by_veto_role: %s (the veto controller takes status, loops stop|status "
                              "veto and decide; `veto <decision-id>` is settled by the veto handler)" % cmd.get("command"))

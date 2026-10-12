@@ -403,13 +403,81 @@ def test_global_hold_waits_without_running_then_proceeds(w):
     assert w.calls() == [1] and (w.root / "HOLD").exists() is False
 
 
+WAVE_B_STEPS = ("B-3", "B-4", "B-5")
+
+
+def wave_b_complete(w, accepted=WAVE_B_STEPS, evidence=None):
+    """A finished Wave B as the controller itself would have left it: the steps accepted in the role state, the
+    final receipt, VERSIONS.json — and the marker derive_completion() writes from them."""
+    w.write_state({"active": {}, "completed_steps": [
+        {"id": s, "evidence_sha256": hashlib.sha256(s.encode()).hexdigest(), "note": "accepted"} for s in accepted]})
+    w.receipt("final")
+    (w.run / "VERSIONS.json").write_text('{"components": []}')
+    marker = {"schema": "ky.wave_b_done/1", "derived_at": "2026-10-12T00:00:00Z", "derived_by": "CTL-PLANNER-earlier",
+              "steps": list(WAVE_B_STEPS),
+              "step_evidence": dict({s: hashlib.sha256(s.encode()).hexdigest() for s in WAVE_B_STEPS}, **(evidence or {})),
+              "final_receipt_sha256": sha(w.run / "INSTALL_RECEIPT.json"),
+              "versions_sha256": sha(w.run / "VERSIONS.json")}
+    (w.run / "WAVE_B_DONE").write_text(json.dumps(marker))
+    return marker
+
+
 def test_wave_b_done_verified_exits_cleanly(w):
     w.ready()
-    w.receipt("final")
-    (w.run / "WAVE_B_DONE").write_text(json.dumps({"final_receipt_sha256": sha(w.run / "INSTALL_RECEIPT.json")}))
+    wave_b_complete(w)
     r = w.kyloop("planner")
     assert r.returncode == 0 and w.calls() == [] and w.awaiting() == []
-    assert w.loop_state()["enabled"] is False and "WAVE_B_DONE" in w.loop_state()["reason"]
+    assert w.loop_state()["enabled"] is False and "WAVE_B_DONE verified" in w.loop_state()["reason"]
+    assert (w.fleet / "kyversion.sh.calls").read_text().splitlines() == [""]      # the normal mode, re-run now
+
+
+WAVE_B_UNVERIFIED = [
+    # what is wrong with an otherwise complete world, and what the refusal names
+    ("no-accepted-steps", "B-3 is not accepted"),
+    ("one-step-missing", "B-5 is not accepted"),
+    ("step-evidence-differs", "evidence for B-4 differs"),
+    ("marker-records-no-evidence", "does not record the evidence"),
+    ("marker-names-fewer-steps", "does not record the evidence"),
+    ("kyversion-fails", "kyversion.sh did not pass (rc=3)"),
+    ("kyversion-missing", "kyversion.sh did not pass (rc=None)"),
+    ("versions-changed-since", "does not bind the current VERSIONS.json"),
+    ("versions-missing", "does not bind the current VERSIONS.json"),
+    ("receipt-changed-since", "does not bind the current INSTALL_RECEIPT.json"),
+    ("role-state-unreadable", "role state cannot be read"),
+]
+
+
+@pytest.mark.parametrize("case,why", WAVE_B_UNVERIFIED, ids=[c[0] for c in WAVE_B_UNVERIFIED])
+def test_a_wave_b_done_marker_is_re_derived_from_the_accepted_evidence_and_kyversion(w, case, why):
+    """L3-02: the marker is believed only when completion can be derived again NOW — the receipt hash it repeats is
+    a value any writer can compute. Each case breaks ONE thing in the world the test above verifies."""
+    w.ready()
+    marker = wave_b_complete(w, accepted={"no-accepted-steps": (), "one-step-missing": ("B-3", "B-4")}.get(case, WAVE_B_STEPS),
+                             evidence={"B-4": "e" * 64} if case == "step-evidence-differs" else None)
+    if case == "marker-records-no-evidence":
+        del marker["step_evidence"]
+    elif case == "marker-names-fewer-steps":
+        marker["steps"] = ["B-3", "B-4"]
+    if case.startswith("marker-"):
+        (w.run / "WAVE_B_DONE").write_text(json.dumps(marker))
+    elif case == "kyversion-fails":
+        (w.fleet / "kyversion.sh.rc").write_text("3")
+    elif case == "kyversion-missing":
+        (w.fleet / "kyversion.sh").unlink()
+    elif case == "versions-changed-since":
+        (w.run / "VERSIONS.json").write_text('{"components": ["changed"]}')
+    elif case == "versions-missing":
+        (w.run / "VERSIONS.json").unlink()
+    elif case == "receipt-changed-since":
+        (w.run / "INSTALL_RECEIPT.json").write_text(json.dumps({"mode": "final", "installed": "again"}))
+    elif case == "role-state-unreadable":
+        (w.run / "PLANNER_STATE.json").write_text("{not json")
+    r = w.kyloop("planner")
+    assert r.returncode == 0
+    a = json.dumps(refused(w))
+    assert "wave_b_done_unverified" in a and why in a, a
+    assert "verified" not in (w.loop_state()["reason"] or "").replace("unverified", "")    # not disabled as complete
+    assert "Wave B complete" not in r.stderr
 
 
 @pytest.mark.parametrize("case", ["bootstrap-receipt", "binds-a-bootstrap-receipt", "stale-binding"])
@@ -876,6 +944,9 @@ def test_planner_completion_is_derived_by_the_controller(w):
     assert marker["final_receipt_sha256"] == sha(w.run / "INSTALL_RECEIPT.json")
     assert marker["steps"] == ["B-3", "B-4", "B-5"]
     assert w.loop_state()["enabled"] is False and not w.stop_file().exists()
+    # the marker the controller wrote is the one its own re-derivation accepts (L3-02): disabled as complete
+    assert "WAVE_B_DONE verified" in w.loop_state()["reason"] and w.awaiting() == []
+    assert marker["step_evidence"] == {e["id"]: e["evidence_sha256"] for e in w.role_state()["completed_steps"]}
     assert (w.fleet / "kyversion.sh.calls").read_text().splitlines()[-1] == ""       # normal mode, no arguments
 
 
@@ -942,6 +1013,119 @@ def test_a_dependency_changed_by_someone_else_during_a_run_is_progress(w):
     (rec,) = w.records()
     assert rec["accepted"] == [] and rec["dependency_changed"] is True and rec["progressed"] is True
     assert w.loop_state()["no_progress_count"] == 0
+
+
+IDLE_CLAUDE = """#!/bin/bash
+# An idle job: run <n> announces itself (waiting.<n>), waits until the test releases it (release.<n>), asks for
+# nothing and exits 0 by itself.
+D="$(cd "$(dirname "$0")" && pwd)/claude.d"
+mkdir -p "$D"
+if [ "${1:-}" = "--version" ]; then echo "2.1.296 (Claude Code)"; exit 0; fi
+cat > /dev/null
+n=1
+while [ -e "$D/waiting.$n" ]; do n=$((n + 1)); done
+: > "$D/waiting.$n"
+i=0
+while [ ! -e "$D/release.$n" ] && [ "$i" -lt 600 ]; do /bin/sleep 0.05; i=$((i + 1)); done
+exit 0
+"""
+
+
+def owner_wait(w, slug, item, role, job_id="J-1", blocks="item"):
+    (w.run / "awaiting").mkdir(exist_ok=True)
+    path = w.run / "awaiting" / ("AW-20261011T000000Z-%s.json" % slug)
+    path.write_text(json.dumps({"schema": "ky.awaiting/1", "id": path.stem, "item": item, "blocks": blocks,
+                                "raised_by": {"role": role, "session_id": "session-of-%s" % role, "job_id": job_id}}))
+    return path
+
+
+@pytest.mark.parametrize("change", ["appears", "disappears", "both"])
+def test_another_roles_owner_wait_for_another_item_is_not_this_loops_progress(w, change):
+    """L3-01: the negative of the control above. During an idle planner run a builder's owner-wait for K9-23
+    appears and/or one for K9-24 disappears — routine in a live campaign, and nothing the planner waits on. The run
+    stays a no-progress run: counted towards the breaker, the quota level not reset."""
+    w.claude.write_text(IDLE_CLAUDE)
+    w.ready()
+    old = owner_wait(w, "k9-24-from-a-builder", "K9-24", "builder")
+    ls_path = w.run / "loops" / "planner.json"
+    ls_path.write_text(json.dumps(dict(json.loads(ls_path.read_text()), no_progress_count=1,
+                                       quota={"level": 2, "notified_level": 2, "not_before": None})))
+    d = w.root / "bin" / "claude.d"
+    p = w.popen("planner")
+    try:
+        assert wait_for((d / "waiting.1").exists)
+        if change in ("appears", "both"):
+            owner_wait(w, "k9-23-from-a-builder", "K9-23", "builder")
+        if change in ("disappears", "both"):
+            old.unlink()
+        (d / "release.1").write_text("")
+        assert wait_for((d / "waiting.2").exists)           # the first run is recorded; the loop went on by itself
+        ls = w.loop_state()
+        w.stop_file().write_text("x")                       # ends the second run, which proves nothing either way
+        assert p.wait(timeout=20) == 0
+    finally:
+        p.kill()
+    rec = w.records()[0]
+    assert rec["ended_reason"] == "exited" and rec["accepted"] == []
+    assert rec["dependency_changed"] is False and rec["progressed"] is False
+    assert rec["progress_before"]["item_keys"] == rec["progress_after"]["item_keys"] == ["B-3", "B-4", "B-5"]
+    for basis in ("dependency_fingerprint", "external_fingerprint"):
+        assert rec["progress_before"][basis] == rec["progress_after"][basis]
+    assert ls["no_progress_count"] == 2 and ls["quota"]["level"] == 2      # counted; the quota level not reset
+
+
+FINGERPRINT_WAITS = [
+    # role, the inbox it last saw, (slug, item, raised by, blocks), does it change this role's fingerprint?
+    ("planner", (), ("x", "K9-23", "builder", "item"), False),
+    ("planner", (), ("x", "msg.M1", "conductor", "item"), False),
+    ("planner", (), ("x", "B-44", "builder", "item"), False),             # not B-4, nor a part of it
+    ("planner", (), ("x", "loop.conductor", "conductor", "loop"), False),
+    ("planner", (), ("x", "B-4", "cockpit", "item"), True),
+    ("planner", (), ("x", "step.B-4", "builder", "item"), True),
+    ("planner", (), ("x", "B-4.review", "builder", "item"), True),        # what is_blocked() takes for B-4
+    ("planner", (), ("x", "loop.planner", "cockpit", "loop"), True),
+    ("conductor", ("M1",), ("x", "K9-23", "builder", "item"), False),
+    ("conductor", ("M1",), ("x", "msg.M2", "steward", "item"), False),    # no such message is this role's to handle
+    ("conductor", ("M1",), ("x", "B-4", "planner", "item"), False),
+    ("conductor", ("M1",), ("x", "loop.planner", "planner", "loop"), False),
+    ("conductor", ("M1",), ("x", "msg.M1", "steward", "item"), True),
+    ("conductor", ("M1",), ("x", "loop.conductor", "cockpit", "loop"), True),
+]
+
+
+@pytest.mark.parametrize("role,inbox,wait,counts", FINGERPRINT_WAITS,
+                         ids=["%s-%s-%s" % (f[0], f[2][1], f[3]) for f in FINGERPRINT_WAITS])
+def test_only_an_owner_wait_this_role_waits_on_is_a_changed_dependency(w, monkeypatch, role, inbox, wait, counts):
+    """L3-01, the rule itself: a wait enters the role's fingerprints exactly when it blocks this loop or an item
+    is_blocked() would be asked about — and leaves them again when it is answered away."""
+    c = controller_in_process(w, monkeypatch, role)
+    c.inbox_keys = set(inbox)
+    before = c.accepted_summary()
+    assert before["item_keys"] == (["B-3", "B-4", "B-5"] if role == "planner" else list(inbox))
+    path = owner_wait(w, *wait[:3], job_id="J-1" if wait[2] != "cockpit" else None, blocks=wait[3])
+    during = c.accepted_summary()
+    for basis in ("dependency_fingerprint", "external_fingerprint"):
+        assert (during[basis] != before[basis]) is counts, basis
+    path.unlink()
+    assert c.accepted_summary() == before
+    # … while it still BLOCKS whatever it names: scoping the progress signal does not unblock anything
+    path = owner_wait(w, *wait[:3], blocks=wait[3])
+    loop_blocked, blocked, _ = c.awaiting_blocks()
+    assert loop_blocked is (wait[3] == "loop" and wait[1] == "loop.%s" % role)
+    assert (wait[3] == "item") == bool(blocked)
+
+
+def test_a_run_is_compared_over_the_items_its_before_was_taken_over(w, monkeypatch):
+    """L3-01: `after` uses the keys recorded in `before` — a conductor that sees another inbox when the run ends
+    (or one that inherited the run) does not take the difference in keys for a changed dependency."""
+    w.resume(dispatcher=False)
+    c = controller_in_process(w, monkeypatch, "conductor")
+    c.inbox_keys = {"M1"}
+    before = c.accepted_summary(c.item_keys([{"id": "msg.M1", "key": "M1"}]))
+    owner_wait(w, "m2-held", "msg.M2", "steward")
+    c.inbox_keys = {"M1", "M2"}                             # M2 arrived, already blocked, while the run was idle
+    assert c.accepted_summary(before["item_keys"]) == before
+    assert c.accepted_summary()["external_fingerprint"] != before["external_fingerprint"]   # a later run's own "before"
 
 
 # ───────────────────────────── kyloop.py: conductor ─────────────────────────────
@@ -1432,7 +1616,12 @@ def test_kyctl_refuses_root_and_bad_usage(w):
     r = w.kyctl("status", KY_TEST_ASSUME_ROOT="1")
     assert r.returncode != 0 and "root" in r.stderr
     r = w.kyctl("start", "builder")
-    assert r.returncode == 64 and "veto" in r.stderr and "stopped and observed here only" in r.stderr
+    assert r.returncode == 64 and "veto" in r.stderr and "takes no queued command" not in r.stderr
+    # N3-06: the usage text says what the veto controller applies — each command of its own list, and whose `veto` is
+    veto_line = next(x for x in r.stderr.splitlines() if "the veto loop" in x)
+    assert kyloop.VetoController.COMMANDS == ("status", "loops", "decide")
+    for said in ("`status`", "`loops stop|status veto`", "`decide`", "`veto <decision-id>` is settled by the veto handler"):
+        assert said in veto_line, said
     assert w.kyctl("frobnicate").returncode == 64
     assert w.kyctl("start").returncode == 64
 
@@ -1445,7 +1634,7 @@ def test_loop_prompts_contract(name):
     assert len(text) <= 6000, len(text)
     head = text.split("---")[1]
     for key in ("artifact: " + name, "version:", "paired_plan:", "status: DRAFT — pending the B-0c independent review",
-                "never_pasted: true"):
+                "never_pasted: true", "changelog: v2.4 (2026-10-12) "):
         assert key in head, key
     for frag in ("CLAUDE.md → owner decisions → plan → cards → packets", "**Never:**",
                  "honest unknown beats an invented status", "never from memory", "job.json", "checkpoint"):
@@ -3265,7 +3454,11 @@ CONTEXTS = [
     (None, None, None, "qualification_context_missing"),
     ("", None, None, "qualification_context_missing"),
     ("launchd", None, None, "qualification_context_mismatch"),
-    ("launchd", "launchd", None, None),
+    ("launchd", "launchd", None, "qualification_context_mismatch"),    # N3-04: told "launchd" is not launchd …
+    ("test-hook:launchd", "launchd", None, None),                        # … it is a context of its own
+    ("test-hook:shell", "shell", None, None),
+    ("shell", "shell", None, "qualification_context_mismatch"),
+    ("test-hook:launchd", None, None, "qualification_context_mismatch"),  # … which no real controller runs in
     ("shell", "launchd", None, "qualification_context_mismatch"),
     ("launchd", "launchd", "1", "qualification_context_mismatch"),      # the injection is ignored at scale 1
     ("elsewhere", "elsewhere", None, "qualification_context_mismatch"),  # … and is never anything but the two
@@ -3298,7 +3491,7 @@ def test_expected_qualification_prints_the_context_it_will_require(w):
 
     exp = expected()
     assert set(exp) == {"role", "model", "receipt_path", "binds", "context"} and exp["context"] == "shell"
-    assert expected(KY_LOOP_TEST_CONTEXT="launchd")["context"] == "launchd"
+    assert expected(KY_LOOP_TEST_CONTEXT="launchd")["context"] == "test-hook:launchd"   # never reported as proven
     assert expected(KY_LOOP_TEST_CONTEXT="launchd", KY_LOOP_SLEEP_SCALE="1")["context"] == "shell"
     assert expected(KY_LOOP_TEST_CONTEXT="launchd")["binds"] == exp["binds"]        # the binds do not depend on it
 
@@ -4181,10 +4374,11 @@ def test_a_run_under_a_test_hook_says_so_in_its_run_record_and_in_the_loop_state
     assert rec["test_hooks"] == ls["test_hooks"] == {"sleep_scale": 0.001, "context_injected": None,
                                                     "context_injection_honoured": False}
     assert "test_hooks=active" in status_line(w, "planner")[0]
-    w.qualify(context="launchd")
+    w.qualify(context="test-hook:launchd")
     w.rearm()
     w.modes("stop")
     assert w.kyloop("planner", KY_LOOP_TEST_CONTEXT="launchd").returncode == 0
+    assert w.calls() == [1, 2] and w.loop_state()["qualification_check"]["context"] == "test-hook:launchd"
     assert w.records()[1]["test_hooks"] == {"sleep_scale": 0.001, "context_injected": "launchd",
                                             "context_injection_honoured": True}
 
@@ -4218,6 +4412,39 @@ def test_a_controller_that_really_runs_under_launchd_refuses_every_test_hook(w, 
         c.verify_veto() if role == "veto" else c.verify_launch()
     except kyloop.Refusal as r:
         assert "test_hooks_in_launchd_context" not in str(r)
+
+
+@pytest.mark.parametrize("injected", ["launchd", "shell"])
+def test_an_injected_context_is_reported_as_a_hook_context_never_as_a_proven_one(w, monkeypatch, injected):
+    """N3-04: a controller started from a shell with both test hooks set does not report `launchd` (or `shell`):
+    a receipt earned in the real context does not qualify it."""
+    c = controller_in_process(w, monkeypatch, "planner", KY_LOOP_TEST_CONTEXT=injected)
+    assert c.scale < 1 and c.real_context() == "shell"
+    assert c.context() == "test-hook:" + injected and c.context() not in ("launchd", "shell")
+    w.qualify(context=injected)                             # a receipt that says the real context
+    cfg, errs = c.load_config()
+    assert not errs
+    assert "qualification_context_mismatch" in json.dumps(c.check_qualification(cfg))
+    w.qualify(context="test-hook:" + injected)              # the control: the same check passes for the hook context
+    assert c.check_qualification(cfg) == []
+
+
+def test_under_launchd_a_missing_harness_refuses_the_launch(w, monkeypatch):
+    """N3-05: where the installed loops run, the receipt is judged by kyqualify.check_receipt or not at all."""
+    c = controller_in_process(w, monkeypatch, "planner", KY_LOOP_SLEEP_SCALE="1")      # no harness beside it
+    monkeypatch.setattr(kyloop.Controller, "real_context", lambda self: "launchd")
+    w.qualify(context="launchd")
+    cfg, errs = c.load_config()
+    assert not errs
+    reasons = c.check_qualification(cfg)
+    assert len(reasons) == 1 and reasons[0].startswith("qualification_harness_missing") and c.qualification_check is None
+    # the control: the same receipt and controller with a harness that accepts it
+    calls = []
+    harness = type("Harness", (), {"CONFIG_KEYS": (), "check_receipt": staticmethod(
+        lambda doc, cfg, require_context=None: calls.append(require_context) or [])})
+    monkeypatch.setattr(kyloop.Controller, "load_harness", lambda self: harness)
+    assert c.check_qualification(cfg) == [] and calls == ["launchd"]
+    assert c.qualification_check["mode"] == "kyqualify.check_receipt"
 
 
 # ───────────────────────────── the dispatcher start (N-04) ─────────────────────────────

@@ -4461,3 +4461,329 @@ def test_usage_errors(tmp_path):
     gone = dict(w.environ, KY_RUN=str(tmp_path / "no-such-run"))
     r = subprocess.run([PY, str(FLEET / "kyveto.py"), "tick"], capture_output=True, text=True, env=gone)
     assert r.returncode == 66 and not (tmp_path / "no-such-run").exists()       # never creates a run tree
+
+
+# ── C3-01 (review round 3): the capacity pair is one effect that can be told apart from nothing ──
+
+def effect_of(w, sid, **params):
+    rec = w.action(sid + ".execute")
+    ctx = kyveto.Ctx(w.env, sid, None, None)
+    return kyveto.REGISTRY["capacity"].effect(cap(**params), ctx, rec["inputs"].get("before"))
+
+
+def test_the_before_values_are_recorded_with_the_intended_record(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "INTENDED" and rec["inputs"]["before"] == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    assert_schema("action", rec)
+    answer, detail = effect_of(w, sid)                    # half the pair is NOT nothing
+    assert answer == "partial" and detail["in_place"] == ["KY_WORKERS"] and detail["foreign"] == []
+    assert one(w.tick(AFTER), sid)["outcome"] == "executed" and w.capacity() == ("6\n", "4\n")
+    done = w.action(sid + ".execute")                     # finished under the same record, the same before values
+    assert done["state"] == "DONE" and done["inputs"] == rec["inputs"]
+
+
+def test_the_effect_in_place_has_three_answers_and_absent_is_observed(tmp_path):
+    w = World(tmp_path)
+    capacity, ctx = kyveto.REGISTRY["capacity"], kyveto.Ctx(World(tmp_path / "w2").env, "SD-1", None, None)
+    run = ctx.env.run
+    before = capacity.before(cap(), ctx)
+    assert before == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    assert capacity.effect(cap(), ctx, before)[0] == "absent"
+    (run / "KY_VERIFIERS").write_text("4\n")
+    assert capacity.effect(cap(), ctx, before) == ("partial", {
+        "before": {"KY_WORKERS": "3", "KY_VERIFIERS": "2"}, "observed": {"KY_WORKERS": "3", "KY_VERIFIERS": "4"},
+        "in_place": ["KY_VERIFIERS"], "foreign": []})
+    (run / "KY_WORKERS").write_text("7\n")                # somebody else's value: neither before nor this change's
+    answer, detail = capacity.effect(cap(), ctx, before)
+    assert answer == "partial" and detail["foreign"] == ["KY_WORKERS"] and detail["in_place"] == ["KY_VERIFIERS"]
+    (run / "KY_WORKERS").unlink()                         # a file that vanished is not "nothing in place" either
+    assert capacity.effect(cap(), ctx, before)[1]["foreign"] == ["KY_WORKERS"]
+    for unrecorded in (None, {}, {"KY_WORKERS": "3\n"}, {"KY_WORKERS": 3, "KY_VERIFIERS": "2\n"}):
+        assert capacity.effect(cap(), ctx, unrecorded) == ("unknown", {"error": "before_values_not_recorded"})
+    (run / "KY_WORKERS").write_bytes(b"\xff\xfe")
+    assert capacity.effect(cap(), ctx, before)[0] == "unknown"
+    (run / "KY_WORKERS").write_text("6" * 5000)
+    with pytest.raises(ValueError):
+        capacity.before(cap(), ctx)                       # what could not be put back exactly is not recorded
+    capacity.restore(cap(), ctx, {"KY_WORKERS": None, "KY_VERIFIERS": "2\n"}, ["KY_WORKERS", "KY_VERIFIERS"])
+    assert not (run / "KY_WORKERS").exists() and (run / "KY_VERIFIERS").read_text() == "2\n"
+    assert w.capacity() == ("3\n", "2\n")                 # the other world was never touched
+
+
+def test_a_veto_after_a_crash_between_the_two_capacity_files_puts_the_written_half_back(tmp_path):
+    """The reviewer's probe: KY_WORKERS already 6, KY_VERIFIERS still 2, the record INTENDED, then the veto."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    assert w.capacity() == ("6\n", "2\n") and w.action(sid + ".execute")["state"] == "INTENDED"
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("vetoed", "restored", True)
+    assert report["attention"] is True                    # the vetoed value was in force for a while: said, not hidden
+    assert w.capacity() == ("3\n", "2\n")                 # … and the dispatcher no longer reads it
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "vetoed_partial_effect_restored"
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == "restored" and partial["restored"] == ["KY_WORKERS"]
+    assert partial["was"] == {"KY_WORKERS": "6", "KY_VERIFIERS": "2"}
+    assert partial["observed"] == partial["before"] == {"KY_WORKERS": "3", "KY_VERIFIERS": "2"}
+    assert rec["reconciliations"][0]["detail"]["incomplete"] == ["KY_VERIFIERS"]
+    line = w.history(sid)[-1]
+    assert line["state"] == "VETOED" and line["detail"]["partial_effect"] == partial
+    assert w.command(cid)["state"] == "APPLIED"
+    rc, status, row = status_row(w, sid)                  # put back and verified: nothing left to attend to
+    assert rc == 0 and row["partial_effect"] == "restored" and "unresolved" not in row
+    assert status["partial_effects"] == [] and w.tick(LATER)["decisions"] == []
+
+
+@pytest.mark.parametrize("why", ["foreign-value", "restore-raises", "restore-does-nothing"])
+def test_a_partial_effect_that_is_not_put_back_is_reported_never_called_unexecuted(tmp_path, monkeypatch, why):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    assert w.crash("between-files", "tick").returncode == -signal.SIGKILL
+    capacity = kyveto.REGISTRY["capacity"]
+    if why == "foreign-value":
+        (w.run / "KY_VERIFIERS").write_text("5\n")        # not the before value, not this change's: not ours to undo
+    elif why == "restore-raises":
+        def broken(p, ctx, before, names):
+            raise OSError("read-only file system")
+        monkeypatch.setattr(capacity, "restore", broken)
+    else:
+        monkeypatch.setattr(capacity, "restore", lambda p, ctx, before, names: None)
+    left = w.capacity()
+    cid = w.veto(sid)
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("vetoed", "in_place", True)
+    assert report["attention"] is True and w.capacity() == left and left[0] == "6\n"
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "vetoed_with_partial_effect"
+    partial = rec["result"]["partial_effect"]
+    assert partial["state"] == "in_place" and partial["in_place"] == ["KY_WORKERS"]
+    assert partial["foreign"] == (["KY_VERIFIERS"] if why == "foreign-value" else [])
+    assert ("restore_error" in partial) == (why == "restore-raises")
+    line = w.history(sid)[-1]
+    assert line["state"] == "VETOED" and line["detail"]["partial_effect"]["state"] == "in_place"
+    assert w.command(cid)["state"] == "APPLIED"
+    monkeypatch.undo()
+    rc, status, row = status_row(w, sid)                  # still in place: unresolved for as long as that is so
+    assert rc == 3 and row["partial_effect"] == "in_place" and row["unresolved"] is True
+    assert status["partial_effects"] == [sid] and status["attention"] is True
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == left         # final for the handler; nothing retried
+    (w.run / "KY_WORKERS").write_text("3\n")              # the owner puts the pair back
+    (w.run / "KY_VERIFIERS").write_text("2\n")
+    rc, status, row = status_row(w, sid)                  # … and a FRESH look, not the record, says so
+    assert rc == 0 and row["partial_effect"] == "no_longer_in_place" and "unresolved" not in row
+    assert status["partial_effects"] == []
+
+
+def test_vetoed_before_execution_is_recorded_only_after_nothing_was_observed_in_place(tmp_path):
+    w = World(tmp_path)
+    clean, unknown = w.propose(cap()), None
+    w.crash("before-execute", "tick")
+    w.veto(clean)
+    d = one(w.tick(AFTER), clean)
+    assert d["outcome"] == "vetoed" and "partial_effect" not in d and "attention" not in d
+    rec = w.action(clean + ".execute")
+    assert rec["result"] == {"command": d["command"], "reason": "vetoed_before_execution"}
+    assert "partial_effect" not in w.history(clean)[-1]["detail"]
+    # a record that holds no before values (written before this rule): "nothing happened" cannot be observed
+    w2 = World(tmp_path / "w2")
+    unknown = w2.propose(cap())
+    w2.crash("before-execute", "tick")
+    path = w2.run / "actions" / (unknown + ".execute.json")
+    doc = json.loads(path.read_text())
+    del doc["inputs"]["before"]
+    path.write_text(json.dumps(doc))
+    cid = w2.veto(unknown)
+    for now in (AFTER, LATER):                            # on every tick, until somebody has looked
+        report = w2.tick(now)
+        d = one(report, unknown)
+        assert (d["outcome"], d["reason"], d["attention"]) == (
+            "blocked", "execution_unreconciled: before_values_not_recorded", True)
+        assert report["attention"] is True
+    assert w2.action(unknown + ".execute")["state"] == "INTENDED" and w2.command(cid)["state"] == "QUEUED"
+    assert w2.states(unknown) == ["PENDING_VETO", "EFFECTIVE"]
+
+
+@pytest.mark.parametrize("restorable", [True, False])
+def test_an_executor_error_on_the_second_capacity_file_is_put_back_or_reported(tmp_path, monkeypatch, restorable):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    real, pool = kyaction.write_atomic, []
+
+    def flaky(path, data, mode=None):                     # the first pool file is written, then the disk gives up
+        if Path(path).name in ("KY_WORKERS", "KY_VERIFIERS"):
+            pool.append(Path(path).name)
+            if len(pool) == 2 or (len(pool) > 2 and not restorable):
+                raise OSError("disk full")
+        return real(path, data, mode)
+
+    monkeypatch.setattr(kyaction, "write_atomic", flaky)
+    report = w.tick(AT)
+    monkeypatch.undo()
+    d = one(report, sid)
+    assert (d["outcome"], d["reason"]) == ("failed", "execution_failed: executor_error: OSError")
+    assert d["attention"] is True and d["published"] is True and pool[:3] == ["KY_WORKERS", "KY_VERIFIERS", "KY_WORKERS"]
+    state = "restored" if restorable else "in_place"
+    assert d["partial_effect"] == state
+    assert w.capacity() == (("3\n", "2\n") if restorable else ("6\n", "2\n"))
+    rec = w.action(sid + ".execute")
+    assert rec["state"] == "FAILED" and rec["result"]["reason"] == "executor_error: OSError"
+    assert rec["result"]["partial_effect"]["state"] == state
+    assert rec["inputs"]["before"] == {"KY_WORKERS": "3\n", "KY_VERIFIERS": "2\n"}
+    line = w.history(sid)[-1]
+    assert line["state"] == "FAILED" and line["detail"]["published"] is True
+    assert line["detail"]["partial_effect"] == rec["result"]["partial_effect"]
+    rc, status, row = status_row(w, sid)
+    assert row["partial_effect"] == state and status["partial_effects"] == ([] if restorable else [sid])
+    assert (rc, row.get("unresolved")) == ((0, None) if restorable else (3, True))
+    left = w.capacity()
+    assert w.tick(LATER)["decisions"] == [] and w.capacity() == left and len(w.ky_calls()) == 1      # never retried
+
+
+def test_a_failed_execution_found_after_a_restart_still_names_its_partial_effect(tmp_path, monkeypatch):
+    """The handler died between closing `<id>.execute` FAILED and its FAILED line: the next tick says both."""
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.crash("between-files", "tick")
+    (w.run / "KY_VERIFIERS").write_text("5\n")
+    partial = {"state": "in_place", "in_place": ["KY_WORKERS"], "foreign": ["KY_VERIFIERS"]}
+    kyaction.fail(w.run, sid + ".execute", {"reason": "executor_error: OSError", "partial_effect": partial})
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["partial_effect"], d["attention"]) == ("failed", "in_place", True)
+    assert w.history(sid)[-1]["detail"] == {"partial_effect": partial}
+    assert status_row(w, sid)[2]["unresolved"] is True
+
+
+# ── C3-02 (review round 3): a line that steps back takes a decision out of nothing ──
+
+def step_back(w, sid, state="PROPOSED", **over):
+    """The surrogate re-rules an unchanged item under the same id: one more line, an earlier state."""
+    w.append(dict(w.history(sid)[0], state=state, **over))
+
+
+def test_needs_handler_once_in_the_window_whatever_the_latest_line_says():
+    veto = {"class": "veto"}
+    lines = [dict(veto, state="PENDING_VETO"), dict(veto, state="PROPOSED")]
+    assert kyveto.needs_handler(lines, False) is True and kyveto.regressed(lines) is True
+    assert kyveto.needs_handler([dict(veto, state="PROPOSED")], False) is False          # not yet in its window
+    assert kyveto.needs_handler([dict(veto, state="PROPOSED")], False, begun=True) is True
+    assert kyveto.needs_handler([{"class": "routine", "state": "EXECUTED"}], False) is False
+    assert kyveto.needs_handler(lines + [dict(veto, state="VETOED")], False) is False    # an accepted terminal state
+    assert kyveto.regressed([dict(veto, state="PROPOSED"), dict(veto, state="PENDING_VETO")]) is False
+    assert kyveto.regressed([dict(veto, state="PENDING_VETO"), dict(veto, state="EFFECTIVE"),
+                             dict(veto, state="PENDING_VETO")]) is True
+    assert kyveto.accepted_state(lines, False, False) == "PENDING_VETO"
+    assert kyveto.accepted_state(lines, True, False) == "EFFECTIVE"
+
+
+def test_a_proposed_line_after_pending_veto_does_not_take_the_decision_out_of_the_handler(tmp_path):
+    """Probe 1: PENDING_VETO, then PROPOSED under the same id. The decision carries on from the handler's memory
+    (the proposal and its stamp); the step back is an anomaly somebody is told about."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid)
+    report = w.tick(BEFORE)
+    d = one(report, sid)
+    assert (d["outcome"], d["seconds_remaining"]) == ("pending", 1200)
+    assert d["anomaly"] == "line_regressed_before_terminal_state" and d["attention"] is True
+    assert report["attention"] is True and w.untouched()
+    r = w.cli("status", "--now", BEFORE)
+    (row,) = json.loads(r.stdout)["decisions"]
+    assert r.returncode == 3 and (row["state"], row["latest_line_state"]) == ("PENDING_VETO", "PROPOSED")
+    assert row["unresolved"] is True and row["anomaly"] == "line_regressed_before_terminal_state"
+    assert row["seconds_remaining"] == 1200
+    report = w.tick(AT)                                   # at expiry the owner's notification IS answered
+    d = one(report, sid)
+    assert d["outcome"] == "executed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert report["attention"] is True and w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "EFFECTIVE", "EXECUTED"]
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)                  # answered by the handler's own lines
+    assert rc == 0 and row["state"] == "EXECUTED" and "anomaly" not in row and "unresolved" not in row
+
+
+def test_an_owner_veto_is_still_answered_after_a_line_stepped_back(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid)
+    cid = w.veto(sid)
+    d = one(w.tick(BEFORE), sid)
+    assert d["outcome"] == "vetoed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "VETOED"] and w.command(cid)["state"] == "APPLIED"
+    assert w.tick(AT)["decisions"] == [] and w.ky_calls() == [] and w.capacity() == ("3\n", "2\n")
+
+
+def test_a_step_back_that_changes_what_the_owner_was_told_fails_by_name(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    step_back(w, sid, decision="raise capacity and merge PR 1")
+    d = one(w.tick(AT), sid)
+    assert (d["outcome"], d["reason"], d["attention"]) == ("failed", "decision_record_mutated: decision", True)
+    assert "published" not in d and w.untouched()         # three-valued: here positively nothing was published
+    assert w.states(sid) == ["PENDING_VETO", "PROPOSED", "FAILED"]
+
+
+def test_a_proposed_line_after_publication_does_not_strand_the_execution(tmp_path):
+    """Probe 2: the handler has published (`ky decide` ran, EFFECTIVE, `<id>.execute` INTENDED), then PROPOSED is
+    appended. Before: no tick ever looked again and status said PROPOSED, exit 0, with a delegated approval in
+    the tracker that nobody executed."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    assert w.crash("before-execute", "tick").returncode == -signal.SIGKILL
+    assert len(w.ky_calls()) == 1 and w.action(sid + ".execute")["state"] == "INTENDED"
+    step_back(w, sid)
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and (row["state"], row["latest_line_state"]) == ("EFFECTIVE", "PROPOSED")
+    assert row["unresolved"] is True and row["published"] is True and row["made_effective_by_handler"] is True
+    assert row["anomaly"] == "line_regressed_before_terminal_state"
+    assert status["unfinished_actions"] == [sid + ".execute"]
+    report = w.tick(AFTER)
+    d = one(report, sid)
+    assert d["outcome"] == "executed" and d["anomaly"] == "line_regressed_before_terminal_state"
+    assert report["attention"] is True and w.capacity() == ("6\n", "4\n") and len(w.ky_calls()) == 1
+    assert w.states(sid) == ["PENDING_VETO", "EFFECTIVE", "PROPOSED", "EXECUTED"]
+    assert w.action(sid + ".execute")["state"] == "DONE"
+    assert w.tick(LATER)["decisions"] == []
+    rc, status, row = status_row(w, sid)
+    assert rc == 0 and row["state"] == "EXECUTED" and status["unfinished_actions"] == []
+
+
+def test_handler_records_without_a_proposal_in_the_log_are_answered_not_ignored(tmp_path):
+    """The log was rewritten to a lone PROPOSED line while the handler holds action records for the id."""
+    w = World(tmp_path)
+    sid = w.propose(cap(tracker_decision=TD))
+    w.crash("before-execute", "tick")
+    w.log.write_text(json.dumps(dict(w.history(sid)[0], state="PROPOSED")) + "\n")
+    rc, status, row = status_row(w, sid)
+    assert rc == 3 and row["anomaly"] == "proposal_missing" and row["unresolved"] is True
+    assert row["state"] == "EFFECTIVE"                    # the handler's own publication record says so
+    d = one(w.tick(AFTER), sid)
+    assert (d["outcome"], d["reason"], d["published"], d["attention"]) == ("failed", "proposal_missing", True, True)
+    assert w.capacity() == ("3\n", "2\n") and w.states(sid) == ["PROPOSED", "FAILED"]
+
+
+# ── C3-06 (review round 3): an EXECUTED line carries effective_at, as the decision schema requires ──
+
+def test_an_executed_line_must_carry_effective_at(tmp_path):
+    w = World(tmp_path)
+    sid = w.propose(cap())
+    w.tick(AT)
+    proposal, effective, executed = w.history(sid)
+    assert executed["state"] == "EXECUTED" and executed["effective_at"] == AT
+    assert kyveto.line_problem(executed) is None and kyveto.line_problem(effective) is None
+    for line in (effective, executed):
+        assert kyveto.line_problem(dict(line, effective_at=None)) == (
+            "line_malformed: an %s line carries effective_at" % line["state"])
+        assert schema_errors("surrogate_decision", dict(line, effective_at=None))      # the schema agrees
+    assert kyveto.line_problem(dict(executed, state="VETOED", effective_at=None)) is None
+    handler = kyveto.Handler(w.env, kyaction.parse_utc(AT), None, "ctl-veto", "controller", None, None)
+    before = w.log.read_bytes()
+    with pytest.raises(kyveto.Unwritable):
+        handler.append(executed, "EXECUTED", "executed", None)
+    assert w.log.read_bytes() == before                   # nothing was written
