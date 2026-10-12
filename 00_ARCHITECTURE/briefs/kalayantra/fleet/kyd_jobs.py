@@ -27,7 +27,8 @@ YYYY-MM-DDTHH:MM:SSZ; any other form is unknown and refuses: no job is opened or
 and a live job whose time keys cannot be read is neither timed out nor renewed (an owner-wait instead).
 
 What "gone" means (kyloop.job_state): the leader is positively gone AND its process group is empty. "unknown"
-and "survivors" are never gone: such a job is not finished, not signalled, not released — an owner-wait only.
+and "survivors" are never gone: such a job is not finished or released. Claude survivors and unknown
+identities are held; known Codex groups remain subject to persisted silence and deadline supervision.
 A signal goes only to the group of a job this module started as its own group leader (pgid == pid), and only
 while that leader still runs with its recorded start identity, or has left members in that very group.
 
@@ -85,6 +86,7 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
     earlier close); null means the job ended by itself and its kind's finish decides.
   * an owner-wait is raised once per job and reason (checkpoint.awaiting remembers).
 Changelog: v1.1 (2026-10-13): optional Codex selection, collection, landing and silence timeout.
+Fix B1 (2026-10-13): recover known Codex groups, including pending termination; retain persisted clocks/fences.
 Python >= 3.9, standard library only; kyaction.py, kyloop.py, kyschema.py and schemas/ beside this file.
 """
 from __future__ import annotations
@@ -1074,7 +1076,11 @@ def supervise(ctx):
             if not _checkpoint(job).get("codex_activity"):
                 _await(ctx, job, "codex-activity", "launch/activity times are unknown; no stall decision is possible")
                 continue
-            silent = engines.stalled(job, _now())
+            try:
+                silent = engines.stalled(job, _now())
+            except engines.Hold as exc:
+                _await(ctx, job, "codex-activity", str(exc))
+                continue
             _save(ctx, job)
             if silent:
                 job.update(phase="terminating", outcome="failed", failure_fp="codex_stalled")
@@ -1085,7 +1091,7 @@ def supervise(ctx):
                     _save(ctx, job)
                 out.append(job)
                 continue
-        if state != "live":
+        if state != "live" and not (job.get("engine") == "codex" and state == "survivors"):
             _await_process(ctx, job, state)
             continue
         deadline, last = _when(job["deadline"]), _when(job["renewed_at"])
@@ -1109,10 +1115,23 @@ def supervise(ctx):
 
 # ───────────────────────────────────────── recover ─────────────────────────────────────────
 
+def _adopt(ctx, job):
+    """Transfer supervision only after all existing job/item lock fences succeed."""
+    if all([_own(ctx, job, name) for name in ["job.%s" % job["key"]] + list(job["locks"] or [])]):
+        job["controller_id"] = ctx.controller_id
+        _save(ctx, job)
+        return True
+    _await(ctx, job, "locks", "it still runs and is this controller's to supervise, but its locks "
+                              "could not be taken under this controller. Who holds them?",
+           [ka.lock_path(_run(ctx), "job.%s" % job["key"])])
+    return False
+
+
 def recover(ctx):
     """The jobs an earlier controller left: prepared and never started → closed refused; terminating → its close
     carried on; live and gone → interrupted and closed; live and running → adopted (its locks and its
-    supervision are this controller's now). Unknown, survivors and a pending start → an owner-wait only.
+    supervision are this controller's now). Known Codex survivors and terminating groups are also adopted;
+    unknown identity, Claude survivors and a pending start → an owner-wait only.
     → the jobs this call closed (or tried to) or adopted, as they are now."""
     out = []
     for job in load(ctx):
@@ -1127,6 +1146,9 @@ def recover(ctx):
                 _await_pending(ctx, job)
             continue
         if job["phase"] == "terminating":
+            if job.get("engine") == "codex" and _process(job) in ("live", "survivors"):
+                if not _adopt(ctx, job):
+                    continue
             out.append(close(ctx, job, None if job.get("outcome") in OUTCOMES else {
                 "outcome": "interrupted", "failure_fp": None,
                 "detail": "terminating under controller %s with no outcome recorded: its kind's finish never ran"
@@ -1139,15 +1161,9 @@ def recover(ctx):
             _collect(ctx, job)
             _save(ctx, job)
             out.append(close(ctx, job, None))
-        elif state == "live":
-            if all([_own(ctx, job, name) for name in ["job.%s" % job["key"]] + list(job["locks"] or [])]):
-                job["controller_id"] = ctx.controller_id
-                _save(ctx, job)
+        elif state == "live" or (job.get("engine") == "codex" and state == "survivors"):
+            if _adopt(ctx, job):
                 out.append(job)
-            else:
-                _await(ctx, job, "locks", "it still runs and is this controller's to supervise, but its locks "
-                                          "could not be taken under this controller. Who holds them?",
-                       [ka.lock_path(_run(ctx), "job.%s" % job["key"])])
         else:
             _await_process(ctx, job, state)
     return out

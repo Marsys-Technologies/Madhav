@@ -419,9 +419,14 @@ def test_locked_socket_job_failure(land):
 
 
 def test_unknown_guard_refuses(land):
-    land.guards['git']=None
-    assert land.finish()['outcome']=='failed'
+    before = copy.deepcopy(land.guards)
+    land.guards['git'] = None
+    assert land.finish()['outcome'] == 'held'
     assert not writes(land)
+    assert json.loads((land.world.run / 'claims/k1.json').read_text())['state'] == 'acquired'
+    assert (land.world.run / 'locks/item.KV3-T').exists()
+    land.guards = before
+    assert land.finish()['outcome'] == 'done'
 
 
 @pytest.mark.parametrize('case',['queue_file','live_queue','claim_actor','lock','unknown_remote'])
@@ -599,7 +604,7 @@ def test_unreadable_nested_git_guard_is_not_equality(land):
     land.job['checkpoint']['codex_launch']['guards']['git']['config_files']['config']=None
     land.guards['git']['config_files']['config']=None
     J._save(land.ctx,land.job)
-    assert land.finish()['outcome']=='failed'
+    assert land.finish()['outcome']=='held'
     assert not writes(land)
 
 
@@ -865,3 +870,72 @@ def test_campaign_test_basename_with_newline(land):
     campaign_prepare(land)
     land.status='?? elsewhere/test_line\nbreak.py\0'
     assert land.finish()['outcome']=='done'
+
+
+@pytest.mark.parametrize('case', ['missing_time', 'null_time', 'nan_time', 'future_time',
+                                 'short_counts', 'bad_counts', 'missing_log', 'truncated_log'])
+def test_persisted_activity_unknown_is_held(tmp_path, case):
+    E = adapter()
+    job = dict(engine='codex', sandbox_mode='locked', stall_seconds=10, checkpoint={},
+               stdout_path=str(tmp_path / 'out'), stderr_path=str(tmp_path / 'err'))
+    for key in ('stdout_path', 'stderr_path'):
+        Path(job[key]).write_text('output')
+    assert not E.stalled(job, 100)
+    activity = job['checkpoint']['codex_activity']
+    if case == 'missing_time': activity.pop('last_growth_at')
+    elif case == 'null_time': activity['last_growth_at'] = None
+    elif case == 'nan_time': activity['launched_at'] = float('nan')
+    elif case == 'future_time': activity['last_growth_at'] = 200
+    elif case == 'short_counts': activity['bytes'] = []
+    elif case == 'bad_counts': activity['bytes'] = [None, 6]
+    elif case == 'missing_log': Path(job['stdout_path']).unlink()
+    else: Path(job['stderr_path']).write_text('')
+    restarted = json.loads(json.dumps(job))
+    with pytest.raises(E.Hold): E.stalled(restarted, 120)
+
+
+@pytest.mark.parametrize('step', ['add', 'commit', 'push', 'create', 'review'])
+def test_recover_collected_landing_resumes_persisted_progress(land, step):
+    """Actual recovery, with no child handles, resumes only observed durable landing effects."""
+    class Exited:
+        def poll(self): return 0
+    Path(land.job['stdout_path']).write_text('{"type":"turn.completed"}\n')
+    J._CHILDREN[land.job['job_id']] = Exited()
+    land.crash = step
+    with pytest.raises(Crash): J._collect(land.ctx, land.job)
+    J._CHILDREN.clear()
+    land.ctx.controller_id = 'CTL-recovered-landing'
+    recovered = J.recover(land.ctx)
+    assert len(recovered) == 1 and recovered[0]['phase'] == 'ended'
+    assert recovered[0]['outcome'] == 'done'
+    for verb in ('commit', 'push', 'create'):
+        assert sum(verb in call for call in land.calls) == 1
+    assert sum(event.get('state') == 'review' for event in land.events) == 1
+    assert json.loads((land.world.run / 'claims/k1.json').read_text())['state'] == 'released'
+    assert not (land.world.run / 'locks/item.KV3-T').exists()
+
+
+@pytest.mark.parametrize('case', ['snapshot', 'guards', 'pointer'])
+def test_missing_persisted_launch_evidence_holds_resources(land, case):
+    if case == 'snapshot': land.job['checkpoint'].pop('codex_launch')
+    else: land.job['checkpoint']['codex_launch'].pop(case)
+    assert land.finish()['outcome'] == 'held'
+    assert not writes(land)
+    assert json.loads((land.world.run / 'claims/k1.json').read_text())['state'] == 'acquired'
+    assert (land.world.run / 'locks/item.KV3-T').exists()
+
+
+@pytest.mark.parametrize('case', ['missing', 'malformed'])
+def test_lost_persisted_landing_progress_is_not_reconstructed(land, case):
+    land.crash = 'commit'
+    with pytest.raises(Crash): land.finish()
+    land.job = J._fresh(land.ctx, land.job)
+    if case == 'missing': land.job['checkpoint'].pop('codex_finish')
+    else: land.job['checkpoint']['codex_finish'].pop('diff_sha256')
+    legacy.write_json(land.world.run / 'jobs' / land.job['job_id'] / 'state.json', land.job)
+    land.ctx.controller_id = 'CTL-restarted-with-lost-progress'
+    assert land.finish()['outcome'] == 'held'
+    assert sum('commit' in call for call in land.calls) == 1
+    assert not any('push' in call or 'create' in call for call in land.calls)
+    assert json.loads((land.world.run / 'claims/k1.json').read_text())['state'] == 'acquired'
+    assert (land.world.run / 'locks/item.KV3-T').exists()

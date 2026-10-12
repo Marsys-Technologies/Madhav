@@ -6,6 +6,7 @@ producers own argv, guards and stream parsing. (I) denotes a conservative packet
 interpretation: linked worktrees, exact file scope, no unproved action replay.
 Changelog: v1.0 (2026-10-13): engine selection, guarded landing and silence timeout.
 Campaign add-on (2026-10-13): launch-pinned kyroute owns/shared scope and blocking landing checks.
+Fix B1 (2026-10-13): unreadable persisted activity/log or launch/landing checkpoints hold; no invented replay.
 """
 from __future__ import annotations
 
@@ -373,12 +374,38 @@ def stalled(job, now):
     cp = job.get('checkpoint')
     if not isinstance(cp, dict):
         cp = job['checkpoint'] = {}
-    sizes = [os.path.getsize(job[k]) if os.path.isfile(job[k]) else 0
-             for k in ('stdout_path', 'stderr_path')]
     activity = cp.get('codex_activity')
-    if not activity:
+    def seconds(value):
+        return type(value) in (int, float) and math.isfinite(value) and value >= 0
+    if not seconds(now) or not seconds(job.get('stall_seconds', 300)) or job.get('stall_seconds', 300) <= 0:
+        raise Hold('silence clock or threshold is unknown')
+    if activity is not None:
+        if (not isinstance(activity, dict) or not seconds(activity.get('launched_at'))
+                or not seconds(activity.get('last_growth_at'))
+                or not activity['launched_at'] <= activity['last_growth_at'] <= now
+                or not isinstance(activity.get('bytes'), list) or len(activity['bytes']) != 2
+                or any(type(n) is not int or n < 0 for n in activity['bytes'])):
+            raise Hold('persisted launch/activity times or byte counts are unknown')
+    elif job.get('pid') is not None:
+        raise Hold('persisted launch/activity times are missing; silence cannot be reconstructed')
+    sizes = []
+    for key in ('stdout_path', 'stderr_path'):
+        try:
+            observed = os.lstat(job[key])
+            if not stat.S_ISREG(observed.st_mode):
+                raise Hold('activity log is not a regular file: ' + key)
+            sizes.append(observed.st_size)
+        except FileNotFoundError:
+            if activity is not None:
+                raise Hold('activity log observation is missing: ' + key)
+            sizes.append(0)  # Before spawn only: launcher has not created its logs yet.
+        except OSError as exc:
+            raise Hold('activity log observation is unreadable: ' + key) from exc
+    if activity is None:
         activity = cp['codex_activity'] = dict(launched_at=now, last_growth_at=now, bytes=sizes,
                                                **metadata(job))
+    elif any(n < old for n, old in zip(sizes, activity['bytes'])):
+        raise Hold('activity log shrank; persisted silence cannot be reconstructed')
     elif any(n > old for n, old in zip(sizes, activity['bytes'])):
         activity['last_growth_at'] = now
     activity.update(bytes=sizes, duration_seconds=now - activity['launched_at'],
@@ -422,8 +449,11 @@ def fence(ctx, job, launch):
         raise Refusal('the packet changed after launch')
     if git(ctx, job, 'rev-parse', '--absolute-git-dir').strip() != launch['git_dir']:
         raise Refusal('Git directory changed')
-    if guard_differences(launch['guards'], guards(job)):
-        raise Refusal('Codex guards changed or cannot be observed')
+    current = guards(job)
+    if guard_differences(current, current):
+        raise Hold('current Codex guards cannot be observed')
+    if guard_differences(launch['guards'], current):
+        raise Refusal('Codex guards changed')
     if git(ctx, job, 'rev-parse', '--abbrev-ref', 'HEAD').strip() != launch['branch']:
         raise Refusal('the launch branch moved')
 
@@ -496,14 +526,23 @@ def finish(ctx, job, result):
         if result is None:
             raise Refusal('Codex result schema or identity is invalid')
         launch = job.get('checkpoint', {}).get('codex_launch')
-        if not isinstance(launch, dict):
-            raise Refusal('controller launch snapshot is absent')
+        required = ('pointer', 'branch', 'head', 'git_dir', 'packet_sha256', 'guards', 'paths')
+        if not isinstance(launch, dict) or any(key not in launch for key in required):
+            raise Hold('persisted controller launch snapshot is incomplete')
+        if (any(not isinstance(launch[key], str) or not launch[key]
+                for key in ('pointer', 'branch', 'head', 'git_dir', 'packet_sha256'))
+                or not isinstance(launch['paths'], list)
+                or guard_differences(launch['guards'], launch['guards'])):
+            raise Hold('persisted controller launch guards or identity are unknown')
         # Pointer before all Git, even on repeat finish or verifier paths.
         if pointer(job) != launch['pointer']:
             raise Refusal('the .git pointer changed; no Git command is allowed')
         if job['kind'] == 'VERIFY':
-            if guard_differences(launch['guards'], guards(job)):
-                raise Refusal('verifier working copy/guards changed or unknown')
+            current = guards(job)
+            if guard_differences(current, current):
+                raise Hold('current verifier guards cannot be observed')
+            if guard_differences(launch['guards'], current):
+                raise Refusal('verifier working copy/guards changed')
             if result.get('head_sha') is not None or result.get('pr_number') is not None:
                 raise Refusal('verifier cannot report a head or PR')
             return None  # existing build-kind publish checks/releases boundary, then publishes verdict
@@ -591,6 +630,20 @@ def diff_identity(job, paths):
 
 def _land(ctx, job, launch, result):
     progress = job['checkpoint'].setdefault('codex_finish', dict(**metadata(job)))
+    # (I) INTERPRETATION: an existing landing intent with lost progress cannot be
+    # reconstructed from current HEAD/status; retain the job for reconciliation.
+    if not isinstance(progress, dict):
+        raise Hold('persisted landing progress is unreadable')
+    if 'paths' not in progress:
+        if any(os.path.lexists(ka.record_path(ctx.run, 'ACT-codex-%s-%s' % (job['job_id'], step)))
+               for step in ('stage', 'commit', 'push', 'pr', 'review')):
+            raise Hold('landing action exists but persisted progress is missing')
+    elif (any(key not in progress for key in ('message', 'status_sha256', 'diff_sha256', 'packet_sha256', 'parent'))
+          or not isinstance(progress['paths'], list) or not progress['paths']
+          or any(not isinstance(path, str) or not path for path in progress['paths'])
+          or any(not isinstance(progress.get(key), str) or not progress[key]
+                 for key in ('message', 'status_sha256', 'diff_sha256', 'packet_sha256', 'parent'))):
+        raise Hold('persisted landing progress is incomplete')
     head = git(ctx, job, 'rev-parse', 'HEAD').strip()
     message = result['commit_message']
     if not isinstance(message, str) or not message.strip() or '\0' in message:
