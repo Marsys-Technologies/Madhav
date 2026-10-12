@@ -34,6 +34,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import type { JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
@@ -172,7 +173,10 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
     try {
       const chartId = args.chart_id as string
       if (!chartId) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamshaId = (args.ayanamsha_id as string | undefined) ?? 'lahiri_chitrapaksha'
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id: chartId })
+      if (!ayaTry.ok) return ayaTry.result
+      // Single-ayanamsha surface: normalised; "all" serves the primary reading (echoed in the response).
+      const ayanamshaId = ayaTry.aya.id ?? PRIMARY_AYANAMSHA
 
       const [dashaLordsRes, shadbalaRes, vicharaRes, ratificationRes] = await Promise.all([
         // ── chart_dashas (ga_dashas): every graha that carries a Vimśottarī MD on this chart ──

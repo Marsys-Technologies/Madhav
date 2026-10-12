@@ -47,6 +47,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { remoteAuthorize } from '../lib/authz.js'
 import type { Principal } from '../types.js'
+import { attachIdentityCrossCheckToPage, fetchDossierIdentityCrossCheck } from '../lib/identity_cross_check.js'
 // Slice bundles are embedded as a compiled TS module (not read from disk) so the
 // engine's data ships in dist with zero runtime filesystem / Docker-copy dependency.
 import { DOSSIER_SLICE_BUNDLES } from '../resources/vidhi/dossier_slices/dossier_slices.generated.js'
@@ -904,6 +905,13 @@ export function registerDossierTool(server: McpServer, principal: Principal): vo
           cursor: args.cursor,
           compose: args.compose,
         })
+        // Lahiri-primary SS N-360: the ONE shared identity block (Lagna sign, Moon sign, Moon nakshatra, current
+        // Mahadasha lord), always on, compact, a LABELLED cross-check built by the platform (this tool compares
+        // nothing). Page 1 of a served slice only; the page itself is unchanged and the block is shed first.
+        if (page.ok && page.page_n === 1) {
+          const block = await fetchDossierIdentityCrossCheck(args.chart_id, principal)
+          return dualOutput(attachIdentityCrossCheckToPage(page, block), false)
+        }
         return dualOutput(page, !page.ok)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

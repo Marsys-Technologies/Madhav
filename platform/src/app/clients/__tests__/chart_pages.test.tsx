@@ -15,7 +15,7 @@ import { render, fireEvent } from '@testing-library/react'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockListConversations, mockFetchBuildState, mockGetForensicSnapshot, mockConfigService, mockListReports } = vi.hoisted(() => ({
+const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockListConversations, mockFetchBuildState, mockConfigService, mockListReports } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveAccess: vi.fn(),
   mockRedirect: vi.fn((_url: string) => {
@@ -29,7 +29,6 @@ const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockListC
     current_brief: null,
     mirror_pairs: [],
   })),
-  mockGetForensicSnapshot: vi.fn(async () => ({ ascendant: null, planets: [] })),
   mockConfigService: { getFlag: vi.fn(() => false) },
   mockListReports: vi.fn(async () => ({ rows: [] })),
 }))
@@ -45,7 +44,6 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
 vi.mock('@/lib/conversations', () => ({ listConversations: mockListConversations }))
 vi.mock('@/lib/build/dataSource', () => ({ fetchBuildState: mockFetchBuildState }))
-vi.mock('@/lib/forensic/snapshot', () => ({ getForensicSnapshot: mockGetForensicSnapshot }))
 vi.mock('@/lib/config/index', () => ({ configService: mockConfigService }))
 
 // Stub the v2 cockpit shell — not under test here.

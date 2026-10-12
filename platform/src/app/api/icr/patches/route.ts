@@ -3,10 +3,13 @@
  * Lists and parses YAML files from PROPOSED/, RESOLVED/, REJECTED/ subdirs of
  * 00_ARCHITECTURE/CONFLICT_PATCHES/. Returns full PatchSummary objects.
  *
+ * Auth: super_admin only (401 unauthenticated, 403 otherwise).
+ *
  * ICR-S5 (2026-05-21) — extended in PERF-S5 to return structured PatchSummary[]
  */
 
 import { NextResponse } from 'next/server';
+import { requireSuperAdmin } from '@/lib/auth/access-control';
 import fs from 'fs';
 import path from 'path';
 
@@ -116,6 +119,11 @@ function listAndParseYamls(subdir: string, fallbackStatus: string): PatchSummary
 }
 
 export async function GET() {
+  // SS N-373 (SESSION_GATE_AUDIT HIGH): the conflict-patch YAML (MSR signal ids,
+  // before/after text) is not public, and proxy.ts only checks the cookie SHAPE.
+  const auth = await requireSuperAdmin();
+  if (auth instanceof NextResponse) return auth;
+
   const proposed = listAndParseYamls('PROPOSED', 'PROPOSED');
   const resolved = listAndParseYamls('RESOLVED', 'RESOLVED');
   const rejected = listAndParseYamls('REJECTED', 'REJECTED');

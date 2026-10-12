@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import random
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -67,7 +68,35 @@ ON CONFLICT (signal_id) DO UPDATE SET
   computed_at             = EXCLUDED.computed_at
 """
 
-_BATCH_SIZE = 10
+# Rows per multi-row INSERT statement. 500 rows x 10 columns = 5,000 bind parameters, far under
+# PostgreSQL's 65,535 limit. Was 10 rows via executemany (~2,500 statements per ayanamsha; the insert
+# phase took ~8-19 min per ayanamsha in production run 7c95b3e1). Stored vectors are unchanged: the
+# vector literal is still formatted in the row dict, only the number of statements changes.
+_BATCH_SIZE = 500
+
+_COLS = (
+    "embedding_id", "signal_id", "chart_id", "ayanamsha_id", "build_id",
+    "embedding_vec", "embedding_model", "embedding_model_version",
+    "embedding_input_summary", "computed_at",
+)
+_ROW_PLACEHOLDERS = ", ".join(
+    "%s::vector" if c == "embedding_vec" else "%s" for c in _COLS
+)
+_MULTI_INSERT_HEAD = (
+    "INSERT INTO public.bodha_signal_embeddings (\n  " + ", ".join(_COLS) + "\n) VALUES\n"
+)
+_MULTI_INSERT_TAIL = """
+ON CONFLICT (signal_id) DO UPDATE SET
+  embedding_model         = EXCLUDED.embedding_model,
+  embedding_model_version = EXCLUDED.embedding_model_version,
+  embedding_vec           = EXCLUDED.embedding_vec,
+  embedding_input_summary = EXCLUDED.embedding_input_summary,
+  computed_at             = EXCLUDED.computed_at
+"""
+
+
+def _multi_insert_sql(n: int) -> str:
+    return _MULTI_INSERT_HEAD + ",\n".join(f"({_ROW_PLACEHOLDERS})" for _ in range(n)) + _MULTI_INSERT_TAIL
 
 
 def _get_genai_client() -> Any:
@@ -160,6 +189,30 @@ def _backoff_delay(failed_attempt: int, rand: Any) -> float:
 # propagates (fail loud) rather than being swallowed.
 KEEPALIVE_INTERVAL_S = 30.0     # time-guarded pings (retry waits) at least this often
 _monotonic = time.monotonic     # injectable for tests
+
+# ── Input-text dedupe (design: POST/EMBEDDING_CACHE_DESIGN.md, SS N-295) ──────────────
+# _build_input_summary() contains neither the signal_id nor the ayanamsha, so many signals share
+# one input text (chart 482012f1: 126,918 rows but only 4,379 distinct texts). The same text with
+# the same model+version gives the same vector (the signal_id reuse above already relies on that),
+# so each DISTINCT text is sent to Vertex once and the stored vector literal is fanned out to every
+# signal that shares it. The dict is shared by the five ayanamsha substeps of one build when they run
+# in one process (it is reset whenever the build_id changes, so memory stays bounded to one build);
+# in a separate process it simply degrades to per-substep dedupe. Row values are unchanged.
+_TEXT_VEC_LOCK = threading.Lock()
+_TEXT_VEC: dict[str, Any] = {"build_id": None, "vecs": {}}
+_TEXT_VEC_MAX = 20000
+
+
+def _text_vec_for_build(build_id: Any) -> dict[tuple[str, str, str], str]:
+    with _TEXT_VEC_LOCK:
+        if _TEXT_VEC["build_id"] != build_id:
+            _TEXT_VEC["build_id"] = build_id
+            _TEXT_VEC["vecs"] = {}
+        return _TEXT_VEC["vecs"]
+
+
+def _vec_literal(vec: Any) -> str:
+    return "[" + ",".join(f"{v:.8f}" for v in vec) + "]"
 
 
 def _keepalive(conn: Any) -> None:
@@ -276,23 +329,33 @@ def _batch_insert(conn, rows: list[dict]) -> int:
     with conn.cursor() as cur:
         for i in range(0, total, _BATCH_SIZE):
             batch = rows[i:i + _BATCH_SIZE]
+            params = [r[c] for r in batch for c in _COLS]
             try:
-                cur.executemany(_INSERT, batch)
-                inserted += max(0, cur.rowcount)
+                # Savepoint so a failed batch does not abort the orchestrator's transaction
+                # before the per-row fallback runs.
+                cur.execute("SAVEPOINT batch_sp")
+                cur.execute(_multi_insert_sql(len(batch)), params)
+                batch_count = max(0, cur.rowcount)
+                cur.execute("RELEASE SAVEPOINT batch_sp")
+                inserted += batch_count
             except Exception:
                 logger.warning("[bo_samskara] batch at %d failed, falling back per-row", i)
+                cur.execute("ROLLBACK TO SAVEPOINT batch_sp")
                 for row in batch:
                     try:
                         cur.execute("SAVEPOINT row_sp")
                         cur.execute(_INSERT, row)
+                        row_count = max(0, cur.rowcount)   # read before RELEASE resets it
                         cur.execute("RELEASE SAVEPOINT row_sp")
-                        inserted += max(0, cur.rowcount)
+                        inserted += row_count
                     except Exception as row_exc:
                         cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_samskara] skipping embedding %s: %s",
                                        row.get("signal_id"), row_exc)
-            if inserted % 2000 == 0 or i + _BATCH_SIZE >= total:
-                logger.info("[bo_samskara] embedded %d/%d", inserted, total)
+            # Keep the orchestrator's transaction non-idle between large insert batches
+            # (idle_in_transaction_session_timeout, see _keepalive).
+            _keepalive(conn)
+            logger.info("[bo_samskara] embedded %d/%d", inserted, total)
     return inserted
 
 
@@ -383,9 +446,23 @@ class BoSamskaraWriter(WriterBase):
                 _keepalive(conn)
                 last_ping = _monotonic()
 
-        for batch_start in range(0, len(to_embed), EMBED_BATCH_SIZE):
-            batch = to_embed[batch_start:batch_start + EMBED_BATCH_SIZE]
-            batch_texts = [summary for _, summary in batch]
+        # Distinct texts only, in first-seen order; texts already embedded earlier in this build
+        # (another ayanamsha substep, same process) are taken from the shared dict.
+        text_vecs = _text_vec_for_build(build_id)
+        _local_overflow: dict[str, str] = {}
+        pending_texts: list[str] = []
+        _seen: set[str] = set()
+        for _sig, summary in to_embed:
+            if summary not in _seen and (EMBEDDING_MODEL, EMBEDDING_VER, summary) not in text_vecs:
+                _seen.add(summary)
+                pending_texts.append(summary)
+        if to_embed:
+            logger.info("[bo_samskara] %s — %d texts to embed, %d distinct to send to Vertex "
+                        "(%d already embedded in this build)", aya, len(to_embed), len(pending_texts),
+                        len({s for _, s in to_embed} - _seen))
+
+        for batch_start in range(0, len(pending_texts), EMBED_BATCH_SIZE):
+            batch_texts = pending_texts[batch_start:batch_start + EMBED_BATCH_SIZE]
             try:
                 vecs = _embed_batch_with_retry(batch_texts, on_wait=_ping_if_due)
             except Exception as exc:
@@ -393,26 +470,46 @@ class BoSamskaraWriter(WriterBase):
                     f"[bo_samskara] {aya} — embedding batch at offset "
                     f"{batch_start} failed; refusing a partial generation"
                 ) from exc
-            for (sig, summary), vec in zip(batch, vecs):
-                rows.append({
-                    "embedding_id":             stable_semantic_uuid("signal_embedding", {
-                        "signal_id": str(sig["signal_id"]),
-                        "embedding_model": EMBEDDING_MODEL,
-                        "embedding_model_version": EMBEDDING_VER,
-                    }),
-                    "signal_id":                str(sig["signal_id"]),
-                    "chart_id":                 chart_id,
-                    "ayanamsha_id":             aya,
-                    "build_id":                 build_id,
-                    "embedding_vec":            "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
-                    "embedding_model":          EMBEDDING_MODEL,
-                    "embedding_model_version":  EMBEDDING_VER,
-                    "embedding_input_summary":  summary,
-                    "computed_at":              now,
-                })
+            if len(vecs) != len(batch_texts):
+                raise RuntimeError(
+                    f"[bo_samskara] {aya} — embedding batch at offset {batch_start} returned "
+                    f"{len(vecs)} vectors for {len(batch_texts)} texts; refusing a partial generation"
+                )
+            with _TEXT_VEC_LOCK:
+                for text, vec in zip(batch_texts, vecs):
+                    key = (EMBEDDING_MODEL, EMBEDDING_VER, text)
+                    if len(text_vecs) < _TEXT_VEC_MAX or key in text_vecs:
+                        text_vecs[key] = _vec_literal(vec)
+                    else:
+                        # shared dict full: keep the vector for this substep only
+                        _local_overflow[text] = _vec_literal(vec)
             _keepalive(conn)
             last_ping = _monotonic()
 
+        for sig, summary in to_embed:
+            lit = text_vecs.get((EMBEDDING_MODEL, EMBEDDING_VER, summary))
+            if lit is None:
+                lit = _local_overflow[summary]
+            rows.append({
+                "embedding_id":             stable_semantic_uuid("signal_embedding", {
+                    "signal_id": str(sig["signal_id"]),
+                    "embedding_model": EMBEDDING_MODEL,
+                    "embedding_model_version": EMBEDDING_VER,
+                }),
+                "signal_id":                str(sig["signal_id"]),
+                "chart_id":                 chart_id,
+                "ayanamsha_id":             aya,
+                "build_id":                 build_id,
+                "embedding_vec":            lit,
+                "embedding_model":          EMBEDDING_MODEL,
+                "embedding_model_version":  EMBEDDING_VER,
+                "embedding_input_summary":  summary,
+                "computed_at":              now,
+            })
+
+        if aya == CANONICAL_AYAS[-1]:
+            # last ayanamsha substep of the build: the shared dict (~40-175 MB) is no longer needed
+            _text_vec_for_build(None)
         replace_prior_signal_embeddings(conn, chart_id, aya)
         logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
         inserted = _batch_insert(conn, rows)

@@ -20,6 +20,17 @@ from pipeline.orchestrator.writers.bo_samskara import BoSamskaraWriter
 from pipeline.orchestrator.writers import ContextSpec, SubStep
 
 
+@pytest.fixture(autouse=True)
+def _reset_shared_text_vectors():
+    """bo_samskara shares embedded vectors per build (input-text dedupe); these tests reuse one build_id
+    and the same texts, so each test starts from an empty dict to keep counting Vertex calls."""
+    mod._TEXT_VEC["build_id"] = None
+    mod._TEXT_VEC["vecs"] = {}
+    yield
+    mod._TEXT_VEC["build_id"] = None
+    mod._TEXT_VEC["vecs"] = {}
+
+
 class Clock:
     def __init__(self):
         self.t = 0.0

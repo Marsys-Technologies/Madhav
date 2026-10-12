@@ -215,3 +215,29 @@ describe('secret fallback', () => {
     expect(() => signFeedToken(payload)).not.toThrow()
   })
 })
+
+// ── SS N-373 item 5: signature comparison is timing-safe ─────────────────────
+
+describe('verifyFeedToken signature comparison (SS N-373 item 5)', () => {
+  it('a tampered signature of the SAME length is rejected as tampered', () => {
+    const token = signFeedToken(makePayload())
+    const [encoded, sig] = token.split('.')
+    const flipped = (sig[0] === 'a' ? 'b' : 'a') + sig.slice(1)
+    expect(verifyFeedToken(`${encoded}.${flipped}`)).toEqual({ ok: false, reason: 'tampered' })
+  })
+
+  it('a signature of a DIFFERENT length is rejected as tampered and never throws', () => {
+    const token = signFeedToken(makePayload())
+    const [encoded, sig] = token.split('.')
+    expect(() => verifyFeedToken(`${encoded}.${sig.slice(0, 10)}`)).not.toThrow()
+    expect(verifyFeedToken(`${encoded}.${sig.slice(0, 10)}`)).toEqual({ ok: false, reason: 'tampered' })
+    expect(verifyFeedToken(`${encoded}.${sig}00`)).toEqual({ ok: false, reason: 'tampered' })
+  })
+
+  it('an UNSET secret fails closed (invalid), it never accepts', () => {
+    const token = signFeedToken(makePayload())
+    delete process.env.SESSION_SECRET
+    delete process.env.HMAC_SECRET
+    expect(verifyFeedToken(token)).toEqual({ ok: false, reason: 'invalid' })
+  })
+})

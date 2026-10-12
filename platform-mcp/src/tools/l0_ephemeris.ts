@@ -11,7 +11,7 @@
  *
  * Data source: ephemeris_daily table (1900-2150, 9 bodies, pyswisseph DE441).
  * Reference chart: 1984-02-05 10:43 IST, Bhubaneswar (canonical build anchor).
- * Expected Sun on reference birth: tropical ~315.87° (sidereal ~292.0° = Capricorn ~22°).
+ * Expected Sun on reference birth: tropical ~315.87° (sidereal Lahiri ~292.0° = Capricorn ~22°); the tools serve the sidereal value.
  *
  * MCP pattern: calls Python sidecar via PLATFORM_URL (REST API).
  *
@@ -59,9 +59,11 @@ const QueryPlanetPositionInput = z.object({
 export function registerQueryPlanetPositionTool(server: McpServer): void {
   server.tool(
     'query_planet_position',
-    'Query planetary positions from ephemeris_daily (1900-2150, tropical coordinates). ' +
-    'Returns longitude_deg, sign_number, nakshatra_number, is_retrograde, speed_dps. ' +
-    'Subtract Lahiri ayanamsha (~23.87° at J2000) to get sidereal longitude.',
+    'Query planetary positions from ephemeris_daily (1900-2150). The sidecar serves SIDEREAL ' +
+    "coordinates in the primary 'lahiri_chitrapaksha' ayanamsha: longitude_deg, sign_number, " +
+    'nakshatra_number and pada are already sidereal, so do NOT subtract an ayanamsha again ' +
+    '(tropical_longitude is carried as a labelled extra). ' +
+    'Returns longitude_deg, sign_number, nakshatra_number, is_retrograde, speed_dps.',
     QueryPlanetPositionInput.shape,
     async (params) => {
       const input = QueryPlanetPositionInput.parse(params)
@@ -90,7 +92,7 @@ const QueryPlanetTransitInput = z.object({
   start_date: z.string().describe('Start date in YYYY-MM-DD format.'),
   end_date: z.string().describe('End date in YYYY-MM-DD format.'),
   sign_number: z.number().int().min(1).max(12).optional().describe(
-    'Optional: filter to rows where planet is in this tropical sign (1=Aries … 12=Pisces).'
+    'Optional: filter to rows where planet is in this SIDEREAL sign (Lahiri; 1=Aries … 12=Pisces).'
   ),
 })
 
@@ -98,7 +100,7 @@ export function registerQueryPlanetTransitTool(server: McpServer): void {
   server.tool(
     'query_planet_transit',
     'Query a planet\'s daily transit series across a date window. ' +
-    'Optionally filter by tropical sign number to find when the planet transits a specific sign. ' +
+    'Optionally filter by sidereal (Lahiri) sign number to find when the planet transits a specific sign. ' +
     'Returns daily longitude, sign, nakshatra, is_retrograde. Max 5,000 rows.',
     QueryPlanetTransitInput.shape,
     async (params) => {

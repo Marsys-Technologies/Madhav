@@ -1,0 +1,7 @@
+{
+  "asset": "bg_rules",
+  "expected_post_row_count": 2994,
+  "why": "bg_rules: a match whose prediction.result has no word character (empty, '.', dash runs) is no longer kept: 8 of the 3,002 stored rules (7 empty + one '——') are dropped, the other 2,994 are byte-identical (real-writer replay over the frozen corpus, seeds 0 and 3, content digest 8e18dc1c...b9fc; migration 1368 re-seals the check).",
+  "decision": "N-514",
+  "evidence": "PR #3442; census run A Narr.agree blank_leaf; migration 1368; replay artefacts in 20261011-rulesreplay."
+}

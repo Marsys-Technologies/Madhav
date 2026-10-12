@@ -1,7 +1,11 @@
 import "server-only";
 import { query } from "@/lib/db/client";
 import type { ForensicChart } from "@/lib/forensic/snapshot";
-import { DEFAULT_AYANAMSHA } from "@/lib/retrieval/registry/constants";
+import {
+  AYANAMSHA_SERVE_ORDER,
+  DEFAULT_AYANAMSHA,
+} from "@/lib/retrieval/registry/constants";
+import { resolveAyanamshaArg } from "@/lib/retrieval/chart_facts_helpers";
 const SIGNS = [
   "Aries",
   "Taurus",
@@ -16,28 +20,35 @@ const SIGNS = [
   "Aquarius",
   "Pisces",
 ];
-// Chart forms store short keys; the computed L1 data uses these released keys.
-// Preserve the selected computation frame rather than querying a short-key alias.
-export function journey1Frame(stored: string | null) {
-  const aliases: Record<string, string> = {
-    lahiri: DEFAULT_AYANAMSHA,
-    kp: "krishnamurti",
-    surya_siddhanta: "surya_siddhanta_classical",
-  };
-  const selected = (stored ?? "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean)
-    .map((v) => aliases[v] ?? v);
-  return selected.includes(DEFAULT_AYANAMSHA) || !selected.length
-    ? DEFAULT_AYANAMSHA
-    : selected[0];
+// Lahiri-primary (SS N-339 / N-342 ruling): `lahiri_chitrapaksha` is the PRIMARY reading for
+// EVERY chart. The portal frame is therefore always Lahiri, whatever `charts.ayanamsa` lists:
+// a chart whose stored selection omits Lahiri (or lists KP/Raman first) used to be served in
+// `selected[0]`, a silent pick of a non-primary frame. `charts.ayanamsa` only selects which of
+// the OTHER four are shown as the labelled cross-check set (`journey1CrossCheckFrames`).
+// The argument is accepted for call-site compatibility and deliberately ignored.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function journey1Frame(_stored?: string | null): string {
+  return DEFAULT_AYANAMSHA;
+}
+/**
+ * The cross-check set: the chart's selected ayanamshas other than Lahiri, as stored ids in
+ * serve order. Unknown entries are skipped (never mapped to Lahiri). Never merged into the
+ * primary frame.
+ */
+export function journey1CrossCheckFrames(stored: string | null): string[] {
+  const chosen = new Set<string>();
+  for (const part of (stored ?? "").split(",")) {
+    const r = resolveAyanamshaArg(part);
+    if (r.ok && r.ayanamsha_id && r.ayanamsha_id !== DEFAULT_AYANAMSHA)
+      chosen.add(r.ayanamsha_id);
+  }
+  return AYANAMSHA_SERVE_ORDER.filter((id) => chosen.has(id));
 }
 export function journey1FrameLabel(frame: string) {
   return (
     (
       {
-        lahiri_chitrapaksha: "Lahiri · Chitrapaksha",
+        lahiri_chitrapaksha: "Lahiri · Chitrapaksha (primary)",
         krishnamurti: "KP · Krishnamurti",
         true_chitra: "True Chitra",
         raman: "B.V. Raman",
