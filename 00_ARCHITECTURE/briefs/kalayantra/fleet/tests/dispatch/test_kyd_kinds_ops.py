@@ -8,7 +8,8 @@ and awaiting item), the files it wrote, and the files it must not have written.
 The tracker's answers are in the shapes pravaha_tracker emits (review r5 KO5-B1): `next` is the `ky next --json`
 object {stream, version, running, ready, blocked} of item rows as state.build_snapshot writes them, `events` are
 EVENTS.jsonl lines ({kind: item, state: review | blocked}, {kind: verdict}), the inbox rows are message events, and
-brief / completion_kind / done_by / join are in the plan model only. `test_the_fixtures_use_the_trackers_shapes`
+brief / done_by / join are in the plan model only; declared models also put completion_kind, producer,
+reviewer_rule and step_evidence on snapshot rows (TRACKER packet contract 7). `test_the_fixtures_use_the_trackers_shapes`
 holds every case to that, against the tracker's own source.
 
 The double starts no process and touches no network: an `sh` or `ky` call no case answered is recorded and fails the
@@ -44,6 +45,7 @@ ROW_KEYS = {"id", "title", "lane", "gate", "owner", "depends_on", "cross_stream"
             "actor", "evidence", "started_at", "updated_at", "checked_at", "deps_open", "deps_open_strict", "elapsed_s"}
 # what item_status / build_snapshot add to some rows only
 ROW_EXTRAS = {"steps", "outcome", "detector_warning", "deps_merged_pending_deploy", "gaps", "skip_origin"}
+ROW_DECLARATIONS = {"completion_kind", "producer", "reviewer_rule", "step_evidence"}
 
 
 def load_module(name="kyd_kinds_ops_under_test"):
@@ -82,7 +84,7 @@ def tracker_shape_faults(spec):
         else:
             for bucket, statuses in NEXT_STATUSES.items():
                 for row in nxt[bucket]:
-                    if not ROW_KEYS <= set(row) <= ROW_KEYS | ROW_EXTRAS or row["status"] not in statuses:
+                    if not ROW_KEYS <= set(row) <= ROW_KEYS | ROW_EXTRAS | ROW_DECLARATIONS or row["status"] not in statuses:
                         bad.append("next.%s row %r is not a build_snapshot item row" % (bucket, row.get("id")))
     for item, lines in (spec.get("events") or {}).items():
         for line in lines or []:
@@ -536,7 +538,8 @@ def test_the_cases_cover_review_r5():
     assert FOREIGN <= names
 
 
-def test_the_fixtures_use_the_trackers_shapes():
+@pytest.mark.parametrize("declared", [False, True], ids=["legacy", "declared"])
+def test_the_fixtures_use_the_trackers_shapes(declared):
     """The fixture shapes are the producer's, measured against its source in this working copy: the item row keys are
     those of a row state.build_snapshot builds (no brief, done_by or join), `/api/next` answers the object the cases
     use, and the detector that holds every case to them does refuse the guessed shapes of the reviewed head."""
@@ -544,8 +547,13 @@ def test_the_fixtures_use_the_trackers_shapes():
     model = {"tracks": [{"id": "T", "title": "t"}], "streams": [], "phases": [], "decisions": [],
              "items": [{"id": "X-1", "track": "T", "title": "x", "owner": "N", "completion_kind": "operation",
                         "brief": {"op": ["readback_sql"]}, "done_by": None, "join": False}]}
+    if declared:
+        model["control_plane"] = {"declarations": {}}
     built = state.build_snapshot(model, [], {}, {}, {})["tracks"][0]["items"][0]
-    assert set(built) == ROW_KEYS and built["status"] == "ready"
+    assert set(built) == ROW_KEYS | (ROW_DECLARATIONS if declared else set()) and built["status"] == "ready"
+    if declared:
+        assert {key: built[key] for key in ROW_DECLARATIONS} == {
+            "completion_kind": "operation", "producer": None, "reviewer_rule": None, "step_evidence": None}
     server = (TRACKER / "server.py").read_text(encoding="utf-8")
     assert 'return self._json({"stream": sid, "version": snap.get("version"),' in server
     for bucket, statuses in NEXT_STATUSES.items():
@@ -557,6 +565,8 @@ def test_the_fixtures_use_the_trackers_shapes():
     assert tracker_shape_faults(good) == []
     for guessed in ({"next": [{"id": "X-1", "owner": "N", "status": "ready", "brief": {}}]},                    # a flat list
                     {"next": {"items": []}},
+                    {"next": dict(EMPTY_NEXT, ready=[{k: v for k, v in built.items() if k != "status"}])},       # missing status
+                    {"next": dict(EMPTY_NEXT, ready=[dict(built, unknown_field=True)])},                        # undocumented key
                     {"next": dict(EMPTY_NEXT, ready=[dict(built, brief={"op": ["readback_sql"]})])},            # a brief on the row
                     {"next": dict(EMPTY_NEXT, running=[dict(built)])},                                          # ready, in `running`
                     {"events": {"X-1": [{"type": "review", "actor": "stream-K:b2", "lane": "b2"}]}},
@@ -564,6 +574,27 @@ def test_the_fixtures_use_the_trackers_shapes():
                     {"ky": [{"match": ["inbox"], "out": [{"msg_id": "M-1", "from": "S", "text": "x"}]}]},
                     {"model": {"items": [{"id": "X-1", "status": "ready"}]}}):
         assert tracker_shape_faults(guessed), guessed
+
+
+@pytest.mark.parametrize("broken", ["missing_id", "missing_status", "wrong_status"])
+def test_a_malformed_declared_tracker_row_is_unknown_and_journalled(tmp_path, broken):
+    """Declaration fields do not make malformed producer rows valid or an empty wave boundary."""
+    model = {"tracks": [{"id": "T", "title": "t"}], "streams": [], "phases": [], "decisions": [],
+             "control_plane": {"declarations": {}},
+             "items": [{"id": "X-1", "track": "T", "title": "x", "owner": "S", "completion_kind": "artifact",
+                        "producer": "S", "reviewer_rule": "v_artifact_digest_reviewer_not_author"}]}
+    row = tracker("state").build_snapshot(model, [], {}, {}, {})["tracks"][0]["items"][0]
+    if broken == "wrong_status":
+        row["status"] = "running"                          # in the ready bucket
+    else:
+        row.pop("id" if broken == "missing_id" else "status")
+    spec = {"next": dict(EMPTY_NEXT, ready=[row]), "model": model}
+    assert tracker_shape_faults(spec)
+    double = Double(tmp_path, spec, DOC["table"])
+    assert load_module().intents(double) == []
+    said = [c for c in double.calls if c["fn"] == "journal"]
+    assert len(said) == 1 and said[0]["event"] == "ops_unknown"
+    assert "not a tracker item row with that status" in said[0]["text"]
 
 
 def test_intents_on_the_trackers_own_snapshot_of_the_campaigns_plan_model(tmp_path):
