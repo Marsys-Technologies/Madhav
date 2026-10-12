@@ -981,6 +981,119 @@ def test_close_without_a_container_exits_0(lab):
     assert docker_verbs(lab.calls()) == ["ps"] and lab.tree() == before
 
 
+def vanish(lab):
+    """The container goes away outside the script (a crash, an operator's `docker rm`); the files it wrote stay."""
+    w = lab.world()
+    w["container"], w["dbs"] = None, {}
+    lab.save(w)
+    lab.forget_calls()
+
+
+def test_close_without_a_container_removes_the_sessions_storage_and_receipts(lab):
+    """Review B-01: `absent` is an observation of S's storage and receipts too, not of docker alone."""
+    ready(lab, "b1", "S1")
+    storage = lab.R / "db" / "S1"
+    (storage / "pgdata" / "base").mkdir()
+    (storage / "pgdata" / "base" / "16384").write_text("the closed session's database files\n")
+    vanish(lab)
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=absent\n"
+    assert not storage.exists() and not (lab.run_dir / "local_db" / "b1.json").exists()
+    assert docker_verbs(lab.calls()) == ["ps"] and mutating(lab.calls()) == []
+    assert (lab.R / "db").is_dir()                                    # only the storage child goes, logs stay
+    assert lab.run("up", "--session", "S1").returncode == 0           # a later session starts from nothing
+    assert sorted(x.name for x in (storage / "pgdata").iterdir()) == ["PG_VERSION"]
+
+
+def test_close_without_a_container_exits_1_when_storage_survives(lab):
+    ready(lab, "b1", "S1")
+    storage = lab.R / "db" / "S1"
+    vanish(lab)
+    lab._exe(lab.shims / "rm", "#!/bin/sh\nexit 0\n")                 # a removal that reports success and removes nothing
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 1 and p.stdout == "close session=S1 dropped=0 container=storage_remains\n"
+    assert (storage / "pgdata" / "PG_VERSION").exists()
+    (lab.shims / "rm").unlink()
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=absent\n"
+    assert not storage.exists()
+
+
+def test_close_without_a_container_exits_1_when_a_receipt_survives(lab):
+    ready(lab, "b1", "S1")
+    vanish(lab)
+    receipts = lab.run_dir / "local_db"
+    receipts.chmod(0o555)                                             # the receipt cannot be unlinked
+    try:
+        p = lab.run("close", "--session", "S1")
+    finally:
+        receipts.chmod(0o755)
+    assert p.returncode == 1 and p.stdout == "close session=S1 dropped=0 container=receipts_remain\n"
+    assert lab.receipt("b1")["session_id"] == "S1"
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=absent\n"
+    assert not (receipts / "b1.json").exists()
+
+
+def test_close_without_a_container_does_not_follow_a_symlinked_session_directory(lab):
+    outside = lab.tmp / "outside"
+    outside.mkdir()
+    (outside / "kept").write_text("not the session's\n")
+    (lab.R / "db").mkdir()
+    (lab.R / "db" / "S1").symlink_to(outside)
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 1 and p.stdout == "close session=S1 dropped=0 container=storage_remains\n"
+    assert (outside / "kept").exists() and (lab.R / "db" / "S1").is_symlink()
+
+
+def test_close_without_a_container_keeps_another_sessions_receipt_and_storage(lab):
+    ready(lab, "b1", "S1")
+    r2 = ready(lab, "b2", "S2")
+    theirs = lab.R / "db" / "S2" / "pgdata"
+    theirs.mkdir(parents=True)
+    (theirs / "PG_VERSION").write_text("16\n")
+    vanish(lab)
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=absent\n"
+    assert not (lab.R / "db" / "S1").exists() and not (lab.run_dir / "local_db" / "b1.json").exists()
+    assert lab.receipt("b2") == r2 and (theirs / "PG_VERSION").exists()
+
+
+def test_close_without_a_container_follows_the_hand_over_record(lab):
+    """Storage handed over is the new owner's: the session that gave it away leaves it, its owner on record removes it."""
+    ready(lab, "b1", "S1")
+    ready(lab, "b2", "S2")
+    storage = lab.R / "db" / "S1"
+    assert lab.run("close", "--session", "S1").stdout == "close session=S1 dropped=1 container=handed_over\n"
+    record = {"owner": "S2", "storage": str(storage), "from": "S1"}
+    vanish(lab)
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=absent\n"
+    assert (storage / "pgdata" / "PG_VERSION").exists() and json.loads(lab.record_path().read_text()) == record
+    p = lab.run("close", "--session", "S2")
+    assert p.returncode == 0 and p.stdout == "close session=S2 dropped=0 container=absent\n"
+    assert not storage.exists() and not lab.record_path().exists()
+    assert list((lab.run_dir / "local_db").glob("*.json")) == []
+    assert mutating(lab.calls()) == []
+
+
+def test_close_without_a_container_exits_1_when_the_hand_over_record_survives(lab):
+    ready(lab, "b1", "S1")
+    ready(lab, "b2", "S2")
+    storage = lab.R / "db" / "S1"
+    assert lab.run("close", "--session", "S1").returncode == 0
+    vanish(lab)
+    receipts = lab.run_dir / "local_db"
+    (receipts / "b2.json").unlink()                                   # S2 holds the record and nothing else
+    receipts.chmod(0o555)
+    try:
+        p = lab.run("close", "--session", "S2")
+    finally:
+        receipts.chmod(0o755)
+    assert p.returncode == 1 and p.stdout == "close session=S2 dropped=0 container=record_remains\n"
+    assert not storage.exists() and lab.record_path().exists()
+
+
 def test_close_removes_the_last_sessions_databases_container_and_storage(lab):
     ready(lab, "b1", "S1")
     ready(lab, "v1", "S1")
