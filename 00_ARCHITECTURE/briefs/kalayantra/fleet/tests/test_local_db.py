@@ -1150,6 +1150,156 @@ def test_a_hand_over_that_cannot_be_recorded_is_not_a_close(lab):
     assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=handed_over\n"
 
 
+def test_close_hands_over_a_container_and_removes_the_sessions_own_storage_it_does_not_mount(lab):
+    """Review round 2, B-01: with a ky-pg present, exit 0 also observes R/db/S gone when the container mounts another store."""
+    ready(lab, "b1", "S1")
+    own = lab.R / "db" / "S1"
+    (own / "pgdata" / "base").mkdir()
+    (own / "pgdata" / "base" / "16384").write_text("the closed session's database files\n")
+    vanish(lab)
+    r2 = ready(lab, "b2", "S3")                                       # a new container, on R/db/S3
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=handed_over\n"
+    assert not own.exists() and (lab.R / "db" / "S3" / "pgdata" / "PG_VERSION").exists()
+    assert lab.receipt("b2") == r2 and lab.run("check", "b2").returncode == 0
+    assert json.loads(lab.record_path().read_text()) == {"owner": "S3", "storage": str(lab.R / "db" / "S3"), "from": "S1"}
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=handed_over\n"
+
+
+def test_close_removes_a_container_and_the_sessions_own_storage_it_does_not_mount(lab):
+    ready(lab, "b1", "S1")
+    own = lab.R / "db" / "S1"
+    vanish(lab)
+    assert lab.run("up", "--session", "S3").returncode == 0           # no database of anyone's in it
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=removed\n"
+    assert lab.world()["container"] is None and not own.exists() and not (lab.R / "db" / "S3").exists()
+
+
+@pytest.mark.parametrize("others", [True, False])
+def test_close_with_a_container_exits_1_when_its_own_unmounted_storage_survives(lab, others):
+    ready(lab, "b1", "S1")
+    own = lab.R / "db" / "S1"
+    vanish(lab)
+    if others:
+        ready(lab, "b2", "S3")
+    else:
+        assert lab.run("up", "--session", "S3").returncode == 0
+    # S1's storage alone survives a removal that reports success; the container's store really goes
+    lab._exe(lab.shims / "rm", f'#!/bin/sh\ncase "$*" in *"{own}"*) exit 0;; esac\nexec /bin/rm "$@"\n')
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 1 and p.stdout == "close session=S1 dropped=0 container=storage_remains\n"
+    assert (own / "pgdata" / "PG_VERSION").exists()
+    (lab.shims / "rm").unlink()
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and not own.exists()
+
+
+def test_close_with_a_container_keeps_storage_on_record_as_another_sessions(lab):
+    """R/db/S on record as handed to T is T's to remove, also when the present container mounts something else."""
+    ready(lab, "b1", "S1")
+    ready(lab, "b2", "S2")
+    storage = lab.R / "db" / "S1"
+    assert lab.run("close", "--session", "S1").returncode == 0
+    record = {"owner": "S2", "storage": str(storage), "from": "S1"}
+    vanish(lab)
+    lab.plant_container(session="S3")                                 # started outside the script, on R/db/S3
+    p = lab.run("close", "--session", "S1")
+    assert p.returncode == 0 and p.stdout == "close session=S1 dropped=0 container=removed\n"
+    assert (storage / "pgdata" / "PG_VERSION").exists() and json.loads(lab.record_path().read_text()) == record
+    p = lab.run("close", "--session", "S2")
+    assert p.returncode == 0 and p.stdout == "close session=S2 dropped=0 container=absent\n"
+    assert not storage.exists() and not lab.record_path().exists()
+
+
+def test_a_hand_over_never_overwrites_another_sessions_record_of_other_storage(lab):
+    ready(lab, "b1", "S1")
+    ready(lab, "b2", "S2")
+    storage = lab.R / "db" / "S1"
+    assert lab.run("close", "--session", "S1").returncode == 0
+    record = {"owner": "S2", "storage": str(storage), "from": "S1"}
+    vanish(lab)
+    lab.plant_container(session="S3")
+    lab.plant_db("ky_v1", "ky.session=S3")
+    lab.plant_db("ky_b1", "ky.session=S4")
+    p = lab.run("close", "--session", "S4")
+    assert p.returncode == 1 and p.stdout == "close session=S4 dropped=1 container=handover_unrecorded\n"
+    assert json.loads(lab.record_path().read_text()) == record and (storage / "pgdata" / "PG_VERSION").exists()
+    assert lab.run("close", "--session", "S2").returncode == 0        # the owner on record removes its storage
+    assert not storage.exists() and json.loads(lab.record_path().read_text())["storage"] == str(lab.R / "db" / "S3")
+    p = lab.run("close", "--session", "S4")
+    assert p.returncode == 0 and p.stdout == "close session=S4 dropped=0 container=handed_over\n"
+
+
+# ── a hand-over record outlives its container until the storage it names is gone (review round 2, B-02) ──────────
+def handed_over_then_vanished(lab):
+    ready(lab, "b1", "S1")
+    ready(lab, "b2", "S2")
+    assert lab.run("close", "--session", "S1").stdout == "close session=S1 dropped=1 container=handed_over\n"
+    record = {"owner": "S2", "storage": str(lab.R / "db" / "S1"), "from": "S1"}
+    assert json.loads(lab.record_path().read_text()) == record
+    vanish(lab)
+    return record
+
+
+@pytest.mark.parametrize("command", [("up", "--session", "S3"), ("db", "v1", "--session", "S3"),
+                                     ("reset", "v1", "--session", "S3"), ("up", "--session", "S1")])
+def test_up_refuses_while_another_sessions_handed_over_storage_exists(lab, command):
+    record = handed_over_then_vanished(lab)
+    storage, before = lab.R / "db" / "S1", lab.tree()
+    p = lab.run(*command)
+    assert p.returncode == 2 and "S2" in p.err
+    assert lab.tree() == before and docker_verbs(lab.calls()) == ["ps"] and mutating(lab.calls()) == []
+    assert json.loads(lab.record_path().read_text()) == record and (storage / "pgdata" / "PG_VERSION").exists()
+
+
+def test_the_owner_on_record_closes_the_handed_over_storage_and_up_proceeds(lab):
+    handed_over_then_vanished(lab)
+    storage = lab.R / "db" / "S1"
+    assert lab.run("db", "v1", "--session", "S3").returncode == 2
+    p = lab.run("close", "--session", "S2")
+    assert p.returncode == 0 and p.stdout == "close session=S2 dropped=0 container=absent\n"
+    assert not storage.exists() and not lab.record_path().exists()
+    ready(lab, "v1", "S3")
+    p = lab.run("close", "--session", "S3")
+    assert p.returncode == 0 and p.stdout == "close session=S3 dropped=1 container=removed\n"
+    assert lab.world()["container"] is None and [x.name for x in (lab.R / "db").iterdir() if x.is_dir()] == []
+
+
+def test_up_by_the_owner_on_record_removes_the_handed_over_storage_and_sees_it_gone(lab):
+    handed_over_then_vanished(lab)
+    storage = lab.R / "db" / "S1"
+    ready(lab, "b2", "S2")
+    assert not storage.exists() and not lab.record_path().exists()
+    assert lab.world()["container"]["mounts"][0]["Source"] == str(lab.R / "db" / "S2" / "pgdata")
+
+
+def test_up_by_the_owner_on_record_fails_when_the_handed_over_storage_survives(lab):
+    record = handed_over_then_vanished(lab)
+    storage = lab.R / "db" / "S1"
+    lab._exe(lab.shims / "rm", "#!/bin/sh\nexit 0\n")
+    p = lab.run("db", "b2", "--session", "S2")
+    assert p.returncode == 1 and "FAILED" in p.stdout
+    assert json.loads(lab.record_path().read_text()) == record and storage.exists()
+    assert "run" not in docker_verbs(lab.calls())
+
+
+def test_up_discards_a_hand_over_record_whose_storage_is_gone(lab):
+    handed_over_then_vanished(lab)
+    shutil.rmtree(lab.R / "db" / "S1")
+    ready(lab, "v1", "S3")
+    assert not lab.record_path().exists()
+
+
+def test_up_refuses_an_unreadable_hand_over_record(lab):
+    (lab.run_dir / "local_db").mkdir()
+    lab.record_path().write_text("{not json")
+    before = lab.tree()
+    p = lab.run("up", "--session", "S1")
+    assert p.returncode == 2 and lab.tree() == before and docker_verbs(lab.calls()) == ["ps"]
+
+
 def test_close_with_an_unmarked_database_exits_1_and_removes_nothing(lab):
     ready(lab, "b1", "S1")
     lab.plant_db("somebody_elses", "")
