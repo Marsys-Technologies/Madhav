@@ -4,7 +4,7 @@
  "verdict": "ACCEPTED",
  "reviewer_session_id": "94345d41-9ed0-4758-a26e-121ac8553ca0",
  "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
- "components_head_reviewed": "10316122b942566eb5f87b51897030b69dd0e470",
+ "components_head_reviewed": "dc29ceaf3ad7d7e6584be9f4c7254caf7981d8d7",
  "basis": "Coverage verified by hash only: every bound component at this head is covered by exactly the bytes named in one of the ten ACCEPTED per-area hash-binding review records listed here (each by its own reviewer session); the per-area reviewers compared the bundle with the per-piece ACCEPTED heads and read the diffs of the files that differ. The cockpit reviewed nothing else for this record (owner lean mode; surrogate answer 4).",
  "inputs": {
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py": "58ffdd130d381f5b33a23309b681cb98e40ca7a05ec9a93bba0faf03f996512f",
@@ -54,7 +54,7 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json": "6dcc3a53897d99003d8df120d309e713ac5627621621a823f8fb96a7710f89c5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json": "d7fbabb7a82f7b355937c35e4bb79b10de8ef59f7c893dfa5dc2af2046171559",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py": "ee22a03d2f5997d402ffb02b734d4d6f16066c3122889e65890ab4f8a70e5489",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py": "1d69509a2859bf79cfd29b28527dfa7a0b62394d5d3bea89d9cf80dbddcfc1ca",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py": "0267e4af3fcb87932058c8dad55179ac9979f708cf5c011d709365089f3d95e5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config_codex.json": "03a4399067a024aa80c5dbf752479796ccc69853ae0732c699659b872d7a81ce",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification_codex.json": "e310f26f65b21de943e133d95810b22d2e2b9a22ab125317c608a5d8352d1574",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/codex_reviewer_output.json": "3a2aa491beecf3bdcaf8dc272b875cd4928229f2f9bf74dfa4c61ac2632821be",
@@ -78,7 +78,7 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kycardtokens.py": "2ceb714a280c934129e73953f94158cc3b5201c3ebfdb9b64b9778795f43bf85",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py": "b992f8c86f50a4225f0918e0bf663494707f187358de31cfa8ec8628dc2455a5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py": "9564d9c467f9e0a1157735de9a4c928154cbaf23ffba63203925904b54de90d7",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py": "a348b387fa78246c9c83420e20014d9f73819dcb756e56c2a5f215582e0bb219",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py": "daf23fa707cb306a4aa6dc211acdd1a0b844717927b7d6c0af0ced9903ebe4ec",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyctl.sh": "bdf4d48820436e54e7a0231b0dd1604b9193df712f226b231f46d0e0678965c9",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kynotify.sh": "a4afc6a54f386f208a2217d2345db20b391086ce5c6a845a8f8de28d952e7736",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyctl.py": "488f2c16b017abf91cfe8160cef033ae0a11d05990faaabc7518f811901f3474",
@@ -129,7 +129,7 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json": "eb9877fe3c7c5a933a2b6863282d9b28a6f996c4de6e68c1eca8a18b0e347477",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh": "f5270ab71d861258f46232564496147bbc465b7bf00abb7742c91c727e0902d5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/fleet.env.example.sh": "4edfb7d38442518a64b87df88603c5014a6dca1231ce65f5b18574b6db925289",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/install.sh": "8d431ec5b595e4ed4496826b5c552cdb99708cf501f0305445065f74560e728b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/install.sh": "bc468af4e3de62625d7a95d59acf444bf0c7f71808e3726cb3dcd8a504259eac",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh": "1861b552aa0b0d1042a39523271deb7f9f85ff6b8f06f3de057ebe162d98db06",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh": "1a47b1508ba3fb750d0a8765a8af60c24193869e119fefa18a5ee051685b4313",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyalloc.py": "b60edd04aefcacce7884edcb16f298c3276e2d2ec16359f9450250d0be563fbb",
@@ -178,7 +178,7 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py": "caf16ef9b10d12420a272fd29c9ddb02536d08c9087581f596f61a2983c8082e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py": "3de3b481858ae63b94ac0c7faba372cec44b34216ae892d05ffe313204313533",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_finalize_v3.py": "9894cf00c5db0c970b1591780d12575248df86a2a1302c34731b6b0f8238381f",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py": "c0d62c5a830c84123bee01f9a33f9c5908d6d529fb47b3eea430172c1a99b3b0",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py": "da505e4238b3de9b63bc1d8b7a40c98cb3b4b8def9afc59e2c9b050c00508f87",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyalloc.py": "40c01d1d1a9f7a86a6b151986de16dccee93b1baf9bcd91e07f4acdbcf81925d",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboundary.py": "25b18c5a857ae1f7fa91c3e9cc1a7d7d04e01780194a23eb168328e2550b337a",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py": "69c754dfeb0b01f63c463b1135a75724824a163b7bc0c988a7b808b21f7eeb56",
@@ -248,15 +248,15 @@
   },
   {
    "area": "loops",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/loops.review.json",
-   "record_sha256": "177560345ed1f855dba465a21df0c943230319620f9ae24ddfabeb0ba2acb381",
-   "reviewer_session_id": "01a13290-de1d-7370-887c-b73a05b76cc8"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r2/loops.review.json",
+   "record_sha256": "86d7152a9d7f6d7e0b939235f86ee26b0d36e7e261087737099ff259bb844fe9",
+   "reviewer_session_id": "01a132c6-8c5d-7491-aa5e-edc5b40593ec"
   },
   {
    "area": "qualification",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/qualification.review.json",
-   "record_sha256": "18ea8dd6a7f0d2305f1ad8af7110eb21e5f99f2b3cd4e4f3039027543e2c0d79",
-   "reviewer_session_id": "01a1328d-9ebf-7cf3-8ea2-1149e2333591"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r2/qualification.review.json",
+   "record_sha256": "22d1e2114f39724041fcfe589ac7b459c4a2f9594a2b9bb0b0a45c33cbfcc9fd",
+   "reviewer_session_id": "01a132c6-8af7-7bc3-be82-0c192896960c"
   },
   {
    "area": "supervisor",
@@ -278,9 +278,9 @@
   },
   {
    "area": "wave-b",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/wave-b.review.json",
-   "record_sha256": "69621a6274c0e4d4c9f324eec1bfb0f198f43f5a116df1fed099a5c4b456c47c",
-   "reviewer_session_id": "01a1328d-a306-70f2-b3d0-f0a2b8d87826"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r2/wave-b.review.json",
+   "record_sha256": "0704defa133bd5d4e4ecb1dafddbdad406a47782594551b4f96ddb8a4597d3d2",
+   "reviewer_session_id": "01a132c6-8e9c-72a2-8a88-c04942cc8fda"
   }
  ]
 }
