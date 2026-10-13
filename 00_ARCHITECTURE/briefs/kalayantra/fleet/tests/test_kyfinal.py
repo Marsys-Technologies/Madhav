@@ -17,6 +17,7 @@ import pytest
 from test_kymanifest import rig as manifest_rig, git, km, sha
 from test_kypacket import World as PacketWorld, render, EXCERPT
 from test_kygate import digest_without
+import kyfinal
 
 FLEET = Path(__file__).resolve().parent.parent
 SCRIPT = FLEET / "kyfinal.py"
@@ -44,6 +45,85 @@ def read(path):
 def tree_digest(root):
     rows = {str(p.relative_to(root)): sha(p) for p in root.rglob("*") if p.is_file()}
     return hashlib.sha256("".join(f"{digest}  {name}\n" for name, digest in sorted(rows.items())).encode()).hexdigest()
+
+
+
+def measured_rehearsal(run, manifest, rehearsal):
+    """Synthetic observations in the real producer shapes; never claimed live evidence."""
+    evidence = run / "evidence"
+    evidence.mkdir(exist_ok=True)
+    def put(name, value):
+        path = evidence / name
+        if isinstance(value, str):
+            path.write_text(value)
+        else:
+            write(path, value)
+        return {"path": str(path), "sha256": sha(path)}
+    head, item, pr = "a" * 40, "KV3-B-OPS-CONTRACT", 3485
+    xml = put("component-tests.xml", '<testsuites><testsuite tests="1" failures="0" errors="0" skipped="0">'
+        '<testcase classname="fleet.test_example" name="test_measured"/></testsuite></testsuites>')
+    commit = put("component-tests.commit.json", {"schema": "ky.test_commit/1",
+        "components_commit": manifest["components_commit"], "junit_sha256": xml["sha256"]})
+    before = put("EVENTS_BEFORE.txt", "live events:  42 " + "b" * 64 + "\n")
+    after = put("EVENTS_AFTER.txt", "live events:  42 " + "b" * 64 + "\n")
+    connections = put("connections.json", {"schema": "ky.fixture_connections/1", "fixture_port": 8768,
+        "live_port": 8767, "pids": [101], "started_at": "2026-10-13T01:00:00Z", "ended_at": "2026-10-13T01:01:00Z",
+        "connections": [{"pid": 101, "host": "127.0.0.1", "port": 8768}]})
+    gh = put("gh.log", "2026-10-13T01:00:00Z\tpr list --head fixture --json number\n"
+        "2026-10-13T01:00:01Z\tpr view 3485 --json number,headRefOid,autoMergeRequest\n")
+    changes = put("live-run-inventory.json", {"schema": "ky.live_run_changes/1", "before": [
+        {"path": "EVENTS.jsonl", "size": 42, "sha256": "b" * 64}], "after": [
+        {"path": "EVENTS.jsonl", "size": 42, "sha256": "b" * 64}]})
+    resources = put("resources.json", {"schema": "ky.fixture_resources/1", "started": {
+        "processes": [{"pid": 101, "start": "observed process start"}], "databases": [],
+        "worktrees": [str(evidence / "fixture-worktree")]}, "after": {
+        "processes": [{"pid": 102, "start": "unrelated process"}], "databases": [], "worktrees": []}})
+    dry = put("dry.json", {"schema": "ky.dispatch_plan/1", "jobs": [
+        {"kind": "BUILD", "item": "KV3-B-REHEARSAL", "key": "BUILD.fixture.abc", "pool": "builder", "decision": "would:start"}]})
+    tick1, tick2 = put("tick1.out", ""), put("tick2.out", "")
+    commands = put("commands.json", {"schema": "ky.fixture_commands/1", "commands": [
+        {"argv": ["kydispatch.py", arg], "exit": 0, "stdout_sha256": ref["sha256"]}
+        for arg, ref in [("--dry", dry), ("--once", tick1), ("--once", tick2)]]})
+    journal = put("JOURNAL_DISPATCHER.md", "- 2026-10-13T01:00:00Z [gate change] not yet read → WAIT (kygate.sh exit 75): only KV3-B-* items are admitted\n")
+    log = put("dispatcher.log", "2026-10-13T01:00:01Z tick " + json.dumps({"waiting": None, "jobs": 1, "wait:gate": 0}) + "\n"
+        "2026-10-13T01:00:02Z tick " + json.dumps({"waiting": None, "jobs": 1, "wait:gate": 0}) + "\n")
+    build_id, verify_id = "J-20261013T010000Z-b1", "J-20261013T010100Z-v1"
+    states = [{"schema": "ky.job/1", "job_id": build_id, "kind": "BUILD", "item": item, "phase": "ended",
+        "outcome": "done", "slot": "b1", "stream": "K", "claim_id": "claim-build", "controller_id": "dispatcher:fixture"},
+        {"schema": "ky.job/1", "job_id": verify_id, "kind": "VERIFY", "item": item, "phase": "ended",
+        "outcome": "done", "slot": "v1", "stream": "V", "head": head, "pr": pr,
+        "job_scratch": str(evidence / verify_id), "worktree": str(evidence / "item-worktree"),
+        "verdict_phase": "pre_merge", "exit_code": 0, "controller_id": "dispatcher:fixture"}]
+    for state in states:
+        path = run / "jobs" / state["job_id"] / "state.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write(path, state)
+    check_dir = evidence / verify_id
+    check_dir.mkdir(exist_ok=True)
+    checks = dict(head_unchanged=True, status_clean=True, tracked_hashes_unchanged=True)
+    write(check_dir / "boundary.check.json", {"schema": "ky.boundary_check/1", "job_id": verify_id,
+        "mechanism": "seatbelt-file-write-deny/1", "mechanism_intact": True, "result": "intact", "reasons": [],
+        **checks, "view": dict(checks, path=str(check_dir / "view")),
+        "worktree": dict(checks, path=states[1]["worktree"])})
+    events = [{"kind": "claim", "item": item, "actor": "stream-K:b1", "worker_id": "b1",
+        "state": "acquired", "claim_id": "claim-build"},
+        {"kind": "item", "item": item, "actor": "stream-K:b1", "state": "review", "detail": f"PR #{pr} @ {head}"},
+        {"kind": "verdict", "item": item, "actor": "stream-V:v1", "phase": "pre_merge", "head": head,
+         "result": "ACCEPTED", "detail": "job " + verify_id + "; independent measured review"}]
+    (run / "EVENTS.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+    (run / "HOLD_MERGES").write_text("held\n")
+    parked = run / "merge_requests" / (item + ".json")
+    parked.parent.mkdir(exist_ok=True)
+    write(parked, {"schema": "ky.merge_request/1", "item": item, "pr": pr,
+        "registered_head": head, "recorded_at": "2026-10-13T01:02:00Z"})
+    put(item + ".pr.json", {"number": pr, "headRefOid": head, "autoMergeRequest": None, "state": "OPEN"})
+    refs = [dict(xml=xml, commit=commit), dict(before=before, after=after),
+        dict(connections=connections, changes=changes), dict(gh=gh, connections=connections),
+        dict(dry=dry, tick1=tick1, tick2=tick2, commands=commands, journal=journal, log=log),
+        dict(resources=resources, changes=changes)]
+    write(rehearsal, {"schema": "ky.rehearsal_results/3", "tested_components": manifest["components"],
+        "obligations": [{"id": name, "evidence": refs[i]} if i < 6 else {"id": name, "item": item}
+                        for i, name in enumerate(OBLIGATIONS)], "substitutions": [SUBSTITUTION]})
 
 
 @pytest.fixture
@@ -115,12 +195,7 @@ def final_rig(manifest_rig, tmp_path):
     out_receipt = r.run / "INSTALL_RECEIPT.json"
     write(out_receipt, bootstrap)
     rehearsal, coverage = r.run / "REHEARSAL_RESULTS.json", r.run / "coverage.review.json"
-    measurement = r.run / "measured-rehearsal.txt"
-    measurement.write_text("offline rig measurements\n")
-    write(rehearsal, {"schema": "ky.rehearsal_results/2", "tested_components": m["components"],
-        "obligations": [{"id": name, "outcome": "PASS", "measured_by": "offline fixture detector",
-                         "evidence": [{"path": str(measurement), "sha256": sha(measurement)}]}
-                        for name in OBLIGATIONS], "substitutions": [SUBSTITUTION]})
+    measured_rehearsal(r.run, m, rehearsal)
     write(coverage, {"review": {"verdict": "ACCEPTED"}, "reviewer_session_id": "cards-reviewer"})
     # Reuse the packet rig's contract, but pin it to THIS fixture repository.
     packet_base = tmp_path / "packet-base"
@@ -181,7 +256,7 @@ def final_rig(manifest_rig, tmp_path):
 
     def build(*extra, packet_input=packets):
         return subprocess.run([sys.executable, "-B", str(SCRIPT), "build", "--repo", str(r.repo), "--run", str(r.run),
-            "--rehearsal", str(rehearsal), "--coverage", str(coverage), "--packets", str(packet_input),
+            "--live-evidence-dir", str(r.run / "evidence"), "--rehearsal", str(rehearsal), "--coverage", str(coverage), "--packets", str(packet_input),
             "--backfill-banner-file", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
             "--backfill-session-log", "00_ARCHITECTURE/SESSION_LOG.md",
             "--backfill-entry-id", entry_id, "--backfill-banner-id", banner_id, "--out-manifest", str(r.run / "VERSIONS.json"),
@@ -429,51 +504,6 @@ def test_ambiguous_json_coverage_cannot_earn_acceptance(final_rig):
     assert f.snapshot() == before
 
 
-@pytest.mark.parametrize("outcome", ["NOT_RUN", "FAIL", "UNKNOWN", None, "missing"])
-def test_matching_components_cannot_mask_unearned_rehearsal(final_rig, outcome):
-    f = final_rig
-    doc = read(f.rehearsal)
-    name = "live_accepted_pr_head_in_log"
-    row = next(row for row in doc["obligations"] if row["id"] == name)
-    if outcome == "missing":
-        doc["obligations"].remove(row)
-    elif outcome is None:
-        del row["outcome"]
-    else:
-        row["outcome"] = outcome
-    write(f.rehearsal, doc)
-    before = f.snapshot()
-    done = f.build()
-    assert done.returncode == 1 and name in done.stderr, done.stdout + done.stderr
-    assert f.snapshot() == before
-
-
-@pytest.mark.parametrize("change", ["hash", "missing", "empty", "measured_by", "duplicate", "schema", "substitution"])
-def test_rehearsal_evidence_and_substitution_are_required(final_rig, change):
-    f = final_rig
-    doc = read(f.rehearsal)
-    row = doc["obligations"][0]
-    if change == "hash":
-        row["evidence"][0]["sha256"] = "0" * 64
-    elif change == "missing":
-        Path(row["evidence"][0]["path"]).unlink()
-    elif change == "empty":
-        row["evidence"] = []
-    elif change == "measured_by":
-        row["measured_by"] = ""
-    elif change == "duplicate":
-        doc["obligations"].append(copy.deepcopy(row))
-    elif change == "schema":
-        doc["schema"] = "ky.rehearsal_results/1"
-    else:
-        doc["substitutions"] = []
-    write(f.rehearsal, doc)
-    before = f.snapshot()
-    done = f.build()
-    assert done.returncode == 1 and "rehearsal_" in done.stderr, done.stdout + done.stderr
-    assert f.snapshot() == before
-
-
 def test_true_cannot_validate_backfill(final_rig):
     f = final_rig
     before = f.snapshot()
@@ -519,3 +549,236 @@ def test_no_op_repository_validator_has_no_governance_detectors(final_rig):
     done = f.build()
     assert done.returncode == 1 and "governance detector missing" in done.stderr, done.stdout + done.stderr
     assert f.snapshot() == before
+
+
+def test_reviewers_declared_pass_with_fail_evidence_refuses(final_rig):
+    f = final_rig
+    bad = f.r.run / "not-run.json"
+    write(bad, {"outcome": "FAIL", "measured": False, "detail": "No rehearsal ran."})
+    doc = read(f.rehearsal)
+    doc["schema"] = "ky.rehearsal_results/2"
+    doc["obligations"] = [{"id": name, "outcome": "PASS", "measured_by": "not run",
+        "evidence": [{"path": str(bad), "sha256": sha(bad)}]} for name in OBLIGATIONS]
+    write(f.rehearsal, doc)
+    done = f.build()
+    assert done.returncode == 1 and "rehearsal_" in done.stderr
+    assert not (f.r.run / "VERSIONS.json").exists()
+
+
+def mutate_observation(f, name, missing):
+    doc = read(f.rehearsal)
+    row = next(r for r in doc["obligations"] if r["id"] == name)
+    if name.startswith("live_"):
+        run = f.r.run
+        if name == "live_build_by_fleet":
+            p = next((run / "jobs").glob("*-b1/state.json")); value = read(p)
+            if missing: value.pop("claim_id")
+            else: value["outcome"] = "interrupted"
+        elif name == "live_pr_opened":
+            p = run / "evidence" / (row["item"] + ".pr.json"); value = read(p)
+            if missing: value.pop("number")
+            else: value["headRefOid"] = "b" * 40
+        elif name == "live_verify_boundary":
+            p = next((run / "evidence").glob("*/boundary.check.json")); value = read(p)
+            if missing: value.pop("view")
+            else: value["tracked_hashes_unchanged"] = False
+        elif name == "live_accepted_pr_head_in_log":
+            p = run / "EVENTS.jsonl"; rows = [json.loads(l) for l in p.read_text().splitlines()]
+            if missing: rows.pop()
+            else: rows[-1]["actor"] = rows[1]["actor"]
+            p.write_text("".join(json.dumps(r) + "\n" for r in rows)); return
+        else:
+            p = run / "merge_requests" / (row["item"] + ".json"); value = read(p)
+            if missing: value.pop("registered_head")
+            else: value["registered_head"] = "b" * 40
+        write(p, value); return
+    role = {"component_tests_final_bundle": "commit", "fixture_live_events_unchanged": "after",
+        "fixture_no_live_tracker_access": "connections", "fixture_no_external_requests": "gh",
+        "fixture_expected_transitions": "commands", "fixture_clean_stop": "resources"}[name]
+    ref = row["evidence"][role]; p = Path(ref["path"])
+    if missing: del row["evidence"][role]
+    elif name == "component_tests_final_bundle":
+        value = read(p); value["components_commit"] = "b" * 40; write(p, value)
+    elif name == "fixture_live_events_unchanged": p.write_text("live events:  43 " + "b" * 64)
+    elif name == "fixture_no_live_tracker_access":
+        value = read(p); value["connections"].append({"pid": 101, "host": "127.0.0.1", "port": 8767}); write(p, value)
+    elif name == "fixture_no_external_requests": p.write_text("2026-10-13T01:00:00Z\tpr merge 3485 --auto\n")
+    elif name == "fixture_expected_transitions":
+        value = read(p); value["commands"][1]["exit"] = 1; write(p, value)
+    else:
+        value = read(p); value["after"]["processes"] = value["started"]["processes"]; write(p, value)
+    if not missing: ref["sha256"] = sha(p)
+    # Shared refs are deliberately rebound: content detector, not stale hash, must refuse.
+    for other in doc["obligations"]:
+        for v in other.get("evidence", {}).values():
+            if v["path"] == str(p): v["sha256"] = sha(p)
+    write(f.rehearsal, doc)
+
+
+@pytest.mark.parametrize("name", OBLIGATIONS)
+@pytest.mark.parametrize("missing", [True, False], ids=["missing", "contradictory"])
+def test_each_detector_refuses_missing_or_contradictory_measurement(final_rig, name, missing):
+    f = final_rig
+    mutate_observation(f, name, missing)
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and name in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+@pytest.mark.parametrize("name", OBLIGATIONS[:6])
+def test_unrelated_correctly_hashed_evidence_cannot_earn_pass(final_rig, name):
+    f = final_rig
+    doc = read(f.rehearsal)
+    row = next(r for r in doc["obligations"] if r["id"] == name)
+    p = f.r.run / "unrelated.txt"; p.write_text("PASS but no measurement\n")
+    row["evidence"] = {key: {"path": str(p), "sha256": sha(p)} for key in row["evidence"]}
+    write(f.rehearsal, doc)
+    done = f.build()
+    assert done.returncode == 1 and name in done.stderr, done.stderr
+
+
+def test_reviewers_counterexample_against_actual_checker(tmp_path):
+    evidence = tmp_path / 'FAIL.json'
+    write(evidence, {'outcome': 'FAIL', 'measured': False, 'detail': 'No rehearsal ran.'})
+    doc = {'schema': 'ky.rehearsal_results/2', 'tested_components': [{'path': 'x', 'sha256': 'a' * 64}],
+           'substitutions': [SUBSTITUTION], 'obligations': [
+               {'id': name, 'outcome': 'PASS', 'measured_by': 'not run',
+                'evidence': [{'path': str(evidence), 'sha256': sha(evidence)}]} for name in OBLIGATIONS]}
+    with pytest.raises(kyfinal.Refused, match='rehearsal_'):
+        kyfinal.check_rehearsal(doc, FLEET.parents[3], kyfinal.Inputs())
+
+
+@pytest.fixture
+def observation_rig(tmp_path):
+    manifest = {'components_commit': 'c' * 40, 'components': [{'path': 'fixture', 'sha256': 'd' * 64}]}
+    rehearsal = tmp_path / 'REHEARSAL_RESULTS.json'
+    measured_rehearsal(tmp_path, manifest, rehearsal)
+    return SimpleNamespace(r=SimpleNamespace(run=tmp_path), m=manifest, rehearsal=rehearsal)
+
+
+def measure(f, expected=()):
+    return kyfinal.check_rehearsal(read(f.rehearsal), FLEET.parents[3], kyfinal.Inputs(), f.m,
+                                  f.r.run, f.r.run / 'evidence', expected)
+
+
+@pytest.mark.parametrize('name', OBLIGATIONS)
+def test_each_detector_computes_passing_real_shape_observations(observation_rig, name):
+    rows = measure(observation_rig)
+    row = next(r for r in rows if r['id'] == name)
+    assert row['outcome'] == 'PASS' and row['observations'] and row['evidence']
+    assert row['detector'] == 'kyfinal/3:' + name
+
+
+def change_xml(f, text):
+    doc = read(f.rehearsal); refs = doc['obligations'][0]['evidence']
+    xml = Path(refs['xml']['path']); xml.write_text(text); refs['xml']['sha256'] = sha(xml)
+    sidecar = Path(refs['commit']['path']); value = read(sidecar)
+    value['junit_sha256'] = sha(xml); write(sidecar, value); refs['commit']['sha256'] = sha(sidecar)
+    write(f.rehearsal, doc)
+
+
+@pytest.mark.parametrize('xml', [
+    '<testsuite tests="1" failures="0" errors="0" skipped="0"><testcase classname="x" name="y"><failure>FAIL</failure></testcase></testsuite>',
+    '<testsuite tests="1" failures="1" errors="0" skipped="0"><testcase classname="x" name="y"><failure>FAIL</failure></testcase></testsuite>',
+    '<testsuite tests="1" failures="0" errors="1" skipped="0"><testcase classname="x" name="y"><error>ERROR</error></testcase></testsuite>',
+    '<testsuite tests="0" failures="0" errors="0" skipped="0"/>',
+    '<testsuite tests="1" failures="0" errors="0" skipped="0"><properties><property name="components_commit" value="wrong"/></properties><testcase classname="x" name="y"/></testsuite>',
+    'not XML',
+])
+def test_junit_counter_commit_or_parse_contradictions_refuse(observation_rig, xml):
+    change_xml(observation_rig, xml)
+    with pytest.raises(kyfinal.Refused, match='component_tests_final_bundle'):
+        measure(observation_rig)
+
+
+def test_explicit_expected_fail_ids_and_skips_are_reported(observation_rig):
+    f = observation_rig
+    change_xml(f, '<testsuites><testsuite tests="3" failures="1" errors="0" skipped="1">'
+        '<testcase classname="x" name="pass"/><testcase classname="x" name="known_failure"><failure>FAIL</failure></testcase>'
+        '<testcase classname="x" name="xfail"><skipped type="pytest.xfail" message="known gap"/></testcase></testsuite></testsuites>')
+    rows = measure(f, ['x::known_failure'])
+    facts = rows[0]['observations']
+    assert facts['tests'] == 3 and facts['failures'] == 1 and facts['errors'] == 0 and facts['skipped'] == 1
+    assert facts['expected_fail_test_ids'] == ['x::known_failure']
+    assert facts['skipped_or_xfailed'] == [{'id': 'x::xfail', 'type': 'pytest.xfail', 'message': 'known gap'}]
+    with pytest.raises(kyfinal.Refused, match='component_tests_final_bundle'):
+        measure(f, ['x::different_failure'])
+
+
+def test_junit_commit_property_can_bind_without_sidecar(observation_rig):
+    f = observation_rig
+    change_xml(f, '<testsuite tests="1" failures="0" errors="0" skipped="0"><properties>'
+        '<property name="components_commit" value="' + f.m['components_commit'] + '"/></properties>'
+        '<testcase classname="x" name="pass"/></testsuite>')
+    doc = read(f.rehearsal); del doc['obligations'][0]['evidence']['commit']; write(f.rehearsal, doc)
+    assert measure(f)[0]['observations']['tested_commit'] == f.m['components_commit']
+
+
+@pytest.mark.parametrize('category,change', [
+    ('fixture_no_live_tracker_access', 'inventory_missing'),
+    ('fixture_no_live_tracker_access', 'inventory_changed'),
+    ('fixture_no_external_requests', 'external_connection'),
+    ('fixture_expected_transitions', 'log_missing_tick'),
+    ('fixture_expected_transitions', 'log_refused_launch'),
+    ('fixture_expected_transitions', 'journal_error'),
+    ('fixture_clean_stop', 'db_survivor'),
+    ('fixture_clean_stop', 'worktree_survivor'),
+    ('live_verify_boundary', 'side_contradiction'),
+    ('live_verify_boundary', 'wrong_job'),
+    ('live_verify_boundary', 'unknown_mechanism'),
+    ('live_accepted_pr_head_in_log', 'rejected'),
+    ('live_accepted_pr_head_in_log', 'wrong_head'),
+    ('live_accepted_pr_head_in_log', 'wrong_job'),
+    ('live_merge_parked_no_auto_merge', 'auto_merge'),
+    ('live_merge_parked_no_auto_merge', 'auto_merge_unknown'),
+    ('live_merge_parked_no_auto_merge', 'hold_missing'),
+    ('live_merge_parked_no_auto_merge', 'queued'),
+])
+def test_additional_detector_counterexamples(observation_rig, category, change):
+    f = observation_rig; doc = read(f.rehearsal)
+    # Test one detector in isolation so that shared contradictory facts are refused by that detector.
+    row = next(r for r in doc['obligations'] if r['id'] == category)
+    paths = {k: Path(v['path']) for k,v in row.get('evidence', {}).items()}
+    if change.startswith('inventory'):
+        p = paths['changes']; value = read(p)
+        if change == 'inventory_missing': value.pop('after')
+        else: value['after'][0]['size'] = 43
+        write(p, value)
+    elif change == 'external_connection':
+        p = paths['connections']; value = read(p); value['connections'][0]['host'] = '203.0.113.1'; write(p, value)
+    elif change.startswith('log_'):
+        p = paths['log']; lines = p.read_text().splitlines()
+        if change == 'log_missing_tick': lines.pop()
+        else: lines.append('2026-10-13T01:00:02Z tick job ' + json.dumps({'decision': 'refused:launch'}))
+        p.write_text('\n'.join(lines) + '\n')
+    elif change == 'journal_error':
+        p = paths['journal']; p.write_text('- 2026-10-13T01:00:00Z [dispatcher error] unreadable tracker\n')
+    elif change in ('db_survivor', 'worktree_survivor'):
+        p = paths['resources']; value = read(p); k = 'databases' if change == 'db_survivor' else 'worktrees'
+        value['started'][k] = value['after'][k] = ['/fixture/survivor']; write(p, value)
+    elif category == 'live_verify_boundary':
+        p = next((f.r.run / 'evidence').glob('*/boundary.check.json')); value = read(p)
+        if change == 'side_contradiction': value['view']['status_clean'] = False
+        elif change == 'wrong_job': value['job_id'] = 'different-job'
+        else: value['mechanism'] = 'chmod'
+        write(p, value)
+    elif category == 'live_accepted_pr_head_in_log':
+        p = f.r.run / 'EVENTS.jsonl'; events = [json.loads(l) for l in p.read_text().splitlines()]
+        if change == 'rejected': events.append(dict(events[-1], result='REJECTED'))
+        elif change == 'wrong_head': events[-1]['head'] = 'b' * 40
+        else: events[-1]['detail'] = 'job unmeasured-job; accepted'
+        p.write_text(''.join(json.dumps(e) + '\n' for e in events))
+    else:
+        if change.startswith('auto_merge'):
+            p = f.r.run / 'evidence/KV3-B-OPS-CONTRACT.pr.json'; value = read(p)
+            if change == 'auto_merge': value['autoMergeRequest'] = {'enabledAt': '2026-10-13T01:00:00Z'}
+            else: del value['autoMergeRequest']
+            write(p,value)
+        elif change == 'hold_missing': (f.r.run / 'HOLD_MERGES').unlink()
+        else:
+            p = f.r.run / 'merge_requests/queued/KV3-B-OPS-CONTRACT.json'; p.parent.mkdir(); write(p, {})
+    for key, path in paths.items(): row['evidence'][key]['sha256'] = sha(path)
+    with pytest.raises(kyfinal.Refused, match=category):
+        d = kyfinal.Detector(category, row, kyfinal.Inputs(), f.m, f.r.run, f.r.run / 'evidence', ())
+        kyfinal.DETECTORS[category](d)

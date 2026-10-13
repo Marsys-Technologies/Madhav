@@ -2,6 +2,7 @@
 """Produce the final manifest and installation receipt from a measured bootstrap install.
 
 Usage: kyfinal.py build --repo REPO --run RUN --rehearsal RESULTS.json
+  --live-evidence-dir EVIDENCE_DIR [--expected-fail-test-id JUNIT_CLASSNAME::NAME]
   --coverage REVIEW.json --packets LIST_OR_DIR
   --backfill-banner-file 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
   --backfill-session-log 00_ARCHITECTURE/SESSION_LOG.md
@@ -24,6 +25,24 @@ kyversion F7 requires its path/hash, although gate A6 reads only validated.
 (I) INTERPRETATION: final tracker_revision is the installer's measured package_sha256;
 the entire previous measured object is retained as bootstrap_tracker_revision. It
 asserts the installed package revision, not freshly observed process liveness.
+
+(I) INTERPRETATION (T0 capture adapters): absent historical facts require a rerun
+and machine-captured ky.fixture_commands/1, ky.fixture_connections/1,
+ky.live_run_changes/1 and ky.fixture_resources/1 objects. Their required fields
+are checked below; neither a PASS summary nor a retrospectively asserted exit
+supplies a missing observation. Connection captures cover the full fixture process
+tree/window and allow only its reserved loopback tracker endpoint. Cleanup records
+list the started resources and the observed inventories after stopping/removal;
+an explicit empty database list records a leg that created no DB.
+(I) INTERPRETATION: JUnit exception ids are classname::name, matching pytest's
+recorded identity. An exact, explicit allow-list exempts failure elements only;
+errors always refuse. Skips/xfails remain visible in the computed receipt.
+(I) INTERPRETATION: tick stdout is empty in this installation; admission requires
+hash-bound command exits plus two parsed dispatcher tick log entries, and refuses
+refused/failed/unknown jobs even when the dispatcher exits zero. A gate backlog
+is permitted. PR captures additionally include state=OPEN; all live obligations
+select the same item. Only JOURNAL_COCKPIT.md and JOURNAL_PLANNER.md may differ
+in a measured full live-run before/after inventory.
 
 Consumer map (paths relative to this directory):
   mode: kygate.sh:443; kyversion.sh:190-195 (F1)
@@ -55,6 +74,7 @@ import re
 import stat
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # Also work when called with python -I (the installed cockpit's form).
@@ -159,31 +179,394 @@ def component_map(rows, code):
     return out
 
 
-def check_rehearsal(doc, repo, inputs):
-    rows = doc.get("obligations")
+# T0: summaries never confer authority. These adapters measure retained producer
+# observations. Capture formats absent from the first rehearsal are deliberately
+# versioned below; missing captures are unknown, never reconstructed from summaries.
+# (I) INTERPRETATION: cockpit records allowed to change are ONLY these two journals.
+COCKPIT_RECORDS = frozenset(('JOURNAL_COCKPIT.md', 'JOURNAL_PLANNER.md'))
+FIXTURE_ROLES = {
+    'component_tests_final_bundle': {'xml', 'commit'},
+    'fixture_live_events_unchanged': {'before', 'after'},
+    'fixture_no_live_tracker_access': {'connections', 'changes'},
+    'fixture_no_external_requests': {'gh', 'connections'},
+    'fixture_expected_transitions': {'dry', 'tick1', 'tick2', 'commands', 'journal', 'log'},
+    'fixture_clean_stop': {'resources', 'changes'},
+}
+
+
+def json_text(text):
+    return json.loads(text, object_pairs_hook=strict_object, parse_constant=invalid_constant)
+
+
+def require(ok, name, detail):
+    if not ok:
+        refuse('rehearsal_obligation_' + name, detail + ' (unknown or contradictory evidence)')
+
+
+class Detector:
+    def __init__(self, name, row, inputs, manifest, run, live_evidence, expected_fail):
+        self.name, self.inputs, self.manifest, self.run = name, inputs, manifest, run
+        self.live_evidence, self.expected_fail = live_evidence, expected_fail
+        self.refs = {}
+        if name in FIXTURE_ROLES:
+            refs = row.get('evidence')
+            roles_ok = isinstance(refs, dict) and (set(refs) == FIXTURE_ROLES[name]
+                or (name == 'component_tests_final_bundle' and set(refs) == {'xml'}))
+            require(roles_ok and 'item' not in row,
+                    name, 'required evidence roles: ' + ', '.join(sorted(FIXTURE_ROLES[name])))
+            for role, ref in refs.items():
+                self.refs[role] = inputs.file(ref['path'], 'rehearsal_obligation_' + name, ref['sha256'])
+        else:
+            self.item = row.get('item')
+            require(isinstance(self.item, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}', self.item)
+                    and 'evidence' not in row and run is not None and live_evidence is not None,
+                    name, 'live obligation needs only item plus --run and --live-evidence-dir')
+
+    def need(self, ok, detail):
+        require(ok, self.name, detail)
+
+    def text(self, role):
+        return Path(self.refs[role]['path']).read_text(encoding='utf-8')
+
+    def doc(self, role, schema):
+        doc = json_text(self.text(role))
+        self.need(isinstance(doc, dict) and doc.get('schema') == schema, 'expected ' + schema)
+        return doc
+
+    def live_doc(self, path):
+        ref = self.inputs.file(path, 'rehearsal_obligation_' + self.name)
+        self.refs[str(path)] = ref
+        return self.inputs.document(path, 'rehearsal_obligation_' + self.name)
+
+    def events(self):
+        path = self.run / 'EVENTS.jsonl'
+        self.refs['events'] = self.inputs.file(path, 'rehearsal_obligation_' + self.name)
+        rows = [json_text(line) for line in path.read_text(encoding='utf-8').splitlines()]
+        self.need(bool(rows) and all(isinstance(r, dict) for r in rows), 'unreadable/empty event log')
+        return [r for r in rows if r.get('item') == self.item]
+
+    def registration(self):
+        events = self.events()
+        states = [e for e in events if e.get('kind') == 'item' and not e.get('step')]
+        self.need(bool(states) and states[-1].get('state') == 'review', 'latest item state is not review')
+        reg = states[-1]
+        match = re.fullmatch(r'PR #([1-9][0-9]*) @ ([0-9a-f]{40})', reg.get('detail', ''))
+        # Real controller may append explanatory text to the registration detail.
+        if match is None:
+            match = re.search(r'PR #([1-9][0-9]*) @ ([0-9a-f]{40})(?![0-9a-f])', reg.get('detail', ''))
+        self.need(match is not None and isinstance(reg.get('actor'), str)
+                  and re.fullmatch(r'stream-K:[A-Za-z0-9._-]+', reg['actor']), 'no dispatcher builder review registration')
+        return events, reg, int(match[1]), match[2]
+
+    def states(self, kind):
+        directory = self.run / 'jobs'
+        self.need(directory.is_dir() and not directory.is_symlink(), 'job directory missing')
+        rows = []
+        for path in sorted(directory.glob('*/state.json')):
+            doc = self.live_doc(path)
+            self.need(doc.get('schema') == 'ky.job/1' and doc.get('job_id') == path.parent.name,
+                      'invalid job state: ' + str(path))
+            if doc.get('item') == self.item and doc.get('kind') == kind:
+                rows.append(doc)
+        self.need(bool(rows), kind + ' job missing')
+        return rows
+
+    def pr(self, number, head):
+        obs = self.live_doc(self.live_evidence / (self.item + '.pr.json'))
+        self.need(type(obs.get('number')) is int and obs['number'] == number and obs.get('headRefOid') == head
+                  and obs.get('state') == 'OPEN', 'PR observation must name the registered open PR/head')
+        return obs
+
+    def component_tests(self):
+        # Producer: /opt/homebrew/lib/python3.14/site-packages/_pytest/junitxml.py:665-683;
+        # suite properties:336-348. Sidecar is the T0 adapter when that property is absent.
+        self.need(isinstance(self.manifest, dict) and self.manifest.get('components_commit'), 'manifest commit unknown')
+        xml_text = self.text('xml')
+        self.need('<!DOCTYPE' not in xml_text and '<!ENTITY' not in xml_text, 'DTD/entities refused')
+        root = ET.fromstring(xml_text)
+        self.need(root.tag in ('testsuites', 'testsuite'), 'not pytest JUnit XML')
+        suites = [root] if root.tag == 'testsuite' else list(root)
+        self.need(bool(suites) and all(s.tag == 'testsuite' for s in suites), 'unknown/nested JUnit structure')
+        totals = dict(tests=0, failures=0, errors=0, skipped=0)
+        failed_ids, skipped_ids, ids = [], [], set()
+        commits = []
+        for suite in suites:
+            cases = suite.findall('testcase')
+            counters = {k: int(suite.attrib[k]) for k in totals}
+            self.need(all(v >= 0 for v in counters.values()) and counters['tests'] == len(cases), 'JUnit test count differs')
+            counts = dict(tests=len(cases), failures=0, errors=0, skipped=0)
+            self.need(all(c.tag in ('testcase', 'properties') for c in suite), 'unknown JUnit suite element')
+            for case in cases:
+                test_id = case.attrib.get('classname', '') + '::' + case.attrib.get('name', '')
+                self.need(case.attrib.get('name') and case.attrib.get('classname') and test_id not in ids,
+                          'missing/duplicate test identity')
+                ids.add(test_id)
+                failures, errors, skips = case.findall('failure'), case.findall('error'), case.findall('skipped')
+                self.need(len(failures) + len(errors) + len(skips) <= 1, 'contradictory JUnit testcase')
+                self.need(all(c.tag in ('properties', 'failure', 'error', 'skipped', 'system-out', 'system-err') for c in case),
+                          'unknown JUnit testcase element')
+                counts['failures'] += len(failures); counts['errors'] += len(errors); counts['skipped'] += len(skips)
+                if failures: failed_ids.append(test_id)
+                if skips: skipped_ids.append({'id': test_id, 'type': skips[0].get('type'), 'message': skips[0].get('message')})
+            self.need(counts == counters, 'JUnit counters contradict testcase outcomes')
+            for prop in suite.findall('./properties/property'):
+                if prop.get('name') == 'components_commit': commits.append(prop.get('value'))
+            for key in totals: totals[key] += counters[key]
+        for key in totals:
+            if key in root.attrib and root.tag == 'testsuites':
+                self.need(int(root.attrib[key]) == totals[key], 'JUnit aggregate counter differs')
+        if 'commit' in self.refs:
+            sidecar = self.doc('commit', 'ky.test_commit/1')
+            self.need(sidecar.get('components_commit') == self.manifest['components_commit']
+                      and sidecar.get('junit_sha256') == self.refs['xml']['sha256'], 'tested commit/XML binding differs')
+        else:
+            self.need(bool(commits), 'XML commit property or hash-bound commit sidecar missing')
+        self.need(all(c == self.manifest['components_commit'] for c in commits), 'JUnit recorded commit differs')
+        self.need(totals['tests'] > 0 and totals['errors'] == 0, 'JUnit has zero tests or errors')
+        self.need(set(failed_ids) == set(self.expected_fail), 'JUnit failures do not exactly match explicit expected-fail ids')
+        return dict(totals, expected_fail_test_ids=sorted(self.expected_fail), skipped_or_xfailed=skipped_ids,
+                    tested_commit=self.manifest['components_commit'])
+
+    def live_events_unchanged(self):
+        pairs = []
+        for role in ('before', 'after'):
+            match = re.fullmatch(r'live events:\s+([0-9]+) ([0-9a-f]{64})\s*', self.text(role))
+            self.need(match is not None, 'missing recorded live EVENTS size/sha256 pair: ' + role)
+            pairs.append((int(match[1]), match[2]))
+        self.need(pairs[0] == pairs[1], 'live EVENTS changed')
+        return {'size': pairs[0][0], 'sha256': pairs[0][1]}
+
+    def changes(self):
+        doc = self.doc('changes', 'ky.live_run_changes/1')
+        def inventory(key):
+            rows = doc.get(key)
+            self.need(isinstance(rows, list) and bool(rows), 'missing complete live-run inventory: ' + key)
+            out = {}
+            for r in rows:
+                self.need(isinstance(r, dict) and isinstance(r.get('path'), str) and r['path']
+                          and not Path(r['path']).is_absolute() and '..' not in Path(r['path']).parts
+                          and r['path'] not in out and type(r.get('size')) is int and r['size'] >= 0
+                          and isinstance(r.get('sha256'), str) and HEX.fullmatch(r['sha256']), 'invalid inventory member')
+                out[r['path']] = (r['size'], r['sha256'])
+            self.need('EVENTS.jsonl' in out, 'inventory omits EVENTS.jsonl')
+            return out
+        before, after = inventory('before'), inventory('after')
+        changed = sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k))
+        self.need(set(changed) <= COCKPIT_RECORDS, 'live-run changes outside cockpit journal allow-list: ' + ', '.join(changed))
+        return changed
+
+    def connections(self):
+        doc = self.doc('connections', 'ky.fixture_connections/1')
+        self.need(type(doc.get('fixture_port')) is int and 0 < doc['fixture_port'] < 65536
+                  and doc.get('live_port') == 8767 and doc['fixture_port'] != 8767,
+                  'fixture/live endpoint not isolated')
+        pids, rows = doc.get('pids'), doc.get('connections')
+        self.need(isinstance(pids, list) and bool(pids) and all(type(p) is int and p > 0 for p in pids)
+                  and isinstance(rows, list) and bool(rows) and doc.get('started_at') and doc.get('ended_at'),
+                  'bounded connection capture missing')
+        for r in rows:
+            self.need(isinstance(r, dict) and r.get('pid') in pids and r.get('host') in ('127.0.0.1', '::1')
+                      and type(r.get('port')) is int and r['port'] == doc['fixture_port'],
+                      'connection to live tracker, external or unknown endpoint')
+        return {'fixture_port': doc['fixture_port'], 'observed_connections': len(rows)}
+
+    def no_live_tracker_access(self):
+        return dict(self.connections(), live_run_changed=self.changes())
+
+    def no_external_requests(self):
+        connection = self.connections()
+        lines = self.text('gh').splitlines()
+        self.need(bool(lines), 'stand-in gh log missing invocations')
+        for line in lines:
+            self.need(re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\tpr (list|view)(?: [^\r\n]+)?', line),
+                      'stand-in gh logged a non-read-only or unparseable invocation')
+        return dict(connection, gh_read_only_invocations=len(lines))
+
+    def expected_transitions(self):
+        # kydispatch.py:1364-1367 (dry), 874-878 (ticks), 538-539 (journal), 1379-1388 (exit).
+        plan = self.doc('dry', 'ky.dispatch_plan/1')
+        self.need(isinstance(plan.get('jobs'), list) and bool(plan['jobs']), 'dry plan jobs missing')
+        for j in plan['jobs']:
+            self.need(isinstance(j, dict) and all(isinstance(j.get(k), str) and j[k] for k in ('kind', 'item', 'key', 'decision')),
+                      'unparseable plan job')
+            self.need(not j['decision'].startswith(('refused:', 'failed:', 'unknown:')), 'refused dry-plan transition')
+        commands = self.doc('commands', 'ky.fixture_commands/1').get('commands')
+        self.need(isinstance(commands, list) and len(commands) == 3, 'dry plus two tick exit captures missing')
+        for command, arg, role in zip(commands, ('--dry', '--once', '--once'), ('dry', 'tick1', 'tick2')):
+            argv = command.get('argv') if isinstance(command, dict) else None
+            self.need(isinstance(argv, list) and len(argv) >= 2 and argv[-1] == arg
+                      and Path(argv[-2]).name == 'kydispatch.py' and type(command.get('exit')) is int and command['exit'] == 0
+                      and command.get('stdout_sha256') == self.refs[role]['sha256'], 'command/exit/output binding unknown: ' + role)
+            self.need(self.text(role).strip() == '' or role == 'dry', 'unexpected tick stdout')
+        journal = self.text('journal')
+        lines = journal.splitlines()
+        self.need(bool(lines) and all(re.fullmatch(r'- \S+ \[[^\]]+\] .+', l) for l in lines)
+                  and '[dispatcher error]' not in journal, 'dispatcher journal unknown/error')
+        ticks = []
+        for line in self.text('log').splitlines():
+            match = re.fullmatch(r'\S+ tick (\{.*\})', line)
+            if match:
+                tick = json_text(match[1]); ticks.append(tick)
+                self.need(isinstance(tick, dict) and tick.get('waiting') in (None, 'gate')
+                          and type(tick.get('jobs')) is int and tick['jobs'] > 0
+                          and type(tick.get('wait:gate')) is int and 0 <= tick['wait:gate'] <= tick['jobs'], 'unknown/failed tick transition')
+            else:
+                job = re.fullmatch(r'\S+ tick job (\{.*\})', line)
+                if job:
+                    decision = json_text(job[1]).get('decision')
+                    self.need(isinstance(decision, str) and not decision.startswith(('refused:', 'failed:', 'unknown:')),
+                              'refused tick job transition')
+                else:
+                    self.need(re.fullmatch(r'\S+ (controller .+ holds the instance lock|stop: .+)', line), 'unparseable dispatcher log')
+        self.need(len(ticks) == 2, 'two measured ticks missing')
+        return {'dry_jobs': len(plan['jobs']), 'ticks': ticks, 'exits': [0, 0, 0]}
+
+    def clean_stop(self):
+        doc = self.doc('resources', 'ky.fixture_resources/1')
+        self.need(isinstance(doc.get('started'), dict) and isinstance(doc.get('after'), dict), 'resource inventories missing')
+        for kind in ('processes', 'databases', 'worktrees'):
+            started, after = doc['started'].get(kind), doc['after'].get(kind)
+            self.need(isinstance(started, list) and isinstance(after, list), 'resource category unknown: ' + kind)
+            if kind == 'processes':
+                self.need(bool(started), 'fixture server/process identity missing')
+                for r in started + after:
+                    self.need(isinstance(r, dict) and type(r.get('pid')) is int and r['pid'] > 0
+                              and isinstance(r.get('start'), str) and bool(r['start']), 'invalid process identity')
+            else:
+                if kind == 'worktrees': self.need(bool(started), 'fixture worktree inventory missing')
+                self.need(all(isinstance(p, str) and Path(p).is_absolute() for p in started + after), 'invalid resource path')
+            self.need(all(r not in after for r in started), 'fixture resource survives: ' + kind)
+        return {'live_run_changed': self.changes(), 'removed': doc['started']}
+
+    def build_by_fleet(self):
+        # kyd_jobs.py:23-25,119-125; kyd_kinds_build.py:42-48 (tracker event shapes).
+        events, reg, number, head = self.registration()
+        rows = self.states('BUILD')
+        successes = [j for j in rows if j.get('phase') == 'ended' and j.get('outcome') == 'done'
+                     and j.get('stream') == 'K' and j.get('controller_id') and j.get('slot')
+                     and reg['actor'] == 'stream-K:' + j['slot'] and j.get('claim_id')]
+        good = []
+        for j in successes:
+            claims = [e for e in events[:events.index(reg)] if e.get('kind') == 'claim' and e.get('state') == 'acquired'
+                      and e.get('claim_id') == j['claim_id'] and e.get('worker_id') == j['slot'] and e.get('actor') == reg['actor']]
+            if claims: good.append(j['job_id'])
+        self.need(bool(good), 'no ended/done dispatcher BUILD with matching acquired claim and review lane')
+        return {'jobs': good, 'pr': number, 'registered_head': head, 'builder': reg['actor']}
+
+    def pr_opened(self):
+        _, _, number, head = self.registration()
+        self.pr(number, head)
+        return {'pr': number, 'registered_head': head}
+
+    def verify_boundary(self):
+        # kyd_kinds_build.py:952-1004; kyboundary.sh:524-578 (including per-side facts).
+        _, _, number, head = self.registration()
+        rows = [j for j in self.states('VERIFY') if j.get('head') == head]
+        self.need(bool(rows), 'VERIFY job at registered head missing')
+        job = rows[-1]
+        self.need(job.get('phase') == 'ended' and job.get('outcome') == 'done' and job.get('stream') == 'V'
+                  and job.get('slot') and job.get('controller_id') and job.get('verdict_phase') == 'pre_merge'
+                  and type(job.get('exit_code')) is int and job['exit_code'] == 0,
+                  'VERIFY did not end done at pre_merge boundary')
+        scratch = job.get('job_scratch')
+        self.need(isinstance(scratch, str) and Path(scratch).is_absolute(), 'VERIFY job scratch unknown')
+        check = self.live_doc(Path(scratch) / 'boundary.check.json')
+        self.need(check.get('schema') == 'ky.boundary_check/1' and check.get('job_id') == job['job_id']
+                  and check.get('mechanism') == 'seatbelt-file-write-deny/1' and check.get('mechanism_intact') is True
+                  and check.get('result') == 'intact' and check.get('reasons') == [], 'boundary mechanism violated/unknown')
+        keys = ('head_unchanged', 'status_clean', 'tracked_hashes_unchanged')
+        self.need(all(check.get(k) is True for k in keys), 'boundary aggregate facts violated/unknown')
+        for side, path in (('view', str(Path(scratch) / 'view')), ('worktree', job.get('worktree'))):
+            facts = check.get(side)
+            self.need(isinstance(facts, dict) and facts.get('path') == path and path is not None
+                      and all(facts.get(k) is True for k in keys), 'boundary side facts violated/unknown: ' + side)
+        return {'job': job['job_id'], 'head': head, 'mechanism': check['mechanism']}
+
+    def accepted_pr_head_in_log(self):
+        events, reg, number, head = self.registration()
+        verdicts = [e for e in events[events.index(reg) + 1:] if e.get('kind') == 'verdict'
+                    and e.get('phase') == 'pre_merge' and e.get('head') == head]
+        self.need(bool(verdicts), 'ACCEPTED verdict at registered head missing')
+        verdict = verdicts[-1]
+        actor = verdict.get('actor')
+        self.need(verdict.get('result') == 'ACCEPTED' and isinstance(actor, str)
+                  and re.fullmatch(r'stream-V:[A-Za-z0-9._-]+', actor)
+                  and actor.split(':', 1)[1] != reg['actor'].split(':', 1)[1], 'verdict rejected/unknown or same lane')
+        jobs = [j for j in self.states('VERIFY') if j.get('head') == head and j.get('phase') == 'ended'
+                and j.get('outcome') == 'done' and actor == 'stream-V:' + str(j.get('slot'))
+                and verdict.get('detail', '').startswith('job ' + j['job_id'] + ';')]
+        self.need(bool(jobs), 'verdict not bound to a completed independent VERIFY job')
+        return {'head': head, 'pr': number, 'reviewer': actor, 'job': jobs[-1]['job_id']}
+
+    def merge_parked_no_auto_merge(self):
+        # kyd_kinds_land.py:390-396,827-845: durable request under HOLD_MERGES.
+        accepted = self.accepted_pr_head_in_log()
+        path = self.run / 'merge_requests' / (self.item + '.json')
+        parked = self.live_doc(path)
+        self.need(parked.get('schema') == 'ky.merge_request/1' and parked.get('item') == self.item
+                  and type(parked.get('pr')) is int and parked['pr'] == accepted['pr']
+                  and parked.get('registered_head') == accepted['head'] and parked.get('recorded_at'), 'parked merge request differs')
+        self.refs['hold'] = self.inputs.file(self.run / 'HOLD_MERGES', 'rehearsal_obligation_' + self.name)
+        self.need(not os.path.lexists(self.run / 'merge_requests' / 'queued' / (self.item + '.json')), 'merge already queued')
+        pr = self.pr(accepted['pr'], accepted['head'])
+        self.need('autoMergeRequest' in pr and pr['autoMergeRequest'] is None, 'PR auto-merge enabled or observation missing')
+        return dict(accepted, parked_request=str(path), autoMergeRequest=None)
+
+
+DETECTORS = {
+    'component_tests_final_bundle': Detector.component_tests,
+    'fixture_live_events_unchanged': Detector.live_events_unchanged,
+    'fixture_no_live_tracker_access': Detector.no_live_tracker_access,
+    'fixture_no_external_requests': Detector.no_external_requests,
+    'fixture_expected_transitions': Detector.expected_transitions,
+    'fixture_clean_stop': Detector.clean_stop,
+    'live_build_by_fleet': Detector.build_by_fleet,
+    'live_pr_opened': Detector.pr_opened,
+    'live_verify_boundary': Detector.verify_boundary,
+    'live_accepted_pr_head_in_log': Detector.accepted_pr_head_in_log,
+    'live_merge_parked_no_auto_merge': Detector.merge_parked_no_auto_merge,
+}
+
+
+def check_rehearsal(doc, repo, inputs, manifest=None, run=None, live_evidence=None, expected_fail=()):
+    rows = doc.get('obligations')
     if not isinstance(rows, list):
-        refuse("rehearsal_obligation", "missing obligations: " + ", ".join(REQUIRED_OBLIGATIONS))
+        refuse('rehearsal_obligation', 'missing obligations: ' + ', '.join(REQUIRED_OBLIGATIONS))
     indexed = {}
     for row in rows:
-        name = row.get("id") if isinstance(row, dict) else None
-        if not isinstance(name, str) or not name or name in indexed:
-            refuse("rehearsal_obligation", f"invalid/duplicate obligation: {name}")
+        name = row.get('id') if isinstance(row, dict) else None
+        if not isinstance(name, str) or name not in DETECTORS or name in indexed:
+            refuse('rehearsal_obligation', f'unknown/duplicate obligation: {name}')
         indexed[name] = row
-        if row.get("outcome") != "PASS":
-            refuse("rehearsal_obligation", f"{name}: outcome must explicitly be PASS")
     for name in REQUIRED_OBLIGATIONS:
         if name not in indexed:
-            refuse("rehearsal_obligation", f"{name}: missing required obligation")
-    schema = inputs.document(repo / km.FLEET / "schemas/rehearsal_results.json", "rehearsal_schema")
+            refuse('rehearsal_obligation', name + ': missing required obligation')
+    # Validate the record before resolving any pointers; /2 declarations confer no authority.
+    schema = inputs.document(repo / km.FLEET / 'schemas/rehearsal_results.json', 'rehearsal_schema')
+    for name, row in indexed.items():
+        row_findings = kyschema.validate(schema['properties']['obligations']['items'], row)
+        if row_findings:
+            refuse('rehearsal_obligation_' + name, '; '.join(row_findings))
     findings = kyschema.validate(schema, doc)
     if findings:
-        refuse("rehearsal_schema", "; ".join(findings))
-    if doc["substitutions"] != [SUBSTITUTION]:
-        refuse("rehearsal_substitution", "required: answer 09 §6, live first item replaces fixture model jobs")
-    for row in rows:
-        for ref in row["evidence"]:
-            inputs.file(ref["path"], "rehearsal_evidence_" + row["id"], ref["sha256"])
-
+        refuse('rehearsal_schema', '; '.join(findings))
+    if doc['substitutions'] != [SUBSTITUTION]:
+        refuse('rehearsal_substitution', 'required: answer 09 §6, live first item replaces fixture model jobs')
+    live_items = {indexed[n]['item'] for n in REQUIRED_OBLIGATIONS if n.startswith('live_') and 'item' in indexed[n]}
+    if len(live_items) != 1:
+        refuse('rehearsal_obligation', 'live obligations must name one first item')
+    measured = []
+    for name in REQUIRED_OBLIGATIONS:
+        try:
+            detector = Detector(name, indexed[name], inputs, manifest, run, live_evidence, expected_fail)
+            facts = DETECTORS[name](detector)
+            measured.append({'id': name, 'outcome': 'PASS', 'detector': 'kyfinal/3:' + name,
+                             'observations': facts, 'evidence': detector.refs})
+        except Refused:
+            raise
+        except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError, ET.ParseError) as e:
+            refuse('rehearsal_obligation_' + name, 'unparseable evidence: ' + type(e).__name__)
+    return measured
 
 def tree_files(root):
     root = Path(root)
@@ -420,7 +803,8 @@ def build(a):
     tested = component_map(rehearsal.get("tested_components"), "tested_components_mismatch")
     if tested != component_map(observed["components"], "manifest_components"):
         refuse("tested_components_mismatch", "rehearsal did not test the exact final component hashes")
-    check_rehearsal(rehearsal, repo, inputs)
+    measured = check_rehearsal(rehearsal, repo, inputs, observed, run,
+                               Path(os.path.abspath(a.live_evidence_dir)), a.expected_fail_test_id)
     coverage = inputs.document(coverage_path, "coverage_unreadable")
     # Area-review records use review.verdict; aggregate reviews use top-level verdict.
     nested = coverage.get("review")
@@ -442,7 +826,8 @@ def build(a):
     receipt["manifest"] = {"path": str(out_manifest), "sha256": hashlib.sha256(encoded(manifest)).hexdigest(),
                            "manifest_sha256": manifest["manifest_sha256"]}
     receipt["rehearsal"] = {"results": inputs.file(rehearsal_path, "rehearsal_unreadable"),
-                            "sha256": inputs.hashes[str(rehearsal_path)], "tested_components": rehearsal["tested_components"]}
+                            "sha256": inputs.hashes[str(rehearsal_path)], "tested_components": rehearsal["tested_components"],
+                            "detectors": measured, "expected_fail_test_ids": sorted(a.expected_fail_test_id)}
     receipt["coverage"] = dict(inputs.file(coverage_path, "coverage_unreadable"), verdict="ACCEPTED")
     receipt["packets"] = packets
     api = version_api(repo)
@@ -463,6 +848,9 @@ def build(a):
     if admit_packets(selected, repo, inputs) != packets:
         refuse("inputs_changed", "packet admission changed during validation")
     check_version(api, receipt, manifest, repo, run, inputs)
+    if check_rehearsal(rehearsal, repo, inputs, observed, run,
+                       Path(os.path.abspath(a.live_evidence_dir)), a.expected_fail_test_id) != measured:
+        refuse("inputs_changed", "rehearsal observations changed during validation")
     inputs.unchanged()
     proposed = {"manifest": manifest, "receipt": receipt, "backfill_evidence": evidence}
     if a.dry:
@@ -497,6 +885,9 @@ def main(argv=None):
     for name in ("repo", "run", "rehearsal", "coverage", "packets", "backfill-banner-file",
                  "backfill-session-log", "backfill-entry-id", "backfill-banner-id", "out-manifest", "out-receipt"):
         command.add_argument("--" + name, required=True)
+    command.add_argument("--live-evidence-dir", required=True)
+    command.add_argument("--expected-fail-test-id", action="append", default=[],
+                         help="explicit JUnit classname::name exception; recorded in receipt")
     command.add_argument("--dry", action="store_true")
     args = parser.parse_args(argv)
     try:

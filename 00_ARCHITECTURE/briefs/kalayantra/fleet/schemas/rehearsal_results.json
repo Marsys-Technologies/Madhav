@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Measured B-3 obligations for final acceptance",
-  "$comment": "Plan v2.7 §14 B-3:716; surrogate answer 09 §§1,6:13,40 and answer 12 Rest of B-3:23. Required IDs and evidence hash checks are enforced by kyfinal.py.",
+  "$comment": "T0: pointer-only /3; kyfinal owns each detector and computes every outcome. Fixture evidence roles are exact; live rows name only the item. Summary outcome/measured_by fields are forbidden.",
   "type": "object",
   "required": [
     "schema",
@@ -11,7 +11,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "ky.rehearsal_results/2"
+      "const": "ky.rehearsal_results/3"
     },
     "tested_components": {
       "type": "array",
@@ -40,43 +40,298 @@
       "items": {
         "type": "object",
         "required": [
-          "id",
-          "outcome",
-          "measured_by",
-          "evidence"
+          "id"
         ],
         "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1
+            "enum": [
+              "component_tests_final_bundle",
+              "fixture_live_events_unchanged",
+              "fixture_no_live_tracker_access",
+              "fixture_no_external_requests",
+              "fixture_expected_transitions",
+              "fixture_clean_stop",
+              "live_build_by_fleet",
+              "live_pr_opened",
+              "live_verify_boundary",
+              "live_accepted_pr_head_in_log",
+              "live_merge_parked_no_auto_merge"
+            ]
           },
-          "outcome": {
-            "const": "PASS"
-          },
-          "measured_by": {
+          "item": {
             "type": "string",
-            "pattern": "\\S"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
           },
           "evidence": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "object",
-              "required": [
-                "path",
-                "sha256"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "pattern": "^/",
-                  "minLength": 2
-                },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "xml": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "commit": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "before": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "after": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "connections": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "changes": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "gh": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "dry": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "tick1": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "tick2": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "commands": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "journal": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "log": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "resources": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/",
+                    "minLength": 2
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
                 }
               }
             }
@@ -112,5 +367,6 @@
         }
       }
     }
-  }
+  },
+  "additionalProperties": false
 }
