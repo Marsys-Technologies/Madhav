@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -15,7 +15,7 @@
     "REVIEW": "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_VALUE_REVIEW_v1_1.md",
     "RULINGS": "00_ARCHITECTURE/briefs/l3_families/decisions/KALA_LAYER_NATIVE_RULINGS_v1_0.md",
     "CLAUDE": "CLAUDE.md",
-    "_note": "Relative paths resolve under /Users/Dev/kalayantra/wt/campaign (branch campaign/kalayantra until B-1 merges; origin/main after B-2). Pravāha's tracked documents are read from /Users/Dev/madhav-l3/pravaha (branch campaign/pravaha); its previously unsaved ones from /Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha."
+    "_note": "Relative paths resolve under /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign (branch kalayantra/campaign, upstream origin/main; the checkout is created by the v3 B-2 installation). Pravāha's tracked documents are read from /Users/Dev/madhav-l3/pravaha (branch campaign/pravaha); its previously unsaved ones from /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha."
   },
   "brief_keys": {
     "spec": "the pinned sections to read — nothing else is required reading for the item",
@@ -108,7 +108,38 @@
       ]
     },
     "ready_at_merge": true,
-    "ready_at_accepted": true
+    "ready_at_accepted": true,
+    "declarations": {
+      "plan": "KALAYANTRA_RELAUNCH_PLAN_v2_2.md §6 (item declaration); written by fleet/kyreconcile.py, never by hand",
+      "applies_to": "every executable item (one that is not completed by a decision or a join)",
+      "completion_kind": {
+        "code": "a merged pull request: independent verdict at the exact reviewed head, then the squash merge commit",
+        "artifact": "a registered artifact: path + SHA-256, independently accepted at that digest",
+        "operation": "an executor operation: request and operation identity, completed receipt, independent readback",
+        "packet": "a packet-exit review: verdict bound to the reviewed packet and its review digest"
+      },
+      "producer": "the stream that produces the item's evidence (the item's owner); only that stream claims the item",
+      "reviewer_rule": {
+        "v_exact_head_then_deploy_containment": "V verdict at the exact PR head by a slot independent of the author; complete once a successful deployment of main contains the squash merge commit",
+        "v_exact_head_then_post_deploy_at_merge_commit": "V verdict at the exact PR head, then a second V verdict (post_deploy) at the squash merge commit with the migration or operation readback",
+        "v_artifact_digest_reviewer_not_author": "V verdict bound to the artifact's SHA-256; the reviewer slot differs from the recorded author identity; a V claim only when the item is V-owned",
+        "finalizer_independent_review_artifact_digest": "the finalizer's bounded independent reviewer accepts the receipt's exact digest (plan §12), outside ordinary dispatch",
+        "v_pre_acceptance_then_receipt_readback_digest": "independent V pre-acceptance of the request, then V acceptance of the completed receipt's digest after measured readback",
+        "v_packet_verdict_bound_to_external_review": "V packet verdict with no open blocking finding, bound to the review record's digest"
+      },
+      "step_evidence": "per required step: the evidence class the step must cite and its named detector. detector null = not yet named: the item's packet names it; a STEP action never records a step whose detector is null or has not passed (CLAUDE.md §N.8)",
+      "earned": "for an item already completed, completion_kind is the type recorded in its guarded completion event",
+      "triage": "class a = critical path (closure of acceptances i–iii); a_close = the close chain (acceptance iv); b = deferred with a re-entry condition, never counted as closed; c = dispositioned under J0_DISPOSITION; retired / retire_decision = retirement by decision (refusal staged, published only by B-2); done_outside = earned completion outside the closure, preserved"
+    },
+    "triage": {
+      "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0",
+      "roots": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_1.json",
+      "closure": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v2_1.json",
+      "declarations": "00_ARCHITECTURE/control/kalayantra/TRIAGE_DECLARATIONS_v2_2.json",
+      "staged_actions": "00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json (not published; B-2 publishes)",
+      "schema_receipt": "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json",
+      "generator": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyreconcile.py build"
+    }
   },
   "streams": [
     {
@@ -119,10 +150,28 @@
         "sutradhara"
       ],
       "worktrees": [
-        "/Users/Dev/kalayantra/wt/sutradhara",
-        "/Users/Dev/kalayantra/wt/campaign"
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-0",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1p",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-7",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-8",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-8",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-join-all",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-deploy-diag"
       ],
-      "branch_pattern": "^(campaign/kalayantra|kalayantra/(b-|ledger-|c-|j-0m|j-8$).*)$",
+      "branch_pattern": "^(kalayantra/campaign|campaign/kalayantra|kalayantra/(b-|ledger-|c-|j-0m|j-8$).*)$",
       "stale_after_s": 2700,
       "dead_after_s": 7200
     },
@@ -134,9 +183,23 @@
         "adhikarin"
       ],
       "worktrees": [
-        "/Users/Dev/kalayantra/wt/adhikarin"
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4e",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4f",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-5s",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6l",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-4a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-4b"
       ],
-      "branch_pattern": "^(kalayantra/n-.*|campaign/kalayantra)$",
+      "branch_pattern": "^(kalayantra/campaign|kalayantra/n-.*|campaign/kalayantra)$",
       "stale_after_s": 2700,
       "dead_after_s": 7200
     },
@@ -151,10 +214,139 @@
         "v4"
       ],
       "worktrees": [
-        "/Users/Dev/kalayantra/wt/v1",
-        "/Users/Dev/kalayantra/wt/v2",
-        "/Users/Dev/kalayantra/wt/v3",
-        "/Users/Dev/kalayantra/wt/v4"
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-0",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1p",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1v",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-7",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-8",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-0",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k0a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0-sv",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k12",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k7",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-3a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-4b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-ka",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k3-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k3-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-g1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-g1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-vc-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-vc-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-vc",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-5a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k8-r26",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k8-reg",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-k",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-2d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4p",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4e",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4f",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-5q",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-5s",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6r",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6l",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-j6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-8a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-8",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-4a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-4b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kr-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kr-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-v-k9",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-join-all",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-c-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-6r",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-claim-recovery",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-k-inbox",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-deploy-diag",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-k-runner",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-db-baseline",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-gochara-timeout",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-1e",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-1w",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2aw",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-123",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-23",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-cert",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-cert-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-avadhi-c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-schema-1"
       ],
       "branch_pattern": "^(kalayantra|pravaha|campaign)/.*$",
       "stale_after_s": 2700,
@@ -179,18 +371,91 @@
         "k12"
       ],
       "worktrees": [
-        "/Users/Dev/kalayantra/wt/k1",
-        "/Users/Dev/kalayantra/wt/k2",
-        "/Users/Dev/kalayantra/wt/k3",
-        "/Users/Dev/kalayantra/wt/k4",
-        "/Users/Dev/kalayantra/wt/k5",
-        "/Users/Dev/kalayantra/wt/k6",
-        "/Users/Dev/kalayantra/wt/k7",
-        "/Users/Dev/kalayantra/wt/k8",
-        "/Users/Dev/kalayantra/wt/k9",
-        "/Users/Dev/kalayantra/wt/k10",
-        "/Users/Dev/kalayantra/wt/k11",
-        "/Users/Dev/kalayantra/wt/k12"
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-0",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-1c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0-sv",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k2-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k1-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-3a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-4b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k3-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k3-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-g1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-g1b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-vc-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-vc-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-2b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k5-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-4",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-5a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k8-r26",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k8-reg",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-k",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-3b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4p",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-4d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-5q",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6m",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-6r",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-7b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-8a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-5",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-6",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kr-1",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kr-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-6r",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-claim-recovery",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-k-inbox",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0b",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-0d",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-l0-k-runner",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b-db-baseline",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-j-gochara-timeout",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k0a-3",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k7-1a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-1e",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-ka-1w",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2aw",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k4-2a",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k6-123",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k9-23",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-cert",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-cert-2",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-k-avadhi-c",
+        "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-schema-1"
       ],
       "branch_pattern": "^(kalayantra/(k|j|l0|vc).*|kalayantra/(b\\-6r|b\\-claim\\-recovery|b\\-k\\-inbox|b\\-db\\-baseline|b\\-precheck\\-integrity)|pravaha/.*)$",
       "stale_after_s": 2700,
@@ -308,6 +573,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "First act of the kickoff. Never worked around."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -327,7 +598,7 @@
       ],
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.yaml",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.yaml",
         "min_bytes": 1500
       },
       "brief": {
@@ -348,6 +619,26 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "tool: Codex; tool_profile: madhav-parity (the posture — applied through the generated kalayantra overlay because madhav-parity.config.toml no longer loads; the CCD entry says so); enumerated globs, no braces; red_team_due: false."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "step_evidence": {
+        "lease_taken_and_verified": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "session_open_validated": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "ccd_entry_appended": {
+          "evidence": "artifact_section",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -381,6 +672,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "PRE-LANDED by the setup session on 2026-10-06 (the package and model were untracked files in /Users/Dev/madhav-l3/pravaha and existed nowhere in git). Verify, do not redo. The live Pravāha tracker keeps running from its own worktree untouched. Left on disk for J-8a to archive at close: /Users/Dev/pravaha/run/{EVENTS.jsonl,snapshot.json,*.log,runner/,backup/,backups/}."
+      },
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -451,6 +748,42 @@
         ],
         "compat": "the running Pravāha tracker (its own worktree, port 8766) is not touched; the KĀLA-YANTRA instance switches to this package only at B-2",
         "notes": "State model. Ordinary executable items require every dependency DONE. If a dependency becomes `not_applicable`, an executable consumer also becomes `not_applicable`, preserving the originating decision and the missing-output reason. Only items declaring `accepts_not_applicable_dependencies: true` may become READY from terminal skipped dependencies — joins, independent reviews, certification and disposition reports and close reports, whose acceptance must enumerate the gaps. A required decision approved at the named outcome permits work; a final different outcome or a not-applicable decision skips it. Decision outcomes approved|refused are FINAL; deferred|insufficient_evidence remain OPEN and never become terminal merely because time passes. `mandatory: false` never makes an unresolved item or decision terminal; a mandatory item that ends not_applicable is a declared campaign gap. Guarded completion has typed evidence: a code item needs an independent ACCEPTED verdict on the exact PR head and the recorded merge result mapping that head to the squash commit (a post-deploy verdict binds the deployed merge commit); an artifact or operational item needs its typed artifact digest or operation/request identity, its declared evidence, completed steps, eligible dependencies and independent acceptance — never a fictional Git head. SŪTRADHĀRA invokes the guarded `done` for N- and V-owned items after their independent acceptance; a join completes from its children. A packet item consumes the independent reviewer's verdict and the review's sha256 (parsed fields: result ACCEPTED, blocking_open 0, an existing review file with a matching sha256, the matching packet id). Detector matches are necessary evidence inputs, never sufficient. A guarded `done` is durable: a detector that later reads pending raises an audit warning, never reverts state. Claims: exclusive lock on the event log; worker_id, claim_id, lease, renew, release; expiry recovery writes a hand-over record preserving branch/head/step in run/claims/<worker>.json. Verdicts: stream V only, bound to a head or an artifact digest; a later push makes a head verdict stale; an item's author lane cannot verdict it. `audit --since <ts|kickoff>` exits non-zero on duplicate claims, expired workers, rejected-but-done, unmet dependencies, unbound production operations, a retained production fence without a quiescence receipt, zero earned progress in a non-blocked interval; it lists mandatory items that ended not_applicable."
+      },
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "claims": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "verdicts_and_guarded_done": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "structured_decisions": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "messaging_hold_preflight": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "audit": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "control_plane_md_ready_for_acceptance": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -483,6 +816,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "Receipt: head sha, test output hash, the mutation table, result ACCEPTED|REJECTED. Requested by /Users/Dev/kalayantra/run/bootstrap/B-1b.request.json (item, branch, exact head). Run the candidate package against TEMPORARY fixture event logs through an explicit PYTHONPATH pointing at the reviewed checkout of that head; never replace the running package and never write the live event log."
+      },
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -526,6 +865,34 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "Branch kalayantra/n-b5 cut from origin/campaign/kalayantra in wt/adhikarin; SŪTRADHĀRA merges it into the bootstrap branch. The live Pravāha tracker reads its model from /Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/control/pravaha/plan_model.json — apply the same steward edit there (that file is untracked in that worktree; edit in place, keep both copies identical, record the sha256 of both). Nothing else in that worktree is touched."
+      },
+      "completion_kind": "artifact",
+      "producer": "N",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "step_evidence": {
+        "writers_quiesced_recorded": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "model_streams_extended_both_copies": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "ruling_written": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "streams_messaged": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "branch_pushed_for_merge": {
+          "evidence": "artifact_section",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -558,6 +925,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "builder=false or owner=false is a valid state: it blocks only J-2a…J-4e / K9-4a (builder) and D-TEARDOWN (owner). Nothing else waits."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -599,6 +972,30 @@
         ],
         "compat": "documents, governance tooling and tests only; no sidecar, portal or MCP runtime file changes",
         "notes": "Create the PR only if none is open for this head branch. Never force-push; `git merge origin/main` if behind. A later push means rewriting the request file with the new head — the earlier verdict is then stale by construction. Old detector-derived DONE states are advisory during bootstrap and never authorise a merge."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "step_evidence": {
+        "n_b5_merged_in": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "current_with_main": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "precheck_green": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "pr_open_recorded": {
+          "evidence": "artifact_section",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -632,6 +1029,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "An item, not a message: before B-2 the lanes cannot message each other. REJECTED names the failing check; SŪTRADHĀRA fixes, pushes, rewrites the request file with the new head, and this item is done again at that head."
+      },
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -668,6 +1071,30 @@
         ],
         "compat": "documents, governance tooling and tests only; no sidecar, portal or MCP runtime file changes",
         "notes": "Queue (`gh pr merge <n> --squash --auto`) only when the verdict file's `head` equals the PR's current head and the six required checks are green. MERGED is read in a later cycle."
+      },
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "verdict_head_equals_pr_head": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "ci_green": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "queued": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "merged": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -683,7 +1110,7 @@
       "detector": {
         "type": "file_contains",
         "path": "/Users/Dev/kalayantra/run/TRACKER_INSTALL_RECEIPT.json",
-        "pattern": "(?s)\"accepted\": true.*\"package_dir\": \"/Users/Dev/kalayantra/wt/campaign/platform/scripts/governance\".*\"audit_available\": true"
+        "pattern": "(?s)\"accepted\": true.*\"package_dir\": \"/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/platform/scripts/governance\".*\"audit_available\": true"
       },
       "brief": {
         "spec": [
@@ -696,12 +1123,18 @@
           "/Users/Dev/kalayantra/run/KY_VERIFIERS"
         ],
         "tests": [
-          "git -C /Users/Dev/kalayantra/wt/campaign fetch origin main && git -C /Users/Dev/kalayantra/wt/campaign checkout --detach origin/main (the branch campaign/kalayantra is kept, never deleted, never rebased)",
-          "bash 00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh --gov /Users/Dev/kalayantra/wt/campaign/platform/scripts/governance → ACCEPTED",
+          "git -C /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign fetch origin main && git -C /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign checkout --detach origin/main (the branch campaign/kalayantra is kept, never deleted, never rebased)",
+          "bash 00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh --gov /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/platform/scripts/governance → ACCEPTED",
           "echo 2 > /Users/Dev/kalayantra/run/KY_VERIFIERS"
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "After this, every model or fleet change reaches the tracker and the executor by: ledger PR → verdict → merge → the same fetch + detach. After the install, import the independently checked bootstrap receipts (run/bootstrap/*.verdict.json, CONTROL_PLANE_ACCEPTED.json) through the new guarded completion path, so bootstrap items are complete by evidence and not by the old detector override. Only then do the ordinary commands apply."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -745,6 +1178,30 @@
           "executor: two starts yield one controller (instance lock); a child that outlives its parent is killed with the process group; a dispatch that returns while its remote job runs keeps the production fence; a restart does not release the fence"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "step_evidence": {
+        "seed_current": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "lane_databases_ready": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "precheck_aligned": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "alignment_recorded": {
+          "evidence": "artifact_section",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -776,6 +1233,12 @@
           "bash 00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh launch → exit 0"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -817,6 +1280,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "On acceptance: echo 1 > /Users/Dev/kalayantra/run/KY_WORKERS. No K, L or J item is READY before this item is done."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -847,6 +1316,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "Does not gate work; it gates raising the pool above one worker."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "done_outside"
       }
     },
     {
@@ -868,7 +1343,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text."
       },
       "done_by": "decision",
-      "decision": "D-R5"
+      "decision": "D-R5",
+      "triage": {
+        "class": "done_outside"
+      }
     },
     {
       "id": "D-R6",
@@ -889,7 +1367,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text. approved = wire (K7-4 runs); refused = retire (K7-4 not_applicable, the registry lifecycle row is set in K8-REG)."
       },
       "done_by": "decision",
-      "decision": "D-R6"
+      "decision": "D-R6",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "D-R8",
@@ -910,7 +1391,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text."
       },
       "done_by": "decision",
-      "decision": "D-R8"
+      "decision": "D-R8",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "D-R9",
@@ -930,7 +1414,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text."
       },
       "done_by": "decision",
-      "decision": "D-R9"
+      "decision": "D-R9",
+      "triage": {
+        "class": "done_outside"
+      }
     },
     {
       "id": "D-R11",
@@ -951,7 +1438,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text."
       },
       "done_by": "decision",
-      "decision": "D-R11"
+      "decision": "D-R11",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "D-KR",
@@ -971,7 +1461,10 @@
         "notes": "Recorded by ADHIKĀRIN in ONE batch cycle with the other pre-ruled decisions (`ky decide <ID> --as steward --outcome approved --detail \"KYD-n …\"`), quoting the surrogate charter §5 text. Default approved: the plan names this disposition; the edit is a read re-point of platform/python-sidecar/brahmagyan/mimamsa/l5_event_chart_state_index.py to the stage tables, nothing else in L5."
       },
       "done_by": "decision",
-      "decision": "D-KR"
+      "decision": "D-KR",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K0a-0",
@@ -1019,6 +1512,30 @@
         ],
         "compat": "CI only; additive; no runtime file",
         "notes": "The one item allowed to edit a workflow file (precheck's hygiene step exempts KY_ITEM=K0a-0). After it merges, a database-backed test goes in tests/l3/kala_db/<area>/ and needs no further workflow edit — so parallel PRs never collide on ci.yml. SŪTRADHĀRA then also requires this job green before queueing. Interactive conductor 2026-10-07: k1 retains ownership of the directly necessary CI classification repair; no new item or serial prerequisite. KYD-42 is a brief correction to the existing item, not a new unit or serial prerequisite; fresh independent exact-head review remains required."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "canary": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "ci_job": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "guard": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "precheck_and_testing_note": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1057,6 +1574,12 @@
           "canonical id round-trip for every graha and daśā system incl. Cara sign lords and Yoginī names; mutation: the full-name/abbreviation mismatch of hazard.py:277 must fail the test",
           "one per-instant sidereal offset through the swiss_state lock; CANONICAL_AYANAMSHA defined once (a second definition fails a lint test)"
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1100,6 +1623,12 @@
           "Repeated concurrent runs pass; suppressing tool dispatch or dropping synthesis-cap enforcement makes targeted negative/mutation checks fail"
         ],
         "notes": " KYD-33 assigns only original k3 the RC-07 wall-clock test plus minimal cleanup, in this existing PR. Preserve dispatch result, synthesis refusal, flags and cap mutations; no runtime code/cap/check change. The existing report is folded here, never a serial registration gate."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1137,6 +1666,12 @@
           "the loader returns one 27-class roster equal to gochara_rules/registry.py's",
           "a plan-time read never deletes; a changed input vector invalidates recorded progress"
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1161,7 +1696,10 @@
         "notes": "A join: complete when every child is complete. SŪTRADHĀRA runs the guarded completion; nobody claims a join."
       },
       "join": true,
-      "done_by": "join"
+      "done_by": "join",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K0a-2",
@@ -1206,6 +1744,30 @@
         "migration": "additive rows/keys only via `cd platform && npm run -s migration:next`; migration 491 is never edited",
         "compat": "a Kṣetra build at this commit writes the same tables with a non-zero clock term; no reader depends on the term being zero; no publication changes (snapshot/publication unchanged)",
         "notes": "Nothing else of G1 here; (c)–(g) are K5-G1a/b. KYD80 grants narrow test ownership to original k2 after scope recording, not source acceptance, unblocking or completion. Changed head requires fresh independent review. B-DB-BASELINE1320, allocation1331/authentic caller-lane application, provenance/compatibility and KYD74 are unchanged."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "hazard_lookup_fix": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "weight_keys_migration": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "typed_lords": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1259,6 +1821,38 @@
         ],
         "contract": "kala_obstruction (prod_schema.sql:16059) and kala_darshana (14708: id, chart_id, convergence_id, signal_id, effective_score, net_label, peak_date, window_start, window_end, obstruction_summary, narrative, source_citation, computed_at) have no generation column; replace_candidate_partition requires one. kala_layer_candidate / _candidate_grain / _verification / _head come from migration 1330 (K0a-3, merged #3264; not yet in the 06:58 schema dump).",
         "migration_class": "ROUTINE-OK (if no index) — ADD COLUMN on kala_obstruction (PK only) and kala_darshana is routine (1214 altered both routinely); adding any index, or re-keying kala_darshana UNIQUE (convergence_id), needs the window."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "assertion_envelope": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "obstruction_columns": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "darshana_read_model_row": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "registry_capability_serves": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "mutations_fail": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1288,7 +1882,13 @@
           "/Users/Dev/kalayantra/run/reviews/K0A.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K0-SV",
@@ -1307,7 +1907,7 @@
       ],
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md",
         "min_bytes": 1500
       },
       "brief": {
@@ -1327,6 +1927,26 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "A disagreement is parked for ADHIKĀRIN, never coded around. Until the contract is acknowledged, K1 items code against the read contract as it stands and record every column they read."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "template_checklist": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "dasha_contract_drafted": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "suvarna_acknowledged": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1372,6 +1992,30 @@
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ],
         "contract": "chart_dashas (prod_schema.sql:5573) F2 read surface per DASHA_TABLE_CONTRACT: chart_id, ayanamsha_id, system_id, build_id, dasha_row_id, parent_row_id, level_n, lord_graha, start_iso, end_iso (half-open; start_date/end_date display only), verification_pass_status (the \"tier\"; there is no tier column), applies_to_this_chart_flag, sandhi_flag, next_dasha_start_iso (annotations only), is_truncated_at_window_start, is_truncated_at_window_end, kp_sublevel, kp_sub_lord, kp_sub_sub_lord. Cara is stored as system_id=chara_karaka (kala_core.vocab maps chara↔chara_karaka). Settled build per L1_SETTLED v1 (coordination 2026-10-07T22:25Z): ca17639b-f3cf-42c7-9866-0a61f3855802."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "period_context_boundaries": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "hierarchy_sandhi": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "pinned_read_contract": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1424,6 +2068,34 @@
         ],
         "compat": "the service keeps its public methods; the static 0.5 fallback stays reachable for ka_sangam's legacy path through a named shim until K4-2b removes that caller",
         "contract": "chart_dashas (prod_schema.sql:5573): same read surface as K1-1a; applies_to_this_chart_flag is true for Aṣṭottarī by producer default (ga_dashas_writer compute_ashtottari_system \"FORENSIC: Rahu in 5H → applicable\"), so a positive applicability verdict cannot come from it (DASHA_TABLE_CONTRACT)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "named_methods_applicability": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "sigma_linearisation": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "scenarios": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "dasha_kala_facade": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "perturbation_oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1465,6 +2137,30 @@
         "notes": [
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "graph_nodes_edges": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "frames_event_class_map": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "l2_attachment_loader": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1512,6 +2208,34 @@
         "migration": "additive; old columns retired only after consumers migrate (K9 contract phase)",
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "migration_class": "NEEDS-PROTECTED-WINDOW — migration 1335 (PR #3308) does ADD COLUMN (routine) but also CREATE INDEX, DROP INDEX and CREATE UNIQUE INDEX on kala_activation_predicates — index creation needs CREATE on public."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "defeat_except_effective_state": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "two_routes": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "yojaka_reshape_migration": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "writer_digest_regenerated": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1564,6 +2288,30 @@
         ],
         "contract": "gochara_resonance_map (prod_schema.sql:13695): id, chart_id, event_class, target_type, target_ref, weight, classical_citation, uncited_extension, source_rule_id, computed_at, target_resolution_state, target_qualifier — no frame, role, mechanism_id, generation columns; `weight` is what ALGO 3.11 removes. Writer DELETE is per chart (services/ka_gochara_resonance/writer.py:934).",
         "migration_class": "MISSING — gochara_resonance_map UNIQUE (chart_id, event_class, target_type, target_ref) has no generation; the candidate-partition compat needs a re-key (protected window) or the brief must say the resonance writer stays legacy-scoped"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "relationship_resolver": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "frame_before_rule_oracle": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "resonance_corrections": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1611,6 +2359,12 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "contract": "kala_avadhi today (prod_schema.sql:14564): avadhi_id, chart_id, system_id, level_n, lord_graha, period_start, period_end, dossier jsonb, quality jsonb, citations text[], formula_version, computed_at — no generation column; replace_candidate_partition (kala_core.idempotency) requires chart_id + generation on every row, so the migration must add generation (K2-1b used `generation text NOT NULL DEFAULT 'legacy'` on kala_activation_predicates, migration 1335). Live readers by chart_id: query_dasha_dossier.ts, platform-mcp tools/retrieval/kala_temporal.ts.",
         "migration_class": "NEEDS-PROTECTED-WINDOW — kala_avadhi has UNIQUE (chart_id, system_id, level_n, period_start) without generation; candidate rows for the same periods collide with legacy rows unless the key is rebuilt to include generation (DROP/ADD a unique constraint = a new index)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1638,7 +2392,13 @@
           "/Users/Dev/kalayantra/run/reviews/K12.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K7-1b",
@@ -1680,6 +2440,26 @@
           "each old tool name still answers (alias golden test)"
         ],
         "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "mcp_aliases": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "bridge_regenerated": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "floor_resolution_test": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1720,6 +2500,26 @@
         ],
         "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
         "contract": "STORY reads kala_jivana_parva.high_convergence_count / avg_effective_score (prod_schema.sql:15900) via platform-mcp tools/kala_views/story.ts; kala_convergence (14633) is the empty source."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "story_stale_counts": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "now_context_only": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "golden_tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1763,6 +2563,26 @@
         "notes": [
           "The PRIORITY false attribution lives in platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:392 (asset_ids ['ka_tulana']) — charter §8 rule 9 forbids L3 edits under retrieval/registry/knowledge/**: file a PA-REQ-nn on CAMPAIGN_COORDINATION.md for the four F-L20 attribution corrections (avadhi→life_arc, bhavishya→prospective_ledger, kshetra→predictive_anchors, tulana→priority); this item's acceptance records the request."
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "density_contracts": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "attribution_fix": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "sentinel_on_fixture": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1815,7 +2635,19 @@
       },
       "steps": [
         "certification_mapping"
-      ]
+      ],
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "V-K7",
@@ -1842,7 +2674,13 @@
           "/Users/Dev/kalayantra/run/reviews/K7.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "KA-2",
@@ -1879,6 +2717,12 @@
         "notes": [
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1941,6 +2785,34 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "contract": "kala_vedha_gochara (prod_schema.sql:16308): id, chart_id, ayanamsha_id, vedha_kind, graha, window_start, window_end, start_truncated, end_truncated, janma_reference_fact_id, classical_citation, uncited_extension, grid_basis, grid_school_tag, detail jsonb, formula_version, computed_at, source_qualification, precision_regime, corpus_verifiable. Missing for ALGO 3.12: state (active|inactive|unqualified), unqualified_reason, moon_scope, coverage, method_qualification, upstream_fingerprint, a dedicated interval table (ALGO: \"replaces the JSON column\"); not in kala_core.idempotency's replaceable-table list.",
         "migration_class": "NEEDS-PROTECTED-WINDOW — the three ADD COLUMNs on kala_vedha_gochara are routine, but ALGO 3.12's dedicated interval table (CREATE TABLE) and any candidate re-key of UNIQUE (chart_id, ayanamsha_id, vedha_kind, graha, window_start) need the window; split the file if both are done."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "overlays_module": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "vedha_intervals": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "coverage_and_qualification": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "writer_digest_regenerated": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -1996,6 +2868,12 @@
         "notes": "S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification.",
         "contract": "kala_moorti_nirnaya (prod_schema.sql:15996) already has source_qualification, precision_regime, corpus_verifiable, upstream_fingerprint; kala_kota_chakra (15945), kala_tithi_pravesha (16257), kala_sudarshana_varsha (16142) have none of method_qualification/coverage/upstream_fingerprint; sudarshana carries tri_lagna_convergence (removed by ALGO 3.16). None of the four is in kala_core.idempotency's replaceable-table list.",
         "migration_class": "ROUTINE-OK (as briefed) — ADD COLUMN method_qualification/coverage/upstream_fingerprint on the four tables is routine (owner evidence: 1082 altered kala_moorti_nirnaya/kala_vedha_gochara routinely); any candidate re-key of their UNIQUE (chart_id, ayanamsha_id, …) keys would need the window."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2035,6 +2913,12 @@
         "notes": [
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2078,7 +2962,19 @@
       },
       "steps": [
         "certification_mapping"
-      ]
+      ],
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "V-KA",
@@ -2109,7 +3005,13 @@
           "/Users/Dev/kalayantra/run/reviews/KA.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K3-1",
@@ -2168,6 +3070,38 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; compose_with_ka_sangam stays callable through a shim until K4-2b",
         "contract": "kala_obstruction today (prod_schema.sql:16059): id, chart_id, convergence_id, signal_id, obstruction_type, severity, severity_score, override_score, obstruction_detail jsonb, source_citation, computed_at — no generation. PLAN §4.1 row 4 additive columns: assertion_id, exposure, knowledge, rule_conclusion, defeat_state, effective_state, what, by_what, interval, release ∈ {instant, conditional(pred), unknown}, roots (+ generation). Judge inputs: ka_gochara_relationship_record (evidence_against_occurrence, coverage_partition_kind/key, coverage_facts, operator_role, period_anchor_lord/level, generation), kala_gochara_coverage. Second writer still live: brahmagyan/kala/obstruction.py upserts kala_obstruction (retired only at KR-2). Live readers: query_obstruction_periods.ts, kala_temporal.ts, ka_kala_darshana.py, ph_muhurta.py, ph_pratikara.py.",
         "migration_class": "ROUTINE-OK (if no index) — kala_obstruction has only PRIMARY KEY (id): ADD COLUMN axes + CHECKs are routine; a lookup/unique index needs the window."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "five_axes_schema": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "effective_state": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "release_semantics": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "trigger_producers": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "fixtures_per_axis": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "no_forecaster_read_lint": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2194,7 +3128,13 @@
           "/Users/Dev/kalayantra/run/reviews/K3.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K3-2",
@@ -2237,7 +3177,19 @@
       },
       "steps": [
         "certification_mapping"
-      ]
+      ],
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "V-K3b",
@@ -2263,7 +3215,13 @@
           "/Users/Dev/kalayantra/run/reviews/K3B.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K4-1",
@@ -2304,6 +3262,30 @@
           "the experiments report distinct statistics on the same preparation"
         ],
         "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "segments_and_schedule": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "jury_null_experiment": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "verdict_types": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2351,6 +3333,30 @@
         ],
         "compat": "the shim pins the legacy generation for every live reader until K9-4b; register_d7_channel.ts is excluded as the concept note states",
         "contract": "kala_convergence (prod_schema.sql:14633) columns as in K4-2a. confidence_label is read by more than the three named readers: platform-mcp/src/tools/retrieval/kala_temporal.ts, registry L3_kala/query_convergence_windows.ts, L4_phala/query_phala_calibration.ts, writers ph_nimitta.py and ph_rectification, services/ka_tulana/writer.py, pipeline/orchestrator/service_probes.py — the shim must keep them on legacy rows or each must be recorded as out of scope."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "deletions": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "shim_for_live_readers": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "three_readers_moved": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2393,7 +3399,19 @@
       },
       "steps": [
         "certification_mapping"
-      ]
+      ],
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "V-K4",
@@ -2419,7 +3437,13 @@
           "/Users/Dev/kalayantra/run/reviews/K4.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K5-G1a",
@@ -2473,6 +3497,34 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; KshetraReplacementHeld is replaced by the candidate partition, never by deleting populated published rows",
         "contract": "kala_field (prod_schema.sql:14750) and the other kala_field_* tables have no generation column; kala_field_snapshots (15341) holds field_snapshot_id/field_content_hash/substrate_build_ids. kala_core.idempotency lists kala_field, kala_field_null, kala_field_salience, kala_field_snapshots as replaceable (requires generation).",
         "migration_class": "MISSING — kala_field/kala_field_null/kala_field_salience/kala_field_snapshots have unique keys without generation (prod_schema.sql UNIQUE (chart_id, event_class, segment_index) etc.); candidate partitions need a generation column + re-key = NEEDS-PROTECTED-WINDOW, and no migration is in the brief"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "suppression_inputs": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "as_of_and_axis": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "rarity_ayanamsha": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "full_breakpoints": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2530,6 +3582,38 @@
           "carries K8-K5: Certification mapping for ka_kshetra"
         ],
         "migration_class": "MISSING — kala_field/kala_field_null/kala_field_salience/kala_field_snapshots have unique keys without generation (prod_schema.sql UNIQUE (chart_id, event_class, segment_index) etc.); candidate partitions need a generation column + re-key = NEEDS-PROTECTED-WINDOW, and no migration is in the brief"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "insight_detectors": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "forecaster_null_on_measure": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "snapshot_to_manifest": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "baseline_frozen": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles_K1_K6": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2565,6 +3649,12 @@
           "The author of the arms never scores. Real consenting outcome evidence only; a generic fixture run cannot replace the censoring ceiling (ruling 10).",
           "Source of the amendment: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/KSHETRA_ABLATION_PREREGISTRATION_v1_0.md — write the amended, frozen copy under value_checkpoint/ (v1.1); the nirmana original is not in owns."
         ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2594,6 +3684,12 @@
           "matched information and presentation budgets across arms"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2615,7 +3711,10 @@
         "notes": "A refused outcome parks the G2 work (D-G2, K5-3 not_applicable), never the G1 repair. Never used to flip anything."
       },
       "done_by": "decision",
-      "decision": "D-VC"
+      "decision": "D-VC",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "V-VC",
@@ -2641,7 +3740,13 @@
           "/Users/Dev/kalayantra/run/reviews/VC.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K5-2",
@@ -2678,6 +3783,12 @@
         ],
         "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
         "notes": "Records implemented-and-proven or failed-with-the-failing-clause. The result file is D-COMPACT's evidence. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2698,7 +3809,10 @@
         "notes": "refused → K5-2b not_applicable with the dense path retained (recorded in V-K5)."
       },
       "done_by": "decision",
-      "decision": "D-COMPACT"
+      "decision": "D-COMPACT",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K5-2b",
@@ -2738,6 +3852,12 @@
       },
       "requires_outcome": {
         "D-COMPACT": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2760,6 +3880,9 @@
       "decision": "D-G2",
       "requires_outcome": {
         "D-VC": "approved"
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2798,6 +3921,12 @@
       },
       "requires_outcome": {
         "D-G2": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2830,7 +3959,13 @@
           "/Users/Dev/kalayantra/run/reviews/K5.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K6-4",
@@ -2875,6 +4010,12 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; taranga_kernel and taranga_service stay until KR-1",
         "contract": "kala_taranga today (prod_schema.sql:16198): taranga_id, chart_id, month, scope_kind, scope_id, activation numeric, components jsonb, formula_version, computed_at — no event_class, integral, units, risk_set or generation; the declared class→domain table does not exist yet. Field source: kala_field (14750: event_class, t_start, t_end, integral_days, lambda_start/end, field_snapshot_id …). Live reader: registry L3_kala/query_activation_waveform.ts.",
         "migration_class": "NEEDS-PROTECTED-WINDOW — kala_taranga UNIQUE (chart_id, month, scope_kind, scope_id) lacks generation/event_class, and the declared class→domain table is a CREATE TABLE."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2915,6 +4056,12 @@
         "compat": "additive only; the L4 read is not replaced here",
         "contract": "kala_core.idempotency.insert_immutable_checked hard-codes table name `issued_forecast` and `ON CONFLICT (issue_id, version)`: the migration must create public.issued_forecast with UNIQUE (issue_id, version) (or this item must also own kala_core/idempotency). ALGO 3.8 issue-key fields: issue_id, version, issued_at, information_cutoff, manifest reference, delivered statement verbatim, model qualification (result policy, calibration status), intervals (disconnected allowed) with disclosed grain, declared point functional, probability_target (null unless calibrated), falsifier; episode key (event_class, phase, affected_person, episode); delivery linkage (named channel). Existing protective reference: phala_anchors.bhavishya_id → kala_bhavishya.id.",
         "migration_class": "NEEDS-PROTECTED-WINDOW — issued_forecast is a new table with UNIQUE (issue_id, version) (required by insert_immutable_checked ON CONFLICT)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2968,6 +4115,34 @@
           "carries K8-K6: Certification mapping for the four read models and the registrar (the registrar's Idem row says FAIL under the current detector and names the routed rule)"
         ],
         "contract": "Registrar today writes kala_bhavishya (prod_schema.sql:14585: id, chart_id, projection_rank, probability_tier, domain, peak_date, window_start, window_end, convergence_id, signal_id, effective_score, falsifiability, source_chain, narrative, outcome_recorded, outcome_notes, source_citation, computed_at); phala_anchors.bhavishya_id (19915) references kala_bhavishya.id and is the protective read (ka_bhavishya_lekha.py:262-285). kala_core.idempotency.insert_immutable_checked writes only table `issued_forecast` with ON CONFLICT (issue_id, version)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "identity_split": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "registrar_interface": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "reference_protection_switched": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "oracles": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "certification_mapping": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -2996,7 +4171,13 @@
           "/Users/Dev/kalayantra/run/reviews/K6.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K8-R26",
@@ -3030,6 +4211,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "Read-only analysis. A difference that changes what a writer must do becomes a NEW ITEM report; ADHIKĀRIN records the supersession of the plan's table as a KYD."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3077,6 +4264,12 @@
         "compat": "the cockpit keeps rendering every asset; counts read through count_sql stay chart-scoped",
         "contract": "asset_registry (prod_schema.sql:9018) fields this item corrects: depends_on text[], has_substeps, count_sql, integrity_check_sql, is_active, superseded_by, data_disposition, natural_key_partition, has_writer, target_table, clear_tables. There is no produced_tables column — produced tables live in asset_declarations.json (PLAN §7 Build row) — and the seed (platform/scripts/seed/asset_registry_seed.ts) is DAG-parity tested (asset_registry_seed_dag_parity.test.ts).",
         "migration_class": "ROUTINE-OK — UPDATE of ka_* rows of asset_registry (same shape as applied routine 1253/1297/1304)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3124,6 +4317,30 @@
         "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair.",
         "contract": "bg_parihara_rules (prod_schema.sql:9701): id, dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index, cancellation_condition_text, net_standing, scope (CHECK natal|muhurta; KYD-45 extends it via migration 1332, PR #3267), source_text_id, source_chapter, source_citation, build_id, computed_at, extraction_context. There is no machine-evaluable predicate column and no column for ALGO 3.17's conjunction_reading = tika, tika_extension, or priority_rank (v. 91); KA-4b cannot evaluate \"cancelled\" from prose.",
         "migration_class": "ROUTINE-OK — 1332 is ALTER TABLE DROP/ADD CHECK + COMMENT on existing bg_parihara_rules, row INSERTs and any ADD COLUMN for predicate fields; no index (UNIQUE (dosha_canonical_id, cancellation_index) already exists). Requires amjis_app to own bg_parihara_rules — confirm with a migration_readback dry run."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "rows_extracted_with_locators": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "scope_column": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "suvarna_reseal_coordinated": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3164,6 +4381,28 @@
         "compat": "additive corpus rows",
         "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes.",
         "contract": "classical_text_chunks (prod_schema.sql:12860): id, text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_sa, content_en, content_summary, topics, source_citation, ingested_at, translator, tradition_school, embedding vector(768), content_sha256, topic_tag, ocr_* columns, translation_status, translation_provenance. embedding needs a provider call; no executor op kind exists for corpus ingestion (executor_ops.json)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "step_evidence": {
+        "chunks_ingested": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "count_recorded": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "search_returns_kp": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "b",
+        "reason": "KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path",
+        "re_entry": "with D-T2"
       }
     },
     {
@@ -3183,8 +4422,8 @@
         "spec": [
           "CHARTER §2.3 (the twelve phases)",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json"
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json"
         ],
         "owns": [],
         "tests": [
@@ -3196,7 +4435,10 @@
         "notes": "Preclaim split requested by original k5; no J-0 implementation was performed. Nobody claims this join. J-0a/b each produce one independent inventory; J-0c assigns one disposition artifact; J-0d produces one ownership map. Original downstream items still depend on J-0, and original disposition/ownership paths remain with their single child writers. J-0m remains the separate S-owned inherited landing-item registration duty."
       },
       "join": true,
-      "done_by": "join"
+      "done_by": "join",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-0m",
@@ -3210,7 +4452,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/kalayantra/plan_model.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/kalayantra/plan_model.json",
         "pattern": "\"j0_children_merged\"\\s*:\\s*true"
       },
       "brief": {
@@ -3225,6 +4467,12 @@
           "the tracker's model checker passes; no cycle; every J-0 row maps to exactly one model item or a recorded not-applicable"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3240,7 +4488,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
         "pattern": "\"smalltest_dispatch\"\\s*:\\s*\\{\\s*\"enabled\"\\s*:\\s*true"
       },
       "brief": {
@@ -3258,6 +4506,12 @@
         ],
         "compat": "an ops-table change is inert until a validated request names the kind",
         "notes": "The teardown script landed with PR 3098 (merged). Phase join: done when every phase-1 child is terminal."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3278,7 +4532,10 @@
         "notes": "deferred keeps J-2a WAITING (never not_applicable). The only unblock is the operator exporting the owner credential to the executor."
       },
       "done_by": "decision",
-      "decision": "D-TEARDOWN"
+      "decision": "D-TEARDOWN",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-2a",
@@ -3317,6 +4574,34 @@
       },
       "requires_outcome": {
         "D-TEARDOWN": "approved"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "backup_restore_verified": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3353,6 +4638,30 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "teardown_dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "teardown": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "absence_proof_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3386,6 +4695,30 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3421,6 +4754,30 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "teardown_dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "teardown": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "absence_proof_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3439,8 +4796,8 @@
       },
       "brief": {
         "spec": [
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_3.md"
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3194_MEASURING_BUILD_v1_3.md"
         ],
         "owns": [
           "PR 3194's files",
@@ -3450,6 +4807,12 @@
           "the PR's own tests and the review's open findings closed"
         ],
         "compat": "builder code behind the measuring rules; the governed generation refusal (migration 1236) still holds"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3469,7 +4832,7 @@
       "brief": {
         "spec": [
           "MEASURING_BUILD_CONTRACT_v1_0",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_7.md"
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3185_PR3187_VERIFIER_v1_7.md"
         ],
         "owns": [
           "PR 3185's files"
@@ -3478,6 +4841,12 @@
           "the PR's own tests and the review's open findings closed"
         ],
         "compat": "verifier code only"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3512,6 +4881,34 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "backup_restore_verified": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3549,6 +4946,34 @@
           "00_ARCHITECTURE/briefs/pravaha/measurement/MEASURING_BUILD_REPORT_v1_0.md"
         ],
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "golden_capture": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "report_written": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "teardown": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "absence_proof_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3569,7 +4994,10 @@
         "notes": "Follows the readback; it is not a step of J-3."
       },
       "done_by": "decision",
-      "decision": "D-G9"
+      "decision": "D-G9",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-4a",
@@ -3591,7 +5019,7 @@
         "spec": [
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/decisions/FINAL_BUILD_SCOPE_v1_0.md",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/decisions/FINAL_BUILD_SCOPE_V1_2_FINDINGS_RESPONSE.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_FINAL_BUILD_SCOPE_v1_2.md",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_FINAL_BUILD_SCOPE_v1_2.md",
           "CHARTER §2.3 phase 6, §15.4"
         ],
         "owns": [
@@ -3606,6 +5034,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "External, agreed with the Suvarṇa campaign on 2026-10-06: until that line is posted L1 is NOT settled (its bottom-up pass carries real L1 fixes; ga_positions IS rebuilt, so the natal build id changes; ga_dashas is NOT). What the judge binds: its seal's input snapshot digests every CONSUMED chart_facts and chart_dashas row by its id with every column except computed_at (build_id, engine_version, verification status, row ids included) — neither of Suvarṇa's content fingerprints, and stricter than both. So ANY rebuild of the canonical chart's chart_facts or chart_dashas between the final build (J-4e) and the layer publication (K9-4b) makes the sealed generation stale, even if no longitude moves; the one-day notice is therefore a request for ADHIKĀRIN to rule (hold, or re-run from J-4e). natal_fp and vim13_fp are human-readable confirmations that values did not move, not the seal's identity. After it, Suvarṇa gives a day's notice on the coordination branch before any further L1 rebuild; a rebuild between this item and K9-4b means re-pinning (ADHIKĀRIN rules, NEW ITEM). If the line is absent this item waits and everything not downstream of it continues."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3628,7 +5062,7 @@
           "GOCHARA_DESIGN_SPECS_v1_4 §4.0 (the pin — amended here by the native's direction NR-KALA-DIRECTION-20261007: Gochara may be modified)",
           "services/gochara_kernel/dasha_read.py",
           "services/gochara_rules/permission.py",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md"
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/l3_families/contracts/DASHA_TABLE_CONTRACT_v1_0.md"
         ],
         "owns": [
           "platform/python-sidecar/services/gochara_kernel/dasha_read.py",
@@ -3649,6 +5083,12 @@
           "Rewrite the pin tests inside existing tests/l3/gochara/test_a53_dasha_read.py (already in the ci.yml explicit list, ci.yml:468); a NEW tests/l3/gochara file is not collected unless ci.yml is edited, which this item does not own."
         ],
         "contract": "Settled build to accept: L1_SETTLED v1 (campaign-coordination, 2026-10-07T22:25Z) `dash_build=ca17639b` = run ca17639b-f3cf-42c7-9866-0a61f3855802; the old pin 75524b3e is unreadable (replace_prior_chart_dashas deleted it). chart_dashas has no tier column — tier is verification_pass_status (two_pass_verified for classical vimshottari levels 1–4)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3663,7 +5103,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
         "pattern": "\"verification_job\"\\s*:\\s*\\{\\s*\"enabled\"\\s*:\\s*true"
       },
       "brief": {
@@ -3682,6 +5122,12 @@
           "a builder-role write of a verification row is refused in production (read back from the role's privileges, not attempted)"
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3712,6 +5158,12 @@
           "non-interference: the measuring rules' outputs unchanged"
         ],
         "compat": "candidate-only"
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3728,7 +5180,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
         "pattern": "\"century_dispatch\"\\s*:\\s*\\{\\s*\"enabled\"\\s*:\\s*true"
       },
       "brief": {
@@ -3743,6 +5195,12 @@
           "cap qualification figures recorded as measured"
         ],
         "compat": "candidate-only"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3763,7 +5221,10 @@
         "notes": "approved only after the measuring build's readback is accepted and phases 6–9 are done."
       },
       "done_by": "decision",
-      "decision": "D-CLOUD"
+      "decision": "D-CLOUD",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-4e",
@@ -3799,6 +5260,34 @@
       },
       "requires_outcome": {
         "D-CLOUD": "approved"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "backup_restore_verified": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3830,6 +5319,22 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "completed_observed": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3864,6 +5369,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "This item is DONE when the results are recorded honestly, whatever they read. By the native's direction (NR-KALA-DIRECTION-20261007) the scores are the tuning baseline, not a gate for the flip; an A5.7 ENGINEERING defect (wrong, missing or unverifiable result) still blocks D-FLIP until fixed."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3900,6 +5411,30 @@
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged",
         "notes": "The SQL observation alone is not acceptance: the verdict also binds the expected manifest and the job's run id."
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "sealed_observed": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "manifest_and_job_bound": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3918,7 +5453,7 @@
       },
       "brief": {
         "spec": [
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3192_SERVING_READER_v1_0.md"
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/reviews/ASTRA_REVIEW_PR3192_SERVING_READER_v1_0.md"
         ],
         "owns": [
           "PR 3192's files"
@@ -3928,6 +5463,12 @@
           "scope and range behaviour per the review"
         ],
         "compat": "the reader is additive; the legacy reader keeps serving until J-6"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3942,7 +5483,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
         "pattern": "\"publish_head\"\\s*:\\s*\\{\\s*\"enabled\"\\s*:\\s*true"
       },
       "brief": {
@@ -3963,6 +5504,12 @@
         "migration": "a new numbered migration; 1236 is not edited",
         "compat": "the constraint is relaxed only for sealed generations; no authority row changes in this item",
         "migration_class": "NEEDS-PROTECTED-WINDOW (likely) — a CHECK cannot read the seal table: admitting 5.0 \"only for a sealed generation\" needs a trigger/function (CREATE FUNCTION/TRIGGER) on kala_gochara_authority; a pure DROP/ADD CHECK would be routine (1236 was)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -3977,7 +5524,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_contains",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
         "pattern": "\"rollback_head\"\\s*:\\s*\\{\\s*\"enabled\"\\s*:\\s*true"
       },
       "brief": {
@@ -3994,6 +5541,12 @@
           "the previous head is retained, never deleted"
         ],
         "compat": "rehearsal only; production unchanged"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4016,7 +5569,10 @@
         "notes": "Native direction NR-KALA-DIRECTION-20261007: Gochara is the way forward; evaluation scores are recorded as the tuning baseline and never block the flip. An engineering defect (unsealed, unverified, wrong or missing results, a failing reader or rollback probe) → deferred with the remediation items named, re-decided once they land. The evaluation protocol is never changed to make a score look better."
       },
       "done_by": "decision",
-      "decision": "D-FLIP"
+      "decision": "D-FLIP",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-6",
@@ -4054,6 +5610,34 @@
       },
       "requires_outcome": {
         "D-FLIP": "approved"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "backup_restore_verified": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "flip_dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "authority_observed": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4087,6 +5671,22 @@
           "/Users/Dev/kalayantra/run/J6L_LIVE.json"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "live_response_captured": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "soak_recorded": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4113,7 +5713,13 @@
           "/Users/Dev/kalayantra/run/reviews/J6.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "J-7a",
@@ -4145,6 +5751,14 @@
           "no registry row deleted"
         ],
         "compat": "contract phase: every reader already reads '5.0'"
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "b",
+        "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
+        "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
       }
     },
     {
@@ -4167,7 +5781,12 @@
         "notes": "approved admits Sudarśana as a candidate method; anything else waits for its own review."
       },
       "done_by": "decision",
-      "decision": "D-T2"
+      "decision": "D-T2",
+      "triage": {
+        "class": "b",
+        "reason": "decides only J-7's admission",
+        "re_entry": "with J-7"
+      }
     },
     {
       "id": "J-7",
@@ -4210,6 +5829,14 @@
       },
       "requires_outcome": {
         "D-T2": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "b",
+        "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
+        "re_entry": "after the flip (J-6l) if D-T2 admits it"
       }
     },
     {
@@ -4237,6 +5864,14 @@
           "every field named in the hand-off exists in the sealed generation's tables (readback)"
         ],
         "compat": "documentation/declaration only — no runtime effect"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "b",
+        "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
+        "re_entry": "before L5 reads '5.0'"
       }
     },
     {
@@ -4246,9 +5881,8 @@
       "title": "Every remaining Pravāha item dispositioned in its own tracker; the on-disk run material archived; the Pravāha tracker left read-only",
       "owner": "K",
       "depends_on": [
-        "J-7",
-        "J-7a",
-        "J-7b"
+        "J-0",
+        "V-J6"
       ],
       "mandatory": true,
       "detector": {
@@ -4270,7 +5904,15 @@
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "c",
+        "reason": "records the disposition of every remaining Pravāha item under the accepted J0_DISPOSITION (J-0c → J-0); owner decision 2026-10-11",
+        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+      }
     },
     {
       "id": "J-8",
@@ -4285,7 +5927,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CLOSE_REPORT_v1_0.md",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CLOSE_REPORT_v1_0.md",
         "min_bytes": 4000
       },
       "brief": {
@@ -4301,7 +5943,15 @@
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "c",
+        "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
+        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+      }
     },
     {
       "id": "K9-1",
@@ -4351,6 +6001,12 @@
         ],
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "S splits per level if one cycle cannot hold it."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4405,6 +6061,34 @@
       },
       "requires_outcome": {
         "D-FLIP": "approved"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "lease_held": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "backup_restore_verified": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dry_run": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "pre_acceptance": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "dispatched": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4441,6 +6125,30 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "publish is the authority switch; the previous head is retained and rollback_head is enabled"
+      },
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "step_evidence": {
+        "per_writer_readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "verification_passed": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "published": {
+          "evidence": "executor_receipt",
+          "detector": null
+        },
+        "publication_readback_accepted": {
+          "evidence": "executor_receipt",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4472,7 +6180,13 @@
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K9-6",
@@ -4511,6 +6225,26 @@
           "the arrival line shows the honest state for a planted information_unavailable"
         ],
         "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "views_live": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "now_sentinel_live": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "arrival_line_wired": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4556,6 +6290,12 @@
         ],
         "compat": "every deleted path's replacement is already the published head (K9-4b); a build at this commit produces the same published rows",
         "notes": "S splits this into one child per module family before anyone claims it. Pravāha's kernel is not touched. Each child implements the exact retain/move/delete disposition in PLAN §8. It must name the replacement and the importer migration; transit_search remains an ad-hoc service and its second formula is renamed, cited or removed as specified. The ka_temporal date/as_of path delegates to the core clocks. No legacy directory is treated as disposed merely because another item cites PLAN §8."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4591,6 +6331,12 @@
       },
       "requires_outcome": {
         "D-KR": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -4620,13 +6366,19 @@
           "/Users/Dev/kalayantra/run/reviews/K9.VERDICT.json"
         ]
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "JOIN-ALL",
       "track": "C",
       "lane": "C · close",
-      "title": "Mandatory-results join: every item of the campaign is terminal (done, or not_applicable with its reason); the mandatory items that ended not_applicable are listed as the campaign's gaps",
+      "title": "Retained-results join (relaunch plan v2.2 §0): every retained item is terminal (done, or not_applicable with its reason); the mandatory items that ended not_applicable are listed as the campaign's gaps; the deferred items are listed with their re-entry conditions and are never counted as closed",
       "owner": "S",
       "depends_on": [
         "B-0",
@@ -4646,7 +6398,6 @@
         "B-7",
         "B-8",
         "B-CLAIM-RECOVERY",
-        "B-DB-BASELINE",
         "B-DEPLOY-DIAG",
         "B-K-INBOX",
         "D-CLOUD",
@@ -4654,14 +6405,14 @@
         "D-FLIP",
         "D-G2",
         "D-G9",
-        "D-GOCHARA-TIMEOUT",
         "D-KR",
         "D-R11",
         "D-R5",
         "D-R6",
         "D-R8",
         "D-R9",
-        "D-T2",
+        "D-RETIRE-B-CLAIM-RECOVERY",
+        "D-RETIRE-B-K-INBOX",
         "D-TEARDOWN",
         "D-VC",
         "J-0",
@@ -4693,12 +6444,11 @@
         "J-6l",
         "J-6m",
         "J-6r",
-        "J-7",
-        "J-7a",
-        "J-7b",
         "J-8",
         "J-8a",
-        "J-GOCHARA-TIMEOUT",
+        "K-AVADHI-C",
+        "K-CERT",
+        "K-CERT-2",
         "K0-SV",
         "K0a-0",
         "K0a-1",
@@ -4717,6 +6467,7 @@
         "K3-1",
         "K3-2",
         "K4-1",
+        "K4-2a",
         "K4-2aw",
         "K4-2b",
         "K4-3",
@@ -4742,6 +6493,7 @@
         "K9-4b",
         "K9-5",
         "K9-6",
+        "KA-1e",
         "KA-1w",
         "KA-2",
         "KA-3a",
@@ -4750,7 +6502,7 @@
         "KA-4b",
         "KR-1",
         "KR-2",
-        "L0-K",
+        "KV3-SCHEMA-1",
         "L0-K-RUNNER",
         "L0-M",
         "V-J6",
@@ -4784,11 +6536,18 @@
         ],
         "tests": [
           "ky audit --since kickoff exits 0",
-          "the gap list equals the tracker's mandatory-and-not_applicable set"
+          "the gap list equals the tracker's mandatory-and-not_applicable set",
+          "the deferred list equals the model's triage class b set, each with its re-entry condition"
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a_close"
+      }
     },
     {
       "id": "C-1",
@@ -4802,7 +6561,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md",
+        "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md",
         "min_bytes": 6000
       },
       "brief": {
@@ -4813,11 +6572,18 @@
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md"
         ],
         "tests": [
-          "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly"
+          "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly",
+          "the deferred (class b) list with re-entry conditions is attached; a deferred item is never reported closed"
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a_close"
+      }
     },
     {
       "id": "C-2",
@@ -4849,7 +6615,13 @@
         ],
         "compat": "documentation/declaration only — no runtime effect"
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a_close"
+      }
     },
     {
       "id": "C-3",
@@ -4880,7 +6652,13 @@
         "compat": "documentation/declaration only — no runtime effect",
         "notes": "Lane v1 inspects the drain receipt independently and records its acceptance; the finalizer then records completion (it retries until that acceptance exists). Finalisation has two phases (fleet/finalize.sh, run by the executor on SŪTRADHĀRA's finalize request). Phase 1 drains every lane except v1, proves their locks released, refuses to remove any busy or dirty worktree and writes the drain receipt; a timeout or a removal failure is a FAILED drain, never an accepted receipt. The finalizer records this item's completion, because the conductor is stopped by then."
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "finalizer_independent_review_artifact_digest",
+      "triage": {
+        "class": "a_close"
+      }
     },
     {
       "id": "C-4",
@@ -4912,7 +6690,13 @@
         ],
         "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
       },
-      "accepts_not_applicable_dependencies": true
+      "accepts_not_applicable_dependencies": true,
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "finalizer_independent_review_artifact_digest",
+      "triage": {
+        "class": "a_close"
+      }
     },
     {
       "id": "B-6r",
@@ -4948,6 +6732,12 @@
         ],
         "compat": "executor control path preserves current request and receipt semantics; unsafe refresh fails closed",
         "notes": "Mandatory JOIN-ALL follow-up under KYD-14. Ordinary builder-authored reviewed PR; not a B-6, B-3, B-7 or B-8 dependency. Installed fleet/executor snapshots are never edited in a cycle. Activation stays inside the authorized executor/operator boundary."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "done_outside"
       }
     },
     {
@@ -4957,7 +6747,8 @@
       "title": "Preserve original-owner checkpoint identity across released and expired claim recovery, including refused-then-retried attempts; declared joins derive from earned children and refuse worker claims",
       "owner": "K",
       "depends_on": [
-        "B-7"
+        "B-7",
+        "D-RETIRE-B-CLAIM-RECOVERY"
       ],
       "mandatory": true,
       "steps": [
@@ -4993,6 +6784,34 @@
         ],
         "compat": "Source package repair only; existing claims and event history remain readable, and no installed tracker or fleet script is changed by a lane cycle",
         "notes": "KYD-30 fleet defect filed once; KYD-31 verifies all four current claims are live, so the immediate blocker is cleared. This remains ordinary builder-owned source regression/repair, not a launch or B-8 gate. Live installation requires reviewed source and a measured safe boundary. Preserve existing checkpoint and review evidence; no installed-control edits. KYD83 consolidates join admission and KYD81 model/state resolution in this same claim-lifecycle source repair. One original eligible builder owns the bounded source PR after governed scope registration; no duplicate unit/implementation, installed control edit, wrapper, peer lock, source artifact fiction or manual join completion. All earned child identity and original erroneous claim/release history remain."
+      },
+      "requires_outcome": {
+        "D-RETIRE-B-CLAIM-RECOVERY": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "reproduce": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "repair": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "negative_cases": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "package_tests": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "retired",
+        "decision": "D-RETIRE-B-CLAIM-RECOVERY"
       }
     },
     {
@@ -5002,7 +6821,8 @@
       "title": "Worker role consumes current K directions before resume/claim work and persists with canonical renewal",
       "owner": "K",
       "depends_on": [
-        "B-7"
+        "B-7",
+        "D-RETIRE-B-K-INBOX"
       ],
       "mandatory": true,
       "steps": [
@@ -5036,6 +6856,34 @@
         ],
         "compat": "Prompt-only source change; canonical claim/dependency/verdict/CI/lease/runtime gates and installed controls are unchanged.",
         "notes": "Single existing report registered once. This is not a launch, B-8 or stage-work dependency. A builder authors the ordinary PR; S mirrors merged source. No scripts under run, tool wrappers, new mode, claim-file edit, supervisor/executor change or duplicate writer. KYD-38 adds the measured canonical-renewal clarification to this same item and builder PR; no CLI implementation edit or wrapper. KYD-47 folds the existing helper-path wording report into the same prompt correction; actual local DB baseline failure remains separate."
+      },
+      "requires_outcome": {
+        "D-RETIRE-B-K-INBOX": "approved"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "read_order": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "peer_ack_refusal": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "rendered_review": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "post_merge_uptake": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "retired",
+        "decision": "D-RETIRE-B-K-INBOX"
       }
     },
     {
@@ -5078,6 +6926,30 @@
         ],
         "compat": "Read-only diagnosis, owner coordination and evidence only. No shared workflow, IAM, schema, source runtime or installed control edit by S.",
         "notes": "One existing KYD-41 diagnosis item, mandatory for campaign close only. It adds no launch, B-8, stage or source-work dependency. K0a-1a source progress remains true; its guarded completion already requires post-deploy acceptance. Shared-owner repair, if required, stays with the existing foreign owner and normal review path. No duplicate control subsystem, wrapper or operation retry."
+      },
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "step_evidence": {
+        "capture": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "owner_routing": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "deployment_readbacks": {
+          "evidence": "artifact_section",
+          "detector": null
+        },
+        "independent_verdict": {
+          "evidence": "artifact_section",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "done_outside"
       }
     },
     {
@@ -5099,8 +6971,8 @@
         "spec": [
           "CHARTER §2.3 (the twelve phases)",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
           "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
         ],
         "owns": [
@@ -5112,6 +6984,12 @@
         ],
         "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
         "notes": "One machine-readable PR inventory; read foreign branches and metadata only. Keep this artifact separate from dispositions. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -5133,8 +7011,8 @@
         "spec": [
           "CHARTER §2.3 (the twelve phases)",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
           "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
         ],
         "owns": [
@@ -5146,6 +7024,12 @@
         ],
         "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
         "notes": "One machine-readable residual-state inventory. Do not edit the retired tracker, decisions, holds or source. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -5168,8 +7052,8 @@
         "spec": [
           "CHARTER §2.3 (the twelve phases)",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
           "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
         ],
         "owns": [
@@ -5183,6 +7067,12 @@
         ],
         "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
         "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -5204,8 +7094,8 @@
         "spec": [
           "CHARTER §2.3 (the twelve phases)",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
-          "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+          "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
           "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
         ],
         "owns": [
@@ -5218,6 +7108,12 @@
         ],
         "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
         "notes": "One ownership-map artifact. S-owned J-0m later registers inherited landing children and the reviewed shared-file waits; this item does not edit the plan model or any foreign checkout. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
       }
     },
     {
@@ -5258,6 +7154,30 @@
         ],
         "compat": "Source runner repair only; existing readers and unrelated corpus rows remain unchanged; no live ingestion, provider authentication or permission change.",
         "notes": "One existing report registered once, with original L0-K retaining rows-only ingestion/count/search acceptance. Preserve any original k5 branch/checkpoint; no competing source writer. No credential handling, paid provider probe, served-reader edit, wrapper or installed-control repair."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "imports_and_dry_run": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "served_table_path": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "negative_cases": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "independent_review": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "done_outside"
       }
     },
     {
@@ -5310,6 +7230,32 @@
         ],
         "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change. KYD-89 permits parser recognition only: no L0-L2 asset declaration, target floor, count/size SQL, registry row/UPSERT policy, coefficient or foreign migration1320 changes. KYD-94 adds only versioned predecessor metadata consumption in disposable caller databases; the narrowly enumerated fixture may carry exact governed integrity text/floor needed by pending migrations. Existing production declarations/rows/UPSERT policy, corpus, historical migration guards and all parser restrictions remain unchanged.",
         "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode. KYD-89 removes only the administrative source-scope park. Sole S records this scope before original eligible K1 work; lawful model admission/canonical preflight and original claim remain required. Existing K0a-2/L0-M/L0-K readiness blocks remain until measured. KYD-94 is same-item prerequisite remediation, with original eligible K1 source ownership retained. Enumerated source scope requires ordinary independent exact-head review, protected merge, lawful model mirror and canonical preflight before worker resumption. Frozen PR3277 parser qualification remains independent and unchanged; this later fixture scope grants no baseline readiness, caller acceptance or downstream unblock."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "reproduce": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "baseline_source_repair": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "negative_readiness": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "independent_lane_receipt": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "b",
+        "reason": "its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11",
+        "re_entry": "if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed"
       }
     },
     {
@@ -5335,6 +7281,11 @@
           "Approval specifies only target writer_timeout_seconds and measured arithmetic; no hold lift, dispatch, frozen contract, asset id, spend/worker ceiling, IAM or foreign edit"
         ],
         "notes": "Formal outcome binding for one existing J source item, not another implementation or K0a gate. KYD68 is deferred; source registration does not approve5400 or a production action."
+      },
+      "triage": {
+        "class": "b",
+        "reason": "rules one legacy materializer timeout; no retained item consumes it",
+        "re_entry": "if J-4e/J-4f show that timeout binding"
       }
     },
     {
@@ -5383,6 +7334,36 @@
         "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger.",
         "contract": "asset_registry.writer_timeout_seconds (prod_schema.sql:9018) on asset_id = ka_gochara_v3_century_materialize; all other columns must read back byte-equal.",
         "migration_class": "ROUTINE-OK — single UPDATE of asset_registry.writer_timeout_seconds."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "step_evidence": {
+        "literal_evidence_bound": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "policy_approved": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "additive_migration_tested": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "independent_review": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        },
+        "production_readback": {
+          "evidence": "pr_head_evidence",
+          "detector": null
+        }
+      },
+      "triage": {
+        "class": "b",
+        "reason": "applies D-GOCHARA-TIMEOUT; no retained item consumes it",
+        "re_entry": "with D-GOCHARA-TIMEOUT"
       }
     },
     {
@@ -5439,7 +7420,13 @@
         ],
         "migration_class": "NEEDS-PROTECTED-WINDOW — 1330 runs CREATE TABLE x4 + GRANT USAGE ON SCHEMA public; 1334 GRANTs on a 1330 table and sorts after it — both must apply inside the window, in order 1330, 1334. Merged unlisted: every routine deploy fails at 1330 until the window exists and is dispatched."
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K7-1a",
@@ -5506,7 +7493,13 @@
         ],
         "shared": []
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "KA-1e",
@@ -5576,7 +7569,13 @@
           "v2.0 conductor: library item — starts on kala_core (K0a-1); its writer/publication path waits for the manifest (K0a-4)"
         ]
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "KA-1w",
@@ -5629,7 +7628,13 @@
           "v2.0 regroup of KA-1-facade, KA-1-writer, KA-1 (velocity amendment §2)"
         ]
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K4-2aw",
@@ -5679,7 +7684,13 @@
         ],
         "shared": []
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K4-2a",
@@ -5758,7 +7769,13 @@
         "contract": "kala_convergence today (prod_schema.sql:14633): convergence_id, chart_id, window_start, window_end, convergence_score, constituent_factors, source_citation, computed_at, signal_id, mode, peak_date, orb_strength, rarity_years, confidence_score, confidence_label, independent_current_count, is_off_dasha_discovery, horizon_tier, domain, confidence_label_relative, tier_basis — no generation, no D(W)/segment columns. Readers of confidence_label beyond the three named in K4-2b: platform-mcp tools/retrieval/kala_temporal.ts, query_convergence_windows.ts, ph_nimitta.py, ph_rectification, L4 query_phala_calibration.ts, ka_tulana/writer.py, service_probes.py.",
         "migration_class": "NEEDS-PROTECTED-WINDOW — <n>_kala_jury_candidate.sql: the brief requires a candidate partition key (chart, generation, class) — a new unique index or table. ROUTINE-OK only if it is ADD COLUMN on kala_convergence (PK-only table) with no index."
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K6-123",
@@ -5826,7 +7843,13 @@
         "contract": "kala_activation (prod_schema.sql:14479: id, chart_id, signal_id, ayanamsha_id, signature_class, active_dasha_periods_jsonb, activation_predicted_dates_jsonb, dasha_activation_proximity_score, activation_start/end/peak_date, orb_strength, convergence_score, source_citation, computed_at), kala_darshana (14708), kala_jivana_parva (15900: id, chart_id, parva_index, start_year, end_year, dasha_planet, dominant_signal_class, parva_quality, theme_keywords, narrative, high_convergence_count, avg_effective_score, source_citation, computed_at, parva_level) — none has generation. Judge inputs: ka_gochara_eval_window (13860), ka_gochara_relationship_record (14064), ka_gochara_contact (13795: contact_id, occurrence_ordinal, t_in/t_out/t_exact, coverage), kala_gochara_coverage (15576).",
         "migration_class": "NEEDS-PROTECTED-WINDOW — kala_activation UNIQUE idx (chart_id, signal_id, ayanamsha_id, source_citation) and kala_jivana_parva UNIQUE idx (chart_id, parva_index) and (chart_id, source_citation, start_year) lack generation; re-keying them creates indexes. kala_darshana (unique convergence_id) can stay ROUTINE-OK if candidate rows never reuse a legacy convergence_id."
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
+      }
     },
     {
       "id": "K9-23",
@@ -5869,7 +7892,233 @@
           "v2.0 regroup of K9-2, K9-3 (velocity amendment §2)"
         ]
       },
-      "join": false
+      "join": false,
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K-CERT",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV",
+        "KV3-SCHEMA-1"
+      ],
+      "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-cert-tier"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa FINAL/strict FIX_LIST: bg_gochara_citation_resolution Dens.served PARTIAL",
+          "CLAUDE.md §N.6 Serving Density Principle",
+          "owner approval of the compressed certification plan (SS N-431), relayed 2026-10-10"
+        ],
+        "owns": [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          "its test file",
+          "platform/src/generated/capability_estate_census.json (canonical regeneration only)"
+        ],
+        "tests": [
+          "a test that fails on base (no tier column in the served select) and passes after",
+          "Dens.served for bg_gochara_citation_resolution reads PASS on the census of the branch"
+        ],
+        "compat": "additive response field only; no migration; no other file",
+        "notes": "Branch work during the Kāla merge hold. The PR is labelled DO NOT MERGE; Suvarṇa's Engine reviews it and SS arms it in the Suvarṇa window. Completion = branch merged by Suvarṇa."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K-CERT-2",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-cert-citation-resolution"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa SS N-443",
+          "PR #3055 (branch suvarna/land/TI-l0data-20-001, head 0dd4b6e59): the bg_gochara_citation_resolution half only",
+          "CLAUDE.md §N.2 frozen WriterBase contract, §N.3 L0 idempotency, §N.4 cockpit truth (count_sql)"
+        ],
+        "owns": [
+          "platform/python-sidecar/brahmagyan/l0_gochara_citation_resolution.py",
+          "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_citation_resolution.py",
+          "platform/python-sidecar/pipeline/orchestrator/writers/_l0_static_gate.py",
+          "platform/python-sidecar/tests/fixtures/gochara_citation_resolution_live.json",
+          "its tests incl. test_has_writer_completeness",
+          "one surgical data-only asset_registry migration if #3055 lacks the has_writer/count_sql flip (number claimed on CAMPAIGN_COORDINATION §2)",
+          "generated digests + census (canonical regeneration only)"
+        ],
+        "tests": [
+          "writer conforms to WriterBase (@register, run(ctx), never commits ctx.db_conn)",
+          "the 14 rows equal the live fixture; the migration-631 digest recomputes TRUE inside PostgreSQL after a damaged table is replaced",
+          "asset_registry has_writer true and count_sql returns 14 on a disposable DB"
+        ],
+        "compat": "new writer + registry flip; no serving change; Suvarṇa builds the asset once in its run",
+        "notes": "Branch work during the Kāla merge hold; DO NOT MERGE label; go/no-go to SS by 2026-10-11T12:00Z; hard deadline 2026-10-11T18:00Z, after which it stays out with a named reason."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K-AVADHI-C",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "owner": "K",
+      "mandatory": true,
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+      },
+      "brief": {
+        "spec": [
+          "Suvarṇa SS N-450 item (3)",
+          "production asset_throughput ka_avadhi: state=error since 2026-09-10T19:10Z, 'post-write integrity check failed: integrity_check_sql → False' (conjunct (c) lord_condition_fact_refs)",
+          "asset_registry.integrity_check_sql for ka_avadhi; W2 M4 ruling on lord_condition_fact_refs",
+          "CLAUDE.md §N.5 (L1 is the authority; fact refs must resolve), §N.7.6 (honest null over invented value), §N.8 (a check must measure what it claims)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py",
+          "platform/python-sidecar/services/ka_avadhi/**",
+          "one surgical data-only migration on asset_registry.integrity_check_sql for ka_avadhi IF the conjunct itself is wrong (number claimed on CAMPAIGN_COORDINATION §2)",
+          "platform/python-sidecar/tests/l3/ka_avadhi/**",
+          "generated digests + census (canonical regeneration only)"
+        ],
+        "tests": [
+          "on a disposable DB seeded with the canonical chart's L1/L2 inputs, the writer's rows satisfy integrity_check_sql → True",
+          "a fail-on-base test that reproduces today's False",
+          "no lord_condition_fact_ref is invented: every ref resolves to chart_facts.fact_id or the row carries an honest null with a reason"
+        ],
+        "compat": "first decide from evidence whether the WRITER is wrong (refs missing) or the CHECK is wrong (asserts something W2 M4 declared out of scope); fix the one that is wrong, never both, and never relax the check to pass",
+        "notes": "Branch work under the Kāla merge hold; DO NOT MERGE label; Suvarṇa merges in its window. Deadline 2026-10-12T18:00Z with a go/no-go to SS by 12:00Z; if not ready, ka_avadhi stays out of the tail with a named reason."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "D-RETIRE-B-K-INBOX",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Retirement of B-K-INBOX by owner decision (relaunch plan v2.2 §0 step 4)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+          "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+        ],
+        "notes": "Owner-authorised outcome: refused — B-K-INBOX is retired, not completed. v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6). The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+      },
+      "done_by": "decision",
+      "decision": "D-RETIRE-B-K-INBOX",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "B-K-INBOX"
+      }
+    },
+    {
+      "id": "D-RETIRE-B-CLAIM-RECOVERY",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Retirement of B-CLAIM-RECOVERY by owner decision (relaunch plan v2.2 §0 step 4)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+          "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+        ],
+        "notes": "Owner-authorised outcome: refused — B-CLAIM-RECOVERY is retired, not completed. v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet. The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+      },
+      "done_by": "decision",
+      "decision": "D-RETIRE-B-CLAIM-RECOVERY",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "B-CLAIM-RECOVERY"
+      }
+    },
+    {
+      "id": "KV3-SCHEMA-1",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "title": "Schema prerequisite for K-CERT: the stored tier column that bg_gochara_citation_resolution's density contract names, added additively under the Suvarṇa asset custodian's recorded contract (KYD-150)",
+      "owner": "K",
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/kv3-schema-1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 3, §8 (schema-prerequisite packets: admitted existing schema + intended additive contract)",
+          "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150",
+          "CLAUDE.md §N.6 Serving Density Principle; §N.4 surgical migrations, verified",
+          "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)"
+        ],
+        "owns": [
+          "platform/migrations/<allocated>_gochara_citation_resolution_tier.sql (additive; the number is allocated at job start, never written in the packet)",
+          "platform/python-sidecar/tests/l3/kala_db/certification/test_citation_resolution_tier_schema.py"
+        ],
+        "tests": [
+          "on the admitted schema the column is absent (the test fails on base) and present after the migration, with every existing column and row retained",
+          "the migration is idempotent and is verified applied after deploy (CLAUDE.md §N.4)",
+          "no value is synthesised: rows without a recorded tier stay NULL with the custodian's stated reason"
+        ],
+        "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
+        "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
+        "notes": "BLOCKED CONTRACT INPUT. The column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (bg_* tables are outside the Kāla partition, CAMPAIGN_COORDINATION §3a); none is defined here (CLAUDE.md B.10, §N.7 rule 6). The conductor requests the contract through the coordination §6 log, as KYD-150 directs. Until it is recorded this item is blocked and K-CERT waits. If the custodian adds the column in its own estate, this item is closed by a recorded decision naming that change, never silently."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
+      }
     }
   ],
   "decisions": [
@@ -5962,6 +8211,18 @@
       "title": "Measured timeout policy for ka_gochara_v3_century_materialize",
       "owner": "ADHIKĀRIN (G5/G12; KYD-68)",
       "default": "deferred — independent current registry/run/policy evidence required; proposal is not approval"
+    },
+    {
+      "id": "D-RETIRE-B-K-INBOX",
+      "title": "Retire B-K-INBOX (worker-prompt inbox, acknowledgement and renewal repair for the standing K lanes)",
+      "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+      "default": "refused (staged) — v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6)."
+    },
+    {
+      "id": "D-RETIRE-B-CLAIM-RECOVERY",
+      "title": "Retire B-CLAIM-RECOVERY (tracker repair of checkpoint identity across released and expired claims)",
+      "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+      "default": "refused (staged) — v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet."
     }
   ],
   "coordination": {
@@ -6074,7 +8335,7 @@
         "J-0",
         "J-5s",
         "J-6",
-        "K8-KA"
+        "KA-4b"
       ],
       "ka_gochara": [
         "J-7a",
@@ -6192,16 +8453,18 @@
       ],
       "line 4 — certification mapping per implemented asset; rehearsal census": [
         "K8-R26",
-        "K8-K0a",
-        "K8-K12",
-        "K8-KA",
-        "K8-K3",
-        "K8-K4",
-        "K8-K5",
-        "K8-K6",
-        "K8-K7",
+        "K0a-4",
+        "K2-2",
+        "K3-2",
+        "K4-3",
+        "K5-G1b",
+        "K6-5",
+        "K7-4",
+        "KA-4b",
         "K8-REG",
-        "K9-5"
+        "K9-5",
+        "K-CERT",
+        "K-CERT-2"
       ],
       "line 5 — close report, SESSION_CLOSE, finalizer receipt, final verdict": [
         "C-1",
