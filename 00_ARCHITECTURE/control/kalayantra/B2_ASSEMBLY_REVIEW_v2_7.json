@@ -4,14 +4,14 @@
  "verdict": "ACCEPTED",
  "reviewer_session_id": "94345d41-9ed0-4758-a26e-121ac8553ca0",
  "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
- "components_head_reviewed": "4190b5d05d2aacc269b0058041301a48d4e0b3e3",
+ "components_head_reviewed": "f6757f130bc0dda1798d37c03834055813b32c37",
  "basis": "Coverage verified by hash only: every bound component at this head is covered by exactly the bytes named in one of the ten ACCEPTED per-area hash-binding review records listed here (each by its own reviewer session); the per-area reviewers compared the bundle with the per-piece ACCEPTED heads and read the diffs of the files that differ. The cockpit reviewed nothing else for this record (owner lean mode; surrogate answer 4).",
  "inputs": {
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py": "58ffdd130d381f5b33a23309b681cb98e40ca7a05ec9a93bba0faf03f996512f",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kymanifest.py": "e18d1c95e41831d53d1cc099ca30bec2b10108af746aaa348a133efe354ea49e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyschema.py": "62d09bd92bd98eabcafa5a2d0db1cfa89bd8bacda8e0c35f6ed39d79215056c9",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt": "4f60cbe62a750596c8ab50511b5db86b0295f26612b95f23109d5a08e7d3e02c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt": "15c77b4d07f06fe2b67d68b950b19b6047ce96e2feb41d798a64289262441883",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/packet.json": "742f6bbab3bc7b6ed096341da6127be3ec2dc28f3ebec98a05df3d9579b508d5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/release_receipt.json": "b5ad761e61d935c4be8461407195f9f49cb9bc954c11cd41d1780926f0a01618",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/awaiting.json": "23d7dcd63a731ca1dc864303ecbe171ca9f58e6f4de22f6f3141ad574668d32a",
@@ -23,7 +23,7 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.README.md": "aeb06db93ef3ea910efbfd205e11bed178623bd0c5fe66ed495f0700fae6c12a",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py": "74a96a02ccc2e7ae77c737a8f0a516bd8036cc1e6df960ee2b1105d4b812c39d",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyschema.py": "98dfa299bce347931965815205fb2d876a0aee8fd6b5cd0f4c90c8898a1fb31d",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kymanifest.py": "e24f95ccb44a9a82c4d2d099714c842ba9a8241236d9bd79eddb620d484ba487",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kymanifest.py": "3ec8769f46983e960f4a74b85d8cd90bafe31ca31f64f489a0e387d7bc6c210e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_decision_record_contract.py": "51e5387628f85a52df8d5088ab0610664f8639cfcdd2be39c8477722d71fa10f",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/awaiting.json": "c41ed977ec26c2b0e76dc11d4facbe0e1260907dda0265788cf7ebdb193467e4",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_claude_ok.sh": "e0864a04eac9561f029cdbdb473f2c219346ec8ccacdf1d37808af81d154e40e",
@@ -63,6 +63,9 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result_launcher_commit.json": "fd071415769b492b5a103ec51aea6d36955541415a2b6dae4c971ed8c1a01356",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json": "45f758acbbf58f75a1d3c81ca4ba0eba8269d236bcf5bbea884f361f14e8a776",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json": "c195bcf7993c9b2be65a00fc29c41a511f72bdd1051cbaf9f6ee4ddc61d65895",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json": "8befb8d1e7e6924a39808f4962a9a358ee676aad567c3f0fde291665e3f3e133",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json": "5f5b8f52a760f958173880bab67c7bf61ac17c7452174c4839da597776224426",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py": "e8d334f2ab5bfe3067261aca15f774a508ba4c8147492ead54976ce6ef66a521",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json": "8de80910455c5290c57e8264ff141b9250e1ee44925b541335e2098e306fbe41",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py": "c1f7fd7ff04901057b912d955442f304ad6a0f8468a9094e6e052ad09c73f0a3",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh": "3d4e39999f76dd25e8ce59a7f840286d92d77c4d63a17845f6a4c74422c3559b",
@@ -105,11 +108,11 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/ku_bindings.json": "a3fe289264f11fc0399fc3f16c5cab96531a9b3bda971ecdb66ee4b25fd2a95c",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kycardtokens.py": "2ceb714a280c934129e73953f94158cc3b5201c3ebfdb9b64b9778795f43bf85",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py": "b992f8c86f50a4225f0918e0bf663494707f187358de31cfa8ec8628dc2455a5",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py": "9564d9c467f9e0a1157735de9a4c928154cbaf23ffba63203925904b54de90d7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py": "937040b069d15e1456a9cbb36cd28273bc7144a1722e6268af7c06aa7e9252b8",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py": "8031dfbb50c124814bb4d4bf7dd48535da505b3742e2349d4b3975cea16d8ad9",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyctl.sh": "82fe33a91a509aa88c087d082bb33a22a008907b3feca3c4550a270a13d008f1",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kynotify.sh": "a4afc6a54f386f208a2217d2345db20b391086ce5c6a845a8f8de28d952e7736",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyctl.py": "911f41a9c9bd436f79536b183e54eb582ca23a08534ab2831e86287e1dca9a33",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyctl.py": "cd293ce867256ba09007959a5fc6c49890ee39505116185ee594b258437e5188",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/launchd/in.marsys.kalayantra.conductor.plist": "6593b98dcf96ba4bf98ec5b60c657be3026e01e45e2b30f0df75c90dcc823ddc",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/launchd/in.marsys.kalayantra.dispatcher.plist": "9b0f0d2493fb9445891b26d4f133a16b7e9758a52fbe4bf26186ce4a9ffadc3e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/launchd/in.marsys.kalayantra.planner.plist": "b6f128900e04a547bd7d491304b4231e03aeceb68ef37cbe8831a6347aaa9289",
@@ -133,14 +136,14 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/crash_tick.py": "06bc5a0416027a7fd2809495cd2e38d5c6085fb15afe0656b65f11da731e74d3",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_git": "385cce4d8839d4ca69d0b3b82cf64991c5553feae37fb7eac9409d02397f5915",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_control/fake_ky": "532e4b0cee836c342a87ad4983df0c448704fd7f3b50ba036c4eda03716b7611",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md": "5d5c9132d34ebc31f078cf2f7cf1d27b48b26d2c1ad0b1563eaf1fe353d0948e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md": "8199fd1882df7cfbcb7e7a4754314ffb8e33a65425395e96b4bf1215650616d0",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json": "8f4b781d5961076d6493e8b9147857e7656349985637f16d06f137c7f7f0aa87",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/accept/README.md": "0a97e34e76295dd0b2724f33bcf0cf4e78c0a126e010065bdb97ea0af36bd61c",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/accept/j0_disposition.py": "a6f4f8ae4af634764731d971f1b44c9c55455c1c79dd9bd8e84e3b63195179eb",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/ADHIKARIN.md": "cccbca8697bf9c043892962994c191b88db9c3c06000fe753bd3a3c83cac5d90",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/ADHIKARIN.md": "51b01f2f2f48f835c21e3486790131f7d41cfb236429e6e3216faea642982738",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE.md": "21c844ea7f56deb580b9208788bfc6e4837e1619be08e8d06d2b378f3cd1da27",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/KARAKA.md": "f60f77d8def10d5403cf081ef5440c5bc10d78de92a4a078d6a0a51feb490474",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/PARIKSAKA.md": "ba93b22997fe4057d654134c803f45df662fd45d8179720c6bedaa798ac3796c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/KARAKA.md": "2a35bca70168e024286e06de9687048f781d4d6b88a0a8de8ae1e8bfaaea5a8e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/PARIKSAKA.md": "fb92d24c4e26845bdbb7dfe6671805a09d0baa9aadcdd9af0a10916b76e08dc7",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/disposition.json": "f7e0eda4f4f723a109a0bc07b5b8a1df358dff4fd806d6f62918ce1f77b8d050",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/evidence.md": "e303d08e2588ae8cbcdd46f6d74004160639606918f54141d7a6a5f0f27e7844",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/prs.json": "985009336b2b7d72c74edfefc73749d970d43b167a4c639946ad1862cc7ee57b",
@@ -157,18 +160,18 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json": "eb9877fe3c7c5a933a2b6863282d9b28a6f996c4de6e68c1eca8a18b0e347477",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh": "f5270ab71d861258f46232564496147bbc465b7bf00abb7742c91c727e0902d5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/fleet.env.example.sh": "4edfb7d38442518a64b87df88603c5014a6dca1231ce65f5b18574b6db925289",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/install.sh": "e27c9d4235c65a962cfd815f5b53498ac3589ff4e2577913145d80d4097786bc",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/install.sh": "9eac609e0baf59e005aceed4190f553daefaf919daf94641ed86380374c2afd7",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh": "1861b552aa0b0d1042a39523271deb7f9f85ff6b8f06f3de057ebe162d98db06",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh": "1a47b1508ba3fb750d0a8765a8af60c24193869e119fefa18a5ee051685b4313",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyalloc.py": "b60edd04aefcacce7884edcb16f298c3276e2d2ec16359f9450250d0be563fbb",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboundary.sh": "58fff75d54ce649fed46d55979b6c9262b4492ac93476bd4a57e34ffe9e63f08",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyclosure.py": "0b52a7a02afade89b7e857d888a1944f4df1ec2c529ecd7c5c914b37064c169f",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_admit.py": "51a195aa43695d9ad40e6c4474b546d15af721a81bde8c74bdf4480050908adc",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_jobs.py": "f0d77631aa1f3e40ad7fe059f5a5f1cabdea46ae8cbb694d532cddb08cf73624",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_build.py": "44fdc7658ceb7d83d8f91eff21ddd7575136a4dbe02bf3febd86974e2c887b44",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_admit.py": "557512a9a65352ad6d73a013960f43887307eb1cf2fcef5f1df5a6a712c07760",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_jobs.py": "e488ee0a29b346574775be80a06a1eaf46a4a8a29dfe81b624e1ceb33f9d7dc9",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_build.py": "ddee32a10fc5b5759338435ad510393f5fa38f7e2b25507a3b5dcff23ea2afc1",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_land.py": "f9063dba7fee98d80c58e0dd075ba1196ac2a36ce62e1bd155933a1179d7ab44",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_ops.py": "712d47f9e57c63245c0892b1da2181112adb60ec99c22e34f723030fdcca40ed",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/kydispatch.py": "373a390b9dd360aefef0a0e3c5bec3bda4784f9262771df7fb41a467ac9a14dd",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kydispatch.py": "0d2a0721676792a9a46b5dbbd1d90713850a26149e7ffc26e532443fa955e33e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kygate.sh": "420839f62c09b7daf77bb95756596ce2eafbbdba876050e70a6cb7f12f70a3b2",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob.sh": "53ff680a27e0af49bb08d973b6452afe9f5a9d7eed6dfebbce08e77d7092394e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kylock.sh": "26b6545b102e3262d8f8f9c730b7b03b8025e4148157dbf4ee71a1a6b69389d4",
@@ -187,17 +190,18 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/readback_sql.sh": "a189a52a5b79df8a01fb912544d25bf245166df285528aff3dbf31a10b8ba108",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/regroup_model_v2.py": "7460b6280965a825394604c2fea66fa002c1bc101532da2f5922b8de55135568",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/admit.json": "3924ab1efe53c65f2148e0f6f54151791aeb57f42588aad65a0b879ea97ba4ff",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/engine.json": "b4738d9bb282039b3317f1873b93b34447f0c11b3b545b90d7f8b507f66b19f7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/engine.json": "9fd557fc6b737d115ab1b1f3b986361434368cedaee371ca346197ba5caa2cd7",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/jobs.json": "0bbe8b07c19b8b96675fb5465b4de810ec831044fc4f50e9d32549e96c06f29a",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_build.json": "89b49e636c68bacca9ef704f3327877948e5ef7b993ad9497879e96db35262eb",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_land.json": "0009b0b7eeed19fd97a87f8c39eeabd9bc289896791ef1ff6fc17d7dc195d214",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_ops.json": "8b0fff5ed8da1c4500024c7d4daec5eed46e055b41f4657320ce2753418adf47",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_finish_fix.py": "f2e59f8e41ef1cc7659f493f7939992ff6e4cd78c0825f1ba44782e618a3c48f",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_admit.py": "b25d6869a5adbc83baa792f7cf468b216ca2f93131f7039157bd1eae0adb70ad",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_jobs.py": "b4eedcd5c4fc1a5b2dfa61dba0a2b4975955c6d6b5d637a4c2155d4a001f3439",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_build.py": "da8be4ccb48a44ea314e3909acd5ea02df99640c428258da07d0f122436aea24",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_jobs.py": "b6f624c73ec4de336c66edee3255cc7de66bfed9d06cbb7e9ac7581804920de4",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_build.py": "2629a8dfcb72c4f8068ea464c21ef04f570f8e37a50ccdfd4a5c35f6e7cf1c11",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_land.py": "bb49b8097a6957a84b5339d5d951d40f60a431bca83b146d36b7b93a4a97301c",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_ops.py": "7005b7f85629344eb4a5ae453405d7047c88e9c2db9252fad2e9bcc4ab4ba488",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kydispatch.py": "ea13ad68d402ce94e311a7697d5710be6a8e51f44c10051f40d2dc0d44c6d6b2",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kydispatch.py": "3192b66e9335a73419ea93ac9127786cccf3adab383d5861400888a2ca6a381d",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_cases.py": "69ae49ac3231350ca2f452f38e5f50f023e96571aec513c8bd81c527265d75eb",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/finalizer_cases.py": "4a3277a5162d82cf78b145c9342339ae933fc22de07c63bc6a91668cb92c2f72",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/kyroute/items.json": "f9c20b7eded79b267872f47c8b8e43383fcb0955a57371ae99ea5e5f7fac8269",
@@ -206,15 +210,15 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py": "caf16ef9b10d12420a272fd29c9ddb02536d08c9087581f596f61a2983c8082e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py": "3de3b481858ae63b94ac0c7faba372cec44b34216ae892d05ffe313204313533",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_finalize_v3.py": "9894cf00c5db0c970b1591780d12575248df86a2a1302c34731b6b0f8238381f",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py": "d1be7313ee343f8dfac2d6e6278a513c8188c170058f746feeb292f752f25d2f",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py": "e2ba85726300172938d769142b9896984d30ab9685be7c8e88c371e324def3c1",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyalloc.py": "40c01d1d1a9f7a86a6b151986de16dccee93b1baf9bcd91e07f4acdbcf81925d",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboundary.py": "25b18c5a857ae1f7fa91c3e9cc1a7d7d04e01780194a23eb168328e2550b337a",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py": "69c754dfeb0b01f63c463b1135a75724824a163b7bc0c988a7b808b21f7eeb56",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py": "e899a145975758a936e105e0e6dce3019db05806fe9084a8beff8d08a9b59a84",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate.py": "1bcafe01684dd722848f9d3d439f150780a08412e6dfb0456602869e1f5581ba",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob.py": "145f6925ee8c131ff36aab04453a8b54d45d04bbb0527d56ed1b23f6e859cb12",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py": "17fe3522209d640340a2679bed5a5097a85869d54f02a6fcff610509741c1e03",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kypacket.py": "0830b244328e917a32925dd763e45454becc742c97be93787bc0c8fc777d9d46",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreconcile.py": "d4f7f08efd9da13d87cb30aaa3d8bf7402293da16b25c29ade1b033470cd4e78",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreconcile.py": "4a425f84fee008e6bcbbdba23136ae228c03bfc756f06a0121782b76c4dad205",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyregen.py": "fed90a9d752bdfcb7af926b322c4529d8baa5d8bb02683ece86e090332e2fe67",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreport.py": "dd40bd50cdfde9ade6f58098ab349d276ba630fbf8e4b40dff3e41b940994c1f",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyroute.py": "b51e844b440bf65f1227538bd18658f51dbb12c2d1bbd82cc73a9321cdb0cd8a",
@@ -250,20 +254,23 @@
   "platform/scripts/governance/pravaha_tracker/static/app.js": "68dedfff6b644ebada2a8f9ff7f64ca2da075ebc49f4db6c10de7ac0fa35bd79",
   "platform/scripts/governance/pravaha_tracker/static/index.html": "ed53ba7b74aee35b37139e01f5b8664c95bd271b6b4076246825c1507b980100",
   "platform/scripts/governance/pravaha_tracker/steward_watch.py": "6403f2e20643c24f704bc54beccd7b3df9168ffacde4f2bf0e51c378127c13f7",
-  "platform/scripts/governance/pravaha_tracker/verdicts.py": "7624262cef2387b2c5103bdb0b896a470e2eda6a27508b6c0fd67b95be1c6a67"
+  "platform/scripts/governance/pravaha_tracker/verdicts.py": "7624262cef2387b2c5103bdb0b896a470e2eda6a27508b6c0fd67b95be1c6a67",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_wave0_secret_placeholders.py": "ec74284e8db7130e98d39a47e737c17ed7705ca68fa76cb501d08d6d1695cc65",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/staged_preinstall.jsonl": "683e3ef2bdbc8fe0e011bd92950f299782e0a9cc56869e91f3a062d0aecd8e5b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.reviewed.json.gz": "18ca3bc3cf026b994d822e8f1a71e808ef2dcf86c434f2e2958a309405e6fe57"
  },
  "area_reviews": [
   {
    "area": "B-4",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/B-4.review.json",
-   "record_sha256": "cd81e38f637a1674f2811ee5c9c55847801322687029388e66909a56d481c29a",
-   "reviewer_session_id": "01a13290-e646-7140-8eae-3a08718b2826"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/B-4.review.json",
+   "record_sha256": "320721738f5224f5c6160c410b9963e9613e653ab2bfea6bd04fbcaacf3020ac",
+   "reviewer_session_id": "01a13670-b458-7383-bd17-790184f74bdb"
   },
   {
    "area": "cards",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/cards.review.json",
-   "record_sha256": "9eea2b266d0ebe69c5f50898ebacc561a4b80a2754094989fc79aacc8bae0f7b",
-   "reviewer_session_id": "01a13290-dce8-7ac0-b0b8-ad6bcc6effeb"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/cards.review.json",
+   "record_sha256": "3b5120bbcac0f8c1f68b0363aaa3daac995b5a446086489260f9deb9fff4d45e",
+   "reviewer_session_id": "01a13670-ae79-7161-b6b3-c9447d776045"
   },
   {
    "area": "control",
@@ -273,15 +280,15 @@
   },
   {
    "area": "engines",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r5/engines.review.json",
-   "record_sha256": "ae025fd44ebed42bfc866069c90a65264ee8247566a22fff71330a93fdb01034",
-   "reviewer_session_id": "01a13356-378a-75e0-9c87-ba74758907e8"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/engines.review.json",
+   "record_sha256": "d1597340074d37c9a3df03803d9b659045f0c72f38a35454d7349a42810c32bd",
+   "reviewer_session_id": "01a13670-a89f-7c02-b11d-49da61d02d6b"
   },
   {
    "area": "loops",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r8/loops.review.json",
-   "record_sha256": "25176d8130c7b1f84c2afca90bb1903b83252f5d7d8b829a8ecc1ba621e8ec1c",
-   "reviewer_session_id": "01a13457-8d46-7570-b647-0d71b2a2077f"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/loops.review.json",
+   "record_sha256": "c260c683aa4cc54fea2077c7c720e3da5bfd0ff4b57139e635118e3d73fe84e9",
+   "reviewer_session_id": "01a13670-aea4-7522-95af-ccbf69279191"
   },
   {
    "area": "qualification",
@@ -291,15 +298,15 @@
   },
   {
    "area": "supervisor",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r7/supervisor.review.json",
-   "record_sha256": "1fa78d48cf88fa9424d3239f19e5b4ecde3ab101e7927464f23c401772133824",
-   "reviewer_session_id": "01a13421-76db-7302-b568-27ae53d5d84a"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/supervisor.review.json",
+   "record_sha256": "2d1bb9a17ba5089379cf45cc852b9c4498b4fd35bc208a1feb398f2ee13381d7",
+   "reviewer_session_id": "01a1367b-9438-75a2-8464-bd496fab037c"
   },
   {
    "area": "surrogate",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/surrogate.review.json",
-   "record_sha256": "25c9636b6b78f3dc97d105a3e11e06f0b0b3b4dcdc1a61685a480ec5a4f1f82a",
-   "reviewer_session_id": "01a13290-e217-74d3-89ce-cc75e514f3cd"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/surrogate.review.json",
+   "record_sha256": "68abbff1654a068e239d46b11db3184d181d3a3760059a461d57afcaf5bafce6",
+   "reviewer_session_id": "01a13670-b1a6-7a61-bb8d-6826587de869"
   },
   {
    "area": "tracker",
@@ -308,10 +315,16 @@
    "reviewer_session_id": "01a1328d-a550-71a2-8707-18bd2e3e0b8d"
   },
   {
+   "area": "wave-0",
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/wave-0.review.json",
+   "record_sha256": "b043eda310c86439b54f8274eb2d93920f2766c7e1cd6c65a35cd24c4f1f4b55",
+   "reviewer_session_id": "01a1367b-957d-73b2-9401-363b33d9600d"
+  },
+  {
    "area": "wave-b",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r8/wave-b.review.json",
-   "record_sha256": "fcd4e86b1c8f0f0ce6680f3c43d9b53764e576e27424cd7e1e724b0393523303",
-   "reviewer_session_id": "01a13457-8e0c-7e22-801d-7f90e04650dd"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r9/wave-b.review.json",
+   "record_sha256": "63ec9756018f850079086d44c3a6af10bd268dddbe06626e53b0c5a20b9d3c47",
+   "reviewer_session_id": "01a136a6-8970-70e0-b11b-4cc5e46ebf73"
   }
  ]
 }
