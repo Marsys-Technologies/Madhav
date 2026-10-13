@@ -1,0 +1,83 @@
+{
+ "assets": 5,
+ "assets_only": {
+  "GENUINE DEFECT": 4,
+  "MISSING DECLARATION": 0,
+  "STRUCTURAL": 0,
+  "UNCLASSIFIED": 0
+ },
+ "assets_with": {
+  "GENUINE DEFECT": 4,
+  "MISSING DECLARATION": 0,
+  "STRUCTURAL": 1,
+  "UNCLASSIFIED": 1
+ },
+ "bar_label": "bar: N-268 (named ceilings and disclosure gaps)",
+ "blockers": {
+  "GENUINE DEFECT": 4,
+  "MISSING DECLARATION": 0,
+  "STRUCTURAL": 2,
+  "UNCLASSIFIED": 1
+ },
+ "census_target": "evaluation_copy",
+ "evaluation_copy": {
+  "backup_id": "1791868791537",
+  "backup_time": "2026-10-13T05:21:32.951Z",
+  "instance": "amjis-ri02-validation-c720f1832",
+  "source_instance": "amjis-postgres"
+ },
+ "per_asset": {
+  "bo_laksana": [
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   }
+  ],
+  "bo_laksana_rerank": [
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   }
+  ],
+  "bo_samskara": [
+   {
+    "cls": "UNCLASSIFIED",
+    "criterion": "Narr.agree",
+    "verdict": "PARTIAL",
+    "why": "no classification rule matches this blocker"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.blank_rows",
+    "verdict": "PARTIAL",
+    "why": "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)"
+   },
+   {
+    "cls": "STRUCTURAL",
+    "criterion": "Null.schema_default",
+    "verdict": "PARTIAL",
+    "why": "the writer scan has an unresolved write path or a truncated listing (the scan cannot prove the column clean)"
+   }
+  ],
+  "ga_structural": [
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Vocab.alias",
+    "verdict": "PARTIAL",
+    "why": "mixed spelling families of canonical terms in one column (cross-layer drift)"
+   }
+  ],
+  "ga_vichara": [
+   {
+    "cls": "GENUINE DEFECT",
+    "criterion": "Build.dag",
+    "verdict": "FAIL",
+    "why": "a FAIL verdict"
+   }
+  ]
+ }
+}
