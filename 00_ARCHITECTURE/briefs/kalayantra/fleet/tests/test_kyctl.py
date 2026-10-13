@@ -5609,8 +5609,8 @@ def test_the_veto_controller_closes_the_item_of_its_own_that_the_owner_answered(
 
 def test_a_refused_environment_of_a_loop_that_was_never_started_raises_nothing(w):
     """The other half of the one shape: a loop that is not admitted raises nothing, whatever is wrong around it."""
-    r = w.kyloop("planner", PGPASSWORD="s3cr3t-value-never-printed")
-    assert r.returncode == 0 and "s3cr3t" not in r.stderr + r.stdout
+    r = w.kyloop("planner", PGPASSWORD="fake-not-printed")
+    assert r.returncode == 0 and "fake-not-printed" not in r.stderr + r.stdout
     assert w.awaiting() == [] and not w.stop_file().exists() and w.calls() == []
 
 

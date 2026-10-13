@@ -133,7 +133,7 @@ def in_order(tokens, argv):
 def out(rc, text="", err=""):
     if text:
         sys.stdout.write(text if isinstance(text, str) else json.dumps(text))
-        sys.stdout.write("" if isinstance(text, str) and text.endswith("\n") else "\n")
+        sys.stdout.write("" if isinstance(text, str) and text.endswith(("\n", "\0")) else "\n")
     if err:
         sys.stderr.write(err + "\n")
     sys.stdout.flush()
@@ -177,9 +177,9 @@ def ky(argv):
     if verb == "step":
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "step": argv[2], "state": "done",
                                         "evidence": opt(argv, "--evidence"), "actor": actor})))
-    if verb in ("block", "done"):
+    if verb in ("review", "block", "done"):
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "detail": opt(argv, "--detail", ""),
-                                        "state": "blocked" if verb == "block" else "done", "actor": actor,
+                                        "state": {"review": "review", "block": "blocked", "done": "done"}[verb], "actor": actor,
                                         "evidence": "fixture typed completion" if verb == "done" else None})))
     return out(64, err="fake ky: no verb %%r" %% verb)
 
@@ -211,9 +211,10 @@ def kyjob(argv):
         append(job["stdout_path"], json.dumps({"type": "rate_limit_event", "rate_limit_info": {
             "status": "rejected", "rateLimitType": "five_hour"}}) + "\n")
         sys.exit(1)
-    if do == "review":
-        event({"kind": "item", "item": job["item"], "state": "review", "actor": actor,
-               "detail": "PR #%%d @ %%s" %% (how["pr"], how["head"])})
+    if do in ("review", "result_only"):
+        if do == "review":
+            event({"kind": "item", "item": job["item"], "state": "review", "actor": actor,
+                   "detail": "PR #%%d @ %%s" %% (how["pr"], how["head"])})
         result.update(head_sha=how["head"], pr_number=how["pr"])
     elif do == "block":
         event({"kind": "item", "item": job["item"], "state": "blocked", "actor": actor, "detail": how.get("detail", "x")})
@@ -741,6 +742,8 @@ class World:
                 proc.kill()
                 proc.wait(timeout=10)
         for job in self.jobs():
+            if not isinstance(job, dict):
+                continue  # a quarantined fixture has no process identity this test may signal
             pid, start = job.get("pid"), job.get("process_start")
             if isinstance(pid, int) and pid > 1 and job.get("pgid") == pid and ka.process_matches(pid, start) is True:
                 try:
@@ -894,6 +897,172 @@ def test_every_listed_item_has_a_case():
 BUILD_READY = {"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready", "completion_kind": "code",
                                    "deps_open": [], "deps_open_strict": []}]},
                "files": {"$RUN/PRIORITY.txt": "K-1\n"}, "gate": "OPEN", "slots": ["b1"]}
+
+
+@pytest.mark.parametrize("name,state", [
+    ("legacy-3337", '{"schema":"ky.legacy_job_state/1"}'),
+    ("J-20261013T000000Z-b1", '{"schema":"ky.bootstrap_job_state/3","slot":"b1","item":"K-1"}'),
+    ("J-20261013T000000Z-b1", '{"launcher":"cockpit-direct","phase":"starting","slot":"b1","item":"K-1"}'),
+])
+def test_quarantined_folder_keeps_unrelated_build_intent(world, name, state):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    broken = world.run / "jobs" / name / "state.json"
+    broken.parent.mkdir(parents=True)
+    if state is not None:
+        broken.write_text(state)
+    e = d.Engine(world.env())
+    jobs = e.tick()["jobs"]
+    assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), world.journal()
+    assert world.journal().count(name) == 1
+
+
+
+@pytest.mark.parametrize("name", ["J-20261013T000000Z-b1", "legacy-2", "adopted-native"])
+@pytest.mark.parametrize("state", [None, "not json", "[]", "{}", '{"schema":"ky.unrecognized/1"}',
+                                    '{"schema":"ky.job/1","phase":"bad","item":"K-1","slot":null}'])
+def test_native_state_error_keeps_build_visible_but_refuses_admission(world, name, state):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    path = world.run / "jobs" / name / "state.json"
+    path.parent.mkdir(parents=True)
+    if state is not None:
+        path.write_text(state)
+    original = path.read_bytes() if path.exists() else None
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        build = next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")
+        assert build["decision"] in ("refused:open", "wait:slot"), jobs
+    assert world.journal().count(path.parent.name) == 1
+    assert (path.read_bytes() if path.exists() else None) == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls())
+
+
+def test_j_folder_encoded_slot_refuses_unrelated_item_with_null_declared_slot(world):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    path = world.run / "jobs" / "J-20261013T000000Z-b1" / "state.json"
+    path.parent.mkdir(parents=True)
+    path.write_text('{"schema":"ky.job/1","phase":"bad","item":"K-2","slot":null}')
+    original = path.read_bytes()
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        assert next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")["decision"] == "wait:slot"
+    assert world.journal().count(path.parent.name) == 1
+    assert path.read_bytes() == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls())
+
+
+@pytest.mark.parametrize("name", ["legacy-2", "adopted-native"])
+@pytest.mark.parametrize("reservation,decision", [("slot", "wait:slot"), ("key", "refused:open"),
+                                                  ("item", "refused:open")])
+def test_malformed_native_non_j_job_refuses_each_reservation(world, name, reservation, decision):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    preview = d.Engine(world.env(), dry=True)
+    build = next(j for j in preview.tick()["jobs"] if j["kind"] == "BUILD" and j["item"] == "K-1")
+    calls_before = len(world.calls())
+    path = world.run / "jobs" / name / "state.json"
+    path.parent.mkdir(parents=True)
+    doc = dict(schema="ky.job/1", job_id=name, phase="bad", key="unrelated-key", item="K-2", slot="b3")
+    doc[reservation] = {"key": build["key"], "item": "K-1", "slot": "b1"}[reservation]
+    path.write_text(json.dumps(doc))
+    original = path.read_bytes()
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        build = next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")
+        assert build["decision"] == decision, jobs
+    assert world.journal().count(name) == 1
+    assert path.read_bytes() == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls()[calls_before:])
+
+
+@pytest.mark.parametrize("where", ["before_read", "after_read", "kind"])
+def test_error_then_clean_ticks_rederive_build_on_same_controller(world, monkeypatch, where):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    e = d.Engine(world.env())
+    # A prior valid reading is deliberately made stale by an event arriving during the failed tick.
+    assert e.ctx.next is not None
+    original = e.tracker_seen.copy()
+    fired = False
+    target, attr = (e, "_settle") if where == "before_read" else (d.J, "load") if where == "after_read" else (d.B, "intents")
+    real = getattr(target, attr)
+
+    def once(*args, **kwargs):
+        nonlocal fired
+        # For load(), fail at admission, after recover/supervise and tracker reading.
+        if not fired and (where != "after_read" or e._next[0]):
+            fired = True
+            with (world.run / "EVENTS.jsonl").open("a") as out:
+                out.write('{"kind":"decision","actor":"steward","ts":"2026-10-13T00:00:00Z","decision":"D-TEST","state":"decided","outcome":"approved","detail":"fixture event during failed tick"}\n')
+            raise RuntimeError("injected late tick failure")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(target, attr, once)
+    e.tick()
+    assert fired
+    assert e.tracker_seen == original
+    assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker"] == original
+    # The async tracker has not consumed the appended event yet: the previous version must wait.
+    assert e.tick()["jobs"] == []
+    assert e.tracker_seen == original
+    assert "waiting for tracker version above" in world.journal()
+    world.apply({"next": dict(BUILD_READY["next"], version=original["version"] + 1)})
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), jobs
+
+
+@pytest.mark.parametrize("bad", ["older", "equal_changed", "snapshot", "changing", "missing", "checkpoint"])
+def test_error_retry_keeps_freshness_fences(world, monkeypatch, bad):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    world.loop(tracker_retry=True, tracker={"version": 6 if bad == "older" else "bad" if bad == "checkpoint" else 5,
+                                          "events_size": 1, "events_sha256": "0" * 64})
+    e = d.Engine(world.env())
+    if bad == "snapshot":
+        world.apply({"next": dict(BUILD_READY["next"], snapshot=True)})
+    elif bad == "missing":
+        (world.run / "EVENTS.jsonl").unlink()
+    elif bad == "changing":
+        real = e.ky
+
+        def append_during_read(*args, **kwargs):
+            result = real(*args, **kwargs)
+            with (world.run / "EVENTS.jsonl").open("a") as out:
+                out.write("\n")
+            return result
+
+        monkeypatch.setattr(e, "ky", append_during_read)
+    checkpoint = copy.deepcopy(e.tracker_seen)
+    assert e.ctx.next is None
+    assert e.tracker_seen == checkpoint
+
+
+def test_error_recovery_checkpoint_survives_restart(world, monkeypatch):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    e = d.Engine(world.env())
+    assert e.ctx.next is not None
+
+    def fail():
+        (world.run / "EVENTS.jsonl").write_text("\n")
+        raise RuntimeError("fixture error before reading")
+
+    monkeypatch.setattr(e, "_settle", fail)
+    e.tick()
+    assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker_retry"] is True
+    original = e.tracker_seen.copy()
+    restarted = d.Engine(world.env())
+    assert restarted.tick()["jobs"] == []
+    assert restarted.tracker_seen == original
+    world.apply({"next": dict(BUILD_READY["next"], version=original["version"] + 1)})
+    jobs = restarted.tick()["jobs"]
+    assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs)
 
 
 def test_a_second_instance_exits_75_and_changes_nothing(world):
@@ -1549,3 +1718,74 @@ def test_lock_release_failure_is_journalled_once_with_helper_words(world, monkey
     assert e.stop() is False
     assert world.journal().count("docker cannot be observed") == 1
     assert "kylock.sh release exit 74" in world.journal()
+
+
+def finish_fix_setup(world):
+    """External Git/PR observations only: registration/release are the real dispatcher lifecycle."""
+    head = world.head
+    return dict(BUILD_READY,
+                packets={'K-1': {'d1_paths': ['platform/src/a.py']}},
+                jobs={'K-1': {'do': 'result_only', 'head': head, 'pr': 1}},
+                replies=[{'cmd': 'gh', 'args': ['pr', 'list'], 'after': 'kyjob.sh',
+                          'out': [gh_pr({'number': 1, 'head': head})]},
+                         {'cmd': 'gh', 'args': ['pr', 'list'], 'out': '[]'},
+                         {'cmd': 'gh', 'args': ['pr', 'view', '1'], 'out': gh_pr({'number': 1, 'head': head})},
+                         {'cmd': 'git', 'args': ['ls-remote', 'origin', 'refs/heads/kalayantra/k-1'],
+                          'out': head + '\trefs/heads/kalayantra/k-1\n'},
+                         {'cmd': 'git', 'args': ['diff', '--name-only', '--no-renames', '-z'],
+                          'out': 'platform/src/a.py\0'}])
+
+
+def test_done_build_controller_registers_before_claim_release_in_real_lifecycle(world):
+    setup = finish_fix_setup(world)
+    world.apply(setup, first=True)
+    done = world.session(['tick', {'wait_jobs': 5}, 'tick', {'wait_jobs': 5}, 'tick'])
+    assert done.returncode == 0, done.stderr
+    jobs = [doc for doc in world.jobs() if doc['kind'] == 'BUILD']
+    assert len(jobs) == 1 and jobs[0]['outcome'] == 'done', jobs
+    assert jobs[0]['head'] == world.head and jobs[0]['pr'] == 1
+    ledger = [json.loads(line) for line in (world.run / 'EVENTS.jsonl').read_text().splitlines()]
+    review_at = next(n for n, e in enumerate(ledger) if e.get('state') == 'review')
+    release_at = next(n for n, e in enumerate(ledger) if e.get('state') == 'released')
+    assert review_at < release_at
+    assert ledger[review_at]['actor'] == 'stream-K:' + jobs[0]['slot']
+
+
+def test_restart_recovers_two_no_post_action_jobs_without_a_third_model_build(world):
+    setup = finish_fix_setup(world)
+    world.apply(setup, first=True)
+    done = world.session(['tick', {'wait_jobs': 5}, 'tick', {'wait_jobs': 5}, 'tick'])
+    assert done.returncode == 0, done.stderr
+    old = next(doc for doc in world.jobs() if doc['kind'] == 'BUILD')
+    path = world.run / 'jobs' / old['job_id'] / 'state.json'
+    old.update(outcome='interrupted', failure_fp='no_post_action', result_path=None)
+    world.write(path, old)
+    second = copy.deepcopy(old)
+    second['job_id'] = 'J-20261013T103505Z-b1'
+    second['job_scratch'] = str(world.scratch / 'jobs' / second['job_id'])
+    world.write(world.run / 'jobs' / second['job_id'] / 'state.json', second)
+    result = json.loads(Path(old['job_scratch'], 'result.json').read_text())
+    result['job_id'] = second['job_id']
+    world.write(Path(second['job_scratch'], 'result.json'), result)
+    (world.run / 'handled' / ('job.' + old['key'] + '.json')).unlink()
+    events = [json.loads(line) for line in (world.run / 'EVENTS.jsonl').read_text().splitlines()]
+    world.write(world.run / 'EVENTS.jsonl', ''.join(json.dumps(e) + '\n' for e in events
+                                                  if e.get('state') != 'review'))
+    world.write(world.run / 'jobs' / 'failures.json', {'K-1': {'no_post_action': {
+        'count': 2, 'evidence_fp': old['evidence_fp'], 'last_job': second['job_id']}}})
+    world.apply({'next': {'version': 100, 'running': [{'id': 'K-1', 'status': 'running', 'owner': 'K',
+                                                     'completion_kind': 'code', 'deps_open': [], 'deps_open_strict': []}],
+                          'ready': [{'id': 'K-2', 'status': 'ready', 'owner': 'K'}]},
+                 'replies': [{'cmd': 'gh', 'args': ['pr', 'list'],
+                              'out': [gh_pr({'number': 1, 'head': world.head})]}] + setup['replies'][2:]})
+    before = len([c for c in world.calls() if c['cmd'] == 'kyjob.sh'])
+    done = world.session(['tick', 'tick'])
+    assert done.returncode == 0, done.stderr
+    after = len([c for c in world.calls() if c['cmd'] == 'kyjob.sh'])
+    assert before == after == 1
+    recovered = [doc for doc in world.jobs() if doc['kind'] == 'BUILD' and doc['outcome'] == 'done']
+    assert len(recovered) == 1 and recovered[0]['pid'] is None, world.jobs()
+    assert recovered[0]['checkpoint']['review_recovery']['job_id'] in (old['job_id'], second['job_id'])
+    assert 'no_post_action' not in json.loads((world.run / 'jobs' / 'failures.json').read_text())['K-1']
+    assert json.loads((world.run / 'claims' / (recovered[0]['slot'] + '.json')).read_text())['state'] == 'released'
+    assert any(json.loads(line).get('state') == 'review' for line in (world.run / 'EVENTS.jsonl').read_text().splitlines())

@@ -406,10 +406,10 @@ def test_an_unknown_kind_is_never_launched_or_finished_as_done(tmp_path):
     assert ctx.calls == []
 
 
-def test_the_module_imports_nothing_but_the_standard_library_and_runs_nothing_on_import():
+def test_the_module_imports_only_local_jobs_and_standard_library_and_runs_nothing_on_import():
     source = (FLEET / "kyd_kinds_build.py").read_text(encoding="utf-8")
     imported = set(re.findall(r"^(?:import|from) ([a-z_]+)", source, flags=re.M))
-    assert imported <= {"__future__", "hashlib", "json", "os", "re"}, imported
+    assert imported <= {"__future__", "hashlib", "json", "os", "re", "kyd_jobs"}, imported
     assert "subprocess" not in imported, "every command goes through ctx.sh, ctx.ky or ctx.act"
 
 

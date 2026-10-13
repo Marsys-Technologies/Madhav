@@ -27,6 +27,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -528,7 +529,7 @@ def test_job_ids_are_created_exclusively(world, monkeypatch):
                                                         "J-20261012T094000Z-b1.4", "J-20261012T094000Z-regen"]
 
 
-def test_load_reads_legacy_jobs_first_and_refuses_what_it_cannot_read(world):
+def test_load_reads_legacy_jobs_first_and_quarantines_bad_folders(world):
     job = opened(world)
     for n in (10, 2):
         d = world.run / "jobs" / ("legacy-%d" % n)
@@ -538,23 +539,275 @@ def test_load_reads_legacy_jobs_first_and_refuses_what_it_cannot_read(world):
     assert [j["job_id"] for j in J.load(world.ctx)] == ["legacy-2", "legacy-10", job["job_id"]]
     bad = world.run / "jobs" / "J-20260101T000000Z-b2"
     os.makedirs(bad)
-    with pytest.raises(J.JobsUnreadable, match="J-20260101T000000Z-b2"):  # a job folder without a state
-        J.load(world.ctx)
-    (bad / "state.json").write_text("{not json")
-    with pytest.raises(J.JobsUnreadable):
-        J.load(world.ctx)
-    (bad / "state.json").write_text(json.dumps(dict(job, job_id="J-20260101T000000Z-b2", phase="finished")))
-    with pytest.raises(J.JobsUnreadable, match="phase"):
-        J.load(world.ctx)
-    (bad / "state.json").write_text(json.dumps(dict(job, job_id="another")))
-    with pytest.raises(J.JobsUnreadable, match="job_id"):
-        J.load(world.ctx)
-    # and nothing is opened, supervised or recovered on top of an unreadable state
-    with pytest.raises(J.JobsUnreadable):
-        J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None))
-    with pytest.raises(J.JobsUnreadable):
-        J.supervise(world.ctx)
-    assert world.log.ky == ["claim K-1 --worker b1 --lease 10800 [K/b1]"]
+    for text in (None, "{not json", "[]", '{"schema":"ky.legacy_job_state/1"}'):
+        if text is not None:
+            (bad / "state.json").write_text(text)
+        assert [j["job_id"] for j in J.load(world.ctx)] == ["legacy-2", "legacy-10", job["job_id"]]
+    notices = [line for line in world.log.journal if bad.name in line]
+    assert len(notices) == 1 and "state.json" in notices[0]
+    # A repaired folder is read again; quarantine never moves or rewrites it.
+    (bad / "state.json").write_text(json.dumps(dict(job, job_id=bad.name, phase="ended", slot=None)))
+    assert len(J.load(world.ctx)) == 4
+
+
+@pytest.mark.parametrize("change,reason", [({"phase": "finished"}, "phase"), ({"job_id": "another"}, "job_id"),
+                                          ({"key": {}}, "key"), ({"slot": []}, "slot"), ({"locks": "lock"}, "locks"),
+                                          ({"phase": "finished", "slot": None}, "phase"),
+                                          ({"phase": "finished", "slot": "b2"}, "phase")])
+def test_malformed_canonical_job_is_local_error_and_keeps_its_reservations(world, change, reason):
+    job = opened(world)
+    bad = world.run / "jobs" / job["job_id"] / "state.json"
+    text = json.dumps(dict(job, **change))
+    bad.write_text(text)
+    assert J.load(world.ctx) == []
+    assert J.supervise(world.ctx) == []
+    assert J.recover(world.ctx) == []
+    notices = [line for line in world.log.journal if job["job_id"] in line]
+    assert len(notices) == 1 and "dispatcher error" in notices[0] and reason in notices[0]
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    other = J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None))
+    assert other is not None
+    assert bad.read_text() == text
+
+
+
+@pytest.mark.parametrize("state", [None, "{not json", "[]", "{}", '{"schema":null}', "unreadable"])
+def test_unknown_native_state_reserves_slot_and_unidentified_item(world, monkeypatch, state):
+    job = opened(world)
+    path = world.run / "jobs" / job["job_id"] / "state.json"
+    if state is None:
+        path.unlink()
+    elif state != "unreadable":
+        path.write_text(state)
+    original = path.read_bytes() if path.exists() else None
+    if state == "unreadable":
+        real = ka.read_json
+        monkeypatch.setattr(ka, "read_json", lambda p: (None, "unreadable: PermissionError")
+                            if Path(p) == path else real(p))
+    for _ in range(3):
+        assert J.load(world.ctx) == []
+        assert J.supervise(world.ctx) == []
+        assert J.recover(world.ctx) == []
+    assert J._look(world.ctx, "new-key", "b1") is not None
+    # The item cannot be reconstructed from a native folder name. Even another slot must not reuse it.
+    assert J.open(world.ctx, world.intent({"item": "K-1", "key": "changed-key"}), "b3", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    notices = [line for line in world.log.journal if job["job_id"] in line and "dispatcher error" in line]
+    assert len(notices) == 1
+    assert (path.read_bytes() if path.exists() else None) == original
+
+
+@pytest.mark.parametrize("missing_slot", [False, True])
+def test_invalid_phase_null_or_missing_slot_reserves_item_across_keys(world, missing_slot):
+    job = opened(world)
+    path = world.run / "jobs" / job["job_id"] / "state.json"
+    bad = dict(job, phase="finished", slot=None)
+    if missing_slot:
+        del bad["slot"]
+    path.write_text(json.dumps(bad))
+    original = path.read_bytes()
+    assert J._look(world.ctx, "new-key", "b1") is not None
+    assert J._look(world.ctx, "changed-key", "b3", "K-1") is not None
+    assert J.open(world.ctx, world.intent({"item": "K-1", "key": "changed-key"}), "b3", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None)) is not None
+    assert path.read_bytes() == original
+
+def test_foreign_schema_is_quarantined_once_with_its_reason(world):
+    job = opened(world)
+    bad = world.run / "jobs" / "legacy-3337" / "state.json"
+    bad.parent.mkdir()
+    bad.write_text('{"schema":"ky.legacy_job_state/1","job_id":"legacy-3337"}')
+    original = bad.read_bytes()
+    for _ in range(3):
+        assert [j["job_id"] for j in J.load(world.ctx)] == [job["job_id"]]
+    notices = [line for line in world.log.journal if "legacy-3337" in line]
+    assert len(notices) == 1 and "job quarantine" in notices[0] and "schema is not ky.job/1" in notices[0]
+    assert bad.read_bytes() == original
+
+
+# These cases catch folder-first classification, overly broad foreign-schema classification,
+# dropped reservations, repeated notices and accidental writes during load/supervise/recover.
+IDENTITY_FOLDERS = ["J-20261013T000000Z-b1", "legacy-2", "adopted-native"]
+STATE_DEFECTS = [
+    pytest.param({}, id="valid"),
+    pytest.param({"phase": "bad"}, id="phase"),
+    pytest.param({"job_id": "another"}, id="job-id"),
+    pytest.param({"key": {}}, id="key"),
+    pytest.param({"item": []}, id="item"),
+    pytest.param({"kind": 7}, id="kind"),
+    pytest.param({"slot": []}, id="slot"),
+    pytest.param({"slot": "b2", "phase": "bad"}, id="different-slot"),
+    pytest.param({"slot": None, "phase": "bad"}, id="null-slot"),
+    pytest.param({"controller_id": False}, id="controller-id"),
+    *[pytest.param({key: "not-a-list"}, id=key) for key in
+      ("prerequisites", "test_digests", "extra_lean_flags", "disallowed_tools", "tests", "locks")],
+]
+
+
+def identity_state(tmp_path, name, doc):
+    path = tmp_path / "run" / "jobs" / name / "state.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(doc))
+    notices = []
+    ctx = SimpleNamespace(run=tmp_path / "run", controller_id="CTL-test",
+                          journal=lambda *args: notices.append(args))
+    return ctx, path, notices
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+@pytest.mark.parametrize("change", STATE_DEFECTS)
+def test_state_identity_native_decision_table(tmp_path, name, change):
+    doc = dict(schema="ky.job/1", job_id=name, phase="live", key="old-key", item="K-1",
+               slot="b1", controller_id="CTL-test")
+    doc.update(change)
+    ctx, path, notices = identity_state(tmp_path, name, doc)
+    original = path.read_bytes()
+    for _ in range(3):
+        loaded = J.load(ctx)
+        if not change:
+            assert [job["job_id"] for job in loaded] == [name]
+            assert ctx._job_errors == {}
+        else:
+            assert loaded == []
+            assert name in ctx._job_errors
+            assert J.supervise(ctx) == []
+            assert J.recover(ctx) == []
+        # Check each independently: a matched item must not hide lost slot/key ownership.
+        if "slot" not in change or change["slot"] == "b2":
+            slot = "b2" if change.get("slot") == "b2" else "b1"
+            assert J._look(ctx, "new-key", slot, "K-2") is not None
+        if name.startswith("J-"):
+            assert J._look(ctx, "new-key", "b1", "K-2") is not None
+        if "key" not in change:
+            assert J._look(ctx, "old-key", "b3", "K-2") is not None
+        if change and "item" not in change:
+            assert J._look(ctx, "new-key", "b3", "K-1") is not None
+        assert (J._look(ctx, "new-key", "b3", "K-2") is not None) == ("item" in change)
+    if change:
+        assert len(notices) == 1 and notices[0][0] == "dispatcher error"
+    else:
+        assert notices == []
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+@pytest.mark.parametrize("identity", [
+    {"schema": "ky.bootstrap_job_state/3"},
+    {"schema": "ky.legacy_job_state/1"},
+    {"launcher": "cockpit-direct"},
+])
+@pytest.mark.parametrize("change", STATE_DEFECTS)
+def test_state_identity_foreign_decision_table(tmp_path, name, identity, change):
+    doc = dict(job_id=name, phase="live", key="old-key", item="K-1", slot="b1")
+    doc.update(identity)
+    doc.update(change)
+    ctx, path, notices = identity_state(tmp_path, name, doc)
+    original = path.read_bytes()
+    for _ in range(3):
+        assert J.load(ctx) == []
+        assert ctx._job_errors == {}
+        assert J.supervise(ctx) == []
+        assert J.recover(ctx) == []
+        assert J._look(ctx, "old-key", "b1", "K-1") is None
+    assert len(notices) == 1 and notices[0][0] == "job quarantine"
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+@pytest.mark.parametrize("state", [
+    None, "{not json", "unreadable", "[]", "null", '"text"', "7", "true", "{}",
+    '{"schema":null}', '{"schema":false}', '{"schema":7}', '{"schema":[]}', '{"schema":{}}',
+    '{"schema":""}', '{"schema":"ky.unrecognized/1"}',
+    '{"schema":"ky.job/2","launcher":"cockpit-direct"}',
+    '{"schema":null,"launcher":"cockpit-direct"}',
+])
+def test_state_without_identity_decision_table(tmp_path, monkeypatch, name, state):
+    ctx, path, notices = identity_state(tmp_path, name, {})
+    if state is None:
+        path.unlink()
+    elif state != "unreadable":
+        path.write_text(state)
+    original = path.read_bytes() if path.exists() else None
+    if state == "unreadable":
+        real = ka.read_json
+        monkeypatch.setattr(ka, "read_json", lambda p: (None, "unreadable: PermissionError")
+                            if Path(p) == path else real(p))
+    for _ in range(3):
+        assert J.load(ctx) == []
+        assert name in ctx._job_errors
+        assert J.supervise(ctx) == []
+        assert J.recover(ctx) == []
+        assert J._look(ctx, "new-key", "b1", "K-2") is not None
+        assert J._look(ctx, "other-key", "b3", "K-1") is not None
+        assert J._look(ctx, "other-key", None, "K-2") is not None
+    if name.startswith("J-"):
+        assert ctx._job_errors[name]["encoded_slot"] == "b1"
+    assert len(notices) == 1 and notices[0][0] == "dispatcher error"
+    assert (path.read_bytes() if path.exists() else None) == original
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+def test_native_schema_wins_over_cockpit_launcher_marker(tmp_path, name):
+    ctx, path, notices = identity_state(tmp_path, name, dict(
+        schema="ky.job/1", job_id=name, phase="bad", launcher="cockpit-direct",
+        key="old-key", item="K-1", slot="b1"))
+    original = path.read_bytes()
+    assert J._look(ctx, "new-key", "b1", "K-2") is not None
+    assert J._look(ctx, "old-key", "b3", "K-2") is not None
+    assert J._look(ctx, "new-key", "b3", "K-1") is not None
+    assert len(notices) == 1 and notices[0][0] == "dispatcher error"
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+@pytest.mark.parametrize("missing", ["phase", "job_id", "slot"])
+def test_native_identity_with_missing_field_keeps_declared_reservations(tmp_path, name, missing):
+    doc = dict(schema="ky.job/1", job_id=name, phase="bad", key="old-key", item="K-1", slot="b1")
+    del doc[missing]
+    ctx, path, notices = identity_state(tmp_path, name, doc)
+    original = path.read_bytes()
+    assert J._look(ctx, "old-key", "b3", "K-2") is not None
+    assert J._look(ctx, "new-key", "b3", "K-1") is not None
+    if missing != "slot" or name.startswith("J-"):
+        assert J._look(ctx, "new-key", "b1", "K-2") is not None
+    assert len(notices) == 1 and notices[0][0] == "dispatcher error"
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("name", IDENTITY_FOLDERS)
+def test_unrecognized_schema_keeps_readable_reservations(tmp_path, name):
+    ctx, path, notices = identity_state(tmp_path, name, dict(
+        schema="ky.unrecognized/1", job_id=name, phase="live", key="old-key", item="K-1", slot="b2"))
+    original = path.read_bytes()
+    assert J._look(ctx, "new-key", "b2", "K-2") is not None
+    assert J._look(ctx, "old-key", "b3", "K-2") is not None
+    assert J._look(ctx, "new-key", "b3", "K-1") is not None
+    if name.startswith("J-"):
+        assert J._look(ctx, "new-key", "b1", "K-2") is not None
+    assert len(notices) == 1 and notices[0][0] == "dispatcher error"
+    assert path.read_bytes() == original
+
+
+def test_reviewer_probe_legacy_native_phase_mutation_refuses_open(world):
+    # Exact WB-01-R transition, with no original J folder or locks to mask reservation loss.
+    _, path, _ = identity_state(world.root, "legacy-2", dict(
+        schema="ky.job/1", job_id="legacy-2", phase="live", item="K-1", slot="b1", key="old-key"))
+    assert len(J.load(world.ctx)) == 1
+    assert J._look(world.ctx, "new-key", "b1") is not None
+    doc = json.loads(path.read_text())
+    doc["phase"] = "bad"
+    path.write_text(json.dumps(doc))
+    original = path.read_bytes()
+    assert J.load(world.ctx) == []
+    for intent, slot in [({"item": "K-2", "key": "new-key"}, "b1"),
+                         ({"item": "K-2", "key": "old-key"}, "b3"),
+                         ({"item": "K-1", "key": "new-key"}, "b3")]:
+        assert J.open(world.ctx, world.intent(intent), slot, world.facts(None)) is None
+    assert world.log.ky == [] and world.log.sh == []
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None)) is not None
+    assert path.read_bytes() == original
+    assert len([line for line in world.log.journal if "legacy-2" in line and "dispatcher error" in line]) == 1
 
 
 @pytest.mark.parametrize("deadline", ["2026-10-12 13:25:11", "2026-10-12T13:25:11+00:00", "2026-10-12T13:25:11.5Z",

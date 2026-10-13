@@ -42,6 +42,15 @@ def card_text(name):
     return (CARDS_DIR / (name + ".md")).read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize("name", ["KARAKA", "PARIKSAKA", "ADHIKARIN", "OWNER_SURROGATE"])
+def test_dispatched_job_cards_require_foreground_commands(name):
+    text = flat(card_text(name))
+    assert "Never run a command in the background" in text
+    assert "never end a turn while a command is still running" in text
+    assert "foreground with an explicit timeout" in text
+    assert "Split long suites" in text
+
+
 def flat(text):
     return " ".join(text.split())
 
@@ -111,10 +120,10 @@ def test_a_every_card_has_a_current_measurement_at_or_under_the_cap(name):
     except (OSError, ValueError):
         record = None
     problems = measurement_problems(cards, record)
-    # Only these R19a bytes may await cockpit measurement; any further edit fails the gate.
+    # Only these Wave-0 bytes may await cockpit measurement; any further edit fails the gate.
     if name == "OWNER_SURROGATE" and problems == ["OWNER_SURROGATE: changed since it was measured"] and \
-            hashlib.sha256(cards[name]).hexdigest() == "5d5c9132d34ebc31f078cf2f7cf1d27b48b26d2c1ad0b1563eaf1fe353d0948e":
-        pytest.xfail("R19a changed the surrogate card; cockpit must remeasure with the real program (barred in this job)")
+            hashlib.sha256(cards[name]).hexdigest() == "8199fd1882df7cfbcb7e7a4754314ffb8e33a65425395e96b4bf1215650616d0":
+        pytest.xfail("R19a/Wave-0 changed the surrogate card; cockpit must remeasure with the real program (barred in this job)")
     assert problems == []
 
 
@@ -744,12 +753,14 @@ def test_n05_the_credential_check_prints_names_and_never_a_value(name, shell):
     assert len(found) == 1, "one names-only command per card"
     base = {"PATH": os.path.dirname(sys.executable) + ":/usr/bin:/bin", "HOME": "/nonexistent", "KY_ROOT": "/x"}
     dirty = dict(base, DATABASE_URL="postgres://value-one", KY_B1_DATABASE_URL="postgres://value-two",
-                 PGPASSWORD="value-three", ANTHROPIC_API_KEY="value-four", NOT_A_DATABASE_URL_NAME="value-five",
-                 MULTI_LINE="first\nPGPASSWORD=value-six\nvalue-seven")
+                 PGPASSWORD="fake-three", ANTHROPIC_API_KEY="value-four", NOT_A_DATABASE_URL_NAME="value-five",
+                 MULTI_LINE="first\nPGPASSWORD=PLACEHOLDER\nvalue-seven")
     r = subprocess.run([shell, "-c", found[0]], capture_output=True, text=True, timeout=30, env=dirty)
     assert r.returncode == 0, r.stderr
     assert sorted(ast.literal_eval(r.stdout)) == ["ANTHROPIC_API_KEY", "DATABASE_URL", "KY_B1_DATABASE_URL", "PGPASSWORD"]
     assert "value-" not in r.stdout + r.stderr
+    assert "fake-" not in r.stdout + r.stderr
+    assert "PLACEHOLDER" not in r.stdout + r.stderr
     clean = subprocess.run([shell, "-c", found[0]], capture_output=True, text=True, timeout=30, env=base)
     assert clean.stdout.strip() == "[]"
 

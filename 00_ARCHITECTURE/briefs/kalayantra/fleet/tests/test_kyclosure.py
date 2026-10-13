@@ -1,6 +1,8 @@
 """Acceptance-closure tool (relaunch plan v2.2 §0 step 2): edge semantics, skip propagation, refusals and
 reproducibility — on synthetic models, then on the committed model, roots and closure."""
 import copy
+import gzip
+import hashlib
 import json
 import subprocess
 import sys
@@ -140,7 +142,12 @@ def test_cli_refusal_exits_2_and_check_mismatch_exits_1(tmp_path):
 
 
 def test_committed_closure_is_reproducible_twice_from_the_committed_model_and_roots(tmp_path):
-    model, roots = CONTROL / "plan_model.json", CONTROL / "ACCEPTANCE_ROOTS_v2_1.json"
+    # Reproduce the reviewed v2.2 closure, whose live model has since gained bootstrap items.
+    raw = gzip.decompress((HERE / "fixtures/reconcile/plan_model.reviewed.json.gz").read_bytes())
+    review = json.loads((CONTROL / "TRIAGE_DELTA_REVIEW_v2_2.json").read_text())
+    assert hashlib.sha256(raw).hexdigest() == review["inputs"]["model"]
+    model, roots = tmp_path / "reviewed-model.json", CONTROL / "ACCEPTANCE_ROOTS_v2_1.json"
+    model.write_bytes(raw)
     one, two = tmp_path / "one.json", tmp_path / "two.json"
     assert run("--model", str(model), "--roots", str(roots), "--out", str(one)).returncode == 0
     assert run("--model", str(model), "--roots", str(roots), "--out", str(two)).returncode == 0

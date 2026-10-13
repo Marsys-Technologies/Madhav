@@ -1,0 +1,2 @@
+{"ts":"2026-10-11T00:00:00+00:00","kind":"decision","actor":"steward","decision":"D-FIXTURE-UNRELATED","state":"decided","outcome":"approved"}
+{"ts":"2026-10-11T00:00:00+00:00","kind":"item","actor":"stream-K","item":"B-7","state":"done","guarded":true,"detail":"Synthetic prerequisite for staged-action tests","evidence":"fixture-only"}

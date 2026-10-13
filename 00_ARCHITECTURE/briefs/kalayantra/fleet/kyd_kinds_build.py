@@ -8,7 +8,7 @@ A module of kydispatch.py, which calls
     start(ctx, job)       after kyd_jobs.open and kyd_admit.admit: a result, or None (launch the model job)
     finish(ctx, job)      after the job's process group is gone: a result
 Everything decided here is script logic over what ctx answers; no model is asked. Importing runs nothing; the
-standard library only; every command goes through ctx.sh, ctx.ky or ctx.act.
+only local kyd_jobs helpers and the standard library are imported; every command goes through ctx.sh, ctx.ky or ctx.act.
 
 ctx (built by the engine; a recording double in the tests)
     root run fleet scratch repo      absolute paths (repo: the campaign checkout)
@@ -96,9 +96,9 @@ start      re-derives the job's intent from ctx as it is now and refuses a job w
              VERIFY                  `gh pr diff <n>` → $JOB_SCRATCH/pr.diff, then the snapshot → None
                                      (a job without an absolute job_scratch or worktree is refused first)
              ARTIFACT                `kyverdicts.py snapshot --worktree W --out $JOB_SCRATCH/snapshot.json` → None
-finish     BUILD, REWORK: the last state event the job's lane (stream-<stream>:<slot>) wrote after the job's own
-           claim event (claim_id): `review` with a registration → done; `blocked` → blocked; anything else, or no
-           such claim → interrupted.
+finish     BUILD, REWORK: accept a legacy lane registration after the job's claim, otherwise validate its
+           result.json and observe origin head, PR head/number and packet-scoped changed paths. The controller
+           writes review/block as the still-claimed job lane and reads the event back before terminal release.
            VERIFY, ARTIFACT: `bash kyboundary.sh check <job_id>`; only on exit 0 `kyverdicts.py publish …` (argv
            as the packet gives it; AU = the actor of the latest review event, RV = stream-V:<slot>). 0 → done;
            else failed, and nothing is published. A value publish needs that the job does not carry (exit code,
@@ -106,6 +106,7 @@ finish     BUILD, REWORK: the last state event the job's lane (stream-<stream>:<
 
 Journal: `unclassifiable CI failure` as above; `dispatcher error` when an input this module needs cannot be read
 (a tool's exit, an unreadable job state or admission record) — the item is then skipped for this tick.
+Changelog 2026-10-13: T0 controller BUILD completion, verified recovery and VERIFY registered-head guard.
 Python >= 3.9.
 """
 from __future__ import annotations
@@ -114,6 +115,8 @@ import hashlib
 import json
 import os
 import re
+
+import kyd_jobs as jobs
 
 KINDS = ("BUILD", "REWORK", "STEP", "VERIFY", "ARTIFACT")
 ORDER = ("STEP", "VERIFY", "ARTIFACT", "REWORK", "BUILD")
@@ -364,6 +367,8 @@ def _db_tests_green(pr):
 
 def intents(ctx):
     """Read-only: every job of these kinds that could be started now."""
+    import kyd_admit
+    kyd_admit.refresh_job_engine(ctx)
     return _compute(ctx, None)
 
 
@@ -580,6 +585,10 @@ def _artifact(ctx, row, events, reg):
 def _ready(ctx, row):
     """BUILD, or the already-satisfied assessment in its place."""
     item = row["id"]
+    if row.get("owner") == "K" and row.get("completion_kind") == "code" and row.get("status") in ("ready", "running"):
+        recovery = _recovery(ctx, row)
+        if recovery:
+            return [recovery]
     if (row.get("status") != "ready" or row.get("owner") != "K"
             or row.get("completion_kind") not in ("code", "artifact")):
         return []
@@ -642,6 +651,8 @@ def start(ctx, job):
         return _result("refused", "%s %s is no longer intended: its trigger changed since admission" % (kind, item),
                        "intent_not_current")
     action = intent["header"].get("action")
+    if action == "recover_review":
+        return _recover_review(ctx, job, intent)
     if action == "block":
         return _start_block(ctx, job, intent)
     if action == "retry_ci":
@@ -769,8 +780,173 @@ def _post_action(ctx, job):
     registration = _registration_of(last)
     if registration:
         return _result("done", registration["detail"])
+    scratch = _job_scratch(job)
+    if scratch and os.path.lexists(os.path.join(scratch, "result.json")):
+        doc = jobs.read_result(job)
+        if doc is None:
+            return _result("interrupted", "result.json is invalid or names another job/item", "job_result_invalid")
+        return _register_result(ctx, job, doc)
     return _result("interrupted", "%s wrote neither a review registration nor a block after its claim" % lane,
                    "no_post_action")
+
+
+def _held_claim(ctx, job):
+    """The controller registers only while this exact job still holds its lane claim."""
+    slot = job.get("slot")
+    if not isinstance(slot, str) or not ID_RE.match(slot) or job.get("stream") != "K":
+        return False
+    path = os.path.join(os.fspath(ctx.run), "claims", slot + ".json")
+    try:
+        doc = json.loads(_read(path) or b"null")
+    except (ValueError, _Unknown):
+        return False
+    return (isinstance(doc, dict) and doc.get("item") == job.get("item")
+            and doc.get("worker_id") == slot and doc.get("claim_id") == job.get("claim_id")
+            and doc.get("state") in ("acquired", "renewed"))
+
+
+def _review_problem(ctx, job, doc):
+    """Observe origin, the existing PR reader and the job's packet-scoped diff; never trust a reported head.
+
+    (I) INTERPRETATION: scope is the exact packet d1_paths, measured from the recorded job base, not the
+    entire PR diff (bootstrap PRs also contain the installed assembly base). Unknown scope refuses.
+    """
+    branch, head, pr = doc.get("branch"), doc.get("head_sha"), doc.get("pr_number")
+    if (not isinstance(branch, str) or not REF_RE.match(branch) or ".." in branch
+            or not isinstance(head, str) or not HEAD_RE.match(head) or type(pr) is not int or pr < 1):
+        return "review_identity_missing", "done result must name branch, full head_sha and pr_number"
+    if branch != job.get("branch"):
+        return "review_branch_mismatch", "result branch differs from the assigned branch"
+    rc, out, _ = ctx.sh(["git", "-C", os.fspath(ctx.repo), "ls-remote", "origin", "refs/heads/" + branch])
+    rows = [line.split() for line in out.splitlines()] if isinstance(out, str) else []
+    if rc != 0 or rows != [[head, "refs/heads/" + branch]]:
+        return "review_origin_head_mismatch", "origin branch does not observably equal result head_sha"
+    observed = ctx.pr(job["item"])
+    if not isinstance(observed, dict):
+        return "review_pr_missing", "the existing PR reader could not observe the reported PR"
+    if observed.get("number") != pr:
+        return "review_pr_number_mismatch", "observed PR number differs from result pr_number"
+    if observed.get("head") != head:
+        return "review_pr_head_mismatch", "PR headRefOid differs from result head_sha"
+    if observed.get("state") != "OPEN":
+        return "review_pr_not_open", "reported PR is not open"
+    try:
+        data = _read(job.get("packet_path"))
+        match = FRONT_RE.search(data.decode("utf-8")) if data else None
+        front = json.loads(match.group(1)) if match else {}
+        allowed = front.get("d1_paths")
+    except (TypeError, ValueError, UnicodeError, _Unknown):
+        allowed = None
+    if (not isinstance(allowed, list) or not allowed or not all(isinstance(p, str) and p
+            and not os.path.isabs(p) and ".." not in p.split("/") for p in allowed)
+            or not isinstance(job.get("base_sha"), str) or not HEAD_RE.match(job["base_sha"])):
+        return "review_scope_unknown", "packet d1_paths or recorded job base cannot be verified"
+    rc, out, _ = ctx.sh(["git", "-C", os.fspath(ctx.repo), "diff", "--name-only", "--no-renames", "-z",
+                         job["base_sha"], head, "--"])
+    if rc != 0 or not isinstance(out, str) or (out and not out.endswith("\0")):
+        return "review_paths_unknown", "changed paths could not be observed"
+    changed = out[:-1].split("\0") if out else []
+    outside = [p for p in changed if p not in allowed]
+    if outside:
+        return "review_paths_outside_scope", "changed paths outside packet d1_paths: " + ", ".join(outside)
+    return None
+
+
+def _register_result(ctx, job, doc, source=None):
+    """Controller-owned, action-recorded registration, read back before success or claim release."""
+    if not _held_claim(ctx, job):
+        return _result("interrupted", "the job's exact lane claim is not held", "claim_not_held")
+    try:
+        events = _events(ctx, job["item"])
+    except _Unknown as exc:
+        return _result("interrupted", str(exc), "events_unreadable")
+    if not any(e.get("kind") == "claim" and e.get("claim_id") == job["claim_id"]
+               and e.get("state") == "acquired" for e in events):
+        return _result("interrupted", "the job's claim is not in the event log", "no_claim_event")
+    if doc["status"] == "blocked":
+        verb, detail, state = "block", doc["blocked_reason"], "blocked"
+    elif doc["status"] == "done":
+        problem = _review_problem(ctx, source or job, doc)
+        if problem:
+            return _result("interrupted", problem[1], problem[0])
+        verb, detail, state = "review", "PR #%d @ %s" % (doc["pr_number"], doc["head_sha"]), "review"
+    else:
+        return _result("interrupted", "builder result status is failed", "job_result_failed")
+    lane = "stream-%s:%s" % (job["stream"], job["slot"])
+
+    def observer(record):
+        events = _events(ctx, job["item"])
+        anchor = next((n for n, e in enumerate(events) if e.get("kind") == "claim"
+                       and e.get("claim_id") == job["claim_id"] and e.get("state") == "acquired"), None)
+        last = _state_events(events[anchor + 1:]) if anchor is not None else []
+        if last and last[-1].get("actor") == lane and last[-1].get("state") == state and last[-1].get("detail") == detail:
+            return "done", {"event": last[-1]}
+        return "not_done", "no matching registration after this job's claim"
+
+    def effect():
+        if not _held_claim(ctx, job):
+            return "unknown", {"reason": "claim changed before registration"}
+        rc, _, _ = ctx.ky(verb, job["item"], "--detail", detail, stream=job["stream"], lane=job["slot"])
+        observed, event = observer(None)
+        if observed == "done":
+            return "done", event
+        return "unknown" if rc is None or rc == 0 else "failed", {"exit": rc}
+
+    status, _ = ctx.act("ACT-%s-%s" % (verb, job["job_id"]), "ky_" + verb,
+                       {"item": job["item"], "claim_id": job["claim_id"], "detail": detail,
+                        "source_job": (source or job)["job_id"]},
+                       {"item": job["item"], "actor": lane, "state": state}, effect, observer)
+    if status != "done" or observer(None)[0] != "done":
+        return _result("interrupted", "controller %s was not observed in the tracker" % verb,
+                       verb + "_event_not_observed")
+    jobs.record_registration(ctx, job, doc, source)
+    return _result("done" if state == "review" else "blocked", detail)
+
+
+def _recovery(ctx, row):
+    """(I) INTERPRETATION: a fresh script BUILD reclaims ended no_post_action work; no third model build.
+    The key binds the source result and current packet, so the old interruption limit cannot mask recovery.
+    Invalid results are never repaired or inferred from the PR. Recheck every observation at start.
+    """
+    directory = os.path.join(os.fspath(ctx.run), "jobs")
+    try:
+        names = sorted(os.listdir(directory), reverse=True)
+    except FileNotFoundError:
+        return None
+    for name in names:
+        path = os.path.join(directory, name, "state.json")
+        if not os.path.isdir(os.path.dirname(path)):
+            continue
+        try:
+            old = json.loads(_read(path) or b"null")
+        except ValueError:
+            continue  # cannot recover an unreadable state; ordinary BUILD keeps its existing selection rules
+        if (not isinstance(old, dict) or old.get("item") != row["id"] or old.get("kind") not in ("BUILD", "REWORK")
+                or old.get("phase") != "ended" or old.get("outcome") != "interrupted"
+                or old.get("failure_fp") != "no_post_action"):
+            continue
+        doc = jobs.read_result(old)
+        if not doc or doc["status"] != "done" or jobs._process(old) != "gone":
+            continue
+        packet = _packet(ctx, row["id"])
+        if not packet or packet["path"] != old.get("packet_path") or _review_problem(ctx, old, doc):
+            continue
+        return _intent("BUILD", row["id"], stream="K", pool="builder", runner="script", claim="K",
+                       locks=["item." + row["id"]], tier=packet["build_tier"], head=doc["head_sha"],
+                       evidence_fp=fingerprint({"recovery_job": name, "result": doc, "packet_sha256": packet["sha256"]}),
+                       card=_fleet(ctx, CARD_BUILDER), packet=packet["path"],
+                       header={"action": "recover_review", "source_job": name, "branch": doc["branch"],
+                               "pr": doc["pr_number"], "model": old.get("model"),
+                               "loop": old.get("loop"), "max_loops": old.get("max_loops")})
+    return None
+
+
+def _recover_review(ctx, job, intent):
+    old = next((j for j in jobs.load(ctx) if j["job_id"] == intent["header"]["source_job"]), None)
+    doc = jobs.read_result(old) if old else None
+    if not doc or doc["status"] != "done" or jobs._process(old) != "gone":
+        return _result("interrupted", "recovery source is no longer verifiable", "recovery_source_changed")
+    return _register_result(ctx, job, doc, source=old)
 
 
 def _publish(ctx, job):
@@ -792,7 +968,8 @@ def _publish(ctx, job):
     registration = _registration(events)
     if kind == "VERIFY":
         head = job.get("head")
-        author = registration["actor"] if registration and registration["type"] == "code" else None
+        author = registration["actor"] if (registration and registration["type"] == "code"
+                                           and registration["head"] == head) else None
         identity = ["--head", head] if isinstance(head, str) and HEAD_RE.match(head) else None
     else:
         digest, path, author = job.get("digest"), None, None

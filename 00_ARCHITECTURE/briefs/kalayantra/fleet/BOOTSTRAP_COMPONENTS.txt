@@ -63,6 +63,9 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result_launcher_commit.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh
@@ -206,6 +209,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_build.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_land.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_ops.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_finish_fix.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_admit.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_jobs.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_build.py
@@ -267,3 +271,18 @@ platform/scripts/governance/pravaha_tracker/static/app.js
 platform/scripts/governance/pravaha_tracker/static/index.html
 platform/scripts/governance/pravaha_tracker/steward_watch.py
 platform/scripts/governance/pravaha_tracker/verdicts.py
+
+# area: wave-0 — fixture-bound reconciliation and scanner placeholder regressions
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_wave0_secret_placeholders.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/staged_preinstall.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.reviewed.json.gz
+
+# tranche: deferred — the final-receipt tool is in fix loop 2 (review finding S1, 2026-10-13): listed and pinned,
+#   not bound by this bootstrap manifest and not installed; it is bound again by the install that precedes finalisation.
+# tranche: deferred
+
+# area: final-receipt — final manifest and final-mode installation receipt
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kybackfill.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/rehearsal_results.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyfinal.py

@@ -4310,7 +4310,7 @@
     },
     "files": {
      "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
-     "$RUN/jobs/J-20261012T000000Z-b1/state.json": "not json"
+     "$RUN/jobs": "not a directory"
     },
     "gate": "OPEN"
    },
@@ -4331,7 +4331,7 @@
     ],
     "lock": true
    },
-   "note": "a job state that cannot be read: nothing is decided on top of it, and the instance lock is kept (a job may be live)"
+   "note": "Aggregate jobs-directory failure is fatal; individual foreign or unreadable job folders are quarantined in memory."
   },
   {
    "name": "hold_appears_while_the_gate_is_running",

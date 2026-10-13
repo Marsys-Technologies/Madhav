@@ -95,12 +95,11 @@
 #    claims.py keeps ONE record per worker, so the log is also read for claims no record shows: an item whose latest
 #    claim event is active and is not a listed record's claim goes to legacy.unresolved[] (kind `claim_event`).
 #    An open `kalayantra/*` PR
-#    is adopted (one R/jobs/legacy-<n>/state.json, never overwritten) only when the tracker's latest `PR #<n> @ <head>`
+#    is adopted (one R/legacy/legacy-<n>/state.json, never overwritten) only when the tracker's latest `PR #<n> @ <head>`
 #    review registration names the PR's current head and is its item's latest review event, every line of the
 #    event log could be read, and a state file already
 #    at that path is this PR's own adoption record; everything else is listed in legacy.unresolved[]. A PR listing that
-#    cannot be obtained fails the installation. The `legacy-<n>` state file is not the dispatcher's job-state schema (not
-#    in this base): its
+#    cannot be obtained fails the installation. The `legacy-<n>` record lives outside the dispatcher's jobs directory;
 #    schema is `ky.legacy_job_state/1` and every unknown field is null.
 #  * After a failure BEFORE the tracker restart the trees (F, tracker_live, bin, VERSIONS.bootstrap.json) are restored — the
 #    receipt is not; once the tracker restart has begun nothing is undone (the loaded revision would no longer match the
@@ -1642,7 +1641,7 @@ def list_prs(ctx):
 
 def adopt_pr(ctx, pr, reg, claim_rows):
     job_id = "legacy-%d" % pr["number"]
-    path = os.path.join(ctx.run_dir, "jobs", job_id, "state.json")
+    path = os.path.join(ctx.run_dir, "legacy", job_id, "state.json")
     claim = None
     if claim_rows:
         c = claim_rows[0]
@@ -1669,6 +1668,13 @@ def adopt_pr(ctx, pr, reg, claim_rows):
 
 
 # ---- step 8-9: loop plists and qualifications
+# Conventional qualification identities for installed job-role templates (not the launched jobs).
+QUALIFICATION_JOB_ENV = {
+    "build": {"KY_STREAM": "K", "KY_LANE": "b1", "KY_CONTROLLER_ID": "CTL-qualification"},
+    "verify": {"KY_STREAM": "K", "KY_LANE": "v1", "KY_CONTROLLER_ID": "CTL-qualification"},
+}
+
+
 def plist_facts(path, label, kind):
     try:
         with open(path, "rb") as f:
@@ -1737,17 +1743,19 @@ def step_qualify(ctx):
             raise Failed(9, "launch configuration unreadable or without role/model: %s (%s)" % (cfg, type(e).__name__))
         receipt = os.path.join(ctx.run_dir, "QUALIFICATIONS", "%s-%s.json" % (role, model))
         check = py + [qual, "check", receipt, "--config", cfg, "--require-context", "launchd", "--verify-evidence"]
-        done = run(check, child_env(ctx), timeout=600)
+        qualification_env = child_env(ctx)
+        qualification_env.update(QUALIFICATION_JOB_ENV.get(role, {}))
+        done = run(check, qualification_env, timeout=600)
         requalified = False
         if done.rc != 0:
             requalified = True
             evidence = os.path.join(work, "qualify-%s-%s" % (role, model))
             os.makedirs(evidence, exist_ok=True)
             q = run(py + [qual, "qualify", "--config", cfg, "--context", "launchd", "--control", "--evidence-dir", evidence, "--out", receipt],
-                    child_env(ctx), timeout=3 * 3600)
+                    qualification_env, timeout=3 * 3600)
             if q.rc != 0 and not os.path.isfile(receipt):
                 raise Failed(9, "qualification of %s %s did not produce a receipt (exit %s): %s" % (role, model, q.rc, q.last_error()))
-            done = run(check, child_env(ctx), timeout=600)
+            done = run(check, qualification_env, timeout=600)
         result = None
         try:
             result = json.loads(open(receipt, "rb").read()).get("result")

@@ -424,6 +424,7 @@ class Engine:
         self._events_cache = (None, None)
         self._pr_cache = {}
         self._next = (False, None)
+        self._tick_error = False
         self.ctx = Ctx(self)
         self.admit_ctx = _View(self.ctx, now=lambda: int(self.clock()))
 
@@ -443,6 +444,7 @@ class Engine:
         self._tracker_unknown = tracker is not None and (not isinstance(tracker, dict) or not _is_int(tracker.get("version"))
                                                          or tracker["version"] < 0)
         self.tracker_seen = tracker
+        self.tracker_retry = loop.get("tracker_retry") is True
         conditions = loop.get("conditions") if isinstance(loop.get("conditions"), dict) else {}
         self.gate_seen = conditions.get("gate") if conditions.get("gate") in ("OPEN", "WAIT") else None
         seen = conditions.get("seen")
@@ -521,6 +523,8 @@ class Engine:
     def journal(self, event, text):
         """One line of $KY_RUN/JOURNAL_DISPATCHER.md — and, for the plan's quoted events, one notification — per
         changed condition: a line the previous tick already wrote is not written again."""
+        if event.lower() == "dispatcher error":
+            self._tick_error = True
         event, text = ka.flat(event, 80), ka.flat(text, 2000)
         key = hashlib.sha256(("%s\n%s" % (event, text)).encode("utf-8")).hexdigest()[:16]
         if key in self.seen_before or key in self.seen_now:
@@ -647,15 +651,27 @@ class Engine:
         if self._tracker_unknown:
             self._next = (True, None)
             return self._unknown("tracker checkpoint", "the previous version is unreadable; it cannot be reset to a first tick")
+        before = self._events_signature()
         rc, out, _ = self.ky("next", "--json")
         try:
             nxt = _json(out) if rc == 0 else None
         except (ValueError, RecursionError):
             nxt = None
         now = self._events_signature()
-        value = self._declarations(nxt) if next_known(nxt) and fresh(nxt, self.tracker_seen, now) else None
+        # ky next carries only a snapshot version (server.py:388-391), not a processed EVENTS
+        # digest/count. After an error, keep the original freshness fence: changed checkpoint bytes
+        # require a version ABOVE the last accepted one. Stability during the request alone proves nothing.
+        stable_retry = not self.tracker_retry or (isinstance(before, dict) and before == now)
+        known = next_known(nxt)
+        value = self._declarations(nxt) if known and stable_retry and fresh(nxt, self.tracker_seen, now) else None
         if value is None:
-            self._unknown("tracker", "ky next has no recognisable fresh unfiltered live answer (exit %s)" % rc)
+            if (self.tracker_retry and known and isinstance(self.tracker_seen, dict)
+                    and nxt["version"] == self.tracker_seen["version"] and isinstance(now, dict)
+                    and not fresh(nxt, self.tracker_seen, now)):
+                self.journal("tracker wait", "EVENTS changed since checkpoint; waiting for tracker version above %s"
+                             % self.tracker_seen["version"])
+            else:
+                self._unknown("tracker", "ky next has no recognisable fresh unfiltered live answer (exit %s)" % rc)
         if value is not None:
             self.tracker_seen = dict(now or {"events_size": None, "events_sha256": None}, version=nxt["version"])
         self._next = (True, value)
@@ -825,6 +841,8 @@ class Engine:
     # ── a tick ──
     def tick(self):
         """→ {"stop": bool, "jobs": [{kind, item, key, pool, decision}]}. An exception is caught and journalled."""
+        tracker_before = self.tracker_seen
+        self._tick_error = False
         self.seen_now = set()
         self._next = (False, None)
         self._pr_cache = {}
@@ -838,6 +856,13 @@ class Engine:
                 self.journal("dispatcher error", "%s: %s" % (type(e).__name__, ka.flat(e, 600)))
             except Exception as again:
                 sys.stderr.write("kydispatch: %s; and the journal: %s\n" % (ka.flat(e, 300), ka.flat(again, 300)))
+        if self._tick_error:
+            self.tracker_seen = tracker_before
+            self.tracker_retry = True
+            self._next = (False, None)
+            self._events_cache = (None, None)
+        elif self._next[0] and self._next[1] is not None:
+            self.tracker_retry = False
         if not self.dry and not out.get("idle"):
             try:
                 self._persist()
@@ -858,6 +883,7 @@ class Engine:
             doc.update(last_iteration_at=ka.utc(), controller={"id": self.controller_id, "pid": os.getpid()},
                        waiting=self._waiting, log_path=self.log_path, backoff=dict(self.backoff),
                        priority=list(self.priority_cmd), tracker=self.tracker_seen,
+                       tracker_retry=self.tracker_retry,
                        conditions={"gate": self.gate_seen, "seen": sorted(self.seen_now)})
             return doc
         kyloop.update_loop_state(self.run, ROLE, update)
@@ -917,9 +943,14 @@ class Engine:
         for intent in intents:
             if intent["kind"] == "PLAN" and intent["item"] == "WAVE-BOUNDARY":
                 self.log("wave boundary awaiting PLAN job (%s); this intent does not prove wave completion" % intent["key"])
+        loaded = J.load(ctx)
+        bad = list(getattr(ctx, "_job_errors", {}).values())
+        active = [j for j in loaded if j["phase"] != "ended"] + bad
         state = {"hold": hold, "gate": gate, "hold_merges": hold_merges, "sizes": sizes, "provisioned": False,
-                 "short": set(), "busy": {j["slot"] for j in J.load(ctx) if j["phase"] != "ended" and j.get("slot")},
-                 "open_keys": {j["key"] for j in J.load(ctx) if j["phase"] != "ended"}}
+                 "short": set(), "busy": {slot for j in active for slot in (j.get("slot"), j.get("encoded_slot")) if slot},
+                 "open_keys": {j["key"] for j in active if j.get("key")},
+                 "bad_items": {j["item"] for j in bad if j.get("item")},
+                 "unknown_item": any(j.get("unknown_item") for j in bad)}
         jobs = []
         for intent in intents:                                                 # 9
             decision = self._admit(intent, state)
@@ -1221,7 +1252,7 @@ class Engine:
             return "park" if parked.get("parked") else "refused:park"
         if ctx.next is None:
             return "wait:stale"
-        if key in state["open_keys"]:
+        if key in state["open_keys"] or item in state.get("bad_items", set()) or state.get("unknown_item"):
             return "refused:open"
         handled = self._handled(intent)
         if handled is None:

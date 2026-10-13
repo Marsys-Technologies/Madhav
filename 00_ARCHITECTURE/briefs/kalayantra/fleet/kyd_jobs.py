@@ -11,7 +11,7 @@ A module of the dispatcher engine (kydispatch.py); it has no command line. The e
     ctx.awaiting(slug, question, options, evidence, item, class_hint)
     ctx.journal(event, text)
 
-    load(ctx)                      every job state, oldest first (install.sh's legacy-<n> first); JobsUnreadable
+    load(ctx)                      readable job states, oldest first; bad folders quarantined in memory
     attempts(ctx, intent)          {"attempt", "blocked"} from $KY_RUN/jobs/failures.json and the ended jobs
     open(ctx, intent, slot, facts) a prepared job, or None with everything undone
     launch(ctx, job)               the job as it is afterwards: phase "live" when it was started
@@ -87,6 +87,7 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
   * an owner-wait is raised once per job and reason (checkpoint.awaiting remembers).
 Changelog: v1.1 (2026-10-13): optional Codex selection, collection, landing and silence timeout.
 Fix B1 (2026-10-13): recover known Codex groups, including pending termination; retain persisted clocks/fences.
+Fix WB-01-R (2026-10-13): state-first native identity; retain malformed legacy reservations.
 Python >= 3.9, standard library only; kyaction.py, kyloop.py, kyschema.py and schemas/ beside this file.
 """
 from __future__ import annotations
@@ -160,7 +161,7 @@ _RESULT_SCHEMA = []
 
 
 class JobsUnreadable(Exception):
-    """A job state (or the failure table) is there and cannot be read: nothing is decided on top of it."""
+    """An individual job state, jobs directory or failure table cannot be read."""
 
 
 # ───────────────────────────────────────── small helpers ─────────────────────────────────────────
@@ -241,6 +242,12 @@ def _checked(doc, err, name):
         raise JobsUnreadable("job %s: its state names job_id %r" % (name, doc.get("job_id")))
     if doc.get("phase") not in PHASES:
         raise JobsUnreadable("job %s: phase %r is not one of %s" % (name, doc.get("phase"), ", ".join(PHASES)))
+    for key in ("key", "item", "kind", "slot", "controller_id"):
+        if doc.get(key) is not None and not _text(doc[key]):
+            raise JobsUnreadable("job %s: %s must be nonempty text or null" % (name, key))
+    for key in LIST_KEYS:
+        if doc.get(key) is not None and not isinstance(doc[key], list):
+            raise JobsUnreadable("job %s: %s must be a list or null" % (name, key))
     for key in LAUNCH_KEYS + LIFECYCLE_KEYS:
         doc.setdefault(key, None)
     return doc
@@ -257,8 +264,18 @@ def _age(job_id):
 
 
 def load(ctx):
-    """Every job state under $KY_RUN/jobs, oldest first. A job folder whose state cannot be read raises."""
+    """Readable jobs, oldest first. Only positively foreign bad folders are quarantined.
+    Unknown native states retain their folder-encoded slot and identifiable slot/key/item reservations;
+    they are neither supervised nor recovered, and their bytes are never moved or rewritten.
+    (I) INTERPRETATION: if the item cannot be identified, all item admissions wait for reconciliation.
+    (I) INTERPRETATION: an unidentified non-J folder or unrecognized schema is not positively foreign;
+    retain readable reservations, or refuse all admissions when the item cannot be bounded.
+    A schema-less cockpit-direct record is foreign by its launcher marker (launch_direct.py:85).
+    A repair is read on the next call; one notice per folder per context.
+    Directory-listing and failure-table errors remain fatal because their scope is not one job.
+    """
     directory = _run(ctx) / "jobs"
+    ctx._job_errors = {}
     try:
         names = sorted(os.listdir(directory))
     except FileNotFoundError:
@@ -266,11 +283,52 @@ def load(ctx):
     except OSError as e:
         raise JobsUnreadable("%s cannot be listed (%s)" % (directory, type(e).__name__)) from None
     jobs = []
+    seen = getattr(ctx, "_job_quarantine_seen", None)
+    if seen is None:
+        seen = ctx._job_quarantine_seen = set()
     for name in names:
         if name.startswith(".") or not os.path.isdir(directory / name):
             continue                                     # failures.json, a state being created
         doc, err = ka.read_json(directory / name / "state.json")
-        jobs.append(_checked(doc, err, name))
+        try:
+            jobs.append(_checked(doc, err, name))
+        except JobsUnreadable as exc:
+            encoded = _JOB_ID.match(name)
+            schema = doc.get("schema") if isinstance(doc, dict) else None
+            # State identity × folder form × defect decision table (checked before naming heuristics):
+            # STATE IDENTITY                 J-<UTC>-<slot>[.n]     legacy-N / any other folder
+            # ky.job/1, valid                load                  load
+            # ky.job/1, ANY field defect     native error          native error
+            # ky.bootstrap_job_state/3      quarantine            quarantine (even with field defects)
+            # ky.legacy_job_state/1         quarantine            quarantine (even with field defects)
+            # schema ABSENT + launcher      quarantine            quarantine (even with field defects)
+            #   == cockpit-direct
+            # NO identity: missing state,   native error          unidentified error (I: conservative)
+            # unreadable JSON/I/O, non-object,
+            # absent/null/invalid schema,
+            # or an unrecognized named schema
+            # A ky.job/1 schema wins over a launcher marker. A present schema (even null) prevents
+            # the schema-less marker fallback. Only the two recognized foreign schemas are proof.
+            # Every error retains each readable declared slot/key/item; J names additionally reserve
+            # their encoded slot, even if the declared slot is null, missing, invalid or different.
+            # An unidentified item blocks all admissions. Errors/quarantines get one notice per folder;
+            # neither is supervised/recovered and neither changes bytes. Tests enumerate all rows,
+            # both naming columns (legacy and arbitrary separately), and every _checked field defect.
+            native = not err and isinstance(doc, dict) and schema == SCHEMA
+            foreign = (not native and not err and isinstance(doc, dict)
+                       and (schema in ("ky.bootstrap_job_state/3", "ky.legacy_job_state/1")
+                            or ("schema" not in doc and doc.get("launcher") == "cockpit-direct")))
+            if not foreign:
+                reservation = {k: doc.get(k) for k in ("slot", "key", "item")
+                               if isinstance(doc, dict) and _text(doc.get(k))}
+                if encoded:
+                    reservation["encoded_slot"] = encoded.group(2)
+                    reservation.setdefault("slot", encoded.group(2))
+                reservation["unknown_item"] = not _text(reservation.get("item"))
+                ctx._job_errors[name] = reservation
+            if name not in seen:
+                ctx.journal("job quarantine" if foreign else "dispatcher error", str(exc))
+                seen.add(name)
     return sorted(jobs, key=lambda j: _age(j["job_id"]))
 
 
@@ -479,10 +537,16 @@ def _plan(ctx, intent, slot, facts):
     header, launch = intent.get("header") or {}, facts.get("launch") or {}
     if not isinstance(header, dict) or not isinstance(launch, dict):
         return None, "intent.header and facts.launch must be objects"
+    managed_codex = launch.get("codex_config")
+    if managed_codex is not None:
+        for k in LAUNCH_FACTS + engines.FIELDS + ("role",):
+            if k in header and header[k] != launch.get(k):
+                return None, "header cannot override admitted Codex %s" % k
     if intent.get("claim") and slot is None:
         return None, "a claiming job needs a slot (the claim's worker)"
     state = dict.fromkeys(["schema"] + LAUNCH_KEYS + LIFECYCLE_KEYS)
-    state.update(schema=SCHEMA, key=key, item=item, kind=kind, role=intent.get("role") or kind.lower(),
+    state.update(schema=SCHEMA, key=key, item=item, kind=kind,
+                 role=launch.get("role") if managed_codex is not None else intent.get("role") or kind.lower(),
                  stream=intent.get("stream"), slot=slot, base_sha=facts.get("base_sha"),
                  prerequisites=facts.get("prerequisites"), tests=facts.get("tests"),
                  test_digests=facts.get("test_digests"), card_path=intent.get("card"),
@@ -527,12 +591,15 @@ def _plan(ctx, intent, slot, facts):
             texts[k] = Path(state[k]).read_bytes() if state[k] is not None else b""
         except OSError as e:
             return None, "%s %s cannot be read (%s)" % (k, state[k], type(e).__name__)
-    return {"state": state, "claim": bool(intent.get("claim")), "texts": texts, "added_worktree": False,
+    plan = {"state": state, "claim": bool(intent.get("claim")), "texts": texts, "added_worktree": False,
             "migration": facts.get("migration") is not None and "migration_number" not in header,
-            "header": {k: v for k, v in header.items() if k not in PROTECTED}}, None
+            "header": {k: v for k, v in header.items() if k not in PROTECTED}}
+    if managed_codex is not None:
+        plan.update(codex_config=managed_codex, codex_config_sha256=launch.get("codex_config_sha256"))
+    return plan, None
 
 
-def _look(ctx, key, slot):
+def _look(ctx, key, slot, item=None):
     """The fresh look under the job lock → why nothing is opened, or None."""
     if os.path.lexists(_run(ctx) / "handled" / ("job.%s.json" % key)):
         return "key %s is handled" % key
@@ -541,6 +608,10 @@ def _look(ctx, key, slot):
             return "job %s of key %s has not ended" % (job["job_id"], key)
         if job["phase"] != "ended" and slot is not None and job.get("slot") == slot:
             return "slot %s is not free: job %s has not ended" % (slot, job["job_id"])
+    for name, job in ctx._job_errors.items():
+        if (job.get("key") == key or (slot is not None and slot in (job.get("slot"), job.get("encoded_slot")))
+                or job.get("unknown_item") or (item is not None and job.get("item") == item)):
+            return "job %s has an unknown or malformed state; its item/key/slot requires reconciliation" % name
     return None
 
 
@@ -680,12 +751,32 @@ def _prompt(job, plan):
     ka.write_atomic(job["prompt_path"], b"".join(parts))
 
 
+def _codex_config(job, plan):
+    """Adapt the qualification template only at its per-job worktree/prompt paths.
+
+    (I) These templates cover the no-test-commit/no-ephemeris job environment.
+    Additional environment needs its own reviewed qualification, never trimming.
+    """
+    cfg = plan.get("codex_config")
+    if cfg is None:  # Preserve the accepted caller-supplied engine adapter path.
+        return
+    if engines.digest(job["launch_config_path"]) != plan["codex_config_sha256"]:
+        raise engines.Refusal("Codex template changed after admission")
+    if job.get("tests") or job.get("se_ephe_path") is not None or job.get("swe_ephe_path") is not None or job.get("fixture"):
+        raise engines.Refusal("Codex role template does not qualify optional TESTS/ephemeris/fixture environment")
+    adapted = dict(cfg, worktree=job["worktree"], prompt_path=job["prompt_path"], role=job["role"])
+    job["launch_config_path"] = os.path.join(job["job_scratch"], "launch_config.json")
+    ka.write_json(job["launch_config_path"], adapted)
+
+
 def _prepare(ctx, job, plan):
     """Everything open does after the job exists → why it cannot be a prepared job, or None."""
     try:
         why = _claim(ctx, job) if plan["claim"] else None
         why = why or _worktree(ctx, job, plan) or _migration(ctx, job, plan)
         if why is None:
+            if job.get("engine") == "codex":
+                _codex_config(job, plan)
             _prompt(job, plan)
             if job.get("engine") == "codex":
                 engines.prepare(ctx, job)
@@ -719,7 +810,7 @@ def open(ctx, intent, slot, facts):                      # noqa: A001 — the pa
         return None
     held.append(lock)
     try:
-        why = _look(ctx, key, slot)
+        why = _look(ctx, key, slot, plan["state"]["item"])
         if why is None and slot is not None:
             slot_lock = _take(ctx, "slot.%s" % slot)
             why = None if slot_lock is not None else "slot %s is being released or opened" % slot
@@ -858,6 +949,43 @@ def _result(job):
     except (OSError, ValueError, RecursionError):
         return None
     return doc if doc["job_id"] == job["job_id"] and doc["item"] == job["item"] else None
+
+
+def read_result(job):
+    """Shared strict result reader for controller finish/recovery; no symlink or schema compatibility fallback."""
+    if (not isinstance(job, dict) or not _text(job.get("job_id")) or not _text(job.get("item"))
+            or not _text(job.get("job_scratch")) or not os.path.isabs(job["job_scratch"])):
+        return None
+    return _result(job)
+
+
+def record_registration(ctx, job, doc, source=None):
+    """Persist only identities whose registration the kind observed, before claim release.
+
+    (I) INTERPRETATION: recovery is a recorded changed condition, clearing only no_post_action at the source
+    evidence fingerprint. Other failure classes and the original ended jobs remain as history.
+    """
+    job["result_path"] = os.path.join((source or job)["job_scratch"], "result.json")
+    if doc["status"] == "done":
+        job.update(head=doc["head_sha"], pr=doc["pr_number"], registered_head=doc["head_sha"])
+    if source:
+        _checkpoint(job)["review_recovery"] = {"job_id": source["job_id"], "evidence_fp": source.get("evidence_fp"),
+                                                "head": doc["head_sha"], "pr": doc["pr_number"]}
+    _save(ctx, job)
+    if source:
+        clear_review_failure(ctx, job)
+
+
+def clear_review_failure(ctx, job):
+    """Idempotent after a persisted, observed recovery registration, including a restart during close."""
+    recovery = _checkpoint(job).get("review_recovery")
+    if not isinstance(recovery, dict):
+        return
+    table = _failures(ctx)
+    entry = table.get(job["item"], {}).get("no_post_action")
+    if isinstance(entry, dict) and entry.get("evidence_fp") == recovery.get("evidence_fp"):
+        del table[job["item"]]["no_post_action"]
+        ka.write_json(_run(ctx) / "jobs" / "failures.json", table)
 
 
 def _result_event(path):
@@ -1190,6 +1318,8 @@ def _step_result(ctx, job, result):
     if outcome == "interrupted" and fp != QUOTA:
         job["requeued"] = not _interrupted(load(ctx), job["key"], but=job["job_id"])
     job.update(outcome=outcome, failure_fp=fp, phase="terminating")
+    if outcome == "done":
+        clear_review_failure(ctx, job)
     detail = result.get("detail")
     _checkpoint(job).update(at=_stamp(), outcome=outcome, failure_fp=fp, exit_code=job.get("exit_code"),
                             detail=None if detail is None else ka.flat(detail, 2000),
