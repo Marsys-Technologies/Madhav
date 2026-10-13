@@ -7,7 +7,6 @@ import copy
 import hashlib
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import sys
@@ -21,6 +20,17 @@ from test_kygate import digest_without
 
 FLEET = Path(__file__).resolve().parent.parent
 SCRIPT = FLEET / "kyfinal.py"
+
+# Required measurements from plan §14 B-3 and surrogate answers 09 / 12.
+OBLIGATIONS = (
+    "component_tests_final_bundle", "fixture_live_events_unchanged",
+    "fixture_no_live_tracker_access", "fixture_no_external_requests",
+    "fixture_expected_transitions", "fixture_clean_stop",
+    "live_build_by_fleet", "live_pr_opened", "live_verify_boundary",
+    "live_accepted_pr_head_in_log", "live_merge_parked_no_auto_merge",
+)
+SUBSTITUTION = {"replaces": "fixture_model_jobs", "replacement": "live_first_item_under_watch",
+                "ruling": "SURROGATE_ANSWER_09_B3_LEG3.md#6", "label": "live, not fixture"}
 
 
 def write(path, doc):
@@ -40,7 +50,7 @@ def tree_digest(root):
 def final_rig(manifest_rig, tmp_path):
     r = manifest_rig
     # Bind the real consumers and packet checker/dependencies into the reviewed fixture.
-    for name in ("kygate.sh", "kyversion.sh", "kypacket.py", "kyschema.py", "schemas/packet.json", "schemas/release_receipt.json", "templates/ku_bindings.json"):
+    for name in ("kygate.sh", "kyversion.sh", "kypacket.py", "kyschema.py", "schemas/packet.json", "schemas/release_receipt.json", "templates/ku_bindings.json", "kybackfill.py", "schemas/rehearsal_results.json"):
         rel = km.FLEET + "/" + name
         dest = r.repo / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -105,7 +115,12 @@ def final_rig(manifest_rig, tmp_path):
     out_receipt = r.run / "INSTALL_RECEIPT.json"
     write(out_receipt, bootstrap)
     rehearsal, coverage = r.run / "REHEARSAL_RESULTS.json", r.run / "coverage.review.json"
-    write(rehearsal, {"tested_components": m["components"], "legs": [1, 2]})
+    measurement = r.run / "measured-rehearsal.txt"
+    measurement.write_text("offline rig measurements\n")
+    write(rehearsal, {"schema": "ky.rehearsal_results/2", "tested_components": m["components"],
+        "obligations": [{"id": name, "outcome": "PASS", "measured_by": "offline fixture detector",
+                         "evidence": [{"path": str(measurement), "sha256": sha(measurement)}]}
+                        for name in OBLIGATIONS], "substitutions": [SUBSTITUTION]})
     write(coverage, {"review": {"verdict": "ACCEPTED"}, "reviewer_session_id": "cards-reviewer"})
     # Reuse the packet rig's contract, but pin it to THIS fixture repository.
     packet_base = tmp_path / "packet-base"
@@ -125,15 +140,51 @@ def final_rig(manifest_rig, tmp_path):
     release["digest"] = digest_without(release, "digest")
     write(r.run / "RELEASE_RECEIPT.json", release)
     git(r.repo, "update-ref", "refs/remotes/origin/main", r.approved)
-    validator = r.run / "validator.py"
-    validator.write_text("import sys\nsys.exit(0)\n")
-    command = shlex.join([sys.executable, "-B", str(validator)])
+    # Named backfill artefacts and the real governance detector, never a no-op oracle.
+    gov = "platform/scripts/governance/"
+    for name in ("schema_validator.py", "_ca_loader.py"):
+        dest = r.repo / (gov + name)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(FLEET.parents[3] / (gov + name), dest)
+    banner = r.repo / "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    session_log = r.repo / "00_ARCHITECTURE/SESSION_LOG.md"
+    banner_id, entry_id = "KĀLA-YANTRA v3 — fixture backfill.", "KY_FIXTURE_BACKFILL"
+    banner.write_text("## §2 — Canonical state block\n\n> **" + banner_id + "**\n"
+                      "> Campaign handoff: SESSION_LOG.md#" + entry_id + "\n\n")
+    opened = {"session_open": dict.fromkeys((
+        "cowork_thread_name", "agent_name", "agent_version", "worktree_path",
+        "step_number_or_layer", "predecessor_session", "mandatory_reading_confirmation",
+        "mirror_pair_freshness_check", "native_directive_obligations", "red_team_due"), "fixture")}
+    opened["session_open"].update(session_id=entry_id, tool="Codex", tool_profile="madhav-parity",
+        coordination={"lease_id": "fixture", "lease_status_verified": True},
+        cross_tool_state_read={"cross_cutting_decision_register": True},
+        canonical_artifact_fingerprint_check=[], declared_scope={"may_touch": ["00_ARCHITECTURE/**"], "must_not_touch": ["platform/**"]})
+    closed = {"session_close": dict.fromkeys(("closed_at", "registry_updates_made", "red_team_pass",
+        "unblocks", "handoff_notes"), "fixture")}
+    closed["session_close"].update(session_id=entry_id, tool="Codex", current_state_updated=True,
+        session_log_appended=True, close_criteria_met=True,
+        drift_detector_run={"exit_code": 0}, schema_validator_run={"exit_code": 0, "violations_found": 0},
+        files_touched=[{"path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "sha256_after": sha(banner)},
+                       {"path": "00_ARCHITECTURE/SESSION_LOG.md", "sha256_after": None}],
+        cross_tool_sync={"work_order_outcome_recorded": True, "lease_release_recorded": True,
+                         "lease_release_verified_on_remote": True, "ccd_entries_appended": []})
+    # JSON mappings are valid YAML; validators parse the actual embedded blocks.
+    open_text, close_text = json.dumps(opened), json.dumps(closed)
+    handshake = r.repo / "00_ARCHITECTURE/briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.yaml"
+    handshake.parent.mkdir(parents=True, exist_ok=True)
+    handshake.write_text(open_text)
+    session_log.write_text("# Schema adoption point\n## " + entry_id + " — fixture\n"
+        "```yaml\n" + open_text + "\n```\nBody\n```yaml\n" + close_text + "\n```\n"
+        "### Next session objective\nComplete final acceptance.\n")
+    validator = r.repo / (gov + "schema_validator.py")
     env = dict(os.environ, KY_ROOT=str(root), KY_RUN=str(r.run), KY_FLEET=str(live), KY_SOURCE_REPO=str(r.repo), GIT_OPTIONAL_LOCKS="0")
 
     def build(*extra, packet_input=packets):
         return subprocess.run([sys.executable, "-B", str(SCRIPT), "build", "--repo", str(r.repo), "--run", str(r.run),
             "--rehearsal", str(rehearsal), "--coverage", str(coverage), "--packets", str(packet_input),
-            "--backfill-validator", command, "--out-manifest", str(r.run / "VERSIONS.json"),
+            "--backfill-banner-file", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+            "--backfill-session-log", "00_ARCHITECTURE/SESSION_LOG.md",
+            "--backfill-entry-id", entry_id, "--backfill-banner-id", banner_id, "--out-manifest", str(r.run / "VERSIONS.json"),
             "--out-receipt", str(out_receipt), *extra], capture_output=True, text=True, env=env)
 
     def consumer(name, *args):
@@ -143,7 +194,8 @@ def final_rig(manifest_rig, tmp_path):
         return {str(p): p.read_bytes() for base in (r.run, root) for p in base.rglob("*") if p.is_file()}
 
     return SimpleNamespace(r=r, m=m, root=root, live=live, track=track, bins=bins, bootstrap=bootstrap,
-        rehearsal=rehearsal, coverage=coverage, packet=packet, packets=packets, validator=validator,
+        rehearsal=rehearsal, coverage=coverage, packet=packet, packets=packets, validator=validator, banner=banner, session_log=session_log,
+        banner_id=banner_id, entry_id=entry_id, handshake=handshake,
         out_receipt=out_receipt, build=build, consumer=consumer, snapshot=snapshot)
 
 
@@ -165,7 +217,13 @@ def test_generated_final_bundle_passes_real_gate_and_all_final_version_checks(fi
     assert Path(str(f.out_receipt) + ".bootstrap").read_bytes() == old
     backfill = receipt["backfill"]
     assert backfill["validated"] is True and sha(Path(backfill["path"])) == backfill["sha256"]
-    assert read(Path(backfill["path"]))["exit_code"] == 0
+    evidence = read(Path(backfill["path"]))
+    assert evidence["exit_code"] == 0
+    assert evidence["validator"] == {"path": str(f.validator), "sha256": sha(f.validator)}
+    assert evidence["artifacts"]["banner"] == {"path": str(f.banner), "sha256": sha(f.banner), "identifier": f.banner_id}
+    assert evidence["artifacts"]["session_log"] == {"path": str(f.session_log), "sha256": sha(f.session_log), "entry_id": f.entry_id}
+    assert evidence["checks"] == {name: {"violations": 0, "exit_code": 0}
+                                  for name in ("handshake", "close_checklist", "scope_boundary", "session_entry")}
     version = f.consumer("kyversion.sh")
     assert version.returncode == 0, version.stderr
     gate = f.consumer("kygate.sh", "--pre-resume")
@@ -252,7 +310,7 @@ def test_packet_list_resolves_relative_paths_and_hash_binds_them(final_rig):
 
 def test_inputs_changed_by_validator_are_refused_before_any_output(final_rig):
     f = final_rig
-    f.validator.write_text(f"from pathlib import Path\nPath({str(f.coverage)!r}).write_text('changed')\n")
+    f.validator.write_text(f"from pathlib import Path\nPath({str(f.coverage)!r}).write_text('changed')\n" + f.validator.read_text().replace("from __future__ import annotations\n", ""))
     done = f.build()
     assert done.returncode == 1 and "inputs_changed" in done.stderr, done.stderr
     assert not (f.r.run / "VERSIONS.json").exists()
@@ -355,7 +413,7 @@ def test_real_consumers_detect_tampering_after_finalisation(final_rig, target):
 def test_validator_cannot_leave_a_packet_with_changed_spec_sources_admitted(final_rig):
     f = final_rig
     source = f.r.repo / 'docs/PLAN.md'
-    f.validator.write_text(f"from pathlib import Path\nPath({str(source)!r}).write_text('changed spec')\n")
+    f.validator.write_text(f"from pathlib import Path\nPath({str(source)!r}).write_text('changed spec')\n" + f.validator.read_text().replace("from __future__ import annotations\n", ""))
     done = f.build()
     assert done.returncode == 1 and 'packet_not_admitted' in done.stderr, done.stdout + done.stderr
     assert not (f.r.run / 'VERSIONS.json').exists()
@@ -368,4 +426,96 @@ def test_ambiguous_json_coverage_cannot_earn_acceptance(final_rig):
     before = f.snapshot()
     done = f.build()
     assert done.returncode == 1 and 'coverage_unreadable' in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+@pytest.mark.parametrize("outcome", ["NOT_RUN", "FAIL", "UNKNOWN", None, "missing"])
+def test_matching_components_cannot_mask_unearned_rehearsal(final_rig, outcome):
+    f = final_rig
+    doc = read(f.rehearsal)
+    name = "live_accepted_pr_head_in_log"
+    row = next(row for row in doc["obligations"] if row["id"] == name)
+    if outcome == "missing":
+        doc["obligations"].remove(row)
+    elif outcome is None:
+        del row["outcome"]
+    else:
+        row["outcome"] = outcome
+    write(f.rehearsal, doc)
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and name in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+@pytest.mark.parametrize("change", ["hash", "missing", "empty", "measured_by", "duplicate", "schema", "substitution"])
+def test_rehearsal_evidence_and_substitution_are_required(final_rig, change):
+    f = final_rig
+    doc = read(f.rehearsal)
+    row = doc["obligations"][0]
+    if change == "hash":
+        row["evidence"][0]["sha256"] = "0" * 64
+    elif change == "missing":
+        Path(row["evidence"][0]["path"]).unlink()
+    elif change == "empty":
+        row["evidence"] = []
+    elif change == "measured_by":
+        row["measured_by"] = ""
+    elif change == "duplicate":
+        doc["obligations"].append(copy.deepcopy(row))
+    elif change == "schema":
+        doc["schema"] = "ky.rehearsal_results/1"
+    else:
+        doc["substitutions"] = []
+    write(f.rehearsal, doc)
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and "rehearsal_" in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+def test_true_cannot_validate_backfill(final_rig):
+    f = final_rig
+    before = f.snapshot()
+    done = f.build("--backfill-validator", "/usr/bin/true")
+    assert done.returncode != 0, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+@pytest.mark.parametrize("change", ["banner", "handshake", "close", "entry"])
+def test_governance_rejected_backfill_cannot_earn_validated(final_rig, change):
+    f = final_rig
+    if change == "banner":
+        f.banner.write_text(f.banner.read_text().replace(f.banner_id, "Wrong banner"))
+    elif change == "handshake":
+        f.session_log.write_text(f.session_log.read_text().replace('"tool_profile": "madhav-parity"', '"tool_profile": "unapproved"'))
+        f.handshake.write_text(f.handshake.read_text().replace('"tool_profile": "madhav-parity"', '"tool_profile": "unapproved"'))
+    elif change == "close":
+        f.session_log.write_text(f.session_log.read_text().replace('"close_criteria_met": true', '"close_criteria_met": false'))
+    else:
+        f.session_log.write_text(f.session_log.read_text().replace('### Next session objective', '### Choices'))
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and "backfill_" in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+@pytest.mark.parametrize("name", OBLIGATIONS)
+def test_each_required_measurement_must_be_present(final_rig, name):
+    f = final_rig
+    doc = read(f.rehearsal)
+    doc["obligations"] = [row for row in doc["obligations"] if row["id"] != name]
+    write(f.rehearsal, doc)
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and name in done.stderr, done.stdout + done.stderr
+    assert f.snapshot() == before
+
+
+def test_no_op_repository_validator_has_no_governance_detectors(final_rig):
+    f = final_rig
+    f.validator.write_text("# no-op, no governance detectors\n")
+    before = f.snapshot()
+    done = f.build()
+    assert done.returncode == 1 and "governance detector missing" in done.stderr, done.stdout + done.stderr
     assert f.snapshot() == before

@@ -2,15 +2,17 @@
 """Produce the final manifest and installation receipt from a measured bootstrap install.
 
 Usage: kyfinal.py build --repo REPO --run RUN --rehearsal RESULTS.json
-  --coverage REVIEW.json --packets LIST_OR_DIR --backfill-validator 'COMMAND ARGS'
+  --coverage REVIEW.json --packets LIST_OR_DIR
+  --backfill-banner-file 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  --backfill-session-log 00_ARCHITECTURE/SESSION_LOG.md
+  --backfill-entry-id SESSION_ID --backfill-banner-id 'EXACT BANNER TITLE'
   --out-manifest RUN/VERSIONS.json --out-receipt RUN/INSTALL_RECEIPT.json [--dry]
 
 No service, network, git mutation or model launch. All admission checks precede
 publication; a named refusal publishes nothing. --dry runs the same detectors,
-including the supplied validator, and prints the proposed records without writing.
-The validator is executed as argv (shlex), not a shell. This tool cannot undo a
-supplied command's side effects; use a read-only validator when globally write-free
-refusal/dry-run behaviour is required. It never publishes on a failed validator.
+including the fixed repository governance detectors, and prints the proposed records
+without writing. No arbitrary validator command is accepted. See kybackfill.py for
+the scoped adapter to the repository validator (which has no backfill CLI mode).
 
 (I) INTERPRETATION: finalisation refuses deferred components; first bind/review and
 reinstall the complete bundle. Source authority comes from VERSIONS.bootstrap.json,
@@ -50,7 +52,6 @@ import hashlib
 import json
 import os
 import re
-import shlex
 import stat
 import subprocess
 import sys
@@ -60,8 +61,26 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kymanifest as km
+import kyschema
+import kybackfill
 
 HEX = re.compile(r"[0-9a-f]{64}\Z")
+
+# Plan: 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:716 (B-3).
+# Rulings under /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/engines/surrogate/:
+# SURROGATE_ANSWER_09_B3_LEG3.md:13 (§1),36 (live PASS),40 (§6 substitution);
+# SURROGATE_ANSWER_12_FASTEST_PATH.md:23 (Rest of B-3: final-bundle component tests).
+# (I) INTERPRETATION: granular IDs cover every retained acceptance claim separately;
+# fixture_clean_stop includes server/DB/worktree cleanup, not merely a stopped tick.
+REQUIRED_OBLIGATIONS = (
+    "component_tests_final_bundle", "fixture_live_events_unchanged",
+    "fixture_no_live_tracker_access", "fixture_no_external_requests",
+    "fixture_expected_transitions", "fixture_clean_stop",
+    "live_build_by_fleet", "live_pr_opened", "live_verify_boundary",
+    "live_accepted_pr_head_in_log", "live_merge_parked_no_auto_merge",
+)
+SUBSTITUTION = {"replaces": "fixture_model_jobs", "replacement": "live_first_item_under_watch",
+                "ruling": "SURROGATE_ANSWER_09_B3_LEG3.md#6", "label": "live, not fixture"}
 
 
 class Refused(Exception):
@@ -138,6 +157,32 @@ def component_map(rows, code):
             refuse(code, "not distinct {path,sha256} entries")
         out[row["path"]] = row["sha256"]
     return out
+
+
+def check_rehearsal(doc, repo, inputs):
+    rows = doc.get("obligations")
+    if not isinstance(rows, list):
+        refuse("rehearsal_obligation", "missing obligations: " + ", ".join(REQUIRED_OBLIGATIONS))
+    indexed = {}
+    for row in rows:
+        name = row.get("id") if isinstance(row, dict) else None
+        if not isinstance(name, str) or not name or name in indexed:
+            refuse("rehearsal_obligation", f"invalid/duplicate obligation: {name}")
+        indexed[name] = row
+        if row.get("outcome") != "PASS":
+            refuse("rehearsal_obligation", f"{name}: outcome must explicitly be PASS")
+    for name in REQUIRED_OBLIGATIONS:
+        if name not in indexed:
+            refuse("rehearsal_obligation", f"{name}: missing required obligation")
+    schema = inputs.document(repo / km.FLEET / "schemas/rehearsal_results.json", "rehearsal_schema")
+    findings = kyschema.validate(schema, doc)
+    if findings:
+        refuse("rehearsal_schema", "; ".join(findings))
+    if doc["substitutions"] != [SUBSTITUTION]:
+        refuse("rehearsal_substitution", "required: answer 09 §6, live first item replaces fixture model jobs")
+    for row in rows:
+        for ref in row["evidence"]:
+            inputs.file(ref["path"], "rehearsal_evidence_" + row["id"], ref["sha256"])
 
 
 def tree_files(root):
@@ -375,6 +420,7 @@ def build(a):
     tested = component_map(rehearsal.get("tested_components"), "tested_components_mismatch")
     if tested != component_map(observed["components"], "manifest_components"):
         refuse("tested_components_mismatch", "rehearsal did not test the exact final component hashes")
+    check_rehearsal(rehearsal, repo, inputs)
     coverage = inputs.document(coverage_path, "coverage_unreadable")
     # Area-review records use review.verdict; aggregate reviews use top-level verdict.
     nested = coverage.get("review")
@@ -402,18 +448,12 @@ def build(a):
     api = version_api(repo)
     check_version(api, receipt, manifest, repo, run, inputs)
     try:
-        argv = shlex.split(a.backfill_validator)
-    except ValueError as e:
-        refuse("backfill_validator_command", str(e))
-    if not argv:
-        refuse("backfill_validator_command", "empty command")
-    done = child(argv, repo, "backfill_validator_failed")
-    if done.returncode != 0:
-        refuse("backfill_validator_failed", f"exit {done.returncode}; no validated signal earned")
-    evidence = {"schema": "ky.backfill_validation/1", "argv": argv, "cwd": str(repo), "exit_code": done.returncode}
-    # No stdout/stderr copied: a validator may emit unrelated sensitive content.
+        evidence = kybackfill.validate(repo, a.backfill_banner_file, a.backfill_session_log,
+                                       a.backfill_entry_id, a.backfill_banner_id, inputs)
+    except kybackfill.Invalid as e:
+        refuse("backfill_validator_failed", str(e))
     receipt["backfill"] = {"path": str(backfill_path), "sha256": hashlib.sha256(encoded(evidence)).hexdigest(),
-                           "validated": done.returncode == 0}
+                           "validated": evidence["exit_code"] == 0}
     inputs.unchanged()
     if packet_paths(selection, inputs) != selected:
         refuse("inputs_changed", "packet directory selection changed")
@@ -454,7 +494,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     command = sub.add_parser("build")
-    for name in ("repo", "run", "rehearsal", "coverage", "packets", "backfill-validator", "out-manifest", "out-receipt"):
+    for name in ("repo", "run", "rehearsal", "coverage", "packets", "backfill-banner-file",
+                 "backfill-session-log", "backfill-entry-id", "backfill-banner-id", "out-manifest", "out-receipt"):
         command.add_argument("--" + name, required=True)
     command.add_argument("--dry", action="store_true")
     args = parser.parse_args(argv)

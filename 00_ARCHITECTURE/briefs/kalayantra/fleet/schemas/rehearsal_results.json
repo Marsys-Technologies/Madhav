@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Measured B-3 obligations for final acceptance",
+  "$comment": "Plan v2.7 §14 B-3:716; surrogate answer 09 §§1,6:13,40 and answer 12 Rest of B-3:23. Required IDs and evidence hash checks are enforced by kyfinal.py.",
+  "type": "object",
+  "required": [
+    "schema",
+    "tested_components",
+    "obligations",
+    "substitutions"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.rehearsal_results/2"
+    },
+    "tested_components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "obligations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "outcome",
+          "measured_by",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "outcome": {
+            "const": "PASS"
+          },
+          "measured_by": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "pattern": "^/",
+                  "minLength": 2
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "substitutions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "replaces",
+          "replacement",
+          "ruling",
+          "label"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "replaces": {
+            "const": "fixture_model_jobs"
+          },
+          "replacement": {
+            "const": "live_first_item_under_watch"
+          },
+          "ruling": {
+            "const": "SURROGATE_ANSWER_09_B3_LEG3.md#6"
+          },
+          "label": {
+            "const": "live, not fixture"
+          }
+        }
+      }
+    }
+  }
+}
