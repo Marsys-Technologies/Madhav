@@ -1,6 +1,7 @@
 """B-0c: the bootstrap manifest only records what it can re-observe; KU clauses stay verbatim."""
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -329,3 +330,97 @@ def test_a_codex_receipt_is_judged_against_the_roles_codex_configuration_never_t
     assert km.launch_config_of({"role": "bootstrap-builder"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
     assert km.launch_config_of({"role": "bootstrap-builder", "engine": "claude"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
     assert km.launch_config_of({"role": 7}) is None
+
+
+# Installation regressions: generated loop configs belong to the installer/controller.
+def test_nine_receipts_report_external_loops_without_binding_them(rig):
+    for n in range(6):
+        (rig.run / "QUALIFICATIONS" / ("template-%d.json" % n)).write_text(rig.receipt.read_text())
+    assert rig.build().returncode == 0
+    digest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())["manifest_sha256"]
+    names = []
+    for role in ("planner", "conductor"):
+        evidence = rig.run / (role + "-evidence")
+        evidence.mkdir()
+        (evidence / "launch_config.json").write_text(json.dumps({"role": role}))
+        name = role + "-claude-opus-5-5.json"
+        names.append(name)
+        (rig.run / "QUALIFICATIONS" / name).write_text(json.dumps({
+            "role": role, "result": "PASS", "evidence": {"dir": str(evidence)}}))
+    checked = rig.check()
+    assert checked.returncode == 0, checked.stderr
+    assert json.loads(checked.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
+    built = rig.build()
+    assert built.returncode == 0, built.stderr
+    manifest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())
+    assert len(manifest["qualifications"]) == 7
+    assert manifest["loop_qualifications_outside_manifest"] == sorted(names)
+    assert manifest["manifest_sha256"] == digest
+    # Even changed reported bytes are the installer's responsibility, not manifest-bound.
+    (rig.run / "QUALIFICATIONS" / names[0]).write_text(json.dumps({
+        "role": "planner", "result": "FAIL", "evidence": {"dir": str(rig.run / "planner-evidence")}}))
+    assert rig.check().returncode == 0
+
+
+def test_non_loop_external_configuration_still_refuses(rig):
+    (rig.run / "QUALIFICATIONS" / "unreviewed.json").write_text(json.dumps({
+        "role": "unreviewed", "result": "PASS", "evidence": {"dir": str(rig.run / "external")}}))
+    checked = rig.build()
+    assert checked.returncode == 1 and "no launch configuration" in checked.stderr
+
+
+def test_loop_configuration_inside_source_still_requires_bound_template(rig):
+    (rig.run / "QUALIFICATIONS" / "planner.json").write_text(json.dumps({
+        "role": "planner", "result": "PASS", "evidence": {"dir": str(rig.repo / "evidence")}}))
+    checked = rig.build()
+    assert checked.returncode == 1 and "no launch configuration" in checked.stderr
+
+
+def test_manifest_checks_identical_checkout_and_refuses_one_changed_pair_byte(rig):
+    assert rig.build().returncode == 0
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+    manifest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())
+    assert all("canonical_abs" not in pair and "compatibility_abs" not in pair for pair in manifest["generated_pairs"])
+    target = campaign / km.PAIRS[0][2]
+    target.write_bytes(target.read_bytes() + b"x")
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 1 and "copies differ" in checked.stderr
+
+
+def test_repository_area_review_paths_are_relative(rig):
+    review = json.loads(rig.review.read_text())
+    for entry in review["area_reviews"]:
+        source = Path(entry["record"])
+        dest = rig.repo / source.name
+        shutil.copy2(source, dest)
+        entry["record"] = dest.name
+    rig.review.write_text(json.dumps(review))
+    rig.commit("repository-local reviews")
+    assert rig.build().returncode == 0, rig.build().stderr
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+
+
+
+def test_absolute_repository_area_review_relocates_and_checks_campaign_bytes(rig):
+    review = json.loads(rig.review.read_text())
+    for entry in review["area_reviews"]:
+        source = Path(entry["record"])
+        dest = rig.repo / source.name
+        shutil.copy2(source, dest)
+        entry["record"] = str(dest)
+    rig.review.write_text(json.dumps(review))
+    rig.commit("absolute repository-local reviews")
+    assert rig.build().returncode == 0
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+    (campaign / "one.review.json").write_text("changed review")
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 1 and "per-area review record missing or changed" in checked.stderr

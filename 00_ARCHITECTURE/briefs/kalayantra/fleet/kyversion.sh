@@ -32,6 +32,7 @@
 #   B6  any ACTIVATION_RECORD*.json forms a valid chain   F6  as B6
 #       (the rules of kyloop.py `activation_chain`)       F7  the receipt's evidence: rehearsal, coverage, packets,
 #                                                             backfill, tracker revision
+#   B7  installer loop receipts match recorded sha256 and PASS  F8  as B7
 #   --expected-manifest-digest D adds   D1  the manifest's digest is D
 #                                       D2  a valid chain exists and its terminal link's manifest digest is D
 #   E0  the check program itself could not run or failed
@@ -96,6 +97,7 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?\Z")
 ACTIVATION_NAME = re.compile(r"^ACTIVATION_RECORD(?:\.([1-9][0-9]{0,5}))?\.json\Z")
 ENTRYPOINT_ROLES = ("plan", "cockpit_prompt", "owner_decisions", "strategy", "surrogate_agent")
+LOOP_ROLES = ("planner", "conductor")  # pinned against kyloop.ROLES by the regression suite
 PAIR_ROLES = ("WORKTREE_DISPOSITIONS", "ACCEPTANCE_ROOTS", "CLOSURE")
 CHILD_TIMEOUT = 240     # the callers allow this script 300 s: refuse in words before they give up on it
 
@@ -173,7 +175,7 @@ def check_source_repo(repo):
     try:
         said = subprocess.run(["git", "-C", repo, "rev-parse", "--is-inside-work-tree", "--show-toplevel"],
                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                              env=clean_env("GIT_"), timeout=60, stdin=subprocess.DEVNULL, cwd="/")
+                              env=dict(clean_env("GIT_"), GIT_OPTIONAL_LOCKS="0"), timeout=60, stdin=subprocess.DEVNULL, cwd="/")
     except (OSError, subprocess.SubprocessError, ValueError) as e:
         return ["git could not be asked about KY_SOURCE_REPO %s (%s)" % (repo, type(e).__name__)]
     answer = said.stdout.split("\n")
@@ -280,7 +282,7 @@ def check_installed(receipt, receipt_state, components, manifest_state):
 
 
 # ---- B5 / F5 (KU-03)
-def check_pairs(manifest, manifest_state):
+def check_pairs(manifest, manifest_state, repo):
     if manifest is None:
         return [manifest_state]
     pairs = manifest.get("generated_pairs")
@@ -295,7 +297,16 @@ def check_pairs(manifest, manifest_state):
         if role in seen:
             found.append("%s is recorded twice" % role)
         seen.append(role)
-        canon, compat = pair.get("canonical_abs"), pair.get("compatibility_abs")
+        def copy_path(label):
+            # Keep the existing absolute representation readable for final/older manifests.
+            if label + "_abs" in pair:
+                return pair[label + "_abs"]
+            rel = pair.get(label)
+            if not isinstance(rel, str) or not rel or os.path.isabs(rel) or ".." in rel.split("/"):
+                return None
+            path = os.path.join(repo, rel)
+            return path if os.path.commonpath((os.path.realpath(repo), os.path.realpath(path))) == os.path.realpath(repo) else None
+        canon, compat = copy_path("canonical"), copy_path("compatibility")
         for label, path in (("canonical", canon), ("compatibility", compat)):
             problem = file_problem("%s %s copy" % (role, label), path, pair.get("sha256"), regular_only=True)
             if problem:
@@ -305,6 +316,32 @@ def check_pairs(manifest, manifest_state):
     for role in PAIR_ROLES:
         if role not in seen:
             found.append("%s: no canonical / compatibility pair recorded" % role)
+    return found
+
+
+# ---- B7 / F8: the installer owns generated loop qualification receipts.
+def check_loop_qualifications(receipt, receipt_state):
+    if receipt is None:
+        return []  # B1/F1 already refuses a missing/unreadable installer receipt.
+    rows = receipt.get("qualifications")
+    if not isinstance(rows, list):
+        return ["the installer records no qualifications list"]
+    found = []
+    for role in LOOP_ROLES:
+        own = [row for row in rows if isinstance(row, dict) and row.get("role") == role]
+        if len(own) != 1:
+            found.append("the installer must record exactly one %s qualification" % role)
+            continue
+        row = own[0]
+        problem = file_problem(role + " qualification", row.get("receipt"), row.get("receipt_sha256"))
+        if problem:
+            found.append(problem)
+            continue
+        doc, err = read_json(row["receipt"])
+        if err or not isinstance(doc, dict) or doc.get("result") != "PASS" or row.get("result") != "PASS":
+            found.append("the installer-recorded %s qualification is not PASS" % role)
+        elif doc.get("role") != role or not isinstance(row.get("model"), str) or not row["model"] or doc.get("model") != row["model"]:
+            found.append("the installer-recorded %s qualification has the wrong role/model" % role)
     return found
 
 
@@ -438,11 +475,12 @@ def run_checks(mode, expected, run, fleet, repo):
         results.append(("F2", check_final_manifest(manifest, manifest_state)))
     results.append((prefix + "3", check_binding(receipt, receipt_state, own, manifest_state)))
     results.append((prefix + "4", check_installed(receipt, receipt_state, components, components_state)))
-    results.append((prefix + "5", check_pairs(manifest, manifest_state)))
+    results.append((prefix + "5", check_pairs(manifest, manifest_state, repo)))
     links, reason = activation_chain(run)
     results.append((prefix + "6", [reason] if links is None else []))
     if mode != "bootstrap":
         results.append(("F7", check_evidence(receipt, receipt_state, components, components_state)))
+    results.append(("B7" if mode == "bootstrap" else "F8", check_loop_qualifications(receipt, receipt_state)))
     if mode == "expected":
         results.append(("D1", [] if own is not None and own == expected else
                         ["the manifest's digest is %s, not the expected %s" % (own, expected)]))

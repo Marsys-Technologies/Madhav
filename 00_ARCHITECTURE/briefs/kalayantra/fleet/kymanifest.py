@@ -13,9 +13,10 @@
     recorded as `components_commit`; no unlisted file sits in a covered directory;
   * each canonical/compatibility pair (KU-03) holds the same bytes;
   * the launch probes show sign-in working from a shell and under launchd;
-  * at least one launch-qualification receipt exists, every receipt says PASS, and the reviewed
+  * launch-qualification receipts exist, each manifest-bound receipt says PASS, and the reviewed
     harness itself (`kyqualify.py check --require-context launchd`) accepts each against its
-    launch configuration;
+    launch configuration. External loop configurations are reported only: the installer/controller
+    own those receipts, and kyversion checks their installer-recorded hashes and PASS results;
   * the review receipt says ACCEPTED, names its reviewer session and the authorised source
     commit, and is backed by per-area review records on disk — each ACCEPTED, each with its own
     reviewer session, together covering exactly the component bytes on disk. A self-declared
@@ -35,6 +36,7 @@ Byte identity is always a comparison of the file's bytes with `git cat-file blob
 """
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -65,6 +67,24 @@ LAUNCH_CONFIG = FLEET + "/templates/LAUNCH_CONFIG.%s.json"
 LAUNCH_CONFIG_CODEX = FLEET + "/templates/LAUNCH_CONFIG.%s.codex.json"     # a receipt that says "engine": "codex"
 
 
+# Load only the controller beside this reviewed program, even under python -I.
+_loop_spec = importlib.util.spec_from_file_location("_kymanifest_kyloop", os.path.join(os.path.dirname(__file__), "kyloop.py"))
+_loop = importlib.util.module_from_spec(_loop_spec)
+_loop_spec.loader.exec_module(_loop)
+LOOP_ROLES = _loop.ROLES
+REPORTED_FIELDS = {"loop_qualifications_outside_manifest"}
+
+
+def repository_path(repo, path):
+    """Repository files use relative identities; external (including run) paths retain theirs."""
+    real = os.path.realpath(path)
+    return os.path.relpath(real, repo) if os.path.commonpath((repo, real)) == repo else path
+
+
+def bound_body(obj):
+    return {k: v for k, v in obj.items() if k != "manifest_sha256" and k not in REPORTED_FIELDS}
+
+
 def launch_config_of(doc):
     """the repository-relative launch configuration a qualification receipt is judged against: the role's Codex
     configuration for a receipt that says "engine": "codex", the role's Claude Code configuration otherwise"""
@@ -88,6 +108,7 @@ def sha256(path):
 
 def git(repo, *args, text=True):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
     return subprocess.run(["git", "-C", repo] + list(args), capture_output=True, text=text, env=env)
 
 
@@ -221,8 +242,7 @@ def observe_pairs(repo):
             raise Refused("generated-output copy missing for " + role)
         if sha256(a) != sha256(b):
             raise Refused("canonical and compatibility copies differ for " + role)
-        pairs.append({"role": role, "canonical": canon, "compatibility": compat, "canonical_abs": a,
-                      "compatibility_abs": b, "sha256": sha256(a),
+        pairs.append({"role": role, "canonical": canon, "compatibility": compat, "sha256": sha256(a),
                       "content_version_declared": PAIR_CONTENT_VERSION_DECLARED})
     return pairs
 
@@ -241,7 +261,7 @@ def observe_probes(run_dir):
             "extra_lean_flags": (doc.get("extra_lean_flags") or {}).get("chosen")}
 
 
-def observe_qualifications(repo, run_dir, bound=None):
+def observe_qualifications(repo, run_dir, bound=None, reported=None):
     qdir = os.path.join(run_dir, "QUALIFICATIONS")
     names = sorted(n for n in os.listdir(qdir) if n.endswith(".json")) if os.path.isdir(qdir) else []
     if not names:
@@ -250,6 +270,15 @@ def observe_qualifications(repo, run_dir, bound=None):
     for name in names:
         path = os.path.join(qdir, name)
         doc = load_json(path, "qualification receipt")
+        evidence = doc.get("evidence")
+        evidence_dir = evidence.get("dir") if isinstance(evidence, dict) else None
+        if doc.get("role") in LOOP_ROLES and isinstance(evidence_dir, str) and os.path.isabs(evidence_dir):
+            config_path = os.path.join(evidence_dir, "launch_config.json")
+            if os.path.commonpath((repo, os.path.realpath(config_path))) != repo:
+                # Installer step 9 verifies the evidence; kyversion binds its receipt hash.
+                if reported is not None:
+                    reported.append(name)
+                continue
         if doc.get("result") != "PASS":
             raise Refused("qualification receipt is not PASS (%r): %s" % (doc.get("result"), name))
         role = doc.get("role")
@@ -269,7 +298,7 @@ def observe_qualifications(repo, run_dir, bound=None):
     return out
 
 
-def observe_review(repo, review_path, approved, components):
+def observe_review(repo, review_path, approved, components, recorded_locations=()):
     if not os.path.isfile(review_path):
         raise Refused("review record missing: " + review_path)
     review = load_json(review_path, "review record")
@@ -290,7 +319,14 @@ def observe_review(repo, review_path, approved, components):
     for entry in areas:
         if not isinstance(entry, dict) or not isinstance(entry.get("record"), str):
             raise Refused("malformed per-area review entry")
-        path = entry["record"]
+        path = os.path.join(repo, entry["record"])
+        # An unchanged review may embed its original checkout's absolute location.
+        # The digest-bound relative identity directs checks to THIS checkout's bytes.
+        local = [r["record"] for r in recorded_locations if r.get("record_sha256") == entry.get("record_sha256")
+                 and isinstance(r.get("record"), str) and not os.path.isabs(r["record"])
+                 and ".." not in r["record"].split("/")]
+        if os.path.isabs(entry["record"]) and len(local) == 1:
+            path = os.path.join(repo, local[0])
         if not os.path.isfile(path) or sha256(path) != entry.get("record_sha256"):
             raise Refused("per-area review record missing or changed: " + path)
         doc = load_json(path, "per-area review record")
@@ -305,17 +341,17 @@ def observe_review(repo, review_path, approved, components):
         sessions.add(session)
         if isinstance(doc.get("inputs"), dict):
             covered.update(doc["inputs"])
-        recorded.append({"area": doc.get("area"), "record": path, "record_sha256": entry["record_sha256"],
+        recorded.append({"area": doc.get("area"), "record": repository_path(repo, path), "record_sha256": entry["record_sha256"],
                          "reviewer_session_id": session})
     for c in components:
         if covered.get(c["path"]) != c["sha256"]:
             raise Refused("no ACCEPTED per-area review covers the bytes on disk: " + c["path"])
-    return {"path": os.path.relpath(os.path.realpath(review_path), repo), "sha256": sha256(review_path),
+    return {"path": repository_path(repo, review_path), "sha256": sha256(review_path),
             "verdict": "ACCEPTED", "reviewer_session_id": review["reviewer_session_id"],
             "area_reviews": sorted(recorded, key=lambda r: str(r["area"]))}
 
 
-def observe(repo, run_dir, approved, review_path, components_commit=None):
+def observe(repo, run_dir, approved, review_path, components_commit=None, recorded_locations=()):
     """Everything the manifest asserts, observed from disk and git. Raises Refused."""
     repo = os.path.realpath(repo)
     full_commit(repo, approved, "approved commit")
@@ -325,6 +361,8 @@ def observe(repo, run_dir, approved, review_path, components_commit=None):
         components_commit = git(repo, "rev-parse", "HEAD").stdout.strip()
     full_commit(repo, components_commit, "components commit")
     components, deferred = observe_components(repo, components_commit, at_build)
+    reported = []
+    qualifications = observe_qualifications(repo, run_dir, {c["path"] for c in components}, reported)
     return {"schema": "ky.versions_bootstrap/1", "mode": "bootstrap", "plan_version": PLAN_VERSION,
             "deferred_components": deferred,
             "deferred_note": "listed and pinned, NOT reviewed and NOT bound: nothing is launched or installed on their strength",
@@ -332,14 +370,14 @@ def observe(repo, run_dir, approved, review_path, components_commit=None):
             "approved_source_commit": approved, "entrypoints": entrypoints,
             "entrypoints_digest": entrypoints_digest(entrypoints), "components_commit": components_commit,
             "components": components, "generated_pairs": observe_pairs(repo), "probes": observe_probes(run_dir),
-            "qualifications": observe_qualifications(repo, run_dir, {c["path"] for c in components}),
+            "qualifications": qualifications, "loop_qualifications_outside_manifest": reported,
             "qualifications_all_pass": True,
-            "review": observe_review(repo, review_path, approved, components)}
+            "review": observe_review(repo, review_path, approved, components, recorded_locations)}
 
 
 def with_digest(obj):
     obj = dict(obj)
-    obj["manifest_sha256"] = hashlib.sha256(canonical(obj)).hexdigest()
+    obj["manifest_sha256"] = hashlib.sha256(canonical(bound_body(obj))).hexdigest()
     return obj
 
 
@@ -366,7 +404,7 @@ def cmd_check(a):
     except Refused as e:
         print("refused: %s" % e, file=sys.stderr)
         return 1
-    body = {k: v for k, v in stored.items() if k != "manifest_sha256"}
+    body = bound_body(stored)
     if stored.get("manifest_sha256") != hashlib.sha256(canonical(body)).hexdigest():
         print("refused: manifest digest does not match its content", file=sys.stderr)
         return 1
@@ -376,15 +414,18 @@ def cmd_check(a):
     try:
         review = os.path.join(os.path.realpath(a.repo), str((stored.get("review") or {}).get("path", "")))
         now = observe(a.repo, a.run, str(stored.get("approved_source_commit", "")), review,
-                      components_commit=str(stored.get("components_commit", "")))
+                      components_commit=str(stored.get("components_commit", "")),
+                      recorded_locations=(stored.get("review") or {}).get("area_reviews", []))
     except Refused as e:
         print("refused: %s" % e, file=sys.stderr)
         return 1
-    diffs = sorted(k for k in set(body) | set(now) if body.get(k) != now.get(k))
+    observed = bound_body(now)
+    diffs = sorted(k for k in set(body) | set(observed) if body.get(k) != observed.get(k))
     if diffs:
         print("refused: manifest no longer matches disk in: " + ", ".join(diffs), file=sys.stderr)
         return 1
-    print(json.dumps({"ok": True, "manifest_sha256": stored["manifest_sha256"], "components": len(now["components"])}))
+    print(json.dumps({"ok": True, "manifest_sha256": stored["manifest_sha256"], "components": len(now["components"]),
+                      "loop_qualifications_outside_manifest": now["loop_qualifications_outside_manifest"]}))
     return 0
 
 

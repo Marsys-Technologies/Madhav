@@ -115,6 +115,12 @@ class Rig:
         receipt = {"schema": "ky.install_receipt/1", "mode": mode,
                    "manifest": {"path": str(self.manifest_path), "manifest_sha256": manifest["manifest_sha256"]},
                    "components": copy.deepcopy(self.installed)}
+        receipt["qualifications"] = []
+        for role in ("planner", "conductor"):
+            path = self.run / (role + ".json")
+            write(path, {"role": role, "model": "claude-opus-5-5", "result": "PASS"})
+            receipt["qualifications"].append({"role": role, "model": "claude-opus-5-5", "receipt": str(path),
+                                              "receipt_sha256": sha(path), "result": "PASS"})
         if mode == "final":
             receipt.update({
                 "tracker_revision": "f" * 40,
@@ -661,7 +667,12 @@ def pair_change(key, role, value=None):
     def change(doc):
         for pair in doc["generated_pairs"]:
             if pair["role"] == role:
-                pair.pop(key) if value is None else pair.update({key: value})
+                if value is None:
+                    pair.pop(key)
+                    if key.endswith("_abs"):
+                        pair.pop(key[:-4], None)  # no relative identity either
+                else:
+                    pair.update({key: value})
     return change
 
 
@@ -1115,3 +1126,73 @@ def test_the_expected_digest_mode_runs_every_normal_check(rig):
     rig.edit_receipt(stale_tested_hashes)
     other_bytes(rig)
     assert_refused(rig.kyversion("--expected-manifest-digest", digest), "F4", "F7")
+
+
+@pytest.mark.parametrize("role", ["planner", "conductor"])
+@pytest.mark.parametrize("damage", ["tamper", "missing", "not-pass", "unrecorded", "wrong-role", "wrong-model"])
+def test_bootstrap_installer_loop_receipts_are_required_hash_bound_and_pass(rig, role, damage):
+    digest = rig.install("bootstrap")
+    rows = []
+    for loop in ("planner", "conductor"):
+        path = rig.run / (loop + ".json")
+        write(path, {"role": loop, "model": "claude-opus-5-5", "result": "PASS"})
+        rows.append({"role": loop, "model": "claude-opus-5-5", "receipt": str(path),
+                     "receipt_sha256": sha(path), "result": "PASS"})
+    rig.edit_receipt(lambda r: r.update(qualifications=rows))
+    assert_ok(rig.kyversion("--bootstrap"), "bootstrap", digest)
+    row = next(r for r in rows if r["role"] == role)
+    path = Path(row["receipt"])
+    if damage == "tamper":
+        path.write_text(path.read_text() + " ")
+    elif damage == "missing":
+        path.unlink()
+    elif damage == "unrecorded":
+        rows.remove(row)
+        rig.edit_receipt(lambda r: r.update(qualifications=rows))
+    else:
+        doc = read(path)
+        doc.update({"result": "FAIL"} if damage == "not-pass" else
+                   {"role": "surrogate"} if damage == "wrong-role" else {"model": "other"})
+        write(path, doc)
+        row["receipt_sha256"] = sha(path)
+        rig.edit_receipt(lambda r: r.update(qualifications=rows))
+    result = rig.kyversion("--bootstrap")
+    assert result.returncode == 1 and "REFUSED B7:" in result.stderr, result.stderr
+
+
+def test_bootstrap_pairs_are_resolved_relative_to_campaign_checkout(rig):
+    digest = rig.install("bootstrap")
+    rig.edit_manifest(lambda m: [p.pop(k) for p in m["generated_pairs"] for k in ("canonical_abs", "compatibility_abs")])
+    digest = read(rig.manifest_path)["manifest_sha256"]
+    assert_ok(rig.kyversion("--bootstrap"), "bootstrap", digest)
+    (rig.repo / km.PAIRS[0][2]).write_text("changed byte")
+    assert_refused(rig.kyversion("--bootstrap"), "B5")
+
+
+@pytest.mark.parametrize("mode,args,code", [("bootstrap", ["--bootstrap"], "B7"), ("final", [], "F8")])
+@pytest.mark.parametrize("damage", ["no-list", "duplicate", "row-not-pass", "relative", "no-hash"])
+def test_installer_loop_receipt_record_must_be_complete(rig, mode, args, code, damage):
+    rig.install(mode)
+    def change(receipt):
+        rows = receipt["qualifications"]
+        if damage == "no-list":
+            receipt.pop("qualifications")
+        elif damage == "duplicate":
+            rows.append(dict(rows[0]))
+        elif damage == "row-not-pass":
+            rows[0]["result"] = "FAIL"
+        elif damage == "relative":
+            rows[0]["receipt"] = "planner.json"
+        else:
+            rows[0].pop("receipt_sha256")
+    rig.edit_receipt(change)
+    assert_refused(rig.kyversion(*args), code)
+
+
+def test_loop_roles_match_controller():
+    text = SCRIPT.read_text().split("\n: <<'KYVERSION_PY'\n", 1)[1].rsplit("\nKYVERSION_PY\n", 1)[0]
+    # Read the literal declaration without executing the check program's main.
+    import ast
+    roles = next(ast.literal_eval(n.value) for n in ast.parse(text).body
+                 if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "LOOP_ROLES" for t in n.targets))
+    assert roles == kyloop.ROLES == km.LOOP_ROLES
