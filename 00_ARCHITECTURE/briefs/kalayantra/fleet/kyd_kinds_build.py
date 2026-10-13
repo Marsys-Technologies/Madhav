@@ -407,7 +407,9 @@ def _steps(ctx, row):
         name = step.get("name") if isinstance(step, dict) else None
         if not isinstance(name, str) or not ID_RE.match(name) or step.get("done") is not False:
             continue
-        if detectors.get(name) is None:                     # a null detector can never pass (ruling P18)
+        declared = detectors.get(name)
+        if declared is None or (isinstance(declared, dict) and "detector" in declared
+                                and declared["detector"] is None):  # real model: {evidence, detector}; null is P18's wait
             continue
         if ctx.verify(item, name) is not True:
             continue

@@ -1424,3 +1424,78 @@ def test_tracker_cannot_override_the_declared_completion_kind(world):
     e = d.Engine(world.env())
     assert e.ctx.next is None
     assert "declaration" in world.journal().lower() and "unknown" in world.journal().lower()
+
+
+POST_INSTALL = json.loads((HERE / "post_install_tracker.json").read_text(encoding="utf-8"))
+
+
+def test_post_install_decision_does_not_blind_rehearsal_build(world, capsys):
+    """A parked non-executable decision must not invalidate the actual all-stream reading."""
+    import kydispatch as d
+    world.apply({"next": POST_INSTALL["next"], "model": POST_INSTALL["model"]["items"],
+                 "gate": "WAIT"}, first=True)
+    world.write(world.run / "PRIORITY.txt", "KV3-B-REHEARSAL\n")
+    world.packet("KV3-B-REHEARSAL", POST_INSTALL["packet"])
+    e = d.Engine(world.env(), dry=True)
+    answer = e.ctx.next
+    assert answer is not None
+    assert next(r for r in answer["blocked"] if r["id"] == "D-T2")["completion_kind"] is None
+    jobs = e.tick()["jobs"]
+    rehearsal = [j for j in jobs if j["item"] == "KV3-B-REHEARSAL"]
+    assert len(rehearsal) == 1 and rehearsal[0]["kind"] == "BUILD"
+    assert rehearsal[0]["decision"] != "wait:gate"
+    assert "tracker unknown" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("done_by,join", [("decision", False), ("join", False), (None, True)])
+def test_non_executable_declarations_are_known(world, done_by, join):
+    import kydispatch as d
+    decision = next(i for i in POST_INSTALL["model"]["items"] if i["id"] == "D-T2")
+    decision = dict(decision, done_by=done_by, join=join)
+    row = next(r for r in POST_INSTALL["next"]["blocked"] if r["id"] == "D-T2")
+    world.apply({"next": {"blocked": [row]}, "model": [decision]}, first=True)
+    assert d.Engine(world.env(), dry=True).ctx.next is not None
+
+
+def test_executable_missing_declaration_still_invalidates_tick(world, capsys):
+    import kydispatch as d
+    fixture = copy.deepcopy(POST_INSTALL)
+    for i in fixture["model"]["items"]:
+        if i["id"] == "D-T2":
+            del i["done_by"]
+    world.apply({"next": fixture["next"], "model": fixture["model"]["items"]}, first=True)
+    assert d.Engine(world.env(), dry=True).ctx.next is None
+    assert "D-T2 lacks a usable declaration" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_dispatcher_preserves_fixture_overrides_for_child_commands(world, partial):
+    """Dropping even one override sends the CLI toward defaults or wrapper refusal."""
+    import kydispatch as d
+    overrides = {"PRAVAHA_HOME": str(world.scratch / "fixture"),
+                 "PRAVAHA_EVENTS": str(world.run / "EVENTS.jsonl"),
+                 "PRAVAHA_PLAN_MODEL": str(world.repo / PLAN_MODEL),
+                 "PRAVAHA_REPO": str(world.repo), "PRAVAHA_HOLD": str(world.root / "HOLD"),
+                 "PRAVAHA_TRACKER_PORT": "8768", "PRAVAHA_URL": "http://127.0.0.1:8768"}
+    if partial:
+        del overrides["PRAVAHA_URL"]  # forwarded unchanged; the wrapper must refuse it, never fill it in
+    env = world.env(overrides)
+    e = d.Engine(env, dry=True)
+    names = list(overrides) + (["PRAVAHA_URL"] if partial else []) + ["KY_SOURCE_REPO", "KY_TRACKER_URL"]
+    code = "import json, os; print(json.dumps({n:os.environ.get(n) for n in " + repr(names) + "}))"
+    rc, out, err = e.sh([sys.executable, "-B", "-c", code])
+    assert rc == 0, err
+    assert json.loads(out) == {n: env.get(n) for n in names}
+
+
+
+def test_dry_launch_refusal_names_the_missing_qualification(world, capsys):
+    import kydispatch as d
+    world.apply({"next": {"ready": [{"id": "KV3-B-X", "owner": "K", "status": "ready"}]},
+                 "slots": ["b1"], "gate": "WAIT"}, first=True)
+    world.write(world.run / "PRIORITY.txt", "KV3-B-X\n")
+    (world.run / "QUALIFICATIONS" / "build-claude-sonnet-5-5.json").unlink()
+    jobs = d.Engine(world.env(), dry=True).tick()["jobs"]
+    assert len(jobs) == 1 and jobs[0]["decision"] == "refused:launch"
+    err = capsys.readouterr().err
+    assert "BUILD KV3-B-X" in err and "qualification receipt" in err

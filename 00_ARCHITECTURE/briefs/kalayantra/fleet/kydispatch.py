@@ -99,7 +99,8 @@ INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each er
         A gets epoch seconds; everyone else UTC text YYYY-MM-DDTHH:MM:SSZ.
       - tracker state.py emits status/steps, not completion_kind or step_evidence. The engine joins those
         declarations from ctx.model for kyd_kinds_build, which reads them from rows; missing or contradictory
-        declarations make the tracker context unknown. They are declarations, never detector results.
+        declarations on executable items make the tracker context unknown. Decision/join items may have null
+        declarations (plan §6 requires them only for retained executable items). They are never detector results.
     A refusal after J.open carries a failure class (`admit_<code>`, the kind's own, `launch`), so that the third
     identical one blocks automatic attempts (kyd_jobs' failure accounting) instead of claiming every tick.
 Python >= 3.9, standard library only.
@@ -151,7 +152,10 @@ BACKOFF_MINUTES = (5, 10, 20, 30)
 BOOTSTRAP_PREFIX = "KV3-B-"
 NO_PLAN_ITEM = ("RULING", "SURROGATE", "PLAN")      # kinds whose intent names no item of the plan model
 SLOT_CODES = ("slot_not_ready", "slot_foreign")
-SH_ENV = ("HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR")
+SH_ENV = ("HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR", "KY_SOURCE_REPO", "KY_TRACKER_URL",
+          "GIT_OPTIONAL_LOCKS", "PYTHONDONTWRITEBYTECODE",
+          "PRAVAHA_HOME", "PRAVAHA_EVENTS", "PRAVAHA_PLAN_MODEL", "PRAVAHA_REPO", "PRAVAHA_HOLD",
+          "PRAVAHA_TRACKER_PORT", "PRAVAHA_URL")  # preserve overrides; the ky wrapper validates the complete set
 PR_FIELDS = ("number,headRefOid,baseRefName,title,state,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,"
              "files,autoMergeRequest")
 RUN_URL = re.compile(r"/actions/runs/([0-9]+)(?:/attempts/([0-9]+))?")
@@ -672,7 +676,8 @@ class Engine:
                 for row in nxt[bucket]:
                     item = declared.get(row["id"])
                     if (item is None or item.get("owner") != row["owner"]
-                            or item.get("completion_kind") not in ("code", "artifact", "packet", "operation")
+                            or (item.get("completion_kind") not in ("code", "artifact", "packet", "operation")
+                                and not (not O._executable(item) and item.get("completion_kind") is None))
                             or item.get("step_evidence") is not None and not isinstance(item["step_evidence"], dict)):
                         raise ValueError("%s lacks a usable declaration" % row["id"])
                     fields = {key: item.get(key) for key in ("completion_kind", "step_evidence")}
@@ -1241,6 +1246,9 @@ class Engine:
                         return "wait:hold"
                 return "wait:slot"
             code = next(c for c in codes if c not in SLOT_CODES)
+            if self.dry:
+                detail = "; ".join(r["detail"] for r in check["refusals"] if r["code"] == code)
+                sys.stderr.write("kydispatch: [refused] %s %s: %s: %s\n" % (kind, item, code, ka.flat(detail, 1000)))
             return "wait:stale" if code == "stale" else "refused:%s" % code
         if self.dry:
             if slot is not None:

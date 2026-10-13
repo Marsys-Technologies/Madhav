@@ -411,3 +411,21 @@ def test_the_module_imports_nothing_but_the_standard_library_and_runs_nothing_on
     imported = set(re.findall(r"^(?:import|from) ([a-z_]+)", source, flags=re.M))
     assert imported <= {"__future__", "hashlib", "json", "os", "re"}, imported
     assert "subprocess" not in imported, "every command goes through ctx.sh, ctx.ky or ctx.act"
+
+
+@pytest.mark.parametrize("item,step", [("K7-3", "density_contracts"), ("K6-5", "reference_protection_switched")])
+@pytest.mark.parametrize("named,passed", [(False, True), (True, False), (True, None), (True, True)])
+def test_real_step_declarations_require_a_named_detector(tmp_path, item, step, named, passed):
+    """The real {evidence, detector:null} declaration is a known wait, never a detector to query."""
+    fixture = json.loads((HERE / "post_install_tracker.json").read_text(encoding="utf-8"))
+    row = next(r for r in fixture["next"]["running"] if r["id"] == item)
+    if named:
+        row["step_evidence"][step]["detector"] = {"type": "file_exists", "path": str(tmp_path / "measured")}
+    world = {"next": {"running": [row], "ready": [], "blocked": []}, "verify": {item + "/" + step: passed}}
+    tokens = tokens_for(tmp_path)
+    lay_out(tokens, world)
+    ctx = Ctx(tokens, world)
+    got = B.intents(ctx)
+    assert [(i["kind"], i["item"], i["header"]["step"]) for i in got] == (
+        [("STEP", item, step)] if named and passed is True else [])
+    assert ctx.calls == ([{"verify": [item, step]}] if named else [])
