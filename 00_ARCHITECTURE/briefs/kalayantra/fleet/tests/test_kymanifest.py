@@ -366,7 +366,7 @@ def test_nine_receipts_report_external_loops_without_binding_them_across_readers
     install = FLEET / "install.sh"
     program = install.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
     program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
-    installer = {}
+    installer = {"__file__": str(install)}  # the shell entrypoint supplies this to its embedded program
     exec(compile(program, str(install), "exec"), installer)
     ctx = SimpleNamespace(manifest_path=str(rig.run / "VERSIONS.bootstrap.json"))
     assert installer["load_manifest"](ctx) == manifest

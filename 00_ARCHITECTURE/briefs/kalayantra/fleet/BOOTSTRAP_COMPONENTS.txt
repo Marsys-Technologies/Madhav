@@ -5,6 +5,7 @@
 # area: supervisor — bootstrap supervisor, manifest, schema validator and the schemas they enforce
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/kymanifest.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyschema.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt
@@ -20,6 +21,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyschema.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kymanifest.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyfinal.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_decision_record_contract.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/awaiting.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_claude_ok.sh
