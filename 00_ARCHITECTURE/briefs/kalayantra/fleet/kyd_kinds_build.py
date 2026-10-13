@@ -367,6 +367,8 @@ def _db_tests_green(pr):
 
 def intents(ctx):
     """Read-only: every job of these kinds that could be started now."""
+    import kyd_admit
+    kyd_admit.refresh_job_engine(ctx)
     return _compute(ctx, None)
 
 

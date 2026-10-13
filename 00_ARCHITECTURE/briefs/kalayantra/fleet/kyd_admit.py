@@ -61,6 +61,7 @@ import datetime
 import math
 import os
 import re
+import stat
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -73,6 +74,8 @@ PYTHON = "python3"
 WORKTREE_ROOT = "/Users/Dev/worktrees.noindex/madhav/claude"
 ALL_COPIES_MAX = 14
 MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+CODEX_MODEL = "gpt-6.1-sol"
+JOB_ENGINE_ROLES = {"BUILD": "build", "REWORK": "build", "VERIFY": "verify"}
 # plan §7 "Turn caps", plus the packet's (I) for the kinds §7 does not list
 TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "PRE-ACCEPT": 40, "POST-READBACK": 40, "RULING": 30, "PLAN": 300,
              "ARTIFACT": 60, "SURROGATE": 30, "MODEL": 300, "REQUEST-PREP": 300}
@@ -305,7 +308,133 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
         facts["tier"] = "opus" if "opus" in (routed, wanted) else "sonnet"
 
 
-def _check_launch(ctx, intent, tier, front, front_known, refusals, facts):
+def refresh_job_engine(ctx):
+    """Snapshot JOB_ENGINE once at kinds_build.intents (each dispatch tick).
+
+    (I) build covers REWORK too; an explicit rework line overrides it. A global
+    choice applies only to the adapter's three supported kinds. Unknown syntax,
+    duplicate keys/defaults, empty or unreadable files refuse the entire policy.
+    """
+    run = _path(ctx, "run") if hasattr(ctx, "paths") else os.fspath(ctx.run)
+    if not os.path.isabs(run):
+        raise AdmitError("ctx.run is not an absolute path")
+    path = os.path.join(run, "JOB_ENGINE")
+    policy, error = {"default": "claude"}, None
+    try:
+        # O_NONBLOCK also fences a regular-file -> FIFO replacement between ticks.
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK), encoding="utf-8") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise ValueError("not a regular file")
+            content = handle.read(4097)
+        if len(content) > 4096 or not content.strip():
+            raise ValueError("empty or larger than 4096 characters")
+        seen = set()
+        for line in content.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if "=" in line:
+                key, value = (part.strip() for part in line.split("=", 1))
+                if key not in ("build", "rework", "verify"):
+                    raise ValueError("unknown kind")
+            else:
+                key, value = "default", line
+            if key in seen or value not in ("claude", "codex"):
+                raise ValueError("duplicate choice or unknown engine")
+            seen.add(key)
+            policy[key] = value
+    except FileNotFoundError:
+        if os.path.lexists(path):
+            error = "JOB_ENGINE: unreadable dangling path"
+    except (OSError, UnicodeError, ValueError) as exc:
+        error = "JOB_ENGINE: invalid/unreadable policy (%s)" % type(exc).__name__
+    ctx.job_engine_policy = policy, error
+    if error and error != getattr(ctx, "_job_engine_error", None):
+        ctx.journal("dispatcher error", error)
+    ctx._job_engine_error = error
+    return policy, error
+
+
+def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
+    """Re-judge the real launchd receipt against the installed role template.
+
+    The template and its hash travel as admission facts; kyd_jobs adapts only
+    worktree/prompt to this job. Claude fields remain null, never mixed in.
+    """
+    import kyqualify
+
+    role = JOB_ENGINE_ROLES[intent["kind"]]
+    model = CODEX_MODEL
+    template = os.path.join(_path(ctx, "fleet"), "templates", "LAUNCH_CONFIG.%s.codex.json" % role)
+    receipt = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", "%s-%s.json" % (role, model))
+    digest = kyaction.sha_file(template)
+    cfg, cfg_error = kyaction.read_json(template)
+    doc, doc_error = kyaction.read_json(receipt)
+    reasons = []
+    if not front_known or (front or {}).get("needs_chart_data", False) is not False:
+        reasons.append("Codex job template has no chart-data MCP qualification")
+    if cfg_error or not isinstance(cfg, dict):
+        reasons.append("Codex template %s is unreadable" % template)
+    else:
+        reasons.extend(kyqualify.validate_codex_config(cfg))
+        if (cfg.get("engine"), cfg.get("role"), cfg.get("model"), cfg.get("effort")) != ("codex", role, model, "high"):
+            reasons.append("Codex template requires the selected role and gpt-6.1-sol/high")
+        verifier = intent["kind"] == "VERIFY"
+        if (kyqualify.job_rooted(cfg) != verifier or cfg.get("sandbox") != "workspace-write"
+                or cfg.get("network") is not False or cfg.get("writable_dirs") != []
+                or (not verifier and cfg.get("commit_mode") != "launcher")):
+            reasons.append("Codex template does not preserve the accepted builder/verifier boundary")
+    if doc_error or not isinstance(doc, dict):
+        reasons.append("Codex qualification receipt %s: %s" % (receipt, doc_error or "not an object"))
+    else:
+        binds = doc.get("binds") or {}
+        if ((doc.get("schema"), doc.get("engine"), doc.get("role"), doc.get("model"), doc.get("result"), doc.get("context"))
+                != (QUALIFICATION_SCHEMA, "codex", role, model, "PASS", "launchd")
+                or not isinstance(binds, dict) or binds.get("engine") != "codex"
+                or binds.get("model") != model or binds.get("effort") != "high"):
+            reasons.append("Codex receipt must be PASS/launchd for the selected role and gpt-6.1-sol/high")
+    if not reasons:
+        env = {name: os.environ[name] for name in ("HOME", "USER", "PATH") if name in os.environ}
+        env.update(KY_RUN=_path(ctx, "run"), KY_FLEET=_path(ctx, "fleet"),
+                   KY_STREAM=intent.get("stream") or "K", KY_LANE=slot or "qualification-check",
+                   KY_CONTROLLER_ID=ctx.controller_id)
+        for key, name in (("root", "KY_ROOT"), ("scratch", "KY_SCRATCH")):
+            value = ctx.paths.get(key) if isinstance(ctx.paths, dict) else getattr(ctx.paths, key, None)
+            if value:
+                env[name] = os.fspath(value)
+        rc, out, err = _sh(ctx, [PYTHON, "-I", "-B", os.path.join(_path(ctx, "fleet"), "kyqualify.py"),
+                                "check", receipt, "--config", template, "--require-context", "launchd"], env=env)
+        if rc != 0:
+            reasons.append(_said(rc, out, err, "Codex qualification check"))
+        if digest is None or digest != kyaction.sha_file(template):
+            reasons.append("Codex template changed while checking qualification")
+        deadline = deadline_text(ctx.now(), cfg["deadline_seconds"])
+        if deadline is None:
+            reasons.append("unknown: ctx.now() gave no UTC time, so there is no deadline")
+        if not reasons:
+            facts["launch"] = dict(engine="codex", role=role, model=model, effort="high", deadline=deadline,
+                                   permission_mode=None, max_turns=None, claude_bin=None, mcp_config=None,
+                                   extra_lean_flags=[], disallowed_tools=[], launch_config_path=template,
+                                   codex_config=cfg, codex_config_sha256=digest)
+    for reason in reasons:
+        _refuse(refusals, "launch", reason)
+    if reasons:
+        facts["launch"] = None
+
+
+def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=None):
+    policy, error = getattr(ctx, "job_engine_policy", None) or refresh_job_engine(ctx)
+    if error:
+        _refuse(refusals, "launch", error)
+        facts["launch"] = None
+        return
+    kind = intent.get("kind")
+    choice = policy.get(kind.lower()) if isinstance(kind, str) else None
+    if choice is None:
+        choice = policy.get("build", policy["default"]) if kind == "REWORK" else policy["default"]
+    if kind in JOB_ENGINE_ROLES and choice == "codex":
+        _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot)
+        return
     reasons = []
     kind, role = intent.get("kind"), intent.get("role")
     model = MODELS["sonnet" if tier == "sonnet" else "opus"]
@@ -623,7 +752,7 @@ def precheck(ctx, intent, slot):
         _check_routing(ctx, intent, packet, items, items_reason, refusals, facts)
     runner = intent.get("runner")
     if runner == "model":
-        _check_launch(ctx, intent, facts["tier"], front, front_known, refusals, facts)
+        _check_launch(ctx, intent, facts["tier"], front, front_known, refusals, facts, slot)
     elif runner != "script":
         _refuse(refusals, "launch", "unknown: the intent's runner %r is neither model nor script" % (runner,))
     entries = worktrees(ctx)

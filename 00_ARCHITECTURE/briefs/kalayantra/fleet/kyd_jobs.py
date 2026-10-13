@@ -479,10 +479,16 @@ def _plan(ctx, intent, slot, facts):
     header, launch = intent.get("header") or {}, facts.get("launch") or {}
     if not isinstance(header, dict) or not isinstance(launch, dict):
         return None, "intent.header and facts.launch must be objects"
+    managed_codex = launch.get("codex_config")
+    if managed_codex is not None:
+        for k in LAUNCH_FACTS + engines.FIELDS + ("role",):
+            if k in header and header[k] != launch.get(k):
+                return None, "header cannot override admitted Codex %s" % k
     if intent.get("claim") and slot is None:
         return None, "a claiming job needs a slot (the claim's worker)"
     state = dict.fromkeys(["schema"] + LAUNCH_KEYS + LIFECYCLE_KEYS)
-    state.update(schema=SCHEMA, key=key, item=item, kind=kind, role=intent.get("role") or kind.lower(),
+    state.update(schema=SCHEMA, key=key, item=item, kind=kind,
+                 role=launch.get("role") if managed_codex is not None else intent.get("role") or kind.lower(),
                  stream=intent.get("stream"), slot=slot, base_sha=facts.get("base_sha"),
                  prerequisites=facts.get("prerequisites"), tests=facts.get("tests"),
                  test_digests=facts.get("test_digests"), card_path=intent.get("card"),
@@ -527,9 +533,12 @@ def _plan(ctx, intent, slot, facts):
             texts[k] = Path(state[k]).read_bytes() if state[k] is not None else b""
         except OSError as e:
             return None, "%s %s cannot be read (%s)" % (k, state[k], type(e).__name__)
-    return {"state": state, "claim": bool(intent.get("claim")), "texts": texts, "added_worktree": False,
+    plan = {"state": state, "claim": bool(intent.get("claim")), "texts": texts, "added_worktree": False,
             "migration": facts.get("migration") is not None and "migration_number" not in header,
-            "header": {k: v for k, v in header.items() if k not in PROTECTED}}, None
+            "header": {k: v for k, v in header.items() if k not in PROTECTED}}
+    if managed_codex is not None:
+        plan.update(codex_config=managed_codex, codex_config_sha256=launch.get("codex_config_sha256"))
+    return plan, None
 
 
 def _look(ctx, key, slot):
@@ -680,12 +689,32 @@ def _prompt(job, plan):
     ka.write_atomic(job["prompt_path"], b"".join(parts))
 
 
+def _codex_config(job, plan):
+    """Adapt the qualification template only at its per-job worktree/prompt paths.
+
+    (I) These templates cover the no-test-commit/no-ephemeris job environment.
+    Additional environment needs its own reviewed qualification, never trimming.
+    """
+    cfg = plan.get("codex_config")
+    if cfg is None:  # Preserve the accepted caller-supplied engine adapter path.
+        return
+    if engines.digest(job["launch_config_path"]) != plan["codex_config_sha256"]:
+        raise engines.Refusal("Codex template changed after admission")
+    if job.get("tests") or job.get("se_ephe_path") is not None or job.get("swe_ephe_path") is not None or job.get("fixture"):
+        raise engines.Refusal("Codex role template does not qualify optional TESTS/ephemeris/fixture environment")
+    adapted = dict(cfg, worktree=job["worktree"], prompt_path=job["prompt_path"], role=job["role"])
+    job["launch_config_path"] = os.path.join(job["job_scratch"], "launch_config.json")
+    ka.write_json(job["launch_config_path"], adapted)
+
+
 def _prepare(ctx, job, plan):
     """Everything open does after the job exists → why it cannot be a prepared job, or None."""
     try:
         why = _claim(ctx, job) if plan["claim"] else None
         why = why or _worktree(ctx, job, plan) or _migration(ctx, job, plan)
         if why is None:
+            if job.get("engine") == "codex":
+                _codex_config(job, plan)
             _prompt(job, plan)
             if job.get("engine") == "codex":
                 engines.prepare(ctx, job)

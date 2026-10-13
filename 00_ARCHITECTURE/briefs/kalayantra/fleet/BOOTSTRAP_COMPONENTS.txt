@@ -63,6 +63,9 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result_launcher_commit.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh
