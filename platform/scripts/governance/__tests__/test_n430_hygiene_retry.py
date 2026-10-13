@@ -78,21 +78,15 @@ def test_the_equivalent_connection_reset_messages_are_retried(monkeypatch, clock
 
 @pytest.mark.parametrize("stderr", ['ERROR:  canceling statement due to statement timeout', 'ERROR:  canceling statement due to lock timeout',
                                     'ERROR:  relation "x" does not exist', 'ERROR:  permission denied for table x',
+                                    "psql: error: connection to server at \"db\" (10.0.0.1), port 5432 failed: Connection refused",
                                     "psql: error: connection to server failed: FATAL:  password authentication failed",
                                     'ERROR:  value "server closed the connection unexpectedly" is not valid',
                                     "FATAL:  terminating connection due to administrator command"])
-def test_a_timeout_an_sql_error_or_an_auth_failure_is_never_retried(monkeypatch, clock, stderr):
+def test_a_timeout_an_sql_error_or_a_refused_connection_is_never_retried(monkeypatch, clock, stderr):
     fake = FakePsql(monkeypatch, ac, [fail(stderr), ok()])
     with pytest.raises(ac.Unknown):
         ac.psql("SELECT 1")
     assert len(fake.calls) == 1 and clock.slept == []
-
-
-def test_a_refused_connection_is_retried_once_since_ss_n605_c(monkeypatch, clock):
-    """SS N-605 (c) reverses the N-430 pin that a refused connection is never retried: no statement was sent, so one retry is safe (see _CONNECT_FAIL_MARKERS; test_n605_census_connect_retry.py)."""
-    fake = FakePsql(monkeypatch, ac, [fail("psql: error: connection to server at \"db\" (10.0.0.1), port 5432 failed: Connection refused"), ok()])
-    ac.psql("SELECT 1")
-    assert len(fake.calls) == 2 and clock.slept == [ac.CONN_RETRY_PAUSE_SECONDS]
 
 
 def test_a_client_side_timeout_is_never_retried(monkeypatch, clock):
