@@ -9780,7 +9780,7 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: "MADHAV_JOURNEY6_DELIVERY_20261006"
+  last_session_id: "KALAYANTRA_CAMPAIGN_OPEN_20261007"
   last_session_closed_at: "2026-10-06T15:59:33.097398+00:00"
   last_session_agent: Codex
   last_session_cowork_thread_name: "Madhav — Journey 6 delivery"
