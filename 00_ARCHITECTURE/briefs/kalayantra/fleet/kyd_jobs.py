@@ -87,6 +87,7 @@ INTERPRETATION (packet (I) and what the packet leaves open; each is this module'
   * an owner-wait is raised once per job and reason (checkpoint.awaiting remembers).
 Changelog: v1.1 (2026-10-13): optional Codex selection, collection, landing and silence timeout.
 Fix B1 (2026-10-13): recover known Codex groups, including pending termination; retain persisted clocks/fences.
+Fix WB-01-R (2026-10-13): state-first native identity; retain malformed legacy reservations.
 Python >= 3.9, standard library only; kyaction.py, kyloop.py, kyschema.py and schemas/ beside this file.
 """
 from __future__ import annotations
@@ -267,6 +268,8 @@ def load(ctx):
     Unknown native states retain their folder-encoded slot and identifiable slot/key/item reservations;
     they are neither supervised nor recovered, and their bytes are never moved or rewritten.
     (I) INTERPRETATION: if the item cannot be identified, all item admissions wait for reconciliation.
+    (I) INTERPRETATION: an unidentified non-J folder or unrecognized schema is not positively foreign;
+    retain readable reservations, or refuse all admissions when the item cannot be bounded.
     A schema-less cockpit-direct record is foreign by its launcher marker (launch_direct.py:85).
     A repair is read on the next call; one notice per folder per context.
     Directory-listing and failure-table errors remain fatal because their scope is not one job.
@@ -292,14 +295,35 @@ def load(ctx):
         except JobsUnreadable as exc:
             encoded = _JOB_ID.match(name)
             schema = doc.get("schema") if isinstance(doc, dict) else None
-            foreign = (encoded is None or (_text(schema) and schema != SCHEMA)
-                       or (isinstance(doc, dict) and "schema" not in doc
-                           and doc.get("launcher") == "cockpit-direct"))
+            # State identity × folder form × defect decision table (checked before naming heuristics):
+            # STATE IDENTITY                 J-<UTC>-<slot>[.n]     legacy-N / any other folder
+            # ky.job/1, valid                load                  load
+            # ky.job/1, ANY field defect     native error          native error
+            # ky.bootstrap_job_state/3      quarantine            quarantine (even with field defects)
+            # ky.legacy_job_state/1         quarantine            quarantine (even with field defects)
+            # schema ABSENT + launcher      quarantine            quarantine (even with field defects)
+            #   == cockpit-direct
+            # NO identity: missing state,   native error          unidentified error (I: conservative)
+            # unreadable JSON/I/O, non-object,
+            # absent/null/invalid schema,
+            # or an unrecognized named schema
+            # A ky.job/1 schema wins over a launcher marker. A present schema (even null) prevents
+            # the schema-less marker fallback. Only the two recognized foreign schemas are proof.
+            # Every error retains each readable declared slot/key/item; J names additionally reserve
+            # their encoded slot, even if the declared slot is null, missing, invalid or different.
+            # An unidentified item blocks all admissions. Errors/quarantines get one notice per folder;
+            # neither is supervised/recovered and neither changes bytes. Tests enumerate all rows,
+            # both naming columns (legacy and arbitrary separately), and every _checked field defect.
+            native = not err and isinstance(doc, dict) and schema == SCHEMA
+            foreign = (not native and not err and isinstance(doc, dict)
+                       and (schema in ("ky.bootstrap_job_state/3", "ky.legacy_job_state/1")
+                            or ("schema" not in doc and doc.get("launcher") == "cockpit-direct")))
             if not foreign:
                 reservation = {k: doc.get(k) for k in ("slot", "key", "item")
                                if isinstance(doc, dict) and _text(doc.get(k))}
-                reservation["encoded_slot"] = encoded.group(2)
-                reservation.setdefault("slot", encoded.group(2))
+                if encoded:
+                    reservation["encoded_slot"] = encoded.group(2)
+                    reservation.setdefault("slot", encoded.group(2))
                 reservation["unknown_item"] = not _text(reservation.get("item"))
                 ctx._job_errors[name] = reservation
             if name not in seen:

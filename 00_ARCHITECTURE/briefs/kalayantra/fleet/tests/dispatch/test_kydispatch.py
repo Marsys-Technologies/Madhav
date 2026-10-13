@@ -900,7 +900,6 @@ BUILD_READY = {"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready",
 
 
 @pytest.mark.parametrize("name,state", [
-    ("legacy-3337", None), ("legacy-3337", "not json"), ("legacy-3337", "[]"),
     ("legacy-3337", '{"schema":"ky.legacy_job_state/1"}'),
     ("J-20261013T000000Z-b1", '{"schema":"ky.bootstrap_job_state/3","slot":"b1","item":"K-1"}'),
     ("J-20261013T000000Z-b1", '{"launcher":"cockpit-direct","phase":"starting","slot":"b1","item":"K-1"}'),
@@ -919,13 +918,13 @@ def test_quarantined_folder_keeps_unrelated_build_intent(world, name, state):
 
 
 
-@pytest.mark.parametrize("state", [None, "not json", "[]", "{}",
-                                    '{"schema":"ky.job/1","phase":"bad","item":"K-1","slot":null}',
-                                    '{"schema":"ky.job/1","phase":"bad","item":"K-2","slot":null}'])
-def test_native_state_error_keeps_build_visible_but_refuses_admission(world, state):
+@pytest.mark.parametrize("name", ["J-20261013T000000Z-b1", "legacy-2", "adopted-native"])
+@pytest.mark.parametrize("state", [None, "not json", "[]", "{}", '{"schema":"ky.unrecognized/1"}',
+                                    '{"schema":"ky.job/1","phase":"bad","item":"K-1","slot":null}'])
+def test_native_state_error_keeps_build_visible_but_refuses_admission(world, name, state):
     import kydispatch as d
     world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
-    path = world.run / "jobs" / "J-20261013T000000Z-b1" / "state.json"
+    path = world.run / "jobs" / name / "state.json"
     path.parent.mkdir(parents=True)
     if state is not None:
         path.write_text(state)
@@ -938,6 +937,48 @@ def test_native_state_error_keeps_build_visible_but_refuses_admission(world, sta
     assert world.journal().count(path.parent.name) == 1
     assert (path.read_bytes() if path.exists() else None) == original
     assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls())
+
+
+def test_j_folder_encoded_slot_refuses_unrelated_item_with_null_declared_slot(world):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    path = world.run / "jobs" / "J-20261013T000000Z-b1" / "state.json"
+    path.parent.mkdir(parents=True)
+    path.write_text('{"schema":"ky.job/1","phase":"bad","item":"K-2","slot":null}')
+    original = path.read_bytes()
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        assert next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")["decision"] == "wait:slot"
+    assert world.journal().count(path.parent.name) == 1
+    assert path.read_bytes() == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls())
+
+
+@pytest.mark.parametrize("name", ["legacy-2", "adopted-native"])
+@pytest.mark.parametrize("reservation,decision", [("slot", "wait:slot"), ("key", "refused:open"),
+                                                  ("item", "refused:open")])
+def test_malformed_native_non_j_job_refuses_each_reservation(world, name, reservation, decision):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    preview = d.Engine(world.env(), dry=True)
+    build = next(j for j in preview.tick()["jobs"] if j["kind"] == "BUILD" and j["item"] == "K-1")
+    calls_before = len(world.calls())
+    path = world.run / "jobs" / name / "state.json"
+    path.parent.mkdir(parents=True)
+    doc = dict(schema="ky.job/1", job_id=name, phase="bad", key="unrelated-key", item="K-2", slot="b3")
+    doc[reservation] = {"key": build["key"], "item": "K-1", "slot": "b1"}[reservation]
+    path.write_text(json.dumps(doc))
+    original = path.read_bytes()
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        build = next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")
+        assert build["decision"] == decision, jobs
+    assert world.journal().count(name) == 1
+    assert path.read_bytes() == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls()[calls_before:])
+
 
 @pytest.mark.parametrize("where", ["before_read", "after_read", "kind"])
 def test_error_then_clean_ticks_rederive_build_on_same_controller(world, monkeypatch, where):
