@@ -4,14 +4,14 @@
  "verdict": "ACCEPTED",
  "reviewer_session_id": "94345d41-9ed0-4758-a26e-121ac8553ca0",
  "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
- "components_head_reviewed": "d0fb5089d5a0b4ea217af1ae6e3e871b2ef5cd29",
+ "components_head_reviewed": "267aed8b75e222643022203446f08d242eba5853",
  "basis": "Coverage verified by hash only: every bound component at this head is covered by exactly the bytes named in one of the ten ACCEPTED per-area hash-binding review records listed here (each by its own reviewer session); the per-area reviewers compared the bundle with the per-piece ACCEPTED heads and read the diffs of the files that differ. The cockpit reviewed nothing else for this record (owner lean mode; surrogate answer 4).",
  "inputs": {
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py": "58ffdd130d381f5b33a23309b681cb98e40ca7a05ec9a93bba0faf03f996512f",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kymanifest.py": "e18d1c95e41831d53d1cc099ca30bec2b10108af746aaa348a133efe354ea49e",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/kyschema.py": "62d09bd92bd98eabcafa5a2d0db1cfa89bd8bacda8e0c35f6ed39d79215056c9",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
-  "00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt": "d0e14ba631905421137d1b80e2d1f1a5bb59b17ade4eeb9be0afb62256e36266",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt": "ebd7666f386ce63db2e11732bde977f69b4fb42fade14a6c722e136604ac0cee",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/packet.json": "742f6bbab3bc7b6ed096341da6127be3ec2dc28f3ebec98a05df3d9579b508d5",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/release_receipt.json": "b5ad761e61d935c4be8461407195f9f49cb9bc954c11cd41d1780926f0a01618",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/awaiting.json": "23d7dcd63a731ca1dc864303ecbe171ca9f58e6f4de22f6f3141ad574668d32a",
@@ -67,6 +67,32 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/launch_input_codex.json": "7bd30caff4f79921c2340cdb2814262186b75b0cb6b1f6cfe763031c4dfeae6b",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/codex_reviewer_output.json": "3617a8a1613655f54da29ceb8b3a570a62e457fd45a316b4fbde97f98d02c0d1",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/job_result_launcher_commit.json": "95350f55c8babdb024405b53899cb87a95c9b386ad2c0edad05568e94c4418e6",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/REAL_CODEX_EVIDENCE.md": "bb04a77ba096066961808687bf1bb196086bd8f82aab3b4904c91a937bb2b369",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_qualify.py": "55791f569988a95678648bbcb60a5e3826fa9eb150272d8aca9edb914407e1c1",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-outside-write-rollout.jsonl": "a90775c9ff150ebdc1c20da66b2ac55a3feb1cfca1c4e587f28a11a0718c0017",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-private-tmp-write-rollout.jsonl": "908d1b950ba25ead0b57cf610e247594496d387a41f08303b400a1bd868bc829",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-tmp-write-rollout.jsonl": "336976a766b3a52840ca7c064a181785d79585879e7af6ab4099d116ec925f7a",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-rollout.jsonl": "289624221f7393d3f6aa776e96ba1c1716ac1b6e71f4395fa5990a8f9f47c701",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-stdout.jsonl": "ae4d81d5a4d63187504fe5464c1ac40ddd8ae9fbacf5b614938914897f7fcd7e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-outside-write-rollout.jsonl": "43f9d2a2b313d16568f70b6a5221681b1b964cfc7a238a486c6a8d20ea16a723",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-private-tmp-write-rollout.jsonl": "71b0f04fafe3b9494dd2791b725e3a4bd6346640231f8b419cab3575aedac06b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-tmp-write-rollout.jsonl": "66e480bb76a597558556534a099872e7b3a1283611155728e4430e9f091d7d60",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-rollout.jsonl": "8a1a22283a85e3218784a143e5d440796199f063cce2cacd15711132c50c3648",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-stdout.jsonl": "83374d50d22ae764411d7801b2d66c48d9afd31fd74331bd0309c52192cf0fb2",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-rollout.jsonl": "6360ab72b529496df1bf33eefcd4446a07f10043f54c143fee0f7d9795a1111a",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-stdout.jsonl": "55a7761db4712eb37e8e80e369c6e42aa64be0390f1181681228399df45ff152",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-rollout.jsonl": "1c106e47dd5e3bc5b8af56ab3b15ecc41b4eadb9c7f0f6dc1f841c1dfaea4dd0",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-stdout.jsonl": "90e1d7f3b3cdce985170dae5e4a763ab4cd9cb64ad0f10749b176440d2155e96",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-rollout.jsonl": "ce60ca3701253d8c9bde21ca6b8fef27105e4cad0db21dbc92f237e41153dd50",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-stdout.jsonl": "3c26b0dce9aae6c325ae6deb9f9654eaea7478230e32e9b7b461ba8f77c32ae7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-rollout.jsonl": "6ec38d4d57544343b360ba616685ba903ac0936452a1a2554699f047ce3aae1d",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-stdout.jsonl": "36c2a0fd2c43179045dcc10c01915e6fc3674363f4782f54fb45d8b350d01522",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-rollout.jsonl": "2382968eb7070174602e8b78082d03d177278826a7d9843ba6e6ef82696ec32c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-stdout.jsonl": "40e3e5e899eeeaf0d69257b551dc09bde10f2d061fb1f26108ad2d94ff1257e9",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-reviewer-evidence.json": "f05695cbe471eee544cd38ef6232f1c97f2c5daf20453569407705b21f378270",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-skills-message.jsonl": "fe2c4aef20c4a258eabd08c95e43407a1f1a0e0b0695f9f0442f9e6f70a9e592",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-rollout.jsonl": "6461ef3fc19d19fd813c005751dd4c74933565fb69993a1748341e40229c26ba",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-stdout.jsonl": "01147ec9f9fccb0f2e731f398bd935c8d7831cf452e2e8643f34d4826ef5a030",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md": "aa1eafb6bec8cf92af3441fd195d74f3035227dd7d818c10c9b8e89dde97a1d9",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md": "909ae3ad80681edbf9ee2498e7880c3b14afd4e4b0a9c26989f7aed0f1f05fe8",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md": "20a57b2f016e3197c2d26bc1f83fb0636a89f2e2ab484a22f623d660d2b92b05",
@@ -197,6 +223,8 @@
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck.py": "85d6701ed84c3a61dfc9a8bb7c603f26c538e149133f15962764ca77ea856287",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_preflight.py": "0ab5f936cef984c3fd4326ce6d97a47ad32996918ad7c62073280410aae265d1",
   "00_ARCHITECTURE/briefs/kalayantra/fleet/verify_specs.sh": "52dcf1deff41d6b7808f1c5992d2246e0da420c11e53b94e8aaef3ebc43c34a0",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob_engines.py": "63499ab21a7ccbed1ca28a29056522253031de7eceb9df4d993ea23f84d87f00",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob_engines.py": "22f771351d8f22fe8e8a98221e724b44605b5e9943f68f8a7e3b3b37293c87c9",
   "platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md": "b51ccd3eba088ac42af75eca556ea475a80a6032d27820b0d0e8c451b0a5e9fa",
   "platform/scripts/governance/pravaha_tracker/__init__.py": "cc808c2ee7978a844ad67c34e134c5941bba954333a83f4fed47daf2669de4a0",
   "platform/scripts/governance/pravaha_tracker/audit.py": "1b3ec63a303260760e6f734579c3d85fbb041974271cf0ab8cc3b39ab2ebb8fb",
@@ -242,9 +270,9 @@
   },
   {
    "area": "engines",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r1/engines.review.json",
-   "record_sha256": "3f353131932f6da39a29d0e12f39effc0fce6823d02f53bd88737be4bfa37be6",
-   "reviewer_session_id": "01a1328d-a0ba-7981-832c-1ae08462b20a"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r5/engines.review.json",
+   "record_sha256": "ae025fd44ebed42bfc866069c90a65264ee8247566a22fff71330a93fdb01034",
+   "reviewer_session_id": "01a13356-378a-75e0-9c87-ba74758907e8"
   },
   {
    "area": "loops",
@@ -260,9 +288,9 @@
   },
   {
    "area": "supervisor",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r4/supervisor.review.json",
-   "record_sha256": "8e6e85f3c40e1d419dcc6eef17dc923b903b6563907bbdc557711a66dadf209e",
-   "reviewer_session_id": "01a13329-35bc-7f61-b88f-35cdbbbf5fa9"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r5/supervisor.review.json",
+   "record_sha256": "f8542825509c9b7e5bbe95d1abbaa906d43e21d84dfe9e69e03f65efbc0776d2",
+   "reviewer_session_id": "01a13356-3670-7e31-8df3-0ef7447e507c"
   },
   {
    "area": "surrogate",
@@ -278,9 +306,9 @@
   },
   {
    "area": "wave-b",
-   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r3/wave-b.review.json",
-   "record_sha256": "7a3189096d6e30c2698e4b2e24e04125a0c4f17e13833ec92b99cd03b0213612",
-   "reviewer_session_id": "01a13313-5828-7881-95e8-74266f406602"
+   "record": "/Users/Dev/kalayantra/run/reviews/b2-areas-r5/wave-b.review.json",
+   "record_sha256": "df70c58160970488ed75ea17c15550b7905ad5d046f8c345604e308c45499370",
+   "reviewer_session_id": "01a13344-a35e-75e3-900a-16603ec03f75"
   }
  ]
 }
