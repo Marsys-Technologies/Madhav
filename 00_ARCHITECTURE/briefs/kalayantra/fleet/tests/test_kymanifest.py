@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -333,7 +334,7 @@ def test_a_codex_receipt_is_judged_against_the_roles_codex_configuration_never_t
 
 
 # Installation regressions: generated loop configs belong to the installer/controller.
-def test_nine_receipts_report_external_loops_without_binding_them(rig):
+def test_nine_receipts_report_external_loops_without_binding_them_across_readers(rig):
     for n in range(6):
         (rig.run / "QUALIFICATIONS" / ("template-%d.json" % n)).write_text(rig.receipt.read_text())
     assert rig.build().returncode == 0
@@ -354,8 +355,38 @@ def test_nine_receipts_report_external_loops_without_binding_them(rig):
     assert built.returncode == 0, built.stderr
     manifest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())
     assert len(manifest["qualifications"]) == 7
-    assert manifest["loop_qualifications_outside_manifest"] == sorted(names)
+    assert "loop_qualifications_outside_manifest" not in manifest
+    assert json.loads(built.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
     assert manifest["manifest_sha256"] == digest
+    checked = rig.check()
+    assert checked.returncode == 0, checked.stderr
+    assert json.loads(checked.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
+
+    # Use the real readers' existing seams; never run an installation or launch.
+    install = FLEET / "install.sh"
+    program = install.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    installer = {}
+    exec(compile(program, str(install), "exec"), installer)
+    ctx = SimpleNamespace(manifest_path=str(rig.run / "VERSIONS.bootstrap.json"))
+    assert installer["load_manifest"](ctx) == manifest
+
+    import kyboot
+    loaded, components, file_sha, findings = kyboot.load_manifest(ctx.manifest_path)
+    assert findings == [] and loaded == manifest
+    assert components == {c["path"]: c["sha256"] for c in manifest["components"]}
+    assert file_sha == sha(ctx.manifest_path)
+
+    version = FLEET / "kyversion.sh"
+    program = version.read_text().split("\n: <<'KYVERSION_PY'\n", 1)[1].rsplit("\nKYVERSION_PY\n", 1)[0]
+    program = program.rsplit("\ntry:\n    status = main(sys.argv[2:])", 1)[0]
+    reader = {}
+    exec(compile(program, str(version), "exec"), reader)
+    # This reader handles final manifests: only the bootstrap mode finding is expected.
+    assert reader["check_final_manifest"](manifest, None) == ["the manifest's mode is 'bootstrap', not 'final'"]
+    body = {k: v for k, v in manifest.items() if k != "manifest_sha256"}
+    for canonical in (installer["canonical"], kyboot.manifest_canonical, reader["canonical"]):
+        assert hashlib.sha256(canonical(body)).hexdigest() == manifest["manifest_sha256"]
     # Even changed reported bytes are the installer's responsibility, not manifest-bound.
     (rig.run / "QUALIFICATIONS" / names[0]).write_text(json.dumps({
         "role": "planner", "result": "FAIL", "evidence": {"dir": str(rig.run / "planner-evidence")}}))
@@ -424,3 +455,13 @@ def test_absolute_repository_area_review_relocates_and_checks_campaign_bytes(rig
     (campaign / "one.review.json").write_text("changed review")
     checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
     assert checked.returncode == 1 and "per-area review record missing or changed" in checked.stderr
+
+
+def test_loop_roles_constant_equals_the_controllers_roles():
+    """kymanifest.LOOP_ROLES is a constant (no sibling import); it must stay equal to kyloop.ROLES."""
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location("_kyloop_for_roles", os.path.join(os.path.dirname(km.__file__), "kyloop.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert tuple(km.LOOP_ROLES) == tuple(mod.ROLES)
