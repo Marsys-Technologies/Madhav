@@ -263,9 +263,11 @@ def _age(job_id):
 
 
 def load(ctx):
-    """Readable jobs, oldest first. Quarantine bad folders in memory; never move or rewrite their bytes.
-    (I) INTERPRETATION: malformed ky.job/1 records retain identifiable slot/key reservations, but are
-    not supervised or recovered. If slot is malformed, retain the slot suffix encoded by its job folder.
+    """Readable jobs, oldest first. Only positively foreign bad folders are quarantined.
+    Unknown native states retain their folder-encoded slot and identifiable slot/key/item reservations;
+    they are neither supervised nor recovered, and their bytes are never moved or rewritten.
+    (I) INTERPRETATION: if the item cannot be identified, all item admissions wait for reconciliation.
+    A schema-less cockpit-direct record is foreign by its launcher marker (launch_direct.py:85).
     A repair is read on the next call; one notice per folder per context.
     Directory-listing and failure-table errors remain fatal because their scope is not one job.
     """
@@ -288,14 +290,20 @@ def load(ctx):
         try:
             jobs.append(_checked(doc, err, name))
         except JobsUnreadable as exc:
-            canonical = isinstance(doc, dict) and doc.get("schema") == SCHEMA
-            if canonical:
-                ctx._job_errors[name] = {k: doc.get(k) for k in ("slot", "key", "item") if _text(doc.get(k))}
-                encoded = _JOB_ID.match(name)
-                if doc.get("slot") is not None and not _text(doc["slot"]) and encoded:
-                    ctx._job_errors[name]["slot"] = encoded.group(2)
+            encoded = _JOB_ID.match(name)
+            schema = doc.get("schema") if isinstance(doc, dict) else None
+            foreign = (encoded is None or (_text(schema) and schema != SCHEMA)
+                       or (isinstance(doc, dict) and "schema" not in doc
+                           and doc.get("launcher") == "cockpit-direct"))
+            if not foreign:
+                reservation = {k: doc.get(k) for k in ("slot", "key", "item")
+                               if isinstance(doc, dict) and _text(doc.get(k))}
+                reservation["encoded_slot"] = encoded.group(2)
+                reservation.setdefault("slot", encoded.group(2))
+                reservation["unknown_item"] = not _text(reservation.get("item"))
+                ctx._job_errors[name] = reservation
             if name not in seen:
-                ctx.journal("dispatcher error" if canonical else "job quarantine", str(exc))
+                ctx.journal("job quarantine" if foreign else "dispatcher error", str(exc))
                 seen.add(name)
     return sorted(jobs, key=lambda j: _age(j["job_id"]))
 
@@ -567,7 +575,7 @@ def _plan(ctx, intent, slot, facts):
     return plan, None
 
 
-def _look(ctx, key, slot):
+def _look(ctx, key, slot, item=None):
     """The fresh look under the job lock → why nothing is opened, or None."""
     if os.path.lexists(_run(ctx) / "handled" / ("job.%s.json" % key)):
         return "key %s is handled" % key
@@ -577,8 +585,9 @@ def _look(ctx, key, slot):
         if job["phase"] != "ended" and slot is not None and job.get("slot") == slot:
             return "slot %s is not free: job %s has not ended" % (slot, job["job_id"])
     for name, job in ctx._job_errors.items():
-        if job.get("key") == key or (slot is not None and job.get("slot") == slot):
-            return "job %s has a malformed state; its key/slot requires reconciliation" % name
+        if (job.get("key") == key or (slot is not None and slot in (job.get("slot"), job.get("encoded_slot")))
+                or job.get("unknown_item") or (item is not None and job.get("item") == item)):
+            return "job %s has an unknown or malformed state; its item/key/slot requires reconciliation" % name
     return None
 
 
@@ -777,7 +786,7 @@ def open(ctx, intent, slot, facts):                      # noqa: A001 — the pa
         return None
     held.append(lock)
     try:
-        why = _look(ctx, key, slot)
+        why = _look(ctx, key, slot, plan["state"]["item"])
         if why is None and slot is not None:
             slot_lock = _take(ctx, "slot.%s" % slot)
             why = None if slot_lock is not None else "slot %s is being released or opened" % slot

@@ -550,7 +550,9 @@ def test_load_reads_legacy_jobs_first_and_quarantines_bad_folders(world):
 
 
 @pytest.mark.parametrize("change,reason", [({"phase": "finished"}, "phase"), ({"job_id": "another"}, "job_id"),
-                                          ({"key": {}}, "key"), ({"slot": []}, "slot"), ({"locks": "lock"}, "locks")])
+                                          ({"key": {}}, "key"), ({"slot": []}, "slot"), ({"locks": "lock"}, "locks"),
+                                          ({"phase": "finished", "slot": None}, "phase"),
+                                          ({"phase": "finished", "slot": "b2"}, "phase")])
 def test_malformed_canonical_job_is_local_error_and_keeps_its_reservations(world, change, reason):
     job = opened(world)
     bad = world.run / "jobs" / job["job_id"] / "state.json"
@@ -566,6 +568,49 @@ def test_malformed_canonical_job_is_local_error_and_keeps_its_reservations(world
     assert other is not None
     assert bad.read_text() == text
 
+
+
+@pytest.mark.parametrize("state", [None, "{not json", "[]", "{}", '{"schema":null}', "unreadable"])
+def test_unknown_native_state_reserves_slot_and_unidentified_item(world, monkeypatch, state):
+    job = opened(world)
+    path = world.run / "jobs" / job["job_id"] / "state.json"
+    if state is None:
+        path.unlink()
+    elif state != "unreadable":
+        path.write_text(state)
+    original = path.read_bytes() if path.exists() else None
+    if state == "unreadable":
+        real = ka.read_json
+        monkeypatch.setattr(ka, "read_json", lambda p: (None, "unreadable: PermissionError")
+                            if Path(p) == path else real(p))
+    for _ in range(3):
+        assert J.load(world.ctx) == []
+        assert J.supervise(world.ctx) == []
+        assert J.recover(world.ctx) == []
+    assert J._look(world.ctx, "new-key", "b1") is not None
+    # The item cannot be reconstructed from a native folder name. Even another slot must not reuse it.
+    assert J.open(world.ctx, world.intent({"item": "K-1", "key": "changed-key"}), "b3", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    notices = [line for line in world.log.journal if job["job_id"] in line and "dispatcher error" in line]
+    assert len(notices) == 1
+    assert (path.read_bytes() if path.exists() else None) == original
+
+
+@pytest.mark.parametrize("missing_slot", [False, True])
+def test_invalid_phase_null_or_missing_slot_reserves_item_across_keys(world, missing_slot):
+    job = opened(world)
+    path = world.run / "jobs" / job["job_id"] / "state.json"
+    bad = dict(job, phase="finished", slot=None)
+    if missing_slot:
+        del bad["slot"]
+    path.write_text(json.dumps(bad))
+    original = path.read_bytes()
+    assert J._look(world.ctx, "new-key", "b1") is not None
+    assert J._look(world.ctx, "changed-key", "b3", "K-1") is not None
+    assert J.open(world.ctx, world.intent({"item": "K-1", "key": "changed-key"}), "b3", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None)) is not None
+    assert path.read_bytes() == original
 
 def test_foreign_schema_is_quarantined_once_with_its_reason(world):
     job = opened(world)

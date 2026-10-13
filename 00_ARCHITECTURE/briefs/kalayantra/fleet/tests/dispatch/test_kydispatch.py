@@ -899,19 +899,45 @@ BUILD_READY = {"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready",
                "files": {"$RUN/PRIORITY.txt": "K-1\n"}, "gate": "OPEN", "slots": ["b1"]}
 
 
-@pytest.mark.parametrize("state", [None, "not json", "[]", '{"schema":"ky.legacy_job_state/1"}'])
-def test_quarantined_folder_keeps_unrelated_build_intent(world, state):
+@pytest.mark.parametrize("name,state", [
+    ("legacy-3337", None), ("legacy-3337", "not json"), ("legacy-3337", "[]"),
+    ("legacy-3337", '{"schema":"ky.legacy_job_state/1"}'),
+    ("J-20261013T000000Z-b1", '{"schema":"ky.bootstrap_job_state/3","slot":"b1","item":"K-1"}'),
+    ("J-20261013T000000Z-b1", '{"launcher":"cockpit-direct","phase":"starting","slot":"b1","item":"K-1"}'),
+])
+def test_quarantined_folder_keeps_unrelated_build_intent(world, name, state):
     import kydispatch as d
     world.apply(dict(BUILD_READY, slots=[]), first=True)
-    broken = world.run / "jobs" / "legacy-3337" / "state.json"
+    broken = world.run / "jobs" / name / "state.json"
     broken.parent.mkdir(parents=True)
     if state is not None:
         broken.write_text(state)
     e = d.Engine(world.env())
     jobs = e.tick()["jobs"]
     assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), world.journal()
-    assert world.journal().count("legacy-3337") == 1
+    assert world.journal().count(name) == 1
 
+
+
+@pytest.mark.parametrize("state", [None, "not json", "[]", "{}",
+                                    '{"schema":"ky.job/1","phase":"bad","item":"K-1","slot":null}',
+                                    '{"schema":"ky.job/1","phase":"bad","item":"K-2","slot":null}'])
+def test_native_state_error_keeps_build_visible_but_refuses_admission(world, state):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, files=dict(BUILD_READY["files"], **{"$RUN/KY_WORKERS": "1\n"})), first=True)
+    path = world.run / "jobs" / "J-20261013T000000Z-b1" / "state.json"
+    path.parent.mkdir(parents=True)
+    if state is not None:
+        path.write_text(state)
+    original = path.read_bytes() if path.exists() else None
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        build = next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")
+        assert build["decision"] in ("refused:open", "wait:slot"), jobs
+    assert world.journal().count(path.parent.name) == 1
+    assert (path.read_bytes() if path.exists() else None) == original
+    assert not any(c["cmd"] in ("local_db.sh", "kyjob.sh") for c in world.calls())
 
 @pytest.mark.parametrize("where", ["before_read", "after_read", "kind"])
 def test_error_then_clean_ticks_rederive_build_on_same_controller(world, monkeypatch, where):
@@ -940,12 +966,17 @@ def test_error_then_clean_ticks_rederive_build_on_same_controller(world, monkeyp
     assert fired
     assert e.tracker_seen == original
     assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker"] == original
+    # The async tracker has not consumed the appended event yet: the previous version must wait.
+    assert e.tick()["jobs"] == []
+    assert e.tracker_seen == original
+    assert "waiting for tracker version above" in world.journal()
+    world.apply({"next": dict(BUILD_READY["next"], version=original["version"] + 1)})
     for _ in range(2):
         jobs = e.tick()["jobs"]
         assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), jobs
 
 
-@pytest.mark.parametrize("bad", ["older", "snapshot", "changing", "missing", "checkpoint"])
+@pytest.mark.parametrize("bad", ["older", "equal_changed", "snapshot", "changing", "missing", "checkpoint"])
 def test_error_retry_keeps_freshness_fences(world, monkeypatch, bad):
     import kydispatch as d
     world.apply(BUILD_READY, first=True)
@@ -966,7 +997,9 @@ def test_error_retry_keeps_freshness_fences(world, monkeypatch, bad):
             return result
 
         monkeypatch.setattr(e, "ky", append_during_read)
+    checkpoint = copy.deepcopy(e.tracker_seen)
     assert e.ctx.next is None
+    assert e.tracker_seen == checkpoint
 
 
 def test_error_recovery_checkpoint_survives_restart(world, monkeypatch):
@@ -982,7 +1015,12 @@ def test_error_recovery_checkpoint_survives_restart(world, monkeypatch):
     monkeypatch.setattr(e, "_settle", fail)
     e.tick()
     assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker_retry"] is True
-    jobs = d.Engine(world.env()).tick()["jobs"]
+    original = e.tracker_seen.copy()
+    restarted = d.Engine(world.env())
+    assert restarted.tick()["jobs"] == []
+    assert restarted.tracker_seen == original
+    world.apply({"next": dict(BUILD_READY["next"], version=original["version"] + 1)})
+    jobs = restarted.tick()["jobs"]
     assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs)
 
 

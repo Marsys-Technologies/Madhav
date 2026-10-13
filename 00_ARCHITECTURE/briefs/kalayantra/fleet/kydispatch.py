@@ -658,14 +658,20 @@ class Engine:
         except (ValueError, RecursionError):
             nxt = None
         now = self._events_signature()
-        # (I) INTERPRETATION: after an errored tick, recapture a stable EVENTS prefix around the live
-        # reading. Retain the last version as a floor; never accept regression or a snapshot fallback.
-        retry_fresh = (self.tracker_retry and isinstance(before, dict) and before == now
-                       and isinstance(nxt, dict) and _is_int(nxt.get("version"))
-                       and (self.tracker_seen is None or nxt["version"] >= self.tracker_seen["version"]))
-        value = self._declarations(nxt) if next_known(nxt) and (fresh(nxt, self.tracker_seen, now) or retry_fresh) else None
+        # ky next carries only a snapshot version (server.py:388-391), not a processed EVENTS
+        # digest/count. After an error, keep the original freshness fence: changed checkpoint bytes
+        # require a version ABOVE the last accepted one. Stability during the request alone proves nothing.
+        stable_retry = not self.tracker_retry or (isinstance(before, dict) and before == now)
+        known = next_known(nxt)
+        value = self._declarations(nxt) if known and stable_retry and fresh(nxt, self.tracker_seen, now) else None
         if value is None:
-            self._unknown("tracker", "ky next has no recognisable fresh unfiltered live answer (exit %s)" % rc)
+            if (self.tracker_retry and known and isinstance(self.tracker_seen, dict)
+                    and nxt["version"] == self.tracker_seen["version"] and isinstance(now, dict)
+                    and not fresh(nxt, self.tracker_seen, now)):
+                self.journal("tracker wait", "EVENTS changed since checkpoint; waiting for tracker version above %s"
+                             % self.tracker_seen["version"])
+            else:
+                self._unknown("tracker", "ky next has no recognisable fresh unfiltered live answer (exit %s)" % rc)
         if value is not None:
             self.tracker_seen = dict(now or {"events_size": None, "events_sha256": None}, version=nxt["version"])
         self._next = (True, value)
@@ -941,8 +947,10 @@ class Engine:
         bad = list(getattr(ctx, "_job_errors", {}).values())
         active = [j for j in loaded if j["phase"] != "ended"] + bad
         state = {"hold": hold, "gate": gate, "hold_merges": hold_merges, "sizes": sizes, "provisioned": False,
-                 "short": set(), "busy": {j["slot"] for j in active if j.get("slot")},
-                 "open_keys": {j["key"] for j in active if j.get("key")}}
+                 "short": set(), "busy": {slot for j in active for slot in (j.get("slot"), j.get("encoded_slot")) if slot},
+                 "open_keys": {j["key"] for j in active if j.get("key")},
+                 "bad_items": {j["item"] for j in bad if j.get("item")},
+                 "unknown_item": any(j.get("unknown_item") for j in bad)}
         jobs = []
         for intent in intents:                                                 # 9
             decision = self._admit(intent, state)
@@ -1244,7 +1252,7 @@ class Engine:
             return "park" if parked.get("parked") else "refused:park"
         if ctx.next is None:
             return "wait:stale"
-        if key in state["open_keys"]:
+        if key in state["open_keys"] or item in state.get("bad_items", set()) or state.get("unknown_item"):
             return "refused:open"
         handled = self._handled(intent)
         if handled is None:
