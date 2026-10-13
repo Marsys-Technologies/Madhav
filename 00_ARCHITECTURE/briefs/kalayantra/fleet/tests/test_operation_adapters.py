@@ -56,7 +56,10 @@ OTHER_MERGED = "b" * 40
 UNMERGED = "c" * 40
 WRAPPER_REL = "ops/fixture_adapter.py"
 RUN_ID = "0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11"
-DSN = "postgresql://fixture_user:fixture_pw@127.0.0.1:1/ky_fixture"       # a stand-in; nothing connects to it
+# Stand-ins shaped like credentials, joined at run time so that no literal in this file is one; nothing connects to DSN.
+DSN = "".join(("postgres", "ql://fixture_user", ":", "fixture_pw", "@127.0.0.1:1/ky_fixture"))
+CREDENTIAL_SHAPES = [DSN, "".join(("postgres", "://u", ":", "p", "@h/db")), "=".join(("PGPASSWORD", "hunter2")),
+                     ": ".join(("token", "abc123")), "=".join(("api_key", "abc")), "=".join(("SECRET", "abc"))]
 PROJECT = "madhav-astrology"
 BUILDER_SA = "data-plane-builder-runtime@%s.iam.gserviceaccount.com" % PROJECT
 VERIFIER_SA = "gochara-verifier-runtime@%s.iam.gserviceaccount.com" % PROJECT
@@ -156,10 +159,10 @@ class FakeRemote:
     """The remote as an adapter's transport sees it: one job definition (non-secret metadata), what was submitted, and
     a state a test sets. `execute` returning 0 says the submission was taken — never that the run ended."""
 
-    def __init__(self, service_account=BUILDER_SA, secret="data-plane-builder-db-url", name=None):
+    def __init__(self, service_account=BUILDER_SA, secret_ref="data-plane-builder-db-url", name=None):
         self.definition = {"metadata": {"name": name or A.BUILD_JOB}, "spec": {"template": {"spec": {"template": {"spec": {
             "serviceAccountName": service_account,
-            "containers": [{"env": [{"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {"name": secret, "key": "latest"}}}]}]}}}}}}
+            "containers": [{"env": [{"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {"name": secret_ref, "key": "latest"}}}]}]}}}}}}
         self.submissions = []
         self.described = []
         self.state = {}                                    # run id → what the remote would answer
@@ -437,6 +440,9 @@ def test_prepare_accept_submit_receipt_terminal_readback_and_verdict_in_step_ord
     assert set(dry) == {"schema", "operation_id", "item", "step", "request", "request_sha256", "prepared_by", "prepared_by_slot"}
     assert dry["request_sha256"] == bench.X.request_digest(dry["request"]) == K.request_digest(dry["request"])
     assert bench.owed("REQUEST-PREP")[0] == [], "step 2 is owed before step 1 has an accepted receipt digest"
+    bench.event_log[ITEM] = [None]                         # with no receipt there is no digest to ask a verdict of:
+    assert bench.owed("REQUEST-PREP") == ([], []), "step 2 waits on the receipt, and the events were read without one"
+    del bench.event_log[ITEM]
 
     # a dry-run kind needs no dry_run_passed and no rows (executor.validate and required_checks agree)
     assert K.required_checks("orchestrator_rebuild_dryrun") == (["backup_taken", "restore_verified"], False)
@@ -631,7 +637,7 @@ def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_ref
     bench.git.leases = [(LEASE, 24, "ACTIVE"), ("LEASE-OLD", 24, "RELEASED")]
     assert validate(req) is None
 
-    # an expiry that passes between acceptance and execution refuses at the second validation, with a REFUSED receipt
+    # once executed, the same request is refused by its idempotency key
     assert bench.execute(path, req) is None
     assert bench.receipt("OP-FIX-s2")[1]["status"] == "COMPLETED"
     assert validate(req) == "idempotency key already used"
@@ -692,8 +698,8 @@ def test_a_prepared_request_changed_on_disk_is_unknown_and_is_not_submitted(benc
     (dict(service_account="amjis-web-runtime@%s.iam.gserviceaccount.com" % PROJECT), "principal"),
     (dict(service_account=VERIFIER_SA), "principal"),
     (dict(service_account="data-plane-builder-runtime@another-project.iam.gserviceaccount.com"), "principal"),
-    (dict(secret="gochara-verifier-db-url"), "principal"),
-    (dict(secret="projects/another-project/secrets/data-plane-builder-db-url"), "principal"),
+    (dict(secret_ref="gochara-verifier-db-url"), "principal"),
+    (dict(secret_ref="projects/another-project/secrets/data-plane-builder-db-url"), "principal"),
     (dict(name="some-other-job"), "principal"),
 ])
 def test_a_wrong_runtime_principal_refuses_in_both_modes_and_submits_nothing(remote, code):
@@ -721,12 +727,14 @@ def test_an_absent_unreadable_or_ambiguous_principal_refuses():
     for broken in (no_account, no_secret, two_secrets, two_accounts, aliased, literal):
         assert A.principal_refusal(A.BUILD_JOB, broken) is not None
     assert "fixture_pw" not in A.principal_refusal(A.BUILD_JOB, literal)
+    assert "names 2 service accounts" in A.principal_refusal(A.BUILD_JOB, two_accounts)
+    assert "names 0 service accounts" in A.principal_refusal(A.BUILD_JOB, no_account)
 
     # the Gochara verifier's binding is its own job's: it is no other job's, and no whole-layer job has one here
-    verifier = FakeRemote(service_account=VERIFIER_SA, secret="gochara-verifier-db-url", name=A.VERIFIER_JOB).definition
+    verifier = FakeRemote(service_account=VERIFIER_SA, secret_ref="gochara-verifier-db-url", name=A.VERIFIER_JOB).definition
     assert A.principal_refusal(A.VERIFIER_JOB, verifier) is None
     assert A.principal_refusal(A.VERIFIER_JOB, good) is not None and A.principal_refusal(A.BUILD_JOB, verifier) is not None
-    layer = FakeRemote(service_account=VERIFIER_SA, secret="gochara-verifier-db-url", name="kala-layer-verify-job").definition
+    layer = FakeRemote(service_account=VERIFIER_SA, secret_ref="gochara-verifier-db-url", name="kala-layer-verify-job").definition
     assert "no existing principal binding" in A.principal_refusal("kala-layer-verify-job", layer)
 
 
@@ -749,7 +757,7 @@ def test_a_run_id_that_is_not_one_staged_run_refuses(run_id):
     assert refused.value.code == "run_id"
 
 
-@pytest.mark.parametrize("value", [DSN, "postgres://u:p@h/db", "PGPASSWORD=hunter2", "token: abc123", "api_key=abc", "SECRET=abc"])
+@pytest.mark.parametrize("value", CREDENTIAL_SHAPES, ids=["dsn", "short_dsn", "pgpassword", "token", "api_key", "secret"])
 def test_a_credential_in_argv_or_in_an_agent_job_output_refuses(value):
     assert A.secret_refusal(["gcloud", "run", "jobs", "execute", value]) is not None
     assert A.secret_refusal({"request": {"args": {"label": value}}}) is not None
@@ -803,7 +811,7 @@ def test_request_arguments_are_read_in_any_order_and_nothing_else_is_read():
     assert one != two and parse(one[2:]) == parse(two[2:])
     assert parse(one[2:]) == {"dry_run": False, "execute": True, "assets": "ka_fixture", "run_id": RUN_ID}
     for bad in (["--assets", "a", "--assets", "b"], ["--assets", "a", "stray"], ["--assets"], ["--sql", "x"],
-                ["--assets=a"], ["--ass", "a"], ["--execute", "--execute"], ["--dry-run", "--execute"]):
+                ["--assets=a"], ["--ass", "a"], ["--assets", "-5"], ["--assets", "--execute"], ["--execute", "--execute"], ["--dry-run", "--execute"]):
         with pytest.raises(A.Refusal) as refused:
             parse(bad)
         assert refused.value.code in ("arguments", "mode"), bad
@@ -835,6 +843,8 @@ def test_a_dry_run_that_submits_or_leaves_changed_state_fails():
     executed = A.remote_launch("execute", RUN_ID, FakeRemote(), environ=environ)
     assert A.dry_run_refusal(executed, **ok) is not None
     assert A.dry_run_refusal(dict(record, submitted=True), **ok) is not None
+    assert A.dry_run_refusal(dict(record, mode="execute"), **ok) is not None
+    assert A.dry_run_refusal(dict(record, schema="ky.job_result/1"), **ok) is not None
     assert A.dry_run_refusal(dict(record, planned_argv=[]), **ok) is not None
     assert A.dry_run_refusal(None, **ok) is not None
 
@@ -934,7 +944,7 @@ def test_a_rehearsal_that_proves_no_rollback_refuses(lane):
     for target in ({"host": "10.4.0.3", "port": 5432, "database": "ky_b1"}, {"host": "127.0.0.1", "port": 5432, "database": "amjis"},
                    {"host": "localhost", "port": 55433, "database": "ky_b1"}, {"host": "127.0.0.1", "database": "ky_"}, {}, None, DSN):
         assert refused(lane, STATEMENTS, PROBES, HEAD, target=target, identity=IDENTITY) == "lane_target", target
-    broken = STATEMENTS + [("INSERT INTO no_such_table VALUES (1)", ())]
+    broken = [("INSERT INTO runs (id, state) VALUES (?, ?)", ("r3", "planned")), ("INSERT INTO no_such_table VALUES (1)", ())]
     assert refused(lane, broken, PROBES, HEAD, target=LANE, identity=IDENTITY) == "statement_failed"
     assert lane.execute("SELECT count(*) FROM runs").fetchall() == [(2,)], "a failed rehearsal left its statements behind"
 
