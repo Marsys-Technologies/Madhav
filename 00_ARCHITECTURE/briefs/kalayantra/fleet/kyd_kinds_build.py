@@ -117,6 +117,7 @@ import os
 import re
 
 import kyd_jobs as jobs
+import kyverdicts
 
 KINDS = ("BUILD", "REWORK", "STEP", "VERIFY", "ARTIFACT")
 ORDER = ("STEP", "VERIFY", "ARTIFACT", "REWORK", "BUILD")
@@ -239,7 +240,7 @@ def _history(ctx, item):
     """The item's BUILD/REWORK model jobs that ended `done`, oldest first: [{tier, loop, max_loops, identity}]."""
     directory = os.path.join(os.fspath(ctx.run), "jobs")
     try:
-        names = sorted(os.listdir(directory), key=lambda n: (not n.startswith("legacy-"), n))
+        names = sorted(jobs.job_folders(directory), key=lambda n: (not n.startswith("legacy-"), n))
     except FileNotFoundError:
         return []
     except OSError:
@@ -249,11 +250,13 @@ def _history(ctx, item):
         path = os.path.join(directory, name, "state.json")
         data = _read(path) if os.path.isdir(os.path.join(directory, name)) else None
         if data is None:
-            continue
+            raise _Unknown("job state %s is unreadable" % path)
         try:
             state = json.loads(data)
         except ValueError:
             state = None
+        if jobs.foreign_state(state, None):
+            continue
         if not isinstance(state, dict):
             raise _Unknown("job state %s is unreadable" % path)
         if (state.get("item") == item and state.get("kind") in ("BUILD", "REWORK") and state.get("model")
@@ -438,9 +441,10 @@ def _in_review(ctx, row):
 def _code(ctx, row, events, reg):
     item, head = row["id"], reg["head"]
     pr = ctx.pr(item)
-    if (not isinstance(pr, dict) or pr.get("state") != "OPEN" or pr.get("number") != reg["pr"]
-            or pr.get("head") != head):
+    if not isinstance(pr, dict) or pr.get("state") != "OPEN" or pr.get("number") != reg["pr"]:
         return []
+    if pr.get("head") != head:
+        return _changed_registration(ctx, row, reg, pr)
     if ctx.accepted(item) is not None:                      # accepted (MERGE's business) or unknown
         return []
     packet = _packet(ctx, item)
@@ -493,6 +497,133 @@ def _code(ctx, row, events, reg):
             raise _Unknown("kyroute diff exit 3 names no frozen path")
         return [_block("VERIFY", row, head, "freeze: " + frozen)]
     raise _Unknown("kyroute diff exit %r" % (rc,))
+
+
+class _ScopedGit:
+    """Read-only ctx adapter for the shared reviewed-patch comparison; exact packet paths only."""
+    def __init__(self, ctx, paths):
+        self.ctx, self.paths = ctx, paths
+
+    def __call__(self, *args):
+        if args[0] in ("diff", "ls-tree"):
+            args += ("--",) + tuple(":(literal)" + p for p in self.paths)
+        rc, out, _ = self.ctx.sh(["git", "-C", os.fspath(self.ctx.repo), *args])
+        if rc is None or not isinstance(out, str):
+            raise _Unknown("reviewed patch Git observation unavailable")
+        return rc, out.encode("utf-8")
+
+    def ok(self, *args):
+        rc, out = self(*args)
+        if rc != 0:
+            raise _Unknown("reviewed patch git %s exit %s" % (args[0], rc))
+        return out
+
+    def yes(self, *args):
+        rc, _ = self(*args)
+        if rc not in (0, 1):
+            raise _Unknown("reviewed patch ancestry unavailable")
+        return rc == 0
+
+
+def _reviewed_patch(ctx, packet, old, new, base_ref):
+    """Shared kyverdicts patch predicate, restricted to the packet scope, without object writes.
+
+    (I) INTERPRETATION: the shared public inheritance API has no scope parameter. Reuse its
+    base/ancestry/patch/position comparisons, with literal d1_paths, and require identical
+    scoped head trees as an additional conservative gate. Base changes touching owned files
+    therefore wait for a fresh review. Missing/nonliteral scope stays unknown.
+    """
+    if not packet:
+        return "scope_unknown"
+    # front_matter is the existing strict packet reader; no prose-derived path guesses.
+    import kyd_admit
+    front, error = kyd_admit.front_matter(packet["path"])
+    paths = front.get("d1_paths") if isinstance(front, dict) else None
+    if (error or not isinstance(paths, list) or not paths
+            or not all(isinstance(p, str) and p and not os.path.isabs(p)
+                       and not any(x in ("", ".", "..") for x in p.split("/"))
+                       and not re.search(r"[\\*?\[\]\x00]", p) for p in paths)):
+        return "scope_unknown"
+    if not HEAD_RE.match(new or "") or not isinstance(base_ref, str) or not REF_RE.match(base_ref):
+        return "unknown_commit"
+    git = _ScopedGit(ctx, paths)
+    if not kyverdicts._is_commit(git, old) or not kyverdicts._is_commit(git, new):
+        return "unknown_commit"
+    if not git.yes("merge-base", "--is-ancestor", old, new):
+        return "not_descendant"
+    rc, _ = git("rev-parse", "--verify", "origin/" + base_ref + "^{commit}")
+    main = "origin/" + base_ref if rc == 0 else base_ref
+    old_base = kyverdicts._derived_base(git, main, old)
+    new_base = kyverdicts._derived_base(git, main, new)
+    if not old_base or not new_base or old_base == old or new_base == new:
+        return "unproven_base"
+    old_patch, old_binary = kyverdicts._patch(git, old_base, old)
+    new_patch, new_binary = kyverdicts._patch(git, new_base, new)
+    if old_binary or new_binary:
+        return "binary_change"
+    if not old_patch.strip():
+        return "unproven_base"
+    if not kyverdicts._same_patch(old_patch, new_patch):
+        return "patch_differs"
+    old_tree = git.ok("ls-tree", "-r", "-z", old)
+    new_tree = git.ok("ls-tree", "-r", "-z", new)
+    return "identical_patch" if kyverdicts._same_tree(old_tree, new_tree) else "patch_differs"
+
+
+def _changed_registration(ctx, row, reg, pr):
+    packet = _packet(ctx, row["id"])
+    try:
+        reason = _reviewed_patch(ctx, packet, reg["head"], pr.get("head"), pr.get("base"))
+    except (_Unknown, kyverdicts._GitFailed):
+        reason = "git_failed"
+    if reason != "identical_patch":
+        # Existing changed-head path remains unknown; never pretend the old review covers new code.
+        ctx.journal("review head unknown", "%s: registered %s, PR %s: %s"
+                    % (row["id"], reg["head"], pr.get("head"), reason))
+        return []
+    if not reg.get("actor") or not _slot_of(reg["actor"]):
+        raise _Unknown("review author has no lane; cannot preserve independence in re-registration")
+    return [_intent("REWORK", row["id"], stream=row.get("owner"), runner="script",
+                    locks=["item." + row["id"]], head=pr["head"],
+                    evidence_fp=fingerprint({"old_head": reg["head"], "packet_sha256": packet["sha256"],
+                                             "author": reg["actor"], "pr": reg["pr"]}),
+                    packet=packet["path"], header={"action": "reregister_review", "registered_head": reg["head"],
+                                                  "pr": reg["pr"], "author_id": reg["actor"]})]
+
+
+def _reregister_review(ctx, job, intent):
+    item, old, new = intent["item"], intent["header"]["registered_head"], intent["head"]
+    author = intent["header"]["author_id"]
+    stream = author.split(":", 1)[0][7:]
+    lane = _slot_of(author)
+    detail = "PR #%d @ %s" % (intent["header"]["pr"], new)
+
+    def observer(record):
+        reg = _registration(_events(ctx, item))
+        pr = ctx.pr(item)
+        if not isinstance(pr, dict) or pr.get("head") != new or pr.get("number") != intent["header"]["pr"]:
+            return "unknown", {"reason": "PR changed during re-registration"}
+        if reg and reg["head"] == new and reg["actor"] == author and reg["detail"] == detail:
+            return "done", {"detail": detail}
+        return "not_done", {"reason": "new registration not observed"}
+
+    def effect():
+        current = next((i for i in _compute(ctx, item) if i["key"] == intent["key"]), None)
+        if current is None:
+            return "unknown", {"reason": "registration inputs changed"}
+        # Controller action preserves original builder attribution, so its lane remains excluded from VERIFY.
+        rc, _, _ = ctx.ky("review", item, "--detail", detail, stream=stream, lane=lane)
+        status, value = observer(None)
+        return ("done" if status == "done" else "failed" if rc not in (None, 0) else "unknown"), value
+
+    status, result = ctx.act("ACT-reregister-" + job["job_id"], "review_reregistration",
+                             {"item": item, "old_head": old, "new_head": new, "author": author,
+                              "packet_sha256": _packet(ctx, item)["sha256"]},
+                             {"item": item, "pr": intent["header"]["pr"], "head": new}, effect, observer)
+    if status == "done" and observer(None)[0] != "done":
+        status = "unknown"
+    ctx.journal("review re-registration", "%s %s → %s: %s (original author %s)" % (item, old, new, status, author))
+    return _acted(status, result, "review_reregistration")
 
 
 def _frozen_path(out):
@@ -651,6 +782,8 @@ def start(ctx, job):
         return _result("refused", "%s %s is no longer intended: its trigger changed since admission" % (kind, item),
                        "intent_not_current")
     action = intent["header"].get("action")
+    if action == "reregister_review":
+        return _reregister_review(ctx, job, intent)
     if action == "recover_review":
         return _recover_review(ctx, job, intent)
     if action == "block":
@@ -910,7 +1043,7 @@ def _recovery(ctx, row):
     """
     directory = os.path.join(os.fspath(ctx.run), "jobs")
     try:
-        names = sorted(os.listdir(directory), reverse=True)
+        names = sorted(jobs.job_folders(directory), reverse=True)
     except FileNotFoundError:
         return None
     for name in names:
@@ -921,6 +1054,8 @@ def _recovery(ctx, row):
             old = json.loads(_read(path) or b"null")
         except ValueError:
             continue  # cannot recover an unreadable state; ordinary BUILD keeps its existing selection rules
+        if jobs.foreign_state(old, None):
+            continue
         if (not isinstance(old, dict) or old.get("item") != row["id"] or old.get("kind") not in ("BUILD", "REWORK")
                 or old.get("phase") != "ended" or old.get("outcome") != "interrupted"
                 or old.get("failure_fp") != "no_post_action"):

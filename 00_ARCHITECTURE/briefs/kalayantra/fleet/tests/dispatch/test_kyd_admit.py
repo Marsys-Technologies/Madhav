@@ -182,7 +182,9 @@ class World:
                                s.get("qual_binds"))
                 doc = merged({"schema": "ky.qualification/1", "role": role, "model": model, "context": "launchd",
                               "result": "PASS", "binds": binds}, s.get("qual"))
-                (self.run / "QUALIFICATIONS" / ("%s-%s.json" % (role, model))).write_text(json.dumps(doc))
+                (self.run / "QUALIFICATIONS" / (kyd_admit.qualification_name(role, model,
+                    self.setup.get("packet_front", {}).get("needs_chart_data", False),
+                    bool((kyd_admit.front_matter(self.intent["packet"])[0] or {}).get("test_commits"))))).write_text(json.dumps(doc))
 
     def _receipts(self, s):
         (self.run / "local_db").mkdir()

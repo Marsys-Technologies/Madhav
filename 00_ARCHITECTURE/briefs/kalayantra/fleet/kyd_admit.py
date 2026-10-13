@@ -24,7 +24,7 @@ refusal, and a check that could not be made is a refusal whose detail starts "un
                          the intent's item is absent from the plan model (its prerequisites are unknown)
         slot_not_ready   the slot database has no READY receipt of this session that checks out now (KU-02)
         slot_foreign     the slot's receipt belongs to another session (KU-02 ownership conflict)
-        ceiling          a new worktree would exceed limits.copies own copies or 14 in all
+        ceiling          a new worktree would exceed limits.copies own copies or 24 in all
       facts: tier, launch{}, base_sha, prerequisites[], tests[], test_digests[], migration (kyd_jobs.open reads them)
     provision(ctx, slot)            local_db.sh up + db for a slot with no receipt or this session's non-READY one
     admit(ctx, job)                 after kyd_jobs.open: worktree and item lock; for a BUILD of a feature packet the
@@ -72,7 +72,7 @@ import kyschema  # noqa: E402
 GIT = "/usr/bin/git"
 PYTHON = "python3"
 WORKTREE_ROOT = "/Users/Dev/worktrees.noindex/madhav/claude"
-ALL_COPIES_MAX = 14
+ALL_COPIES_MAX = 24  # owner Amendment A1 D-16
 MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5", "surrogate": "claude-fable-5-1"}
 ROUTING_TIERS = ("sonnet", "opus")
 CODEX_MODEL = "gpt-6.1-sol"
@@ -391,6 +391,11 @@ def surrogate_config(ctx):
     return (None, "; ".join(errors)) if errors else (cfg, None)
 
 
+def qualification_name(role, model, chart=False, tests=False):
+    """Receipt variant names keep the qualified role itself unchanged."""
+    return "%s%s%s-%s.json" % (role, "-chart" if chart else "", "-tests" if tests else "", model)
+
+
 def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
     """Re-judge the real launchd receipt against the installed role template.
 
@@ -401,8 +406,10 @@ def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
 
     role = JOB_ENGINE_ROLES[intent["kind"]]
     model = CODEX_MODEL
-    template = os.path.join(_path(ctx, "fleet"), "templates", "LAUNCH_CONFIG.%s.codex.json" % role)
-    receipt = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", "%s-%s.json" % (role, model))
+    tests_variant = bool((front or {}).get("test_commits"))
+    template = os.path.join(_path(ctx, "fleet"), "templates", "LAUNCH_CONFIG.%s%s.codex.json"
+                            % (role, ".tests" if tests_variant else ""))
+    receipt = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", qualification_name(role, model, tests=tests_variant))
     digest = kyaction.sha_file(template)
     cfg, cfg_error = kyaction.read_json(template)
     doc, doc_error = kyaction.read_json(receipt)
@@ -468,6 +475,14 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
         return
     kind = intent.get("kind")
     choice = job_engine(ctx, kind)
+    chart = (front or {}).get("needs_chart_data", False)
+    if kind in JOB_ENGINE_ROLES and choice == "codex" and chart is True:
+        # (I) INTERPRETATION: Claude is necessary under the accepted locked contract:
+        # kyqualify's Codex schema/argv has no MCP configuration, network stays off.
+        # Never silently launch a chart job without its chart-data qualification.
+        ctx.journal("chart engine", "%s %s: Claude necessary; locked Codex has no qualified chart-data MCP"
+                    % (kind, intent.get("item")))
+        choice = "claude"
     if kind in JOB_ENGINE_ROLES and choice == "codex":
         _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot)
         return
@@ -492,7 +507,7 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
     if not isinstance(role, str) or not ROLE_RE.match(role):
         reasons.append("unknown: the intent's role %r names no qualification" % (role,))
     else:
-        path = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", "%s-%s.json" % (role, model))
+        path = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", qualification_name(role, model, chart is True, bool((front or {}).get("test_commits"))))
         doc, err = kyaction.read_json(path)
         if err or not isinstance(doc, dict):
             reasons.append("qualification receipt %s: %s" % (path, err or "not an object"))
@@ -551,14 +566,15 @@ def recorded_mappings(ctx):
     jobs = os.path.join(_path(ctx, "run"), "jobs")
     found = {}
     try:
-        names = sorted(os.listdir(jobs))
+        import kyd_jobs
+        names = kyd_jobs.job_folders(jobs)
     except FileNotFoundError:
         return found, None
     except OSError as e:
         return None, "%s cannot be listed: %s" % (jobs, type(e).__name__)
     for name in names:
         state, err = kyaction.read_json(os.path.join(jobs, name, "state.json"))
-        if err == "missing":
+        if kyd_jobs.foreign_state(state, err):
             continue
         if err or not isinstance(state, dict) or not isinstance(state.get("prerequisites", []) or [], list):
             return None, "the job state of %s is unreadable" % name

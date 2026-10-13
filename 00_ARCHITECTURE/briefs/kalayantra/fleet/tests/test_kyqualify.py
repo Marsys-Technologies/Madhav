@@ -66,7 +66,7 @@ with open(os.path.join(here, "calls.jsonl"), "a") as f:
                         "home": os.environ.get("HOME"), "path": os.environ.get("PATH"),
                         "tmpdir": os.environ.get("TMPDIR"), "ky_root": os.environ.get("KY_ROOT"),
                         "job_scratch": os.environ.get("JOB_SCRATCH"), "ky_scratch": os.environ.get("KY_SCRATCH"),
-                        "zdotdir": os.environ.get("ZDOTDIR"),
+                        "zdotdir": os.environ.get("ZDOTDIR"), "tests": os.environ.get("TESTS"),
                         "project_settings": digest(os.path.join(".claude", "settings.json"))}) + "\n")
 def out(ev):
     sys.stdout.write(json.dumps(ev) + "\n"); sys.stdout.flush()
@@ -2316,3 +2316,30 @@ def test_live_bootstrap_job_templates_match_the_actual_launcher(role, parent, ca
     monkeypatch.setattr(kymanifest.subprocess, "run", accepted_harness)
     observed = kymanifest.observe_qualifications(str(FLEET.parents[3]), str(run), bound={listed})
     assert len(calls) == 1 and observed[0]["config"] == listed
+
+
+@pytest.mark.parametrize("engine", ["claude", "codex"])
+def test_tests_environment_has_bounded_value_policy(engine):
+    cfg = json.loads((TEMPLATES / ("LAUNCH_CONFIG.build.tests" + (".codex" if engine == "codex" else "") + ".json")).read_text())
+    assert kyqualify.validate_config(cfg, check_disk=False) == []
+    caller = {"HOME": "/h", "USER": "u", "KY_STREAM": "K", "KY_LANE": "b1", "KY_CONTROLLER_ID": "CTL-q"}
+    env, errors = kyqualify.resolve_env(cfg, caller)
+    assert errors == []
+    assert env["TESTS"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py"
+    value = "tests/test_a.py\nplatform/tests/test_b.py"
+    env, errors = kyqualify.resolve_env(cfg, dict(caller, TESTS=value))
+    assert errors == [] and env["TESTS"] == value
+    for bad in ("", "../outside.py", "/absolute.py", "tests/../escape.py", "a\r\nb", "a\x00b", "x" * 65537):
+        assert any("TESTS" in e for e in kyqualify.resolve_env(cfg, dict(caller, TESTS=bad))[1])
+    assert any("unknown" in e for e in kyqualify.validate_config(dict(cfg, env_names=cfg["env_names"] + ["UNKNOWN"]), check_disk=False))
+
+
+
+def test_tests_caller_value_survives_launchd_with_exact_receipt_names(rig):
+    value = "tests/test_one.py\ntests/test_two.py"
+    cfg = rig.config(env_names=ENV_NAMES + ["TESTS"])
+    result, receipt, evidence = rig.qualify(cfg, context="launchd", extra_env={"TESTS": value})
+    assert result.returncode == PASS, result.stderr
+    assert "TESTS" in receipt["binds"]["env_names"]
+    calls = [c for c in rig.calls() if "TESTS" in c["env_names"]]
+    assert calls and all(c["tests"] == value for c in calls)
