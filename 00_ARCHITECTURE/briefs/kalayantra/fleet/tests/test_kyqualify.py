@@ -2135,7 +2135,8 @@ def test_wave_b_templates_are_valid_launch_configurations(role, tmp_path):
     fleet = doc["mcp_config"].rsplit("/", 1)[0]
     assert fleet.endswith("/00_ARCHITECTURE/briefs/kalayantra/fleet") and doc["worktree"] == fleet.rsplit("/", 4)[0]
     assert {k: v for k, v in doc.items() if k != "_note"} == dict({
-        "schema": "ky.launch_config/1", "role": role, "model": "claude-opus-5-5", "effort": "high",
+        "schema": "ky.launch_config/1", "role": role,
+        "model": "claude-fable-5-1" if role == "surrogate" else "claude-opus-5-5", "effort": "high",
         "permission_mode": mode, "max_turns": turns, "deadline_seconds": deadline, "worktree": doc["worktree"],
         "claude_bin": "/Users/Dev/.local/bin/claude", "mcp_config": fleet + "/mcp.none.json",
         "prompt_path": fleet + "/cards/" + card, "env_names": env_names,
@@ -2149,7 +2150,8 @@ def test_wave_b_templates_are_valid_launch_configurations(role, tmp_path):
     assert {"JOB_SCRATCH", "KY_SCRATCH"} <= set(doc["env_names"])
     argv = kyqualify.build_argv(doc)
     assert argv[:12] == ["/Users/Dev/.local/bin/claude", "-p", "--setting-sources", "project", "--permission-mode", mode,
-                         "--model", "claude-opus-5-5", "--effort", "high", "--max-turns", str(turns)]
+                         "--model", "claude-fable-5-1" if role == "surrogate" else "claude-opus-5-5",
+                         "--effort", "high", "--max-turns", str(turns)]
     assert argv[12:-5] == extra + ["--strict-mcp-config", "--mcp-config", doc["mcp_config"], "--disallowedTools"] + disallowed
     assert argv[-5:] == ["--output-format", "stream-json", "--verbose", "--add-dir", "/Users/Dev/kalayantra"]
     assert all(argv.count(flag) == 1 and argv.index(flag) < argv.index("--strict-mcp-config") for flag in extra)

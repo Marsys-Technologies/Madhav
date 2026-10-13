@@ -712,16 +712,19 @@ def test_the_codex_templates_are_valid_codex_configurations_with_the_briefs_line
     assert kyqualify.build_argv(doc) == expected_argv(doc)
 
 
-def test_the_four_claude_templates_are_byte_identical_to_their_reviewed_bytes():
-    """the second engine changes no Claude Code configuration: same bytes as at the commit this branch started from"""
+def test_claude_templates_preserve_reviewed_bytes_except_surrogate_owner_model():
+    """Only the owner-directed SURROGATE model changes; every other Claude byte is preserved."""
     for name in ("bootstrap-builder", "bootstrap-reviewer", "area-reviewer", "surrogate"):
         path = TEMPLATES / ("LAUNCH_CONFIG.%s.json" % name)
         rel = os.path.relpath(path, FLEET.parents[3])
-        base = subprocess.run(["git", "-C", str(FLEET), "show", "6dd281227:" + rel], capture_output=True)
+        base = subprocess.run(["git", "-C", str(FLEET), "show", "6dd281227:" + rel],
+                              env={"PATH": "/usr/bin:/bin", "GIT_OPTIONAL_LOCKS": "0"}, capture_output=True)
         if base.returncode != 0:
             pytest.skip("the base commit is not in this checkout's history")
-        assert path.read_bytes() == base.stdout, name
-        doc = json.loads(base.stdout)
+        expected = (base.stdout.replace(b'"model": "claude-opus-5-5"', b'"model": "claude-fable-5-1"')
+                    if name == "surrogate" else base.stdout)
+        assert path.read_bytes() == expected, name
+        doc = json.loads(path.read_bytes())
         assert "engine" not in doc and kyqualify.engine_of(doc) == "claude"
         assert kyqualify.build_argv(doc)[1:4] == ["-p", "--setting-sources", "project"]
 

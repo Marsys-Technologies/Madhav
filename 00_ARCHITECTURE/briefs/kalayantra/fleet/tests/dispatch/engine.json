@@ -2002,7 +2002,7 @@
       "phase": "ended",
       "outcome": "done",
       "stream": "steward",
-      "model": "claude-opus-5-5",
+      "model": "claude-fable-5-1",
       "locks": [
        "awaiting.AW-20261012T100000Z-check"
       ]

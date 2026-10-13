@@ -73,9 +73,13 @@ GIT = "/usr/bin/git"
 PYTHON = "python3"
 WORKTREE_ROOT = "/Users/Dev/worktrees.noindex/madhav/claude"
 ALL_COPIES_MAX = 14
-MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5", "surrogate": "claude-fable-5-1"}
+ROUTING_TIERS = ("sonnet", "opus")
 CODEX_MODEL = "gpt-6.1-sol"
-JOB_ENGINE_ROLES = {"BUILD": "build", "REWORK": "build", "VERIFY": "verify"}
+JOB_ENGINE_ROLES = {kind: kind.lower() for kind in (
+    "BUILD", "REWORK", "VERIFY", "ARTIFACT", "PRE-ACCEPT", "POST-READBACK", "RULING",
+    "SURROGATE", "REQUEST-PREP", "MODEL", "PLAN")}
+CODEX_READ_ONLY_KINDS = {"VERIFY", "PRE-ACCEPT", "POST-READBACK", "RULING"}
 # plan §7 "Turn caps", plus the packet's (I) for the kinds §7 does not list
 TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "PRE-ACCEPT": 40, "POST-READBACK": 40, "RULING": 30, "PLAN": 300,
              "ARTIFACT": 60, "SURROGATE": 30, "MODEL": 300, "REQUEST-PREP": 300}
@@ -283,12 +287,12 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
             _refuse(refusals, "freeze", "freeze: " + path)
     elif rc != 0:
         _refuse(refusals, "routing", _said(rc, out, err, "kyroute.py packet"))
-    elif report.get("decision") != "ROUTE" or report.get("tier") not in MODELS:
+    elif report.get("decision") != "ROUTE" or report.get("tier") not in ROUTING_TIERS:
         _refuse(refusals, "routing", "unknown: kyroute.py packet exit 0 without a ROUTE decision and a tier")
     else:
         routed = report["tier"]
     wanted = intent.get("tier")
-    if wanted is not None and wanted not in MODELS:
+    if wanted is not None and wanted not in ROUTING_TIERS:
         _refuse(refusals, "routing", "unknown: the intent's tier %r is no tier" % (wanted,))
     if items is None:
         _refuse(refusals, "routing", "unknown: %s (brief.migration)" % items_reason)
@@ -311,8 +315,9 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
 def refresh_job_engine(ctx):
     """Snapshot JOB_ENGINE once at kinds_build.intents (each dispatch tick).
 
-    (I) build covers REWORK too; an explicit rework line overrides it. A global
-    choice applies only to the adapter's three supported kinds. Unknown syntax,
+    (I) INTERPRETATION: build still covers REWORK unless explicitly overridden,
+    but REWORK earns its own role receipt. Global Codex excludes the owner
+    surrogate, which stays on Claude Fable. Unknown syntax,
     duplicate keys/defaults, empty or unreadable files refuse the entire policy.
     """
     run = _path(ctx, "run") if hasattr(ctx, "paths") else os.fspath(ctx.run)
@@ -335,12 +340,14 @@ def refresh_job_engine(ctx):
                 continue
             if "=" in line:
                 key, value = (part.strip() for part in line.split("=", 1))
-                if key not in ("build", "rework", "verify"):
+                if key not in JOB_ENGINE_ROLES.values():
                     raise ValueError("unknown kind")
             else:
                 key, value = "default", line
             if key in seen or value not in ("claude", "codex"):
                 raise ValueError("duplicate choice or unknown engine")
+            if key == "surrogate" and value != "claude":
+                raise ValueError("owner surrogate requires Claude Fable")
             seen.add(key)
             policy[key] = value
     except FileNotFoundError:
@@ -353,6 +360,35 @@ def refresh_job_engine(ctx):
         ctx.journal("dispatcher error", error)
     ctx._job_engine_error = error
     return policy, error
+
+
+def job_engine(ctx, kind):
+    """The tick's role choice; invalid policies are refused by admission, never repaired."""
+    policy, error = getattr(ctx, "job_engine_policy", None) or refresh_job_engine(ctx)
+    if error or kind == "SURROGATE":
+        return "claude"
+    choice = policy.get(kind.lower()) if isinstance(kind, str) else None
+    if choice is None:
+        choice = policy.get("build", policy["default"]) if kind == "REWORK" else policy["default"]
+    return choice
+
+
+def surrogate_config(ctx):
+    """Only the installed owner-surrogate template may select its allowed Claude model."""
+    import kyqualify
+
+    fleet = _path(ctx, "fleet") if hasattr(ctx, "paths") else os.fspath(ctx.fleet)
+    if not os.path.isabs(fleet):
+        raise AdmitError("ctx.fleet is not an absolute path")
+    path = os.path.join(fleet, "templates", "LAUNCH_CONFIG.surrogate.json")
+    cfg, error = kyaction.read_json(path)
+    if error or not isinstance(cfg, dict):
+        return None, "surrogate template %s: %s" % (path, error or "not an object")
+    errors = kyqualify.validate_config(cfg, check_disk=False)
+    if (kyqualify.engine_of(cfg), cfg.get("role"), cfg.get("model"), cfg.get("effort")) != (
+            "claude", "surrogate", MODELS["surrogate"], "high"):
+        errors.append("owner surrogate template requires Claude claude-fable-5-1/high")
+    return (None, "; ".join(errors)) if errors else (cfg, None)
 
 
 def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
@@ -379,7 +415,9 @@ def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
         reasons.extend(kyqualify.validate_codex_config(cfg))
         if (cfg.get("engine"), cfg.get("role"), cfg.get("model"), cfg.get("effort")) != ("codex", role, model, "high"):
             reasons.append("Codex template requires the selected role and gpt-6.1-sol/high")
-        verifier = intent["kind"] == "VERIFY"
+        verifier = intent["kind"] in CODEX_READ_ONLY_KINDS
+        if not verifier and intent.get("pool") == "verifier":
+            reasons.append("Codex builder posture conflicts with the dispatcher verifier pool; kind is unqualified")
         if (kyqualify.job_rooted(cfg) != verifier or cfg.get("sandbox") != "workspace-write"
                 or cfg.get("network") is not False or cfg.get("writable_dirs") != []
                 or (not verifier and cfg.get("commit_mode") != "launcher")):
@@ -429,15 +467,21 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
         facts["launch"] = None
         return
     kind = intent.get("kind")
-    choice = policy.get(kind.lower()) if isinstance(kind, str) else None
-    if choice is None:
-        choice = policy.get("build", policy["default"]) if kind == "REWORK" else policy["default"]
+    choice = job_engine(ctx, kind)
     if kind in JOB_ENGINE_ROLES and choice == "codex":
         _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot)
         return
     reasons = []
     kind, role = intent.get("kind"), intent.get("role")
     model = MODELS["sonnet" if tier == "sonnet" else "opus"]
+    surrogate = None
+    if kind == "SURROGATE":
+        surrogate, reason = surrogate_config(ctx)
+        if reason:
+            _refuse(refusals, "launch", reason)
+            facts["launch"] = None
+            return
+        model = surrogate["model"]
     cap = TURN_CAPS.get(kind) if isinstance(kind, str) else None
     if cap is None:
         reasons.append("unknown: the kind %r has no turn cap (plan §7)" % (kind,))
@@ -466,6 +510,8 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
             reasons.append("the receipt has no binds")
         elif binds.get("model") != model:
             reasons.append("the receipt binds model %r, not %s" % (binds.get("model"), model))
+        if surrogate is not None and binds.get("effort") != surrogate["effort"]:
+            reasons.append("surrogate receipt effort must match its Claude Fable/high template")
         for key in ("effort", "permission_mode"):
             if binds and not (isinstance(binds.get(key), str) and binds[key]):
                 reasons.append("binds.%s is missing" % key)

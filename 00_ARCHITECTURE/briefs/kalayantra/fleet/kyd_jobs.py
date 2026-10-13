@@ -565,6 +565,8 @@ def _plan(ctx, intent, slot, facts):
         return None, str(exc)
     state.update(choices)
     if state.get("engine") == "codex":
+        if kind in engines.READ_ONLY_KINDS - {"VERIFY"}:
+            state["boundary"] = "verifier"
         state.setdefault("sandbox_mode", "locked")
         state.setdefault("stall_seconds", 300)
         state.update(engines.metadata(state))
