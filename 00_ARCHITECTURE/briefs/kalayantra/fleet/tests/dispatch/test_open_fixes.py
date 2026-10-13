@@ -145,6 +145,101 @@ def test_changed_item_patch_is_unknown_and_never_reregistered(reviewed):
     assert c.calls == []
 
 
+
+@pytest.mark.parametrize('outside', ['text', 'binary', 'rename'])
+def test_unchanged_owned_patch_with_fresh_outside_edit_never_reregisters(reviewed, outside):
+    c, git, old, _, _ = reviewed
+    base_before = git('merge-base', 'origin/main', c.pr_value['head'])
+    if outside == 'text':
+        (Path(c.repo) / 'base.txt').write_text('fresh unrelated edit\n')
+    elif outside == 'binary':
+        (Path(c.repo) / 'outside.bin').write_bytes(b'\0fresh unrelated bytes\xff')
+    else:
+        git('mv', 'base.txt', 'renamed.txt')
+    git('add', '.'); git('commit', '-qm', 'fresh outside edit')
+    c.pr_value['head'] = git('rev-parse', 'HEAD')
+    assert git('merge-base', 'origin/main', c.pr_value['head']) == base_before
+    assert B.intents(c) == []
+    assert B._registration(c.ledger)['head'] == old
+    assert any('patch_differs' in str(x) for x in c.journal_entries)
+    assert c.calls == []
+
+
+def test_equal_whole_patch_already_outside_packet_scope_never_reregisters(reviewed):
+    c, git, _, _, _ = reviewed
+    git('checkout', '-q', 'main')
+    git('checkout', '-qb', 'outside-item')
+    (Path(c.repo) / 'owned.py').write_text('reviewed\n')
+    (Path(c.repo) / 'outside.txt').write_text('unreviewable outside patch\n')
+    git('add', '.'); git('commit', '-qm', 'item plus outside patch')
+    old = git('rev-parse', 'HEAD')
+    git('checkout', '-q', 'main')
+    (Path(c.repo) / 'base.txt').write_text('next base update\n')
+    git('commit', '-qam', 'advance base')
+    git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'))
+    git('checkout', '-q', 'outside-item'); git('merge', '-qm', 'merge base', 'main')
+    c.ledger[0]['detail'] = 'PR #12 @ ' + old
+    c.pr_value['head'] = git('rev-parse', 'HEAD')
+    assert B.intents(c) == []
+    assert B._registration(c.ledger)['head'] == old and c.calls == []
+    assert any('scope' in str(x) for x in c.journal_entries)
+
+
+def test_identical_rebased_patch_reregisters(reviewed):
+    c, git, old, _, _ = reviewed
+    git('checkout', '-qb', 'rebased-item', old)
+    git('rebase', 'main')
+    new = git('rev-parse', 'HEAD')
+    c.pr_value['head'] = new
+    intents = B.intents(c)
+    assert len(intents) == 1 and intents[0]['header']['action'] == 'reregister_review'
+    job = dict(intents[0], job_id='J-fixture', job_scratch=c.run)
+    assert B.start(c, job)['outcome'] == 'done'
+    assert B._registration(c.ledger)['head'] == new
+    assert B._registration(c.ledger)['actor'] == 'stream-K:b2'
+
+
+@pytest.mark.parametrize('base', ['missing', 'unrelated'])
+def test_unobserved_origin_base_never_falls_back_to_local_branch(reviewed, base):
+    c, git, old, _, _ = reviewed
+    if base == 'missing':
+        git('update-ref', '-d', 'refs/remotes/origin/main')
+    else:
+        git('checkout', '--orphan', 'unrelated')
+        git('commit', '-qam', 'unrelated root')
+        git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'))
+    assert B.intents(c) == []
+    assert B._registration(c.ledger)['head'] == old and c.calls == []
+    assert any('unproven_base' in str(x) for x in c.journal_entries)
+
+
+@pytest.mark.parametrize('operation', ['rev-parse', 'diff'])
+@pytest.mark.parametrize('exit_code', [128, None])
+def test_unavailable_whole_patch_observation_registers_nothing(reviewed, operation, exit_code):
+    c, _, old, _, _ = reviewed
+    old_sh = c.sh
+    def sh(argv, **kw):
+        if operation in argv:
+            return exit_code, '', 'fixture unavailable'
+        return old_sh(argv, **kw)
+    c.sh = sh
+    assert B.intents(c) == []
+    assert B._registration(c.ledger)['head'] == old and c.calls == []
+    assert c.journal_entries
+
+
+def test_registration_action_rechecks_shrunken_packet_scope_at_same_head(reviewed):
+    c, git, old, new, _ = reviewed
+    intent = B.intents(c)[0]
+    job = dict(intent, job_id='J-fixture', job_scratch=c.run)
+    # Shrinking the packet after planning must also invalidate the controller's proof.
+    packet = Path(intent['packet'])
+    packet.write_text('```json\n{"id":"K-1","d1_paths":["base.txt"]}\n```\n')
+    assert c.pr_value['head'] == new
+    assert B.start(c, job)['outcome'] == 'refused'
+    assert B._registration(c.ledger)['head'] == old and c.calls == []
+
+
 def test_registration_action_rechecks_changed_head(reviewed):
     c, git, _, _, _ = reviewed
     intent = B.intents(c)[0]

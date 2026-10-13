@@ -499,16 +499,15 @@ def _code(ctx, row, events, reg):
     raise _Unknown("kyroute diff exit %r" % (rc,))
 
 
-class _ScopedGit:
-    """Read-only ctx adapter for the shared reviewed-patch comparison; exact packet paths only."""
-    def __init__(self, ctx, paths):
-        self.ctx, self.paths = ctx, paths
+class _ReviewedGit:
+    """Read-only ctx adapter: reviewed-patch observations always cover ALL paths."""
+    def __init__(self, ctx):
+        self.ctx = ctx
 
     def __call__(self, *args):
-        if args[0] in ("diff", "ls-tree"):
-            args += ("--",) + tuple(":(literal)" + p for p in self.paths)
-        rc, out, _ = self.ctx.sh(["git", "-C", os.fspath(self.ctx.repo), *args])
-        if rc is None or not isinstance(out, str):
+        rc, out, _ = self.ctx.sh(["git", "-C", os.fspath(self.ctx.repo), *args],
+                                 env={"GIT_OPTIONAL_LOCKS": "0"})
+        if rc is None or not isinstance(out, str) or "\ufffd" in out:
             raise _Unknown("reviewed patch Git observation unavailable")
         return rc, out.encode("utf-8")
 
@@ -518,20 +517,13 @@ class _ScopedGit:
             raise _Unknown("reviewed patch git %s exit %s" % (args[0], rc))
         return out
 
-    def yes(self, *args):
-        rc, _ = self(*args)
-        if rc not in (0, 1):
-            raise _Unknown("reviewed patch ancestry unavailable")
-        return rc == 0
-
 
 def _reviewed_patch(ctx, packet, old, new, base_ref):
-    """Shared kyverdicts patch predicate, restricted to the packet scope, without object writes.
+    """Re-register only an identical WHOLE patch whose changed paths all belong to the packet.
 
-    (I) INTERPRETATION: the shared public inheritance API has no scope parameter. Reuse its
-    base/ancestry/patch/position comparisons, with literal d1_paths, and require identical
-    scoped head trees as an additional conservative gate. Base changes touching owned files
-    therefore wait for a fresh review. Missing/nonliteral scope stays unknown.
+    (I) INTERPRETATION: compare full binary diffs exactly, retaining full blob ids because ctx.sh
+    decodes text. Unlike verdict inheritance, re-registration permits an identical rebased patch
+    and must not write merge-tree objects. Empty patches or lossy observations stay unknown.
     """
     if not packet:
         return "scope_unknown"
@@ -544,30 +536,37 @@ def _reviewed_patch(ctx, packet, old, new, base_ref):
                        and not any(x in ("", ".", "..") for x in p.split("/"))
                        and not re.search(r"[\\*?\[\]\x00]", p) for p in paths)):
         return "scope_unknown"
-    if not HEAD_RE.match(new or "") or not isinstance(base_ref, str) or not REF_RE.match(base_ref):
+    if (not isinstance(old, str) or not HEAD_RE.match(old)
+            or not isinstance(new, str) or not HEAD_RE.match(new)
+            or not isinstance(base_ref, str) or not REF_RE.match(base_ref)):
         return "unknown_commit"
-    git = _ScopedGit(ctx, paths)
+    git = _ReviewedGit(ctx)
     if not kyverdicts._is_commit(git, old) or not kyverdicts._is_commit(git, new):
         return "unknown_commit"
-    if not git.yes("merge-base", "--is-ancestor", old, new):
-        return "not_descendant"
-    rc, _ = git("rev-parse", "--verify", "origin/" + base_ref + "^{commit}")
-    main = "origin/" + base_ref if rc == 0 else base_ref
+    # Pin the observed remote base once; never fetch or fall back to a local branch.
+    rc, out = git("rev-parse", "--verify", "origin/" + base_ref + "^{commit}")
+    main = out.decode("ascii", "replace").strip()
+    if rc != 0 or not HEAD_RE.match(main):
+        return "unproven_base"
     old_base = kyverdicts._derived_base(git, main, old)
     new_base = kyverdicts._derived_base(git, main, new)
     if not old_base or not new_base or old_base == old or new_base == new:
         return "unproven_base"
-    old_patch, old_binary = kyverdicts._patch(git, old_base, old)
-    new_patch, new_binary = kyverdicts._patch(git, new_base, new)
-    if old_binary or new_binary:
-        return "binary_change"
+    diff_args = ("diff", "--binary", "--full-index", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames")
+    old_patch = git.ok(*diff_args, old_base, old, "--")
+    new_patch = git.ok(*diff_args, new_base, new, "--")
     if not old_patch.strip():
         return "unproven_base"
     if not kyverdicts._same_patch(old_patch, new_patch):
         return "patch_differs"
-    old_tree = git.ok("ls-tree", "-r", "-z", old)
-    new_tree = git.ok("ls-tree", "-r", "-z", new)
-    return "identical_patch" if kyverdicts._same_tree(old_tree, new_tree) else "patch_differs"
+    for base, head in ((old_base, old), (new_base, new)):
+        changed = git.ok("diff", "--name-only", "--no-renames", "-z", base, head, "--")
+        if changed and not changed.endswith(b"\0"):
+            raise _Unknown("reviewed patch changed paths unavailable")
+        names = changed[:-1].decode("utf-8").split("\0") if changed else []
+        if any(name not in paths for name in names):
+            return "paths_outside_scope"
+    return "identical_patch"
 
 
 def _changed_registration(ctx, row, reg, pr):
