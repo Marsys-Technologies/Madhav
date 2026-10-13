@@ -239,6 +239,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/verify_specs.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob_engines.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob_engines.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/post_install_tracker.json
 
 # area: tracker — the tracker package the installation deploys (non-test files)
 platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md
