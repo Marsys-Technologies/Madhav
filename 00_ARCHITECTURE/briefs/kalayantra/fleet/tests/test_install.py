@@ -1989,6 +1989,79 @@ def test_a_refused_install_leaves_its_action_intended(w):
 
 
 # ================================================================================ the environment given to children
+@pytest.fixture
+def installer_program():
+    """Load the real installer helpers without running main or an installation."""
+    program = INSTALL.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    namespace = {}
+    exec(compile(program, str(INSTALL), "exec"), namespace)
+    return namespace
+
+
+def preflight_environment(installer, monkeypatch, tmp_path, real_root):
+    """Capture step 10's launch boundary; no child runs and no receipt is written."""
+    fixture = tmp_path / "fixture"
+    root = REAL_ROOT if real_root else str(fixture / "kyroot")
+    env = {"HOME": pwd.getpwuid(os.getuid()).pw_dir, "KY_SCRATCH": str(tmp_path),
+           "CLAUDE_BIN": str(fixture / "tools" / "claude")}
+    if not real_root:
+        env.update(KY_LAUNCHAGENTS_DIR=str(fixture / "LaunchAgents"), KY_LAUNCHCTL=str(fixture / "tools" / "launchctl"),
+                   KY_CAMPAIGN_CHECKOUT=str(fixture / "campaign"), PRAVAHA_URL="http://127.0.0.1:18767")
+    ctx = installer["decide_environment"]({"--root": root, "--source": str(fixture / "source"),
+                                           "--manifest": str(fixture / "manifest.json"), "--action": "INSTALL-1"}, env)
+    assert ctx.is_real is real_root
+    calls = []
+
+    def capture(argv, child_env, **kwargs):
+        calls.append((argv, child_env))
+        return installer["Out"](1, "", "stop before receipt")
+
+    monkeypatch.setitem(installer, "run", capture)
+    with pytest.raises(installer["Failed"]):
+        installer["step_receipt"](ctx)
+    assert len(calls) == 1
+    assert calls[0][0] == ["/bin/bash", str(Path(ctx.fleet_live) / "preflight.sh"), "launch"]
+    return calls[0][1]
+
+
+@pytest.fixture
+def wrapper_decision():
+    """Execute the repository wrapper's refusal logic, stopping before its execve."""
+    wrapper = FLEET / "bin" / "ky"
+    program = wrapper.read_text().split("# --- mode decision: end ---", 1)[0]
+    namespace = {"__file__": str(wrapper)}
+    exec(compile(program, str(wrapper), "exec"), namespace)
+    return namespace["decide"]
+
+
+def test_real_root_preflight_gets_no_pravaha_override(installer_program, monkeypatch, tmp_path):
+    env = preflight_environment(installer_program, monkeypatch, tmp_path, real_root=True)
+    assert {name for name in env if name.startswith("PRAVAHA_")} == set()
+    assert env["KY_ROOT"] == REAL_ROOT and env["KY_RUN"] == REAL_ROOT + "/run"
+
+
+@pytest.mark.parametrize("real_root,mode", [(True, "live"), (False, "fixture")])
+def test_preflight_environment_is_accepted_by_the_real_wrapper_rule(
+        installer_program, wrapper_decision, monkeypatch, tmp_path, capsys, real_root, mode):
+    env = preflight_environment(installer_program, monkeypatch, tmp_path, real_root)
+    assert wrapper_decision(env)[0] == mode
+    if not real_root:
+        fixture = tmp_path / "fixture"
+        assert {name: value for name, value in env.items() if name.startswith("PRAVAHA_")} == {
+            "PRAVAHA_HOME": str(fixture / "kyroot"), "PRAVAHA_EVENTS": str(fixture / "kyroot" / "run" / "EVENTS.jsonl"),
+            "PRAVAHA_PLAN_MODEL": str(fixture / "campaign" / PLAN_MODEL), "PRAVAHA_REPO": str(fixture / "campaign"),
+            "PRAVAHA_HOLD": str(fixture / "kyroot" / "HOLD"), "PRAVAHA_TRACKER_PORT": "18767",
+            "PRAVAHA_URL": "http://127.0.0.1:18767"}
+    # Negative control: the old lone-URL environment must still fail closed.
+    partial = {name: value for name, value in env.items() if not name.startswith("PRAVAHA_")}
+    partial["PRAVAHA_URL"] = "http://127.0.0.1:8767" if real_root else "http://127.0.0.1:18767"
+    with pytest.raises(SystemExit) as refused_override:
+        wrapper_decision(partial)
+    assert refused_override.value.code == 78
+    assert "PRAVAHA_HOME: not set" in capsys.readouterr().err
+
+
 def test_children_get_a_whitelisted_environment_and_credentials_never_pass(w):
     ok(w.install(env={"DATABASE_URL": "postgres://secret", "PGPASSWORD": "secret", "ANTHROPIC_API_KEY": "secret",
                       "PYTHONPATH": "/evil", "GIT_DIR": "/evil"}))

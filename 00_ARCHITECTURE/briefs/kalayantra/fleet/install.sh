@@ -19,6 +19,8 @@
 #                problem, not a silent success); a claim record that reads released/expired counts as ended only when
 #                the event log shows that claim ended; an active claim in the event log that no record shows is
 #                unresolved; a PR is adopted only on its item's LATEST review event (as completion.py reads it).
+#            2026-10-13 installation defect 5: directory children reuse ky_env's live defaults or full fixture set;
+#                preflight never passes a lone PRAVAHA_URL to the installed wrapper.
 #
 #   bash install.sh --manifest M --source S [--root ROOT] [--action ID]        all paths absolute
 #
@@ -496,8 +498,10 @@ def ky_env(ctx, lane=None):
 
 
 def ky_dir_env(ctx, **extra):
-    env = child_env(ctx, KY_ROOT=ctx.root, KY_RUN=ctx.run_dir, KY_FLEET=ctx.fleet_live, KY_SCRATCH=ctx.scratch,
-                    KY_SOURCE_REPO=ctx.campaign, CLAUDE_BIN=ctx.claude_bin, PRAVAHA_URL=ctx.url)
+    # These children may call `ky`: preserve its live-default/full-fixture rule.
+    env = ky_env(ctx)
+    env.update(KY_ROOT=ctx.root, KY_RUN=ctx.run_dir, KY_FLEET=ctx.fleet_live, KY_SCRATCH=ctx.scratch,
+               KY_SOURCE_REPO=ctx.campaign, CLAUDE_BIN=ctx.claude_bin)
     env.update(extra)
     return env
 
