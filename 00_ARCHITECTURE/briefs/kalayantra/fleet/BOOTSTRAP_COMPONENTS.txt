@@ -67,6 +67,32 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/launch_input_codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/codex_reviewer_output.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/job_result_launcher_commit.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/REAL_CODEX_EVIDENCE.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_qualify.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-reviewer-evidence.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-skills-message.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-stdout.jsonl
 
 # area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md
@@ -211,6 +237,8 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_preflight.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/verify_specs.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob_engines.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob_engines.py
 
 # area: tracker — the tracker package the installation deploys (non-test files)
 platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md
