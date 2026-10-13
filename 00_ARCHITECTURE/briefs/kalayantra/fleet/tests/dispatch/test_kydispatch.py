@@ -133,7 +133,7 @@ def in_order(tokens, argv):
 def out(rc, text="", err=""):
     if text:
         sys.stdout.write(text if isinstance(text, str) else json.dumps(text))
-        sys.stdout.write("" if isinstance(text, str) and text.endswith("\n") else "\n")
+        sys.stdout.write("" if isinstance(text, str) and text.endswith(("\n", "\0")) else "\n")
     if err:
         sys.stderr.write(err + "\n")
     sys.stdout.flush()
@@ -177,9 +177,9 @@ def ky(argv):
     if verb == "step":
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "step": argv[2], "state": "done",
                                         "evidence": opt(argv, "--evidence"), "actor": actor})))
-    if verb in ("block", "done"):
+    if verb in ("review", "block", "done"):
         return out(0, json.dumps(event({"kind": "item", "item": argv[1], "detail": opt(argv, "--detail", ""),
-                                        "state": "blocked" if verb == "block" else "done", "actor": actor,
+                                        "state": {"review": "review", "block": "blocked", "done": "done"}[verb], "actor": actor,
                                         "evidence": "fixture typed completion" if verb == "done" else None})))
     return out(64, err="fake ky: no verb %%r" %% verb)
 
@@ -211,9 +211,10 @@ def kyjob(argv):
         append(job["stdout_path"], json.dumps({"type": "rate_limit_event", "rate_limit_info": {
             "status": "rejected", "rateLimitType": "five_hour"}}) + "\n")
         sys.exit(1)
-    if do == "review":
-        event({"kind": "item", "item": job["item"], "state": "review", "actor": actor,
-               "detail": "PR #%%d @ %%s" %% (how["pr"], how["head"])})
+    if do in ("review", "result_only"):
+        if do == "review":
+            event({"kind": "item", "item": job["item"], "state": "review", "actor": actor,
+                   "detail": "PR #%%d @ %%s" %% (how["pr"], how["head"])})
         result.update(head_sha=how["head"], pr_number=how["pr"])
     elif do == "block":
         event({"kind": "item", "item": job["item"], "state": "blocked", "actor": actor, "detail": how.get("detail", "x")})
@@ -1549,3 +1550,74 @@ def test_lock_release_failure_is_journalled_once_with_helper_words(world, monkey
     assert e.stop() is False
     assert world.journal().count("docker cannot be observed") == 1
     assert "kylock.sh release exit 74" in world.journal()
+
+
+def finish_fix_setup(world):
+    """External Git/PR observations only: registration/release are the real dispatcher lifecycle."""
+    head = world.head
+    return dict(BUILD_READY,
+                packets={'K-1': {'d1_paths': ['platform/src/a.py']}},
+                jobs={'K-1': {'do': 'result_only', 'head': head, 'pr': 1}},
+                replies=[{'cmd': 'gh', 'args': ['pr', 'list'], 'after': 'kyjob.sh',
+                          'out': [gh_pr({'number': 1, 'head': head})]},
+                         {'cmd': 'gh', 'args': ['pr', 'list'], 'out': '[]'},
+                         {'cmd': 'gh', 'args': ['pr', 'view', '1'], 'out': gh_pr({'number': 1, 'head': head})},
+                         {'cmd': 'git', 'args': ['ls-remote', 'origin', 'refs/heads/kalayantra/k-1'],
+                          'out': head + '\trefs/heads/kalayantra/k-1\n'},
+                         {'cmd': 'git', 'args': ['diff', '--name-only', '--no-renames', '-z'],
+                          'out': 'platform/src/a.py\0'}])
+
+
+def test_done_build_controller_registers_before_claim_release_in_real_lifecycle(world):
+    setup = finish_fix_setup(world)
+    world.apply(setup, first=True)
+    done = world.session(['tick', {'wait_jobs': 5}, 'tick', {'wait_jobs': 5}, 'tick'])
+    assert done.returncode == 0, done.stderr
+    jobs = [doc for doc in world.jobs() if doc['kind'] == 'BUILD']
+    assert len(jobs) == 1 and jobs[0]['outcome'] == 'done', jobs
+    assert jobs[0]['head'] == world.head and jobs[0]['pr'] == 1
+    ledger = [json.loads(line) for line in (world.run / 'EVENTS.jsonl').read_text().splitlines()]
+    review_at = next(n for n, e in enumerate(ledger) if e.get('state') == 'review')
+    release_at = next(n for n, e in enumerate(ledger) if e.get('state') == 'released')
+    assert review_at < release_at
+    assert ledger[review_at]['actor'] == 'stream-K:' + jobs[0]['slot']
+
+
+def test_restart_recovers_two_no_post_action_jobs_without_a_third_model_build(world):
+    setup = finish_fix_setup(world)
+    world.apply(setup, first=True)
+    done = world.session(['tick', {'wait_jobs': 5}, 'tick', {'wait_jobs': 5}, 'tick'])
+    assert done.returncode == 0, done.stderr
+    old = next(doc for doc in world.jobs() if doc['kind'] == 'BUILD')
+    path = world.run / 'jobs' / old['job_id'] / 'state.json'
+    old.update(outcome='interrupted', failure_fp='no_post_action', result_path=None)
+    world.write(path, old)
+    second = copy.deepcopy(old)
+    second['job_id'] = 'J-20261013T103505Z-b1'
+    second['job_scratch'] = str(world.scratch / 'jobs' / second['job_id'])
+    world.write(world.run / 'jobs' / second['job_id'] / 'state.json', second)
+    result = json.loads(Path(old['job_scratch'], 'result.json').read_text())
+    result['job_id'] = second['job_id']
+    world.write(Path(second['job_scratch'], 'result.json'), result)
+    (world.run / 'handled' / ('job.' + old['key'] + '.json')).unlink()
+    events = [json.loads(line) for line in (world.run / 'EVENTS.jsonl').read_text().splitlines()]
+    world.write(world.run / 'EVENTS.jsonl', ''.join(json.dumps(e) + '\n' for e in events
+                                                  if e.get('state') != 'review'))
+    world.write(world.run / 'jobs' / 'failures.json', {'K-1': {'no_post_action': {
+        'count': 2, 'evidence_fp': old['evidence_fp'], 'last_job': second['job_id']}}})
+    world.apply({'next': {'version': 100, 'running': [{'id': 'K-1', 'status': 'running', 'owner': 'K',
+                                                     'completion_kind': 'code', 'deps_open': [], 'deps_open_strict': []}],
+                          'ready': [{'id': 'K-2', 'status': 'ready', 'owner': 'K'}]},
+                 'replies': [{'cmd': 'gh', 'args': ['pr', 'list'],
+                              'out': [gh_pr({'number': 1, 'head': world.head})]}] + setup['replies'][2:]})
+    before = len([c for c in world.calls() if c['cmd'] == 'kyjob.sh'])
+    done = world.session(['tick', 'tick'])
+    assert done.returncode == 0, done.stderr
+    after = len([c for c in world.calls() if c['cmd'] == 'kyjob.sh'])
+    assert before == after == 1
+    recovered = [doc for doc in world.jobs() if doc['kind'] == 'BUILD' and doc['outcome'] == 'done']
+    assert len(recovered) == 1 and recovered[0]['pid'] is None, world.jobs()
+    assert recovered[0]['checkpoint']['review_recovery']['job_id'] in (old['job_id'], second['job_id'])
+    assert 'no_post_action' not in json.loads((world.run / 'jobs' / 'failures.json').read_text())['K-1']
+    assert json.loads((world.run / 'claims' / (recovered[0]['slot'] + '.json')).read_text())['state'] == 'released'
+    assert any(json.loads(line).get('state') == 'review' for line in (world.run / 'EVENTS.jsonl').read_text().splitlines())

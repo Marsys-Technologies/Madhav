@@ -860,6 +860,43 @@ def _result(job):
     return doc if doc["job_id"] == job["job_id"] and doc["item"] == job["item"] else None
 
 
+def read_result(job):
+    """Shared strict result reader for controller finish/recovery; no symlink or schema compatibility fallback."""
+    if (not isinstance(job, dict) or not _text(job.get("job_id")) or not _text(job.get("item"))
+            or not _text(job.get("job_scratch")) or not os.path.isabs(job["job_scratch"])):
+        return None
+    return _result(job)
+
+
+def record_registration(ctx, job, doc, source=None):
+    """Persist only identities whose registration the kind observed, before claim release.
+
+    (I) INTERPRETATION: recovery is a recorded changed condition, clearing only no_post_action at the source
+    evidence fingerprint. Other failure classes and the original ended jobs remain as history.
+    """
+    job["result_path"] = os.path.join((source or job)["job_scratch"], "result.json")
+    if doc["status"] == "done":
+        job.update(head=doc["head_sha"], pr=doc["pr_number"], registered_head=doc["head_sha"])
+    if source:
+        _checkpoint(job)["review_recovery"] = {"job_id": source["job_id"], "evidence_fp": source.get("evidence_fp"),
+                                                "head": doc["head_sha"], "pr": doc["pr_number"]}
+    _save(ctx, job)
+    if source:
+        clear_review_failure(ctx, job)
+
+
+def clear_review_failure(ctx, job):
+    """Idempotent after a persisted, observed recovery registration, including a restart during close."""
+    recovery = _checkpoint(job).get("review_recovery")
+    if not isinstance(recovery, dict):
+        return
+    table = _failures(ctx)
+    entry = table.get(job["item"], {}).get("no_post_action")
+    if isinstance(entry, dict) and entry.get("evidence_fp") == recovery.get("evidence_fp"):
+        del table[job["item"]]["no_post_action"]
+        ka.write_json(_run(ctx) / "jobs" / "failures.json", table)
+
+
 def _result_event(path):
     """subtype / is_error / num_turns / usage of the last stream `result` event (as kyboot.py records it), or None."""
     last = None
@@ -1190,6 +1227,8 @@ def _step_result(ctx, job, result):
     if outcome == "interrupted" and fp != QUOTA:
         job["requeued"] = not _interrupted(load(ctx), job["key"], but=job["job_id"])
     job.update(outcome=outcome, failure_fp=fp, phase="terminating")
+    if outcome == "done":
+        clear_review_failure(ctx, job)
     detail = result.get("detail")
     _checkpoint(job).update(at=_stamp(), outcome=outcome, failure_fp=fp, exit_code=job.get("exit_code"),
                             detail=None if detail is None else ka.flat(detail, 2000),
