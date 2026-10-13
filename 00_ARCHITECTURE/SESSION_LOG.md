@@ -52913,13 +52913,15 @@ KV3-B5-BACKFILL discharges the governance portion of `KALAYANTRA_RELAUNCH_PLAN_v
 
 ### Scope discipline and validation
 
-Exactly one new top banner in CURRENT_STATE §2 and this one appended SESSION_LOG entry. All prior bytes are preserved. **(I) INTERPRETATION — validation scope:** the named validator's handshake and close-checklist CLI modes, with the companion handshake scope check, validate this backfill; scoped entry/banner checks retain the untouched historic corpus. No full-corpus green or canonical-state-YAML reconciliation is claimed. Reports and extracted YAML live only in JOB_SCRATCH. The final-receipt tool must run the command below and earn `backfill.validated` from its actual exit status.
+Original insertion scope: exactly one new top banner in CURRENT_STATE §2 and this one appended SESSION_LOG entry; all prior bytes were preserved at that checkpoint. **(I) INTERPRETATION — validation scope:** the named validator's handshake and close-checklist CLI modes, with the companion handshake scope check, validate this backfill; scoped entry/banner checks retain the untouched historic corpus. No full-corpus green or canonical-state-YAML reconciliation is claimed. Reports and extracted YAML live only in JOB_SCRATCH. The final-receipt tool must run the command below and earn `backfill.validated` from its actual exit status.
 
 ```sh
 python3 -B /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261013T111319Z-backfill/validate_backfill.py --repo-root .
 ```
 
 Expected and subsequently checked output: two `schema_validator: 0 violations; exit=0` lines, then `backfill: one banner + one campaign entry; scope green; exit=0`.
+
+**(I) INTERPRETATION — corpus regression repair (KV3-B5-BACKFILL):** appending this entry requires advancing the final overriding `current_state.last_session_id` to `KALAYANTRA_CAMPAIGN_OPEN_20261007`. The repository detector at `platform/scripts/governance/schema_validator.py:433-448` compares that pointer with the log tail; retaining Journey6 introduced the sole new MEDIUM `current_state_last_session_id_disagreement`. Update only that pointer and refresh the embedded close's CURRENT_STATE `sha256_after`; the campaign remains open under WAIT. The original scoped command/output above records the insertion checkpoint. Its immutable banner-only assertion (`validate_backfill.py:36`) excludes this required pointer correction, so the cockpit must reconcile that scoped assertion before final receipt acceptance; no current scoped PASS is claimed from that historical command.
 
 ```yaml
 session_close:
@@ -52937,8 +52939,8 @@ session_close:
   - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
     mutation_type: modified
     sha256_before: e4d49e508e56f68deae2d3098951744bf707e9eed180a63f6ad50513040dffe0
-    sha256_after: 31fcb06aa1a08792495f99fffde8d085acee40f0ef6db37697af5f59a1c1d688
-    justification: One new top banner per v2.7 §14 B-5
+    sha256_after: 9997e0b20c60bb762f4ba669a1c140c7e6bc2867350cc80bb6d947e43f72928a
+    justification: One new top banner per v2.7 §14 B-5 plus the required log-tail session pointer correction
     within_declared_scope: true
   - path: 00_ARCHITECTURE/SESSION_LOG.md
     mutation_type: modified
