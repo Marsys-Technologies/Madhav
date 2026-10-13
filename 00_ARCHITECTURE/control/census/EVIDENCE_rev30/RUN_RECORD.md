@@ -1,0 +1,14 @@
+# RUN_RECORD rev30b (second, clean census of the rev-30 tree)
+- date (CENSUS_DATE, UTC): 2026-10-13 ; run 2026-10-13T05:33:2xZ to 2026-10-13T07:31:25Z (about 1 h 58 min)
+- tree: 7e63cc872eda2da19eed3b484c6e36569e03bf50 (detached, clean before and after: git status empty), /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30 ; REGISTRY_REVISION 30 ; tool_commit in census JSON = same sha, tool_dirty false, declarations 1.77.0
+- post-process cwd: /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30/platform/scripts/governance
+- git rev-parse --show-toplevel there: /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30
+- command (no secret): EVAL_BACKUP_ID=1791868791537 EVAL_BACKUP_TIME=2026-10-13T05:21:32.951Z CENSUS_ASSETS_EXPECTED=82 CENSUS_OUT_DIR=/Users/Dev/suvarna-evidence/census_eval/7e63cc872-1791868791537-rev30b /bin/bash /Users/Dev/suvarna-evidence/N431/run_census_on_copy.sh /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30
+- copy proof (script guard): marker equal; ga_structural check = 1367 text; bg_rules check md5 = 5b27581cbeee1e91f65951d9a30e7b62 (the "expected b70718d7" in the script is stale print-only text)
+- exit code: 0 (census_parallel rc=0). Layer exits: L0 2, L1 2, L2 3 (all normal: file written)
+- wall: L0 3608 s | L1 6420 s | L2 3477 s (L2 started when L0 ended)
+- timeouts.txt: empty (0 bytes); "no read timed out in any layer"; no rerun, no retry, no layer re-read (none was needed)
+- scans after the run: census_L0/L1/L2.json, run_L*.log, read_timings_L*.txt, postprocess*.log: 'did not happen' 0, 'timeout expired' 0, 'connection to server' 0, could-not-connect / server closed / canceling statement / ERRORED 0. read_timings: every retained read (L0 199, L1 109, L2 124 slowest-per-asset entries) outcome ok, retries 0. Run 1 had one outcome=error read (L2, bo_chart_gestalt Narr/Null prose checks, 10.03 s): not repeated.
+- stdout log: /Users/Dev/scratch.noindex/claude/madhav/20261013-c30b/run_stdout.log
+- result: N-268 77 of 82 CERTIFIED; strict 13 of 82. Report: /Users/Dev/suvarna-evidence/N431/census_rev30b_run_report.md
+- note: .timeouts_scan.py in this dir is the wrapper's own helper (written by census_parallel.sh), not an addition by this worker.
