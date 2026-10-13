@@ -1,0 +1,36 @@
+{
+ "baseline_input_tokens": 18678,
+ "cap": 1500,
+ "cards": {
+  "BOOTSTRAP.md": {
+   "bytes": 3382,
+   "sha256": "aa1eafb6bec8cf92af3441fd195d74f3035227dd7d818c10c9b8e89dde97a1d9",
+   "tokens": 1336
+  },
+  "BOOTSTRAP_REVIEWER.md": {
+   "bytes": 3495,
+   "sha256": "909ae3ad80681edbf9ee2498e7880c3b14afd4e4b0a9c26989f7aed0f1f05fe8",
+   "tokens": 1370
+  },
+  "FIXTURE_BUILDER.md": {
+   "bytes": 3364,
+   "sha256": "b99781969f6f714b27e2108945d4e8482513578e25624a72b9f9f4a0e0958e93",
+   "tokens": 1407
+  },
+  "FIXTURE_VERIFIER.md": {
+   "bytes": 3398,
+   "sha256": "6ca62396c42e2cb2dcaeb117685fa5d872482a3dc51f4d43d554c6db9974c7f7",
+   "tokens": 1416
+  },
+  "OWNER_SURROGATE.md": {
+   "bytes": 3410,
+   "sha256": "bde564a7d74f70724bec5b20fcf1dff2ce8a378be84d449b161a3ca3a7208bb1",
+   "tokens": 1419
+  }
+ },
+ "claude_version": "2.1.296",
+ "measured_at": "2026-10-12T00:09:11Z",
+ "method": "input tokens of (card + fixed instruction) minus input tokens of (fixed instruction), plan \u00a77 launch line, empty directory",
+ "model": "claude-opus-5-5",
+ "schema": "ky.card_tokens/1"
+}

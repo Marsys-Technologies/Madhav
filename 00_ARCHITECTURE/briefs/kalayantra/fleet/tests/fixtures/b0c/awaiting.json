@@ -1,0 +1,29 @@
+{
+ "schema": "ky.awaiting/1",
+ "id": "AW-20261011T220000Z-capacity-above-max",
+ "created_at": "2026-10-11T22:00:00Z",
+ "raised_by": {
+  "role": "dispatcher",
+  "session_id": null,
+  "job_id": "J-20261011T215900Z-b1"
+ },
+ "item": "KV3-B-KYLOCK",
+ "question": "Ready work exceeds live builders; raise KY_BUILDERS_MAX from 6 to 8?",
+ "options": [
+  {
+   "id": "raise",
+   "text": "raise the maximum to 8"
+  },
+  {
+   "id": "keep",
+   "text": "keep 6"
+  }
+ ],
+ "recommendation": "keep",
+ "evidence": [
+  "/Users/Dev/kalayantra/run/JOURNAL_DISPATCHER.md"
+ ],
+ "deadline": "2026-10-11T23:00:00Z",
+ "class_hint": "veto",
+ "blocks": "none"
+}

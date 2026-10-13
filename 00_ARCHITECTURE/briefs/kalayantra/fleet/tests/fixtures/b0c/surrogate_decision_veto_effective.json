@@ -1,0 +1,29 @@
+{
+ "id": "SD-20261011T220500Z-2",
+ "awaiting": "AW-20261011T220000Z-capacity-above-max",
+ "class": "veto",
+ "state": "EFFECTIVE",
+ "decision": "raise",
+ "rationale": "nine ready items against six builders",
+ "evidence": [
+  "/Users/Dev/kalayantra/run/JOURNAL_DISPATCHER.md"
+ ],
+ "target": {
+  "kind": "capacity",
+  "builders": 8,
+  "verifiers": 4,
+  "fingerprint": "7777777777777777777777777777777777777777777777777777777777777777"
+ },
+ "authority": {
+  "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
+  "entrypoints_digest": "5555555555555555555555555555555555555555555555555555555555555555"
+ },
+ "notification": {
+  "submitted": true,
+  "ts": "2026-10-11T22:05:01Z"
+ },
+ "veto_deadline": "2026-10-11T22:35:00Z",
+ "effective_at": "2026-10-11T22:35:02Z",
+ "by": "kyveto",
+ "session": "surrogate-20261011T220400Z"
+}

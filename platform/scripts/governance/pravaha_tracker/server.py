@@ -291,6 +291,7 @@ def check_model(model: dict) -> list[str]:
         own = str(i.get("owner", ""))
         if own and own not in streams and own not in ("native", "steward"):
             problems.append(f"{i['id']} has unknown owner {own}")
+    problems.extend(_check_declarations(model))
     # cycle check
     deps = {i["id"]: i.get("depends_on", []) for i in model["items"]}
     state: dict[str, int] = {}
@@ -308,6 +309,34 @@ def check_model(model: dict) -> list[str]:
 
     for n in deps:
         visit(n, [])
+    return problems
+
+
+def _check_declarations(model: dict) -> list[str]:
+    """Item declaration (relaunch plan v2.7 §6), checked only for a model with `control_plane.declarations`."""
+    declarations = model.get("control_plane", {}).get("declarations")
+    if not isinstance(declarations, dict):
+        return []
+    problems = []
+    rules = declarations.get("reviewer_rule") if isinstance(declarations.get("reviewer_rule"), dict) else {}
+    for i in model["items"]:
+        if (i.get("done_by") == "join") != (i.get("join") is True):
+            problems.append(f"{i['id']} join: done_by {i.get('done_by')!r} disagrees with join {i.get('join')!r}")
+        if i.get("done_by") in ("decision", "join"):
+            continue
+        if i.get("completion_kind") not in ("code", "artifact", "packet", "operation"):
+            problems.append(f"{i['id']} declares no completion_kind (code, artifact, packet or operation)")
+        if not i.get("producer") or i.get("producer") != i.get("owner"):
+            problems.append(f"{i['id']} producer {i.get('producer')!r} is not its owner {i.get('owner')!r}")
+        if not isinstance(i.get("reviewer_rule"), str) or i["reviewer_rule"] not in rules:
+            problems.append(f"{i['id']} reviewer_rule {i.get('reviewer_rule')!r} is not a declared rule")
+        if not i.get("detector"):
+            problems.append(f"{i['id']} declares no detector")
+        evidence = i.get("step_evidence", {})
+        if not isinstance(evidence, dict):
+            problems.append(f"{i['id']} step_evidence is not a mapping of its steps")
+        elif set(evidence) - set(i.get("steps", [])):
+            problems.append(f"{i['id']} step_evidence names undeclared steps: {sorted(set(evidence) - set(i.get('steps', [])))}")
     return problems
 
 
@@ -365,6 +394,17 @@ def make_handler(engine: Engine):
                 flat = [t for tr in snap.get("tracks", []) for t in tr["items"]]
                 it = next((t for t in flat if t["id"] == iid), None)
                 return self._json(it or {"error": f"no item {iid}"}, 200 if it else 404)
+            if path == "/api/verify" and "step" in parse_qs(u.query, keep_blank_values=True):
+                # plan §6 STEP: measure the step's own named detector; a step whose detector is null has none
+                iid, step = (q.get("id") or [""])[0], (q.get("step") or [""])[0]
+                item = next((row for row in engine.model.get("items", []) if row["id"] == iid), None)
+                evidence = (item or {}).get("step_evidence")
+                declared = evidence.get(step) if isinstance(evidence, dict) and step in (item or {}).get("steps", []) else None
+                spec = declared.get("detector") if isinstance(declared, dict) else None
+                if not isinstance(spec, dict) or not spec:
+                    return self._json({"error": "unknown item or step, or the step has no named detector"}, 404)
+                return self._json({"item": iid, "step": step, "spec": spec,
+                                   "detector": engine.det.verify(spec).to_dict()})
             if path == "/api/verify":
                 iid = (q.get("id") or [""])[0]
                 item = next((row for row in engine.model.get("items", []) if row["id"] == iid), None)

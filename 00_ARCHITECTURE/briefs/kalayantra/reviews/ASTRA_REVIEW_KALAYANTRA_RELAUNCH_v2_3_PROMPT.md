@@ -1,0 +1,23 @@
+# Delta review — KĀLA-YANTRA v3 relaunch plan v2.3 (autonomy model) at head {{HEAD}}
+
+You are Astra. Your fourth review (v2.2 at 9c663da08) returned PROCEED-WITH-FIXES (KU-01…KU-03 → B-0c). Since then: the planner ran two sessions (B-0a/B-0b complete; PR #3441; its proposed v2.3 for two launch defects it proved by execution — `--bare` cannot sign in; the pinned program was too old for Opus 5.5), and the owner directed three changes: (1) sessions resumable at the owner's discretion with no automatic hand-off; (2) fully autonomous, multi-agent, interactive execution with a persistent owner surrogate that resolves every owner-wait; (3) zero idle, high velocity, accuracy kept. Plan **v2.3** applies all of that; the two pasted prompts are replaced by ONE cockpit prompt plus two headless loop prompts (B-0c deliverables). **This is a delta review** — read-only, no builds, no tracker/fleet writes, no file writes; your review is your final message. The planner continues B-0c in parallel; your findings are folded into B-0c before any B-1 launch.
+
+## Givens (do not re-litigate)
+Owner decisions 1–8, delegated calls D-1…D-8 and Q1–Q4 as recorded in `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md`.
+
+## Read (worktree /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan, head {{HEAD}})
+1. `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_3.md` — focus on the delta: front matter, §4, **§4a**, §5 (`CLAUDE_BIN`), §6 (SURROGATE, tick, messaging), §7 (launch line, probes), §10 (`READY_TO_START`, D-7), §11, §14 B-0c/B-2, §15, §16, §17.
+2. `KALAYANTRA_V3_COCKPIT_PROMPT_v2_3.md`, `KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md`, `.claude/agents/kalayantra-owner-surrogate.md`.
+3. Your `reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_2.md`; the planner's `KALAYANTRA_RELAUNCH_PLAN_v2_3_PROPOSED.md` is superseded (its content is in §7/§5 — verify).
+4. Live state: `/Users/Dev/kalayantra/run/{PLANNER_STATE.json,HANDOFF_PLANNER_20261011T161519Z.md,HOLD_MERGES}`; `git log --oneline -8 kalayantra/b0-model-reconcile`; `gh pr view 3441 --json title,files` (names only).
+5. Mechanics as before: `/Users/Dev/kalayantra/tracker_live/pravaha_tracker/*.py`, `/Users/Dev/kalayantra/fleet_live/*`, `.claude/agents/purna-owner-surrogate.md` (the existing surrogate pattern), root `CLAUDE.md` §I/§N, `.github/workflows/deploy.yml` (trigger), `claude --help` (2.1.296 — verify `--setting-sources`, `--permission-mode`, `--disable-slash-commands`, `-p`, `--max-turns`), `launchctl` availability (`which launchctl`).
+
+## Decide
+**Part 1 — Does v2.3 implement the owner's three directions correctly and safely?** For each: ADDRESSED / PARTLY / WRONG REMEDY with section evidence. In particular: (a) resume-anywhere without hand-off thresholds — is checkpoint discipline sufficient to bound context cost and preserve correctness across arbitrary session boundaries; (b) the owner surrogate — are the authority, veto classes and hard stops sound; is any delegated class unsafe (merges during the certification hold under D-6; protected-window approval after a 30-min veto; campaign start/resume D-7); does anything conflict with CLAUDE.md §I/§N, the FROZEN contract, the protected-window mechanism's human-approval design, or Suvarṇa's standing requests; (c) headless loops under launchd — process identity, locks, restart semantics, interaction with the cockpit session, and `claude -p` sign-in/permissions under launchd (environment, keychain access) — name what must be proven in B-0c probes.
+**Part 2 — Launch walk of the cockpit prompt** step 1 → 8 on a fresh session, and of the first planner-loop run and the first conductor-loop run as specified; name the first instruction that cannot be followed as written.
+**Part 3 — KU-01…KU-03 and P-1/P-2:** correctly carried into B-0c / §7 / §5?
+**Part 4 — Token economy:** does zero-idle + no-threshold + launchd loops risk unbounded spend anywhere (loop spin, surrogate ping-pong, cockpit + loops acting twice)? Name the guard or the gap.
+**Part 5 — Signal honesty:** any new status without a detector (loop health, probe results, surrogate decisions, veto windows).
+
+## Answer format
+Frontmatter: `artifact: ASTRA_REVIEW_KALAYANTRA_RELAUNCH`, `version: "2.3"`, `verdict: PROCEED | PROCEED-WITH-FIXES | REWORK`, `blocking_count`, `reviewed_commit: {{HEAD}}`, `review_date`, `review_mode: read-only`. Then: (1) verdict ≤ 5 lines; (2) Part 1 table; (3) findings ≤ 8, `KV-01…`, severity (BLOCKING before B-1 launches; HIGH before the conductor loop starts; MEDIUM; LOW), location, defect in two sentences, failure, **exact replacement**; (4) Parts 2–5 ≤ 20 lines each; (5) what you could not verify.

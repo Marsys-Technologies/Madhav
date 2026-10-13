@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.job_result/1",
+  "title": "KĀLA-YANTRA v3 job result, <JOB_SCRATCH>/result.json (relaunch plan v2.7 §5 job I/O, §6 job identity)",
+  "description": "What a job reports about itself when it ends, written to $JOB_SCRATCH/result.json (the job reads JOB_SCRATCH from its environment). A job that ends without it is not a success: the supervisor records job_result_valid false with termination_detail no_result and exits 5; a result.json that is a symbolic link is refused unread. It is the job's own claim, never a verdict: status 'done' is not acceptance, and the tests listed are what the job says it ran. A blocked job must say why; a job that names a PR must name the head it registered for it (a verifier, surrogate or reviewer job pushes nothing and reports head_sha null; a reviewer job may carry its proposed verdict, which only the controller publishes). Shape only: that job_id and item are those of the launching job, that head_sha is the branch head and that the PR exists is not checked by this schema (the supervisor compares job_id and item; review checks the rest).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "job_id", "item", "status", "branch", "head_sha", "pr_number", "tests", "blocked_reason", "notes"
+  ],
+  "properties": {
+    "schema": {"const": "ky.job_result/1"},
+    "job_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "item": {"type": "string", "minLength": 1},
+    "status": {"enum": ["done", "blocked", "failed"]},
+    "branch": {"type": ["string", "null"], "minLength": 1},
+    "head_sha": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+    "pr_number": {"type": ["integer", "null"], "minimum": 1},
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cmd", "exit", "summary"],
+        "properties": {
+          "cmd": {"type": "string", "minLength": 1},
+          "exit": {"type": "integer"},
+          "summary": {"type": "string"}
+        }
+      }
+    },
+    "blocked_reason": {"type": ["string", "null"]},
+    "notes": {"type": "string"},
+    "proposed_verdict": {
+      "description": "Reviewer jobs only, optional: the verdict the job proposes. It is a proposal; its contents are not typed here.",
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "blocked"}}, "required": ["status"]},
+      "then": {"properties": {"blocked_reason": {"type": "string", "minLength": 1}}}
+    },
+    {
+      "if": {"properties": {"pr_number": {"type": "integer"}}, "required": ["pr_number"]},
+      "then": {"properties": {"head_sha": {"type": "string"}}}
+    }
+  ]
+}
