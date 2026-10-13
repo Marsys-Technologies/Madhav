@@ -1290,7 +1290,7 @@ def test_install_renders_valid_plists_idempotently_and_starts_nothing(w):
 
 
 def test_templates_carry_no_credential_and_only_known_placeholders():
-    allowed = {"@KY_ROOT@", "@KY_RUN@", "@KY_FLEET@", "@KY_SCRATCH@", "@HOME@", "@USER@", "@CLAUDE_BIN@"}
+    allowed = {"@KY_ROOT@", "@KY_RUN@", "@KY_FLEET@", "@KY_SCRATCH@", "@HOME@", "@USER@", "@CLAUDE_BIN@", "@SYSTEM_PATH@"}
     for loop, label in LABELS.items():
         text = (FLEET / "launchd" / (label + ".plist")).read_text()
         found = set(re.findall(r"@[A-Z_]+@", text))
@@ -6089,3 +6089,23 @@ def test_an_executed_veto_wait_that_cannot_be_moved_blocks_nothing_and_is_closed
         closed.parent.unlink()
         assert c.apply_commands() is False
         assert not item.exists() and closed.exists() and close_record(w, aid)["state"] == "DONE"
+
+
+def test_loop_controller_path_matches_installer_system_path(w, monkeypatch):
+    """A successful installer proof must use the system PATH the controllers inherit."""
+    program = (FLEET / "install.sh").read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    namespace = {"__file__": str(FLEET / "install.sh")}
+    exec(compile(program, str(FLEET / "install.sh"), "exec"), namespace)
+    system = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+    assert namespace["BASE_PATH"].split(":") == system
+    install(w)
+    for loop in LABELS:
+        path = plistlib.loads(plist(w, loop).read_bytes())["EnvironmentVariables"]["PATH"]
+        assert path.split(":") == [str(w.root / "bin")] + system
+    # Qualification binds describe the model child, whose narrower PATH must remain intact.
+    for role in ("planner", "conductor"):
+        for key, value in w.env().items():
+            monkeypatch.setenv(key, value)
+        controller = kyloop.Controller(role)
+        assert controller.child_path() == str(w.root / "bin") + ":/opt/homebrew/bin:/usr/bin:/bin"

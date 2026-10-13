@@ -122,6 +122,7 @@ with open(sys.argv[1], encoding="utf-8") as f:
     text = f.read()
 program = text.split("\n: <<" + quote + "KYINSTALL_PY" + quote + "\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
 sys.argv = sys.argv[1:]
+__file__ = sys.argv[0]
 exec(compile(program, sys.argv[0], "exec"))' "$SELF" "$@" </dev/null
 exit $?
 : <<'KYINSTALL_PY'
@@ -129,6 +130,7 @@ import calendar
 import datetime
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import plistlib
@@ -169,7 +171,11 @@ REQUIRED_FLEET = ("kymanifest.py", "kyaction.py", "kyctl.sh", "kyloop.py", "kyqu
 TRACKER_LABEL = "com.madhav.kalayantra.tracker"
 TRACKER_PY = "/opt/homebrew/bin/python3"
 RECEIPT_SCHEMA = "ky.install_receipt/1"
-BASE_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+# Read the controller's definition beside this installer, without relying on ambient PYTHONPATH.
+_path_spec = importlib.util.spec_from_file_location("ky_install_loop_path", os.path.join(os.path.dirname(__file__), "kyloop.py"))
+_path_module = importlib.util.module_from_spec(_path_spec)
+_path_spec.loader.exec_module(_path_module)
+BASE_PATH = _path_module.SYSTEM_PATH
 HEX40 = re.compile(r"^[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"^[0-9a-f]{64}\Z")
 ACTION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}\Z")

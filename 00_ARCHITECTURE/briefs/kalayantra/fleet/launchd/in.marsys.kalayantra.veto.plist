@@ -17,7 +17,7 @@
   <key>WorkingDirectory</key><string>@KY_ROOT@</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>PATH</key><string>@KY_ROOT@/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>PATH</key><string>@KY_ROOT@/bin:@SYSTEM_PATH@</string>
     <key>HOME</key><string>@HOME@</string>
     <key>USER</key><string>@USER@</string>
     <key>LANG</key><string>en_US.UTF-8</string>

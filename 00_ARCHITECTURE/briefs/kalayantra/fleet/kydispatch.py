@@ -816,7 +816,10 @@ class Engine:
             self.log("stop: the instance lock is kept for %s" % ", ".join(open_jobs))
             return False
         rc, out, err = self.sh(["bash", self._script("kylock.sh"), "release", ROLE, self.controller_id], timeout=960)
-        self.log("stop: kylock.sh release exit %s %s" % (rc, ka.flat(err, 200)))
+        detail = "kylock.sh release exit %s: %s" % (rc, ka.flat(err or out, 1000) or "no output")
+        self.log("stop: " + detail)
+        if rc != 0:
+            self.journal("dispatcher error", detail)
         return rc == 0
 
     # ── a tick ──
@@ -840,7 +843,13 @@ class Engine:
                 self._persist()
             except Exception as e:
                 sys.stderr.write("kydispatch: the loop file was not written: %s\n" % ka.flat(e, 300))
-            self.log("tick %s" % json.dumps({"waiting": self._waiting, "jobs": out["jobs"]}, ensure_ascii=False))
+            # A fleet-sized gate backlog must never consume a launchable job's log line.
+            for job in out["jobs"]:
+                if job["decision"] != "wait:gate":
+                    self.log("tick job %s" % json.dumps(job, ensure_ascii=False))
+            self.log("tick %s" % json.dumps({"waiting": self._waiting,
+                "jobs": len(out["jobs"]), "wait:gate": sum(j["decision"] == "wait:gate" for j in out["jobs"])},
+                ensure_ascii=False))
         self.seen_before = self.seen_now
         return {"stop": out["stop"], "jobs": out["jobs"]}
 
@@ -1241,7 +1250,15 @@ class Engine:
                 state["busy"].add(slot)
                 if not self.dry and not state["provisioned"]:
                     state["provisioned"] = True                                # one slot a tick
-                    A.provision(self.admit_ctx, slot)
+                    provision = A.provision(self.admit_ctx, slot)
+                    if not provision["admitted"]:
+                        detail = "; ".join(r["detail"] for r in provision["refusals"])
+                        self.journal("dispatcher error", "%s %s slot %s: %s" % (kind, item, slot, detail))
+                        if self._admission_held(state):
+                            return "wait:hold"
+                        # (I) INTERPRETATION: retain wait:slot, with the failed helper's reason;
+                        # no job was opened and a later changed condition may make the slot ready.
+                        return "wait:slot (%s)" % ka.flat(detail, 1000)
                     if self._admission_held(state):
                         return "wait:hold"
                 return "wait:slot"

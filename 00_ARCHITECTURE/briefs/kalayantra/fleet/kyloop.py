@@ -132,6 +132,10 @@ import sys
 import time
 from pathlib import Path
 
+# System directories shared by controller plists and the installer's preflight proof.
+# Model-child PATHs below are separately qualified and deliberately retain their existing value.
+SYSTEM_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
 ROLES = ("planner", "conductor")                # the roles that launch model jobs (kyqualify.py pins this tuple)
 CONTROLLER_ROLES = ROLES + ("veto",)            # every role this file is the controller of
 SWITCH_LOOPS = ("dispatcher",) + CONTROLLER_ROLES

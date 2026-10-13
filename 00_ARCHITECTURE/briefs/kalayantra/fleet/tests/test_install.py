@@ -1994,7 +1994,7 @@ def installer_program():
     """Load the real installer helpers without running main or an installation."""
     program = INSTALL.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
     program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
-    namespace = {}
+    namespace = {"__file__": str(INSTALL)}
     exec(compile(program, str(INSTALL), "exec"), namespace)
     return namespace
 

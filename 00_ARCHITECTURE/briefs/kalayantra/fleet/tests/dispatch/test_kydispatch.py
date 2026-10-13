@@ -1499,3 +1499,53 @@ def test_dry_launch_refusal_names_the_missing_qualification(world, capsys):
     assert len(jobs) == 1 and jobs[0]["decision"] == "refused:launch"
     err = capsys.readouterr().err
     assert "BUILD KV3-B-X" in err and "qualification receipt" in err
+
+
+@pytest.mark.parametrize("message", ["docker cannot be observed", "slot helper failed"])
+def test_provision_failure_is_named_and_journalled_once_per_change(world, monkeypatch, message):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    script = world.fleet / "local_db.sh"
+    script.write_text("#!/bin/bash\necho '" + message + "' >&2\nexit 1\n")
+    monkeypatch.setattr(d.A, "GIT", str(world.bin / "git"))
+    e = d.Engine(world.env())
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        build = next(j for j in jobs if j["kind"] == "BUILD" and j["item"] == "K-1")
+        assert build["decision"].startswith("wait:slot")
+        assert message in build["decision"]
+        assert "exit 1" in build["decision"]
+    assert world.journal().count(message) == 1
+    # The deduplication checkpoint also survives a controller restart.
+    e = d.Engine(world.env())
+    e.tick()
+    assert world.journal().count(message) == 1
+    script.write_text("#!/bin/bash\necho 'changed helper failure' >&2\nexit 2\n")
+    e.tick()
+    assert world.journal().count("changed helper failure") == 1
+    assert not world.jobs()
+
+
+def test_tick_logs_non_gate_job_in_full_before_gate_summary(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    gates = [{"kind": "MODEL", "item": "K-%d" % n, "key": "gate-" + "x" * 80 + str(n),
+              "pool": "builder", "decision": "wait:gate"} for n in range(60)]
+    build = {"kind": "BUILD", "item": "KV3-B-OPS-CONTRACT", "key": "build-" + "y" * 80,
+             "pool": "builder", "decision": "wait:slot (docker cannot be observed)"}
+    monkeypatch.setattr(e, "_tick", lambda: {"stop": False, "jobs": gates + [build]})
+    e.tick()
+    lines = Path(e.log_path).read_text().splitlines()
+    assert json.dumps(build, ensure_ascii=False) in lines[0]
+    assert '"wait:gate": 60' in lines[-1]
+    assert all(len(line) < 4025 for line in lines)
+
+
+def test_lock_release_failure_is_journalled_once_with_helper_words(world, monkeypatch):
+    import kydispatch as d
+    e = d.Engine(world.env())
+    monkeypatch.setattr(e, "sh", lambda *a, **kw: (74, "", "docker cannot be observed"))
+    assert e.stop() is False
+    assert e.stop() is False
+    assert world.journal().count("docker cannot be observed") == 1
+    assert "kylock.sh release exit 74" in world.journal()

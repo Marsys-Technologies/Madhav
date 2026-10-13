@@ -208,6 +208,10 @@ import re, sys
 from xml.sax.saxutils import escape
 src, dst = sys.argv[1:3]
 values = dict(a.split("=", 1) for a in sys.argv[3:])
+sys.dont_write_bytecode = True
+sys.path.insert(0, values["KY_FLEET"])
+from kyloop import SYSTEM_PATH
+values["SYSTEM_PATH"] = SYSTEM_PATH
 def sub(m):
     if m.group(1) not in values:
         raise SystemExit("unknown placeholder @%s@" % m.group(1))
