@@ -229,6 +229,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboundary.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate_waiver.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kypacket.py
