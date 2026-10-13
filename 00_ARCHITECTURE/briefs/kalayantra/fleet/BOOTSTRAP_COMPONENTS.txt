@@ -211,6 +211,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_build.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_land.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_ops.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_finish_fix.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_admit.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_jobs.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_build.py
@@ -272,3 +273,8 @@ platform/scripts/governance/pravaha_tracker/static/app.js
 platform/scripts/governance/pravaha_tracker/static/index.html
 platform/scripts/governance/pravaha_tracker/steward_watch.py
 platform/scripts/governance/pravaha_tracker/verdicts.py
+
+# area: wave-0 — fixture-bound reconciliation and scanner placeholder regressions
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_wave0_secret_placeholders.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/staged_preinstall.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.reviewed.json.gz

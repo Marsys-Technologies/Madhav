@@ -1780,7 +1780,7 @@ def test_unreadable_event_lines_mean_no_pr_is_adopted(w):
         f.write("{a later registration that cannot be read\n")
     w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
     ok(w.install())
-    assert not (w.run / "jobs" / "legacy-3300").exists()
+    assert not (w.run / "legacy" / "legacy-3300").exists()
     legacy = w.receipt()["legacy"]
     assert legacy["prs"]["adopted"] == []
     assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
@@ -1812,11 +1812,11 @@ def test_open_prs_with_a_registered_head_are_adopted_one_state_file_each(w):
                    {"number": 3301, "headRefName": "kalayantra/k2-2", "headRefOid": "d" * 40, "url": "u"},
                    {"number": 3302, "headRefName": "feature/other", "headRefOid": "e" * 40, "url": "u"}])
     ok(w.install())
-    state = json.loads((w.run / "jobs" / "legacy-3300" / "state.json").read_text())
+    state = json.loads((w.run / "legacy" / "legacy-3300" / "state.json").read_text())
     assert state["job_id"] == "legacy-3300" and state["item"] == "K1-1" and state["pr"] == 3300
     assert state["head"] == head and state["branch"] == "kalayantra/k1-1"
     assert state["session_id"] is None and state["attempts"] is None, "unknown stays null"
-    assert not (w.run / "jobs" / "legacy-3301").exists() and not (w.run / "jobs" / "legacy-3302").exists()
+    assert not (w.run / "legacy" / "legacy-3301").exists() and not (w.run / "legacy" / "legacy-3302").exists()
     legacy = w.receipt()["legacy"]
     assert [p["number"] for p in legacy["prs"]["adopted"]] == [3300]
     assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3301)]
@@ -1829,7 +1829,7 @@ def test_a_pr_whose_head_moved_since_registration_is_not_adopted(w):
                                                      "detail": "PR #3300 @ %s" % ("b" * 40), "ts": "2026-10-12T00:00:00+00:00"}) + "\n")
     w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": "f" * 40, "url": "u"}])
     ok(w.install())
-    assert not (w.run / "jobs" / "legacy-3300").exists()
+    assert not (w.run / "legacy" / "legacy-3300").exists()
     assert "moved" in w.receipt()["legacy"]["unresolved"][0]["reason"]
 
 
@@ -1837,11 +1837,11 @@ def test_an_existing_legacy_job_state_is_never_overwritten(w):
     head = "b" * 40
     (w.run / "EVENTS.jsonl").write_text(json.dumps({"kind": "item", "actor": "stream-K", "item": "K1-1", "state": "review",
                                                      "detail": "PR #3300 @ %s" % head, "ts": "2026-10-12T00:00:00+00:00"}) + "\n")
-    (w.run / "jobs" / "legacy-3300").mkdir(parents=True)
-    (w.run / "jobs" / "legacy-3300" / "state.json").write_text('{"dispatcher": "was here"}')
+    (w.run / "legacy" / "legacy-3300").mkdir(parents=True)
+    (w.run / "legacy" / "legacy-3300" / "state.json").write_text('{"dispatcher": "was here"}')
     w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
     ok(w.install())
-    assert (w.run / "jobs" / "legacy-3300" / "state.json").read_text() == '{"dispatcher": "was here"}'
+    assert (w.run / "legacy" / "legacy-3300" / "state.json").read_text() == '{"dispatcher": "was here"}'
     legacy = w.receipt()["legacy"]
     assert legacy["prs"]["adopted"] == [], "a file that is not this PR's adoption record is not an adoption"
     assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
@@ -1853,9 +1853,9 @@ def test_a_second_run_keeps_the_adoption_it_wrote(w):
                     "detail": "PR #3300 @ %s" % head, "ts": "2026-10-12T00:00:00+00:00"})
     w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
     ok(w.install())
-    first = (w.run / "jobs" / "legacy-3300" / "state.json").read_bytes()
+    first = (w.run / "legacy" / "legacy-3300" / "state.json").read_bytes()
     ok(w.install())
-    assert (w.run / "jobs" / "legacy-3300" / "state.json").read_bytes() == first
+    assert (w.run / "legacy" / "legacy-3300" / "state.json").read_bytes() == first
     adopted = w.receipt()["legacy"]["prs"]["adopted"]
     assert [(a["number"], a["existing_state_kept"]) for a in adopted] == [(3300, True)]
     assert w.receipt()["legacy"]["unresolved"] == []
@@ -2225,6 +2225,57 @@ def test_a_pr_registration_its_item_has_since_replaced_adopts_nothing(w):
     ok(w.install())
     legacy = w.receipt()["legacy"]
     assert [a["number"] for a in legacy["prs"]["adopted"]] == [3305]
-    assert not (w.run / "jobs" / "legacy-3300").exists()
+    assert not (w.run / "legacy" / "legacy-3300").exists()
     assert [(u["kind"], u["number"]) for u in legacy["unresolved"]] == [("pr", 3300)]
     assert "latest review" in legacy["unresolved"][0]["reason"]
+
+
+def test_reinstall_does_not_recreate_old_dispatcher_adoption_folder(w):
+    head = "b" * 40
+    w.append_event({"kind": "item", "actor": "stream-K:k1", "item": "K1-1", "state": "review",
+                    "detail": "PR #3300 @ " + head, "ts": "2026-10-12T00:00:00+00:00"})
+    w.control(prs=[{"number": 3300, "headRefName": "kalayantra/k1-1", "headRefOid": head, "url": "u"}])
+    old = w.run / "jobs" / "legacy-3300" / "state.json"
+    old.parent.mkdir(parents=True)
+    old.write_text('{"schema":"ky.legacy_job_state/1","sentinel":"old"}')
+    ok(w.install())
+    assert old.read_text() == '{"schema":"ky.legacy_job_state/1","sentinel":"old"}'
+    old.rename(w.run / "old-adoption.json")
+    old.parent.rmdir()
+    ok(w.install())
+    assert not old.parent.exists()
+    assert w.receipt()["legacy"]["prs"]["adopted"][0]["state_path"] == str(w.run / "legacy" / "legacy-3300" / "state.json")
+
+
+@pytest.mark.parametrize("role,lane", [("build", "b1"), ("verify", "v1"), ("surrogate", None)])
+def test_job_qualification_supplies_conventional_environment(installer_program, monkeypatch, tmp_path, role, lane):
+    from types import SimpleNamespace
+    fleet = tmp_path / "fleet"
+    templates = fleet / "templates"
+    templates.mkdir(parents=True)
+    cfg = templates / ("LAUNCH_CONFIG." + role + ".json")
+    cfg.write_text(json.dumps({"role": role, "model": "claude-opus-5-5"}))
+    ctx = SimpleNamespace(fleet_live=str(fleet), run_dir=str(tmp_path / "run"), scratch=str(tmp_path / "scratch"), changed={})
+    monkeypatch.setitem(installer_program, "child_env", lambda c: {"PATH": "/usr/bin:/bin"})
+    monkeypatch.setitem(installer_program, "ky_dir_env", lambda c: {})
+    calls = []
+
+    def harness(argv, env, **kwargs):
+        if "launch-config" in argv:
+            return installer_program["Out"](0, json.dumps({"role": argv[-1], "model": "claude-opus-5-5"}), "")
+        if "--config" in argv and argv[argv.index("--config") + 1] == str(cfg):
+            calls.append((argv, env.copy()))
+        if "qualify" in argv:
+            Path(argv[argv.index("--out") + 1]).write_text(json.dumps({"result": "PASS"}))
+            return installer_program["Out"](0, "", "")
+        return installer_program["Out"](0 if Path(argv[argv.index("check") + 1]).exists() else 1, "", "")
+
+    monkeypatch.setitem(installer_program, "run", harness)
+    installer_program["step_qualify"](ctx)
+    assert len(calls) == 3  # initial check, qualification, evidence check all get the same environment
+    for argv, env in calls:
+        if lane:
+            assert {k: env.get(k) for k in ("KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID")} == {
+                "KY_STREAM": "K", "KY_LANE": lane, "KY_CONTROLLER_ID": "CTL-qualification"}
+        else:
+            assert not {"KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID"} & env.keys()

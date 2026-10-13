@@ -11,7 +11,7 @@ A module of the dispatcher engine (kydispatch.py); it has no command line. The e
     ctx.awaiting(slug, question, options, evidence, item, class_hint)
     ctx.journal(event, text)
 
-    load(ctx)                      every job state, oldest first (install.sh's legacy-<n> first); JobsUnreadable
+    load(ctx)                      readable job states, oldest first; bad folders quarantined in memory
     attempts(ctx, intent)          {"attempt", "blocked"} from $KY_RUN/jobs/failures.json and the ended jobs
     open(ctx, intent, slot, facts) a prepared job, or None with everything undone
     launch(ctx, job)               the job as it is afterwards: phase "live" when it was started
@@ -160,7 +160,7 @@ _RESULT_SCHEMA = []
 
 
 class JobsUnreadable(Exception):
-    """A job state (or the failure table) is there and cannot be read: nothing is decided on top of it."""
+    """An individual job state, jobs directory or failure table cannot be read."""
 
 
 # ───────────────────────────────────────── small helpers ─────────────────────────────────────────
@@ -241,6 +241,12 @@ def _checked(doc, err, name):
         raise JobsUnreadable("job %s: its state names job_id %r" % (name, doc.get("job_id")))
     if doc.get("phase") not in PHASES:
         raise JobsUnreadable("job %s: phase %r is not one of %s" % (name, doc.get("phase"), ", ".join(PHASES)))
+    for key in ("key", "item", "kind", "slot", "controller_id"):
+        if doc.get(key) is not None and not _text(doc[key]):
+            raise JobsUnreadable("job %s: %s must be nonempty text or null" % (name, key))
+    for key in LIST_KEYS:
+        if doc.get(key) is not None and not isinstance(doc[key], list):
+            raise JobsUnreadable("job %s: %s must be a list or null" % (name, key))
     for key in LAUNCH_KEYS + LIFECYCLE_KEYS:
         doc.setdefault(key, None)
     return doc
@@ -257,8 +263,14 @@ def _age(job_id):
 
 
 def load(ctx):
-    """Every job state under $KY_RUN/jobs, oldest first. A job folder whose state cannot be read raises."""
+    """Readable jobs, oldest first. Quarantine bad folders in memory; never move or rewrite their bytes.
+    (I) INTERPRETATION: malformed ky.job/1 records retain identifiable slot/key reservations, but are
+    not supervised or recovered. If slot is malformed, retain the slot suffix encoded by its job folder.
+    A repair is read on the next call; one notice per folder per context.
+    Directory-listing and failure-table errors remain fatal because their scope is not one job.
+    """
     directory = _run(ctx) / "jobs"
+    ctx._job_errors = {}
     try:
         names = sorted(os.listdir(directory))
     except FileNotFoundError:
@@ -266,11 +278,25 @@ def load(ctx):
     except OSError as e:
         raise JobsUnreadable("%s cannot be listed (%s)" % (directory, type(e).__name__)) from None
     jobs = []
+    seen = getattr(ctx, "_job_quarantine_seen", None)
+    if seen is None:
+        seen = ctx._job_quarantine_seen = set()
     for name in names:
         if name.startswith(".") or not os.path.isdir(directory / name):
             continue                                     # failures.json, a state being created
         doc, err = ka.read_json(directory / name / "state.json")
-        jobs.append(_checked(doc, err, name))
+        try:
+            jobs.append(_checked(doc, err, name))
+        except JobsUnreadable as exc:
+            canonical = isinstance(doc, dict) and doc.get("schema") == SCHEMA
+            if canonical:
+                ctx._job_errors[name] = {k: doc.get(k) for k in ("slot", "key", "item") if _text(doc.get(k))}
+                encoded = _JOB_ID.match(name)
+                if doc.get("slot") is not None and not _text(doc["slot"]) and encoded:
+                    ctx._job_errors[name]["slot"] = encoded.group(2)
+            if name not in seen:
+                ctx.journal("dispatcher error" if canonical else "job quarantine", str(exc))
+                seen.add(name)
     return sorted(jobs, key=lambda j: _age(j["job_id"]))
 
 
@@ -550,6 +576,9 @@ def _look(ctx, key, slot):
             return "job %s of key %s has not ended" % (job["job_id"], key)
         if job["phase"] != "ended" and slot is not None and job.get("slot") == slot:
             return "slot %s is not free: job %s has not ended" % (slot, job["job_id"])
+    for name, job in ctx._job_errors.items():
+        if job.get("key") == key or (slot is not None and job.get("slot") == slot):
+            return "job %s has a malformed state; its key/slot requires reconciliation" % name
     return None
 
 

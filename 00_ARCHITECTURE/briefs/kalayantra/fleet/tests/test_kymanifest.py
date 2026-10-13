@@ -1,6 +1,8 @@
 """B-0c: the bootstrap manifest only records what it can re-observe; KU clauses stay verbatim."""
 import hashlib
+import fnmatch
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -282,12 +284,28 @@ def test_ku_clauses_are_verbatim_from_the_review():
 
 def test_every_file_in_a_covered_directory_is_listed():
     listed = set(km.read_components(str(REPO)))
+    # No fleet exclusions currently: tests, fixtures and runtime imports all ship.
+    excluded = ()
+    tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--", km.FLEET + "/"],
+                             env=dict(os.environ, GIT_OPTIONAL_LOCKS="0"), capture_output=True,
+                             text=True, check=True, timeout=30).stdout.split("\0")
+    missing = [rel for rel in tracked if rel and rel not in listed
+               and not any(fnmatch.fnmatchcase(rel, pattern) for pattern in excluded)]
+    assert missing == [], "git-tracked fleet files missing from manifest:\n" + "\n".join(missing)
     for d in km.COVERED_DIRS:
         for p in (REPO / d).rglob("*"):
             if p.is_file() and not p.name.startswith(".") and "__pycache__" not in p.parts:
                 assert str(p.relative_to(REPO)) in listed, "unlisted: %s" % p.relative_to(REPO)
     for rel in listed:
         assert (REPO / rel).is_file(), "listed but missing: " + rel
+
+
+def test_fleet_census_detects_a_missing_runtime_import(monkeypatch):
+    listed = km.read_components(str(REPO))
+    missing = km.FLEET + "/kyjob_engines.py"
+    monkeypatch.setattr(km, "read_components", lambda repo: [rel for rel in listed if rel != missing])
+    with pytest.raises(AssertionError, match="kyjob_engines.py"):
+        test_every_file_in_a_covered_directory_is_listed()
 
 
 def test_a_codex_receipt_is_judged_against_the_roles_codex_configuration_never_the_claude_one(rig):

@@ -528,7 +528,7 @@ def test_job_ids_are_created_exclusively(world, monkeypatch):
                                                         "J-20261012T094000Z-b1.4", "J-20261012T094000Z-regen"]
 
 
-def test_load_reads_legacy_jobs_first_and_refuses_what_it_cannot_read(world):
+def test_load_reads_legacy_jobs_first_and_quarantines_bad_folders(world):
     job = opened(world)
     for n in (10, 2):
         d = world.run / "jobs" / ("legacy-%d" % n)
@@ -538,23 +538,46 @@ def test_load_reads_legacy_jobs_first_and_refuses_what_it_cannot_read(world):
     assert [j["job_id"] for j in J.load(world.ctx)] == ["legacy-2", "legacy-10", job["job_id"]]
     bad = world.run / "jobs" / "J-20260101T000000Z-b2"
     os.makedirs(bad)
-    with pytest.raises(J.JobsUnreadable, match="J-20260101T000000Z-b2"):  # a job folder without a state
-        J.load(world.ctx)
-    (bad / "state.json").write_text("{not json")
-    with pytest.raises(J.JobsUnreadable):
-        J.load(world.ctx)
-    (bad / "state.json").write_text(json.dumps(dict(job, job_id="J-20260101T000000Z-b2", phase="finished")))
-    with pytest.raises(J.JobsUnreadable, match="phase"):
-        J.load(world.ctx)
-    (bad / "state.json").write_text(json.dumps(dict(job, job_id="another")))
-    with pytest.raises(J.JobsUnreadable, match="job_id"):
-        J.load(world.ctx)
-    # and nothing is opened, supervised or recovered on top of an unreadable state
-    with pytest.raises(J.JobsUnreadable):
-        J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None))
-    with pytest.raises(J.JobsUnreadable):
-        J.supervise(world.ctx)
-    assert world.log.ky == ["claim K-1 --worker b1 --lease 10800 [K/b1]"]
+    for text in (None, "{not json", "[]", '{"schema":"ky.legacy_job_state/1"}'):
+        if text is not None:
+            (bad / "state.json").write_text(text)
+        assert [j["job_id"] for j in J.load(world.ctx)] == ["legacy-2", "legacy-10", job["job_id"]]
+    notices = [line for line in world.log.journal if bad.name in line]
+    assert len(notices) == 1 and "state.json" in notices[0]
+    # A repaired folder is read again; quarantine never moves or rewrites it.
+    (bad / "state.json").write_text(json.dumps(dict(job, job_id=bad.name, phase="ended", slot=None)))
+    assert len(J.load(world.ctx)) == 4
+
+
+@pytest.mark.parametrize("change,reason", [({"phase": "finished"}, "phase"), ({"job_id": "another"}, "job_id"),
+                                          ({"key": {}}, "key"), ({"slot": []}, "slot"), ({"locks": "lock"}, "locks")])
+def test_malformed_canonical_job_is_local_error_and_keeps_its_reservations(world, change, reason):
+    job = opened(world)
+    bad = world.run / "jobs" / job["job_id"] / "state.json"
+    text = json.dumps(dict(job, **change))
+    bad.write_text(text)
+    assert J.load(world.ctx) == []
+    assert J.supervise(world.ctx) == []
+    assert J.recover(world.ctx) == []
+    notices = [line for line in world.log.journal if job["job_id"] in line]
+    assert len(notices) == 1 and "dispatcher error" in notices[0] and reason in notices[0]
+    assert J.open(world.ctx, world.intent({"item": "K-2"}), "b1", world.facts(None)) is None
+    other = J.open(world.ctx, world.intent({"item": "K-2"}), "b3", world.facts(None))
+    assert other is not None
+    assert bad.read_text() == text
+
+
+def test_foreign_schema_is_quarantined_once_with_its_reason(world):
+    job = opened(world)
+    bad = world.run / "jobs" / "legacy-3337" / "state.json"
+    bad.parent.mkdir()
+    bad.write_text('{"schema":"ky.legacy_job_state/1","job_id":"legacy-3337"}')
+    original = bad.read_bytes()
+    for _ in range(3):
+        assert [j["job_id"] for j in J.load(world.ctx)] == [job["job_id"]]
+    notices = [line for line in world.log.journal if "legacy-3337" in line]
+    assert len(notices) == 1 and "job quarantine" in notices[0] and "schema is not ky.job/1" in notices[0]
+    assert bad.read_bytes() == original
 
 
 @pytest.mark.parametrize("deadline", ["2026-10-12 13:25:11", "2026-10-12T13:25:11+00:00", "2026-10-12T13:25:11.5Z",

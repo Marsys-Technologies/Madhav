@@ -742,6 +742,8 @@ class World:
                 proc.kill()
                 proc.wait(timeout=10)
         for job in self.jobs():
+            if not isinstance(job, dict):
+                continue  # a quarantined fixture has no process identity this test may signal
             pid, start = job.get("pid"), job.get("process_start")
             if isinstance(pid, int) and pid > 1 and job.get("pgid") == pid and ka.process_matches(pid, start) is True:
                 try:
@@ -895,6 +897,93 @@ def test_every_listed_item_has_a_case():
 BUILD_READY = {"next": {"ready": [{"id": "K-1", "owner": "K", "status": "ready", "completion_kind": "code",
                                    "deps_open": [], "deps_open_strict": []}]},
                "files": {"$RUN/PRIORITY.txt": "K-1\n"}, "gate": "OPEN", "slots": ["b1"]}
+
+
+@pytest.mark.parametrize("state", [None, "not json", "[]", '{"schema":"ky.legacy_job_state/1"}'])
+def test_quarantined_folder_keeps_unrelated_build_intent(world, state):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    broken = world.run / "jobs" / "legacy-3337" / "state.json"
+    broken.parent.mkdir(parents=True)
+    if state is not None:
+        broken.write_text(state)
+    e = d.Engine(world.env())
+    jobs = e.tick()["jobs"]
+    assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), world.journal()
+    assert world.journal().count("legacy-3337") == 1
+
+
+@pytest.mark.parametrize("where", ["before_read", "after_read", "kind"])
+def test_error_then_clean_ticks_rederive_build_on_same_controller(world, monkeypatch, where):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    e = d.Engine(world.env())
+    # A prior valid reading is deliberately made stale by an event arriving during the failed tick.
+    assert e.ctx.next is not None
+    original = e.tracker_seen.copy()
+    fired = False
+    target, attr = (e, "_settle") if where == "before_read" else (d.J, "load") if where == "after_read" else (d.B, "intents")
+    real = getattr(target, attr)
+
+    def once(*args, **kwargs):
+        nonlocal fired
+        # For load(), fail at admission, after recover/supervise and tracker reading.
+        if not fired and (where != "after_read" or e._next[0]):
+            fired = True
+            with (world.run / "EVENTS.jsonl").open("a") as out:
+                out.write('{"kind":"decision","actor":"steward","ts":"2026-10-13T00:00:00Z","decision":"D-TEST","state":"decided","outcome":"approved","detail":"fixture event during failed tick"}\n')
+            raise RuntimeError("injected late tick failure")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(target, attr, once)
+    e.tick()
+    assert fired
+    assert e.tracker_seen == original
+    assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker"] == original
+    for _ in range(2):
+        jobs = e.tick()["jobs"]
+        assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs), jobs
+
+
+@pytest.mark.parametrize("bad", ["older", "snapshot", "changing", "missing", "checkpoint"])
+def test_error_retry_keeps_freshness_fences(world, monkeypatch, bad):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    world.loop(tracker_retry=True, tracker={"version": 6 if bad == "older" else "bad" if bad == "checkpoint" else 5,
+                                          "events_size": 1, "events_sha256": "0" * 64})
+    e = d.Engine(world.env())
+    if bad == "snapshot":
+        world.apply({"next": dict(BUILD_READY["next"], snapshot=True)})
+    elif bad == "missing":
+        (world.run / "EVENTS.jsonl").unlink()
+    elif bad == "changing":
+        real = e.ky
+
+        def append_during_read(*args, **kwargs):
+            result = real(*args, **kwargs)
+            with (world.run / "EVENTS.jsonl").open("a") as out:
+                out.write("\n")
+            return result
+
+        monkeypatch.setattr(e, "ky", append_during_read)
+    assert e.ctx.next is None
+
+
+def test_error_recovery_checkpoint_survives_restart(world, monkeypatch):
+    import kydispatch as d
+    world.apply(dict(BUILD_READY, slots=[]), first=True)
+    e = d.Engine(world.env())
+    assert e.ctx.next is not None
+
+    def fail():
+        (world.run / "EVENTS.jsonl").write_text("\n")
+        raise RuntimeError("fixture error before reading")
+
+    monkeypatch.setattr(e, "_settle", fail)
+    e.tick()
+    assert kyloop.loop_state(world.run, "dispatcher")[0]["tracker_retry"] is True
+    jobs = d.Engine(world.env()).tick()["jobs"]
+    assert any(j["kind"] == "BUILD" and j["item"] == "K-1" for j in jobs)
 
 
 def test_a_second_instance_exits_75_and_changes_nothing(world):
