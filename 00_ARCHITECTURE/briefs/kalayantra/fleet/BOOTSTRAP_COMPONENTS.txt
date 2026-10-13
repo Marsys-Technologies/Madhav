@@ -50,6 +50,8 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py

@@ -8119,6 +8119,41 @@
       "triage": {
         "class": "a"
       }
+    },
+    {
+      "id": "KV3-B-OPS-CONTRACT",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Shared executor operation-adapter contract and fake-remote acceptance harness; first live item under watch, merges held",
+      "owner": "K",
+      "depends_on": [],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/kv3-b-ops-contract"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-OPS-CONTRACT_v1.md",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md §6 REQUEST-PREP through POST-READBACK; §8; §14"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py"
+        ],
+        "tests": [
+          "python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py -q -p no:cacheprovider; --basetemp under JOB_SCRATCH; exit 0, no skips"
+        ],
+        "migration": "NONE",
+        "compat": "Two new files only; preserve executor table, request/receipt shapes and all existing interfaces; no production enablement.",
+        "notes": "Owner-surrogate answer 09 (2026-10-13) §4.2; merges held. (I) INTERPRETATION: no model dependencies added because the ruling names no prerequisite item; check accepted KV3-B-EXECUTOR-TABLE and installed fleet as packet facts. The tracker completion.EVIDENCE_TABLE has no reviewed-head-only code rule. (I) INTERPRETATION: retain its declared non-data code rule as a conservative completion guard; ACCEPTED pre-merge review does not mean done. Owner merge and measured successful deployment containment are still required by the installed tracker; any control-plane-specific completion exemption is later governed work."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
     }
   ],
   "decisions": [
