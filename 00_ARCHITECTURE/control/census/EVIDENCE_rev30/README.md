@@ -52,7 +52,7 @@ The `#sha12` references inside `lists/CERTIFIED_LIST.*` are the first 12 hex dig
 * Against rev 29 (76): gained `bg_sky_calendar`; lost none. Against run 1 (75): gained `bg_ephemeris_engine`, `bg_panchanga`, `bo_chart_gestalt`; lost `ga_vichara`.
 * Not certified (5): `ga_structural` (L1), `ga_vichara` (L1), `bo_laksana`, `bo_laksana_rerank`, `bo_samskara` (L2). Reasons per asset: `lists/BLOCKERS_BY_CLASS.md`, `lists/FIX_LIST.md`, `OWNER_SUMMARY_rev30.md`.
 * Information-only failures that block nothing: Cost.baseline on `bg_ephemeris_engine` and `bg_panchanga` still reads FAIL in the raw L0 log (it does not block certification under N-268).
-* `ga_vichara` Build.dag FAIL in run 2 is under diagnosis (see `OWNER_SUMMARY_rev30.md`; items marked `[TO CONFIRM]`).
+* `ga_vichara` Build.dag FAIL in run 2: diagnosed as a detector flaw triggered by later registry edits (migrations 1353-1356, applied between the two backups); see `OWNER_SUMMARY_rev30.md`. The 77 is the measured result; a fix and a revision-31 count are with the owner's decision.
 
 ## Per-layer timings (wall seconds from `run_L*.log`; reads from `read_timings_L*.txt`)
 
@@ -77,7 +77,7 @@ Run 2: every retained read ended `ok`, zero retries, zero timeouts. Run 1 had on
 * `Carr.D2` has no detector: it reads N/A by ruling on every asset.
 * No CI job runs `nikasha_certify.py --verify-census-hashes`.
 * The census measured an evaluation copy of production, not production itself.
-* `ga_vichara` Build.dag: the cause is a diagnosis in progress, not a finding.
+* `ga_vichara` Build.dag: a full registry diff between the two copies was not made; the diagnosis found no other changed Build.dag cell and no other change in the bookkeeping-table owner map.
 
 ## Contents
 

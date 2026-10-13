@@ -33,7 +33,7 @@ Run 1 versus revision 29 (76): gained `bg_sky_calendar` and `ga_vichara`; lost `
 2. **`bo_chart_gestalt`** (Null.blank_rows and Null.schema_default PARTIAL): one database connection failed to open (libpq timeout, 10.03 s, the single `outcome: error` read in `census_L2.json`, label "Narr/Null (prose checks)") and the census swallowed it into "not read". This is a detector weakness (a failed connect must be retried and must say so). A read-only confirm of the data on this run's copy shows it would pass: `gestalt_confirm.txt` (SQL: `gestalt_confirm.sql`) lists, for each of the six closed entries, one distinct stored value equal to a declared literal, no stray values, "closure WOULD PASS". In run 2 there was no failed connection and the asset certifies.
 3. **`bo_laksana`**: Build.completion reads NO_DETECTOR because the census role cannot EXECUTE the database function `bodha_signal_identity` (permission denied). Identical in revision 29 and in run 2. It is not the blocker (Vocab.alias PARTIAL is).
 
-`ga_vichara` was CERTIFIED in this run and fails Build.dag in run 2 on the same code: see `../EVIDENCE_rev30/OWNER_SUMMARY_rev30.md` ("ga_vichara: a plain statement"; items marked `[TO CONFIRM]`).
+`ga_vichara` was CERTIFIED in this run on release tree 7e63cc872 and fails Build.dag in run 2 on the same tree, only because of later registry edits (Kala migrations 1353-1356, applied to the database at 2026-10-12 22:28Z, between the two backups) acting through a detector flaw (the table-ownership map attributes the shared `build_runs` table to three Kala assets). Confirmed facts: `../EVIDENCE_rev30/OWNER_SUMMARY_rev30.md` ("ga_vichara: a plain statement").
 
 ## Verification
 
