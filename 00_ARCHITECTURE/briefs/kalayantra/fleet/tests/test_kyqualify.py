@@ -1908,26 +1908,35 @@ def test_verify_evidence_rejudges_from_the_streams_and_says_what_it_could_not(cl
     assert "evidence: launch_config.json is not this configuration" in said["reasons"]
 
 
-def test_planner_receipt_satisfies_the_loop_controller(rig, monkeypatch):
+@pytest.mark.parametrize("role", ["planner", "conductor"])
+def test_loop_python_shell_canary_receipt_satisfies_the_controller(rig, monkeypatch, role):
     import kyloop
 
     assert tuple(kyloop.ROLES) == tuple(kyqualify.LOOP_ROLES)
     fleet, run_dir = rig.root / "fleet_live", rig.root / "run"
     (fleet / "prompts").mkdir(parents=True)
     run_dir.mkdir()
-    (fleet / "prompts" / kyloop.PROMPTS["planner"]).write_text("# planner loop prompt\n")
+    (fleet / "prompts" / kyloop.PROMPTS[role]).write_text("# loop prompt\n")
     (fleet / "mcp.none.json").write_text('{"mcpServers":{}}\n')
     for name, value in (("KY_ROOT", rig.root), ("KY_RUN", run_dir), ("KY_FLEET", fleet),
                         ("CLAUDE_BIN", rig.bindir / "claude"), ("HOME", rig.home)):
         monkeypatch.setenv(name, str(value))
-    controller = kyloop.Controller("planner")
-    loop_cfg = dict(kyloop.DEFAULTS["planner"], worktree=str(rig.proj), mcp_config=str(fleet / "mcp.none.json"))
-    cfg = rig.config(role="planner", model=loop_cfg["model"], effort=loop_cfg["effort"],
+    controller = kyloop.Controller(role)
+    loop_cfg = dict(kyloop.DEFAULTS[role], worktree=str(rig.proj), mcp_config=str(fleet / "mcp.none.json"))
+    (run_dir / "loops.json").write_text(json.dumps({role: {"worktree": loop_cfg["worktree"],
+                                                         "mcp_config": loop_cfg["mcp_config"]}}))
+    extra_env = {"KY_RUN": str(run_dir), "KY_FLEET": str(fleet), "CLAUDE_BIN": str(rig.bindir / "claude")}
+    printed = rig.run("admin", "launch-config", role, script=FLEET / "kyloop.py", extra_env=extra_env)
+    assert printed.returncode == 0, printed.stderr
+    launch = json.loads(printed.stdout)
+    assert launch.get("shell_canary") == "python3"
+    assert launch == controller.launch_config(loop_cfg)
+    cfg = rig.config(role=role, model=loop_cfg["model"], effort=loop_cfg["effort"],
                      permission_mode=loop_cfg["permission_mode"], max_turns=loop_cfg["max_turns"],
                      deadline_seconds=loop_cfg["deadline_seconds"], mcp_config=loop_cfg["mcp_config"],
-                     prompt_path=str(fleet / "prompts" / kyloop.PROMPTS["planner"]),
+                     prompt_path=str(fleet / "prompts" / kyloop.PROMPTS[role]),
                      env_names=list(kyloop.CHILD_ENV_NAMES), child_path=controller.child_path(),
-                     add_dirs=[str(rig.root)])
+                     add_dirs=[str(rig.root)], shell_canary="python3")
     out = controller.qualification_path(loop_cfg)
     assert controller.check_qualification(loop_cfg) == ["qualification_missing: %s" % out]
     r, rc, _ = rig.qualify(cfg, out=out, extra_env={"KY_RUN": str(run_dir), "KY_FLEET": str(fleet)})

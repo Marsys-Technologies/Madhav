@@ -1354,7 +1354,7 @@ class Controller:
                 "prompt_path": str(self.fleet / "prompts" / PROMPTS[self.role]),
                 "env_names": list(CHILD_ENV_NAMES), "child_path": self.child_path(), "extra_flags": [],
                 "disallowed_tools": [], "add_dirs": [str(self.root)], "intended_tools": list(QUALIFIED_TOOLS),
-                "denied_tools": []}
+                "denied_tools": [], "shell_canary": "python3"}
 
     def load_harness(self):
         """kyqualify — the launch-qualification harness — when it is installed beside this file; None when it is

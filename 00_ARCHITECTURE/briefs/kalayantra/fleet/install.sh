@@ -1245,8 +1245,8 @@ def tracker_plist(ctx):
     return plistlib.dumps(doc)
 
 
-def launchctl(ctx, *args):
-    return run([ctx.launchctl] + list(args), child_env(ctx), timeout=120)
+def launchctl(ctx, *args, timeout=120):
+    return run([ctx.launchctl] + list(args), child_env(ctx), timeout=timeout)
 
 
 def tracker_target(ctx):
@@ -1363,7 +1363,24 @@ def step_tracker(ctx):
             time.sleep(0.05)
         target = tracker_target(ctx)
         launchctl(ctx, "bootout", target)
-        r = launchctl(ctx, "bootstrap", "gui/%d" % ctx.uid, plist_path)
+        # bootout returns before launchd necessarily removes the old registration.
+        unload_deadline = time.monotonic() + min(30, ctx.wait_s)
+        while True:
+            remaining = unload_deadline - time.monotonic()
+            if remaining <= 0:
+                raise Failed(6, "the tracker service did not unload after the swap (waited %ds)" % min(30, ctx.wait_s))
+            unloaded = launchctl(ctx, "print", target, timeout=remaining)
+            if unloaded.rc is None:
+                raise Failed(6, "launchctl could not be run: %s" % unloaded.err)
+            if unloaded.rc != 0:
+                break
+            time.sleep(min(0.5, max(0, unload_deadline - time.monotonic())))
+        for attempt in range(3):
+            r = launchctl(ctx, "bootstrap", "gui/%d" % ctx.uid, plist_path)
+            if r.rc == 0:
+                break
+            if attempt < 2:
+                time.sleep(0.5)
         if r.rc != 0:
             raise Failed(6, "launchctl bootstrap of the tracker failed (exit %s): %s" % (r.rc, r.last_error()))
         launchctl(ctx, "enable", target)
@@ -1716,7 +1733,7 @@ def step_qualify(ctx):
             requalified = True
             evidence = os.path.join(work, "qualify-%s-%s" % (role, model))
             os.makedirs(evidence, exist_ok=True)
-            q = run(py + [qual, "qualify", "--config", cfg, "--context", "launchd", "--evidence-dir", evidence, "--out", receipt],
+            q = run(py + [qual, "qualify", "--config", cfg, "--context", "launchd", "--control", "--evidence-dir", evidence, "--out", receipt],
                     child_env(ctx), timeout=3 * 3600)
             if q.rc != 0 and not os.path.isfile(receipt):
                 raise Failed(9, "qualification of %s %s did not produce a receipt (exit %s): %s" % (role, model, q.rc, q.last_error()))

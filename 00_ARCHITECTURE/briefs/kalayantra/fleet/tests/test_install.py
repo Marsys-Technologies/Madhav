@@ -118,6 +118,8 @@ if argv[0] == "qualify":
     assert opt("--context") == "launchd"
     os.makedirs(opt("--evidence-dir"), exist_ok=True)
     result = control.get("qualify_result", "PASS")
+    if control.get("qualify_require_control") and "--control" not in argv:
+        result = "unknown"
     json.dump({"schema": "ky.qualification/1", "role": cfg["role"], "model": cfg["model"], "context": "launchd",
                "result": result}, open(opt("--out"), "w"))
     sys.exit(0 if result == "PASS" else 1)
@@ -280,6 +282,7 @@ STATE = "@STATE@"
 open("@CALLS@", "a").write(json.dumps({"tool": "launchctl", "argv": argv}) + "\n")
 control = json.load(open("@CONTROL@"))
 pidfile = os.path.join(STATE, "tracker.pid")
+pending = os.path.join(STATE, "bootout.pending")
 
 
 def current():
@@ -293,12 +296,21 @@ def current():
 
 verb = argv[0] if argv else ""
 if verb == "print":
+    if os.path.exists(pending):
+        remaining = int(open(pending).read())
+        if remaining:
+            open(pending, "w").write(str(remaining - 1))
+            print("%s = {\n\tstate = stopping\n}" % argv[1])
+            sys.exit(0)
+        os.unlink(pending)
     pid = current()
     if not pid:
         sys.stderr.write("Could not find service\n")
         sys.exit(113)
     print("%s = {\n\tstate = running\n\tpid = %d\n}" % (argv[1], pid))
 elif verb == "bootout":
+    if control.get("launchctl_bootout_pending_prints"):
+        open(pending, "w").write(str(control["launchctl_bootout_pending_prints"]))
     pid = current()
     if control.get("launchctl_bootout_noop"):
         sys.exit(0)
@@ -314,6 +326,12 @@ elif verb == "bootout":
         sys.exit(0)
     sys.exit(3)
 elif verb == "bootstrap":
+    if os.path.exists(pending):
+        sys.exit(5)
+    if control.get("launchctl_bootstrap_fail_once"):
+        control.pop("launchctl_bootstrap_fail_once")
+        json.dump(control, open("@CONTROL@", "w"))
+        sys.exit(5)
     if control.get("launchctl_bootstrap_rc"):
         sys.exit(control["launchctl_bootstrap_rc"])
     if control.get("launchctl_bootstrap_noop"):
@@ -1567,6 +1585,14 @@ def test_qualification_not_pass_means_no_receipt(w):
     assert not (w.run / "INSTALL_RECEIPT.json").exists()
 
 
+def test_qualification_runs_positive_controls_for_every_role(w):
+    w.control(qualify_require_control=True)
+    ok(w.install())
+    qualified = [c["argv"] for c in w.calls("kyqualify") if c["argv"][0] == "qualify"]
+    assert len(qualified) == 4 and all("--control" in argv for argv in qualified)
+    assert all(q["result"] == "PASS" for q in w.receipt()["qualifications"])
+
+
 def test_a_qualification_receipt_that_passes_the_check_is_not_redone(w):
     q = w.run / "QUALIFICATIONS"
     q.mkdir(parents=True)
@@ -1649,7 +1675,33 @@ def test_a_tracker_process_older_than_the_swap_is_not_the_installed_revision(w):
 
 def test_launchctl_bootstrap_failure_means_no_receipt(w):
     w.control(launchctl_bootstrap_rc=5)
-    refused(w.install(), 3, "launchctl")
+    refused(w.install(), 3, "FAILED step 6")
+    assert len([c for c in w.calls("launchctl") if c["argv"][0] == "bootstrap"]) == 3
+    assert not (w.run / "INSTALL_RECEIPT.json").exists()
+
+
+@pytest.mark.parametrize("control,attempts", [("launchctl_bootstrap_fail_once", 2),
+                                             ("launchctl_bootout_pending_prints", 1)])
+def test_tracker_restart_survives_launchctl_unload_race(w, control, attempts):
+    w.control(**{control: 2 if control.endswith("prints") else True})
+    ok(w.install(env={"KY_INSTALL_WAIT_S": "2"}))
+    calls = [c["argv"] for c in w.calls("launchctl")]
+    bootout = next(i for i, argv in enumerate(calls) if argv[0] == "bootout")
+    bootstrap = next(i for i, argv in enumerate(calls) if argv[0] == "bootstrap")
+    assert len([argv for argv in calls if argv[0] == "bootstrap"]) == attempts
+    assert len([argv for argv in calls[bootout + 1:bootstrap] if argv[0] == "print"]) >= (
+        3 if control.endswith("prints") else 1)
+    rc = w.receipt()
+    assert rc["tracker_revision"]["pid"] == w.tracker_pid() and rc["tracker_revision"]["health"]["ok"] is True
+    newest = max(p.stat().st_mtime for p in (w.root / "tracker_live").rglob("*.py"))
+    started = time.mktime(time.strptime(rc["tracker_revision"]["process_start"], "%a %b %d %H:%M:%S %Y"))
+    assert started >= int(newest) + 1
+
+
+def test_tracker_unload_that_never_finishes_fails_step_6_without_bootstrap(w):
+    w.control(launchctl_bootout_pending_prints=1000)
+    refused(w.install(env={"KY_INSTALL_WAIT_S": "1"}), 3, "FAILED step 6")
+    assert not [c for c in w.calls("launchctl") if c["argv"][0] == "bootstrap"]
     assert not (w.run / "INSTALL_RECEIPT.json").exists()
 
 
