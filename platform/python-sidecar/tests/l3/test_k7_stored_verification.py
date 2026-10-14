@@ -46,7 +46,7 @@ def test_darshana_persists_single_despite_high_scores_and_roots():
     c = Capture([dict(convergence_id=1, signal_id=None, mode='A', peak_date=date(2026,10,9),
         window_start=date(2026,10,9), window_end=date(2026,10,10), convergence_score=.99,
         confidence_label='high', orb_strength=.99, rarity_years=10)])
-    KaKalaDarshanaWriter().run(SimpleNamespace(db_conn=c, config={'chart_id':'chart'}))
+    KaKalaDarshanaWriter().run(SimpleNamespace(db_conn=c, build_id='build', config={'chart_id':'chart'}))
     assert bound_rows(c, 'kala_darshana')[0].get('verification_pass_status') == UNVERIFIED_DEFAULT
 
 
@@ -73,7 +73,7 @@ def test_contact_storage_overrides_a_supplied_verified_label():
 def test_jivana_persists_single_for_chapters_without_source_verification():
     from pipeline.orchestrator.writers.ka_jivana_parva import KaJivanaParvaWriter
     c = Capture([dict(lord_graha='Saturn', start_date=date(2020,1,1), end_date=date(2030,1,1),level_n=1)])
-    KaJivanaParvaWriter().run(SimpleNamespace(db_conn=c, config={'chart_id':'chart', 'birth_params':{'datetime_iso':'2000-01-01T00:00:00Z'}}))
+    KaJivanaParvaWriter().run(SimpleNamespace(db_conn=c, build_id='build', config={'chart_id':'chart', 'birth_params':{'datetime_iso':'2000-01-01T00:00:00Z'}}))
     assert bound_rows(c, 'kala_jivana_parva')[0].get('verification_pass_status') == UNVERIFIED_DEFAULT
 
 

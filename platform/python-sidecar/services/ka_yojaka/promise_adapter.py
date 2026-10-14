@@ -16,7 +16,7 @@ from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
 
 from services.gochara_rules.registry import YOGA_EVENT_MAP
 from services.kala_core.promise import (
-    Conclusion, Defeat, EdgePolarity, FactState, Mechanism, MechanismRoute,
+    Conclusion, Defeat, EdgePolarity, EventRelation, FactState, Mechanism, MechanismRoute,
     PromiseEdge, PromiseGraph, PromiseNode,
     UnassessedReason,
 )
@@ -143,7 +143,9 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                     # (I) INTERPRETATION: use only the existing explicit target
                     # identity and sourced binding relation; no target fallback.
                     target_id=target['identity'] if target else None,
-                    valence=EdgePolarity(binding.relation)))
+                    valence=(None if binding.relation == EventRelation.CONDITIONS else
+                             EdgePolarity(binding.relation)),
+                    event_relation=EventRelation(binding.relation)))
                 graph_nodes = [asdict(graph.nodes[n]) for n in (formation_node, *participants)]
             output.append(dict(
                 mechanism_id=mechanism_id, conclusion_id=conclusion_id,
@@ -173,7 +175,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
         specs = firing.get("bhanga_rules_jsonb") or []
         grounds = firing.get("grounds_jsonb") or {}
         evidence = grounds.get("cancellation_evidence", []) if isinstance(grounds, dict) else []
-        applied = False
+        retained = False
         for spec in specs if isinstance(specs, list) else []:
             if not isinstance(spec, dict) or not all(spec.get(k) for k in (
                 "rule_id", "rule_version", "source_locator", "target_yoga_canonical_id", "target_event_class_id")):
@@ -187,17 +189,19 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             cid = f"{ayan}:{spec['target_yoga_canonical_id']}:{spec['target_event_class_id']}:conclusion"
             target = by_conclusion.get(cid)
             refs = _ids(records[0].get("fact_ids"))
-            if not target or target["conclusion_id"] not in graphs[ayan].conclusions or not refs or not set(refs) <= available.get(ayan, {}).keys():
+            if not target or target["conclusion_id"] not in graphs[ayan].conclusions:
                 continue
-            # (I) INTERPRETATION: identify each applied evidence row by its
-            # L1 firing id, target conclusion, kind and sourced rule id.
+            # Retain named evidence even when its roots are missing: the graph
+            # earns defeat only after grounding, otherwise it reports unresolved.
+            # (I) INTERPRETATION: identify each evidence row by its L1 firing id,
+            # target conclusion, kind and sourced rule id.
             defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"],
                 defeat_id=f"ga_yoga_firings:{firing['id']}:{cid}:{spec['kind']}:{spec['rule_id']}")
             graphs[ayan].add_defeat(defeat)
             target[spec["kind"]].append({**asdict(defeat), "fact_ids": list(refs),
                 "rule_version": spec["rule_version"], "source_locator": spec["source_locator"]})
-            applied = True
-        if not applied and canonical != "neecha_bhanga_raja_yoga":
+            retained = True
+        if not retained and canonical != "neecha_bhanga_raja_yoga":
             for row in output:
                 if row["ayanamsha_id"] == ayan and row["canonical_id"] == canonical:
                     row["cancellation_unqualified"].append("missing_sourced_target_or_evidence")
@@ -210,6 +214,8 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             if result.null_reason is not None:
                 row['effective_reason'] = dict(null_reason=result.null_reason.value,
                     conclusion_ids=list(result.conclusion_ids), defeat_ids=list(result.defeat_ids))
+                if result.null_reason is UnassessedReason.MISSING_DEFEAT_FACTS:
+                    row['effective_reason']['missing_fact_ids'] = list(result.missing_fact_ids)
                 row['null_reason'] = result.null_reason.value
                 row['judgment_flags'].append(result.null_reason.value)
             row["scored"] = row["effective_state"] == "in_force"
