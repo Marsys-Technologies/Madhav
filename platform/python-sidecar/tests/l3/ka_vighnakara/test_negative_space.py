@@ -176,6 +176,78 @@ def test_contract_survivors_are_not_invented():
     assert artifact['live_bindings']['trigger_mechanisms']['survivors'] is None
 
 
+def _writer_lint_nodes(tree, legacy):
+    """Keep legacy exemptions only for bodies unreachable from the new path."""
+    definitions = {node.name: node for node in tree.body
+                   if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))}
+    classes = {name: node for name, node in definitions.items() if isinstance(node, ast.ClassDef)}
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = node
+
+    def method_targets(owner, name, seen=None):
+        seen = set() if seen is None else seen
+        if owner in seen or owner not in classes:
+            return
+        seen.add(owner)
+        for member in classes[owner].body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == name:
+                yield member
+        # (I) INTERPRETATION: inspect all matching ancestor implementations,
+        # including overrides; this lint conservatively over-approximates dispatch.
+        for base in classes[owner].bases:
+            if isinstance(base, ast.Name):
+                yield from method_targets(base.id, name, seen)
+
+    writer = classes['KaVighnakaraWriter']
+    run = next(node for node in writer.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
+    fallback = run.body[-1]
+    authorized_fallback = ast.dump(ast.parse('return super().run(ctx)').body[0])
+    pending = [(node, writer.name) for node in writer.body]
+    visited, reachable, methods = set(), set(), set()
+    while pending:
+        node, owner = pending.pop()
+        key = (id(node), owner)
+        if key in visited:
+            continue
+        visited.add(key)
+        if node is fallback and ast.dump(node) == authorized_fallback:
+            continue
+        if isinstance(node, ast.ClassDef):
+            pending.extend((child, node.name) for child in node.body)
+            continue
+        if isinstance(node, ast.Name) and node.id in definitions and node.id not in reachable:
+            reachable.add(node.id)
+            pending.append((definitions[node.id], None))
+        if isinstance(node, ast.Attribute):
+            receiver = node.value
+            if isinstance(receiver, ast.Name) and receiver.id in {'self', 'cls'} and owner:
+                owners = [owner]
+            elif isinstance(receiver, ast.Name) and receiver.id in classes:
+                owners = [receiver.id]
+            elif isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name) and receiver.func.id == 'super' and owner:
+                owners = [base.id for base in classes[owner].bases if isinstance(base, ast.Name)]
+            else:
+                # (I) INTERPRETATION: an untyped receiver may be any local helper
+                # class; do not silently omit inherited storage/helper methods.
+                owners = classes
+            for receiver_owner in owners:
+                for method in method_targets(receiver_owner, node.attr):
+                    methods.add(method)
+                    pending.append((method, receiver_owner))
+            # A named base.method reference reaches that method, not the whole
+            # compatibility class (whose unrelated methods remain exempt).
+            if isinstance(receiver, ast.Name) and receiver.id in classes:
+                continue
+        pending.extend((child, owner) for child in ast.iter_child_nodes(node))
+    return [node for node in tree.body
+            if not isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+            or node.name not in legacy or node.name in reachable] + list(methods)
+
+
 def test_no_downstream_reads_or_multiplier_in_new_path():
     api()
     paths=list((ROOT/'services/ka_vighnakara').rglob('*.py'))+[
@@ -195,25 +267,7 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
                 '_lon_to_sign', '_jd_from_date', '_detect_all', '_check_malefic_transit',
                 '_check_panchanga_obstruction', '_check_gandanta', '_check_papakartari',
                 '_check_combustion', '_detect_obstructions'}
-            definitions = {node.name:node for node in tree.body
-                           if isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))}
-            for node in tree.body:
-                if isinstance(node,(ast.Assign,ast.AnnAssign)):
-                    targets = node.targets if isinstance(node,ast.Assign) else [node.target]
-                    for target in targets:
-                        if isinstance(target,ast.Name):
-                            definitions[target.id] = node
-            pending = list(definitions['KaVighnakaraWriter'].body)
-            reachable = set()
-            while pending:
-                for node in ast.walk(pending.pop()):
-                    if (isinstance(node,ast.Name) and node.id in definitions
-                            and node.id not in reachable):
-                        reachable.add(node.id)
-                        pending.append(definitions[node.id])
-            tree.body = [node for node in tree.body
-                         if not isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))
-                         or node.name not in legacy or node.name in reachable]
+            tree.body = _writer_lint_nodes(tree, legacy)
         for node in ast.walk(tree):
             if isinstance(node,ast.Constant) and isinstance(node.value,str):
                 assert not prohibited.search(node.value), (path,node.lineno)
@@ -393,5 +447,154 @@ def test_reachable_transitive_or_legacy_helper_cannot_escape_lint(monkeypatch, c
             source = source.replace(marker, marker+'\n            '+call) + helper
         return source
     monkeypatch.setattr(Path, 'read_text', mutated)
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('dispatch', ['inherited', 'transitive', 'super_attribute'])
+def test_inherited_reachable_helper_cannot_escape_lint(monkeypatch, dispatch):
+    """K3-B5 reviewer oracle: execute the read, then require lint rejection."""
+    from pipeline.orchestrator.writers import WriterResult
+    from services.ka_vighnakara import storage
+
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    call = ('super()._fetch_combustion_orbs(ctx.db_conn)'
+            if dispatch == 'super_attribute' else 'self._fetch_combustion_orbs(ctx.db_conn)')
+    tree = ast.parse(source.replace(marker, marker+'\n            '+call))
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    helper = next(node for node in legacy.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_fetch_combustion_orbs')
+    read = ast.parse('return conn.execute("SELECT * FROM kala_field")').body
+    methods = [helper]
+    if dispatch == 'transitive':
+        helper.body = ast.parse('return self._review_inner(conn)').body
+        inner = ast.parse('def _review_inner(self, conn):\n    pass').body[0]
+        inner.body = read
+        legacy.body.append(inner)
+        methods.append(inner)
+    else:
+        helper.body = read
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+
+    # Run the real fixture branch with only candidate storage replaced and a
+    # recording connection; neither this helper nor its transitive call is mocked.
+    registered = next(node for node in tree.body
+                      if isinstance(node, ast.ClassDef) and node.name == 'KaVighnakaraWriter')
+    registered.decorator_list = []
+    test_legacy = ast.ClassDef(name='_LegacyKaVighnakaraWriter', bases=[], keywords=[],
+                              body=methods, decorator_list=[])
+    executable = ast.fix_missing_locations(ast.Module(body=[test_legacy, registered], type_ignores=[]))
+    namespace = {'WriterResult': WriterResult}
+    exec(compile(executable, '<inherited fixture mutant>', 'exec'), namespace)
+    calls = []
+    monkeypatch.setattr(storage, 'write_fixture_candidate', lambda ctx, inputs: 0)
+    ctx = SimpleNamespace(dry_run=False, db_conn=SimpleNamespace(execute=calls.append),
+                          config={'negative_space_fixture_inputs': []})
+    assert namespace['KaVighnakaraWriter']().run(ctx).rows_inserted == 0
+    assert calls == ['SELECT * FROM kala_field']
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('call', [
+    'self._fetch_combustion_orbs(ctx.db_conn)',
+    'super()._fetch_combustion_orbs(ctx.db_conn)',
+    '_LegacyKaVighnakaraWriter._fetch_combustion_orbs(self, ctx.db_conn)',
+])
+def test_clean_inherited_helper_keeps_unrelated_legacy_methods_exempt(monkeypatch, call):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    tree = ast.parse(source.replace(marker, marker+'\n            '+call))
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    helper = next(node for node in legacy.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_fetch_combustion_orbs')
+    helper.body = ast.parse('return {}').body
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('call', [
+    '_review_storage(ctx)',
+    '_review_storage_callback(ctx)',
+])
+def test_storage_helper_hierarchy_and_bound_method_are_inspected(monkeypatch, call):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    # The read lives two bases away in the second inheritance branch; the
+    # intermediate inherited method uses self to reach an exempt global helper.
+    source = source.replace(marker, marker+'\n            '+call) + '''
+
+class _ReviewEmpty:
+    pass
+
+class _ReviewStorageAncestor(_LegacyKaVighnakaraWriter):
+    def prepare(self, ctx):
+        return self._review_read(ctx)
+
+class _ReviewStorageMiddle(_ReviewStorageAncestor):
+    pass
+
+class _ReviewStorage(_ReviewEmpty, _ReviewStorageMiddle):
+    pass
+
+def _review_storage(ctx):
+    helper = _ReviewStorage()
+    return helper.prepare(ctx)
+
+def _review_storage_callback(ctx):
+    callback = _ReviewStorage().prepare
+    return callback(ctx)
+'''
+    tree = ast.parse(source)
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    legacy.body.append(ast.parse('def _review_read(self, ctx):\n    return _detect_obstructions(ctx)').body[0])
+    detector = next(node for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == '_detect_obstructions')
+    detector.body = ast.parse('return peak_date.db_conn.execute("SELECT * FROM kala_field")').body
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+    classes = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name.startswith('_Review')]
+    test_legacy = ast.ClassDef(name='_LegacyKaVighnakaraWriter', bases=[], keywords=[],
+                              body=[legacy.body[-1]], decorator_list=[])
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name in {'_review_storage', '_review_storage_callback'}]
+    namespace = {}
+    executable = ast.fix_missing_locations(ast.Module(body=[detector, test_legacy]+classes+functions,
+                                                       type_ignores=[]))
+    exec(compile(executable, '<storage helper mutant>', 'exec'), namespace)
+    calls = []
+    namespace[call.split('(')[0]](SimpleNamespace(db_conn=SimpleNamespace(execute=calls.append)))
+    assert calls == ['SELECT * FROM kala_field']
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+def test_only_final_legacy_fallback_is_exempt(monkeypatch):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    mutated = source.replace(marker, marker+'\n            super().run(ctx)')
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
     with pytest.raises(AssertionError):
         test_no_downstream_reads_or_multiplier_in_new_path()
