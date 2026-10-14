@@ -57,6 +57,10 @@ from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
 from panchang_engine.swiss_state import serialized_swiss_state
+from panchang_engine.swiss_thread_scope import prepare_swiss_thread
+from pipeline.transit_search import _resolved_ephemeris_path
+
+import swisseph as _swisseph
 
 if TYPE_CHECKING:
     from services.gochara_v3.context import ClassContext
@@ -200,6 +204,14 @@ def compute(
     Brihat Parashara Hora Shastra text. This rule is applied here as a
     candidate mechanism with explicit "later tradition" acknowledgement.
     """
+    # C26: on Linux the Swiss sidereal mode and ephemeris path are PER-THREAD
+    # C state — a pool thread that has not set its own mode computes Rahu in
+    # the default ayanamsha (Fagan/Bradley, ~0.88° off Lahiri), flipping the
+    # 5/7/9 aspected signs. This function holds SWISS_STATE_LOCK for its whole
+    # body (@serialized_swiss_state); prepare the calling thread before the
+    # FLG_SIDEREAL calc_ut below (idempotent; no value change on macOS where
+    # the state is process-global). Path/mode as transit_search._get_planet_pos.
+    prepare_swiss_thread(_resolved_ephemeris_path(), _swisseph.SIDM_LAHIRI)
     if not enabled:
         return MechanismResult(
             modifier=1.0,

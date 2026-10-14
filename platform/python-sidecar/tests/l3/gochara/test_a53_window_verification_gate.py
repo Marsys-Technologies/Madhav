@@ -56,7 +56,7 @@ def _libra_edges(path):
             if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
 
 
-def _materialise(w, path, agents_in_sign, with_natal=False):
+def _materialise(w, path, agents_in_sign, with_natal=False, house_for=None):
     """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes.
     `with_natal` adds the path's natal-fact edges (P3's māraka testimony rows) — a COMPLETE grain (R10-1)."""
     edges = [e for e in _libra_edges(path) if e.agent in agents_in_sign]
@@ -73,7 +73,7 @@ def _materialise(w, path, agents_in_sign, with_natal=False):
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         return rs.materialise_record_grain(
             store, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=path, edges=edges,
-            horizon=(H0, H1), position_at=position_at, house_for=_lagna_house, sky_convention_id=sky,
+            horizon=(H0, H1), position_at=position_at, house_for=house_for or _lagna_house, sky_convention_id=sky,
             source_fact_ids=["fact-1"], chart=CHART, dasha_rows_for=rows_for)
 
 

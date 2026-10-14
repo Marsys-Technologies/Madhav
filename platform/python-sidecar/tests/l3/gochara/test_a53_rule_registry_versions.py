@@ -88,7 +88,11 @@ def test_no_row_is_selected_by_the_global_version_constant(monkeypatch):
 
 
 def test_the_default_binding_stays_at_1_0_0_until_the_successors_are_accepted():
-    assert rr.BOUND_PATH_REFS == tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
+    # the 1.1.0 successors (AM-13 / AM-18) are still NOT bound, and the DEFAULT selection is still 1.0.0. What IS bound
+    # beside it since ND-H-20261005 is the P1/P3/P4 @ 1.2.0 set, selected per class only (test_nd_h_builder_tiers).
+    assert rr.BOUND_PATH_REFS == (tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
+                                  + tuple((p, "1.2.0") for p in ("P1", "P3", "P4")))
+    assert rr.SELECTED_PATH_REFS == tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
     assert all(isinstance(r, tuple) and len(r) == 2 for r in
                rr.BOUND_PATH_REFS + rr.BOUND_FACTOR_REFS + rr.BOUND_PREDICATE_REFS)
     assert not set(SUCCESSOR_PATHS) & set(rr.BOUND_PATH_REFS)
@@ -186,7 +190,8 @@ def test_the_real_schema_admits_the_actual_flat_rows_and_the_binder_reads_them_b
     bind_successors(monkeypatch)
     store = rr.RuleRegistryStore(pg)
     counts = store.seed()
-    assert counts["paths"] == 9 and counts["seals"] == 9                # P1..P5 @1.0.0 + P2..P5 @1.1.0
+    # P1..P5 @1.0.0 + P1/P3/P4 @1.2.0 (ND-H-20261005) + P2..P5 @1.1.0 (bound by this test only)
+    assert counts["paths"] == 12 and counts["seals"] == 12
     rows = store.bound_factor_rows("P3", "1.1.0")
     by_id = {r["factor_id"]: r for r in rows}
     assert set(by_id) == {"activity_kernel", "graduated_drishti"}

@@ -6,6 +6,10 @@ import threading
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the R16 amendments (verifier identity and input pins) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import dasha_read
 from services.gochara_kernel import input_vector_verifier as ivv
 from services.gochara_kernel import inventory_verifier as inv
@@ -67,8 +71,9 @@ def test_a_second_build_of_any_tier_refuses_the_writer_and_the_verifier_by_name(
     with pytest.raises(dasha_read.DashaBuildRefused, match="dasha_builds_mixed") as exc:
         dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
     assert exc.value.code == "dasha_builds_mixed" and isinstance(exc.value, dasha_read.DD.DashaReadConflict)
-    with pytest.raises(RuntimeError, match="dasha_builds_mixed"):
-        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)
+    with pytest.raises(RuntimeError, match="dasha_builds_mixed"):          # G12: the verifier's INDEPENDENT derivation runs at CAPTURE (against live L1)
+        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN, against_live=True)
+    inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)        # ... and the built generation, owning its copy, still verifies
 
 
 def test_a_null_build_id_counts_as_a_second_build(built):
@@ -87,7 +92,8 @@ def test_a_single_build_that_is_not_the_pinned_one_is_refused_by_both_sides(buil
     with pytest.raises(dasha_read.DashaBuildRefused, match="dasha_build_not_pinned"):
         dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
     with pytest.raises(RuntimeError, match="dasha_build_not_pinned"):
-        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)
+        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN, against_live=True)
+    inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)        # the generation's own copy is unaffected by a later rebuild
 
 
 def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):

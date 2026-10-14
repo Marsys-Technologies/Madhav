@@ -20,6 +20,10 @@ from pathlib import Path
 
 import pytest
 
+# G8: ONE test here (the default verification control) builds a one-class world and expects it to reach the input check; the class census (which
+# refuses it earlier) is not what it is about, so that test alone opts out BY NAME (conftest.g8_census_opt_out; guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "the default verification control builds a deliberate one-class world and must reach the input check past the census"
+
 from pipeline.orchestrator.writers import ContextSpec, SubStep
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import input_vector as iv
@@ -324,6 +328,7 @@ class _Reached(Exception):
     pass
 
 
+@pytest.mark.usefixtures("g8_census_opt_out")
 def test_the_default_control_passes_every_refusal_before_the_input_check_and_a_slice_does_not(template, monkeypatch):
     """Codex: the default control accepted unrelated early refusals, so a slice refusal could hide behind another one. Both
     candidates are built the same way; `verify_inputs` (the first stage AFTER the sealed, slice and completeness refusals) is a

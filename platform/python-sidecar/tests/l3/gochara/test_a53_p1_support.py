@@ -52,9 +52,15 @@ def world(monkeypatch, tmp_path):
     yield from _world(monkeypatch, tmp_path, faithful=False)
 
 
-def _world(monkeypatch, tmp_path, faithful):
+@pytest.fixture()
+def legacy_world(monkeypatch, tmp_path):
+    """The same world on a LEGACY snapshot (migration 1305 not applied): the verifier reads the pinned periods from live L1, as before G12."""
+    yield from _world(monkeypatch, tmp_path, faithful=False, apply_1305=False)
+
+
+def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
     import psycopg
-    admin, name, dsn = create_am5_database("p1s", faithful=faithful)
+    admin, name, dsn = create_am5_database("p1s", faithful=faithful, apply_1305=apply_1305)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
@@ -69,6 +75,45 @@ def _world(monkeypatch, tmp_path, faithful):
         with conn.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
 
+    def _fill_to_the_contract():
+        """G12 (1305): a snapshot is taken only over an L1 that satisfies the database's REQUIRED-SCOPE contract: at each level MD/AD/PD the periods are contiguous and cover the
+        horizon, and every AD/PD has a parent at the level above that CONTAINS it (hierarchy). These helpers used to leave honest GAPS between the periods a test names and
+        insert them parentless; in a copy-bearing world they are given their parents (the MD for an AD, the AD containing a PD) and the uncovered parts of levels 2 and 3 are
+        filled with a filler lord (Ketu) INSIDE the right parent, so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy
+        world (1305 not applied) keeps the gaps and the parentless rows."""
+        if not apply_1305:
+            return
+        md = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1 ORDER BY start_iso LIMIT 1").fetchone()[0]
+        conn.execute("UPDATE public.chart_dashas SET parent_row_id = %s WHERE level_n = 2 AND parent_row_id IS NULL", (md,))
+        counter = [0]
+
+        def cover(level, segments):
+            for lo, hi, parent in segments:
+                rows = conn.execute("SELECT start_iso, end_iso FROM public.chart_dashas WHERE level_n = %s AND start_iso < %s AND end_iso > %s ORDER BY start_iso",
+                                    (level, hi, lo)).fetchall()
+                cursor, fillers = lo, []
+                for a, b in rows:
+                    if a > cursor:
+                        fillers.append((cursor, min(a, hi)))
+                    cursor = max(cursor, b)
+                    if cursor >= hi:
+                        break
+                if cursor < hi:
+                    fillers.append((cursor, hi))
+                for a, b in fillers:
+                    counter[0] += 1
+                    conn.execute(
+                        "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                        " verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,%s,'Ketu',%s,%s,%s,'two_pass_verified')",
+                        (str(uuid.UUID(int=1000 + counter[0])), CHART_ID, level, parent, a, b, base_build()))
+
+        cover(2, [(H0, H1, md)])
+        conn.execute("UPDATE public.chart_dashas c SET parent_row_id = (SELECT p.dasha_row_id FROM public.chart_dashas p WHERE p.level_n = 2 AND p.start_iso <= c.start_iso"
+                     " AND p.end_iso >= c.end_iso ORDER BY p.start_iso LIMIT 1) WHERE c.level_n = 3 AND c.parent_row_id IS NULL")
+        ads = conn.execute("SELECT dasha_row_id, greatest(start_iso, %s), least(end_iso, %s) FROM public.chart_dashas WHERE level_n = 2 AND start_iso < %s AND end_iso > %s"
+                           " ORDER BY start_iso", (H0, H1, H1, H0)).fetchall()
+        cover(3, [(a, b, pid) for pid, a, b in ads])
+
     def set_periods(venus):
         """Make Venus run exactly `venus` = [(level, start, end)]; the stub's other level-2/3 rows are removed
         (their gaps become honest `missing_inputs` ledger intervals; overlapping rows would be refused)."""
@@ -79,6 +124,7 @@ def _world(monkeypatch, tmp_path, faithful):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Venus',%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, a, b, base_build()))
+        _fill_to_the_contract()
 
     def set_lord_periods(rows):
         """rows = [(lord, level, start, end)]: replace ALL level-2/3 rows by exactly these (any lord)."""
@@ -89,6 +135,7 @@ def _world(monkeypatch, tmp_path, faithful):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,%s,%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, lord.title(), a, b, base_build()))
+        _fill_to_the_contract()
 
     def boot():
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP,
@@ -237,8 +284,19 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
                              event_class="marriage") == {"records": 1, "restricted": 0}
 
 
-def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(world):
+def test_a_later_change_of_live_periods_does_not_unverify_a_generation_that_owns_its_copy(world):
+    """G12: the verifier reads the periods the SNAPSHOT owns; a later L1 change is drift (reported by staleness), never a failure to verify."""
     w = world
+    w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    w.conn.execute("UPDATE public.chart_dashas SET end_iso = %s WHERE dasha_row_id = %s", (_t(1, 18), str(uuid.UUID(int=900))))
+    verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")          # still verifies, from the copy
+
+
+def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(legacy_world):
+    w = legacy_world
     w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])

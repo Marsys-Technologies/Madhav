@@ -22,7 +22,7 @@ such as `1e-05` would fail the CHECK). No quantization happens here and none eve
 the six-decimal rule of earlier drafts is WITHDRAWN (IDENTITY_CANONICAL_BYTES_CONTRACT §3,
 steward M20261001T223444-51ba) — `198.5200001` and `198.5200004` are two different
 objects. What replaces it is a ROUND-TRIP GUARD: the L1 numeric must survive the trip
-through a float64 exactly — `Decimal(repr(float(x))) == x.normalize()` — or the builder
+through a float64 exactly — `Decimal(repr(float(x))) == x` (exact Decimal equality) — or the builder
 REFUSES it; an L1 value with more digits than a float64 carries would otherwise lose
 precision silently before it was hashed. (`point:198.5200` and `point:198.52` are the same
 object: trailing zeros are never written.)
@@ -73,7 +73,7 @@ def span_sign_name(target: str) -> str:
 
 def assert_float64_exact(value) -> float:
     """The §3 round-trip guard: return `float(value)` iff the value is EXACTLY what that
-    float64 carries — `Decimal(repr(float(x))) == x.normalize()` — else raise.
+    float64 carries — `Decimal(repr(float(x))) == x` (exact Decimal equality) — else raise.
 
     A Python float passes trivially (it IS a float64). A Decimal / numeric-string / int that
     needs more digits than a float64 holds is refused — never quantised, never rounded."""
@@ -85,7 +85,7 @@ def assert_float64_exact(value) -> float:
         return value
     exact = Decimal(str(value)) if not isinstance(value, Decimal) else value
     lam = float(exact)
-    if Decimal(repr(lam)) != exact.normalize():
+    if Decimal(repr(lam)) != exact:          # Decimal equality is EXACT (never context-rounded, unlike .normalize(), which rounds to 28 digits)
         raise ValueError(
             f"longitude {value!r} is not exactly representable as a float64 "
             f"(it would hash as {lam!r}): refusing — no quantisation "

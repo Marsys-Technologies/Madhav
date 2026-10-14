@@ -92,11 +92,20 @@ IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4", "P5")
 
 #: Frame kinds per class row (P3 truth table; bereavement (father) counts
 #: from the 9th — spec §2.2). Everything else is lagna-frame.
-_CLASS_AFFECTED_PERSON = {"bereavement": "father"}
+#: ND-H-20261005 item 5: parental_event is the FATHER row (the mother row is registered, unbuilt —
+#: `registry.parental_person_row` refuses it; a mother-tagged event never resolves as father).
+_CLASS_AFFECTED_PERSON = {"bereavement": "father", "parental_event": "father"}
 
 _NODE_AGENTS = frozenset({"Rahu", "Ketu"})
 
 _OBJECT_KIND = {"span": "house_span", "point": "degree_point"}
+
+
+class TierIdentityCollision(ValueError):
+    """Two edges of one grain from DIFFERENT tiers have the same record identity (e.g. the lord of a CORE house is
+    also the lord of the DVI house: one natal point, one agent, one relation, role `lord`). Storing both would let
+    `ON CONFLICT DO NOTHING` silently drop one — refused by name. Which tier the shared identity belongs to (or
+    whether the tier joins the key) is NOT ruled: a steward point, never decided here."""
 
 
 @dataclass(frozen=True)
@@ -129,6 +138,10 @@ class RecordEdge:
     # unchanged), because no existing column can carry it (`dasha_lord` has no frame arg; the frame is the lagna).
     period_anchor_lord: str | None = None
     period_anchor_level: str | None = None
+    # ND-H-20261005: the TIER of the class row this edge was enumerated from ('core' | 'dvi' | 'support'), None on
+    # every pre-ND-H edge. Descriptive only — NOT part of the natural key (identity bytes are unchanged), read by
+    # the admitted-day-share report (P4 with / without DVI; the K-B contribution is `object_role == 'karaka'`).
+    tier: str | None = None
 
     def natural_key(self, *, chart_id: str, generation: str,
                     contact_id: str | None,
@@ -189,35 +202,55 @@ def _path_citation(path_id: str, rule_version: str) -> tuple[str | None, str | N
     return text, page
 
 
-def _class_frame(event_class: str) -> tuple[str, str | None]:
-    row_key = ROW_MEMBERSHIP[event_class]
-    row = P3_TRUTH_TABLE.get(row_key) if row_key not in (None, "unknown") else None
-    if row and "H_anchor_house" in row:
-        return "bhavat_bhavam", str(row["H_anchor_house"])
-    return "lagna", None
+def _class_frame(event_class: str, rule_version: str = RULE_VERSION) -> tuple[str, str | None]:
+    return rules_registry.class_frame(event_class, rule_version)
+
+
+def _class_citation(event_class: str, path_id: str, rule_version: str) -> tuple[str | None, str | None]:
+    """An edge's (source_text, source_page). An ND-H class row is a RULED derivation: it names its ruling and its
+    own premise loci (never the path's verse locator — the event rule is derived, the loci cite meanings)."""
+    row = rules_registry.nd_h_row(event_class, rule_version)
+    if row is None:
+        # a class that keeps its CITED H at an ND version (father-bereavement under ND-P2 rule 3) keeps the cited
+        # base row's citation — the 1.2.0 path row's text names a ruling these edges do not stand on
+        cited = RULE_VERSION if rule_version in rules_registry.ND_VERSIONS else rule_version
+        return _path_citation(path_id, cited)
+    return (f"ruling {row['ruling_ref']}; premises: " + "; ".join(row["sources"]), None)
 
 
 def enumerate_p3_edges(event_class: str, chart: dict,
                        convention_id: str | None = None, *,
-                       rule_version: str = RULE_VERSION, citation_path: str = "P3") -> list[RecordEdge]:
+                       rule_version: str = RULE_VERSION, citation_path: str = "P3",
+                       dvi_agents: tuple[str, ...] = ()) -> list[RecordEdge]:
     """P3 (S-03): per agent, residence + aspect edges on each h ∈ H, and
     conjunction + aspect edges on each ℓ ∈ L(H)'s natal point; plus the
     māraka-of-house TESTIMONY rows (D-PADMIT). H unknown ⇒ [] (the class's
-    admission is unqualified, recorded by the caller — never false)."""
+    admission is unqualified, recorded by the caller — never false).
+
+    Tier-aware (ND-H-20261005, FB-39). H is the class row's CORE tier at `rule_version`; every house / lord edge
+    carries the STAMP OF ITS ROW (`registry.class_row_stamp` — never a constant here). K-B: the natal luminary
+    kārakas of the class are degree-point targets (`object_role karaka`) for Jupiter/Saturn (conjunction, aspect)
+    and Rāhu/Ketu (conjunction); fast agents never. SUPPORT members are outside H and are not enumerated here
+    (`support_annotation_edges`). DVI members admit NOTHING in P3: they are emitted only for the agents named in
+    `dvi_agents`, which P4's enumerator alone passes (Jupiter, Saturn) — P3's own call leaves it empty."""
     cid = convention_id or convention_id_for()
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
-    H = signature_houses(event_class, chart)
+    H = signature_houses(event_class, chart, rule_version)
     if H is None:
         return []
-    L = signature_lords(event_class, chart) or frozenset()
-    frame_kind, frame_arg = _class_frame(event_class)
+    frame_kind, frame_arg = _class_frame(event_class, rule_version)
     person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
-    text, page = _path_citation(citation_path, rule_version)
+    text, page = _class_citation(event_class, citation_path, rule_version)
+    stamp = rules_registry.class_row_stamp(event_class, rule_version)
+    tiers = rules_registry.tier_signs(event_class, chart, rule_version)
+    # K-B targets, each with its own ruling stamp (ND-H luminary kārakas; ND-P2 rule 3 natal Sun for bereavement)
+    kb = rules_registry.kb_targets(event_class, rule_version)
     edges: list[RecordEdge] = []
     natal = chart["natal"]
-    for agent, agent_lc in _AGENTS:
-        for h in sorted(H):
+
+    def emit(agent: str, agent_lc: str, houses, tier: str | None) -> None:
+        for h in sorted(houses):
             for relation in ("residence", "aspect"):
                 if relation == "aspect" and agent in _NODE_AGENTS:
                     continue  # N-14: nodes cast no dṛṣṭi
@@ -230,10 +263,10 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                         canonical_target=_span_target(h), convention_id=cid),
                     object_kind="house_span", object_role="signature_house",
                     path_id="P3", rule_version=rule_version,
-                    provenance="verse_cited", operator_role="scored",
-                    ruling_ref=None, source_text=text, source_page=page,
-                    transit=True))
-        for lord in sorted(L):
+                    provenance=stamp["provenance"], operator_role=stamp["operator_role"],
+                    ruling_ref=stamp["ruling_ref"], source_text=text, source_page=page,
+                    transit=True, tier=tier))
+        for lord in sorted(frozenset(SIGN_LORDS[h] for h in houses)):
             lam = natal.get(lord)
             if lam is None:
                 continue   # operand missing ⇒ named upstream, never solved
@@ -249,12 +282,86 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                         canonical_target=_point_target(lam), convention_id=cid),
                     object_kind="degree_point", object_role="lord",
                     path_id="P3", rule_version=rule_version,
-                    provenance="verse_cited", operator_role="scored",
-                    ruling_ref=None, source_text=text, source_page=page,
-                    transit=True))
+                    provenance=stamp["provenance"], operator_role=stamp["operator_role"],
+                    ruling_ref=stamp["ruling_ref"], source_text=text, source_page=page,
+                    transit=True, tier=tier))
+
+    core_tier = None if tiers is None else rules_registry.TIER_CORE
+    for agent, agent_lc in _AGENTS:
+        emit(agent, agent_lc, H, core_tier)
+        # DVI: only for the agents the CALLER names (P4: Jupiter, Saturn) — never from P3's own enumeration
+        if tiers is not None and agent in dvi_agents:
+            if agent not in rules_registry.DVI_AGENTS:
+                raise ValueError(f"DVI is read for {rules_registry.DVI_AGENTS} only, not {agent!r} (ND-H-20261005)")
+            emit(agent, agent_lc, tiers[rules_registry.TIER_DVI], rules_registry.TIER_DVI)
+        # K-B: natal luminary kāraka as a degree-point target, slow agents only
+        for relation in rules_registry.KB_AGENT_RELATIONS.get(agent, ()):
+            for target in kb:
+                lam = natal.get(target["luminary"])
+                if lam is None:
+                    continue   # operand missing ⇒ named upstream, never solved
+                edges.append(RecordEdge(
+                    event_class=event_class, affected_person=person,
+                    frame_kind=frame_kind, frame_arg=frame_arg,
+                    agent=agent_lc, relation=relation,
+                    obj=PhysicalObjectId(
+                        body=agent_lc, relation_kind=relation,
+                        canonical_target=_point_target(lam), convention_id=cid),
+                    object_kind="degree_point", object_role="karaka",
+                    path_id="P3", rule_version=rule_version,
+                    provenance=target["provenance"], operator_role=target["operator_role"],
+                    ruling_ref=target["ruling_ref"], source_text=target["source_text"], source_page=None,
+                    transit=True, tier=core_tier))
     edges.extend(_maraka_rows(event_class, chart, cid, frame_kind, frame_arg,
                               person, rule_version, citation_path))
+    # never a silent dedup: one identity enumerated from two tiers is refused, with the exact keys
+    tiers_of: dict[tuple, set] = {}
+    for e in edges:
+        tiers_of.setdefault((e.agent, e.relation, e.obj.canonical_target, e.object_role), set()).add(e.tier)
+    clashes = {k: sorted(map(str, v)) for k, v in tiers_of.items() if len(v) > 1}
+    if clashes:
+        raise TierIdentityCollision(
+            f"{event_class}/{citation_path}@{rule_version}: {len(clashes)} record identit(ies) enumerated from more "
+            f"than one tier — needs a steward ruling (which tier wins, or tier in the key): "
+            + "; ".join(f"{'|'.join(k)} tiers={v}" for k, v in sorted(clashes.items())))
     return edges
+
+
+def support_annotation_edges(event_class: str, chart: dict,
+                             convention_id: str | None = None, *,
+                             rule_version: str = RULE_VERSION) -> list[RecordEdge]:
+    """ND-H SUPPORT tier: annotation edges, `operator_role testimony`, OUTSIDE H — never returned by
+    `enumerate_edges`, so they are neither obligations nor stored records nor admission-bearing.
+
+    NOT STORED (named gap, never a mislabel — the D7 precedent): a SUPPORT house is by ruling outside H, and
+    `kgrr_object_role_ck` (migration 1155) has no role for it — `signature_house` would be false. The honest role
+    token `support_house` is carried here; storing these rows needs a role-vocabulary migration and a ruling on
+    their shape (the decision says "annotation rows" and nothing about agents or relations: the house-contact
+    shape of the CORE tier is used here as the literal reading)."""
+    cid = convention_id or convention_id_for()
+    tiers = rules_registry.tier_signs(event_class, chart, rule_version)
+    if tiers is None:
+        return []
+    frame_kind, frame_arg = _class_frame(event_class, rule_version)
+    person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
+    text, page = _class_citation(event_class, "P3", rule_version)
+    row = rules_registry.nd_h_row(event_class, rule_version)
+    out = []
+    for agent, agent_lc in _AGENTS:
+        for h in sorted(tiers[rules_registry.TIER_SUPPORT]):
+            for relation in ("residence", "aspect"):
+                if relation == "aspect" and agent in _NODE_AGENTS:
+                    continue
+                out.append(RecordEdge(
+                    event_class=event_class, affected_person=person,
+                    frame_kind=frame_kind, frame_arg=frame_arg, agent=agent_lc, relation=relation,
+                    obj=PhysicalObjectId(body=agent_lc, relation_kind=relation,
+                                         canonical_target=_span_target(h), convention_id=cid),
+                    object_kind="house_span", object_role="support_house",
+                    path_id="P3", rule_version=rule_version,
+                    provenance=row["provenance"], operator_role="testimony", ruling_ref=row["ruling_ref"],
+                    source_text=text, source_page=page, transit=True, tier=rules_registry.TIER_SUPPORT))
+    return out
 
 
 def _maraka_rows(event_class: str, chart: dict, cid: str,
@@ -277,7 +384,7 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
         from services.gochara_rules.registry import house_span_sign
         houses = {house_span_sign(h, Frame("lagna"), chart)
                   for h in row.get("maraka_lords_of", set())}
-    text, page = _path_citation(citation_path, rule_version)
+    text, page = _class_citation(event_class, citation_path, rule_version)
     out = []
     for sign in sorted(houses):
         lord = SIGN_LORDS[sign]
@@ -312,14 +419,23 @@ def enumerate_p4_edges(event_class: str, chart: dict,
     uncited_extension) — keeping P3's path_id on a P4 grain's records is a
     COMMIT-time F5 failure on the real DB (membership ≠ the record's path)."""
     p4 = rules_registry.RULE_PATHS[("P4", rule_version)]
-    text, page = _path_citation("P4", rule_version)
+    text, page = _class_citation(event_class, "P4", rule_version)
+    # the edge's ruling: an ND-H class row's own (ND-H-20261005); otherwise the double-transit rule's (D-P4) — a
+    # class that is not an ND-H class never inherits the ND-H stamp from the 1.2.0 path row
+    nd = rules_registry.nd_h_row(event_class, rule_version)
+    ruling = (nd["ruling_ref"] if nd is not None
+              else rules_registry.RULE_PATHS[("P4", RULE_VERSION)]["ruling_ref"])
+    # a K-B edge keeps the ruling and premise text of ITS OWN target row (ND-H, or ND-P2 rule 3 for bereavement)
     return [replace(e, path_id="P4", rule_version=rule_version,
                     provenance=p4["provenance"],
-                    ruling_ref=p4["ruling_ref"], source_text=text,
-                    source_page=page)
+                    ruling_ref=(e.ruling_ref if e.object_role == "karaka" else ruling),
+                    source_text=(e.source_text if e.object_role == "karaka" else text),
+                    source_page=(None if e.object_role == "karaka" else page))
+            # ND-H: P4's infl() — and only P4's — also reads the class row's DVI members, for Jupiter and Saturn
             for e in enumerate_p3_edges(event_class, chart, convention_id,
                                         rule_version=rule_version,
-                                        citation_path="P4")
+                                        citation_path="P4",
+                                        dvi_agents=rules_registry.DVI_AGENTS)
             if e.agent in ("jupiter", "saturn") and e.operator_role == "scored"]
 
 
@@ -435,8 +551,13 @@ def enumerate_p1_edges(event_class: str, chart: dict,
     cid = convention_id or convention_id_for()
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
-    H = signature_houses(event_class, chart)
-    text, page = _path_citation("P1", rule_version)
+    # ND-H: H is the class row's CORE tier at `rule_version` — DVI and SUPPORT members are not in H, so P1 emits
+    # nothing for them. The class-relationship rows carry the STAMP OF THE CLASS ROW (FB-39).
+    H = signature_houses(event_class, chart, rule_version)
+    text, page = _class_citation(event_class, "P1", rule_version)
+    stamp = rules_registry.class_row_stamp(event_class, rule_version)
+    p1_tier = (rules_registry.TIER_CORE
+               if rules_registry.nd_h_row(event_class, rule_version) is not None else None)
     person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
     natal = chart["natal"]
     edges: list[RecordEdge] = []
@@ -456,9 +577,9 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                 canonical_target=_span_target(h), convention_id=cid),
             object_kind="house_span", object_role="signature_house",
             path_id="P1", rule_version=rule_version,
-            provenance="verse_cited", operator_role="scored",
-            ruling_ref=None, source_text=text, source_page=page,
-            transit=False))
+            provenance=stamp["provenance"], operator_role=stamp["operator_role"],
+            ruling_ref=stamp["ruling_ref"], source_text=text, source_page=page,
+            transit=False, tier=p1_tier))
         for graha, lam in natal.items():
             if _sign_of(lam) != h:
                 continue
@@ -471,9 +592,9 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                     canonical_target=_span_target(h), convention_id=cid),
                 object_kind="house_span", object_role="signature_house",
                 path_id="P1", rule_version=rule_version,
-                provenance="verse_cited", operator_role="scored",
-                ruling_ref=None, source_text=text, source_page=page,
-                transit=False))
+                provenance=stamp["provenance"], operator_role=stamp["operator_role"],
+                ruling_ref=stamp["ruling_ref"], source_text=text, source_page=page,
+                transit=False, tier=p1_tier))
     # Node-dispositor testimony rows (D-PADMIT) — natal facts, period- and
     # class-independent: the node's delivery rides its dispositor.
     for node in ("Rahu", "Ketu"):
@@ -531,10 +652,12 @@ def enumerate_p1_edges(event_class: str, chart: dict,
             object_kind="house_span", object_role="period_lord",
             path_id="P1", rule_version=rule_version,
             # MD/AD readings are the verse's (XX.34-38); the PD level is an authorised TESTIMONY extension (R9-5)
-            provenance=("uncited_extension" if level == "pd" else "verse_cited"),
-            operator_role=("testimony" if level == "pd" else "scored"),
-            ruling_ref=(P1_PD_RULING if level == "pd" else None), source_text=text, source_page=page,
-            transit=True, period_anchor_lord=anchor.lower(), period_anchor_level=level))
+            # ND-H class at 1.2.0: the MD/AD reading is licensed through a RULED H (prerequisite 2), so it carries
+            # the class row's stamp; the PD level stays testimony under its own ruling (FB-40).
+            provenance=("uncited_extension" if level == "pd" else stamp["provenance"]),
+            operator_role=("testimony" if level == "pd" else stamp["operator_role"]),
+            ruling_ref=(P1_PD_RULING if level == "pd" else stamp["ruling_ref"]), source_text=text, source_page=page,
+            transit=True, period_anchor_lord=anchor.lower(), period_anchor_level=level, tier=p1_tier))
     return edges
 
 
@@ -593,8 +716,17 @@ def _in_stored_tier(edge: RecordEdge) -> bool:
     return not (edge.transit and edge.agent in EPHEMERAL_TIER_AGENTS)
 
 
+def _p2_suppressed(event_class: str) -> bool:
+    """ND-H item 5, enforced in the ONE enumerator every consumer shares (inventory, coverage, the writer's record
+    phase call `enumerate_edges` directly — an inventory pin alone would not stop a record being minted)."""
+    from services.gochara_kernel import rule_registry      # lazy: rule_registry does not import this module
+    return rule_registry.p2_emits_no_row(event_class)
+
+
 def _enumerate_all(event_class: str, path_id: str, chart: dict,
                    convention_id: str | None, rule_version: str) -> list[RecordEdge]:
+    if path_id == "P2" and _p2_suppressed(event_class):
+        return []
     if path_id == "P1":
         return enumerate_p1_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P2":
@@ -645,9 +777,11 @@ __all__ = [
     "ephemeral_tier_edges",
     "IMPLEMENTED_PATHS",
     "RecordEdge",
+    "TierIdentityCollision",
     "enumerate_edges",
     "enumerate_p3_edges",
     "enumerate_p4_edges",
     "enumerate_p5_edges",
     "record_uuid",
+    "support_annotation_edges",
 ]

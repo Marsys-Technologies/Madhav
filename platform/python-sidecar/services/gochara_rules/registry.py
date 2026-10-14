@@ -116,17 +116,25 @@ ROW_MEMBERSHIP: dict[str, str | None] = {
 assert set(ROW_MEMBERSHIP) == set(CLASS_BY_NAME)
 
 
-def signature_houses(event_class: str, chart: dict) -> frozenset[str] | None:
-    """The class's signature house set as concrete sign names on this chart.
+def signature_houses(event_class: str, chart: dict,
+                     rule_version: str = RULE_VERSION) -> frozenset[str] | None:
+    """The class's signature house set H as concrete sign names on this chart, UNDER THE H TABLE OF
+    `rule_version` (FB-44: H is versioned; a generation is replayable under the H it used).
 
-    None ⇒ H unknown (the eight named classes) — admission is `unqualified`.
-    Raises on birth_anchor (excluded from enumeration, O-CF-N6).
+    None ⇒ H unknown at that version (the eight named classes before ND-H-20261005) — admission is
+    `unqualified`. At an ND-H version (1.2.0) the eight classes resolve to their CORE tier only: DVI and
+    SUPPORT members are NOT in H (`tier_signs`). Raises on birth_anchor (excluded from enumeration,
+    O-CF-N6); a version with no H table is a KeyError — the same loud refusal a path version missing from
+    the catalogue always was (never a silent fallback to another version's H).
     """
     row_key = ROW_MEMBERSHIP[event_class]
     if row_key is None:
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
+    if rule_version not in H_TABLE_VERSIONS:
+        raise KeyError(f"rule_version {rule_version!r} has no H table (known: {sorted(H_TABLE_VERSIONS)})")
     if row_key == "unknown":
-        return None
+        tiers = tier_signs(event_class, chart, rule_version)
+        return None if tiers is None else tiers[TIER_CORE]
     row = P3_TRUTH_TABLE[row_key]
     if "H_anchor_house" in row:
         # e.g. bereavement (father): the 9th and its 2nd/7th/8th, counted
@@ -139,9 +147,10 @@ def signature_houses(event_class: str, chart: dict) -> frozenset[str] | None:
     return frozenset(house_span_sign(h, lagna, chart) for h in row["H"])
 
 
-def signature_lords(event_class: str, chart: dict) -> frozenset[str] | None:
+def signature_lords(event_class: str, chart: dict,
+                    rule_version: str = RULE_VERSION) -> frozenset[str] | None:
     """L(H): the lord set of the signature house set. None iff H unknown."""
-    houses = signature_houses(event_class, chart)
+    houses = signature_houses(event_class, chart, rule_version)
     if houses is None:
         return None
     return frozenset(SIGN_LORDS[s] for s in houses)
@@ -158,16 +167,29 @@ KARAKA_SOURCE = "PROMISE_NATURE_YOGA_MAP_v1_1 §5 (phaladeepika Adh. II śl.1-7)
 
 
 def _karaka_row(karaka: str, locator: str | None, sloka: int | None,
-                note: str) -> dict:
-    """Write-time guard: a kāraka row without its citation is rejected —
-    every cited row carries text/locator/śloka (§5; no citation ⇒ the class
-    stays computed_empty instead)."""
-    if not locator or sloka is None:
+                note: str, *, text: str = "phaladeepika",
+                provenance: str = "verse_cited", ruling_ref: str | None = None,
+                roles: tuple[str, ...] | None = None) -> dict:
+    """Write-time guard: a `verse_cited` kāraka row without its citation is rejected — every cited row
+    carries text/locator/śloka (§5; no citation ⇒ the class stays computed_empty instead). The row's
+    source text and provenance are PARAMETERS (the Phaladīpikā Adh. II rows are the defaults, byte-for-byte
+    as authored); an `uncited_extension` row (a ruled kāraka application) requires its `ruling_ref` (§0)
+    and its premise locator, and carries the `roles` its ruling grants (K-A rank / K-B admission)."""
+    if provenance not in ("verse_cited", "uncited_extension"):
+        raise ValueError(f"kāraka {karaka}: provenance {provenance!r} is not in the closed set")
+    if provenance == "verse_cited" and (not locator or sloka is None):
         raise ValueError(f"kāraka {karaka}: citation locator and śloka required")
-    return {"karaka": karaka, "provenance": "verse_cited",
-            "citation": {"text": "phaladeepika", "locator": locator,
-                         "sloka": sloka},
-            "note": note}
+    if provenance == "uncited_extension" and (not ruling_ref or not locator):
+        raise ValueError(f"kāraka {karaka}: uncited_extension requires ruling_ref and a premise locator (§0)")
+    row = {"karaka": karaka, "provenance": provenance,
+           "citation": {"text": text, "locator": locator,
+                        "sloka": sloka},
+           "note": note}
+    if ruling_ref is not None:
+        row["ruling_ref"] = ruling_ref
+    if roles is not None:
+        row["roles"] = tuple(roles)
+    return row
 
 
 _CLASS_KARAKAS: dict[str, list[dict]] = {
@@ -889,3 +911,432 @@ SUPERSEDED_PATHS[composite_ref("P2", RULE_VERSION)] = {
     "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-18",
 }
 del _p2_old
+
+
+# ══ ND-H-20261005 — the eight classes: three tiers and kārakas, rule_version 1.2.0 ══════════════════
+# Sealed decision by delegate (decisions/ND-H-20261005_DECISION_BY_DELEGATE.md, incl. ERRATA 1). It
+# supersedes ST-H-UNKNOWN-20261002 for the eight classes AT THIS VERSION ONLY: the 1.0.0 / 1.1.0 rows
+# above are untouched and still resolve H = unknown for them.
+#
+#   CORE    — in H for P1 / P3 / P4, all agents.
+#   DVI     — double-transit-only: counts toward infl(g), g ∈ {Jupiter, Saturn}, the house or its lord,
+#             in P4 and NOWHERE else (admits nothing in P1 or P3).
+#   SUPPORT — annotation rows, operator_role testimony, OUTSIDE H.
+#   K-A     — rank factor `karaka_agent` only; never admits, excludes or zeroes.
+#   K-B     — admission, luminaries only: natal Sun / Moon as a degree-point target (object_role karaka)
+#             for Jupiter/Saturn (conjunction or aspect) and Rāhu/Ketu (conjunction) in P3 and P4's infl().
+#
+# Every row is `uncited_extension / scored / ruling_ref ND-H-20261005` (spec §0: a derived event rule
+# scores only under a ruling, however well its premises are cited); premise loci ride in `sources`,
+# with ERRATA 1 applied (UK Mars "House" = PG125:C1, Mercury "Commerce" = PG125:C2; BPHS 15.14 dropped
+# for property; no Jātaka Pārijāta PG562 for Rāhu). The loci cite MEANINGS; the event rules are derived.
+ND_H_VERSION = "1.2.0"
+ND_H_RULING = "ND-H-20261005"
+TIER_CORE, TIER_DVI, TIER_SUPPORT = "core", "dvi", "support"
+TIERS = (TIER_CORE, TIER_DVI, TIER_SUPPORT)
+KARAKA_RANK = "K-A"            # rank factor only
+KARAKA_ADMISSION = "K-B"       # luminary admission target
+LUMINARIES = frozenset({"Sun", "Moon"})
+#: the stamp of every ND-H row
+ND_H_STAMP = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": ND_H_RULING}
+#: the stamp of the pre-ND-H class rows (spec §2.2 truth table: cited Parāśari bhāva doctrine)
+BASE_CLASS_STAMP = {"provenance": "verse_cited", "operator_role": "scored", "ruling_ref": None}
+_UK = "uttara_kalamrita"
+
+
+def _nd_karaka(karaka: str, locator: str, note: str, *roles: str, text: str = _UK) -> dict:
+    for role in roles:
+        if role not in (KARAKA_RANK, KARAKA_ADMISSION):
+            raise ValueError(f"kāraka {karaka}: unknown role {role!r}")
+    if KARAKA_ADMISSION in roles and karaka not in LUMINARIES:
+        raise ValueError(f"kāraka {karaka}: K-B is for the luminaries only (ND-H-20261005)")
+    return _karaka_row(karaka, locator, None, note, text=text, provenance="uncited_extension",
+                       ruling_ref=ND_H_RULING, roles=roles)
+
+
+def _nd_h_row(*, core, dvi=(), support=(), karakas, sources, anchor_house=None,
+              affected_person="native", notes=None) -> dict:
+    """One ND-H class row. Houses are lagna-frame house numbers, or OFFSETS counted from `anchor_house`
+    (bhavat_bhavam) when it is set. Write-time guards: tiers are disjoint; CORE is non-empty."""
+    core, dvi, support = tuple(core), tuple(dvi), tuple(support)
+    if not core:
+        raise ValueError("an ND-H row needs at least one CORE house")
+    if len(set(core) | set(dvi) | set(support)) != len(core) + len(dvi) + len(support):
+        raise ValueError("ND-H tiers must be disjoint")
+    return {"rule_version": ND_H_VERSION, **ND_H_STAMP,
+            "anchor_house": anchor_house, "affected_person": affected_person,
+            TIER_CORE: core, TIER_DVI: dvi, TIER_SUPPORT: support,
+            "karakas": tuple(karakas), "sources": tuple(sources), "notes": notes}
+
+
+ND_H_ROWS: dict[str, dict] = {
+    "achievement_recognition": _nd_h_row(
+        core=(10,), dvi=(11,), support=(5, 1, 9),
+        karakas=(_nd_karaka("Sun", "PG47:C1", "glory, service under the sovereign", KARAKA_RANK,
+                            text="phaladeepika"),
+                 _nd_karaka("Jupiter", "PG127:C1", "honour from the king", KARAKA_RANK)),
+        sources=("Phaladīpikā I.15", "BPHS 11.11", "Uttara Kālāmṛta PG127:C1 (meanings)")),
+    "business_launch": _nd_h_row(
+        core=(7, 10), support=(6,),
+        karakas=(_nd_karaka("Mercury", "PG125:C2", "commerce", KARAKA_RANK),),
+        sources=("Phaladīpikā I.15", "BPHS 11.8", "Uttara Kālāmṛta PG125:C2 (Commerce)")),
+    "financial_deception": _nd_h_row(
+        core=(2, 12), dvi=(6,), support=(8,),
+        karakas=(_nd_karaka("Rahu", "PG131:C1", "falsehood, perplexity", KARAKA_RANK),),
+        sources=("Phaladīpikā I.13", "Phaladīpikā I.16", "BPHS 24.18",
+                 "Uttara Kālāmṛta PG121:C1", "Uttara Kālāmṛta PG131:C1 (Rāhu)"),
+        notes="Saturn excluded as a kāraka; Mercury not added; no 'Rāhu must be involved' gate"),
+    "foreign_settlement": _nd_h_row(
+        core=(12,), dvi=(4,), support=(9, 7),
+        karakas=(_nd_karaka("Rahu", "PG131:C1", "going to a different country", KARAKA_RANK),),
+        sources=("Uttara Kālāmṛta PG121:C1 (migrating to a different place)", "Jātaka Pārijāta VIII.97",
+                 "Uttara Kālāmṛta PG131:C1 (Rāhu)"),
+        notes="Saturn excluded as a kāraka; the 10th is noted beside SUPPORT 9/7, not a tier member"),
+    # father: bhavat_bhavam:9 — CORE offsets 1, 6 from the 9th (lagna 9, 2); SUPPORT the 8th and 12th
+    # FROM the 9th (lagna 4, 8). No DVI (the row is adverse).
+    "parental_event": _nd_h_row(
+        anchor_house=9, affected_person="father",
+        core=(1, 6), support=(8, 12),
+        karakas=(_nd_karaka("Sun", "PG47:C1", "father", KARAKA_RANK, KARAKA_ADMISSION,
+                            text="phaladeepika"),),
+        sources=("BPHS 7.39-43", "BPHS 23.7", "Phaladīpikā II.1 (Sun: father — meaning only)"),
+        notes="offsets derived; P2 emits no parental_event row (the native's Moon never evidences the parent)"),
+    "property_acquisition": _nd_h_row(
+        core=(4,), dvi=(11,), support=(2,),
+        karakas=(_nd_karaka("Mars", "PG125:C1", "land, house", KARAKA_RANK),),
+        sources=("BPHS 11.5", "Phaladīpikā I.12", "Uttara Kālāmṛta PG125:C1 (Mars: House)")),
+    "psychological_arc": _nd_h_row(
+        core=(4,), support=(5, 8),
+        karakas=(_nd_karaka("Moon", "PG47:C1", "Phaladīpikā II.2 (the Moon's significations)", KARAKA_ADMISSION,
+                            text="phaladeepika"),),
+        sources=("BPHS 11.5", "Phaladīpikā I.12", "Phaladīpikā II.2")),
+    "spiritual_turn": _nd_h_row(
+        core=(9, 5), support=(12,),
+        karakas=(_nd_karaka("Jupiter", "PG127:C1", "penance, dharma, mantra", KARAKA_RANK),
+                 _nd_karaka("Ketu", "PG132:C1", "final salvation, great penance, renunciation",
+                            KARAKA_RANK)),
+        sources=("Phaladīpikā I.14", "Phaladīpikā I.12", "BPHS 11.6", "BPHS 11.10",
+                 "Uttara Kālāmṛta PG127:C1", "Uttara Kālāmṛta PG132:C1"),
+        notes="12 is SUPPORT by ratification only (practice; no śloka located); Saturn is testimony on "
+              "contacts to the 12th SUPPORT member only — never a scored kāraka"),
+}
+ND_H_CLASSES = frozenset(ND_H_ROWS)
+assert ND_H_CLASSES == {c for c, k in ROW_MEMBERSHIP.items() if k == "unknown"}
+
+#: ND-H item 5: the mother row is REGISTERED, UNBUILT — anchor 4, offsets {1, 6} (lagna 4, 9), Moon
+#: K-A + K-B — `unsupported` until a per-person selector exists. A mother-tagged event must FAIL to
+#: resolve, never resolve as father (`parental_person_row`).
+PARENTAL_PERSON_ROWS: dict[str, dict] = {
+    "father": {"state": "built", "event_class": "parental_event", "anchor_house": 9, "core_offsets": (1, 6)},
+    "mother": {"state": "unsupported", "event_class": "parental_event", "anchor_house": 4,
+               "core_offsets": (1, 6), "karakas": (("Moon", (KARAKA_RANK, KARAKA_ADMISSION)),),
+               "reason": "no per-person selector exists (ND-H-20261005 item 5)", "ruling_ref": ND_H_RULING},
+}
+#: ND-H item 5: P2 emits no row for these classes (native Moon never evidences the parent, §1.2 inv 6).
+P2_NO_ROW_CLASSES = frozenset({"parental_event"})
+
+
+class UnsupportedPerson(LookupError):
+    """A person-tagged event whose row is registered but unbuilt — refused by name, never re-routed."""
+
+
+def parental_person_row(person: str) -> dict:
+    """The parental_event row for `person`. `mother` (registered, unbuilt) and any unknown person
+    REFUSE — a mother-tagged event never resolves as father."""
+    row = PARENTAL_PERSON_ROWS.get(person)
+    if row is None:
+        raise UnsupportedPerson(f"parental_event: no row for person {person!r}")
+    if row["state"] != "built":
+        raise UnsupportedPerson(f"parental_event/{person}: {row['state']} — {row['reason']}")
+    return row
+
+
+# ── ND-P2-20261005 rule 3 — natal Sun as a target for FATHER-BEREAVEMENT ─────────────────────────────
+# Uniform with the father's-illness K-B rule: for the father-specific bereavement class the natal Sun is a
+# DERIVED target under ruling provenance — in P3 Jupiter and Saturn by conjunction or aspect, Rāhu and Ketu
+# by conjunction; in P4 Jupiter and Saturn only (the same agent table as every K-B edge). Houses and māraka
+# testimony are UNCHANGED (the class keeps its cited H). Basis, stated honestly: the Sun signifies the
+# father (Phaladīpikā II.1 — cited MEANING; ERRATA 1 item 4: "bereavement" is not in the verse); its use for
+# the father's death is a derivation, scoring-eligible by the ruling.
+# BAND: the built 1-degree point band (gochara_kernel/convention.py orb_conj_slow / orb_drishti_slow) —
+# ND-P2 rule 3 also corrects ND-H's "5°". No orb is carried on an edge: the target is a degree point and the
+# contact engine applies the convention's band.
+ND_P2_RULING = "ND-P2-20261005"
+ND_P2_STAMP = {"provenance": "uncited_extension", "operator_role": "scored", "ruling_ref": ND_P2_RULING}
+#: {class: K-B targets added by ND-P2 rule 3} and the paths the rule reaches (P3 and P4's infl(); never P1)
+ND_P2_KB_TARGETS: dict[str, tuple[dict, ...]] = {
+    "bereavement": ({"luminary": "Sun", "affected_person": "father", **ND_P2_STAMP,
+                     "sources": ("Phaladīpikā II.1 (Sun: father — meaning only; the death application "
+                                 "is a derivation)",)},),
+}
+ND_P2_KB_PATHS = ("P3", "P4")
+
+#: FB-44: which H table each rule_version reads. 1.0.0 and 1.1.0 share the spec §2.2 truth table.
+H_TABLE_VERSIONS: dict[str, str] = {RULE_VERSION: "spec_2_2", KERNEL_VERSION: "spec_2_2",
+                                    ND_H_VERSION: "spec_2_2+nd_h_20261005+nd_p2_20261005"}
+#: the versions at which the ND-H / ND-P2 rows are read
+ND_VERSIONS = frozenset({ND_H_VERSION})
+
+
+def nd_h_row(event_class: str, rule_version: str) -> dict | None:
+    """The class's ND-H row AT `rule_version`, or None (not an ND-H class, or a pre-ND-H version)."""
+    if rule_version not in ND_VERSIONS:
+        return None
+    return ND_H_ROWS.get(event_class)
+
+
+def class_row_stamp(event_class: str, rule_version: str) -> dict:
+    """(provenance, operator_role, ruling_ref) of the class's H row at `rule_version` — the stamp its
+    signature-house and lord edges carry (FB-39: read from the row, never hardcoded in an enumerator)."""
+    return dict(ND_H_STAMP if nd_h_row(event_class, rule_version) is not None else BASE_CLASS_STAMP)
+
+
+def class_frame(event_class: str, rule_version: str = RULE_VERSION) -> tuple[str, str | None]:
+    """(frame_kind, frame_arg) of the class's H row at `rule_version`."""
+    row = nd_h_row(event_class, rule_version)
+    if row is None:
+        key = ROW_MEMBERSHIP[event_class]
+        row = P3_TRUTH_TABLE.get(key) if key not in (None, "unknown") else None
+        if row and "H_anchor_house" in row:
+            return "bhavat_bhavam", str(row["H_anchor_house"])
+        return "lagna", None
+    if row["anchor_house"] is not None:
+        return "bhavat_bhavam", str(row["anchor_house"])
+    return "lagna", None
+
+
+def tier_signs(event_class: str, chart: dict, rule_version: str) -> dict[str, frozenset[str]] | None:
+    """{tier: concrete signs on this chart} of an ND-H class at an ND-H version; None otherwise."""
+    row = nd_h_row(event_class, rule_version)
+    if row is None:
+        return None
+    frame = Frame("lagna") if row["anchor_house"] is None else Frame("bhavat_bhavam", row["anchor_house"])
+    return {tier: frozenset(house_span_sign(h, frame, chart) for h in row[tier]) for tier in TIERS}
+
+
+def tier_table_lagna(rule_version: str = ND_H_VERSION) -> dict[str, dict[str, tuple[int, ...]]]:
+    """The tier table as LAGNA-frame house numbers (an anchored row's offsets resolved: the n-th from
+    house a is house ((a + n − 2) mod 12) + 1) — the form the ruling's table is written in."""
+    out = {}
+    for name in sorted(ND_H_ROWS):
+        row = nd_h_row(name, rule_version)
+        if row is None:
+            continue
+        a = row["anchor_house"]
+        out[name] = {tier: tuple(sorted(h if a is None else ((a + h - 2) % 12) + 1 for h in row[tier]))
+                     for tier in TIERS}
+    return out
+
+
+def karaka_set(event_class: str, rule_version: str = RULE_VERSION) -> dict:
+    """The class's kāraka set AT `rule_version` — the production reader of `KARAKA_SETS`. An ND-H class
+    at an ND-H version reads its ruled rows (with roles); everything else reads the cited
+    Phaladīpikā Adh. II sets, which grant NO role (no K-A, no K-B)."""
+    row = nd_h_row(event_class, rule_version)
+    if row is None:
+        return KARAKA_SETS[event_class]
+    return {"state": "computed", "karakas": list(row["karakas"]),
+            "source": f"ruling:{ND_H_RULING} (premise loci per row)"}
+
+
+def karakas_with_role(event_class: str, role: str, rule_version: str = RULE_VERSION) -> frozenset[str]:
+    return frozenset(k["karaka"] for k in karaka_set(event_class, rule_version)["karakas"]
+                     if role in k.get("roles", ()))
+
+
+def karaka_category(event_class: str, agent: str, rule_version: str = RULE_VERSION) -> str:
+    """K-A: the `karaka_agent` factor's category for a transit record's agent (Title case) —
+    'karaka' iff the agent is a K-A kāraka of the class at this version, else 'non_karaka'. A RANK
+    category only: it never admits, excludes or zeroes."""
+    return "karaka" if agent in karakas_with_role(event_class, KARAKA_RANK, rule_version) else "non_karaka"
+
+
+def kb_luminaries(event_class: str, rule_version: str = RULE_VERSION) -> frozenset[str]:
+    """K-B: the natal luminaries that are admission TARGETS for the class at this version."""
+    return karakas_with_role(event_class, KARAKA_ADMISSION, rule_version) & LUMINARIES
+
+
+# ── ND-P2-20261005 rule 4 — kārakatva and P1 ─────────────────────────────────────────────────────────
+# A class's significator planet running as the Mahādaśā or Antardaśā ANCHOR lord satisfies P1's
+# prerequisite (2) (`natal_bhava_relationship`) — an explicitly RULED EXTENSION of the frozen design (which
+# requires a natal house relationship), `uncited_extension / scored`, under a VERSIONED,
+# AFFECTED-PERSON-SPECIFIC class-kāraka mapping. Preserved unchanged: period restrictions, the existing
+# transit forms, unknown-input behaviour, and Pratyantardaśā-as-testimony. No density bound is claimed.
+#
+# OPEN — the business owner's point (flagged, not decided here). The decision does not say WHICH classes the
+# rule reaches: only the eight ND-H classes, or every class that has a kāraka. The NARROWEST literal reading
+# is taken and isolated in this ONE constant: the classes whose kāraka mapping the same campaign ruled
+# (ND-H-20261005) and whose P1 runs under 1.2.0. Widening it is a one-line data change plus a P1 selection.
+KARAKATVA_P1_CLASSES: frozenset[str] = ND_H_CLASSES
+#: the anchor levels the rule reaches (rule 4: "Mahadasha or Antardasha"); PD stays testimony
+KARAKATVA_P1_LEVELS = ("md", "ad")
+KARAKATVA_RELATION = "karakatva"
+
+
+def karakatva_mapping(rule_version: str) -> dict[str, dict]:
+    """{class: {affected_person, karakas}} — the versioned, affected-person-specific class-kāraka mapping
+    P1 prerequisite (2) reads at `rule_version`. Empty before the ruling's version. A class's significators
+    are EVERY kāraka its ruled row names (rank and admission roles alike: "a class's significator planet")."""
+    if rule_version not in ND_VERSIONS:
+        return {}
+    out = {}
+    for name in sorted(KARAKATVA_P1_CLASSES):
+        row = nd_h_row(name, rule_version)
+        if row is None:
+            raise ValueError(f"{name}: kārakatva is ruled only for a class with a ruled kāraka row")
+        out[name] = {"affected_person": row["affected_person"],
+                     "karakas": tuple(sorted(k["karaka"] for k in row["karakas"]))}
+    return out
+
+
+def karakatva_karakas(event_class: str, rule_version: str, affected_person: str | None = None) -> frozenset[str]:
+    """The planets whose MD/AD anchor lordship satisfies P1 prerequisite (2) for the class at this version.
+    `affected_person`, when given, must be the mapping's own (a father row never answers for another person)."""
+    row = karakatva_mapping(rule_version).get(event_class)
+    if row is None or (affected_person is not None and affected_person != row["affected_person"]):
+        return frozenset()
+    return frozenset(row["karakas"])
+
+
+#: the relation-kind row the rule adds (the REAL consumer is `permission.period_lord_relation`)
+P1_RELATION_KIND_KARAKATVA = {
+    "relation": KARAKATVA_RELATION, "target": "class_karaka",
+    **ND_P2_STAMP,
+    "levels": KARAKATVA_P1_LEVELS,
+    "source": "ruled extension ND-P2-20261005 rule 4 — an amendment of the frozen design, not an "
+              "interpretation; the kāraka meanings are the premise loci of each class row",
+}
+
+
+def p1_relation_kinds(rule_version: str = RULE_VERSION) -> tuple[dict, ...]:
+    """P1's prerequisite-(2) relation-kind table AT `rule_version`: the §2.2 table, plus the kārakatva row
+    from the ruling's version on (the 1.0.0 table is byte-for-byte `P1_RELATION_KINDS`)."""
+    if rule_version in ND_VERSIONS:
+        return P1_RELATION_KINDS + (P1_RELATION_KIND_KARAKATVA,)
+    return P1_RELATION_KINDS
+
+
+def kb_targets(event_class: str, rule_version: str = RULE_VERSION) -> tuple[dict, ...]:
+    """Every K-B admission target of the class at this version, each with ITS OWN stamp and premise text:
+    the ND-H luminary kārakas (ND-H-20261005) and the ND-P2 rule 3 target (natal Sun, father-bereavement).
+    {luminary, provenance, operator_role, ruling_ref, source_text}, in a total order."""
+    out = []
+    row = nd_h_row(event_class, rule_version)
+    if row is not None:
+        text = f"ruling {row['ruling_ref']}; premises: " + "; ".join(row["sources"])
+        for luminary in sorted(kb_luminaries(event_class, rule_version)):
+            out.append({"luminary": luminary, "provenance": row["provenance"],
+                        "operator_role": row["operator_role"], "ruling_ref": row["ruling_ref"],
+                        "source_text": text})
+    if rule_version in ND_VERSIONS:
+        for t in ND_P2_KB_TARGETS.get(event_class, ()):
+            if t["luminary"] not in LUMINARIES:
+                raise ValueError(f"K-B target {t['luminary']!r} is not a luminary")
+            out.append({"luminary": t["luminary"], "provenance": t["provenance"],
+                        "operator_role": t["operator_role"], "ruling_ref": t["ruling_ref"],
+                        "source_text": f"ruling {t['ruling_ref']}; premises: " + "; ".join(t["sources"])})
+    return tuple(sorted(out, key=lambda t: (t["luminary"], t["ruling_ref"])))
+
+
+#: K-B agents and relations (ND-H): slow agents only; nodes cast no dṛṣṭi (N-14). Fast agents never.
+KB_AGENT_RELATIONS: dict[str, tuple[str, ...]] = {
+    "Jupiter": ("conjunction", "aspect"), "Saturn": ("conjunction", "aspect"),
+    "Rahu": ("conjunction",), "Ketu": ("conjunction",),
+}
+#: DVI is read by P4's infl() only, for exactly these agents.
+DVI_AGENTS = ("Jupiter", "Saturn")
+
+
+def h_table(rule_version: str) -> dict:
+    """The WHOLE H table of `rule_version` as canonical data (FB-44) — every class of the universe:
+    its frame, its tiers (lagna houses or anchor offsets), its stamp, and its kāraka roles."""
+    if rule_version not in H_TABLE_VERSIONS:
+        raise ValueError(f"rule_version {rule_version!r} has no H table")
+    table = {}
+    for name in sorted(CLASS_BY_NAME):
+        key = ROW_MEMBERSHIP[name]
+        nd = nd_h_row(name, rule_version)
+        if key is None:
+            table[name] = {"state": "excluded"}
+        elif nd is not None:
+            table[name] = {
+                "state": "ruled", "anchor_house": nd["anchor_house"],
+                "affected_person": nd["affected_person"],
+                **{tier: sorted(nd[tier]) for tier in TIERS},
+                "stamp": [nd["provenance"], nd["operator_role"], nd["ruling_ref"]],
+                "karakas": sorted([k["karaka"], sorted(k["roles"])] for k in nd["karakas"])}
+        elif key == "unknown":
+            table[name] = {"state": "unknown"}
+        else:
+            row = P3_TRUTH_TABLE[key]
+            table[name] = {"state": "cited", "anchor_house": row.get("H_anchor_house"),
+                           TIER_CORE: sorted(row.get("H", row.get("H_offsets_from_anchor", ())))}
+        if rule_version in ND_VERSIONS and name in ND_P2_KB_TARGETS:
+            table[name]["kb_targets"] = sorted([t["luminary"], t["ruling_ref"]] for t in ND_P2_KB_TARGETS[name])
+    out = {"h_table": H_TABLE_VERSIONS[rule_version], "rule_version": rule_version, "classes": table}
+    if rule_version in ND_VERSIONS:
+        # ND-P2 rule 4: the kārakatva mapping is versioned data, pinned with the H it is read beside
+        out["karakatva_p1"] = {"levels": list(KARAKATVA_P1_LEVELS), "ruling_ref": ND_P2_RULING,
+                               "classes": {c: [m["affected_person"], list(m["karakas"])]
+                                           for c, m in karakatva_mapping(rule_version).items()}}
+    return out
+
+
+def h_table_sha256(rule_version: str) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(h_table(rule_version), sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+# ── K-A: the `karaka_agent` factor row (ND-H: categorical_ordered {karaka > non_karaka}) ────────────
+# No value mapping is ruled, so none is declared (uncalibrated_default); null_state `omit` — a factor
+# that cannot yield a number takes NO part in the within-path product, which is exactly "never admits,
+# excludes or zeroes". The category is read by `karaka_category`.
+_factor("karaka_agent",
+        rule_version=ND_H_VERSION,
+        operand="whether the transit record's agent is a K-A kāraka of the event class "
+                "(registry karaka_set at the record's rule_version)",
+        function="categorical_ordered",
+        categories=["karaka", "non_karaka"],
+        range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="omit",
+        ruling_ref=ND_H_RULING,
+        effect="rank factor only (K-A, ND-H-20261005): orders records whose agent is a class kāraka "
+               "above the rest; never admits, excludes or zeroes; no value mapping is declared "
+               "(uncalibrated_default), so it is omitted from the within-path product")
+
+# ── P1 / P3 / P4 at rule_version 1.2.0 ───────────────────────────────────────────────────────────
+# NEW rows; the 1.0.0 and 1.1.0 rows are not edited and 1.1.0 stays unbound (FB-30), so the 1.2.0 rows
+# derive from the BOUND 1.0.0 rows: same prerequisites, same soft factors + karaka_agent@1.2.0. They are
+# selected per class (the binder's CLASS_SELECTION_OVERRIDES), never globally. Each row carries the H
+# table it reads and that table's digest in `score_rule` — the one free-text column of
+# ka_gochara_rule_path the registry digest covers — so a generation's registry digest pins its H.
+#: class-scoped supersession (FB-32): for an ND-H class the 1.0.0 row is searched no more.
+CLASS_SUPERSEDED_PATHS: dict[tuple[str, str, str], dict] = {}
+for _pid in ("P1", "P3", "P4"):
+    _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
+    RULE_PATHS[composite_ref(_pid, ND_H_VERSION)] = {
+        **_old, "rule_version": ND_H_VERSION, **ND_H_STAMP,
+        "soft_factors": [*_old["soft_factors"], composite_ref("karaka_agent", ND_H_VERSION)],
+        "source_text": f"ruling {ND_H_RULING} (derived event rules; premise loci on each class row)",
+        "source_page": None,
+        "h_table_version": ND_H_VERSION, "h_table_sha256": h_table_sha256(ND_H_VERSION),
+        "score_rule": (f"{_old['score_rule']}; H table {H_TABLE_VERSIONS[ND_H_VERSION]}@{ND_H_VERSION} "
+                       f"sha256:{h_table_sha256(ND_H_VERSION)}"),
+        "note": f"{ND_H_RULING}: tiers CORE (in H) / DVI (P4 infl only) / SUPPORT (testimony, outside H); "
+                "kārakas K-A (rank) / K-B (luminary admission target)"
+                + ("; the double-transit rule itself stays D-P4" if _pid == "P4" else ""),
+    }
+    for _cls in sorted(ND_H_CLASSES):
+        CLASS_SUPERSEDED_PATHS[(_cls, _pid, RULE_VERSION)] = {
+            "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_H_RULING,
+            "reason": "H unknown at 1.0.0 (ST-H-UNKNOWN-20261002); ruled at 1.2.0"}
+del _pid, _old, _cls
+# ND-P2 rule 3: father-bereavement runs P3 and P4 under 1.2.0 (its natal-Sun target lives there); P1 stays.
+for _cls in sorted(ND_P2_KB_TARGETS):
+    for _pid in ND_P2_KB_PATHS:
+        CLASS_SUPERSEDED_PATHS[(_cls, _pid, RULE_VERSION)] = {
+            "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_P2_RULING,
+            "reason": "natal Sun as a derived target for father-bereavement (ND-P2-20261005 rule 3)"}
+del _pid, _cls

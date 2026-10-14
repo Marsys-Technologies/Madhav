@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from .frames import Frame, SIGN_LORDS, frame_sign, house_of, sign_of
 from .records import RelationshipRecord
+from . import registry as _registry
 from .registry import RULE_VERSION, signature_houses
 
 # The tier value comes from the sanctioned vocabulary module — the literal in
@@ -101,15 +102,25 @@ def _row_at(rows: tuple[dict, ...], t: str, parent_row_id: str | None) -> dict |
     return None
 
 
-def period_lord_relation(lord: str, event_class: str, chart: dict) -> dict:
+def period_lord_relation(lord: str, event_class: str, chart: dict, *,
+                         rule_version: str = RULE_VERSION, level: str | None = None,
+                         affected_person: str | None = None) -> dict:
     """P1 prerequisite (2): the natal bhāva relationship of the period lord
     to the event class, with provenance and operator role per the §2.2
     relation-kind table.
 
     Returns {relation, licence, detail} with licence ∈ {scored, testimony,
     none}. H unknown ⇒ licence none with relation unknown (honest, not false).
+
+    `rule_version` selects the H table AND the relation-kind table read (FB-44; the default is the 1.0.0
+    behaviour, byte-for-byte). From the ruling's version on, ND-P2-20261005 rule 4 adds one kind: a class
+    kāraka running as the MD or AD ANCHOR lord is `karakatva`, licence scored (a ruled extension). `level`
+    is the record's anchor level when the caller has one: the rule reaches MD and AD only, so a PD anchor
+    gets no kārakatva (it stays whatever the cited kinds make it — and a PD record is testimony by its own
+    ruling either way). Checked AFTER the two cited scored kinds (a kāraka that also occupies or owns H is
+    reported by its cited relation) and BEFORE the testimony-only dispositorship kind.
     """
-    houses = signature_houses(event_class, chart)
+    houses = signature_houses(event_class, chart, rule_version)
     if houses is None:
         return {"relation": "unknown", "licence": "none",
                 "detail": "H unknown for this class — admission unqualified, "
@@ -125,6 +136,18 @@ def period_lord_relation(lord: str, event_class: str, chart: dict) -> dict:
     if lord not in NODES and any(SIGN_LORDS[s] == lord for s in houses):
         return {"relation": "ownership", "licence": "scored",
                 "detail": f"{lord} owns a signature house of {sorted(houses)}"}
+
+    # kārakatva (ND-P2-20261005 rule 4): a class kāraka as the MD/AD anchor lord — ruled, scored.
+    kind = next((k for k in _registry.p1_relation_kinds(rule_version)
+                 if k["relation"] == _registry.KARAKATVA_RELATION), None)
+    # unknown-input behaviour PRESERVED: a lord whose natal position is unreadable is not licensed here — it
+    # falls through to the lookup below, which raises for the caller to store an explicit `unknown`
+    if (kind is not None and lord in natal and (level is None or level in kind["levels"])
+            and lord in _registry.karakatva_karakas(event_class, rule_version, affected_person)):
+        return {"relation": kind["relation"], "licence": kind["operator_role"],
+                "provenance": kind["provenance"], "ruling_ref": kind["ruling_ref"],
+                "detail": f"{lord} is a kāraka of {event_class} running as the "
+                          f"{'/'.join(kind['levels']).upper()} anchor lord ({kind['ruling_ref']} rule 4)"}
 
     # dispositorship: the lord's dispositor (its natal sign's lord) relates to
     # the class. Node case: testimony-only per D-PADMIT. Non-node case: no

@@ -13,6 +13,10 @@ import uuid
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises P1 independence (duplicate or wrong-person records refused) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_rules import permission as builder_permission
 from services.gochara_kernel import inventory_verifier as inv_v
 from services.gochara_kernel import record_derivation as rd

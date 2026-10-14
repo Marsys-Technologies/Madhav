@@ -25,7 +25,8 @@ def run_scoring_pass(registry_path: str | Path,
                      controls_path: str | Path | None,
                      output_path: str | Path,
                      declared_pin: str | None = None,
-                     generation: str | None = None) -> dict:
+                     generation: str | None = None,
+                     admitted_spans_path: str | Path | None = None) -> dict:
     """Run one scoring pass; write the result file; return the result dict.
 
     On INPUT_REJECTED / reconciliation halt / controls mismatch, the partial
@@ -75,6 +76,25 @@ def run_scoring_pass(registry_path: str | Path,
     scored = score_generation(registry, extract)
     result.update(scored)
 
+    # ND-H-20261005 cond. 2/4 (FB-41, FB-50): the admitted-day share per class and path, and the 40% DVI
+    # guard, COMPUTED BY THE SCORER from the generation's admitted spans (outcome-free: no event is read).
+    # Reported beside coverage and rank; a reversion applies to the NEXT generation and edits nothing here.
+    # Absent input ⇒ the block is absent (an existing result file is byte-for-byte what it was).
+    if admitted_spans_path is not None:
+        import datetime as _dt
+
+        from services.gochara_rules import registry as _rules
+
+        from .density import admitted_day_share_report, load_spans
+        doc = json.loads(Path(admitted_spans_path).read_text())
+        version = doc["rule_version"]
+        dvi = {c: list(t["dvi"]) for c, t in _rules.tier_table_lagna(version).items() if t["dvi"]}
+        result["admitted_day_share"] = admitted_day_share_report(
+            load_spans(doc["spans"]),
+            (_dt.date.fromisoformat(doc["horizon"][0]), _dt.date.fromisoformat(doc["horizon"][1])),
+            dvi_members=dvi, generation=generation)
+        result["admitted_day_share"]["rule_version"] = version
+
     if controls_path is not None:
         try:
             result["random_controls"] = verify_controls_file(
@@ -102,12 +122,16 @@ def main(argv: list[str] | None = None) -> int:
                          "compared against it, INPUT_REJECTED on mismatch)")
     ap.add_argument("--generation", default=None,
                     help="generation label recorded in the result file")
+    ap.add_argument("--admitted-spans", default=None,
+                    help="admitted spans JSON {rule_version, horizon:[lo,hi], spans:[...]} — adds the "
+                         "admitted-day-share report and the ND-H 40%% DVI guard to the result")
     args = ap.parse_args(argv)
 
     try:
         result = run_scoring_pass(args.registry, args.extract, args.controls,
                                   args.output, declared_pin=args.declared_pin,
-                                  generation=args.generation)
+                                  generation=args.generation,
+                                  admitted_spans_path=args.admitted_spans)
     except SystemExit as exc:
         print(exc.code if isinstance(exc.code, str) else exc, file=sys.stderr)
         return 1

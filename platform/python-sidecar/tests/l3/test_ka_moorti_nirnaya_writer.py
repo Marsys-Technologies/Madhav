@@ -217,6 +217,15 @@ class TestIngressSolverMethodRecorded:
             moorti_writer, "_fetch_daily_sidereal_by_body",
             lambda conn, hs, he, offset, bs: {b: _daily(28.5) for b in bs},
         )
+        # Step 3 §4: the fingerprint's node-series and L1 components — stubbed
+        # (their own live-DB behaviour is covered by the step-3 fingerprint
+        # suite); this test's subject is the solver-method recording.
+        monkeypatch.setattr(
+            moorti_writer, "node_series_identity",
+            lambda conn: {"mode": "true", "n_rows": 2, "digest": "d" * 64})
+        monkeypatch.setattr(
+            moorti_writer, "l1_operand_identity",
+            lambda conn, cid, ay, ops: {"operands": [], "digest": "e" * 64})
 
         class _Cur:
             def __enter__(self): return self

@@ -67,15 +67,19 @@ def test_every_membership_reference_resolves():
         assert row["predicate_id"] in declared_predicates
         assert row["predicate_rule_version"] == rr.RULE_VERSION
         assert row["ordinal"] >= 1
+    # each soft factor is referenced at ITS OWN bound version (R5: never "every row at the global RULE_VERSION");
+    # the one factor that does not exist at 1.0.0 is karaka_agent (ND-H-20261005, from 1.2.0)
+    bound = dict(rr.BOUND_FACTOR_REFS)
     for row in rr.soft_factor_rows():
         assert row["factor_id"] in declared_factors
-        assert row["factor_rule_version"] == rr.RULE_VERSION
+        assert row["factor_rule_version"] == bound[row["factor_id"]]
+    assert {f for f, v in rr.BOUND_FACTOR_REFS if v != rr.RULE_VERSION} == {"karaka_agent"}
 
 
 def test_prerequisite_ordinals_are_contiguous_per_path():
-    by_path: dict[str, list[int]] = {}
+    by_path: dict[tuple[str, str], list[int]] = {}          # per (path, version): a path row IS its composite key
     for row in rr.prerequisite_rows():
-        by_path.setdefault(row["path_id"], []).append(row["ordinal"])
+        by_path.setdefault((row["path_id"], row["rule_version"]), []).append(row["ordinal"])
     for pid, ords in by_path.items():
         assert sorted(ords) == list(range(1, len(ords) + 1)), pid
 
@@ -154,7 +158,8 @@ def test_object_selector_is_the_full_cross():
 
 def test_path_rows_ride_registry_verbatim_where_typed_fields_overlap():
     for row in rr.path_rows():
-        src = rules_registry.RULE_PATHS[(row["path_id"], rr.RULE_VERSION)]
+        src = rules_registry.RULE_PATHS[(row["path_id"], row["rule_version"])]      # the row's OWN composite reference
+        ref = (row["path_id"], row["rule_version"])
         assert row["provenance"] == src["provenance"]
         assert row["operator_role"] == src["operator_role"]
         assert row["ruling_ref"] == src.get("ruling_ref")
@@ -162,18 +167,18 @@ def test_path_rows_ride_registry_verbatim_where_typed_fields_overlap():
         assert [tuple(p) for p in src["prerequisites"]] == [
             (r["predicate_id"], r["predicate_rule_version"])
             for r in rr.prerequisite_rows()
-            if r["path_id"] == row["path_id"]
+            if (r["path_id"], r["rule_version"]) == ref
         ]
         assert [tuple(f) for f in src["soft_factors"]] == [
             (r["factor_id"], r["factor_rule_version"])
             for r in rr.soft_factor_rows()
-            if r["path_id"] == row["path_id"]
+            if (r["path_id"], r["rule_version"]) == ref
         ]
 
 
 def test_factor_rows_ride_registry_verbatim_where_typed_fields_overlap():
     for row in rr.factor_rows():
-        src = rules_registry.FACTORS[(row["factor_id"], rr.RULE_VERSION)]
+        src = rules_registry.FACTORS[(row["factor_id"], row["rule_version"])]       # the row's OWN composite reference
         assert row["function"] == src["function"]
         assert row["units"] == src["units"]
         assert row["calibration_status"] == src["calibration_status"]
@@ -238,8 +243,10 @@ def test_seed_inserts_the_full_catalogue_then_seals():
     counts = rr.RuleRegistryStore(conn).seed()
     assert counts["predicates"] == len(rr.PREDICATES)
     assert counts["factors"] == len(rr.BOUND_FACTORS)
-    assert counts["paths"] == len(rr.BOUND_PATHS)
-    assert counts["seals"] == len(rr.BOUND_PATHS)
+    # one path ROW and one seal per bound (path, version) reference; BOUND_PATHS is the distinct path ids
+    assert counts["paths"] == len(rr.BOUND_PATH_REFS)
+    assert counts["seals"] == len(rr.BOUND_PATH_REFS)
+    assert len(rr.BOUND_PATHS) == len(set(rr.BOUND_PATHS)) == 5
     assert counts["reused"] == 0
     first_seal = next(
         i for i, s in enumerate(conn.statements)

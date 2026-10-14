@@ -89,6 +89,10 @@ def test_codexs_attack_delete_and_reinsert_the_same_record_with_a_number_is_refu
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises record-result verification (numeric/qualified results refused) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 
 @pytest.mark.parametrize("assignment", [
     "provenance = 'uncited_extension', ruling_ref = 'D-FAKE'",

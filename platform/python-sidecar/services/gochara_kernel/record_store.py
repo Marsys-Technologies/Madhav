@@ -1221,31 +1221,32 @@ def materialise_record_grain(
         # "not applicable". Prerequisite (2) is evaluated on the TRANSIT record.
         skipped_natal_p1, natal_edges = len(natal_edges), []
     unwritable_testimony = 0
-    _licence_cache: dict[str, dict] = {}
+    _licence_cache: dict[tuple, dict] = {}
 
-    def _p1_relation(agent: str) -> dict | None:
+    def _p1_relation(agent: str, level=None) -> dict | None:
         """P1 prerequisite (2) via Stream B's permission.period_lord_relation over L1
         natal positions + sign lordship + the H truth table. None = not evaluable."""
         if chart is None:
             return None
-        if agent not in _licence_cache:
+        key = (agent, level)
+        if key not in _licence_cache:
             try:
-                _licence_cache[agent] = rules_permission.period_lord_relation(
-                    agent.title(), event_class, chart)
+                _licence_cache[key] = rules_permission.period_lord_relation(
+                    agent.title(), event_class, chart, rule_version=selected_version, level=level)
             except KeyError:           # the lord's natal position is unreadable
-                _licence_cache[agent] = {"relation": "unknown", "licence": "none"}
-        return _licence_cache[agent]
+                _licence_cache[key] = {"relation": "unknown", "licence": "none"}
+        return _licence_cache[key]
 
     def _anchor(edge: RecordEdge) -> str:
         """The lord whose natal relation / licence / running periods a P1 record is judged by: its ANCHOR (AM-21
         part 2) — not necessarily the transiting agent (Phaladīpikā XX.38)."""
         return edge.period_anchor_lord or edge.agent
 
-    def _unwritable(agent: str) -> bool:
+    def _unwritable(agent: str, level=None) -> bool:
         """A TESTIMONY-licence period lord (non-node dispositorship/association) has no
         ruling_ref to satisfy kgrr_ruling_ck (D3): its transit records are not minted —
         named in the counts, never silently dropped."""
-        rel = _p1_relation(agent) if path_id == "P1" else None
+        rel = _p1_relation(agent, level) if path_id == "P1" else None
         return bool(rel and rel["licence"] == "testimony")
     _period_rows_cache: dict[tuple, list[dict] | None] = {}
 
@@ -1337,7 +1338,7 @@ def materialise_record_grain(
             house = house_for(e, span.sign)
             if house is None:
                 continue
-            if _unwritable(_anchor(e)):
+            if _unwritable(_anchor(e), e.period_anchor_level):
                 unwritable_testimony += 1
                 continue
             work.append((e, m, house))
@@ -1357,7 +1358,7 @@ def materialise_record_grain(
             house = house_for(e, sign)
             if house is None:
                 continue
-            if _unwritable(_anchor(e)):
+            if _unwritable(_anchor(e), e.period_anchor_level):
                 unwritable_testimony += 1
                 continue
             key = e.natural_key(
@@ -1525,7 +1526,7 @@ def materialise_record_grain(
         return rule_predicates.FALSE
 
     def _natal_bhava_relationship(rec):
-        rel = _p1_relation(_anchor(rec["edge"]))
+        rel = _p1_relation(_anchor(rec["edge"]), rec["edge"].period_anchor_level)
         if rel is None or rel["relation"] == "unknown":
             return "unknown"           # H unknown / lord's natal position unreadable
         # scored AND testimony kinds store 'true' (AM-11 pin a): the record's ROLE, not
@@ -1562,10 +1563,10 @@ def materialise_record_grain(
         edge = rec["edge"]
         if chart is None or rec["kind"] != "transit":
             return "unknown"
-        houses = rules_registry.signature_houses(event_class, chart)
+        houses = rules_registry.signature_houses(event_class, chart, selected_version)
         if houses is None:
             return "unknown"           # H unknown (the eight classes)
-        lords = rules_registry.signature_lords(event_class, chart) or frozenset()
+        lords = rules_registry.signature_lords(event_class, chart, selected_version) or frozenset()
         target = edge.obj.canonical_target
         if edge.object_role == "signature_house":
             ok = (edge.relation in ("residence", "aspect")
@@ -1576,6 +1577,13 @@ def materialise_record_grain(
             ok = (edge.relation in ("conjunction", "aspect")
                   and target in {targets.point_target(chart["natal"][lord])
                                  for lord in lords})
+        elif edge.object_role == "karaka":
+            # K-B (ND-H-20261005 / ND-P2-20261005 rule 3): a natal luminary target of the class at this version
+            lums = [t["luminary"] for t in rules_registry.kb_targets(event_class, selected_version)]
+            if any(lum not in chart["natal"] for lum in lums):
+                return "unknown"       # the luminary's natal position is unreadable
+            ok = (edge.relation in ("conjunction", "aspect")
+                  and target in {targets.point_target(chart["natal"][lum]) for lum in lums})
         else:
             ok = False
         if not ok:

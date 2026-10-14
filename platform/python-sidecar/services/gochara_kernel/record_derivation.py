@@ -125,6 +125,9 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
     path = path_id.lower()
     declared = declared_predicates(conn, path_id, rule_version)
     sealed = sealed_path_provenance(conn, path_id, rule_version)
+    from . import nd_h_tables as final_rules
+    if rule_version == "1.2.0" and event_class not in final_rules.EIGHT:
+        sealed = sealed_path_provenance(conn, path_id, "1.0.0")
     polarity = _POLARITY.get(event_class, "")
     by_obj: dict[tuple, list[dict]] = {}
     for c in contacts:
@@ -152,6 +155,9 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
     for rec in expected:
         op_role, prov, ruling = _iv_role(path, rec["agent"], rec["relation"], rec["role"], rec["house"], polarity,
                                              sealed)
+        stamp = final_rules.record_stamp(event_class, path_id, rule_version, rec["role"])
+        if stamp is not None:
+            op_role, prov, ruling = stamp
         rec.update(operator_role=op_role, provenance=prov, ruling=ruling, results={})
     if path == "p4":
         by_agent: dict[str, list[tuple]] = {}
@@ -313,7 +319,7 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
         " AND r.path_id = 'P1' AND r.rule_version = %s", (chart_id, generation, event_class, rule_version)))}
     problems = result_policy_problems(stored, policy)
     contacts = {c["id"]: c for c in stored_contacts(conn, chart_id, generation)}
-    frame, person = _frame_person(event_class)
+    frame, person = _frame_person(event_class, rule_version)
     for r in stored:
         lord, level, kind, n_prereq = meta.get(r["id"], (None, None, None, 0))
         c = contacts.get(r["contact"])
@@ -330,7 +336,8 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
                 problems.append(f"record {r['id']}: {field} {got!r}, derived {want!r}")
         if lord is None or level not in ("md", "ad", "pd"):
             problems.append(f"record {r['id']}: anchor ({lord!r}, {level!r}) is not an anchor")
-        rel = period_lord_relation(str(lord), event_class, chart)
+        rel = period_lord_relation(str(lord), event_class, chart, rule_version=rule_version,
+                                   level=level, affected_person=person)
         want = {"natal_bhava_relationship": ("unknown" if rel["relation"] == "unknown"
                                              else ("true" if rel["licence"] in ("scored", "testimony") else "false")),
                 "transit_relation": "true" if c is not None else "false"}
@@ -350,6 +357,8 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
             problems.append(f"record {r['id']}: admission {r['admission']!r}, the results imply {admission_of(results)!r}")
         pd = level == "pd"
         want_role = ("testimony", "uncited_extension", RULING_P1_PD) if pd else ("scored", "verse_cited", None)
+        from .nd_h_tables import record_stamp
+        want_role = record_stamp(event_class, "P1", rule_version, "period_lord", level) or want_role
         if (r["operator_role"], r["provenance"], r["ruling"]) != want_role:
             problems.append(f"record {r['id']}: role/provenance/ruling {(r['operator_role'], r['provenance'], r['ruling'])}"
                             f" != derived {want_role} (anchor level {level})")

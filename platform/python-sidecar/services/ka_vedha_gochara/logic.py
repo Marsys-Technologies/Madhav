@@ -521,13 +521,24 @@ def vipareeta_cancellation(
 from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest as _digest
 
 
-def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict) -> dict:
+def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict, *,
+                         node_series: Optional[dict] = None,
+                         l1: Optional[dict] = None,
+                         formula_version: Optional[str] = None) -> dict:
     """Digest of the reference rows one house_vedha build consumed.
 
     `vedha_rules` is `{(graha, primary_house): row}` and `malefic_scale` is
     `{malefic_count: row}` — exactly what the writer's fetch functions return.
     Order-independent; sensitive to every consumed field (citation, phala,
     vedha_house, grade). JSON-safe, so it round-trips through a jsonb column.
+
+    Step 3 §4: the writer and the gate also pass `node_series` (the L0-owned
+    node_series_digest_v1 identity of the consumed series), `l1` (the consumed
+    natal operand identity — fact_id, build_id, stored value text) and the
+    writer's `formula_version`, each folded in as its own component so an L1
+    rebuild, a series change or a version bump alone makes older rows stale.
+    Omitted (None) components are absent from the dict — the pre-step-3 shape,
+    which the gate reads stale by construction.
     """
     rules = sorted(
         ([str(k[0]), int(k[1]), {f: v for f, v in sorted(dict(row).items())}]
@@ -538,13 +549,20 @@ def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict) -> dict:
         ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in malefic_scale.items()),
         key=lambda x: x[0],
     )
-    return {
+    fp = {
         "algorithm": FINGERPRINT_ALGORITHM,
         "bg_transit_rules": _digest(rules),
         "n_transit_rules": len(rules),
         "bg_vedha_malefic_scale": _digest(scale),
         "n_malefic_scale_rows": len(scale),
     }
+    if node_series is not None:
+        fp["node_series"] = node_series
+    if l1 is not None:
+        fp["l1"] = l1
+    if formula_version is not None:
+        fp["formula_version"] = formula_version
+    return fp
 
 
 def source_qualification_for(vedha_kind: str, grid_basis: Optional[str], *,

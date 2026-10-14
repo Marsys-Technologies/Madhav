@@ -14,6 +14,10 @@ import json
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the runner-identity gate and the combined candidate gate on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import input_vector as iv
 from services.gochara_kernel import verification_job as vj
 from services.gochara_kernel import window_gate as wg

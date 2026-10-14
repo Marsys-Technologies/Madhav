@@ -76,6 +76,9 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from panchang_engine.swiss_state import serialized_swiss_state
+from panchang_engine.swiss_thread_scope import prepare_swiss_thread
+
+import swisseph as _swisseph
 
 import numpy as np
 
@@ -93,7 +96,7 @@ from services.gochara_intensity.permission import (
     _relevant_grahas, _relevant_signs, _lord_matches, YOGINI_LORD_TO_GRAHA,
 )
 from services.gochara_intensity.beta_priors import beta_for
-from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events, _get_planet_pos
+from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events, _get_planet_pos, _resolved_ephemeris_path
 from brahmagyan.graha_vocabulary import norm_graha
 
 from .context import ClassContext, VedhaRow, MaleficScaleRow, KakshyaBoundaryRow
@@ -598,6 +601,15 @@ def _evaluate_single_from_context(
     Ephemeris calls (swe.calc_ut via transit_search primitives) are the
     only external calls — these are CPU-bound, not IO-bound.
     """
+    # C26: on Linux the Swiss sidereal mode and ephemeris path are PER-THREAD
+    # C state — a pool thread (pipeline/orchestrator/runner.py) that has not
+    # set its own mode computes in the default ayanamsha (Fagan/Bradley,
+    # ~0.88° off Lahiri). This function holds SWISS_STATE_LOCK for its whole
+    # body (@serialized_swiss_state) and runs the :768 Moon tara-bala calc_ut
+    # with FLG_SIDEREAL, so it prepares its own thread first (idempotent;
+    # re-asserts the same values on macOS where the state is process-global).
+    # The path/mode are the ones transit_search._get_planet_pos uses.
+    prepare_swiss_thread(_resolved_ephemeris_path(), _swisseph.SIDM_LAHIRI)
     if activity_shape not in _ACTIVITY_SHAPES:
         raise ValueError(
             f"activity_shape must be one of {_ACTIVITY_SHAPES}, got {activity_shape!r}"

@@ -27,7 +27,7 @@ from typing import Any
 SCHEMA = "seal_approval_payload/1"
 SEAL_IS_NOT_A_FLIP = "A seal is not a flip: sealing a generation publishes it for replay and serves nothing."
 #: the migrations whose ledger evidence the payload carries (filename prefix)
-LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1241")
+LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1241", "1305")
 _DIGEST = re.compile(r"^[0-9a-f]{64}\Z")
 
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
@@ -237,6 +237,14 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
     from decimal import Decimal
     vector = json.loads(vector_text, parse_float=Decimal)
     backend = json.loads(backend_text, parse_float=Decimal)
+    # G12 (Codex round 1, finding 6): a FIRST seal requires the snapshot's COPY of the L1 inputs (migration 1305). A legacy snapshot points at rows an L1 rebuild
+    # re-issues, so a generation sealed on it could never be re-verified; the replay of an ALREADY sealed generation is unaffected.
+    from .inventory_verifier import snapshot_copies
+    copies = snapshot_copies(conn, chart_id, generation)
+    already_sealed = bool(_rows(conn, "SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s", (chart_id, generation)))
+    if copies is not None and copies["facts"] is None and not already_sealed:
+        raise BriefRefused("snapshot_without_copy", "the search-input snapshot is the LEGACY shape (ids only, no copy of the L1 rows it consumed): apply "
+                           "migration 1305 and rebuild; a first seal needs a self-contained snapshot (an L1 rebuild would otherwise leave it unverifiable)")
     violations = vj.candidate_gate_on_candidate_manifest(conn, chart_id, generation)
     classes = []
     for cls, inv_digest, led_digest in _rows(conn, "SELECT event_class, inventory_digest, ledger_digest FROM"
@@ -308,8 +316,15 @@ NATAL_SINGLE_TIER_DISCLOSURE = (
 
 
 def natal_input_tiers(conn, chart_id: str, generation: str) -> dict[str, list[str]]:
-    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed."""
+    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed.
+    From the snapshot's own COPY (metadata block) when it has one (G12): the tier the rows carried WHEN CONSUMED, not whatever live L1 says today."""
     out: dict[str, set[str]] = {}
+    from .inventory_verifier import snapshot_copies
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["facts"] is not None:
+        for e in copies["facts"]:
+            out.setdefault(str(e["key"]["fact_subject"]), set()).add(str(e["metadata"]["verification_pass_status"]))
+        return {k: sorted(v) for k, v in sorted(out.items())}
     for subject, tier in _rows(
             conn, "SELECT f.fact_subject, f.verification_pass_status FROM public.chart_facts f"
                   " JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = f.chart_id AND f.fact_id = ANY (s.consumed_fact_ids)"

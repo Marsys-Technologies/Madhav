@@ -148,5 +148,39 @@ def make_period_rows_for(
     return rows_for, contract
 
 
-__all__ = ["PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for",
+def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple[Callable[[str], list[dict]], dict]:
+    """`make_period_rows_for` over the search-input SNAPSHOT's own COPY of the consumed daśā rows (G12, Codex round 1 ruling 3): after the snapshot substep the
+    P1 `period_running_at` operand reader never reads live L1, so a rebuild that lands between substeps cannot split the output from the snapshot. The
+    contract records the build the COPY carries. A snapshot without a copy (migration 1305 not applied) falls back to the live reader."""
+    import json
+    from datetime import datetime, timezone
+    from decimal import Decimal
+    has = conn.execute(
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+        " AND column_name = 'consumed_dasha_rows'").fetchone()
+    if int(next(iter(has.values())) if isinstance(has, dict) else has[0]) != 1:
+        return make_period_rows_for(conn, chart_id)
+    row = conn.execute("SELECT consumed_dasha_rows::text FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                       (chart_id, generation)).fetchone()
+    text = None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+    if text is None:
+        return make_period_rows_for(conn, chart_id)
+    copy = json.loads(text, parse_float=Decimal)
+    rows = [{"start_iso": datetime.fromisoformat(e["key"]["start_iso"]).astimezone(timezone.utc),
+             "end_iso": datetime.fromisoformat(e["content"]["end_iso"]).astimezone(timezone.utc),
+             "lord_graha": e["content"]["lord_graha"], "level_n": int(e["key"]["level_n"]),
+             "build_id": str(e["metadata"]["build_id"])} for e in copy if e["key"]["system_id"] == PINNED_SYSTEM]
+    builds = sorted({r["build_id"] for r in rows})
+    contract = {"build_id": builds[0] if len(builds) == 1 else None, "read": True, "source": "snapshot_copy", "rows": len(rows),
+                "builds_in_copy": builds}
+
+    def rows_for(agent: str, level: str | int | None = None) -> list[dict]:
+        want = str(agent).lower()
+        want_level = LEVEL_N[level] if isinstance(level, str) else level
+        return [{"start_iso": r["start_iso"], "end_iso": r["end_iso"]} for r in rows
+                if str(r.get("lord_graha", "")).lower() == want and (want_level is None or r.get("level_n") == want_level)]
+    return rows_for, contract
+
+
+__all__ = ["PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for", "make_period_rows_for_snapshot",
            "select_dasha_read_contract"]

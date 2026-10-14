@@ -249,6 +249,48 @@ function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readon
 }
 
 /** Exact target read for one resolution. It never decrypts, spawns, repairs, or searches alternatives. */
+/**
+ * Internal carrier: the prepare-time latch (PR #3109, C45) — validation_state
+ * latched away from 'reachable' with nothing left to revalidate it. Carries the
+ * cliId so loadRoutingResolution can attempt ONE bounded revalidation OUTSIDE
+ * the user transaction (no external/model execution may wait inside it) and
+ * retry once. Serializes exactly like AI_CLI_UNREACHABLE; never leaves the
+ * repository as a distinct public shape.
+ */
+class LatchedCliInstallationError extends AiConsoleError {
+  readonly cliId: string
+
+  constructor(cliId: string) {
+    super('AI_CLI_UNREACHABLE')
+    this.name = 'LatchedCliInstallationError'
+    this.cliId = CliIdSchema.parse(cliId)
+  }
+}
+
+/** Prepare-time revalidation of a latched CLI: at most once per installation
+ * per interval (the row's own last_checked_at — every validateCli write, success
+ * or failure, refreshes it), with a short bounded timeout. */
+const PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES = 15
+const PREPARE_CLI_REVALIDATION_TIMEOUT_MS = 20_000
+
+async function attemptPrepareCliRevalidation(userId: string, cliId: string): Promise<boolean> {
+  const installation = (await query(`SELECT i.validation_state,i.last_checked_at
+    FROM ai_cli_installations i WHERE i.cli_id=$1`, [cliId])).rows[0]
+  if (!installation) return false
+  if (installation.validation_state === 'reachable') return true   // another path already recovered it
+  const checkedAt = installation.last_checked_at == null ? null : new Date(installation.last_checked_at)
+  if (checkedAt && Date.now() - checkedAt.getTime() < PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES * 60_000) {
+    return false                                                   // rate-limited: one attempt per interval
+  }
+  try {
+    const { validateCli } = await import('./cli/validation')
+    const result = await validateCli(userId, cliId, AbortSignal.timeout(PREPARE_CLI_REVALIDATION_TIMEOUT_MS))
+    return result.state === 'reachable'
+  } catch {
+    return false                                                   // the caller rethrows today's code
+  }
+}
+
 async function loadRoutingTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]): Promise<RoutingTarget> {
   if (target.kind === 'provider_model') {
     if (!uuidSchema.safeParse(target.connectionId).success) throw notFound()
@@ -307,7 +349,7 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
     WHERE i.cli_id=$1 FOR SHARE`, [target.cliId])).rows[0]
   if (!installation || installation.validation_state === 'not_installed') throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
   if (installation.validation_state === 'auth_unavailable') throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
-  if (installation.validation_state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  if (installation.validation_state !== 'reachable') throw new LatchedCliInstallationError(target.cliId)
   const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,m.is_builtin_default,
     m.supported_efforts,m.is_catalog_discovered,m.is_manual
     FROM ai_cli_models m WHERE m.cli_id=$1
@@ -399,12 +441,24 @@ export async function loadRoutingResolution(userId: string, input: unknown, conv
   if (!parsedSelection.success) throw notFound()
   const selection = parsedSelection.data
   if (selection.kind === 'explicit') assertChoiceUuid(selection.choice)
-  return withUserTransaction(userId, async client => {
+  const resolveOnce = () => withUserTransaction(userId, async client => {
     const owner = (await client.query("SELECT id FROM profiles WHERE id=$1 AND status='active' FOR SHARE", [userId])).rows
     if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
     if (conversationId !== undefined) await ownedConversation(client, userId, conversationId)
     return loadRoutingResolutionWithClient(client, userId, selection)
   })
+  try {
+    return await resolveOnce()
+  } catch (error) {
+    if (!(error instanceof LatchedCliInstallationError)) throw error
+    // The self-latching state (PR #3109): the installation may simply be stale, and no cron
+    // ever revalidates it. Attempt ONE bounded revalidation OUTSIDE the user transaction and
+    // retry the same prepare exactly once; on any failure the original code is thrown, so a
+    // still-down CLI answers exactly as it does today.
+    const recovered = await attemptPrepareCliRevalidation(userId, error.cliId)
+    if (!recovered) throw error
+    return resolveOnce()
+  }
 }
 
 export async function createConnection(userId: string, input: unknown, encrypted: EncryptedCredential) {

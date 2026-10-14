@@ -150,6 +150,9 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1232_gochara_search_moon_scope_domain.sql',
   '1233_gochara_p1_period_anchor.sql',
   '1240_gochara_window_verification_gate.sql',
+  '1305_gochara_snapshot_owns_l1_copy.sql',
+  '1306_gochara_expected_class_census.sql',
+  '1308_gochara_near_miss_storage.sql',
 ])
 
 const AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION = '1202_ai_metering_ledger.sql'

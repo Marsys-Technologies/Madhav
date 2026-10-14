@@ -295,7 +295,9 @@ def test_the_verifiers_p2_tables_equal_the_rule_modules_and_it_imports_neither()
 
 
 @pytest.mark.parametrize("cls", sorted(ver._POLARITY))
-def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
+def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls, monkeypatch):
+    # This oracle pins the legacy selection. The final parental exclusion has its own packet test.
+    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES", {})
     if cls == "birth_anchor":
         pytest.skip("excluded from enumeration entirely (O-CF-N6)")
     plan = inv.plan_class_inventory(event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=[("P2", "1.0.0")],
