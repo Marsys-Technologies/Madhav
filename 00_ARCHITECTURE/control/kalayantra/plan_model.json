@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+p01-a55h-scope-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -23151,7 +23151,22 @@
           "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md",
           "CHARTER §7 executor"
         ],
-        "owns": [],
+        "owns": [
+          ".github/workflows/ci.yml",
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
+          "00_ARCHITECTURE/briefs/kalayantra/packets/P01_REWORK_v1_0.md",
+          "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md",
+          "platform/python-sidecar/tests/l3/gochara/test_j4p_dasha_settlement.py",
+          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py",
+          "platform/scripts/__tests__/test_backup_v5_small_test.py",
+          "platform/scripts/__tests__/test_p01_smalltest_operations.py",
+          "platform/scripts/__tests__/test_teardown_v5_small_test.py",
+          "platform/scripts/backup_v5_small_test_job.py",
+          "platform/scripts/dispatch_v5_small_test_job.py",
+          "platform/scripts/teardown_v5_small_test_job.py"
+        ],
         "tests": [
           "Accepted disposition evidence (observation, not completion): small-test tooling source row; phase-1 prerequisite",
           "each enabled entry's script exists on main at the reviewed commit and its --dry-run works on ky_<lane>",
@@ -23160,18 +23175,22 @@
           "Before landing, independently prove inherited prerequisite: B5.5b",
           "Exact proposed head independently reviewed; rerun the inherited tests and a failing mutation for each semantic claim. Historical SUCCESS, absent checks or a draft state never authorizes landing.",
           "Recheck published-reader compatibility and shared generated-output regeneration against the current accepted main; never edit an already-applied migration.",
-          "Empty owns grants no write authority. Resolve the scope/test/detector question before claiming or presenting this planning child as executable."
+          "Writable scope is the explicit P01 rework diff; independently review scope/inheritance disposition before guarded child acceptance.",
+          "platform/scripts/__tests__/test_p01_smalltest_operations.py: actual table argv/unsupported arguments/dry-run rollback/absence detector",
+          "platform/scripts/__tests__/test_backup_v5_small_test.py: no-I/O planning, archive identity, real workflow with fake DB/program boundaries, equal-count changed-content refusal, cleanup before receipt",
+          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py: real capture/restore/all-table hash and sequence equality, content mutation; deferred to CI in offline jobs",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py: exactly six J-1a enables; untouched executor G8 authority boundary",
+          "platform/python-sidecar/tests/l3/gochara/test_j4p_dasha_settlement.py: lazy P1 operand/snapshot refuse ungoverned sole builds"
         ],
         "compat": "an ops-table change is inert until a validated request names the kind; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "J-0m registration only. Source state:A5.5h; original phase owner J-1a; join J-1a. No residual owns are declared by J-0d; empty owns and triage b are deliberate. Future branch is a conventional planning declaration (I) INTERPRETATION, not an observed branch or result."
+        "notes": "P01-B2 rework: explicit nonempty code scope authorised by cockpit job. Inherited prerequisites A5.5f (#3132), A5.5g (#3110), B5.5b (#3129) and tooling (#3097/#3098/#3101) are present in HEAD; source/testing disposition is in P01_REWORK_v1_0.md. Their historical merge is source evidence only; no operational completion is claimed. Independent exact-head review and required CI are still acceptance gates. (I) INTERPRETATION P01-I3: this local model predates J-0m residual children; carry only the supplied J-1a-a55h definition and its J-1a join edge, with owns from the actual diff. The cockpit reconciles this delta into its accepted full J-0m model; no runtime installation or other child disposition is changed."
       },
       "completion_kind": "code",
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "b",
-        "reason": "J-0d provides no residual writable scope; J0M-Q007",
-        "re_entry": "cockpit resolves J0M-Q007 by independently reviewed model/packet update; preserve J-1a original triage a"
+        "class": "a",
+        "reason": "P01 cockpit explicitly authorised nonempty residual implementation scope; acceptance still requires independent review and CI"
       }
     },
     {
