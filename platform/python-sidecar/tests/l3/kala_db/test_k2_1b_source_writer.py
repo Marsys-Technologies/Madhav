@@ -12,6 +12,7 @@ from pipeline.orchestrator.writers.ka_yojaka import KaYojakaWriter
 ROOT = Path(__file__).parents[3]
 CHART = "00000000-0000-0000-0000-000000000197"
 SIGNAL = "00000000-0000-0000-0000-000000000198"
+BUILD = "00000000-0000-0000-0000-000000000199"
 
 
 @pytest.mark.parametrize("rows,expected", [
@@ -54,7 +55,8 @@ def db(kala_db_dsn):
             CREATE TABLE bodha_msr_signals (chart_id uuid, signal_id uuid, ayanamsha_id text,
                 constituent_facts_array text[], configuration_jsonb jsonb, dignity_score numeric);
             CREATE TABLE kala_layer_head (chart_id uuid PRIMARY KEY, generation text);
-            CREATE TABLE kala_layer_candidate (chart_id uuid, generation text, state text);''')
+            CREATE TABLE kala_layer_candidate (chart_id uuid, generation text, state text, build_id uuid);''')
+        conn.execute("INSERT INTO kala_layer_candidate VALUES (%s,'candidate:CODEX-197','building',%s)", (CHART, BUILD))
         conn.execute('CREATE TABLE bg_transit_rules(id integer)')
         conn.execute("INSERT INTO chart_facts VALUES (%s,'CODEX-moon','a','graha_position','Moon','longitude_sidereal',0,'deg')", (CHART,))
         conn.execute("INSERT INTO brahma_yoga_catalog VALUES ('sunapha',%s,%s,'[]')",
@@ -69,7 +71,7 @@ def db(kala_db_dsn):
 
 
 def ctx(db, generation="candidate:CODEX-197"):
-    return ContextSpec("ka_yojaka", "CODEX-197", db, {"chart_id": CHART, "candidate_generation": generation})
+    return ContextSpec("ka_yojaka", BUILD, db, {"chart_id": CHART, "candidate_generation": generation})
 
 
 def test_plan_substeps_is_pure_and_canonical_class_grained():
@@ -106,7 +108,7 @@ def test_class_rebuild_does_not_delete_another_class_and_empty_source_clears_onl
 @pytest.mark.parametrize("generation", ["legacy", "published:old", "candidate:published", "candidate:retained"])
 def test_writer_refuses_legacy_current_and_retained_published_generations(db, generation):
     db.execute("INSERT INTO kala_layer_head VALUES (%s,'candidate:published')", (CHART,))
-    db.execute("INSERT INTO kala_layer_candidate VALUES (%s,'candidate:retained','published')", (CHART,))
+    db.execute("INSERT INTO kala_layer_candidate VALUES (%s,'candidate:retained','published','00000000-0000-0000-0000-000000000200')", (CHART,))
     with pytest.raises(ValueError):
         KaYojakaWriter().run_substep(ctx(db, generation), SubStep("class:major_gain"))
 

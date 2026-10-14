@@ -218,15 +218,15 @@ class PromiseGraph:
     def effective_state(self, conclusion_id: str, available_fact_ids: Iterable[str]) -> EffectiveState:
         conclusion = self.conclusions[conclusion_id]
         facts = set(available_fact_ids)
-        if not set(conclusion.fact_ids) <= facts:
+        if conclusion.candidate_state is not FactState.PRESENT or not conclusion.fact_ids or not set(conclusion.fact_ids) <= facts:
             return EffectiveState.UNRESOLVED
         defeats = [d for d in self.defeats if d.conclusion_id == conclusion_id]
         if not defeats:
             return EffectiveState.IN_FORCE
-        active = [d for d in defeats if set(d.fact_ids) <= facts]
-        if not active:
-            return EffectiveState.IN_FORCE
-        return EffectiveState.DEFEATED if len(active) == len(defeats) else EffectiveState.PARTLY_DEFEATED
+        # Any fully grounded defeat defeats this specific conclusion. Unknown
+        # additional evidence cannot restore it, even partially.
+        active = [d for d in defeats if d.fact_ids and set(d.fact_ids) <= facts]
+        return EffectiveState.DEFEATED if active else EffectiveState.UNRESOLVED
 
     def fact_state(self, mechanism_id: str, available_fact_ids: Iterable[str]) -> FactState:
         mechanism = self.mechanisms[mechanism_id]

@@ -148,3 +148,35 @@ def test_lagna_lord_relationship_is_projected_from_pinned_l1_not_recomputed():
     assert dossier(source_facts=source)['placement']['relation_to_lagna_lord'] == {
         'value': 'enemy', 'null_reason': None,
         'fact_ids': ['CODEX-LAGNA-sign_lord', 'CODEX-MAITRI_MAR_VEN-compound_relation']}
+
+
+def test_binding_polarity_changes_dossier():
+    m = mechanism(); m['event_class_id'] = 'major_gain'
+    m['derivation_ledger_jsonb']['binding'] = {'event_class_id': 'major_gain', 'relation': 'supports', 'rule_id': 'fixture', 'frame': 'moon'}
+    first = dossier(mechanisms=[m])
+    m['derivation_ledger_jsonb']['binding']['relation'] = 'opposes'
+    second = dossier(mechanisms=[m])
+    assert first != second
+    assert second['attached_mechanisms'][0]['event_class_id'] == 'major_gain'
+    assert second['attached_mechanisms'][0]['binding']['relation'] == 'opposes'
+
+
+@pytest.mark.parametrize('node', ['RAH_TRUE', 'KET_TRUE', 'RAH', 'KET'])
+def test_direct_true_node_still_reverses_fruition(node):
+    from brahmagyan.graha_vocabulary import norm_graha
+    source = [fact(norm_graha(node), 'longitude_sidereal', 2), fact(norm_graha(node), 'retrograde_flag', 'direct')]
+    assert dossier(lord=node, source_facts=source)['fruition_phase']['value']['third'] == 3
+
+
+@pytest.mark.parametrize('house,expected', [(1, ['kendra', 'trikona']), (3, ['upachaya']), (6, ['dusthana', 'upachaya']), (8, ['dusthana']), (9, ['trikona']), (12, ['dusthana'])])
+def test_available_placement_inputs_produce_class(house, expected):
+    source = facts(); source[0]['fact_value_num'] = house
+    value = dossier(source_facts=source)['placement']['class']
+    assert value['value'] == expected and value['fact_ids'] == ['CODEX-MAR-house_d1']
+
+
+@pytest.mark.parametrize('motion', [None, 'stationary'])
+def test_node_fruition_reverses_even_when_motion_is_not_direct_or_retrograde(motion):
+    source = [fact('RAH_TRUE', 'longitude_sidereal', 2)]
+    if motion is not None: source.append(fact('RAH_TRUE', 'retrograde_flag', motion))
+    assert dossier(lord='RAH_TRUE', source_facts=source)['fruition_phase']['value']['third'] == 3

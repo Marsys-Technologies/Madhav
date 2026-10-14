@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from brahmagyan.verification_vocab import RESTRICTED_TABLE_VOCAB, DIVERGENT_FLAGGED
+
 from .methods import (
     Applicability, AshtottariFacts, ClockFact, DashaMethod, KalachakraFacts,
     assess_ashtottari, dasha_method, stored_system, validate_f2_row,
@@ -37,6 +39,7 @@ class Boundary:
     sigma: timedelta | None
     scenario_id: str | None
     boundary_truncated: bool
+    endpoint: Literal["start", "end"] = "start"
     method: DashaMethod | None = None
     build_id: str | None = None
     ayanamsha_id: str | None = None
@@ -86,6 +89,10 @@ def _read_rows(
     ``chart_dashas`` is intentionally the only source.  In particular, callers
     cannot get a context through an unpinned ``LIMIT 1`` read.
     """
+    if not build_id:
+        raise ClockUnavailable("build_not_pinned")
+    if tier not in RESTRICTED_TABLE_VOCAB or tier == DIVERGENT_FLAGGED:
+        raise ClockUnavailable("tier_unavailable")
     rows = conn.execute(
         """
         SELECT dasha_row_id, level_n, lord_graha, parent_row_id,
@@ -93,15 +100,19 @@ def _read_rows(
                verification_pass_status, applies_to_this_chart_flag,
                is_truncated_at_window_start, is_truncated_at_window_end
         FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND build_id = %s
-          AND ayanamsha_id = %s AND verification_pass_status = %s
+        WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s
           AND level_n BETWEEN 1 AND 4
         ORDER BY level_n ASC, start_iso ASC, dasha_row_id ASC
         """,
-        [chart_id, system, build_id, ayanamsha_id, tier],
+        [chart_id, system, ayanamsha_id],
     ).fetchall()
+    # Coherence is checked before tier selection, including unconsumed rows.
+    if not rows or any(str(row.get("build_id")) != str(build_id) for row in rows):
+        raise ClockUnavailable("build_not_pinned")
     result: list[dict[str, Any]] = []
     for row in rows:
+        if row.get("verification_pass_status") != tier:
+            continue
         normalized = dict(row)
         start, end = normalized.get("start_iso"), normalized.get("end_iso")
         if isinstance(start, str):
@@ -115,6 +126,8 @@ def _read_rows(
         if normalized["end_iso"] <= normalized["start_iso"]:
             raise RuntimeError("pinned chart_dashas row has a non-positive period")
         result.append(normalized)
+    if not result:
+        raise ClockUnavailable("tier_unavailable")
     return result
 
 
@@ -133,43 +146,52 @@ def _method(system: str) -> DashaMethod:
 
 
 def boundaries(
-    conn: Any,
-    chart_id: str,
-    system: str,
-    *,
-    build_id: str,
-    ayanamsha_id: str,
-    tier: str,
+    conn: Any, chart_id: str, system: str, *, as_of: datetime,
+    build_id: str, ayanamsha_id: str, tier: str,
     level: Literal["MD", "AD", "PD", "SD"] | None = None,
     uncertainty: BoundaryUncertainty | None = None,
     scenario_id: str | None = None,
+    method_facts: AshtottariFacts | KalachakraFacts | None = None,
 ) -> list[Boundary]:
-    """Return L1 boundary instants verbatim for a pinned chart/system build.
+    """Read both stored endpoints, retaining row identity and clipping flags.
 
-    ``level`` is a projection, not another query: the pinned build is read in
-    full first, so it cannot accidentally return a boundary from a different
-    convention or tier.
+    (I) INTERPRETATION: enumeration retains both sides of a shared instant,
+    rather than losing either row's provenance or end-truncation qualification.
+    ``as_of`` is the explicit request instant, never a wall-clock default.
     """
+    _as_utc(as_of)
     method = _method(system)
+    rows = _read_rows(conn, chart_id, stored_system(system), build_id=build_id,
+                      ayanamsha_id=ayanamsha_id, tier=tier)
+    by_id = {str(row["dasha_row_id"]): row for row in rows}
+    if len(by_id) != len(rows):
+        raise ClockUnavailable("ambiguous_period")
+    for row in rows:
+        if int(row["level_n"]) > 1:
+            parent = by_id.get(str(row.get("parent_row_id")))
+            if parent is None or int(parent["level_n"]) != int(row["level_n"]) - 1:
+                raise ClockUnavailable("hierarchy_unavailable")
+            _check_containment(row, parent)
+        if method.method_id.value == "ashtottari":
+            if assess_ashtottari(method_facts).state != "applicable":
+                raise ClockUnavailable("applicability_unknown_or_inapplicable")
+        elif row.get("applies_to_this_chart_flag") is not True:
+            raise ClockUnavailable("applicability_unknown_or_inapplicable")
     sigma = boundary_sigma(uncertainty) if uncertainty is not None else None
-    return [
-        Boundary(
-            instant=row["start_iso"],
-            level=_LEVEL_NAMES[int(row["level_n"])],
-            lord=_lord(row),
-            source_row_id=str(row["dasha_row_id"]),
-            sigma=sigma,
-            scenario_id=scenario_id,
-            boundary_truncated=bool(row.get("is_truncated_at_window_start")),
-            method=method, build_id=build_id, ayanamsha_id=ayanamsha_id, tier=tier,
-            uncertainty_artifact=uncertainty.artifact_id if uncertainty else None,
-        )
-        for row in _read_rows(
-            conn, chart_id, stored_system(system), build_id=build_id,
-            ayanamsha_id=ayanamsha_id, tier=tier,
-        )
-        if level is None or _LEVEL_NAMES[int(row["level_n"])] == level
-    ]
+    return [Boundary(
+        instant=row[f"{endpoint}_iso"], level=_LEVEL_NAMES[int(row["level_n"])],
+        lord=_lord(row), source_row_id=str(row["dasha_row_id"]), sigma=sigma,
+        scenario_id=scenario_id, endpoint=endpoint,
+        boundary_truncated=bool(row.get(f"is_truncated_at_window_{endpoint}")),
+        method=method, build_id=build_id, ayanamsha_id=ayanamsha_id, tier=tier,
+        uncertainty_artifact=uncertainty.artifact_id if uncertainty else None,
+    ) for row in rows if level is None or _LEVEL_NAMES[int(row["level_n"])] == level
+      for endpoint in ("start", "end")]
+
+
+def _check_containment(child, parent):
+    if not (parent["start_iso"] <= child["start_iso"] < child["end_iso"] <= parent["end_iso"]):
+        raise ClockUnavailable("hierarchy_unavailable: child interval outside parent")
 
 
 def _active_hierarchy(rows: list[dict[str, Any]], as_of: datetime) -> list[dict[str, Any]]:
@@ -185,8 +207,10 @@ def _active_hierarchy(rows: list[dict[str, Any]], as_of: datetime) -> list[dict[
             active_by_level.setdefault(int(row["level_n"]), []).append(row)
 
     roots = active_by_level.get(1, [])
+    if not roots:
+        raise ClockUnavailable("hierarchy_unavailable" if active_by_level else "coverage_gap")
     if len(roots) != 1:
-        raise LookupError(f"expected exactly one active MD at {as_of.isoformat()}")
+        raise ClockUnavailable("ambiguous_period")
     lineage = [roots[0]]
     for level in range(2, 5):
         candidates = [
@@ -200,9 +224,8 @@ def _active_hierarchy(rows: list[dict[str, Any]], as_of: datetime) -> list[dict[
                 raise ClockUnavailable("hierarchy_unavailable")
             continue
         if len(candidates) != 1:
-            raise RuntimeError(
-                f"pinned chart_dashas build has multiple active {_LEVEL_NAMES[level]} children"
-            )
+            raise ClockUnavailable("ambiguous_period")
+        _check_containment(candidates[0], lineage[-1])
         lineage.append(candidates[0])
     return lineage
 
@@ -231,12 +254,12 @@ def period_context(
     lords = {_LEVEL_NAMES[int(row["level_n"])]: _lord(row) for row in active}
 
     own_spans = [row["end_iso"] - row["start_iso"] for row in active]
-    own_span = min(own_spans)
-    sandhi_window = own_span * _SANDHI_FRACTION
-    nearest_distance = min(
-        min(abs(as_of - row["start_iso"]), abs(row["end_iso"] - as_of))
-        for row in active
-    )
+    windows = [span * _SANDHI_FRACTION for span in own_spans]
+    distances = [min(abs(as_of - row["start_iso"]), abs(row["end_iso"] - as_of)) for row in active]
+    # The scalar reports a band that actually contains as_of when one exists.
+    in_band = [i for i in range(len(active)) if distances[i] <= windows[i]]
+    choices = in_band or list(range(len(active)))
+    sandhi_window = windows[min(choices, key=lambda i: distances[i])]
     applicability: Literal["applicable", "method_inapplicable", "unknown"]
     flags = {row.get("applies_to_this_chart_flag") for row in active}
     detail = None
@@ -266,7 +289,7 @@ def period_context(
         applicability=applicability,
         sigma_boundary=boundary_sigma(uncertainty) if uncertainty is not None else None,
         scenario_id=scenario_id,
-        sandhi=nearest_distance <= sandhi_window,
+        sandhi=any(distance <= window for distance, window in zip(distances, windows)),
         sandhi_window=sandhi_window,
         boundary_truncated=any(
             row.get("is_truncated_at_window_start") or row.get("is_truncated_at_window_end")
@@ -324,7 +347,7 @@ def scenario_set(conn: Any, chart_id: str, as_of: datetime, system: str, *, scen
         pin = dict(build_id=scenario.build_id, ayanamsha_id=scenario.ayanamsha_id,
                    tier=scenario.tier, scenario_id=scenario.scenario_id, uncertainty=scenario.uncertainty)
         context = period_context(conn, chart_id, as_of, system, method_facts=scenario.method_facts, **pin)
-        results.append(ScenarioResult(scenario, context, tuple(boundaries(conn, chart_id, system, **pin))))
+        results.append(ScenarioResult(scenario, context, tuple(boundaries(conn, chart_id, system, as_of=as_of, method_facts=scenario.method_facts, **pin))))
     return tuple(results)
 
 

@@ -192,7 +192,13 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
     attached = {signal_id for row in output for signal_id in row["attachments"]}
     for signal in sorted(signals, key=lambda s: str(s["signal_id"])):
         signal_id, ayan = str(signal["signal_id"]), str(signal["ayanamsha_id"])
-        if signal_id in attached:
+        config = signal.get('configuration_jsonb') or {}
+        equivalent = any(signal_id in row['attachments']
+                         and config.get('event_class_id') == row['event_class_id']
+                         and not config.get('assumptions') for row in output)
+        # (I) INTERPRETATION: a signal without an event proposal or assumptions
+        # is only an attachment; explicit distinct proposals remain testimony.
+        if signal_id in attached and (equivalent or not config):
             continue
         refs = _ids(signal.get("constituent_facts_array"))
         config = signal.get("configuration_jsonb") or {}

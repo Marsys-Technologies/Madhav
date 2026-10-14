@@ -44,6 +44,7 @@ from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
 from services.ka_yojaka.promise_adapter import build_bundle
 from services.kala_core.ontology import CLASS_ROSTER
+from services.kala_core.promise.candidate import building_candidate
 from pipeline.orchestrator.writers import SubStep
 import psycopg.rows
 from services.ka_temporal import (
@@ -94,12 +95,7 @@ class KaYojakaWriter(WriterBase):
         # being overwritten. A prefix alone cannot establish publication state.
         conn = ctx.db_conn
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s FOR SHARE', (chart_id,))
-            if any(r['generation'] == generation for r in cur.fetchall()):
-                raise ValueError('promise writer must not replace a published generation')
-            cur.execute('SELECT generation, state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s FOR SHARE', (chart_id, generation))
-            if any(r['state'] != 'building' for r in cur.fetchall()):
-                raise ValueError('promise writer must not replace a retained published generation')
+            building_candidate(cur, chart_id, generation, ctx.build_id)
             cur.execute('''SELECT fact_id, ayanamsha_id, fact_category, fact_subject,
                           fact_key, fact_value_num, unit FROM chart_facts WHERE chart_id = %s''', (chart_id,))
             facts = cur.fetchall()

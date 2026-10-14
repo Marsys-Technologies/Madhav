@@ -28,8 +28,8 @@ SELECT dasha_row_id, system_id, level_n, lord_graha, parent_row_id,
        build_id, ayanamsha_id, verification_pass_status, applies_to_this_chart_flag,
        is_truncated_at_window_start, is_truncated_at_window_end
 FROM chart_dashas
-WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s
-  AND verification_pass_status=%s AND system_id=ANY(%s) AND level_n BETWEEN 1 AND 4
+WHERE chart_id=%s AND ayanamsha_id=%s
+  AND system_id=ANY(%s) AND level_n BETWEEN 1 AND 4
 ORDER BY system_id, level_n, start_iso, dasha_row_id
 """
 # Keep the measured M4 category/subject contract; no phantom key or silent cap.
@@ -47,7 +47,7 @@ WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s AND verification_pass_stat
 ORDER BY fact_subject, fact_category, fact_key, fact_id
 """
 _MECHANISM_SQL = """
-SELECT mechanism_id, mechanism_route, derivation_ledger_jsonb, conclusion_state_jsonb
+SELECT mechanism_id, mechanism_route, event_class_id, derivation_ledger_jsonb, conclusion_state_jsonb
 FROM kala_activation_predicates
 WHERE chart_id=%s AND generation=%s AND ayanamsha_id=%s AND mechanism_id IS NOT NULL
 ORDER BY mechanism_id, event_class_id NULLS FIRST, id
@@ -123,9 +123,20 @@ def build_dossier(period, facts, mechanisms, context, commencement):
     condition, refs = _condition(graha, facts)
     values = condition['value'] or {}
     house = values.get('house_d1', typed())
-    # The placement is the L1 house, not an invented auspiciousness class.
+    # (I) INTERPRETATION: class is a descriptive, overlapping house grouping,
+    # never an auspiciousness judgment. The L1 house remains the authority.
+    placement_class = typed()
+    if graha is None:
+        placement_class = typed(reason=NullReason.METHOD_INAPPLICABLE)
+    elif house['value'] is not None:
+        h = float(house['value'])
+        if h.is_integer() and 1 <= h <= 12:
+            labels = [name for name, houses in (
+                ('kendra', (1, 4, 7, 10)), ('trikona', (1, 5, 9)),
+                ('dusthana', (6, 8, 12)), ('upachaya', (3, 6, 10, 11))) if h in houses]
+            placement_class = typed(labels, fact_ids=house['fact_ids'])
     placement = {'house_from_lagna': house,
-                 'class': typed(reason=NullReason.INFORMATION_UNAVAILABLE),
+                 'class': placement_class,
                  'relation_to_lagna_lord': _lagna_relation(graha, facts)}
     parent = context.lords.get('MD') if period['level_n'] == 2 else None
     parent_condition, _ = _condition(_graha(dict(period, lord_graha=parent)), facts) if parent else (typed(), [])
@@ -136,9 +147,10 @@ def build_dossier(period, facts, mechanisms, context, commencement):
                          fact_ids=house['fact_ids'] + parent_house['fact_ids'])
     motion, longitude = values.get('retrograde_flag', typed()), values.get('longitude_sidereal', typed())
     phase = typed()
-    if longitude['value'] is not None and motion['value'] in ('direct', 'retrograde'):
+    node = graha is not None and norm_graha(graha) in {'RAH_MEAN', 'KET_MEAN', 'RAH_TRUE', 'KET_TRUE'}
+    if longitude['value'] is not None and (node or motion['value'] in ('direct', 'retrograde')):
         third = int(float(longitude['value']) % 30 / 10)
-        retrograde = motion['value'] == 'retrograde'
+        retrograde = node or motion['value'] == 'retrograde'
         phase = typed({'third': 3 - third if retrograde else third + 1,
                        'interpretation': 'equal_thirds', 'source': 'BPHS 47.3-4'},
                       fact_ids=longitude['fact_ids'] + motion['fact_ids'])
@@ -162,6 +174,8 @@ def build_dossier(period, facts, mechanisms, context, commencement):
             continue
         attached.append({'mechanism_id': m['mechanism_id'], 'route': m['mechanism_route'],
                          'effective_state': state['effective_state'], 'qualification': state.get('qualification'),
+                         'event_class_id': m.get('event_class_id', ledger.get('event_class_id')),
+                         'binding': dict(ledger['binding']) if ledger.get('binding') else None,
                          'roles': ledger.get('graph_edges', []), 'defeats': state.get('defeats', []),
                          'excepts': state.get('excepts', []), 'source': ledger['source'],
                          'rule_version': ledger.get('rule_version'), 'fact_ids': ledger.get('fact_ids', [])})
@@ -220,8 +234,7 @@ class PinnedClockIndex:
         owner = self
         class Slice:
             def execute(self, query, params):
-                expected = [owner.chart, system, owner.pin['build_id'],
-                            owner.pin['ayanamsha_id'], owner.pin['tier']]
+                expected = [owner.chart, system, owner.pin['ayanamsha_id']]
                 if list(params) != expected:
                     raise ValueError('cached F2 slice cannot answer another pin')
                 return self
@@ -252,7 +265,17 @@ class KaAvdhiWriter(WriterBase):
         f2, natal = pins['f2'], pins['natal']
         if f2['ayanamsha_id'] != natal['ayanamsha_id']:
             raise ValueError('F2 and natal conventions must agree')
-        periods = _read(conn, _PERIOD_SQL, (chart, f2['build_id'], f2['ayanamsha_id'], f2['tier'], f2['systems']))
+        raw_periods = _read(conn, _PERIOD_SQL, (chart, f2['ayanamsha_id'], f2['systems']))
+        # One complete read per requested namespace, before tier/build filtering.
+        periods = []
+        for system in f2['systems']:
+            class Rows:
+                def execute(self, query, params): return self
+                def fetchall(self): return [r for r in raw_periods if r['system_id'] == system]
+            periods.extend(clocks._read_rows(Rows(), chart, system,
+                build_id=f2['build_id'], ayanamsha_id=f2['ayanamsha_id'], tier=f2['tier']))
+        if not periods:
+            raise clocks.ClockUnavailable('F2 pin unavailable; candidate preserved')
         facts = _read(conn, _FETCH_FACT_REFS_SQL, (chart, natal['build_id'], natal['ayanamsha_id'], natal['tier']))
         mechanisms = _read(conn, _MECHANISM_SQL, (chart, gen, f2['ayanamsha_id']))
         uncertainty = clocks.BoundaryUncertainty(**f2['uncertainty']) if f2.get('uncertainty') else None

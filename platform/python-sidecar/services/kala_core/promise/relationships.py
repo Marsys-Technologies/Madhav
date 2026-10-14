@@ -250,40 +250,45 @@ def resolve_relationships(
                  mechanism=p['mechanism_id'], rule=binding.get('rule_id') or p['mechanism_id'],
                  provenance=p.get('source') or '', state='unavailable' if valid else 'unqualified')
     if event_class in M6_EVENT_CLASSES:
-        def operand(role: str) -> tuple[int | None, str]:
+        def operand(role: str) -> tuple[int | None, str, tuple[str, ...]]:
+            refs = ()
             if role in {'mandi', 'yamakantaka'}:
                 row = find(role.upper(), 'sensitive_point_gulika_mandi', 'sign')
                 return (sign_num_of(str(row.get('fact_value_text') or '')) if row else None,
-                        'unavailable')
+                        'unavailable', (str(row['fact_id']),) if row else ())
             if role in {'lagna_lord', 'eighth_lord'}:
                 h = 1 if role == 'lagna_lord' else 8
                 sign = (lagna + h - 2) % 12 + 1 if lagna else None
                 if sign is None:
-                    return None, 'unavailable'
+                    return None, 'unavailable', lagna_ids
                 if sign not in sign_lords:
-                    return None, 'unqualified'
-                role = sign_lords.get(sign)
+                    return None, 'unqualified', lagna_ids
+                role, refs = sign_lords[sign], lagna_ids
             elif role == 'fifth_star_lord':
-                row = find('MOON', 'graha_nakshatra', 'nakshatra_id')
+                row = find('NAKSHATRA_MOON_BIRTH', 'panchanga_nakshatra_moon', 'number')
                 n = _integer(row.get('fact_value_num'), 27) if row else None
+                if not row:
+                    row = find('MOON', 'graha_nakshatra_join', 'nakshatra_id_ref')
+                    n = _integer(row.get('fact_value_num'), 27) if row else None
                 role = fifth_star_lord(n) if n else None
+                refs = (str(row['fact_id']),) if row else ()
             subject = _subject(role)
-            sign, _ = anchor(subject) if subject else (None, ())
-            return sign, 'unavailable'
+            sign, sign_refs = anchor(subject) if subject else (None, ())
+            return sign, 'unavailable', (*refs, *sign_refs)
 
-        def missing_state(*operands: tuple[int | None, str]) -> str:
+        def missing_state(*operands: tuple[int | None, str, tuple[str, ...]]) -> str:
             # R4: keep missing L0 rulership distinct from missing L1 operands.
             return ('unqualified' if any(sign is None and state == 'unqualified'
-                                        for sign, state in operands) else 'unavailable')
+                                        for sign, state, _ in operands) else 'unavailable')
 
         eighth, mandi = operand('eighth_lord'), operand('mandi')
         sign = mandi_distance_target_sign_num(eighth[0], mandi[0]) if eighth[0] and mandi[0] else None
-        emit(sign_target(sign, tuple(by_id)), Role.MANDI, Frame.ZODIAC, MANDI_DISTANCE_REF,
+        emit(sign_target(sign, (*eighth[2], *mandi[2])), Role.MANDI, Frame.ZODIAC, MANDI_DISTANCE_REF,
              rule=MANDI_DISTANCE_CITATION, provenance=MANDI_DISTANCE_CITATION, qualifier='agent:Saturn',
              state=missing_state(eighth, mandi))
         for formula in YAMAKANTAKA_FORMULAS:
             a, b = operand(formula['minuend']), operand(formula['subtrahend'])
-            emit(sign_target(difference_sign_num(a[0], b[0]) if a[0] and b[0] else None, tuple(by_id)),
+            emit(sign_target(difference_sign_num(a[0], b[0]) if a[0] and b[0] else None, (*a[2], *b[2])),
                  Role.YAMAKANTAKA, Frame.ZODIAC, formula['ref'], rule=formula['citation'],
                  provenance=formula['citation'], qualifier=f"agent:{formula['agent']}",
                  state=missing_state(a, b))

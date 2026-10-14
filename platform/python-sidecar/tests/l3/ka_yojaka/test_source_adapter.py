@@ -141,3 +141,19 @@ def test_event_binding_keeps_the_served_ocr_qualification():
     binding = next(b for b in EVENT_BINDINGS if b.rule_id == "Y-ADHI")
     assert binding.source_status == "verse_cited"
     assert binding.ocr_degradation and "house order" in binding.ocr_degradation
+
+
+def test_attachment_does_not_suppress_distinct_testimony():
+    facts, firings = sources()
+    signals = [dict(signal_id='distinct', ayanamsha_id='a', constituent_facts_array=['f:moon'],
+                    configuration_jsonb={'event_class_id': 'career_change', 'assumptions': ['proposal']})]
+    bundle = build_bundle(facts, firings, signals)
+    row = next((r for r in bundle if r['route'] == 'testimony'), None)
+    assert row is not None and row['event_class_id'] == 'career_change' and row['assumptions'] == ['proposal']
+
+
+def test_same_class_different_assumptions_remain_testimony():
+    facts, firings = sources()
+    signals = [dict(signal_id='distinct', ayanamsha_id='a', constituent_facts_array=['f:moon'],
+                    configuration_jsonb={'event_class_id': 'major_gain', 'assumptions': ['extra condition']})]
+    assert any(r['route'] == 'testimony' for r in build_bundle(facts, firings, signals))
