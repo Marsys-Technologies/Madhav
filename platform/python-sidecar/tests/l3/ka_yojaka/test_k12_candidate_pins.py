@@ -20,6 +20,7 @@ class Conn:
     def execute(self, sql, params=()):
         if not sql.lstrip().startswith('SELECT'): self.writes.append((sql, params)); self.rows=[]; return self
         if 'FROM kala_layer_head' in sql: self.rows=[]
+        elif 'FROM kala_layer_candidate_grain' in sql: self.rows=[]
         elif 'FROM kala_layer_candidate' in sql: self.rows=self.candidate
         elif 'FROM chart_facts' in sql: self.rows=self.select(sql, params, self.facts)
         elif 'FROM ga_yoga_firings' in sql: self.rows=self.select(sql, params, self.firings)
@@ -54,3 +55,32 @@ def test_foreign_build_candidate_refused():
     conn=Conn(); conn.candidate[0]['build_id']='foreign'
     with pytest.raises(ValueError, match='build'): run(conn)
     assert not conn.writes
+
+
+def test_writer_preserves_unassessed_reason_in_the_consumer_state():
+    """Exercise real adapter/evaluator/serialization; only the SQL transport is fake."""
+    from tests.l3.ka_yojaka.test_source_adapter import sources
+    facts, firings = sources()
+    facts.append(dict(facts[0], fact_id='f:saturn', fact_subject='Saturn'))
+    firings[0]['constituent_fact_ids'] = ['f:moon', 'f:saturn']
+    firings[1]['bhanga_rules_jsonb'] = [dict(rule_id='NB-1', kind='defeats',
+        target_yoga_canonical_id='sunapha', target_event_class_id='major_gain',
+        rule_version='fixture-v1', source_locator='fixture:source:1')]
+    firings[1]['grounds_jsonb'] = {'cancellation_evidence': [
+        {'rule_id': 'NB-1', 'fact_ids': ['f:moon']}]}
+    conn = Conn()
+    conn.facts = [dict(r, build_id='A') for r in facts]
+    conn.firings = [dict(r, build_id='A') for r in firings]
+    ctx = SimpleNamespace(dry_run=False, db_conn=conn, build_id='owner',
+        config={'chart_id': 'chart', 'candidate_generation': 'candidate:G'})
+    result = KaYojakaWriter().run_substep(ctx, SubStep('class:major_gain'))
+    assert result.rows_inserted == 1
+    inserted = next(params for sql, params in conn.writes
+                    if 'INSERT INTO kala_activation_predicates' in sql)[0]
+    ledger = json.loads(inserted[7])
+    state = json.loads(inserted[10])
+    assert state['effective_state'] == 'unresolved' and state['scored'] is False
+    assert state['null_reason'] == 'partial_defeat_unassessed'
+    assert state['effective_reason'] == ledger['effective_reason']
+    assert state['effective_reason']['conclusion_ids'] == ['a:sunapha:major_gain:conclusion']
+    assert state['effective_reason']['defeat_ids'] == [state['defeats'][0]['defeat_id']]
