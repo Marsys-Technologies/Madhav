@@ -93,6 +93,7 @@ class Defeat:
     rule_id: str
     kind: str = "defeats"
     defeat_id: str | None = None
+    evidence_reason: UnassessedReason | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in {"defeats", "excepts"}:
@@ -104,6 +105,8 @@ class UnassessedReason(StrEnum):
     CONTESTATION = "contestation_unassessed"
     MISSING_DEFEAT_FACTS = "missing_defeat_facts"
     CONDITIONS = "conditions_unassessed"
+    DEFEAT_EVIDENCE_MISSING = "defeat_evidence_missing"
+    DEFEAT_EVIDENCE_AMBIGUOUS = "defeat_evidence_ambiguous"
 
 
 @dataclass(frozen=True)
@@ -113,6 +116,7 @@ class EffectiveResult:
     conclusion_ids: tuple[str, ...] = ()
     defeat_ids: tuple[str, ...] = ()
     missing_fact_ids: tuple[str, ...] = ()
+    evidence_fact_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -262,6 +266,17 @@ class PromiseGraph:
         if not grounded(conclusion):
             return EffectiveResult(EffectiveState.UNRESOLVED)
         defeats = [d for d in self.defeats if d.conclusion_id == conclusion_id]
+        unavailable = {d.evidence_reason for d in defeats if d.evidence_reason is not None}
+        if unavailable:
+            # (I) INTERPRETATION: missing/ambiguous named evaluations cannot be
+            # combined into a grounded defeat. Ambiguity names any duplicate
+            # group; all involved evidence identities remain in the result.
+            reason = (UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS
+                      if UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS in unavailable
+                      else UnassessedReason.DEFEAT_EVIDENCE_MISSING)
+            return EffectiveResult(EffectiveState.UNRESOLVED, reason,
+                (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})),
+                evidence_fact_ids=tuple(sorted({fact_id for d in defeats for fact_id in d.fact_ids})))
         if conclusion.event_relation is EventRelation.CONDITIONS:
             # (I) INTERPRETATION: a sourced conditions relation identifies no
             # satisfied precondition. Retain it without assigning a valence.
