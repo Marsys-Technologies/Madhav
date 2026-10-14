@@ -63,7 +63,8 @@ def _build_cursor_sequence(conn, md_ad_rows, pd_rows, conv_rows=None):
         2. SELECT MD+AD (level_n IN (1,2)) — fetchall → md_ad_rows
         3. SELECT convergence windows — fetchall → conv_rows
         4. SELECT PD (level_n=3) — fetchall → pd_rows
-        5. INSERT (if rows exist) — no fetchall
+        5. stored-verification probe on INSERT cursor — fetchone → (False,)
+        6. INSERT (if rows exist) — no fetchall
     """
     if conv_rows is None:
         conv_rows = []
@@ -74,6 +75,7 @@ def _build_cursor_sequence(conn, md_ad_rows, pd_rows, conv_rows=None):
     cur_conv     = MagicMock(); cur_conv.fetchall.return_value  = conv_rows
     cur_pd       = MagicMock(); cur_pd.fetchall.return_value    = pd_rows
     cur_insert   = MagicMock()
+    cur_insert.fetchone.return_value = (False,)  # (I) INTERPRETATION: legacy fixture models pre-1376 absence
 
     cursors = [cur_timeout, cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
     idx = [0]
@@ -473,6 +475,7 @@ def test_as_of_date_passed_as_bound_param():
     cur_conv     = MagicMock(); cur_conv.fetchall.return_value  = []
     cur_pd       = MagicMock(); cur_pd.fetchall.return_value    = pd_rows
     cur_insert   = MagicMock()
+    cur_insert.fetchone.return_value = (False,)  # (I) INTERPRETATION: legacy fixture models pre-1376 absence
     all_cursors = [cur_timeout, cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
     idx = [0]
 

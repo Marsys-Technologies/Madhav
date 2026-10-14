@@ -203,6 +203,7 @@ class TestB4SrcDomainPropagation:
 
         # Capture the INSERT call arguments
         mock_cur = MagicMock()
+        mock_cur.fetchone.return_value = (False,)  # (I) INTERPRETATION: legacy fixture models pre-1376 absence
         mock_cur.execute = MagicMock()
 
         from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
@@ -242,6 +243,7 @@ class TestB4SrcDomainPropagation:
         }
 
         mock_cur = MagicMock()
+        mock_cur.fetchone.return_value = (False,)  # (I) INTERPRETATION: legacy fixture models pre-1376 absence
         from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
         writer = KaSangamWriter.__new__(KaSangamWriter)
         writer._insert_windows(mock_cur, 'test-chart-id', [w], 'near')
