@@ -93,6 +93,8 @@
 # through a link planted at its predictable temporary name (write_json, the probe); the profile denies those names.
 # v1.2 (2026-10-12) review KB-R2-01: writable[] no longer grants the shared $HOME/.claude/* directories; the program's
 # store is the per-job S/program, and $HOME/.claude and $HOME/.claude.json join the paths no writable may overlap.
+# KV3-CODEX-VERIFY-BOUNDARY (2026-10-14): shared ~/.codex is protected too; canary runs the same profile/probe
+# around fleet verifier qualification without making a Git checkout or touching the actual reviewed source.
 set -u
 PY=/opt/homebrew/bin/python3
 [ -x "$PY" ] || PY=/usr/bin/python3
@@ -169,7 +171,7 @@ def load(job_id):
     p["writable"] = [S, p["cache"], p["tmp_path"], p["program"]]          # this job's own, nothing shared (KB-R2-01)
     p["protected"] = [p["worktree"], ky_run, ky_fleet, os.path.join(ky_root, "bin"),
                       os.path.join(home, "Library", "LaunchAgents"), os.path.join(home, ".claude"),
-                      os.path.join(home, ".claude.json")]
+                      os.path.join(home, ".claude.json"), os.path.join(home, ".codex")]
     return p
 
 
@@ -587,7 +589,45 @@ def release(job_id):
         return 1
 
 
+def canary(scratch, view, record, argv):
+    """Qualification-only source stand-in; the live profile and enforcement detector, no Git writes.
+
+    (I) INTERPRETATION: qualification needs the exact confinement mechanism, not a
+    second registered job/view. The controller owns the evidence path outside S.
+    CODEX_HOME and TMPDIR must be the same job-local locations as a live verifier.
+    """
+    try:
+        for path in (scratch, view, record):
+            if not os.path.isabs(path) or os.path.realpath(path) != path or re.search(r"[\x00-\x1f]", path):
+                raise NotEstablished("canary paths must be canonical and absolute")
+        if inside(scratch, "/tmp") or inside(scratch, "/private/tmp") or re.search(r'[\[\]\\^\"]', scratch):
+            raise NotEstablished("canary scratch cannot be expressed safely")
+        if inside(view, scratch) or inside(scratch, view) or inside(record, scratch):
+            raise NotEstablished("canary source/evidence overlaps writable scratch")
+        home = abs_env("HOME", "")
+        for protected in (os.path.join(home, ".codex"), os.path.join(home, ".claude"), os.path.join(home, ".claude.json")):
+            if inside(scratch, protected) or inside(protected, scratch):
+                raise NotEstablished("canary writable scratch overlaps a shared program store")
+        p = {"job_scratch": scratch, "view": view}
+        writable = [scratch, os.path.join(scratch, "cache"), os.path.join(scratch, "tmp"), os.path.join(scratch, "program")]
+        if os.environ.get("CODEX_HOME") != writable[-1] or os.environ.get("TMPDIR") != writable[-2]:
+            raise NotEstablished("canary CODEX_HOME/TMPDIR is not job-local")
+        if not os.path.isdir(scratch) or not os.path.isdir(view) or MECHANISM not in ACCEPTED:
+            raise NotEstablished("canary source/scratch or accepted mechanism absent")
+        if enforces(p, writable) is not True:
+            raise NotEstablished("canary profile does not enforce")
+        policy = profile(p, writable)
+        write_json(record, {"mechanism": MECHANISM, "enforced": True, "view": view, "writable": writable,
+                            "codex_home": writable[-1], "profile_sha256": hashlib.sha256(policy.encode()).hexdigest()})
+        os.execv(SANDBOX_EXEC, [SANDBOX_EXEC, "-p", policy] + argv)
+    except (NotEstablished, OSError) as e:
+        say("canary: not established: %s" % e)
+    return 70
+
+
 def main(a):
+    if len(a) >= 6 and a[0] == "canary" and a[4] == "--":
+        return canary(a[1], a[2], a[3], a[5:])
     if len(a) < 2 or a[0] not in ("prepare", "exec", "check", "release") or not JOB_ID.match(a[1]):
         usage()
     if a[0] == "exec":

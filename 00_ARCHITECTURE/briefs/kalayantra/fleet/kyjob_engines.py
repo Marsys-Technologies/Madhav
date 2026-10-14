@@ -166,10 +166,13 @@ def plan(job, own, helper):
             raise Refusal('Codex launch inputs changed after controller preparation')
     prefix = helper['prepare_boundary'](job['job_id'], own) if bounded else []
     pairs = [(n, env[n]) for n in cfg['env_names']]
+    if bounded:
+        store = qualify.seed_codex_home(job['job_scratch'], own['HOME'])
+        pairs.append(('CODEX_HOME', store))
     parts = ['ky.jobplan/1', job['worktree'], job['prompt_path'], job['stdout_path'], job['stderr_path']]
     parts += prefix + ['/usr/bin/env', '-i'] + ['%s=%s' % p for p in pairs] + command
     record = dict(job_id=job['job_id'], cwd=job['worktree'], argv=command,
-                  env_names=sorted(cfg['env_names']), launch_config_path=job['launch_config_path'],
+                  env_names=sorted(n for n, _ in pairs), launch_config_path=job['launch_config_path'],
                   launch_config_sha256=cfg_hash, at=helper['utc_now_text'](), **metadata(job))
     if before:
         # Controller checkpoint is prepared before spawn (fleet/kyd_jobs.py:683-690, 782-787).

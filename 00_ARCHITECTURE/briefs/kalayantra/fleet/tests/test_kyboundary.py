@@ -392,6 +392,41 @@ def test_the_runner_refuses_a_target_outside_the_pytest_base(world):
     assert not str(world.base).startswith(("/tmp/", "/private/tmp/"))
 
 
+def test_real_codex_version_starts_under_generated_verifier_profile(tmp_path):
+    """A harmless CLI startup, no authentication copy and no model job."""
+    codex = '/opt/homebrew/bin/codex'
+    assert os.access(codex, os.X_OK), 'the installed Codex is required for this smoke'
+    scratch, view, home = tmp_path / 'job', tmp_path / 'view', tmp_path / 'home'
+    for folder in (scratch, view, home, scratch / 'program', scratch / 'tmp'):
+        folder.mkdir(exist_ok=True)
+    env = dict(HOME=str(home), USER='tester', PATH=PATH, CODEX_HOME=str(scratch / 'program'),
+               TMPDIR=str(scratch / 'tmp'))
+    record = tmp_path / 'smoke-boundary.json'
+    r = sh([BASH, KYB, 'canary', scratch, view, record, '--', codex, '--version'], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.startswith('codex-cli ') and not r.stderr.strip()
+    evidence = json.loads(record.read_text())
+    assert evidence['mechanism'] == MECHANISM and evidence['enforced'] is True
+    assert evidence['codex_home'] == str(scratch / 'program')
+    assert not (home / '.codex').exists()
+
+
+def test_canary_boundary_denies_reviewed_source_git_and_shared_codex_writes(tmp_path):
+    scratch, view, home = tmp_path / 'job', tmp_path / 'view', tmp_path / 'home'
+    for folder in (scratch, view, home, scratch / 'program', scratch / 'tmp', view / '.git', home / '.codex'):
+        folder.mkdir(exist_ok=True)
+    targets = [view / 'source.py', view / '.git' / 'config', home / '.codex' / 'config.toml']
+    for target in targets:
+        target.write_text('original\n')
+    env = dict(HOME=str(home), USER='tester', PATH=PATH, CODEX_HOME=str(scratch / 'program'),
+               TMPDIR=str(scratch / 'tmp'))
+    for i, target in enumerate(targets):
+        r = sh([BASH, KYB, 'canary', scratch, view, tmp_path / ('boundary-%d.json' % i), '--',
+                '/bin/sh', '-c', 'echo changed > "$1"', 'sh', target], env=env)
+        assert r.returncode != 0
+        assert target.read_text() == 'original\n'
+
+
 # ── prepare ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def test_prepare_writes_the_boundary_record_and_a_view_at_the_reviewed_head(world):
     doc = json.loads((world.S / "boundary.json").read_text())

@@ -221,12 +221,17 @@ def test_new_readonly_mapping_refuses_missing_snapshot_packet(role, monkeypatch)
 
 
 @pytest.mark.parametrize('role', ['build', 'verify'])
-def test_existing_codex_templates_are_byte_identical_to_assembly_head(role):
+def test_existing_codex_templates_preserve_assembly_launch_contract(role):
     path = FLEET / 'templates' / ('LAUNCH_CONFIG.' + role + '.codex.json')
     rel = str(path.relative_to(FLEET.parents[3]))
     read = subprocess.run(['/usr/bin/git', '-C', str(FLEET), 'show', 'HEAD:' + rel],
                           env={'PATH': '/usr/bin:/bin', 'GIT_OPTIONAL_LOCKS': '0'}, capture_output=True, check=True)
-    assert path.read_bytes() == read.stdout
+    # Startup policy is engine-owned; the verifier note documents it. The
+    # template's executable configuration must still match the accepted head.
+    current, accepted = json.loads(path.read_bytes()), json.loads(read.stdout)
+    current.pop('_note', None)
+    accepted.pop('_note', None)
+    assert current == accepted
 
 
 @pytest.mark.parametrize('role', ['pre-accept', 'post-readback', 'ruling', 'request-prep', 'model', 'plan'])

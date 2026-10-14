@@ -150,6 +150,67 @@ def test_full_without_explicit_selection(tmp_path):
     assert w.launch().code==65
 
 
+@pytest.mark.parametrize('mode', ['locked', 'full'])
+def test_codex_verifier_startup_uses_private_authenticated_store(tmp_path, mode):
+    w, cfg = codex_world(tmp_path, mode, verifier=True)
+    shared = w.home / '.codex'
+    shared.mkdir()
+    (shared / 'auth.json').write_text('fake authentication; not a credential\n')
+    (shared / 'config.toml').write_text('must never be copied\n')
+    (shared / 'hooks.json').write_text('must never be copied\n')
+    body = w.program.read_text()
+    check = '''
+store="${CODEX_HOME:?verifier startup requires CODEX_HOME}"
+[ "$store" = "$JOB_SCRATCH/program" ] || exit 91
+[ -f "$store/auth.json" ] || exit 92
+[ ! -e "$store/config.toml" ] && [ ! -e "$store/hooks.json" ] || exit 93
+mkdir -p "$store/tmp/arg0" "$store/sessions" "$store/log"
+printf 'started\\n' > "$store/startup.txt"
+'''
+    w.program.write_text(body.replace('out="${TMPDIR:?TMPDIR is not set}"', check + '\nout="${TMPDIR:?TMPDIR is not set}"'))
+    done = w.launch()
+    assert done.code == 0, done.err
+    store = w.job_scratch / 'program'
+    assert (store / 'startup.txt').read_text() == 'started\n'
+    assert (store / 'auth.json').read_bytes() == (shared / 'auth.json').read_bytes()
+    assert (store / 'auth.json').stat().st_mode & 0o777 == 0o600
+    assert not (shared / 'sessions').exists()
+    record = json.loads((w.job_scratch / 'kyjob.launch.json').read_text())
+    assert 'CODEX_HOME' in record['env_names']
+
+
+def test_codex_verifier_refuses_linked_program_store(tmp_path):
+    w, cfg = codex_world(tmp_path, verifier=True)
+    outside = w.base / 'outside-store'
+    outside.mkdir()
+    (w.job_scratch / 'program').symlink_to(outside, target_is_directory=True)
+    assert w.launch().code == 65
+    assert not list(outside.iterdir())
+
+
+@pytest.mark.parametrize('unsafe', ['source-link', 'destination-link', 'source-directory', 'source-fifo'])
+def test_codex_authentication_copy_refuses_links_and_nonfiles(tmp_path, unsafe):
+    home, job = tmp_path / 'home', tmp_path / 'job'
+    (home / '.codex').mkdir(parents=True)
+    (job / 'program').mkdir(parents=True)
+    source, target = home / '.codex' / 'auth.json', job / 'program' / 'auth.json'
+    sentinel = tmp_path / 'sentinel'
+    sentinel.write_text('fake sentinel; not a credential\n')
+    if unsafe == 'source-link':
+        source.symlink_to(sentinel)
+    elif unsafe == 'destination-link':
+        source.write_text('fake auth\n')
+        target.symlink_to(sentinel)
+    elif unsafe == 'source-directory':
+        source.mkdir()
+    else:
+        os.mkfifo(source)
+    with pytest.raises((OSError, ValueError)):
+        Q.seed_codex_home(str(job), str(home))
+    assert sentinel.read_text() == 'fake sentinel; not a credential\n'
+    assert not list((job / 'program').glob('.auth-copy-*'))
+
+
 @pytest.mark.parametrize('field,value',[('engine','claude'),('model','wrong'),('effort','xhigh'),('network',True),('writable_dirs',['/tmp'])])
 def test_config_identity_and_roots(tmp_path,field,value):
     w,cfg=codex_world(tmp_path)
