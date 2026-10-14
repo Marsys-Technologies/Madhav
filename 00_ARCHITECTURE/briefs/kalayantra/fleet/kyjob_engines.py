@@ -108,6 +108,8 @@ def launch_config(job, env):
             or job.get('extra_lean_flags') or job.get('disallowed_tools'):
         raise Refusal('mixed Claude launch fields in a Codex job')
     verifier = job['kind'] in READ_ONLY_KINDS
+    if verifier and job.get('sandbox_mode', 'locked') != 'locked':
+        raise Refusal('read-only Codex roles require their native workspace-write sandbox; full is refused')
     if verifier != qualify.job_rooted(cfg):
         raise Refusal('VERIFY must be job-rooted; builders must be worktree-rooted'
                           if job['kind'] in ('BUILD', 'REWORK', 'VERIFY') else
@@ -132,6 +134,8 @@ def argv(cfg, job):
     """Only the cockpit's three full-mode changes to the reviewed base builder."""
     out = qualify.build_argv(cfg, job['job_scratch'])
     if job.get('sandbox_mode', 'locked') == 'full':
+        if job.get('kind') in READ_ONLY_KINDS:
+            raise Refusal('full would remove the verifier boundary')
         if out.count('-s') != 1 or out[out.index('-s') + 1] != 'workspace-write':
             raise Refusal('the reviewed base argv has no unique workspace-write sandbox')
         out[out.index('-s') + 1] = 'danger-full-access'

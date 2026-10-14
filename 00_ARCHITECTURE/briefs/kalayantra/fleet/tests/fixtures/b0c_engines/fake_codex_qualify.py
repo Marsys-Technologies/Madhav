@@ -110,10 +110,11 @@ def run_command(line):
         if network or cfg["network_leaks"]:
             return shell(line)
         return 7, "curl: (7) Failed to connect to 127.0.0.1: Operation not permitted"
-    if line.startswith("git commit"):
-        common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+    if line.startswith("git commit") or (line.startswith("git -C ") and " commit " in line):
+        git_tree = shlex.split(line)[2] if line.startswith("git -C ") else "."
+        common = subprocess.run(["git", "-C", git_tree, "rev-parse", "--path-format=absolute", "--git-common-dir"],
                                 capture_output=True, text=True).stdout.strip()
-        if not cfg["git_blocked"] and (sandbox == "workspace-write" and inside(".") and inside(common)
+        if not cfg["git_blocked"] and (sandbox == "workspace-write" and inside(git_tree) and inside(common)
                                        or cfg["sandbox_leaks"]):
             return shell(line, dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1"))
         return 128, "fatal: Unable to create '%s/index.lock': Operation not permitted" % common

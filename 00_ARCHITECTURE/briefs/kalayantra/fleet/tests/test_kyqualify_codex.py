@@ -470,6 +470,29 @@ def fleet_verifier(rig):
     return rig.config(rig.reviewer(role='verify'))
 
 
+def test_codex_verifier_qualification_exposes_native_sandbox_leaks(rig):
+    cfg = fleet_verifier(rig)
+    rig.configure(sandbox_leaks=True)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None, r.stderr
+    assert receipt['checks']['item_write_denied']['result'] == 'fail'
+    assert receipt['checks']['git_write_denied']['result'] == 'fail'
+
+
+def test_codex_verifier_qualification_does_not_nest_seatbelt(rig):
+    cfg = fleet_verifier(rig)
+    body = (rig.bindir / 'codex').read_text()
+    probe = '''
+if a != ["--version"]:
+    check = subprocess.run(["/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)", "/usr/bin/true"])
+    if check.returncode:
+        sys.exit(check.returncode)
+'''
+    (rig.bindir / 'codex').write_text(body.replace('assert a[0] == "exec"', probe + '\nassert a[0] == "exec"'))
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None and receipt['result'] == 'PASS', r.stderr
+
+
 def test_fleet_verifier_qualifies_inside_the_live_boundary(rig):
     cfg = fleet_verifier(rig)
     r, receipt, evidence, out = rig.qualify(cfg)
@@ -479,8 +502,8 @@ def test_fleet_verifier_qualifies_inside_the_live_boundary(rig):
     assert kyschema.validate(kyschema.load_json(SCHEMAS / 'qualification_codex.json'), receipt) == []
     for run in (evidence / 'runs').iterdir():
         record = json.loads((run / 'run.json').read_text())
-        assert record['boundary']['mechanism'] == 'seatbelt-file-write-deny/1'
-        assert record['boundary']['enforced'] is True
+        assert record['boundary']['mechanism'] == 'codex-workspace-write/1'
+        assert record['boundary']['configured'] is True and record['boundary']['outer_sandbox'] is False
         assert 'CODEX_HOME' in record['env_names']
         assert record['rollout'] is not None or run.name in ('neg-auth', 'neg-timeout', 'neg-term')
         store = run / 'job_scratch' / 'program'
@@ -489,23 +512,22 @@ def test_fleet_verifier_qualifies_inside_the_live_boundary(rig):
     assert rig.check(out, cfg, '--verify-evidence')[0].returncode == 0
 
 
-def test_fleet_verifier_outer_boundary_refuses_an_inner_sandbox_write_leak(rig):
+def test_fleet_verifier_native_sandbox_write_leak_refuses_qualification(rig):
     cfg = fleet_verifier(rig)
     rig.configure(sandbox_leaks=True)
     r, receipt, evidence, out = rig.qualify(cfg)
     assert receipt is not None, r.stderr
-    assert receipt['checks']['item_write_denied']['result'] == 'pass'
-    assert receipt['checks']['outside_write_denied']['result'] == 'pass'
-    assert not list((evidence / 'outside').rglob('CANARY_OUTSIDE.txt'))
+    assert receipt['checks']['item_write_denied']['result'] == 'fail'
+    assert receipt['checks']['outside_write_denied']['result'] == 'fail'
+    assert receipt['result'] == 'FAIL'
 
 
 def test_fleet_verifier_shared_store_startup_failure_never_qualifies(rig):
     cfg = fleet_verifier(rig)
-    target = rig.home / '.codex' / 'forbidden-startup.txt'
+    target = rig.home / '.codex' / 'hooks.json'
     rig.configure(write={str(target): 'unredirected startup'})
     r, receipt, evidence, out = rig.qualify(cfg)
-    assert receipt is not None and receipt['result'] != 'PASS', r.stderr
-    assert not target.exists()
+    assert receipt is None and r.returncode != 0 and 'bound inputs changed' in r.stderr
 
 
 def test_fleet_verifier_boundary_evidence_is_rejudged(rig):
@@ -514,7 +536,7 @@ def test_fleet_verifier_boundary_evidence_is_rejudged(rig):
     assert receipt['result'] == 'PASS', r.stderr
     path = evidence / 'runs' / 'base' / 'boundary.canary.json'
     record = json.loads(path.read_text())
-    record['enforced'] = False
+    record['configured'] = False
     path.write_text(json.dumps(record))
     # Updating its file hash must not turn a false observation into a passing receipt.
     receipt['evidence']['files'][str(path.relative_to(evidence))] = sha(path)

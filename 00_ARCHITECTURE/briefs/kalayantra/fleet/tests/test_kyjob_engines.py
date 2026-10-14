@@ -124,6 +124,9 @@ def test_claude_bytes_changed(tmp_path,explicit):
 def test_full_argv_or_record_changed(tmp_path,mode,verifier):
     w,cfg=codex_world(tmp_path,mode,verifier)
     done=w.launch()
+    if mode == 'full' and verifier:
+        assert done.code == 65
+        return
     assert done.code==0,done.err
     actual=(w.job_scratch/'tmp/fake_argv.txt').read_text().splitlines()
     expected=Q.build_argv(cfg,str(w.job_scratch))[1:]
@@ -150,7 +153,12 @@ def test_full_without_explicit_selection(tmp_path):
     assert w.launch().code==65
 
 
-@pytest.mark.parametrize('mode', ['locked', 'full'])
+def test_full_mode_cannot_remove_a_codex_verifiers_only_sandbox(tmp_path):
+    w, cfg = codex_world(tmp_path, 'full', verifier=True)
+    assert w.launch().code == 65
+
+
+@pytest.mark.parametrize('mode', ['locked'])
 def test_codex_verifier_startup_uses_private_authenticated_store(tmp_path, mode):
     w, cfg = codex_world(tmp_path, mode, verifier=True)
     shared = w.home / '.codex'

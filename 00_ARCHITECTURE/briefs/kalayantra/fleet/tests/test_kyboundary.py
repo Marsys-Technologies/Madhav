@@ -392,22 +392,21 @@ def test_the_runner_refuses_a_target_outside_the_pytest_base(world):
     assert not str(world.base).startswith(("/tmp/", "/private/tmp/"))
 
 
-def test_real_codex_version_starts_under_generated_verifier_profile(tmp_path):
+def test_real_claude_version_starts_under_generated_verifier_profile(tmp_path):
     """A harmless CLI startup, no authentication copy and no model job."""
-    codex = '/opt/homebrew/bin/codex'
-    assert os.access(codex, os.X_OK), 'the installed Codex is required for this smoke'
+    codex = '/Users/Dev/.local/bin/claude'
+    assert os.access(codex, os.X_OK), 'the installed Claude is required for this smoke'
     scratch, view, home = tmp_path / 'job', tmp_path / 'view', tmp_path / 'home'
     for folder in (scratch, view, home, scratch / 'program', scratch / 'tmp'):
         folder.mkdir(exist_ok=True)
-    env = dict(HOME=str(home), USER='tester', PATH=PATH, CODEX_HOME=str(scratch / 'program'),
-               TMPDIR=str(scratch / 'tmp'))
+    env = dict(HOME=str(home), USER='tester', PATH=PATH, CLAUDE_CODE_TMPDIR=str(scratch / 'tmp'), TMPDIR=str(scratch / 'tmp'))
     record = tmp_path / 'smoke-boundary.json'
     r = sh([BASH, KYB, 'canary', scratch, view, record, '--', codex, '--version'], env=env)
     assert r.returncode == 0, r.stderr
-    assert r.stdout.startswith('codex-cli ') and not r.stderr.strip()
+    assert 'Claude Code' in r.stdout and not r.stderr.strip()
     evidence = json.loads(record.read_text())
     assert evidence['mechanism'] == MECHANISM and evidence['enforced'] is True
-    assert evidence['codex_home'] == str(scratch / 'program')
+    assert evidence['claude_code_tmpdir'] == str(scratch / 'tmp')
     assert not (home / '.codex').exists()
 
 
@@ -418,8 +417,7 @@ def test_canary_boundary_denies_reviewed_source_git_and_shared_codex_writes(tmp_
     targets = [view / 'source.py', view / '.git' / 'config', home / '.codex' / 'config.toml']
     for target in targets:
         target.write_text('original\n')
-    env = dict(HOME=str(home), USER='tester', PATH=PATH, CODEX_HOME=str(scratch / 'program'),
-               TMPDIR=str(scratch / 'tmp'))
+    env = dict(HOME=str(home), USER='tester', PATH=PATH, CLAUDE_CODE_TMPDIR=str(scratch / 'tmp'), TMPDIR=str(scratch / 'tmp'))
     for i, target in enumerate(targets):
         r = sh([BASH, KYB, 'canary', scratch, view, tmp_path / ('boundary-%d.json' % i), '--',
                 '/bin/sh', '-c', 'echo changed > "$1"', 'sh', target], env=env)
@@ -1171,3 +1169,82 @@ def test_zz_no_mount_of_this_suite_is_left(tmp_path_factory):
     r = sh(["/sbin/mount"], check=True)
     assert [line for line in r.stdout.splitlines() if base in line] == []
     assert attached_images(base) == {}
+
+
+def native_codex_world(tmp_path):
+    """Native CLI stand-in: its tool, and only its tool, applies real Seatbelt.
+
+    This measures OS confinement and nested-sandbox compatibility without model jobs.
+    Qualification separately measures the installed CLI through actual tool effects.
+    """
+    w = World(tmp_path, prepare=False)
+    w.tmp = w.S / 'tmp'
+    w.tmp.mkdir()
+    w.view = Path(str(w.S) + '-view')
+    w.gitv = w.view / '.git'
+    for name in ('kyqualify.py', 'kyprobe.py', 'kyschema.py'):
+        shutil.copyfile(FLEET / name, w.fleet / name)
+    sys.path.insert(0, str(FLEET))
+    import kyqualify as q
+    w.fake.write_text('''#!/usr/bin/env python3
+import json, os, subprocess, sys
+root = os.environ['JOB_SCRATCH']
+policy = '(version 1)(allow default)(deny file-write*)(deny network*)' + '(allow file-write* (subpath %s) (literal "/dev/null"))' % json.dumps(root)
+# Applying this profile would fail with exit 71 if an outer profile remained.
+r = subprocess.run(['/usr/bin/sandbox-exec', '-p', policy, '/bin/sh', '-c', sys.stdin.read()])
+sys.exit(r.returncode)
+''')
+    w.fake.chmod(0o755)
+    card = w.S / 'card.md'
+    card.write_text('test card\n')
+    cfg = dict(schema='ky.launch_config/1', engine='codex', role='verify', model='gpt-6.1-sol', effort='high',
+               sandbox='workspace-write', network=False, work_root='job', deadline_seconds=3600,
+               worktree=str(w.wt), codex_bin=str(w.fake), codex_min_version='0.162.0', prompt_path=str(card),
+               env_names=['HOME', 'USER', 'LANG', 'TERM', 'PATH', 'TMPDIR', 'JOB_SCRATCH'],
+               child_path=PATH, writable_dirs=[])
+    launch = w.S / 'launch.json'
+    launch.write_text(json.dumps(cfg))
+    w.write_state(engine='codex', sandbox_mode='locked', tmp_path=str(w.tmp), launch_config_path=str(launch))
+    done = w.kyb('prepare', JOB)
+    assert done.returncode == 0, done.stderr
+    record = json.loads(Path(str(w.S) + '-boundary.json').read_text())
+    assert record['mechanism'] == 'codex-workspace-write/1'
+    assert not str(w.view).startswith(str(w.S) + '/')
+    env = dict(HOME=str(w.home), USER='tester', LANG='en_US.UTF-8', TERM='dumb', PATH=PATH,
+               TMPDIR=str(w.tmp), JOB_SCRATCH=str(w.S), CODEX_HOME=str(w.program))
+    argv = ['/usr/bin/env', '-i'] + [key + '=' + value for key, value in env.items()] + q.build_argv(cfg, str(w.S))
+    return w, argv
+
+
+def test_native_codex_can_apply_its_sandbox_and_read_source_write_job(tmp_path):
+    w, argv = native_codex_world(tmp_path)
+    command = 'cat "%s/a.txt" > "%s/evidence.txt"' % (w.view, w.S)
+    done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env, input=command)
+    assert done.returncode == 0, done.stderr
+    assert (w.S / 'evidence.txt').read_bytes() == (w.view / 'a.txt').read_bytes()
+    assert w.check()[0] == 0
+    assert w.kyb('release', JOB).returncode == 0
+    assert not w.view.exists() and not Path(str(w.S) + '-boundary.json').exists()
+
+
+@pytest.mark.parametrize('target', ['view', 'view_git', 'source', 'git', 'record', 'shared'])
+def test_native_codex_os_boundary_refuses_protected_writes(tmp_path, target):
+    w, argv = native_codex_world(tmp_path)
+    targets = dict(view=w.view / 'a.txt', view_git=w.gitv / 'config', source=w.wt / 'a.txt',
+                   git=w.gitw / 'index', record=Path(str(w.S) + '-boundary.json'), shared=w.shared['run'])
+    path = targets[target]
+    before = path.read_bytes()
+    # chmod and replace exercise kernel write denial, beyond a prompt prohibition.
+    command = 'chmod u+w "%s" && echo changed > "%s"' % (path, path)
+    done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env, input=command)
+    assert done.returncode != 0 and 'sandbox_apply' not in done.stderr
+    assert path.read_bytes() == before
+    assert w.check()[0] == 0
+
+
+def test_native_codex_boundary_refuses_an_unconfined_argv(tmp_path):
+    w, argv = native_codex_world(tmp_path)
+    argv[argv.index('-s') + 1] = 'danger-full-access'
+    done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env, input='echo leaked')
+    assert done.returncode == 70
+    assert 'native Codex argv' in done.stderr

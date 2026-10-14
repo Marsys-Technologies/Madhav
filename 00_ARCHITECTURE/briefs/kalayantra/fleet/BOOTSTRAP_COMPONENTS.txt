@@ -64,6 +64,8 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_codex_kind_templates.py
@@ -315,7 +317,3 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.tests.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyfinal.py
-
-# area: deferred-verify-codex — Codex verifier templates: a Codex job cannot run its own sandbox inside the verifier seatbelt (sandbox_apply: Operation not permitted, live 2026-10-14); deferred until the verifier boundary is redesigned for Codex
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json

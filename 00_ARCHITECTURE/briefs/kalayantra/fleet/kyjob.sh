@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kyjob.sh v1.1 — the worker launch (relaunch plan v2.7 §7; packet KV3-B-KYJOB v1). status: built, pending independent review.
+# kyjob.sh v1.2 — the worker launch (relaunch plan v2.7 §7; packet KV3-B-KYJOB v1). status: built, pending independent review.
 #
 #   bash $KY_FLEET/kyjob.sh <job_id>
 #
@@ -78,6 +78,7 @@
 # Limits: the files are hashed and compared when checked, not again at the instant of the exec; the helper below runs
 # under /opt/homebrew/bin/python3 (else /usr/bin/python3), isolated (-I -B), with a six-name environment.
 #
+# Changelog: v1.2 (2026-10-14) — verifier temp override and job-folder tool access; auth namespace retained.
 # Changelog: v1.1 (2026-10-13) — explicit Codex job adapter; Claude planning unchanged.
 # Changelog: v1.0 (2026-10-12) — first version (KV3-B-KYJOB v1).
 set -u
@@ -355,13 +356,15 @@ def zdotdir_digest(folder):
     return digest.hexdigest()
 
 
-def portable_argv(argv, worktree):
+def portable_argv(argv, worktree, job_scratch=None):
     """kyboot.py's: a launch line without what legitimately differs between worktrees — the --mcp-config path (its
     content is bound by hash) and the worktree prefix of any path under the worktree"""
     out = []
     for index, element in enumerate(argv):
         if index and argv[index - 1] == "--mcp-config":
             out.append("<MCP_CONFIG>")
+        elif job_scratch and element == job_scratch:
+            out.append("<JOB_DIR>")
         elif isinstance(worktree, str) and worktree and (element == worktree or element.startswith(worktree + "/")):
             out.append("<WORKTREE>" + element[len(worktree):])
         else:
@@ -391,7 +394,10 @@ def build_argv(state):
             "--strict-mcp-config", "--mcp-config", state["mcp_config"]]
     if state["disallowed_tools"]:
         argv += ["--disallowedTools", *state["disallowed_tools"]]
-    return argv + ["--output-format", "stream-json", "--verbose", "--add-dir", state["KY_ROOT"]]
+    argv += ["--output-format", "stream-json", "--verbose", "--add-dir", state["KY_ROOT"]]
+    if state.get("boundary") is not None:
+        argv += ["--add-dir", state["job_scratch"]]
+    return argv
 
 
 # ---- the refusals, in the order the header lists them ---------------------------------------------------------
@@ -685,7 +691,7 @@ def check_qualification(state, own, env, argv, facts, deadline):
         raise Refuse(65, "qualification: binds.argv is missing")
     if type(theirs) is not list or not all(isinstance(element, str) for element in theirs):
         raise Refuse(65, "qualification: binds.argv is not a list of texts")
-    mine, theirs = portable_argv(argv, state["worktree"]), portable_argv(theirs, binds.get("worktree"))
+    mine, theirs = portable_argv(argv, state["worktree"], state["job_scratch"]), portable_argv(theirs, binds.get("worktree"), state["job_scratch"])
     if mine != theirs:
         where = next((i for i, pair in enumerate(zip(mine, theirs)) if pair[0] != pair[1]), min(len(mine), len(theirs)))
         raise Refuse(65, "qualification: binds.argv is not this launch's line (same flags, same order); they differ "
@@ -778,6 +784,11 @@ def plan(job_id, own):
     prefix = prepare_boundary(job_id, own) if bounded else []
 
     scratch = state["job_scratch"]
+    if bounded:
+        # Engine-owned controls: appended after checking the template's environment.
+        # Claude's temp-root function ignores TMPDIR (installed 2.1.296).
+        # Keep the existing auth namespace: CLAUDE_CONFIG_DIR changes its keychain service.
+        env += [("CLAUDE_CODE_TMPDIR", os.path.join(scratch, "tmp"))]
     line = prefix + ["/usr/bin/env", "-i"] + ["%s=%s" % pair for pair in env] + argv
     parts = ["ky.jobplan/1", state["worktree"], state["prompt_path"], state["stdout_path"], state["stderr_path"]] + line
     record = {"job_id": job_id, "cwd": state["worktree"], "argv": argv, "env_names": sorted(name for name, _ in env),

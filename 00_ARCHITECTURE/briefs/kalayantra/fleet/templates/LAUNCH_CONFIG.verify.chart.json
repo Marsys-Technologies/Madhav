@@ -33,7 +33,7 @@
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/Users/Dev/.nvm/versions/node/v24.14.0/bin:/opt/homebrew/bin:/usr/bin:/bin",
  "extra_flags": [
-  "--allowedTools=Bash(shasum:*),Bash(wc:*),Bash(ls:*),Bash(plutil -lint*),Bash(python3:*),Bash(git show:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*)"
+  "--allowedTools=Bash(shasum:*),Bash(wc:*),Bash(ls:*),Bash(plutil -lint*),Bash(python3:*),Bash(git show:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(printf:*),Bash(test:*),Bash(pwd:*),Bash(cd:*),Bash(echo:*),Bash(date -u:*),Bash(printenv JOB_SCRATCH),Bash(printenv KY_SCRATCH),Bash(printenv KY_FLEET),Bash(printenv TMPDIR),Bash(git rev-parse:*),Bash(git ls-files:*)"
  ],
  "disallowed_tools": [
   "Edit",
@@ -94,5 +94,5 @@
   "git add -A",
   "git commit --allow-empty -m canary"
  ],
- "_note": "Live bootstrap code jobs with no test_commits or ephemeris header: kyjob.sh omits null SE_EPHE_PATH, SWE_EPHE_PATH and TESTS (19 names). Qualify with KY_STREAM, KY_LANE and KY_CONTROLLER_ID set. Settings must match the item worktree. python3 canary and tool policy inherited from bootstrap-reviewer; verifier still requires the enforced boundary. Requalify after NODE_BIN, settings, card or harness changes."
+ "_note": "Verifier retains all denied tools/commands. Bash permits named job-path checks (printenv only JOB_SCRATCH/KY_SCRATCH/KY_FLEET/TMPDIR), read-only Git checks and python3 packet tests. Launcher adds only JOB_SCRATCH for tool access and derives CLAUDE_CODE_TMPDIR=JOB_SCRATCH/tmp; TMPDIR alone does not redirect Bash temp files. Authentication keeps its existing namespace. Every qualification canary uses the live Seatbelt profile, source-view layout, job-folder access and temp override, including a measured job-folder write. Requalify after installation or template/card/binary/harness changes."
 }
