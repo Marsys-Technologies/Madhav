@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85",
-  "source_catalog_fingerprint": "sha256:49e53ed3e426e7e7b12af47a54d28b4b9758e62c1a9b0d4f37fbc6d75f10c215",
+  "content_hash": "sha256:ce4bf90ad8c7f4a4cd49641b3af9555a8c14019ee4b262ea2f7e7301e4497d00",
+  "source_catalog_fingerprint": "sha256:e2542f7fca83aa1e93d9e0acf261b309a30449332b55e26c40c4734e5c7347a5",
   "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -299,12 +299,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -403,6 +404,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ahead_read"
         },
         {
@@ -3781,12 +3788,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -3885,6 +3893,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/elect_read"
         },
         {
@@ -4129,12 +4143,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -4233,6 +4248,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/explain_read"
         },
         {
@@ -12430,6 +12451,7 @@
       "scope": "chart",
       "inputs": [
         "as_of?",
+        "at?",
         "ayanamsha_id?",
         "chart_id",
         "question_frame?"
@@ -12471,6 +12493,7 @@
           "capability_uri": "marsys://tool/L3/kala_now_get",
           "input_contract": {
             "as_of": "string:optional",
+            "at": "string:optional",
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "question_frame": "object:optional"
@@ -14492,12 +14515,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -14596,6 +14620,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/now_read"
         },
         {
@@ -14893,12 +14923,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -14997,6 +15028,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/priority_read"
         },
         {
@@ -34204,12 +34241,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -34308,6 +34346,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/ritual_read"
         },
         {
@@ -34561,12 +34605,13 @@
       "freshness_policy": "Read one current published-head SQL snapshot; no private candidate is an answer.",
       "entitlement": "native",
       "safety_notes": [
-        "Legacy rows are context only; geometry is testimony, not a scored conclusion."
+        "Legacy rows are context only; Unbound geometry has unknown density."
       ],
       "known_gaps": [
         "MCP aliases and public bridge activation belong to K7-1b.",
         "Published-generation availability has no planner receipt contract in this fixture slice.",
         "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
+        "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "availability_dispositions": [
@@ -34665,6 +34710,12 @@
           "gap": "Per-source pagination is bounded; a page count is not a whole-result evidence count.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
+        },
+        {
+          "gap": "Existing/pre-migration rows retain null proof; new producers store single, with no independent verification credit.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/story_read"
         },
         {
