@@ -50,7 +50,7 @@ CLOSEST_TOL_SECONDS = 600.0            # re-derived vs stored instant of closest
 CLOSEST_STATES = frozenset({"placed", "edge_unplaced"})
 # Everything the layer must NOT change when it is switched on (FB-29): scored extracts, supports, members, peaks,
 # rankings, candidate counts and all five endpoints (including the T-honesty endpoint).
-NONINTERFERENCE_KEYS = ("scored_extracts", "supports", "members", "peaks", "rankings", "candidate_counts",
+NONINTERFERENCE_KEYS = ("scored_extracts", "supports", "p4_influence", "members", "peaks", "rankings", "candidate_counts",
                         "coverage_accounting", "endpoint_1", "endpoint_2", "endpoint_3", "endpoint_4", "endpoint_5_t_honesty",
                         "contact_identity_bytes")
 

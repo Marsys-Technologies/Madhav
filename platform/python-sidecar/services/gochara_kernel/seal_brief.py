@@ -269,6 +269,8 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                      "convention_id": convention, "writer_asset_id": writer_asset,
                      "ephemeris_backend": backend,
                      "input_generation_vector_digest": hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest()},
+        "near_miss_layer": near_miss_layer_status(vector),
+        "near_miss_output_identity": "vacuous_under_policy" if manifest_policy(conn, chart_id, generation) == "all_null_candidate/1" else None,
         "result_policy": manifest_policy(conn, chart_id, generation),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
                            "violations": sorted((f"{v['event_class']}/{v['path_id']}@{v['rule_version']}:{v['violation']}"
@@ -298,6 +300,14 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                              "manifest; the authoritative gate is the seal's, on the published row"},
         "seal_is_not_a_flip": SEAL_IS_NOT_A_FLIP,
     }
+
+
+def near_miss_layer_status(vector):
+    """Ruling 18 §8: absence of the FB-8 pin means stored but NOT seal-covered.
+
+    Even a present pin alone earns no verification; P06b must supply the stage.
+    """
+    return 'stored_uncovered' if not vector.get('near_miss_layer_version') else 'unverified'
 
 
 ALL_NULL_POLICY = "all_null_candidate/1"

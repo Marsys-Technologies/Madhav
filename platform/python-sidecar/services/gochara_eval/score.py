@@ -92,7 +92,9 @@ def run_scoring_pass(registry_path: str | Path,
         result["admitted_day_share"] = admitted_day_share_report(
             load_spans(doc["spans"]),
             (_dt.date.fromisoformat(doc["horizon"][0]), _dt.date.fromisoformat(doc["horizon"][1])),
-            dvi_members=dvi, generation=generation)
+            dvi_members=dvi, generation=generation,
+            class_contexts=doc.get('class_contexts'),
+            protocol_adverse_budgets={c: r['budget_pct'] / 100 for c, r in scored['t_fp'].items()})
         result["admitted_day_share"]["rule_version"] = version
 
     if controls_path is not None:

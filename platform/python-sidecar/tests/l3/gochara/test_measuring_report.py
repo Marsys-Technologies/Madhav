@@ -727,3 +727,306 @@ def test_a_digest_with_a_trailing_newline_or_any_extra_character_is_refused():
     for bad in ("d" * 64 + "\n", "d" * 64 + " ", "\n" + "d" * 64, "d" * 64 + "\x00"):
         assert any(x.startswith("marker_digest_malformed") for x in measuring_refusals(_view(marker_digest=bad), expected_horizon=H)), repr(bad)
     assert measuring_refusals(_view(marker_digest="a1" * 32), expected_horizon=H) == []
+
+
+@pytest.mark.parametrize("bad,code", [
+    (19980216, "horizon_bound_unreadable"),
+    ("soon", "horizon_bound_unreadable"),
+    (T(1998, 2, 16, 12), "horizon_bound_not_midnight"),
+])
+def test_event_dates_use_the_same_typed_midnight_boundary_as_stored_bounds(bad, code):
+    row = LEL(date(1998, 2, 16))
+    row["event_date"] = bad
+    _refuses(lambda: fully_dated_events([BIRTH_ROW, row], birth_date=BIRTH), code)
+
+
+def test_non_mapping_provenance_is_an_excluded_missing_id_never_a_raw_exception():
+    row = LEL(date(1996, 3, 3), provenance="legacy")
+    out = fully_dated_events([BIRTH_ROW, row, LEL(date(1998, 2, 16))], birth_date=BIRTH)
+    assert out["dates"] == [date(1998, 2, 16)] and out["excluded"] == 1
+    assert out["rows_without_lel_id"] == [{"event_id": row["event_id"], "event_date": "1996-03-03"}]
+
+
+# Full MB-6 acceptance. Fixtures come from MB-1.4, MB-4.7 and MB-6,
+# not from any writer/builder validator. Inherited partial oracles stay above.
+def _mb6_view():
+    from hashlib import sha256
+    import json
+    from types import SimpleNamespace
+
+    def row(event_id, when, domain, lel_id):
+        return {"event_id": event_id, "event_date": when, "category": "other",
+                "event_type": "other", "domain": domain, "provenance_lel_id": lel_id,
+                "provenance_subcategory": None, "shape": "point", "date_confidence": "exact",
+                "interval_start": None, "interval_end": None, "chain_parent_event_id": None,
+                "date_tightened_at": None}
+
+    rows = [row("birth", "1984-02-05", "other/birth", "EVT.1984.02.05.00"),
+            row("first", "1998-02-16", "career/work", "EVT.1998.02.16.01")]
+    basis = {"schema": "horizon_basis/1", "rule": "ruling7+ruling13",
+             "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+             "birth_date": "1984-02-05", "build_date": "2026-10-05",
+             "horizon": ["1998-01-01", "2084-02-05"], "basis": "first_dated_event",
+             "chosen": {"event_id": "first", "lel_id": "EVT.1998.02.16.01",
+                        "event_date": "1998-02-16", "date_confidence": "exact", "shape": "point"},
+             "birth_row": {"event_id": "birth", "lel_id": "EVT.1984.02.05.00",
+                           "event_date": "1984-02-05", "domain": "other/birth",
+                           "provenance_subcategory": None, "column_used": "domain"},
+             "fully_dated_readings": {"rule_F_start": "1998-01-01", "rule_I_start": "1998-01-01",
+                                      "conjunction_start": "1998-01-01"},
+             "shape_readings": {"event_date_start": "1998-01-01", "interval_start_start": "1998-01-01",
+                                "chain_root_start": "1998-01-01"},
+             "excluded_not_fully_dated": 0, "rows_total": 2, "consumed_rows": rows,
+             "consumed_rows_digest": sha256(json.dumps(rows, sort_keys=True, separators=(",", ":"),
+                                                        ensure_ascii=False).encode()).hexdigest()}
+    return SimpleNamespace(stored_scope="test_slice", run="all_classes_full", sealed=False,
+                           published=False, horizon=H, rule_versions=frozenset({"1.0.0"}),
+                           near_miss_rows_stored=None, class_paths_with_rows=frozenset({("spiritual_turn", "P2")}),
+                           classes_with_records=frozenset({"spiritual_turn"}), marker_classes=mr.SCORED_CLASSES,
+                           marker_schema="gochara_v5_test_slice/1", marker_digest="d" * 64,
+                           marker_horizon=H, status="candidate", horizon_basis=basis,
+                           run_verdict={"run_state": "completed", "asset_state": "complete", "disposition": "build",
+                                        "throughput_state": "lit", "inventory_classes": 26, "completed_classes": 26,
+                                        "last_substep_index": 298, "planned_substeps": 298},
+                           sink_counts={"omission": 0, "invented": 0, "anomaly": 0, "unresolved": 7, "near_miss": 5})
+
+
+def _mb6_accept(view, **extra):
+    # Before the fix this reproduces the partial verifier's false acceptance.
+    if not hasattr(mr, "measuring_acceptance"):
+        refusals = mr.measuring_refusals(view, expected_horizon=H, birth_date=BIRTH)
+        return {"accepted": not refusals, "refusals": refusals}
+    return mr.measuring_acceptance(view, expected_horizon=H, birth_date=BIRTH, build_date=BUILD,
+                                   chart_id="482012f1-710e-4a25-994a-93821f5871aa", **extra)
+
+
+def test_mb6_accepts_complete_independent_evidence_and_reports_nonfatal_counts():
+    result = _mb6_accept(_mb6_view())
+    assert result["accepted"] is True and result["refusals"] == []
+    assert result.get("run_verdict") == "SUCCESS"
+    assert result.get("sink_counts") == {"omission": 0, "invented": 0, "anomaly": 0, "unresolved": 7, "near_miss": 5}
+    assert result["near_miss_rows_stored"] is None
+    assert result["marker_digest_verified"] is None
+
+
+@pytest.mark.parametrize("evidence", [None, {}, "SUCCESS"])
+def test_mb6_absent_or_asserted_runtime_success_refuses(evidence):
+    view = _mb6_view()
+    view.run_verdict = evidence
+    assert "verdict_not_success" in _mb6_accept(view)["refusals"]
+
+
+@pytest.mark.parametrize("field,bad", [
+    ("run_state", "failed"), ("run_state", "running"), ("asset_state", "error"),
+    ("asset_state", "incomplete"), ("disposition", None), ("throughput_state", "error"),
+    ("inventory_classes", 25), ("completed_classes", 25), ("last_substep_index", 297),
+    ("planned_substeps", 0), ("last_substep_index", True), ("last_substep_index", None),
+])
+def test_mb6_runtime_success_measures_every_required_state_and_progress(field, bad):
+    view = _mb6_view()
+    view.run_verdict[field] = bad
+    result = _mb6_accept(view)
+    assert result["accepted"] is False and "verdict_not_success" in result["refusals"]
+    if field == "run_state" and bad == "failed":
+        assert "asset_lit_under_failed_run" in result["refusals"]
+    if field in {"last_substep_index", "planned_substeps"}:
+        assert "substep_plan_incomplete" in result["refusals"]
+
+
+@pytest.mark.parametrize("evidence", [None, {}, {"schema": "horizon_basis/1"}])
+def test_mb6_absent_or_unrederivable_horizon_basis_refuses(evidence):
+    view = _mb6_view()
+    view.horizon_basis = evidence
+    assert "horizon_basis_missing" in _mb6_accept(view)["refusals"]
+
+
+def test_mb6_rederives_from_consumed_rows_instead_of_trusting_claimed_pair():
+    import json
+    from hashlib import sha256
+    view = _mb6_view()
+    view.horizon_basis["consumed_rows"][1].update(event_date="1999-02-16", provenance_lel_id="EVT.1999.02.16.01")
+    view.horizon_basis["consumed_rows_digest"] = sha256(json.dumps(
+        view.horizon_basis["consumed_rows"], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    assert "horizon_mismatch" in _mb6_accept(view)["refusals"]
+
+
+@pytest.mark.parametrize("field,bad", [
+    ("schema", "invented/1"), ("rule", "invented"), ("consumed_rows_digest", "0" * 64),
+    ("consumed_rows", None), ("rows_total", 3), ("birth_date", "1985-02-05"),
+    ("build_date", "1997-01-01"), ("chart_id", "another-chart"), ("basis", "build_date"),
+    ("horizon", ["1999-01-01", "2084-02-05"]),
+])
+def test_mb6_malformed_or_misbound_horizon_evidence_refuses(field, bad):
+    view = _mb6_view()
+    view.horizon_basis[field] = bad
+    result = _mb6_accept(view)
+    assert result["accepted"] is False
+    assert any(r.startswith(("horizon_basis_", "horizon_mismatch")) for r in result["refusals"])
+
+
+@pytest.mark.parametrize("kind,code", [("omission", "certifier_omissions_present: 3"),
+                                      ("invented", "certifier_invented_present: 3"),
+                                      ("anomaly", "certifier_anomalies_present: 3")])
+def test_mb6_each_sink_defect_has_its_own_counted_refusal(kind, code):
+    view = _mb6_view()
+    view.sink_counts[kind] = 3
+    assert _mb6_accept(view)["refusals"] == [code]
+
+
+@pytest.mark.parametrize("kind", ["omission", "invented", "anomaly"])
+@pytest.mark.parametrize("bad", [None, -1, True, "0", 0.5])
+def test_mb6_bad_or_absent_sink_count_never_defaults_to_zero(kind, bad):
+    view = _mb6_view()
+    if bad is None:
+        del view.sink_counts[kind]
+    else:
+        view.sink_counts[kind] = bad
+    result = _mb6_accept(view)
+    assert result["accepted"] is False and f"sink_counts_missing: {kind}" in result["refusals"]
+
+
+@pytest.mark.parametrize("evidence", [None, {}, "all clear"])
+def test_mb6_absent_sink_evidence_refuses(evidence):
+    view = _mb6_view()
+    view.sink_counts = evidence
+    assert any(r.startswith("sink_counts_missing") for r in _mb6_accept(view)["refusals"])
+
+
+def test_mb6_aggregate_keeps_all_findings_and_reader_refusals():
+    view = _mb6_view()
+    view.run_verdict.update(run_state="failed", last_substep_index=297)
+    view.horizon_basis = None
+    view.sink_counts.update(omission=3, invented=1, anomaly=1)
+    result = _mb6_accept(view, reader_refusals=["support_interval_unbounded"])
+    assert set(result["refusals"]) == {"verdict_not_success", "asset_lit_under_failed_run",
+        "substep_plan_incomplete", "horizon_basis_missing", "certifier_omissions_present: 3",
+        "certifier_invented_present: 1", "certifier_anomalies_present: 1", "support_interval_unbounded"}
+    assert result["accepted"] is False and result["sink_counts"]["unresolved"] == 7
+
+
+def test_mb6_full_acceptance_requires_candidate_status_even_when_partial_api_allows_unknown():
+    view = _mb6_view()
+    view.status = None
+    assert "measuring_status_not_candidate" in _mb6_accept(view)["refusals"]
+
+
+@pytest.mark.parametrize("field,bad", [("chosen", None), ("birth_row", None),
+                                      ("excluded_not_fully_dated", 1),
+                                      ("shape_readings", {}), ("fully_dated_readings", {})])
+def test_mb6_horizon_basis_reports_must_agree_with_consumed_rows(field, bad):
+    view = _mb6_view()
+    view.horizon_basis[field] = bad
+    assert _mb6_accept(view)["accepted"] is False
+
+
+def test_mb6_invalid_captured_row_refuses_even_with_a_matching_digest():
+    import json
+    from hashlib import sha256
+    view = _mb6_view()
+    del view.horizon_basis["consumed_rows"][1]["provenance_lel_id"]
+    view.horizon_basis["consumed_rows_digest"] = sha256(json.dumps(
+        view.horizon_basis["consumed_rows"], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    assert _mb6_accept(view)["accepted"] is False
+
+
+@pytest.mark.parametrize("field,bad", [("class_paths_with_rows", frozenset({("spiritual_turn", "P3")})),
+                                     ("sealed", True), ("published", True),
+                                     ("marker_horizon", (date(1999, 1, 1), H[1]))])
+def test_mb6_full_detector_retains_partial_acceptance_conditions(field, bad):
+    view = _mb6_view()
+    setattr(view, field, bad)
+    assert _mb6_accept(view)["accepted"] is False
+
+
+class _MB6StoredCandidate:
+    """Scripted SELECT transport; real measuring readers and aggregate run unchanged."""
+    def __init__(self, *, basis=True, stored_agent="saturn", authority=None, missing=False):
+        self.fixture = _mb6_view()
+        self.basis, self.agent, self.authority, self.missing = basis, stored_agent, authority, missing
+        self.queries = []
+
+    def execute(self, sql, params=None):
+        from types import SimpleNamespace
+        self.queries.append((sql, params))
+        assert sql.startswith("SELECT "), sql
+        v = self.fixture
+        if "SELECT status, input_generation_vector" in sql:
+            rows = [] if self.missing else [("candidate", {"stored_scope": "test_slice",
+                "horizon_basis": v.horizon_basis if self.basis else None,
+                "test_slice": {"schema": v.marker_schema, "marker_digest": v.marker_digest,
+                    "run": v.run, "classes": sorted(v.marker_classes), "horizon": ["1998-01-01", "2084-02-05"]}}, T(1998, 1, 1), T(2084, 2, 5))]
+        elif "SELECT count(*) FROM public.ka_gochara_generation_seal" in sql:
+            rows = [(0,)]
+        elif "SELECT rule_version" in sql:
+            rows = [("1.0.0",)]
+        elif "SELECT event_class, path_id" in sql:
+            rows = [("spiritual_turn", "P2")]
+        elif "SELECT to_regclass" in sql:
+            rows = [(None,)]
+        elif "SELECT authoritative_generation" in sql:
+            rows = [] if self.authority is None else [(self.authority,)]
+        elif "SELECT r.event_class" in sql:
+            rows = [("spiritual_turn", "P2", "1.0.0", self.agent, T(2000, 1, 1), T(2000, 1, 2), False, False)]
+        else:
+            raise AssertionError(sql)
+        return SimpleNamespace(fetchall=lambda: rows, fetchone=lambda: rows[0] if rows else None)
+
+
+def _read_mb6(conn, *, evidence=True):
+    v = conn.fixture
+    return mr.read_measuring_acceptance(conn, "482012f1-710e-4a25-994a-93821f5871aa", "5.0",
+        expected_horizon=H, birth_date=BIRTH, build_date=BUILD,
+        run_verdict=v.run_verdict if evidence else None, sink_counts=v.sink_counts if evidence else None)
+
+
+def test_mb6_readonly_caller_accepts_stored_basis_and_independent_runtime_sink_evidence():
+    conn = _MB6StoredCandidate()
+    assert _read_mb6(conn)["accepted"] is True
+    assert all("482012f1-710e-4a25-994a-93821f5871aa" in p for _, p in conn.queries if p)
+
+
+def test_mb6_readonly_caller_refuses_absent_evidence_instead_of_using_partial_api():
+    result = _read_mb6(_MB6StoredCandidate(), evidence=False)
+    assert result["accepted"] is False and "verdict_not_success" in result["refusals"]
+    assert "sink_counts_missing: omission" in result["refusals"]
+
+
+@pytest.mark.parametrize("kwargs,code", [({"basis": False}, "horizon_basis_missing"),
+                                        ({"stored_agent": "Jupiter"}, "unknown_agent"),
+                                        ({"authority": "5.0"}, "measuring_build_published"),
+                                        ({"missing": True}, "measuring_manifest_missing")])
+def test_mb6_readonly_caller_reports_stored_evidence_and_reader_refusals(kwargs, code):
+    result = _read_mb6(_MB6StoredCandidate(**kwargs))
+    assert result["accepted"] is False and code in result["refusals"]
+
+
+def test_mb6_even_a_self_consistent_changed_horizon_must_match_the_ruled_pair():
+    view = _mb6_view()
+    changed = (date(1999, 1, 1), date(2084, 2, 5))
+    import json
+    from hashlib import sha256
+    # An externally supplied expected pair cannot redefine the contract's ruling.
+    basis = view.horizon_basis
+    basis["consumed_rows"][1].update(event_date="1999-02-16", provenance_lel_id="EVT.1999.02.16.01")
+    basis["consumed_rows_digest"] = sha256(json.dumps(basis["consumed_rows"], sort_keys=True,
+        separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    basis["chosen"].update(event_date="1999-02-16", lel_id="EVT.1999.02.16.01")
+    basis["horizon"] = ["1999-01-01", "2084-02-05"]
+    basis["fully_dated_readings"] = dict.fromkeys(basis["fully_dated_readings"], "1999-01-01")
+    basis["shape_readings"] = dict.fromkeys(basis["shape_readings"], "1999-01-01")
+    view.horizon = view.marker_horizon = changed
+    result = mr.measuring_acceptance(view, expected_horizon=changed, birth_date=BIRTH, build_date=BUILD,
+                                    chart_id="482012f1-710e-4a25-994a-93821f5871aa")
+    assert result["accepted"] is False and "horizon_mismatch" in result["refusals"]
+
+
+@pytest.mark.parametrize("kind", ["unresolved", "near_miss"])
+@pytest.mark.parametrize("bad", [None, -1, "unknown"])
+def test_mb6_nonfatal_sink_evidence_is_unknown_when_absent_never_a_refusal(kind, bad):
+    view = _mb6_view()
+    if bad is None:
+        del view.sink_counts[kind]
+    else:
+        view.sink_counts[kind] = bad
+    result = _mb6_accept(view)
+    assert result["accepted"] is True and result["sink_counts"][kind] is None

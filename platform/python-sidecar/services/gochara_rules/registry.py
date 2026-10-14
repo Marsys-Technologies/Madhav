@@ -1163,10 +1163,13 @@ def kb_luminaries(event_class: str, rule_version: str = RULE_VERSION) -> frozens
 # AFFECTED-PERSON-SPECIFIC class-kāraka mapping. Preserved unchanged: period restrictions, the existing
 # transit forms, unknown-input behaviour, and Pratyantardaśā-as-testimony. No density bound is claimed.
 #
-# OPEN — the business owner's point (flagged, not decided here). The decision does not say WHICH classes the
-# rule reaches: only the eight ND-H classes, or every class that has a kāraka. The NARROWEST literal reading
-# is taken and isolated in this ONE constant: the classes whose kāraka mapping the same campaign ruled
-# (ND-H-20261005) and whose P1 runs under 1.2.0. Widening it is a one-line data change plus a P1 selection.
+# SURROGATE_ANSWER_18 §5 resolves P06 scope to the eight ND-H classes.
+# Any extension remains the owner's OD-6 decision, on final-rules density evidence.
+RESOLVED_POINTS = {
+    'A1': 'K-A union K-B for karakatva, exclusions unchanged; SURROGATE_ANSWER_18 §4',
+    'A2': 'P06 scope is the eight ND-H classes; extension remains OD-6; SURROGATE_ANSWER_18 §5',
+    'A3': 'literal pre-registered 40% guard for all DVI classes; SURROGATE_ANSWER_18 §6',
+}
 KARAKATVA_P1_CLASSES: frozenset[str] = ND_H_CLASSES
 #: the anchor levels the rule reaches (rule 4: "Mahadasha or Antardasha"); PD stays testimony
 KARAKATVA_P1_LEVELS = ("md", "ad")
@@ -1290,21 +1293,22 @@ def h_table_sha256(rule_version: str) -> str:
 
 
 # ── K-A: the `karaka_agent` factor row (ND-H: categorical_ordered {karaka > non_karaka}) ────────────
-# No value mapping is ruled, so none is declared (uncalibrated_default); null_state `omit` — a factor
-# that cannot yield a number takes NO part in the within-path product, which is exactly "never admits,
-# excludes or zeroes". The category is read by `karaka_category`.
+# FB-36 / ruling 18 §3: authored default {karaka: 1, non_karaka: 0}, uncalibrated.
+# Rank-only with null_state omit; excluded from the within-path product.
 _factor("karaka_agent",
         rule_version=ND_H_VERSION,
         operand="whether the transit record's agent is a K-A kāraka of the event class "
                 "(registry karaka_set at the record's rule_version)",
         function="categorical_ordered",
         categories=["karaka", "non_karaka"],
+        category_mapping={"karaka": 1.0, "non_karaka": 0.0},
+        calibration_status="uncalibrated_default",
         range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="omit",
         ruling_ref=ND_H_RULING,
         effect="rank factor only (K-A, ND-H-20261005): orders records whose agent is a class kāraka "
-               "above the rest; never admits, excludes or zeroes; no value mapping is declared "
-               "(uncalibrated_default), so it is omitted from the within-path product")
+               "above the rest; never admits, excludes or zeroes; the FB-36 authored default mapping "
+               "is uncalibrated_default and rank-only, omitted from the within-path product")
 
 # ── P1 / P3 / P4 at rule_version 1.2.0 ───────────────────────────────────────────────────────────
 # NEW rows; the 1.0.0 and 1.1.0 rows are not edited and 1.1.0 stays unbound (FB-30), so the 1.2.0 rows

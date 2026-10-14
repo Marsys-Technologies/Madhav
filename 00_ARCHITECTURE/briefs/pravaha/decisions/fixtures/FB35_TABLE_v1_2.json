@@ -1,0 +1,149 @@
+{
+  "classes": {
+    "achievement_recognition": {
+      "core": [
+        10
+      ],
+      "dvi": [
+        11
+      ],
+      "frame": "lagna",
+      "karaka_a": [
+        "jupiter",
+        "sun"
+      ],
+      "karaka_b": [],
+      "noted": [],
+      "support": [
+        1,
+        5,
+        9
+      ]
+    },
+    "business_launch": {
+      "core": [
+        7,
+        10
+      ],
+      "dvi": [],
+      "frame": "lagna",
+      "karaka_a": [
+        "mercury"
+      ],
+      "karaka_b": [],
+      "noted": [],
+      "support": [
+        6
+      ]
+    },
+    "financial_deception": {
+      "core": [
+        2,
+        12
+      ],
+      "dvi": [
+        6
+      ],
+      "frame": "lagna",
+      "karaka_a": [
+        "rahu"
+      ],
+      "karaka_b": [],
+      "noted": [],
+      "support": [
+        8
+      ]
+    },
+    "foreign_settlement": {
+      "core": [
+        12
+      ],
+      "dvi": [
+        4
+      ],
+      "frame": "lagna",
+      "karaka_a": [
+        "rahu"
+      ],
+      "karaka_b": [],
+      "noted": [
+        10
+      ],
+      "support": [
+        7,
+        9
+      ]
+    },
+    "parental_event": {
+      "core": [
+        2,
+        9
+      ],
+      "dvi": [],
+      "frame": "bhavat_bhavam:9",
+      "karaka_a": [
+        "sun"
+      ],
+      "karaka_b": [
+        "sun"
+      ],
+      "noted": [],
+      "support": [
+        4,
+        8
+      ]
+    },
+    "property_acquisition": {
+      "core": [
+        4
+      ],
+      "dvi": [
+        11
+      ],
+      "frame": "lagna",
+      "karaka_a": [
+        "mars"
+      ],
+      "karaka_b": [],
+      "noted": [],
+      "support": [
+        2
+      ]
+    },
+    "psychological_arc": {
+      "core": [
+        4
+      ],
+      "dvi": [],
+      "frame": "lagna",
+      "karaka_a": [],
+      "karaka_b": [
+        "moon"
+      ],
+      "noted": [],
+      "support": [
+        5,
+        8
+      ]
+    },
+    "spiritual_turn": {
+      "core": [
+        5,
+        9
+      ],
+      "dvi": [],
+      "frame": "lagna",
+      "karaka_a": [
+        "jupiter",
+        "ketu"
+      ],
+      "karaka_b": [],
+      "noted": [],
+      "support": [
+        12
+      ]
+    }
+  },
+  "rule_version": "1.2.0",
+  "source": "FINAL_BUILD_SCOPE v1.2 FB-35"
+}

@@ -15,7 +15,7 @@ What it states:
   * the pre-registered 40 percent guard for DVI members.
 Nothing here decides an owner point: K-B reaching bereavement (ND-P2 rule 3) is carried as a labelled rule with its
 source, so a reader can see which part rests on which ruling; the readings taken at ambiguous cells are listed in `OPEN_POINTS`
-(A1-A3 open; A4 resolved by the steward). Not modelled: a DVI member's LORD's natal point as a P4 target (ND-H says "the house or its lord"); houses only.
+(A1–A3 resolved for P06 by SURROGATE_ANSWER_18; A4 resolved by the steward). Not modelled: a DVI member's LORD's natal point as a P4 target (ND-H says "the house or its lord"); houses only.
 No fast-planet rule exists to model (ND-P2 rule 5: P3 keeps its nine agents, no blanket slow/fast gate).
 """
 from __future__ import annotations
@@ -229,12 +229,16 @@ def karakatva_relation(event_class: str, person: str | None, anchor_lord: str, a
 
 # ── OPEN POINTS (readings this module took that are NOT the verifier's to settle; the steward takes them to the owner) ─────────────────────
 # Each is kept at the LITERAL reading and labelled; none is decided here.
-OPEN_POINTS = {
+_PREVIOUS_OPEN_POINTS = {
     "A1": "karakatva significator set = K-A union K-B (Moon counts for psychological_arc); alternative: K-A only",
     "A2": "no karakatva mapping for bereavement and the 18 other classes (FINAL_BUILD_SCOPE §12 flags classes beyond the eight)",
     "A3": "the 40 percent band is applied to every DVI class including the adverse financial_deception (literal ND-H); the protocol's band is a gain-class criterion",
 }
+OPEN_POINTS = {}
 RESOLVED_POINTS = {
+    "A1": "K-A union K-B; psychological_arc Moon, parental_event Sun; SURROGATE_ANSWER_18 §4",
+    "A2": "resolved for P06 scope: eight classes only; extension OD-6; SURROGATE_ANSWER_18 §5",
+    "A3": "literal 40% guard for EVERY DVI class including financial_deception; no current-generation reversion; SURROGATE_ANSWER_18 §6",
     "A4": "the denominator of the 40 percent guard is the SCORED horizon (EVALUATION_PROTOCOL v2.3 section 6.4; steward ruling on VERIFIER-FABLE-2); "
           "`measuring_report.SCORED_HORIZON` is the same window (its day-count convention is a separate open point)",
 }

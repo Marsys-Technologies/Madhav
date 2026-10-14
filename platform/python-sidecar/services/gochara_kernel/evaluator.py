@@ -142,6 +142,7 @@ class RecordEdge:
     # every pre-ND-H edge. Descriptive only — NOT part of the natural key (identity bytes are unchanged), read by
     # the admitted-day-share report (P4 with / without DVI; the K-B contribution is `object_role == 'karaka'`).
     tier: str | None = None
+    dvi_absorbed_by_core: bool = False  # ruling 18 §1; never part of identity
 
     def natural_key(self, *, chart_id: str, generation: str,
                     contact_id: str | None,
@@ -314,17 +315,43 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                     transit=True, tier=core_tier))
     edges.extend(_maraka_rows(event_class, chart, cid, frame_kind, frame_arg,
                               person, rule_version, citation_path))
-    # never a silent dedup: one identity enumerated from two tiers is refused, with the exact keys
-    tiers_of: dict[tuple, set] = {}
+    # FB-34/35, SURROGATE_ANSWER_18 §1: CORE's licence strictly subsumes DVI.
+    groups = {}
     for e in edges:
-        tiers_of.setdefault((e.agent, e.relation, e.obj.canonical_target, e.object_role), set()).add(e.tier)
-    clashes = {k: sorted(map(str, v)) for k, v in tiers_of.items() if len(v) > 1}
-    if clashes:
-        raise TierIdentityCollision(
-            f"{event_class}/{citation_path}@{rule_version}: {len(clashes)} record identit(ies) enumerated from more "
-            f"than one tier — needs a steward ruling (which tier wins, or tier in the key): "
-            + "; ".join(f"{'|'.join(k)} tiers={v}" for k, v in sorted(clashes.items())))
-    return edges
+        groups.setdefault(edge_identity_key(e), []).append(e)
+    out = []
+    for key, group in groups.items():
+        tiers_here = {e.tier for e in group}
+        if len(tiers_here) == 1:
+            out.extend(group)
+        elif tiers_here == {rules_registry.TIER_CORE, rules_registry.TIER_DVI} and all(
+                (e.provenance, e.operator_role, e.ruling_ref) ==
+                (group[0].provenance, group[0].operator_role, group[0].ruling_ref) for e in group):
+            out.extend(replace(e, dvi_absorbed_by_core=True) for e in group if e.tier == rules_registry.TIER_CORE)
+        else:
+            raise TierIdentityCollision(f"{event_class}/{citation_path}@{rule_version}: residual tier identity collision {key}")
+    return out
+
+
+def edge_identity_key(edge):
+    return '|'.join((edge.agent, edge.relation, edge.obj.canonical_target, edge.object_role))
+
+
+def final_rule_context(event_class, path_id, chart, rule_version):
+    """FB-34/35, ruling 18 §§1–2: descriptive inventory context, no new obligation."""
+    if rules_registry.nd_h_row(event_class, rule_version) is None:
+        return None
+    edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
+    return {'dvi_absorbed_by_core': sorted(edge_identity_key(e) for e in edges if e.dvi_absorbed_by_core),
+            'ruling_ref': 'SURROGATE_ANSWER_18',
+            'support': {'state': 'annotation_unstored', 'ruling_ref': 'SURROGATE_ANSWER_18'}}
+
+
+def record_final_rules(edge):
+    """FB-36/38b: persist the category as data; it never enters admission or a product."""
+    category = (rules_registry.karaka_category(edge.event_class, edge.agent.title(), edge.rule_version)
+                if edge.transit and rules_registry.nd_h_row(edge.event_class, edge.rule_version) is not None else None)
+    return {'tier': edge.tier, 'karaka_agent': category}
 
 
 def support_annotation_edges(event_class: str, chart: dict,

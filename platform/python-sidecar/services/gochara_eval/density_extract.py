@@ -49,7 +49,13 @@ HORIZON_SQL = (
     " FROM public.kala_gochara_coverage c"
     " WHERE c.chart_id = %s::uuid AND c.generation = %s AND c.partition_kind = 'event_class'"
     "   AND c.completed_horizon IS NOT NULL")
-STATEMENTS = (WINDOWS_SQL, MEMBERS_SQL, HORIZON_SQL)
+CONTEXT_SQL = (
+    "SELECT DISTINCT o.event_class, i.detail -> 'final_rule_context'"
+    " FROM public.ka_gochara_search_interval i JOIN public.ka_gochara_search_obligation o"
+    " ON (o.chart_id, o.generation, o.event_class, o.ob_id) = (i.chart_id, i.generation, i.event_class, i.ob_id)"
+    " WHERE o.chart_id = %s::uuid AND o.generation = %s AND o.path_id = 'P4' AND o.rule_version = '1.2.0'"
+    " AND i.detail -> 'final_rule_context' IS NOT NULL")
+STATEMENTS = (WINDOWS_SQL, MEMBERS_SQL, HORIZON_SQL, CONTEXT_SQL)
 
 
 class ExtractRefused(RuntimeError):
@@ -118,7 +124,17 @@ def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = I
         members = rules.tier_table_lagna(version).get(cls, {}).get("dvi", ())
         if members:
             dvi[cls] = list(members)
-    out = admitted_day_share_report(spans, h, dvi_members=dvi, generation=generation)
+    contexts = {}
+    context_rows = []
+    if any(v == '1.2.0' for v in p4_version.values()):
+        context_rows = _tuples(conn.execute(CONTEXT_SQL, (chart_id, generation)).fetchall())
+    for cls, context in context_rows:
+        if not isinstance(context, dict):
+            raise ExtractRefused(f'final_rule_context_invalid: {cls}')
+        if cls in contexts and contexts[cls] != context:
+            raise ExtractRefused(f'final_rule_context_conflict: {cls}')
+        contexts[cls] = context
+    out = admitted_day_share_report(spans, h, dvi_members=dvi, generation=generation, class_contexts=contexts)
     out["source"] = {"kind": "stored_windows", "chart_id": chart_id, "day_timezone": str(tz),
                      "tables": ["ka_gochara_eval_window", "ka_gochara_eval_window_record",
                                 "ka_gochara_relationship_record", "kala_gochara_coverage"],

@@ -158,7 +158,9 @@ def class_day_sets(spans: list[AdmittedSpan], h0: dt.date, h1: dt.date, *, has_d
 def admitted_day_share_report(spans: list[AdmittedSpan], horizon: tuple[dt.date, dt.date], *,
                               dvi_members: dict[str, list[int]] | None = None,
                               generation: str | None = None,
-                              searched: dict[str, list[str]] | None = None) -> dict:
+                              searched: dict[str, list[str]] | None = None,
+                              class_contexts: dict | None = None,
+                              protocol_adverse_budgets: dict[str, float] | None = None) -> dict:
     """The report (FB-50 items 1 and 4) for every class present in `spans` or `dvi_members`.
 
     `dvi_members` is {class: [lagna houses]} of the GENERATION'S OWN H table (the caller reads it from the
@@ -170,6 +172,11 @@ def admitted_day_share_report(spans: list[AdmittedSpan], horizon: tuple[dt.date,
     total = (h1 - h0).days + 1
     dvi_members = dvi_members or {}
     searched = searched or {}
+    class_contexts = class_contexts or {}
+    protocol_adverse_budgets = protocol_adverse_budgets or {}
+    for cls, budget in protocol_adverse_budgets.items():
+        if isinstance(budget, bool) or not isinstance(budget, (int, float)) or not 0 <= budget <= 1:
+            raise ValueError(f'protocol_adverse_budget_invalid: {cls}: {budget!r}')
     classes = sorted({s.event_class for s in spans} | set(dvi_members) | set(searched))
     out_classes = {}
     for cls in classes:
@@ -184,11 +191,18 @@ def admitted_day_share_report(spans: list[AdmittedSpan], horizon: tuple[dt.date,
                    else len(sets["P4"]) * GAIN_BAND_DEN > GAIN_BAND_NUM * total)
         out_classes[cls] = {
             "admitted_days": days, "admitted_day_share": shares,
+            "dvi_absorbed_by_core": class_contexts.get(cls, {}).get('dvi_absorbed_by_core'),
+            "dvi_absorption_note": ("absorbed DVI lord identities add no P4 edges on this chart; DVI house edges remain distinct"
+                                    if class_contexts.get(cls, {}).get('dvi_absorbed_by_core') else None),
             "not_supplied": sorted(n for n in SERIES if sets[n] is None),
             "series_notes": dict(sorted(notes.items())),
             "dvi_guard": {
                 "ruling_ref": GUARD_RULING, "band_upper": GAIN_BAND_UPPER, "series": "P4",
                 "p4_alone_share": p4, "exceeds_band": exceeds, "dvi_members": dvi,
+                "protocol_adverse_budget_share": protocol_adverse_budgets.get(cls),
+                "protocol_adverse_budget_basis": "EVALUATION_PROTOCOL_v2_3 §6.4 T-FP (separate from FB-41)",
+                "protocol_adverse_budget_null_reason": (None if cls in protocol_adverse_budgets
+                                                        else "not supplied by scorer; guard does not read outcomes"),
                 # the reversion applies to the NEXT generation only; a class with no DVI member has none to revert
                 "revert_dvi_to_support_next_generation": dvi if (exceeds and dvi) else [],
                 "applies_to": "next_generation",

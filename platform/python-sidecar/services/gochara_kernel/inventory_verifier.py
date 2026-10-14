@@ -340,12 +340,6 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
     ('p3' or 'p4'; P4 = P3's Jupiter/Saturn scored obligations as P4's own)."""
     h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart, rule_version, path)
     frame, person = _frame_person(event_class, rule_version)
-    if rule_version == "1.2.0" and path == "p4" and event_class in _ndh_EIGHT:
-        tier = _ndh_TIERS[event_class]
-        core = {_SIGN_LORD[_SIGNS[_house_sign(h, lagna_sign)]] for h in tier.core}
-        dvi = {_SIGN_LORD[_SIGNS[_house_sign(h, lagna_sign)]] for h in tier.dvi}
-        if core & dvi:
-            raise Unverifiable(f"{event_class}/p4: tier identity collision needs an authority ruling")
     agents = (tuple(g for g in _GRAHAS if g not in excluded_agents)
               if path == "p3" else ("jupiter", "saturn"))
     out = []
@@ -375,6 +369,41 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
             ob(_SIGN_LORD[_SIGNS[s]], "ownership", "maraka_of_house", f"span:{s + 1}")
     return sorted(set(out))
 
+
+
+def final_rule_edge_tiers(event_class, path_id, chart):
+    """FB-34/35: independent identity -> tier map (CORE subsumes DVI)."""
+    if event_class not in _ndh_EIGHT or path_id not in ('P3', 'P4'):
+        return {}, []
+    tier = _ndh_TIERS[event_class]
+    lagna = _sign_index(chart['lagna'])
+    agents = _GRAHAS if path_id == 'P3' else ('jupiter', 'saturn')
+    tables = {}
+    for name, houses in [('core', tier.core), ('dvi', tier.dvi if path_id == 'P4' else ())]:
+        keys = set()
+        signs = {_house_sign(h, lagna) for h in houses}
+        lords = {_SIGN_LORD[_SIGNS[s]] for s in signs}
+        for agent in agents:
+            for sign in signs:
+                for rel in ('residence', 'aspect') if agent not in _NODES else ('residence',):
+                    keys.add('|'.join((agent, rel, f'span:{sign + 1}', 'signature_house')))
+            for lord in lords:
+                if lord not in chart['natal']:
+                    raise Unverifiable(f'final_rule_natal_lord_missing: {lord}')
+                for rel in ('conjunction', 'aspect') if agent not in _NODES else ('conjunction',):
+                    keys.add('|'.join((agent, rel, _point(chart['natal'][lord]), 'lord')))
+        tables[name] = keys
+    absorbed = sorted(tables['core'] & tables['dvi'])
+    return {**dict.fromkeys(tables['dvi'], 'dvi'), **dict.fromkeys(tables['core'], 'core')}, absorbed
+
+
+def derive_final_rule_context(event_class, path_id, chart, rule_version):
+    """Ruling 18 §§1–2, verifier-owned data, independent of the enumerator."""
+    if rule_version != '1.2.0' or event_class not in _ndh_EIGHT:
+        return None
+    _, absorbed = final_rule_edge_tiers(event_class, path_id, chart)
+    return {'dvi_absorbed_by_core': absorbed, 'ruling_ref': 'SURROGATE_ANSWER_18',
+            'support': {'state': 'annotation_unstored', 'ruling_ref': 'SURROGATE_ANSWER_18'}}
 
 # ── P1 prerequisite (2): the verifier's OWN period-lord relation (R11-2) ───────────────────────────────────
 

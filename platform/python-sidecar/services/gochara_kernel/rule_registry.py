@@ -352,7 +352,7 @@ def factor_rows() -> list[dict]:
             "calibration_status": src["calibration_status"],
             "doctrine_ordering": _FACTOR_DOCTRINE_ORDERING.get(fid),
             "category_mapping": (src.get("ordering_anchor")
-                                 if fid == "dignity_of_transit_sign" else None),
+                                 if fid == "dignity_of_transit_sign" else src.get("category_mapping")),
             "null_state": src["null_state"],
             "effect": src["effect"],
         })

@@ -252,8 +252,8 @@ def test_an_unknown_or_miscased_agent_is_refused_not_called_non_karaka():
             nd.karaka_agent_value("business_launch", bad)
 
 
-def test_the_open_readings_are_labelled_a4_is_resolved_and_the_p2_row_source_of_psychological_arc_is_a_draft():
-    assert sorted(nd.OPEN_POINTS) == ["A1", "A2", "A3"] and sorted(nd.RESOLVED_POINTS) == ["A4"]
+def test_ruling18_resolves_the_readings_a4_is_resolved_and_the_p2_row_source_of_psychological_arc_is_a_draft():
+    assert nd.OPEN_POINTS == {} and sorted(nd.RESOLVED_POINTS) == ["A1", "A2", "A3", "A4"]
     assert "SCORED horizon" in nd.RESOLVED_POINTS["A4"]
     assert nd.P2_EMITS_NO_ROW_SOURCE["parental_event"].startswith("ND-H-20261005")
     assert "DRAFT" in nd.P2_EMITS_NO_ROW_SOURCE["psychological_arc"] and set(nd.P2_EMITS_NO_ROW_SOURCE) == set(nd.P2_EMITS_NO_ROW)

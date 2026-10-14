@@ -477,6 +477,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
+        if version == '1.2.0':
+            out.setdefault('final_rules', {})[path_id] = stage(f'final_rules {path_id}', lambda g=grain:
+                rd.verify_final_rule_records(conn, chart=chart, **g))
         derived = None
         if path_id != "P1":
             # R10-1: every record the path MUST hold, derived from the obligations × the certified contacts × the bound

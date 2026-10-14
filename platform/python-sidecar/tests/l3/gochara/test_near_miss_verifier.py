@@ -316,7 +316,7 @@ def _outputs():
 
 def test_noninterference_compares_every_named_output_and_a_missing_key_is_refused():
     on, off = _outputs(), _outputs()
-    assert nm.noninterference_problems(on, off) == [] and len(nm.NONINTERFERENCE_KEYS) == 13
+    assert nm.noninterference_problems(on, off) == [] and len(nm.NONINTERFERENCE_KEYS) == 14
     for k in nm.NONINTERFERENCE_KEYS:
         changed = dict(on, **{k: [9]})
         assert nm.noninterference_problems(changed, off) == [f"noninterference_violated: {k}"]

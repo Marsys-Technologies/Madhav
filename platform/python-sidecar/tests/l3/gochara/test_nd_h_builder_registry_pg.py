@@ -318,3 +318,16 @@ def test_a_support_row_is_refused_by_kgrr_object_role_ck(pg):
         _coverage_and_grain(pg, event_class="business_launch", path_id="P3", chart=CHART_TAURUS, edges=[edge],
                             generation="5.8", bodies=("Saturn",))
     assert "kgrr_object_role_ck" in str(exc.value)
+
+
+
+def test_final_rule_records_keep_the_exact_coverage_facts_the_schema_requires(pg):
+    counts, _ = _core_p3_run(pg, '5.38')
+    assert counts['records'] == 1
+    (equal,) = pg.execute(
+        "SELECT r.coverage_facts = public.ka_gochara_coverage_facts(c.convention_id, c.completed_horizon, c.relations_searched)"
+        " FROM public.ka_gochara_relationship_record r JOIN public.kala_gochara_coverage c"
+        " ON (c.chart_id, c.generation, c.partition_kind, c.partition_key) ="
+        " (r.chart_id, r.generation, r.coverage_partition_kind, r.coverage_partition_key)"
+        " WHERE r.chart_id = %s AND r.generation = %s", (CHART_ID, '5.38')).fetchone()
+    assert equal is True

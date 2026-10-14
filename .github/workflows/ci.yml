@@ -472,7 +472,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_g8_class_census.py tests/l3/gochara/test_g12_snapshot_copy.py tests/l3/gochara/test_nd_h_builder_registry_pg.py tests/l3/gochara/test_d1_near_miss_storage.py tests/l3/gochara/test_p06_final_rule_verification.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
 
@@ -1491,6 +1491,158 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-g12-mutations:
+    # P06 G12 snapshot-copy baseline and SQL mutations (four isolated slices).
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara P06 - G12 mutations (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        slice: [0, 1, 2, 3]
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: P06 G12 snapshot-copy baseline and mutation slice (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_g12_snapshot_copy.py -q --tb=short -rs -p no:cacheprovider
+          cd ..
+          python scripts/gochara/mutation_check_1305.py --slice "${{ matrix.slice }}/4"
+
+  gochara-a55-final-rules:
+    # P06 final rules, expected-class census, near-miss storage and verifier mutations.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: P06 final-rule, census, storage and verifier suites (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_A25_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A25_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
+          python -m pytest tests/l3/gochara/test_g8_class_census.py tests/l3/gochara/test_nd_h_builder_registry_pg.py tests/l3/gochara/test_nd_h_density_extract.py tests/l3/gochara/test_d1_near_miss_storage.py tests/l3/gochara/test_p06_final_rule_verification.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a25_v41_candidate_writer_pg.py -q --tb=short -rs -p no:cacheprovider
+          python ../scripts/gochara/mutation_check_verifier_side.py
+
+  gochara-a55-p06-legacy:
+    # P06 inherited WP6 ports on a dedicated guarded disposable database.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara P06 - legacy ports (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: local
+          POSTGRES_USER: wp6
+          POSTGRES_DB: wp6
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: P06 inherited WP6 integration suites (REQUIRED, never skipped)
+        env:
+          WP6_LEDGER_DSN: postgresql://wp6:local@localhost:5432/wp6
+          GOCHARA_P06_LEGACY_REQUIRE_DB: '1'
+          GOCHARA_A53_ADMIN_DSN: postgresql://wp6:local@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_step06_enumeration.py tests/l3/gochara/test_step06a_class_context.py tests/l3/gochara/test_step06b_windows_projection.py tests/l3/gochara/test_step3_overlay_fingerprint.py tests/l3/gochara/test_wp12_vedha_fingerprint.py tests/l3/gochara/test_wp9_stamp_columns.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).

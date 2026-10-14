@@ -30,7 +30,7 @@ The independent verifier (inventory_verifier.py) shares NO function with this mo
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
@@ -464,6 +464,39 @@ def plan_class_inventory(
                 f"{event_class}/{path_id}: sealed version {rule_version!r} is neither the selected "
                 f"{chosen!r}, superseded by an INCLUDED approved successor, nor excluded by a composite-keyed "
                 "ruling (a withheld version needs its own ruling_ref) — it cannot be accounted honestly")
+    # FB-34/35/36: normalized record annotations live in the inventory's free
+    # detail JSON, referenced by (grain, physical edge key). No record key or
+    # coverage-facts value changes; 1155 requires exact coverage-facts equality.
+    from .evaluator import final_rule_context, edge_identity_key, record_final_rules
+    by_ob = {o.ob_id: (pin, o) for pin in pins if pin.disposition == 'included'
+             and pin.rule_version == '1.2.0' for o in pin.obligations}
+    prototypes = {pin.path_id: enumerate_edges(event_class, pin.path_id, chart, rule_version=pin.rule_version)
+                  for pin in pins if pin.disposition == 'included' and pin.rule_version == '1.2.0'}
+    annotated = []
+    for iv in intervals:
+        if iv.ob_id not in by_ob:
+            annotated.append(iv)
+            continue
+        pin, ob = by_ob[iv.ob_id]
+        detail = dict(iv.detail or {})
+        factors = {}
+        for edge in prototypes[pin.path_id]:
+            if (edge.relation, edge.object_role, edge.obj.canonical_target) != (ob.relation, ob.object_role, ob.target):
+                continue
+            if ob.agent.startswith('period_lord:'):
+                level = ob.agent.split(':')[1]
+                if (edge.period_anchor_level != level or edge.agent != detail.get('resolved_agent')
+                        or edge.period_anchor_lord != detail.get('resolved_agent')):
+                    continue
+            elif edge.agent != ob.agent:
+                continue
+            factors[edge_identity_key(edge)] = record_final_rules(edge)
+        detail['record_factors'] = factors
+        context = final_rule_context(event_class, pin.path_id, chart, pin.rule_version)
+        if context is not None:
+            detail['final_rule_context'] = context
+        annotated.append(replace(iv, detail=detail))
+    intervals = annotated
     return ClassInventory(event_class=event_class, horizon=(lo, hi),
                           pins=tuple(pins), intervals=tuple(intervals))
 

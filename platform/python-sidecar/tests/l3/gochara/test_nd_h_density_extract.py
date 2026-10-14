@@ -27,8 +27,8 @@ def _t(y, m, d, h=0):
 class _Conn:
     """Answers the extractor's three statements from canned rows; refuses anything else."""
 
-    def __init__(self, windows=(), members=(), horizons=((_t(2001, 1, 1), _t(2001, 4, 11)),)):
-        self.answers = {dx.WINDOWS_SQL: list(windows), dx.MEMBERS_SQL: list(members), dx.HORIZON_SQL: list(horizons)}
+    def __init__(self, windows=(), members=(), contexts=(), horizons=((_t(2001, 1, 1), _t(2001, 4, 11)),)):
+        self.answers = {dx.WINDOWS_SQL: list(windows), dx.MEMBERS_SQL: list(members), dx.HORIZON_SQL: list(horizons), dx.CONTEXT_SQL: list(contexts)}
         self.seen = []
 
     def execute(self, sql, params=None):

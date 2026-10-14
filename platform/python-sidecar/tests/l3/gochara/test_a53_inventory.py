@@ -399,7 +399,8 @@ def test_the_registry_seals_are_the_pin_partition_the_planner_must_cover(am5):
     store, _sky, _ = _boot(am5, "5.7")
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-        assert store.sealed_rule_paths() == SEALED
+        from services.gochara_kernel.rule_registry import bound_path_refs
+        assert store.sealed_rule_paths() == sorted(bound_path_refs())
 
 
 def test_a_planned_class_is_stored_finalised_and_the_digests_are_the_dbs(am5):

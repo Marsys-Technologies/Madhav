@@ -239,3 +239,23 @@ def g8_census_opt_out(request, monkeypatch):
     # the job's refusal AND the candidate adapter (the brief / end-of-run gate) both judge the census through the one function: set both aside, for this suite only
     monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
     monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
+
+
+@pytest.fixture(autouse=True, scope="module")
+def p06_legacy_disposable_guard(request):
+    """Ported WP6 suites must run, on the dedicated CI service, before destructive setup."""
+    names = {'test_step06_enumeration', 'test_step06a_class_context',
+             'test_step06b_windows_projection', 'test_step3_overlay_fingerprint',
+             'test_wp12_vedha_fingerprint', 'test_wp9_stamp_columns'}
+    if request.module.__name__.split('.')[-1] not in names:
+        return
+    if os.environ.get('GOCHARA_P06_LEGACY_REQUIRE_DB') != '1':
+        return
+    from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect
+    try:
+        with guarded_admin_connect(WP6_DSN, autocommit=True, connect_timeout=3):
+            pass
+    except UnsafeAdminDSN:
+        raise
+    except Exception as exc:
+        pytest.fail(f'GOCHARA_P06_LEGACY_REQUIRE_DB=1: disposable CI service unavailable ({type(exc).__name__})')

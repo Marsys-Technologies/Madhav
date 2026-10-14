@@ -68,20 +68,16 @@ def span(h: int) -> str:
     return ev._span_target(sign_of_house(h))
 
 
-#: On an ARIES lagna (the stub chart, and the canonical chart) the lord of the 10th (CORE) and of the 11th (DVI) of
-#: achievement_recognition is ONE planet, Saturn: its P4 lord edges have the same identity from two tiers. The
-#: enumerator REFUSES that grain by name (never a silent dedup) — section 10 below; a steward ruling is needed.
-P4_COLLIDES = {"achievement_recognition"}
+# Ruling 18 §1: overlapping physical identities belong to CORE with absorption data.
+P4_COLLIDES = set()
 
 
 def paths_for(cls: str) -> tuple[str, ...]:
-    return ("P1", "P3") if cls in P4_COLLIDES else ("P1", "P3", "P4")
+    return ('P1', 'P3', 'P4')
 
 
 def edges(cls: str, path: str, version: str = V):
-    if cls in P4_COLLIDES and path == "P4" and version == V:
-        pytest.skip("achievement_recognition/P4 is refused on an Aries lagna (CORE/DVI identity collision) — section 10")
-    return ev.enumerate_edges(cls, path, CHART, "conv", rule_version=version)
+    return ev.enumerate_edges(cls, path, CHART, 'conv', rule_version=version)
 
 
 def span_targets(es) -> set[str]:
@@ -208,7 +204,10 @@ def test_dvi_counts_in_p4_for_jupiter_and_saturn_on_the_house_or_its_lord(cls):
     assert {e.agent for e in dvi} == {"jupiter", "saturn"}
     (h,) = RULED_TIERS[cls]["dvi"]
     lord_point = ev._point_target(CHART["natal"][SIGN_LORDS[sign_of_house(h)]])
-    assert {(e.object_role, e.obj.canonical_target) for e in dvi} == {("signature_house", span(h)), ("lord", lord_point)}
+    expected = {('signature_house', span(h)), ('lord', lord_point)}
+    absorbed = [e for e in edges(cls, 'P4') if e.dvi_absorbed_by_core]
+    assert {(e.object_role, e.obj.canonical_target) for e in dvi + absorbed} == expected
+    assert all(e.tier == 'core' for e in absorbed)
     assert all((e.operator_role, e.ruling_ref) == ("scored", RULING) for e in dvi)
 
 
@@ -769,24 +768,15 @@ def test_rule_4_changes_no_enumerated_edge_and_is_pinned_in_the_h_table(monkeypa
 
 # ── 10. CORE/DVI identity collision: detected, refused by name, never silently deduplicated ──────────────
 
-def test_a_core_and_dvi_lord_that_are_one_planet_is_refused_with_the_exact_keys():
-    """achievement_recognition on an Aries lagna: 10th = Capricorn, 11th = Aquarius, both Saturn's. The P4 lord edges
-    (Jupiter/Saturn × conjunction/aspect on natal Saturn, role `lord`) come from BOTH tiers with one identity. The
-    store's ON CONFLICT DO NOTHING would drop one silently, and "P4 without DVI" would be unattributable. No rule is
-    invented here (which tier wins / tier in the key is a steward point): the grain is refused, with the keys."""
-    with pytest.raises(ev.TierIdentityCollision) as exc:
-        ev.enumerate_edges("achievement_recognition", "P4", CHART, "conv", rule_version=V)
-    msg = str(exc.value)
-    saturn = ev._point_target(CHART["natal"]["Saturn"])
-    for agent in ("jupiter", "saturn"):
-        for relation in ("conjunction", "aspect"):
-            assert f"{agent}|{relation}|{saturn}|lord tiers=['core', 'dvi']" in msg
-    assert "4 record identit" in msg and "steward ruling" in msg
-    # P1 and P3 of the class are unaffected (DVI is not read there), and so is every other class's P4
-    assert ev.enumerate_edges("achievement_recognition", "P3", CHART, "conv", rule_version=V)
-    for cls in EIGHT:
-        if cls not in P4_COLLIDES:
-            assert ev.enumerate_edges(cls, "P4", CHART, "conv", rule_version=V)
+def test_a_core_and_dvi_lord_that_are_one_planet_is_absorbed_with_the_exact_keys():
+    es = ev.enumerate_edges('achievement_recognition', 'P4', CHART, 'conv', rule_version=V)
+    saturn = ev._point_target(CHART['natal']['Saturn'])
+    ctx = ev.final_rule_context('achievement_recognition', 'P4', CHART, V)
+    assert ctx['dvi_absorbed_by_core'] == sorted(
+        f'{a}|{r}|{saturn}|lord' for a in ('jupiter', 'saturn') for r in ('conjunction', 'aspect'))
+    absorbed = [e for e in es if e.dvi_absorbed_by_core]
+    assert len(absorbed) == 4 and all(e.tier == 'core' for e in absorbed)
+    assert len(es) == len({ev.edge_identity_key(e) for e in es})
 
 
 def test_without_a_collision_the_same_class_enumerates_its_dvi_member_in_p4():
