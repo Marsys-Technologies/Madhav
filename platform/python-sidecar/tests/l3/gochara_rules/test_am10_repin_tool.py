@@ -137,7 +137,7 @@ def test_reference_rows_are_remeasured_from_the_new_build_by_position():
 
 
 def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeypatch, tmp_path):
-    assert T.main(["--new-build-id", PERM.DASHA_READ_CONTRACT["build_id"]], conn=FakeConn()) == 2
+    assert T.main(["--new-build-id", T.reference_build_id()], conn=FakeConn()) == 2
     # the DB stand-in: no rows for the new build ⇒ the new build is absent ⇒ STOP (exit 3), nothing applied
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
@@ -147,7 +147,20 @@ def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeyp
 
 def _stub_verifier(tmp_path, build_id=None):
     d = tmp_path / "services" / "gochara_kernel"; d.mkdir(parents=True, exist_ok=True)
-    (d / "inventory_verifier.py").write_text(f'"""stub of Stream A\'s verifier"""\n_C_BUILD = "{build_id or PERM.DASHA_READ_CONTRACT["build_id"]}"\n', encoding="utf-8")
+    (d / "inventory_verifier.py").write_text(f'"""stub of Stream A\'s verifier"""\n_C_BUILD = "{build_id or T.reference_build_id()}"\n', encoding="utf-8")
+
+
+def _legacy_permission_source():
+    """Keep the inherited apply oracles on their original two-constant fixture.
+
+    J-4p's live contract has no build_id. Reconstruct that historical shape only
+    in scratch; the re-pin tool must never manufacture it in the governed source.
+    """
+    source = pathlib.Path(PERM.__file__).read_text(encoding="utf-8")
+    if "build_id" not in PERM.DASHA_READ_CONTRACT:
+        source = source.replace("DASHA_READ_CONTRACT = {", "DASHA_READ_CONTRACT = {\n"
+                                f'    "build_id": "{T.reference_build_id()}",', 1)
+    return source
 
 
 def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_the_refusal_test(monkeypatch, tmp_path):
@@ -156,10 +169,10 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     perm_src = pathlib.Path(PERM.__file__)
     (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
     (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
-    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(perm_src.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(_legacy_permission_source(), encoding="utf-8")
     ref = PERM.AD_ROWS[0]
     lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_literal.py"
-    lit.write_text(f'ROW = "{ref["row_id"]}"\nT = "{ref["start_iso"]}"\nB = "{PERM.DASHA_READ_CONTRACT["build_id"]}"\nOTHER = "2099-01-01T00:00:00Z"\n', encoding="utf-8")
+    lit.write_text(f'ROW = "{ref["row_id"]}"\nT = "{ref["start_iso"]}"\nB = "{T.reference_build_id()}"\nOTHER = "2099-01-01T00:00:00Z"\n', encoding="utf-8")
     monkeypatch.setattr(T, "SIDECAR", tmp_path)
     new_id = "22222222-2222-4222-8222-222222222222"
     # The historical replacement is already today's reference boundary. Keep
@@ -177,7 +190,7 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     review: list[str] = []
     changed = T.apply_repin(new_id, maps, tmp_path, rulings={"keep": [f"{rel}:2"]}, review=review)
     p = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = T.reference_build_id()
     assert f'"build_id": "{new_id}"' in p and f'"build_id": "{old_id}"' not in p     # (the old id may survive in the module docstring as history)
     assert "99999999-9999-4999-8999-999999999999" in p and ref["row_id"] not in p
     assert "2013-01-14T09:13:57Z" in p and ref["start_iso"] not in p       # permission.py: the reference rows' instants ARE rewritten (single pass)
@@ -188,7 +201,7 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T09:13:57Z" in r and "[keep]" in r for r in review)
     assert "OTHER = \"2099-01-01T00:00:00Z\"" in text                        # unrelated literals untouched
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / "test_am10_repin_22222222.py"
-    assert gen.exists() and PERM.DASHA_READ_CONTRACT["build_id"] in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
+    assert gen.exists() and T.reference_build_id() in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
     assert any(c.endswith("permission.py") for c in changed) and any(c.endswith("inventory_verifier.py") for c in changed) and len(changed) == 4
 
 
@@ -245,7 +258,7 @@ def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
     _stub_verifier(tmp_path)
     (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
     (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
-    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(_legacy_permission_source(), encoding="utf-8")
     ref = PERM.AD_ROWS[0]
     lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_two.py"
     lit.write_text(f'A = "{ref["start_iso"]}"   # a boundary\nB = "{ref["start_iso"]}"   # an EVENT date that merely equals it\n', encoding="utf-8")
@@ -312,7 +325,7 @@ def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_w
 
 
 # ── G6: coexisting builds; capture the OLD rows BEFORE S-L1 (steward M20261002T223036-02f0) ─────────────────────────────────────────────
-OLDB = PERM.DASHA_READ_CONTRACT["build_id"]
+OLDB = T.reference_build_id()
 NEWB = "11111111-1111-4111-8111-111111111111"
 GOODFACTS = {"builds": [NEWB], "non_scope": 45, "scope": 1, "throughput": {"ga_dashas": "lit", "ga_positions": "lit"}}
 
@@ -635,7 +648,7 @@ def test_a_missing_or_empty_forensic_report_stops_before_any_read(tmp_path, caps
 def _apply_world(tmp_path, ver_line=None, with_verifier=True):
     (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
     (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
-    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(_legacy_permission_source(), encoding="utf-8")
     if with_verifier:
         d = tmp_path / "services" / "gochara_kernel"; d.mkdir(parents=True)
         (d / "inventory_verifier.py").write_text(ver_line if ver_line is not None else f'_C_BUILD = "{OLDB}"\n', encoding="utf-8")

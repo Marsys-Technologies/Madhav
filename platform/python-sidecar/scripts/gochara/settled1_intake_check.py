@@ -8,15 +8,18 @@ Suvarṇa's SETTLED-1 notice as arguments, and reports PASS/STOP per rule:
   R1  Vimśottarī lords AND row counts unchanged at levels 1–3 (matched by the tool's
       (level, parent path, index) path index — row ids are not trusted across builds);
   R2  every boundary shift within the stated tolerance of the stated per-level shift
-      (the tool's own `shift_stats` / `shift_problems` — the production rule, reused);
+      (the tool's own `edge_report` / `shift_stats` / `shift_problems` — the production
+      rule, reused); one-sided clipping is refused, both-clipped edges stay fixed;
   R3  level-4 changes are ALLOWED and counted: the captures carry none by contract;
       a `--expected-shift 4=…` entry is echoed as declared-and-not-compared;
   R4  the natal graha_position fact_ids are unchanged (addendum 2: they are build-independent);
-  R5  the post-S-L1 capture's daśā build id equals the notice's new build id.
+  R5  the CLI and post-S-L1 capture's daśā build id equal the governed settlement's
+      full run id for the same chart (J-4p's shared loader; no fallback).
 
 Each capture is validated with the tool's own `validate_capture` (identity, selection
 contract, checksum over identity + data, every row against the read contract, the tree,
-the reference rows, the ten natal rows) — a malformed or self-inconsistent capture is a
+the ten natal rows). Historical reference IDs prove the old acquisition; their structural
+natural keys and lords validate the rebuilt references — a malformed or self-inconsistent capture is a
 STOP, never a guess.
 
 Exit 0 = every rule PASS · 1 = a STOP · 2 = a usage/argument refusal.
@@ -60,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="SETTLED-1 intake checker — two captures + the notice values, PASS/STOP per rule")
     ap.add_argument("--old", required=True, help="the pre-S-L1 capture (the pinned old build)")
     ap.add_argument("--new", required=True, help=" the post-S-L1 capture (the SETTLED-1 build)")
-    ap.add_argument("--new-build-id", required=True, help="the new daśā build id from the SETTLED-1 notice")
+    ap.add_argument("--new-build-id", required=True, help="assert the full daśā build id in the governed settlement")
     ap.add_argument("--expected-shift", action="append", required=True, metavar="LEVEL=SECONDS",
                     help="the notice's expected per-level boundary shift (levels 1, 2, 3 required; 4 echoed, never compared)")
     ap.add_argument("--tolerance", type=int, required=True, help="the notice's stated tolerance in seconds")
@@ -107,24 +110,42 @@ def main(argv: list[str] | None = None) -> int:
         stop("capture-old", "the old capture names no chart and --chart-id was not given")
         return 1
 
+    # J-4p owns the receipt and its validation. P04 must land after J-4p;
+    # a CLI UUID, singleton capture, or historical pin cannot replace it.
+    try:
+        from services.gochara_kernel.dasha_read import load_dasha_settlement
+    except ImportError:
+        stop("settlement-authority", "J-4p's governed settlement loader is unavailable; land J-4p first")
+        return 1
+    try:
+        settlement = load_dasha_settlement(chart)
+    except R.DD.DashaReadConflict as exc:
+        stop("settlement-authority", str(exc))
+        return 1
+    settled_build = settlement["run_id"]
+    if new_build != settled_build:
+        stop("settlement-authority",
+             f"--new-build-id {new_build} differs from the governed settlement's full run {settled_build}")
+        return 1
+
     # ── acquisition/load validation, the tool's own rule ────────────────────
-    old_pin = R.canon_uuid(R.PERM.DASHA_READ_CONTRACT["build_id"])
+    old_pin = R.canon_uuid(R.reference_build_id())
     bad = R.validate_capture(old_d, chart, old_pin)
     if bad:
         stop("capture-old", "the pre-S-L1 capture is invalid: " + "; ".join(bad[:6]))
         return 1
     passed("capture-old", f"pre-S-L1 capture valid (chart {chart}, pinned build {old_pin})")
-    bad = R.validate_capture(new_d, chart, new_build)
+    bad = R.validate_capture(new_d, chart, settled_build, reference_baseline=old_d["rows"])
     if bad:
         stop("capture-new", "the post-S-L1 capture is invalid: " + "; ".join(bad[:6]))
         return 1
     passed("capture-new", "post-S-L1 capture valid (same chart, the notice's selection contract)")
 
-    # ── R5: the daśā build id equals the notice's ───────────────────────────
-    if R.canon_uuid(new_d["build_id"]) == new_build:
-        passed("R5-build-id", f"daśā build id is the notice's {new_build}")
+    # ── R5: the CLI and capture bind the governed chart/full run ────────────
+    if R.canon_uuid(new_d["build_id"]) == settled_build:
+        passed("R5-build-id", f"daśā build id is the governed settlement's {settled_build} for chart {chart}")
     else:
-        stop("R5-build-id", f"the post-S-L1 capture carries build {new_d.get('build_id')}, the notice says {new_build}")
+        stop("R5-build-id", f"the post-S-L1 capture carries build {new_d.get('build_id')}, settlement says {settled_build}")
 
     # ── R1: lords and row counts unchanged at levels 1–3 ────────────────────
     old_idx, new_idx = R.index_paths(old_d["rows"]), R.index_paths(new_d["rows"])
@@ -150,12 +171,13 @@ def main(argv: list[str] | None = None) -> int:
         stats = R.shift_stats(old_idx, new_idx, m["matched"])
         notice = {"expected_shift_seconds": {lv: s for lv, s in shifts.items() if lv != "4"},
                   "tolerance_seconds": args.tolerance}
-        sp = R.shift_problems(stats, notice)
+        sp = R.edge_report(old_idx, new_idx, m["matched"])["problems"] + R.shift_problems(stats, notice)
         if sp:
             stop("R2-shift", "; ".join(sp))
         else:
             passed("R2-shift",
-                   f"every measured boundary shift is within ±{args.tolerance} s of the notice's per-level shift")
+                   f"window-edge accounting valid; every measured boundary shift is within ±{args.tolerance} s "
+                   "of the notice's per-level shift")
     else:
         stop("R2-shift", "no rows matched — no shift can be measured")
 

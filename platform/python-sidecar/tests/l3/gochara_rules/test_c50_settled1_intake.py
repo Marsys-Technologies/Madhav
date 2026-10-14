@@ -9,9 +9,12 @@ import importlib.util
 import json
 import pathlib
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
+
+from services.gochara_kernel import dasha_read
 
 _HERE = pathlib.Path(__file__).resolve()
 _P = _HERE.parents[3] / "scripts" / "gochara" / "repin_dasha_contract.py"
@@ -29,8 +32,8 @@ _spec2.loader.exec_module(C)
 PERM = R.PERM
 TIER = PERM.DASHA_READ_CONTRACT["tier"]
 CHART = PERM.DASHA_READ_CONTRACT["chart_id"]
-OLD_BUILD = PERM.DASHA_READ_CONTRACT["build_id"]
-NEW_BUILD = "11111111-1111-4111-8111-111111111111"
+OLD_BUILD = getattr(PERM, "REFERENCE_DASHA_BUILD_ID", None) or PERM.DASHA_READ_CONTRACT["build_id"]
+NEW_BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"
 EXTRA_AD_ID = "22222222-2222-4222-8222-222222222222"
 LEVEL_OF = {"MD": 1, "AD": 2, "PD": 3}
 
@@ -156,7 +159,7 @@ def test_R4_preserves_each_subjects_fact_id_and_requires_ten_distinct_ids(good, 
 def test_a_build_id_other_than_the_notice_stops(good, capsys):
     old, new = good
     assert C.main(_args(old, new, build="33333333-3333-4333-8333-333333333333")) == 1
-    assert "STOP capture-new" in capsys.readouterr().out
+    assert "STOP settlement-authority" in capsys.readouterr().out
 
 
 def test_a_tampered_capture_stops(good, capsys):
@@ -187,3 +190,212 @@ def test_usage_refusals(good):
 def test_a_missing_capture_file_stops(tmp_path, capsys):
     assert C.main(_args(str(tmp_path / "no-old.json"), str(tmp_path / "no-new.json"))) == 1
     assert "STOP capture-load" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("build,shift", [
+    ("11111111-1111-4111-8111-111111111111", 6993),
+    (OLD_BUILD, 0),
+])
+def test_consistent_unrelated_or_legacy_capture_cannot_supply_settlement_authority(
+        good, tmp_path, capsys, build, shift):
+    old, _ = good
+    new = _capture(tmp_path, "unsettled.json", build, _rows(build, shift_s=shift), _natal())
+    args = _args(old, new, build=build, shifts=tuple(f"{lv}={shift}" for lv in (1, 2, 3)))
+    assert C.main(args) == 1
+    out = capsys.readouterr().out
+    assert "STOP settlement-authority" in out
+    assert "PASS R5-build-id" not in out and "every rule PASS" not in out
+
+
+@pytest.mark.parametrize("fault", ["missing", "malformed", "conflicting_build", "conflicting_chart"])
+def test_absent_or_unusable_governed_settlement_stops(good, tmp_path, capsys, monkeypatch, fault):
+    path = tmp_path / "settlement.json"
+    if fault != "missing":
+        record = json.loads(dasha_read.SETTLEMENT_PATH.read_text())
+        if fault == "malformed":
+            path.write_text("{invalid")
+        else:
+            record["run_id" if fault == "conflicting_build" else "chart_id"] = (
+                "33333333-3333-4333-8333-333333333333")
+            path.write_text(json.dumps(record))
+    monkeypatch.setattr(dasha_read, "SETTLEMENT_PATH", path, raising=False)
+    assert C.main(_args(*good)) == 1
+    out = capsys.readouterr().out
+    assert "STOP settlement-authority" in out
+    assert "PASS R5-build-id" not in out and "every rule PASS" not in out
+
+
+def test_missing_j4p_loader_stops_without_a_fallback(good, capsys, monkeypatch):
+    monkeypatch.delattr(dasha_read, "load_dasha_settlement", raising=False)
+    assert C.main(_args(*good)) == 1
+    assert "STOP settlement-authority" in capsys.readouterr().out
+
+
+def test_capture_build_must_match_the_governed_build_even_when_cli_matches(good, tmp_path, capsys):
+    old, _ = good
+    foreign = "11111111-1111-4111-8111-111111111111"
+    new = _capture(tmp_path, "foreign.json", foreign, _rows(foreign, shift_s=6993), _natal())
+    assert C.main(_args(old, new)) == 1
+    out = capsys.readouterr().out
+    assert "STOP capture-new" in out and "PASS R5-build-id" not in out
+
+
+def test_matching_cli_and_captures_for_an_unsettled_chart_stop(good, tmp_path, capsys):
+    chart = "33333333-3333-4333-8333-333333333333"
+    paths = []
+    for name, original in zip(("foreign-old.json", "foreign-new.json"), good):
+        d = json.loads(pathlib.Path(original).read_text())
+        d = R.build_capture(chart, d["build_id"], d["rows"], d["natal"])
+        path = tmp_path / name
+        path.write_text(json.dumps(d))
+        paths.append(str(path))
+    assert C.main(_args(*paths) + ["--chart-id", chart]) == 1
+    assert "STOP settlement-authority" in capsys.readouterr().out
+
+
+def _window_edge_rows(side, clipped_on):
+    old_rows, new_rows = _rows(OLD_BUILD), _rows(NEW_BUILD, shift_s=6993)
+    # A separate root avoids changing any reference row or its descendants.
+    extra = {"dasha_row_id": "33333333-3333-4333-8333-333333333333", "level_n": 1,
+             "parent_row_id": None, "lord_graha": "Sun", "verification_pass_status": TIER,
+             "system_id": "vimshottari", "build_id": OLD_BUILD,
+             "start_iso": R.WINDOW_START_ISO if side == "start" else "2080-01-01T00:00:00Z",
+             "end_iso": "2000-01-01T00:00:00Z" if side == "start" else R.WINDOW_END_ISO}
+    edge = f"{side}_iso"
+    if clipped_on == "new":
+        extra[edge] = _shift(extra[edge], -6993)
+    newer = {**extra, "build_id": NEW_BUILD,
+             "start_iso": _shift(extra["start_iso"], 6993), "end_iso": _shift(extra["end_iso"], 6993)}
+    if clipped_on == "both":
+        newer[edge] = extra[edge]
+    old_rows.append(extra)
+    new_rows.append(newer)
+    return old_rows, new_rows
+
+
+@pytest.mark.parametrize("side", ["start", "end"])
+@pytest.mark.parametrize("clipped_on", ["old", "new"])
+def test_one_sided_window_clipping_stops_R2(tmp_path, capsys, side, clipped_on):
+    old_rows, new_rows = _window_edge_rows(side, clipped_on)
+    old = _capture(tmp_path, "clipped-old.json", OLD_BUILD, old_rows, _natal())
+    new = _capture(tmp_path, "clipped-new.json", NEW_BUILD, new_rows, _natal())
+    # Both acquisition checks pass: only the cross-build edge report detects this.
+    assert not R.validate_capture(json.loads(pathlib.Path(old).read_text()), CHART, OLD_BUILD)
+    assert not R.validate_capture(json.loads(pathlib.Path(new).read_text()), CHART, NEW_BUILD)
+    assert C.main(_args(old, new)) == 1
+    out = capsys.readouterr().out
+    assert "STOP R2-shift" in out and "window-edge status changed" in out
+    assert "PASS R2-shift" not in out and "every rule PASS" not in out
+
+
+@pytest.mark.parametrize("side", ["start", "end"])
+def test_both_clipped_unchanged_edges_are_excluded_and_pass(tmp_path, capsys, side):
+    old_rows, new_rows = _window_edge_rows(side, "both")
+    old = _capture(tmp_path, "clipped-old.json", OLD_BUILD, old_rows, _natal())
+    new = _capture(tmp_path, "clipped-new.json", NEW_BUILD, new_rows, _natal())
+    assert C.main(_args(old, new)) == 0
+    assert "PASS R2-shift" in capsys.readouterr().out
+
+
+def _reinsert_ids(rows):
+    ids = {r["dasha_row_id"]: str(uuid.uuid5(uuid.NAMESPACE_URL, "review-new:" + r["dasha_row_id"]))
+           for r in rows}
+    return [{**r, "dasha_row_id": ids[r["dasha_row_id"]], "parent_row_id": ids.get(r["parent_row_id"])}
+            for r in reversed(rows)]
+
+
+def test_rebuilt_capture_with_every_row_id_changed_passes_by_structure(good, tmp_path, capsys):
+    old, _ = good
+    new = _capture(tmp_path, "reinserted.json", NEW_BUILD,
+                   _reinsert_ids(_rows(NEW_BUILD, shift_s=6993)), _natal())
+    assert C.main(_args(old, new)) == 0
+    out = capsys.readouterr().out
+    assert "11 rows matched by path" in out and "every rule PASS" in out
+
+
+@pytest.mark.parametrize("mutation,diagnostic", [
+    ("lord", "no counterpart"),
+    ("parent_path", "no counterpart"),
+    ("orphan", "missing parent"),
+])
+def test_changed_ids_do_not_hide_a_reference_lord_or_structure_mutation(
+        tmp_path, capsys, mutation, diagnostic):
+    old_rows, new_rows = _window_edge_rows("start", "both")
+    new_rows = _reinsert_ids(new_rows)
+    row = next(r for r in new_rows if r["level_n"] == 2 and r["lord_graha"] == "Ketu")
+    if mutation == "lord":
+        row["lord_graha"] = "Jupiter"
+    elif mutation == "parent_path":
+        row["parent_row_id"] = next(r["dasha_row_id"] for r in new_rows
+                                    if r["level_n"] == 1 and r["lord_graha"] == "Sun")
+    else:
+        row["parent_row_id"] = "44444444-4444-4444-8444-444444444444"
+    old = _capture(tmp_path, "old.json", OLD_BUILD, old_rows, _natal())
+    new = _capture(tmp_path, "mutated-new.json", NEW_BUILD, new_rows, _natal())
+    assert C.main(_args(old, new)) == 1
+    out = capsys.readouterr().out
+    assert "STOP capture-new" in out and diagnostic in out
+    assert "every rule PASS" not in out
+
+
+def test_old_capture_still_requires_the_historical_reference_ids(good, tmp_path, capsys):
+    _, new = good
+    old = _capture(tmp_path, "unproven-old.json", OLD_BUILD, _reinsert_ids(_rows(OLD_BUILD)), _natal())
+    assert C.main(_args(old, new)) == 1
+    out = capsys.readouterr().out
+    assert "STOP capture-old" in out and "NOT in the capture" in out
+
+
+@pytest.mark.parametrize("fault,diagnostic", [
+    ("chart", "capture is for chart"),
+    ("envelope_build", "capture envelope names build"),
+    ("selection", "selection contract"),
+    ("checksum", "sha256"),
+    ("row_build", "foreign or mixed build"),
+    ("system", "is system"),
+    ("tier", "is tier"),
+    ("counts", "recorded per-level counts"),
+    ("duplicate", "duplicate row id"),
+    ("truncation", "flagged truncated"),
+    ("coverage", "UNCLIPPED"),
+])
+def test_rebuilt_capture_retains_its_own_validation(good, tmp_path, capsys, fault, diagnostic):
+    old, _ = good
+    rows = _reinsert_ids(_rows(NEW_BUILD, shift_s=6993))
+    if fault == "row_build":
+        rows[0]["build_id"] = OLD_BUILD
+    elif fault == "system":
+        rows[0]["system_id"] = "ashtottari"
+    elif fault == "tier":
+        rows[0]["verification_pass_status"] = "single"
+    elif fault == "duplicate":
+        rows.append(dict(rows[0]))
+    elif fault == "truncation":
+        rows[0]["trunc_start"] = True
+    elif fault == "coverage":
+        next(r for r in rows if r["level_n"] == 1)["start_iso"] = R.WINDOW_START_ISO
+    d = R.build_capture(CHART, NEW_BUILD, rows, _natal())
+    if fault == "chart":
+        d["chart_id"] = "33333333-3333-4333-8333-333333333333"
+    elif fault == "envelope_build":
+        d["build_id"] = OLD_BUILD
+    elif fault == "selection":
+        d["selection"]["system_id"] = "ashtottari"
+    elif fault == "checksum":
+        d["sha256"] = "0" * 64
+    elif fault == "counts":
+        d["meta"]["counts_by_level"]["1"] = 999
+    path = tmp_path / "invalid-new.json"
+    path.write_text(json.dumps(d))
+    assert C.main(_args(old, str(path))) == 1
+    out = capsys.readouterr().out
+    assert "STOP capture-new" in out and diagnostic in out
+
+
+def test_old_acquisition_uses_j4ps_historical_reference_export(good, capsys, monkeypatch):
+    # J-4p removes the runtime build from DASHA_READ_CONTRACT. Its historical
+    # reference export, not the current settlement, governs the old acquisition.
+    monkeypatch.setattr(PERM, "REFERENCE_DASHA_BUILD_ID", OLD_BUILD, raising=False)
+    monkeypatch.delitem(PERM.DASHA_READ_CONTRACT, "build_id", raising=False)
+    assert C.main(_args(*good)) == 0
+    assert "every rule PASS" in capsys.readouterr().out

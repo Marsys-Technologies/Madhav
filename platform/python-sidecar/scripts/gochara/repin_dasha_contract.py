@@ -76,6 +76,16 @@ CANONICAL_SYSTEM, CANONICAL_AYANAMSHA = "vimshottari", "lahiri_chitrapaksha"
 LEVELS_IN_SCOPE = (1, 2, 3)          # Vimśottarī Lahiri MD/AD/PD only (steward M20261002T230554 / Suvarṇa addendum 7): lords and row counts must be EQUAL here; level 4 is out of scope
 
 
+def reference_build_id() -> str:
+    """Historical acquisition identity, never settlement authority.
+
+    J-4p separates this export from the live read contract. The legacy contract
+    remains readable for pre-J-4p captures/tools; no UUID is duplicated here.
+    """
+    reference = getattr(PERM, "REFERENCE_DASHA_BUILD_ID", None)
+    return reference if reference is not None else PERM.DASHA_READ_CONTRACT["build_id"]
+
+
 # ── pure helpers (unit-tested) ───────────────────────────────────────────────
 def _t(s) -> datetime:
     """Any instant -> UTC. A `datetime` object without tzinfo is UTC by this tool's convention (psycopg returns aware ones); a STRING without an offset is REFUSED by name — `fromisoformat(...).astimezone()` would
@@ -390,10 +400,12 @@ def build_capture(chart_id: str, build_id: str, rows: list[dict], natal: list[di
     return {"chart_id": chart_id, "build_id": build_id, "selection": selection_contract(), "rows": rows, "natal": natal or [], "meta": meta, "sha256": _capture_digest(chart_id, build_id, rows, natal)}
 
 
-def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
+def validate_capture(d: dict, chart_id: str, build_id: str, *, reference_baseline: list[dict] | None = None) -> list[str]:
     """THE ONE validation, run at ACQUISITION (before anything is written) AND at LOAD (Codex R18-1/R18-2): identity, selection, checksum over identity + data, every row against the build and the
     read contract, a well-formed tree, every reference-row id present with its lord, flags consistent, at least one UNCLIPPED start and end at every in-scope level (R19-2), the ten natal rows, and the
-    recorded per-level counts."""
+    recorded per-level counts. For a rebuilt capture, pass the already-validated old rows as
+    reference_baseline: historical references map by structural natural keys, never by new IDs.
+    The default still requires the historical IDs at old acquisition/load."""
     out: list[str] = []
     if not isinstance(d, dict) or not d.get("rows"):
         return ["the capture is empty or not an object"]
@@ -411,7 +423,8 @@ def validate_capture(d: dict, chart_id: str, build_id: str) -> list[str]:
         out.append("the capture's sha256 does not match its identity, selection, rows and natal longitudes")
     out += row_contract_problems(d["rows"], build_id, "captured old rows")
     try:
-        out += capture_problems(d["rows"]) + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or [])
+        out += (capture_problems(d["rows"], reference_baseline=reference_baseline)
+                + coverage_problems(d["rows"]) + natal_problems(d.get("natal") or []))
     except (ValueError, KeyError, TypeError) as exc:
         out.append(f"the capture's rows cannot be read ({exc.__class__.__name__}: {exc})")                       # e.g. an instant without an offset: a named STOP, never a traceback
     counts = (d.get("meta") or {}).get("counts_by_level")
@@ -509,17 +522,22 @@ def canon_uuid(x) -> str:
     return str(uuid.UUID(str(x)))
 
 
-def capture_problems(rows: list[dict]) -> list[str]:
+def capture_problems(rows: list[dict], *, reference_baseline: list[dict] | None = None) -> list[str]:
     """What the COMPARISON will later need, checked at CAPTURE time (Fable F-R18-2) — a useless capture must be found NOW, while a re-capture is still possible: a well-formed tree, every `permission.py`
-    reference-row id present with its lord, and no flag set off the window bound."""
+    reference-row id present with its lord, and no flag set off the window bound. A rebuilt
+    capture instead reuses the reference mapper against the validated historical baseline."""
     out = tree_problems(rows, "captured old rows")
-    by_id = {r["dasha_row_id"]: r for r in rows}
-    for ref in PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS:
-        r = by_id.get(ref["row_id"])
-        if r is None:
-            out.append(f"reference row {ref['row_id']} ({ref['level']} {ref['lord']}) is NOT in the capture")
-        elif r["lord_graha"] != ref["lord"]:
-            out.append(f"reference row {ref['row_id']}: lord {r['lord_graha']} in the capture, {ref['lord']} in permission.py")
+    if reference_baseline is None:
+        by_id = {r["dasha_row_id"]: r for r in rows}
+        for ref in PERM.MD_ROWS + PERM.AD_ROWS + PERM.PD_ROWS:
+            r = by_id.get(ref["row_id"])
+            if r is None:
+                out.append(f"reference row {ref['row_id']} ({ref['level']} {ref['lord']}) is NOT in the capture")
+            elif r["lord_graha"] != ref["lord"]:
+                out.append(f"reference row {ref['row_id']}: lord {r['lord_graha']} in the capture, {ref['lord']} in permission.py")
+    elif not out:  # Index only a valid tree; malformed parents/cycles must STOP first.
+        _, reference_problems = remeasure_reference_rows(index_paths(reference_baseline), index_paths(rows))
+        out += reference_problems
     for r in rows:
         for side in ("start", "end"):
             if bool(r.get("trunc_start" if side == "start" else "trunc_end")) and _t(r["start_iso" if side == "start" else "end_iso"]) != _t(WINDOW_START_ISO if side == "start" else WINDOW_END_ISO):
@@ -633,7 +651,7 @@ def import_w0(path: str, checksum: str, out_path: str, chart_id: str) -> int:
     if got != checksum.lower():
         print(f"STOP — the W0 file's sha256 is {got}, not the checksum {checksum} named by SETTLED-1", file=sys.stderr); return 3
     d = json.loads(raw.decode("utf-8"))
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = reference_build_id()
     if d.get("chart_id") != chart_id or canon_uuid(d.get("build_id")) != old_id or not isinstance(d.get("rows"), list) or not isinstance(d.get("natal"), list):
         print("STOP — the W0 file is not {chart_id, build_id, rows, natal} for this chart and the pinned build", file=sys.stderr); return 3
     try:
@@ -864,7 +882,7 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     changed = []
     perm = SIDECAR / "services" / "gochara_rules" / "permission.py"
     s = perm.read_text(encoding="utf-8")
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = reference_build_id()
     assert s.count(f'"build_id": "{old_id}"') == 1
     ids: dict[str, str] = {}
     instants: dict[str, str] = {}
@@ -1012,7 +1030,7 @@ def _capture_old(a, conn) -> int:
     graha_position rows and the asset-state/build census; the capture is VALIDATED — the same validation the comparison will apply — BEFORE anything is written (a malformed or unusable capture is a
     named STOP with NO artifact); the connection is rolled back and closed BEFORE the file is written; prints the data sha256, the whole-file sha256 and the elapsed time (Suvarṇa: in the hour BEFORE S-L1)."""
     started = time.monotonic()
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = reference_build_id()
     own = conn is None
     if own:
         conn = open_capture_connection()
@@ -1086,7 +1104,7 @@ def main(argv=None, *, conn=None) -> int:
         return import_w0(a.import_w0, a.w0_checksum, a.w0_capture_out, a.chart_id)
     if a.capture_old:
         return _capture_old(a, conn)
-    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    old_id = reference_build_id()
     if a.chart_id != PERM.DASHA_READ_CONTRACT["chart_id"]:
         print(f"WARNING: --chart-id {a.chart_id} is not the canonical chart {PERM.DASHA_READ_CONTRACT['chart_id']}; the comparison is for evidence only and --apply is refused", file=sys.stderr)
     if a.new_build_id == old_id:
