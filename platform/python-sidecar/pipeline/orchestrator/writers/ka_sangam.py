@@ -4,8 +4,10 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table.
 
-Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B
-convergence search, inserts ranked windows into kala_convergence.
+Consumes explicitly licensed jury fixture inputs. Default production dispatch
+retains Mode A-D behind the legacy shim until a qualified build-safe retirement.
+Stored legacy rows remain available to readers; fixture output is not live jury
+admission or a retirement claim.
 """
 import hashlib
 import json
@@ -1175,7 +1177,14 @@ class _LegacyKaSangamWriter(WriterBase):
 
 @register('ka_sangam')
 class KaSangamWriter(_LegacyKaSangamWriter):
-    """Per-class candidate consumer; Modes A–D retain default compatibility."""
+    """Per-class fixture consumer with a build-safe legacy production shim.
+
+    (I) INTERPRETATION: retirement is deferred until qualified live inputs and
+    a build-safe cutover exist. An empty plan would misclassify stored legacy
+    rows as completed jury output; an unavailable pending step would fail a
+    whole-layer run (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2/§7.1;
+    CLAUDE.md §N.8.4). Keep real legacy production rather than claiming either.
+    """
 
     def plan_substeps(self, ctx) -> list[SubStep]:
         if 'jury_fixture_inputs' not in ctx.config:
