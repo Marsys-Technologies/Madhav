@@ -7,8 +7,9 @@
 #                            detector reads "mode": "launch"). It is the precondition of INSTALL_RECEIPT.json (B-2).
 # One line per check: `ok <name>` or `FAIL <name>: <reason>`. Exit 0 every check ok; 1 a check failed or is unknown; 64 usage.
 # A check whose command cannot run, times out, or whose answer cannot be read is FAIL, never ok (root CLAUDE.md §N.8/§N.7.6).
-# The Claude-only smoke is the binary's version check plus the KV-06 launchd qualification check of every installed launch
+# Smoke is the binary's version check plus the KV-06 launchd qualification check of every installed launch
 # configuration; preflight starts no model job. It never writes the audit reconciliation record or its review (ruling P17).
+# KV3-PREFLIGHT-VARIANTS: installer step 9 variant names, qualification identity and evidence checks; no new import.
 # `ky audit` is read from its standard output only (FAIL lines and the count line). Environment: KY_ROOT, KY_RUN (default $KY_ROOT/run), KY_FLEET (default $KY_ROOT/fleet_live), KY_SCRATCH (for local_db.sh),
 # KY_SOURCE_REPO, CLAUDE_BIN, PRAVAHA_URL, SE_EPHE_PATH; tests only: KY_CURL (absolute path), KY_PREFLIGHT_TIMEOUT (seconds).
 set -uo pipefail
@@ -105,8 +106,33 @@ def cmd_claude_facts(binpath, version_out, facts_out):
     dump(facts_out, {"path": binpath, "version": m.group(0), "sha256": sha256_file(binpath)})
 
 
+QUALIFICATION_JOB_ENV = {
+    role: {"KY_STREAM": stream, "KY_LANE": lane, "KY_CONTROLLER_ID": "CTL-qualification"}
+    for role, stream, lane in (
+        ("build", "K", "b1"), ("rework", "K", "b1"), ("verify", "V", "v1"),
+        ("artifact", "V", "v1"), ("pre-accept", "V", "v1"), ("post-readback", "V", "v1"),
+        ("ruling", "N", "b1"), ("request-prep", "N", "b1"), ("model", "S", "b1"),
+        ("plan", "S", "b1"), ("surrogate", "steward", "b1"))
+}
+# (I) INTERPRETATION: use install.sh step 9's representative b1/v1 qualification
+# identity; this check never claims an item. TESTS retains kyqualify's caller/default policy.
+
+
+def qualification_tag(cfg, doc):
+    """Same naming rule as install.sh step 9; tests compare every installed template."""
+    name = os.path.basename(cfg)
+    if not name.startswith("LAUNCH_CONFIG."):
+        return doc["role"]
+    match = re.fullmatch(r"LAUNCH_CONFIG\.([a-z][a-z0-9-]*)(\.chart)?(\.tests)?(\.codex)?\.json", name)
+    if (not match or match[1] != doc["role"]
+            or bool(match[4]) != (doc.get("engine", "claude") == "codex")
+            or doc.get("engine", "claude") not in ("claude", "codex")):
+        raise ValueError("launch template name disagrees with role/engine: " + cfg)
+    return doc["role"] + ("-chart" if match[2] else "") + ("-tests" if match[3] else "")
+
+
 def cmd_smoke_plan(fleet, run, plan_out):
-    """Print one row per launch configuration: RUN<TAB>config<TAB>receipt<TAB>role, or ERR<TAB>message."""
+    """RUN<TAB>config<TAB>receipt<TAB>role<TAB>stream<TAB>lane, or ERR<TAB>message."""
     configs = sorted(glob.glob(os.path.join(fleet, "templates", "LAUNCH_CONFIG.*.json")))
     if not configs:
         print("ERR\tno launch configuration under %s/templates" % fleet)
@@ -117,13 +143,22 @@ def cmd_smoke_plan(fleet, run, plan_out):
         if not isinstance(d, dict) or not all(isinstance(d.get(k), str) and NAME.match(d.get(k, "")) for k in ("role", "model")):
             print("ERR\t%s has no usable role and model" % base)
             continue
-        receipt = os.path.join(run, "QUALIFICATIONS", "%s-%s.json" % (d["role"], d["model"]))
+        try:
+            tag = qualification_tag(cfg, d)
+        except ValueError as ex:
+            print("ERR\t%s" % ex)
+            continue
+        identity = QUALIFICATION_JOB_ENV.get(d["role"], {})
+        if not identity and any(n in d.get("env_names", []) for n in ("KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID")):
+            print("ERR\tno conventional qualification identity for role " + d["role"])
+            continue
+        receipt = os.path.join(run, "QUALIFICATIONS", "%s-%s.json" % (tag, d["model"]))
         if not os.path.isfile(receipt):
             print("ERR\t%s: no qualification receipt %s" % (d["role"], receipt))
             continue
         entries.append({"role": d["role"], "model": d["model"], "config": cfg, "receipt": receipt,
                         "config_sha256": sha256_file(cfg), "receipt_sha256": sha256_file(receipt)})
-        print("RUN\t%s\t%s\t%s" % (cfg, receipt, d["role"]))
+        print("RUN\t%s\t%s\t%s\t%s\t%s" % (cfg, receipt, d["role"], identity.get("KY_STREAM", "-"), identity.get("KY_LANE", "-")))
     dump(plan_out, entries)
 
 
@@ -388,14 +423,19 @@ check_claude() {
   ok claude
 }
 
-# ── 3 smoke (Claude only) ────────────────────────────────────────────────────────────────────────────────────────
+# ── 3 smoke (installed launch configurations) ────────────────────────────────────────────────────────────────────
 check_smoke() {
-  local probs="" kind a b role rc
+  local probs="" kind a b role stream lane rc
   if [ ! -f "$KY_FLEET/kyqualify.py" ]; then fail smoke "$KY_FLEET/kyqualify.py is missing"; return; fi
-  while IFS=$'\t' read -r kind a b role; do
+  while IFS=$'\t' read -r kind a b role stream lane; do
     case "$kind" in
       ERR) probs="$probs; $a" ;;
-      RUN) bounded 300 "$WORK/qual.out" "$WORK/qual.err" "$PY" -I -B "$KY_FLEET/kyqualify.py" check "$b" --config "$a" --require-context launchd; rc=$?
+      RUN) if [ "$lane" = - ]; then
+             bounded 300 "$WORK/qual.out" "$WORK/qual.err" "$PY" -I -B "$KY_FLEET/kyqualify.py" check "$b" --config "$a" --require-context launchd --verify-evidence
+           else
+             bounded 300 "$WORK/qual.out" "$WORK/qual.err" env KY_STREAM="$stream" KY_LANE="$lane" KY_CONTROLLER_ID=CTL-qualification \
+               "$PY" -I -B "$KY_FLEET/kyqualify.py" check "$b" --config "$a" --require-context launchd --verify-evidence
+           fi; rc=$?
            [ $rc -eq 0 ] || probs="$probs; $role: kyqualify check exit $rc" ;;
     esac
   done < <(py smoke-plan "$KY_FLEET" "$KY_RUN" "$WORK/plan.json")

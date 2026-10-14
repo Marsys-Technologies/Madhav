@@ -2247,14 +2247,20 @@ def test_reinstall_does_not_recreate_old_dispatcher_adoption_folder(w):
     assert w.receipt()["legacy"]["prs"]["adopted"][0]["state_path"] == str(w.run / "legacy" / "legacy-3300" / "state.json")
 
 
-@pytest.mark.parametrize("role,lane", [("build", "b1"), ("verify", "v1"), ("surrogate", None)])
-def test_job_qualification_supplies_conventional_environment(installer_program, monkeypatch, tmp_path, role, lane):
+@pytest.mark.parametrize("role,stream,lane", [
+    ("build", "K", "b1"), ("rework", "K", "b1"), ("verify", "V", "v1"),
+    ("artifact", "V", "v1"), ("pre-accept", "V", "v1"), ("post-readback", "V", "v1"),
+    ("ruling", "N", "b1"), ("request-prep", "N", "b1"), ("model", "S", "b1"),
+    ("plan", "S", "b1"), ("surrogate", "steward", "b1")])
+@pytest.mark.parametrize("engine,variant", [("claude", ""), ("claude", ".chart.tests"), ("codex", ".tests.codex")])
+def test_job_qualification_supplies_conventional_environment(installer_program, monkeypatch, tmp_path, role, stream, lane, engine, variant):
     from types import SimpleNamespace
     fleet = tmp_path / "fleet"
     templates = fleet / "templates"
     templates.mkdir(parents=True)
-    cfg = templates / ("LAUNCH_CONFIG." + role + ".json")
-    cfg.write_text(json.dumps({"role": role, "model": "claude-opus-5-5"}))
+    cfg = templates / ("LAUNCH_CONFIG." + role + variant + ".json")
+    model = "gpt-6.1-sol" if engine == "codex" else "claude-opus-5-5"
+    cfg.write_text(json.dumps({"role": role, "model": model, "engine": engine}))
     ctx = SimpleNamespace(fleet_live=str(fleet), run_dir=str(tmp_path / "run"), scratch=str(tmp_path / "scratch"), changed={})
     monkeypatch.setitem(installer_program, "child_env", lambda c: {"PATH": "/usr/bin:/bin"})
     monkeypatch.setitem(installer_program, "ky_dir_env", lambda c: {})
@@ -2276,6 +2282,53 @@ def test_job_qualification_supplies_conventional_environment(installer_program, 
     for argv, env in calls:
         if lane:
             assert {k: env.get(k) for k in ("KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID")} == {
-                "KY_STREAM": "K", "KY_LANE": lane, "KY_CONTROLLER_ID": "CTL-qualification"}
+                "KY_STREAM": stream, "KY_LANE": lane, "KY_CONTROLLER_ID": "CTL-qualification"}
         else:
             assert not {"KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID"} & env.keys()
+
+
+
+def test_step_nine_qualifies_all_bound_templates_without_variant_overwrites(installer_program, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import kymanifest
+    source = Path(__file__).resolve().parent.parent
+    bound, deferred = kymanifest.read_component_list(str(source.parents[3]))
+    names = sorted(Path(rel).name for rel in bound if "/templates/LAUNCH_CONFIG." in rel)
+    assert len(names) == 20
+    fleet = tmp_path / "fleet"
+    templates = fleet / "templates"
+    templates.mkdir(parents=True)
+    for name in names:
+        (templates / name).write_bytes((source / "templates" / name).read_bytes())
+    ctx = SimpleNamespace(fleet_live=str(fleet), run_dir=str(tmp_path / "run"), scratch=str(tmp_path / "scratch"), changed={})
+    monkeypatch.setitem(installer_program, "child_env", lambda c: {"PATH": "/usr/bin:/bin"})
+    monkeypatch.setitem(installer_program, "ky_dir_env", lambda c: {})
+    qualified = []
+    def harness(argv, env, **kwargs):
+        if "launch-config" in argv:
+            return installer_program["Out"](0, json.dumps({"role": argv[-1], "model": "claude-opus-5-5"}), "")
+        if "qualify" in argv:
+            cfg = Path(argv[argv.index("--config") + 1])
+            doc = json.loads(cfg.read_text())
+            import kyqualify
+            if "env_names" in doc:
+                resolved, errors = kyqualify.resolve_env(doc, dict(env, HOME="/h", USER="u"))
+                assert errors == []
+                assert set(resolved) == set(doc["env_names"])
+            receipt = Path(argv[argv.index("--out") + 1])
+            qualified.append((cfg.name, receipt.name, argv[argv.index("--evidence-dir") + 1]))
+            receipt.write_text(json.dumps({"result": "PASS"}))
+            return installer_program["Out"](0, "", "")
+        receipt = Path(argv[argv.index("check") + 1])
+        return installer_program["Out"](0 if receipt.exists() else 1, "", "")
+    monkeypatch.setitem(installer_program, "run", harness)
+    installer_program["step_qualify"](ctx)
+    assert len(qualified) == 22 and len(ctx.qualifications) == 22
+    assert len({receipt for _, receipt, _ in qualified}) == 22
+    assert len({evidence for _, _, evidence in qualified}) == 22
+    assert {name for name, _, _ in qualified if name.startswith("LAUNCH_CONFIG.")} == set(names)
+    receipts = {r[1] for r in qualified}
+    assert {"build-tests-gpt-6.1-sol.json", "build-tests-claude-opus-5-5.json",
+            "verify-tests-gpt-6.1-sol.json", "verify-tests-claude-opus-5-5.json",
+            "rework-tests-gpt-6.1-sol.json", "surrogate-claude-fable-5-1.json"} <= receipts
+    assert not ({Path(rel).name for rel in deferred} & {name for name, _, _ in qualified})

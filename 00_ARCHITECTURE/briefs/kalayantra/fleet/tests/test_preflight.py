@@ -15,6 +15,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -303,7 +304,7 @@ def test_claude_smoke_is_the_version_check_and_the_qualification_check_only(rig)
     qcalls = sorted(rig.calls("kyqualify "))
     assert qcalls == sorted(
         f"kyqualify check {rig.run}/QUALIFICATIONS/{role}-{model}.json --config {rig.fleet}/templates/LAUNCH_CONFIG.{role}.json"
-        f" --require-context launchd" for role, model in ROLES.items())
+        f" --require-context launchd --verify-evidence" for role, model in ROLES.items())
     assert rig.calls("ky KY_STREAM") == ["ky KY_STREAM=S audit --since kickoff"]
     assert not [c for c in rig.calls() if "kalayantra_fleet.sh" in c or c.endswith(" smoke")], "no fleet smoke"
 
@@ -328,9 +329,9 @@ def test_preflight_never_writes_the_reconciliation_or_its_review(rig):
     assert {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in before} == before
 
 
-def test_no_codex_and_no_old_topology_in_the_script():
+def test_no_old_topology_or_direct_database_calls_in_the_script():
     text = PREFLIGHT.read_text().lower()
-    for banned in ("codex", "kalayantra_fleet.sh", "/wt/", "docker", "psql"):
+    for banned in ("kalayantra_fleet.sh", "/wt/", "docker", "psql"):
         assert banned not in text, banned
     assert "python3" in text
 
@@ -906,3 +907,94 @@ def test_bootstrap_checkout_not_a_git_work_tree_fails(rig):
 def test_bootstrap_has_no_smoke_no_model_no_audit_no_slots(rig):
     rig.run_pf("bootstrap")
     assert not [c for c in rig.calls() if c.split()[0] in ("claude", "ky", "kyqualify", "local_db")]
+
+
+def qualification_readers():
+    """Load the real embedded helpers without invoking either entrypoint."""
+    install = FLEET / "install.sh"
+    program = install.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    installer = {"__file__": str(install)}
+    exec(compile(program, str(install), "exec"), installer)
+    program = PREFLIGHT.read_text().split("PYSRC <<'PYEOF'\n", 1)[1].split("\nPYEOF", 1)[0]
+    preflight = {"__name__": "preflight_helpers"}
+    exec(compile(program, str(PREFLIGHT), "exec"), preflight)
+    return installer, preflight
+
+
+def install_bound_templates(rig):
+    sys.path.insert(0, str(FLEET))
+    import kymanifest
+    bound, deferred = kymanifest.read_component_list(str(FLEET.parents[3]))
+    templates = rig.fleet / "templates"
+    shutil.rmtree(templates)
+    templates.mkdir()
+    for rel in bound:
+        if "/templates/LAUNCH_CONFIG." in rel:
+            (templates / Path(rel).name).write_bytes((FLEET.parents[3] / rel).read_bytes())
+    return sorted(templates.glob("LAUNCH_CONFIG.*.json")), deferred
+
+
+def test_smoke_naming_matches_installer_and_manifest_for_every_installed_template(rig, capsys):
+    # Dropping a variant suffix binds the wrong receipt even when the plain role is PASS.
+    configs, deferred = install_bound_templates(rig)
+    installer, preflight = qualification_readers()
+    import kymanifest
+    for cfg in configs:
+        doc = json.loads(cfg.read_text())
+        tag = installer["qualification_tag"](str(cfg), doc)
+        (rig.run / "QUALIFICATIONS" / f'{tag}-{doc["model"]}.json').write_text('{}')
+    out = rig.tmp / "smoke-plan.json"
+    preflight["cmd_smoke_plan"](str(rig.fleet), str(rig.run), str(out))
+    entries = json.loads(out.read_text())
+    assert len(entries) == len(configs) == 20
+    assert "ERR\t" not in capsys.readouterr().out
+    for entry in entries:
+        cfg = Path(entry["config"])
+        doc = json.loads(cfg.read_text())
+        tag = installer["qualification_tag"](str(cfg), doc)
+        assert Path(entry["receipt"]).name == f'{tag}-{doc["model"]}.json'
+        argv = ["--mcp-config", doc["mcp_config"]] if doc.get("mcp_config") else []
+        selected = kymanifest.launch_config_of(dict(doc, binds={"env_names": doc["env_names"], "argv": argv}))
+        assert Path(selected).name == cfg.name
+    receipts = {Path(e["receipt"]).name for e in entries}
+    assert {"build-tests-claude-opus-5-5.json", "build-tests-gpt-6.1-sol.json",
+            "rework-tests-claude-opus-5-5.json", "verify-tests-gpt-6.1-sol.json"} <= receipts
+    assert not ({Path(rel).name for rel in deferred} & {Path(e["config"]).name for e in entries})
+
+
+@pytest.mark.parametrize("tests", [None, "platform/tests/first.py\nplatform/tests/second.py"])
+def test_smoke_checks_bound_variants_with_installer_identity_and_evidence(rig, tests):
+    # Missing KY_* identity used to make resolve_env refuse; TESTS has a harness default.
+    configs, _ = install_bound_templates(rig)
+    installer, _ = qualification_readers()
+    for cfg in configs:
+        doc = json.loads(cfg.read_text())
+        tag = installer["qualification_tag"](str(cfg), doc)
+        (rig.run / "QUALIFICATIONS" / f'{tag}-{doc["model"]}.json').write_text(
+            json.dumps({"config_sha256": sha(cfg)}))
+    # Replace the unconditional fake exit with the strict boundary checks.
+    strict = FAKE_KYQUALIFY.replace('sys.exit(1 if json.load(open(cfg))["role"] in bad else 0)', f'''
+import hashlib
+sys.path.insert(0, {str(FLEET)!r})
+import kyqualify
+doc = json.load(open(cfg))
+resolved, errors = kyqualify.resolve_env(doc, dict(os.environ, HOME="/h", USER="u"))
+if "TESTS" in doc["env_names"]:
+    assert resolved["TESTS"] == {tests if tests is not None else '00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py'!r}
+expected = {installer["QUALIFICATION_JOB_ENV"]!r}.get(doc["role"], {{}})
+assert all(os.environ.get(k) == v for k, v in expected.items()), expected
+assert not errors, errors
+assert "--verify-evidence" in sys.argv
+receipt = json.load(open(sys.argv[2]))
+assert receipt["config_sha256"] == hashlib.sha256(open(cfg, "rb").read()).hexdigest()
+sys.exit(0)
+''')
+    (rig.fleet / "kyqualify.py").write_text(strict)
+    env = {"KY_STREAM": "wrong", "KY_LANE": "wrong", "KY_CONTROLLER_ID": "wrong"}
+    if tests is not None:
+        env["TESTS"] = tests
+    result = rig.launch(extra_env=env)
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert len(rig.receipt_json()["qualifications"]) == 20
+    assert len(rig.calls("kyqualify")) == 20

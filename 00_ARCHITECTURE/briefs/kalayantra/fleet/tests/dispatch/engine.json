@@ -2002,7 +2002,7 @@
       "phase": "ended",
       "outcome": "done",
       "stream": "steward",
-      "model": "claude-opus-5-5",
+      "model": "claude-fable-5-1",
       "locks": [
        "awaiting.AW-20261012T100000Z-check"
       ]
@@ -2766,7 +2766,7 @@
     "slots": [
      "b1"
     ],
-    "worktrees": 10
+    "worktrees": 16
    },
    "steps": [
     {
@@ -2822,7 +2822,7 @@
     }
    },
    "patched": true,
-   "note": "limits.copies = 10: an eleventh own copy is refused; the condition is announced once, not every tick"
+   "note": "limits.copies = 16: a seventeenth own copy is refused; the condition is announced once, not every tick"
   },
   {
    "name": "pool_sizes_come_from_the_pool_files",

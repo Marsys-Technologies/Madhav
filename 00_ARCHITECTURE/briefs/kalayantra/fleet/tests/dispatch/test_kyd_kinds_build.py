@@ -239,6 +239,7 @@ def test_start_and_finish(case, tmp_path):
     intent = next(i for i in B.intents(Ctx(tokens, world)) if (i["kind"], i["item"]) == (want["kind"], want["item"]))
     job = make_job(intent, tokens, subst(case["job"], tokens))
     os.makedirs(tokens["jobdir"])                               # kyd_jobs.open created both before start
+    Path(tokens["jobdir"], "state.json").write_text(json.dumps(dict(job, schema="ky.job/1")))
     os.makedirs(tokens["jobscratch"])
     world = dict(world, **subst(case.get("then") or {}, tokens))
     lay_out(tokens, world)
@@ -409,7 +410,7 @@ def test_an_unknown_kind_is_never_launched_or_finished_as_done(tmp_path):
 def test_the_module_imports_only_local_jobs_and_standard_library_and_runs_nothing_on_import():
     source = (FLEET / "kyd_kinds_build.py").read_text(encoding="utf-8")
     imported = set(re.findall(r"^(?:import|from) ([a-z_]+)", source, flags=re.M))
-    assert imported <= {"__future__", "hashlib", "json", "os", "re", "kyd_jobs"}, imported
+    assert imported <= {"__future__", "hashlib", "json", "os", "re", "kyd_jobs", "kyverdicts"}, imported
     assert "subprocess" not in imported, "every command goes through ctx.sh, ctx.ky or ctx.act"
 
 

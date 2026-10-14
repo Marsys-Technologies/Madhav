@@ -9,7 +9,7 @@
 "plan_version":"2.7",
 "spec_sources":[
 {"path":"00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md","revision":"e709f60d7fcd4559227a25a4d5d83d6431c396b6","section_range":"§3; §7; §8.6; §14 B-1","sha256":"96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c"},
-{"path":"00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh","revision":"e709f60d7fcd4559227a25a4d5d83d6431c396b6","section_range":"whole file","sha256":"fdda3dedad6107ed68ddab236f1ffccb4303188561301fe6929bad78e1bfdf3e"}],
+{"path":"00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh","revision":"7ee8f2af278e9b09868968a593db25ac835457e1","section_range":"whole file","sha256":"a7b7f849de8475de71875dae463543691b6b0d8cfa7c08c37a9a3de302e94636"}],
 "schema_receipt_id":null,
 "pw_mechanism_version":null,
 "release_pins":"not_applicable: bootstrap",
@@ -25,13 +25,14 @@
 "a missing, unreadable or malformed FROZEN_PATHS.txt is RED",
 "a KY_RUN that is set but not an absolute existing directory is RED",
 "a code diff with neither TESTS nor a manifest under KY_RUN is RED"]},
-"packet_sha256":"b0f52157c93c31c4fc6aa0e5e018cdc3a7f092a25de467972e1c31a4ac17df96"}
+"packet_sha256":"608f3496ef51ca14270dcf751031355c00cbbdf7ed1807b260b5756b82f2a82a"}
 ```
 # KV3-B-PRECHECK: `precheck.sh` fixture-awareness
 
 F = `00_ARCHITECTURE/briefs/kalayantra/fleet`.
 
-**Pins.** Plan v2.7 at e709f60d7 (sha256 in the front matter). Base = the reviewed B-0c head named in the job header; `F/precheck.sh` there has the sha256 pinned in the front matter (v2.0, 122 lines). If it differs: stop, `blocked`, `base-drift: precheck.sh`. Release pins: not applicable.
+**Pins.** Plan v2.7 at e709f60d7; front matter pins current precheck v2.1 at 7ee8f2af27. The delta/line numbers below describe historical v2.0 at e709f60d7, SHA256 fdda3dedad6107ed68ddab236f1ffccb4303188561301fe6929bad78e1bfdf3e (122 lines). Preserve that acceptance baseline; current admission is not redispatch of installed work. Release pins: not applicable.
+Version 1.0; status: preparation; changelog: current source pin separated from historical baseline; scope unchanged.
 
 **Owns.** Change `F/precheck.sh`; create `F/tests/test_precheck.py`; nothing else. `F/FROZEN_PATHS.txt` belongs to KV3-B-KYROUTE and `F/precheck_bg.sh` is out of scope: do not create or edit either. Prohibited: FROZEN paths (BS-05); the plan, cards, schemas, other packets.
 
@@ -83,6 +84,6 @@ GREEN is printed only when every step ran: no new branch may skip a step or turn
 
 **Evidence.** `$JOB_SCRATCH/result.json` (BS-16): `tests[]` with the acceptance command and each negative case and exit code; `head_sha` = the pushed head; `notes` gives the `git diff --stat` of `precheck.sh` and the interpretation applied.
 
-**Branch and PR.** Branch `kalayantra/kv3-b-precheck`. One PR to `main`, title `KĀLA-YANTRA v3 KV3-B-PRECHECK: precheck.sh fixture-awareness`; body: the delta item by item, tests run with exit codes. The job never merges it; under the hold nothing merges.
+**Branch and PR.** Branch `kalayantra/kv3-b-precheck`. One PR to `main`, title `KĀLA-YANTRA v3 KV3-B-PRECHECK: precheck.sh fixture-awareness`; body: delta and test exits. Fleet merges under KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A1_FULL_AUTONOMY.md:26–33; job never merges.
 
 **Do not.** No control-plane edit outside `d1_paths`; no removed or weakened prohibition; no rebase or force-push; no credentials; no production; no database; no edits to the plan, cards, schemas or other packets. Never: the real launchctl; a signal to a process this job's test did not itself start; a tracker-state ky verb; a write under /Users/Dev/kalayantra.

@@ -263,6 +263,22 @@ def _age(job_id):
     return 2, "", "", 0, job_id
 
 
+def job_folders(directory):
+    """The shared jobs-directory rule: ledger files and staging directories are not jobs."""
+    try:
+        names = sorted(os.listdir(directory))
+    except FileNotFoundError:
+        return []
+    return [n for n in names if not n.startswith(".") and os.path.isdir(Path(directory) / n)]
+
+
+def foreign_state(doc, err):
+    """Positive quarantine identity, shared by every dispatcher job-state reader."""
+    return (not err and isinstance(doc, dict)
+            and (doc.get("schema") in ("ky.bootstrap_job_state/3", "ky.legacy_job_state/1")
+                 or ("schema" not in doc and doc.get("launcher") == "cockpit-direct")))
+
+
 def load(ctx):
     """Readable jobs, oldest first. Only positively foreign bad folders are quarantined.
     Unknown native states retain their folder-encoded slot and identifiable slot/key/item reservations;
@@ -277,9 +293,7 @@ def load(ctx):
     directory = _run(ctx) / "jobs"
     ctx._job_errors = {}
     try:
-        names = sorted(os.listdir(directory))
-    except FileNotFoundError:
-        return []
+        names = job_folders(directory)
     except OSError as e:
         raise JobsUnreadable("%s cannot be listed (%s)" % (directory, type(e).__name__)) from None
     jobs = []
@@ -315,9 +329,7 @@ def load(ctx):
             # neither is supervised/recovered and neither changes bytes. Tests enumerate all rows,
             # both naming columns (legacy and arbitrary separately), and every _checked field defect.
             native = not err and isinstance(doc, dict) and schema == SCHEMA
-            foreign = (not native and not err and isinstance(doc, dict)
-                       and (schema in ("ky.bootstrap_job_state/3", "ky.legacy_job_state/1")
-                            or ("schema" not in doc and doc.get("launcher") == "cockpit-direct")))
+            foreign = foreign_state(doc, err)
             if not foreign:
                 reservation = {k: doc.get(k) for k in ("slot", "key", "item")
                                if isinstance(doc, dict) and _text(doc.get(k))}
@@ -565,6 +577,8 @@ def _plan(ctx, intent, slot, facts):
         return None, str(exc)
     state.update(choices)
     if state.get("engine") == "codex":
+        if kind in engines.READ_ONLY_KINDS - {"VERIFY"}:
+            state["boundary"] = "verifier"
         state.setdefault("sandbox_mode", "locked")
         state.setdefault("stall_seconds", 300)
         state.update(engines.metadata(state))
@@ -754,15 +768,16 @@ def _prompt(job, plan):
 def _codex_config(job, plan):
     """Adapt the qualification template only at its per-job worktree/prompt paths.
 
-    (I) These templates cover the no-test-commit/no-ephemeris job environment.
-    Additional environment needs its own reviewed qualification, never trimming.
+    (I) Optional environment names must equal the qualified variant; never trim tests.
+    Ephemeris/fixture environments still need a dedicated reviewed qualification.
     """
     cfg = plan.get("codex_config")
     if cfg is None:  # Preserve the accepted caller-supplied engine adapter path.
         return
     if engines.digest(job["launch_config_path"]) != plan["codex_config_sha256"]:
         raise engines.Refusal("Codex template changed after admission")
-    if job.get("tests") or job.get("se_ephe_path") is not None or job.get("swe_ephe_path") is not None or job.get("fixture"):
+    if (bool(job.get("tests")) != ("TESTS" in cfg["env_names"])
+            or job.get("se_ephe_path") is not None or job.get("swe_ephe_path") is not None or job.get("fixture")):
         raise engines.Refusal("Codex role template does not qualify optional TESTS/ephemeris/fixture environment")
     adapted = dict(cfg, worktree=job["worktree"], prompt_path=job["prompt_path"], role=job["role"])
     job["launch_config_path"] = os.path.join(job["job_scratch"], "launch_config.json")

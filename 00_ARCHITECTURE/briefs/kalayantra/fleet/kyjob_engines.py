@@ -38,6 +38,12 @@ class Hold(Refusal):
     pass
 
 
+# Role adapter postures; the existing code landing protocol remains BUILD/REWORK only.
+READ_ONLY_KINDS = {"VERIFY", "PRE-ACCEPT", "POST-READBACK", "RULING"}
+CODE_LANDING_KINDS = {"BUILD", "REWORK"}
+MODEL_KINDS = READ_ONLY_KINDS | CODE_LANDING_KINDS | {"ARTIFACT", "REQUEST-PREP", "MODEL", "PLAN"}
+
+
 def metadata(job):
     mode = job.get('sandbox_mode', 'locked')
     return dict(engine='codex', sandbox_mode=mode,
@@ -52,8 +58,8 @@ def selection(job):
         if any(k in job for k in FIELDS[1:]):
             raise Refusal('Claude job carries Codex-only launch fields')
         return
-    if job.get('kind') not in ('BUILD', 'REWORK', 'VERIFY'):
-        raise Refusal('Codex supports BUILD, REWORK and VERIFY only')
+    if job.get('kind') not in MODEL_KINDS:
+        raise Refusal('Codex kind has no model role adapter')
     mode = job.get('sandbox_mode', 'locked')
     if mode not in ('locked', 'full'):
         raise Refusal('sandbox_mode must be locked or explicitly full')
@@ -101,9 +107,11 @@ def launch_config(job, env):
     if any(job.get(k) is not None for k in ('claude_bin', 'permission_mode', 'max_turns', 'mcp_config')) \
             or job.get('extra_lean_flags') or job.get('disallowed_tools'):
         raise Refusal('mixed Claude launch fields in a Codex job')
-    verifier = job['kind'] == 'VERIFY'
+    verifier = job['kind'] in READ_ONLY_KINDS
     if verifier != qualify.job_rooted(cfg):
-        raise Refusal('VERIFY must be job-rooted; builders must be worktree-rooted')
+        raise Refusal('VERIFY must be job-rooted; builders must be worktree-rooted'
+                          if job['kind'] in ('BUILD', 'REWORK', 'VERIFY') else
+                          'read-only roles must be job-rooted; builders must be worktree-rooted')
     if not verifier and cfg.get('commit_mode') != 'launcher':
         raise Refusal('Codex builder commit_mode must be launcher')
     if cfg['child_path'] != env['PATH'] or any(n not in env for n in cfg['env_names']):
@@ -176,7 +184,7 @@ def plan(job, own, helper):
 
 def result_schema(job):
     return kyschema.load_json(HERE / 'schemas' / ('job_result_launcher_commit.json'
-                             if job.get('kind') in ('BUILD', 'REWORK') else 'job_result.json'))
+                             if job.get('kind') in CODE_LANDING_KINDS else 'job_result.json'))
 
 
 def tool_env():
@@ -208,7 +216,7 @@ def remote_head(ctx, job):
 def guards(job):
     # kyboot's guard needs only engine/worktree/work_root, not a bootstrap input schema.
     return boot.codex_guards(dict(engine='codex', worktree=job['worktree'],
-                                  work_root='job' if job['kind'] == 'VERIFY' else 'worktree'), tool_env())
+                                  work_root='job' if job['kind'] in READ_ONLY_KINDS else 'worktree'), tool_env())
 
 
 def guard_differences(before, after):
@@ -346,15 +354,22 @@ def prepare(ctx, job):
         cp = job['checkpoint'] = {}
     if 'codex_launch' in cp:
         return
+    if job['kind'] not in CODE_LANDING_KINDS | READ_ONLY_KINDS:
+        # (I) INTERPRETATION: a template/role mapping does not authorize adapting
+        # code landing (claims, commit/push/PR) to operation/planning completion.
+        raise Refusal('Codex %s completion adapter is unqualified; no code landing authority' % job['kind'])
+    if job['kind'] not in ('BUILD', 'REWORK', 'VERIFY') and (
+            not isinstance(job.get('packet_path'), str) or not os.path.isabs(job['packet_path'])):
+        raise Refusal('Codex launch snapshot requires a packet_path; kind is unqualified without one')
     ptr = pointer(job)  # BEFORE any Git, including guard derivation.
     branch = git(ctx, job, 'rev-parse', '--abbrev-ref', 'HEAD').strip()
     head = git(ctx, job, 'rev-parse', 'HEAD').strip()
-    builder = job['kind'] != 'VERIFY'
+    builder = job['kind'] not in READ_ONLY_KINDS
     if not HEX.fullmatch(head):
         raise Refusal('launch HEAD cannot be observed')
     if builder and (branch != job['branch'] or branch in ('main', 'HEAD')):
         raise Refusal('launch branch/HEAD is not the assigned item branch')
-    if not builder and head != job.get('head'):
+    if not builder and (job['kind'] == 'VERIFY' or job.get('head') is not None) and head != job.get('head'):
         raise Refusal('verifier source is not at its registered head')
     if git(ctx, job, 'diff', '--cached', '--name-only', '-z'):
         raise Refusal('the initial index is not clean')
@@ -537,7 +552,7 @@ def finish(ctx, job, result):
         # Pointer before all Git, even on repeat finish or verifier paths.
         if pointer(job) != launch['pointer']:
             raise Refusal('the .git pointer changed; no Git command is allowed')
-        if job['kind'] == 'VERIFY':
+        if job['kind'] in READ_ONLY_KINDS:
             current = guards(job)
             if guard_differences(current, current):
                 raise Hold('current verifier guards cannot be observed')
@@ -546,6 +561,8 @@ def finish(ctx, job, result):
             if result.get('head_sha') is not None or result.get('pr_number') is not None:
                 raise Refusal('verifier cannot report a head or PR')
             return None  # existing build-kind publish checks/releases boundary, then publishes verdict
+        if job['kind'] not in CODE_LANDING_KINDS:
+            raise Refusal('Codex %s completion adapter is unqualified; no code landing authority' % job['kind'])
         fence(ctx, job, launch)
         if result['status'] == 'blocked':
             return _register(ctx, job, launch, 'block', result['blocked_reason'], None, None)

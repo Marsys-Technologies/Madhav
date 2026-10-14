@@ -24,7 +24,7 @@ refusal, and a check that could not be made is a refusal whose detail starts "un
                          the intent's item is absent from the plan model (its prerequisites are unknown)
         slot_not_ready   the slot database has no READY receipt of this session that checks out now (KU-02)
         slot_foreign     the slot's receipt belongs to another session (KU-02 ownership conflict)
-        ceiling          a new worktree would exceed limits.copies own copies or 14 in all
+        ceiling          a new worktree would exceed limits.copies own copies or 24 in all
       facts: tier, launch{}, base_sha, prerequisites[], tests[], test_digests[], migration (kyd_jobs.open reads them)
     provision(ctx, slot)            local_db.sh up + db for a slot with no receipt or this session's non-READY one
     admit(ctx, job)                 after kyd_jobs.open: worktree and item lock; for a BUILD of a feature packet the
@@ -72,10 +72,14 @@ import kyschema  # noqa: E402
 GIT = "/usr/bin/git"
 PYTHON = "python3"
 WORKTREE_ROOT = "/Users/Dev/worktrees.noindex/madhav/claude"
-ALL_COPIES_MAX = 14
-MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+ALL_COPIES_MAX = 24  # owner Amendment A1 D-16
+MODELS = {"sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5", "surrogate": "claude-fable-5-1"}
+ROUTING_TIERS = ("sonnet", "opus")
 CODEX_MODEL = "gpt-6.1-sol"
-JOB_ENGINE_ROLES = {"BUILD": "build", "REWORK": "build", "VERIFY": "verify"}
+JOB_ENGINE_ROLES = {kind: kind.lower() for kind in (
+    "BUILD", "REWORK", "VERIFY", "ARTIFACT", "PRE-ACCEPT", "POST-READBACK", "RULING",
+    "SURROGATE", "REQUEST-PREP", "MODEL", "PLAN")}
+CODEX_READ_ONLY_KINDS = {"VERIFY", "PRE-ACCEPT", "POST-READBACK", "RULING"}
 # plan §7 "Turn caps", plus the packet's (I) for the kinds §7 does not list
 TURN_CAPS = {"BUILD": 150, "REWORK": 100, "VERIFY": 60, "PRE-ACCEPT": 40, "POST-READBACK": 40, "RULING": 30, "PLAN": 300,
              "ARTIFACT": 60, "SURROGATE": 30, "MODEL": 300, "REQUEST-PREP": 300}
@@ -283,12 +287,12 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
             _refuse(refusals, "freeze", "freeze: " + path)
     elif rc != 0:
         _refuse(refusals, "routing", _said(rc, out, err, "kyroute.py packet"))
-    elif report.get("decision") != "ROUTE" or report.get("tier") not in MODELS:
+    elif report.get("decision") != "ROUTE" or report.get("tier") not in ROUTING_TIERS:
         _refuse(refusals, "routing", "unknown: kyroute.py packet exit 0 without a ROUTE decision and a tier")
     else:
         routed = report["tier"]
     wanted = intent.get("tier")
-    if wanted is not None and wanted not in MODELS:
+    if wanted is not None and wanted not in ROUTING_TIERS:
         _refuse(refusals, "routing", "unknown: the intent's tier %r is no tier" % (wanted,))
     if items is None:
         _refuse(refusals, "routing", "unknown: %s (brief.migration)" % items_reason)
@@ -311,8 +315,9 @@ def _check_routing(ctx, intent, packet, items, items_reason, refusals, facts):
 def refresh_job_engine(ctx):
     """Snapshot JOB_ENGINE once at kinds_build.intents (each dispatch tick).
 
-    (I) build covers REWORK too; an explicit rework line overrides it. A global
-    choice applies only to the adapter's three supported kinds. Unknown syntax,
+    (I) INTERPRETATION: build still covers REWORK unless explicitly overridden,
+    but REWORK earns its own role receipt. Global Codex excludes the owner
+    surrogate, which stays on Claude Fable. Unknown syntax,
     duplicate keys/defaults, empty or unreadable files refuse the entire policy.
     """
     run = _path(ctx, "run") if hasattr(ctx, "paths") else os.fspath(ctx.run)
@@ -335,12 +340,14 @@ def refresh_job_engine(ctx):
                 continue
             if "=" in line:
                 key, value = (part.strip() for part in line.split("=", 1))
-                if key not in ("build", "rework", "verify"):
+                if key not in JOB_ENGINE_ROLES.values():
                     raise ValueError("unknown kind")
             else:
                 key, value = "default", line
             if key in seen or value not in ("claude", "codex"):
                 raise ValueError("duplicate choice or unknown engine")
+            if key == "surrogate" and value != "claude":
+                raise ValueError("owner surrogate requires Claude Fable")
             seen.add(key)
             policy[key] = value
     except FileNotFoundError:
@@ -355,6 +362,40 @@ def refresh_job_engine(ctx):
     return policy, error
 
 
+def job_engine(ctx, kind):
+    """The tick's role choice; invalid policies are refused by admission, never repaired."""
+    policy, error = getattr(ctx, "job_engine_policy", None) or refresh_job_engine(ctx)
+    if error or kind == "SURROGATE":
+        return "claude"
+    choice = policy.get(kind.lower()) if isinstance(kind, str) else None
+    if choice is None:
+        choice = policy.get("build", policy["default"]) if kind == "REWORK" else policy["default"]
+    return choice
+
+
+def surrogate_config(ctx):
+    """Only the installed owner-surrogate template may select its allowed Claude model."""
+    import kyqualify
+
+    fleet = _path(ctx, "fleet") if hasattr(ctx, "paths") else os.fspath(ctx.fleet)
+    if not os.path.isabs(fleet):
+        raise AdmitError("ctx.fleet is not an absolute path")
+    path = os.path.join(fleet, "templates", "LAUNCH_CONFIG.surrogate.json")
+    cfg, error = kyaction.read_json(path)
+    if error or not isinstance(cfg, dict):
+        return None, "surrogate template %s: %s" % (path, error or "not an object")
+    errors = kyqualify.validate_config(cfg, check_disk=False)
+    if (kyqualify.engine_of(cfg), cfg.get("role"), cfg.get("model"), cfg.get("effort")) != (
+            "claude", "surrogate", MODELS["surrogate"], "high"):
+        errors.append("owner surrogate template requires Claude claude-fable-5-1/high")
+    return (None, "; ".join(errors)) if errors else (cfg, None)
+
+
+def qualification_name(role, model, chart=False, tests=False):
+    """Receipt variant names keep the qualified role itself unchanged."""
+    return "%s%s%s-%s.json" % (role, "-chart" if chart else "", "-tests" if tests else "", model)
+
+
 def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
     """Re-judge the real launchd receipt against the installed role template.
 
@@ -365,8 +406,10 @@ def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
 
     role = JOB_ENGINE_ROLES[intent["kind"]]
     model = CODEX_MODEL
-    template = os.path.join(_path(ctx, "fleet"), "templates", "LAUNCH_CONFIG.%s.codex.json" % role)
-    receipt = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", "%s-%s.json" % (role, model))
+    tests_variant = bool((front or {}).get("test_commits"))
+    template = os.path.join(_path(ctx, "fleet"), "templates", "LAUNCH_CONFIG.%s%s.codex.json"
+                            % (role, ".tests" if tests_variant else ""))
+    receipt = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", qualification_name(role, model, tests=tests_variant))
     digest = kyaction.sha_file(template)
     cfg, cfg_error = kyaction.read_json(template)
     doc, doc_error = kyaction.read_json(receipt)
@@ -379,7 +422,9 @@ def _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot):
         reasons.extend(kyqualify.validate_codex_config(cfg))
         if (cfg.get("engine"), cfg.get("role"), cfg.get("model"), cfg.get("effort")) != ("codex", role, model, "high"):
             reasons.append("Codex template requires the selected role and gpt-6.1-sol/high")
-        verifier = intent["kind"] == "VERIFY"
+        verifier = intent["kind"] in CODEX_READ_ONLY_KINDS
+        if not verifier and intent.get("pool") == "verifier":
+            reasons.append("Codex builder posture conflicts with the dispatcher verifier pool; kind is unqualified")
         if (kyqualify.job_rooted(cfg) != verifier or cfg.get("sandbox") != "workspace-write"
                 or cfg.get("network") is not False or cfg.get("writable_dirs") != []
                 or (not verifier and cfg.get("commit_mode") != "launcher")):
@@ -429,15 +474,29 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
         facts["launch"] = None
         return
     kind = intent.get("kind")
-    choice = policy.get(kind.lower()) if isinstance(kind, str) else None
-    if choice is None:
-        choice = policy.get("build", policy["default"]) if kind == "REWORK" else policy["default"]
+    choice = job_engine(ctx, kind)
+    chart = (front or {}).get("needs_chart_data", False)
+    if kind in JOB_ENGINE_ROLES and choice == "codex" and chart is True:
+        # (I) INTERPRETATION: Claude is necessary under the accepted locked contract:
+        # kyqualify's Codex schema/argv has no MCP configuration, network stays off.
+        # Never silently launch a chart job without its chart-data qualification.
+        ctx.journal("chart engine", "%s %s: Claude necessary; locked Codex has no qualified chart-data MCP"
+                    % (kind, intent.get("item")))
+        choice = "claude"
     if kind in JOB_ENGINE_ROLES and choice == "codex":
         _check_codex_launch(ctx, intent, front, front_known, refusals, facts, slot)
         return
     reasons = []
     kind, role = intent.get("kind"), intent.get("role")
     model = MODELS["sonnet" if tier == "sonnet" else "opus"]
+    surrogate = None
+    if kind == "SURROGATE":
+        surrogate, reason = surrogate_config(ctx)
+        if reason:
+            _refuse(refusals, "launch", reason)
+            facts["launch"] = None
+            return
+        model = surrogate["model"]
     cap = TURN_CAPS.get(kind) if isinstance(kind, str) else None
     if cap is None:
         reasons.append("unknown: the kind %r has no turn cap (plan §7)" % (kind,))
@@ -448,7 +507,7 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
     if not isinstance(role, str) or not ROLE_RE.match(role):
         reasons.append("unknown: the intent's role %r names no qualification" % (role,))
     else:
-        path = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", "%s-%s.json" % (role, model))
+        path = os.path.join(_path(ctx, "run"), "QUALIFICATIONS", qualification_name(role, model, chart is True, bool((front or {}).get("test_commits"))))
         doc, err = kyaction.read_json(path)
         if err or not isinstance(doc, dict):
             reasons.append("qualification receipt %s: %s" % (path, err or "not an object"))
@@ -466,6 +525,8 @@ def _check_launch(ctx, intent, tier, front, front_known, refusals, facts, slot=N
             reasons.append("the receipt has no binds")
         elif binds.get("model") != model:
             reasons.append("the receipt binds model %r, not %s" % (binds.get("model"), model))
+        if surrogate is not None and binds.get("effort") != surrogate["effort"]:
+            reasons.append("surrogate receipt effort must match its Claude Fable/high template")
         for key in ("effort", "permission_mode"):
             if binds and not (isinstance(binds.get(key), str) and binds[key]):
                 reasons.append("binds.%s is missing" % key)
@@ -505,14 +566,15 @@ def recorded_mappings(ctx):
     jobs = os.path.join(_path(ctx, "run"), "jobs")
     found = {}
     try:
-        names = sorted(os.listdir(jobs))
+        import kyd_jobs
+        names = kyd_jobs.job_folders(jobs)
     except FileNotFoundError:
         return found, None
     except OSError as e:
         return None, "%s cannot be listed: %s" % (jobs, type(e).__name__)
     for name in names:
         state, err = kyaction.read_json(os.path.join(jobs, name, "state.json"))
-        if err == "missing":
+        if kyd_jobs.foreign_state(state, err):
             continue
         if err or not isinstance(state, dict) or not isinstance(state.get("prerequisites", []) or [], list):
             return None, "the job state of %s is unreadable" % name

@@ -38,6 +38,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -77,12 +78,32 @@ def repository_path(repo, path):
 
 
 def launch_config_of(doc):
-    """the repository-relative launch configuration a qualification receipt is judged against: the role's Codex
-    configuration for a receipt that says "engine": "codex", the role's Claude Code configuration otherwise"""
+    """Select a variant from receipt-bound inputs, never the receipt filename.
+
+    The harness subsequently rechecks every bind against this exact configuration.
+    TESTS is an environment-name variant; chart data names its MCP file on argv.
+    A Codex chart variant, if supplied, still needs its own reviewed bound template.
+    """
     role = doc.get("role") if isinstance(doc, dict) else None
-    if not isinstance(role, str):
+    if not isinstance(role, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", role):
         return None
-    return (LAUNCH_CONFIG_CODEX if doc.get("engine") == "codex" else LAUNCH_CONFIG) % role
+    if doc.get("engine", "claude") not in ("claude", "codex"):
+        return None
+    binds = doc.get("binds", {})
+    if not isinstance(binds, dict):
+        return None
+    names, argv = binds.get("env_names", []), binds.get("argv", [])
+    if (not isinstance(names, list) or not all(isinstance(n, str) for n in names)
+            or not isinstance(argv, list) or not all(isinstance(a, str) for a in argv)):
+        return None
+    chart = False
+    if "--mcp-config" in argv:
+        i = argv.index("--mcp-config")
+        if argv.count("--mcp-config") != 1 or i + 1 == len(argv):
+            return None
+        chart = os.path.basename(argv[i + 1]) == "mcp.marsys-only.json"
+    variant = (".chart" if chart else "") + (".tests" if "TESTS" in names else "")
+    return (LAUNCH_CONFIG_CODEX if doc.get("engine") == "codex" else LAUNCH_CONFIG) % (role + variant)
 
 
 class Refused(Exception):
