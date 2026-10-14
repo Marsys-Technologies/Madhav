@@ -1,7 +1,7 @@
 /**
- * Pravāha B6.0 / Codex rounds 9–10 (R9-6, R10-7) — STATIC contract of migration 1241: ONE reviewed, additive grants migration for the verifier and the
+ * Pravāha B6.0 / Codex rounds 9–10 (R9-6, R10-7) — STATIC contract of migration 1376: ONE reviewed, additive grants migration for the verifier and the
  * sealer that BACKFILLS 1240's role-conditional grants and carries its own, driven by ONE jsonb spec, with an exact ACL closure check. The live proof
- * (the real file applied in the composed rehearsal; each 1241-origin grant individually necessary; the late-role backfill; the closure refusals; the
+ * (the real file applied in the composed rehearsal; each 1376-origin grant individually necessary; the late-role backfill; the closure refusals; the
  * column-narrow publication update and legacy-windows read) is python-sidecar/tests/l3/gochara/test_b6_composed_seal_flows.py.
  */
 import { describe, it, expect } from 'vitest'
@@ -10,7 +10,7 @@ import path from 'path'
 import { PROTECTED_PUBLIC_SCHEMA_MIGRATIONS } from '../../../scripts/migrate'
 
 const MIG = path.resolve(__dirname, '../../../migrations')
-const FILE = '1241_gochara_verifier_sealer_inventory_grants.sql'
+const FILE = '1376_gochara_verifier_sealer_inventory_grants.sql'
 const SQL = fs.readFileSync(path.join(MIG, FILE), 'utf8')
 const CODE = SQL.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
 type TableEntry = [string, string, string[] | null, string]
@@ -22,18 +22,18 @@ const SPEC = JSON.parse(CODE.match(/\$spec\$([\s\S]*?)\$spec\$/)![1]) as {
 const V = SPEC.roles.gochara_verifier
 const S = SPEC.roles.gochara_sealer
 
-describe('migration 1241 — static contract', () => {
+describe('migration 1376 (ported 1241) — static contract', () => {
   it('is grants only: no DDL, no REVOKE, no TRUNCATE statement, no SECURITY DEFINER, no transaction control', () => {
     expect(CODE).not.toMatch(/^\s*(CREATE|ALTER|DROP|REVOKE|TRUNCATE)\b|SECURITY DEFINER|WITH GRANT OPTION/im)
     expect(CODE).not.toMatch(/^\s*(BEGIN|COMMIT)\s*;/m)
   })
 
-  it('names exactly the two principals plus the one builder helper backfill; every entry has origin 1240 or 1241', () => {
+  it('names exactly the two principals plus the one builder helper backfill; every entry has origin 1240 or 1376', () => {
     expect(Object.keys(SPEC.roles).sort()).toEqual(['gochara_sealer', 'gochara_verifier'])
     expect(SPEC.builder_backfill).toEqual({ role: 'data_plane_builder', functions: ['ka_gochara_window_qualification_ok(jsonb)'] })
     for (const body of Object.values(SPEC.roles)) {
-      for (const [, , , origin] of body.tables) expect(['1240', '1241']).toContain(origin)
-      for (const [, origin] of body.functions) expect(['1240', '1241']).toContain(origin)
+      for (const [, , , origin] of body.tables) expect(['1240', '1376']).toContain(origin)
+      for (const [, origin] of body.functions) expect(['1240', '1376']).toContain(origin)
     }
   })
 
@@ -51,16 +51,16 @@ describe('migration 1241 — static contract', () => {
     const writes = S.tables.filter(([, p]) => p !== 'SELECT')
     expect(writes).toHaveLength(3)
     expect(writes).toEqual(expect.arrayContaining([
-      ['ka_gochara_generation_seal', 'INSERT', null, '1241'],
-      ['kala_gochara_publication', 'UPDATE', ['status', 'published_at', 'content_digest', 'row_counts'], '1241'],
-      ['ka_gochara_seal_approval', 'INSERT', null, '1241'],          // R11-3: the approval receipt (append-only; the sealer is the only writer)
+      ['ka_gochara_generation_seal', 'INSERT', null, '1376'],
+      ['kala_gochara_publication', 'UPDATE', ['status', 'published_at', 'content_digest', 'row_counts'], '1376'],
+      ['ka_gochara_seal_approval', 'INSERT', null, '1376'],          // R11-3: the approval receipt (append-only; the sealer is the only writer)
     ]))
-    expect(S.tables.filter(([t]) => t === 'kala_gochara_windows')).toEqual([['kala_gochara_windows', 'SELECT', ['chart_id', 'generation'], '1241']])
+    expect(S.tables.filter(([t]) => t === 'kala_gochara_windows')).toEqual([['kala_gochara_windows', 'SELECT', ['chart_id', 'generation'], '1376']])
   })
 
   it('R15-6 (v7): the sealer may SELECT, and ONLY SELECT, the five registry relations its in-transaction registry re-derivation reads (seal_registry_drift) — nothing wider, v7 adds nothing to the verifier', () => {
     const registry = ['ka_gochara_rule_path', 'ka_gochara_rule_path_prerequisite', 'ka_gochara_rule_path_soft_factor', 'ka_gochara_predicate', 'ka_gochara_factor', 'ka_gochara_rule_path_seal']
-    for (const t of registry) expect(S.tables.filter(([x]) => x === t)).toEqual([[t, 'SELECT', null, '1241']])
+    for (const t of registry) expect(S.tables.filter(([x]) => x === t)).toEqual([[t, 'SELECT', null, '1376']])
     expect(S.tables.filter(([, p]) => p === 'SELECT')).toHaveLength(S.tables.length - 3)         // everything but the three writes is a SELECT
     expect(S.functions.map(([f]) => f).filter((f: string) => /predicate|factor|rule_path/.test(f))).toEqual([])   // no registry function granted
     for (const t of registry.slice(0, 5)) for (const row of V.tables.filter(([x]) => x === t)) expect(row.slice(1, 3)).toEqual(['SELECT', null])   // whatever the verifier already held there stays SELECT-only; v7's edit is in the SEALER block
@@ -68,8 +68,8 @@ describe('migration 1241 — static contract', () => {
 
   it('R11-3: both principals read the migration ledger ONLY at column level (filename, sha256, applied_at); the verifier holds nothing on the receipt; the sealer reads it for the receipt-missing check', () => {
     const ledger = (role: typeof S) => role.tables.filter(([t]) => t === '_migrations_applied')
-    expect(ledger(S)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1241']])
-    expect(ledger(V)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1241']])
+    expect(ledger(S)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1376']])
+    expect(ledger(V)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1376']])
     expect(V.tables.filter(([t]) => t === 'ka_gochara_seal_approval')).toEqual([])
     expect(S.tables.filter(([t]) => t === 'ka_gochara_seal_approval').map(([, p]) => p).sort()).toEqual(['INSERT', 'SELECT'])
     expect(S.functions.map(([f]) => f)).toContain('ka_gochara_seal_receipt_missing(uuid,text)')
@@ -93,8 +93,9 @@ describe('migration 1241 — static contract', () => {
 
   it('is a ROUTINE migration numbered above 1240 (a number below 1240 would be an unapplied predecessor of the window)', () => {
     expect(PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(FILE)).toBe(false)
-    const n = Number(FILE.slice(0, 4)); expect(n).toBeGreaterThan(1240); expect(n).toBeLessThanOrEqual(1249)
+    const n = Number(FILE.slice(0, 4)); expect(n).toBeGreaterThan(1240)
+    expect(SQL).toMatch(new RegExp(`^-- Migration ${n}:`))
     for (const d of [MIG, path.resolve(__dirname, '../../../python-sidecar/scripts/kala_gochara_cutover')].filter(x => fs.existsSync(x)))
-      expect(fs.readdirSync(d).filter(f => /^1241_/.test(f) && f !== FILE)).toEqual([])
+      expect(fs.readdirSync(d).filter(f => new RegExp(`^${n}_`).test(f) && f !== FILE)).toEqual([])
   })
 })
