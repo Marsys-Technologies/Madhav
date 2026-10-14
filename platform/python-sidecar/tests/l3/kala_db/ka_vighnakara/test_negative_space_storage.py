@@ -236,3 +236,24 @@ def test_alias_rejection_preserves_existing_candidate(conn):
         storage()(ctx(conn),[finding(protections=[protection()]),
             finding(assertion_id='alias',protections=[protection()])])
     assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
+
+
+def test_label_only_replacement_preserves_protected_candidate(conn):
+    write(conn, protections=[protection()])
+    before = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    with pytest.raises(ValueError, match='protection target'):
+        write(conn, assertion_id='alias:replacement', protections=[protection()])
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
+
+
+@pytest.mark.parametrize('retarget', [False, True])
+def test_overlapping_alias_preserves_protected_candidate(conn, retarget):
+    write(conn, protections=[protection()])
+    before = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    alias = finding(assertion_id='alias:segment',
+        protections=[protection(target_assertion_id='alias:segment' if retarget else 'fixture:vedha')],
+        interval={'t0':'2026-01-01T00:00:00Z','t1':'2026-01-15T00:00:00Z'},
+        release={'kind':'instant','instant':'2026-01-15T00:00:00Z'})
+    with pytest.raises(ValueError, match='duplicate physical'):
+        storage()(ctx(conn), [finding(protections=[protection()]), alias])
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before

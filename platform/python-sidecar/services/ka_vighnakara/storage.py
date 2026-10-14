@@ -36,12 +36,24 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
             raise ValueError('duplicate assertion identity')
         # Labels, prose, protection facts and edge targets are evidence, not
         # physical identity. Refuse aliases before replacing the partition.
-        physical = [(value.chart_id, value.generation, value.event_class_id, value.mechanism,
-                     value.interval.t0, value.interval.t1,
-                     tuple(sorted(set(value.roots.record_ids))),
-                     tuple(sorted(set(value.roots.contact_ids)))) for value in inputs]
-        if len(set(physical)) != len(physical):
-            raise ValueError('duplicate physical conclusion under assertion aliases')
+        physical = {}
+        for value in inputs:
+            key = (value.chart_id, value.generation, value.event_class_id, value.mechanism,
+                   tuple(sorted(set(value.roots.record_ids))),
+                   tuple(sorted(set(value.roots.contact_ids))))
+            physical.setdefault(key, []).append((value.interval.t0, value.interval.t1))
+        for intervals in physical.values():
+            ordered = sorted(intervals)
+            if any(start < previous_end for (_, previous_end), (start, _)
+                   in zip(ordered, ordered[1:])):
+                raise ValueError('duplicate physical conclusion under overlapping assertion aliases')
+        # A label-only singleton rebuild has no peer to expose its alias. The
+        # envelope cannot resolve a stale target to immutable roots, so refuse
+        # overlapping evidence rather than silently dropping or retargeting it.
+        if any(edge.target_assertion_id != value.assertion_id
+               and edge.interval.t0 < value.interval.t1 and edge.interval.t1 > value.interval.t0
+               for value in inputs for edge in value.protections):
+            raise ValueError('overlapping protection target cannot be resolved to this physical conclusion')
         rows = []
         for value in inputs:
             result = interpret(value)
