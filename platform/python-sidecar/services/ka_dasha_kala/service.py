@@ -99,11 +99,12 @@ class KaDashaKalaService:
         self, chart_id: str, system: str, *, as_of: datetime, build_id: str, ayanamsha_id: str, tier: str,
         level: Literal["MD", "AD", "PD", "SD"] | None = None,
         uncertainty: clocks.BoundaryUncertainty | None = None,
+        method_facts: clocks.AshtottariFacts | clocks.KalachakraFacts | None = None,
     ) -> list[clocks.Boundary]:
         """F2 source boundaries with admitted uncertainty, no eligibility scores."""
         return clocks.boundaries(
             self._conn, chart_id, system, as_of=as_of, build_id=build_id, ayanamsha_id=ayanamsha_id,
-            tier=tier, level=level, uncertainty=uncertainty,
+            tier=tier, level=level, uncertainty=uncertainty, method_facts=method_facts,
         )
 
     def scenarios(

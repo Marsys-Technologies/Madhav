@@ -85,6 +85,32 @@ const wealthScope: ScopeTuple = {
 beforeEach(() => queryMock.mockReset())
 
 describe('query_temporal_activation bounded temporal closure', () => {
+  it.each([
+    ['partial_defeat_unassessed', 'two_pass_verified'],
+    ['contestation_unassessed', 'two_pass_verified'],
+    ['partial_defeat_unassessed', null],
+    ['contestation_unassessed', null],
+  ])('preserves %s with yoga tier %s in the unavailable layer', async (reason, tier) => {
+    const evidence = { null_reason: reason, conclusion_ids: ['c:for', 'c:against'], defeat_ids: ['d:1'] }
+    const yoga = { id: 'a-unassessed', signature_class: 'YOGA', derivation_ledger_jsonb: {
+      canonical_id: 'sunapha', fact_ids: ['f1'], constituent_fact_tiers: { f1: 'two_pass_verified' },
+      yoga_tier: tier, effective_state: 'unresolved', scored: false,
+      null_reason: reason, effective_reason: evidence, judgment_flags: [reason],
+    } }
+    const assessed = { id: 'z-assessed', derivation_ledger_jsonb: {
+      fact_ids: ['f2'], constituent_fact_tiers: { f2: 'two_pass_verified' },
+    } }
+    routeQueries({ activations: ROWS, totalMatching: 2, predicates: [yoga, assessed] })
+    const result = await handler({ chart_id: CHART_ID, date_from: '2026-01-01', date_to: '2026-12-31' })
+    const predicates = result.content['predicates'] as Record<string, unknown>[]
+    expect(predicates.map(r => r['id'])).toEqual(['z-assessed', 'a-unassessed'])
+    expect(predicates[1]?.['derivation_ledger_jsonb']).toMatchObject({
+      effective_state: 'unresolved', scored: false, null_reason: reason, effective_reason: evidence,
+    })
+    expect(result.content['judgment_flags']).toContain(reason)
+    expect(yoga.derivation_ledger_jsonb.judgment_flags).toEqual([reason])
+  })
+
   it('serves unknown yoga tiers behind verified fact mechanisms and discloses the gap', async () => {
     const yoga = { id: 'yoga', signature_class: 'YOGA', derivation_ledger_jsonb: {
       canonical_id: 'sunapha', fact_ids: ['f1'], constituent_fact_tiers: { f1: 'two_pass_verified' },
