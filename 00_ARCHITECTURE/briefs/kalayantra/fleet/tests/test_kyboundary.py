@@ -1171,7 +1171,7 @@ def test_zz_no_mount_of_this_suite_is_left(tmp_path_factory):
     assert attached_images(base) == {}
 
 
-def native_codex_world(tmp_path):
+def native_codex_world(tmp_path, prepare=True):
     """Native CLI stand-in: its tool, and only its tool, applies real Seatbelt.
 
     This measures OS confinement and nested-sandbox compatibility without model jobs.
@@ -1182,12 +1182,14 @@ def native_codex_world(tmp_path):
     w.tmp.mkdir()
     w.view = Path(str(w.S) + '-view')
     w.gitv = w.view / '.git'
-    for name in ('kyqualify.py', 'kyprobe.py', 'kyschema.py'):
+    for name in ('kyqualify.py', 'kyprobe.py', 'kyschema.py', 'kyboundary.sh'):
         shutil.copyfile(FLEET / name, w.fleet / name)
     sys.path.insert(0, str(FLEET))
     import kyqualify as q
     w.fake.write_text('''#!/usr/bin/env python3
 import json, os, subprocess, sys
+if sys.argv[1:] == ['--version']:
+    print('codex-cli 0.162.0'); sys.exit(0)
 root = os.environ['JOB_SCRATCH']
 policy = '(version 1)(allow default)(deny file-write*)(deny network*)' + '(allow file-write* (subpath %s) (literal "/dev/null"))' % json.dumps(root)
 # Applying this profile would fail with exit 71 if an outer profile remained.
@@ -1204,11 +1206,28 @@ sys.exit(r.returncode)
                child_path=PATH, writable_dirs=[])
     launch = w.S / 'launch.json'
     launch.write_text(json.dumps(cfg))
+    # Synthetic admission proof for the native CLI stand-in, never a live receipt.
+    checks = {name: dict(result='pass') for name in q.required_checks(cfg, 'launchd')}
+    checks['no_tty_prompt']['observed'] = dict(verifier_boundary=dict(
+        enforced=True, kyboundary_sha256=hashlib.sha256(KYB.read_bytes()).hexdigest(),
+        codex_home_policy='JOB_SCRATCH/program; auth.json only; engine-owned CODEX_HOME',
+        runs={'base': dict(mechanism='codex-workspace-write/1', configured=True, outer_sandbox=False)}))
+    receipt = dict(schema='ky.qualification/1', engine='codex', role=cfg['role'], model=cfg['model'],
+                   result='PASS', context='launchd', boundary=q.boundary_of(cfg),
+                   binds=q.compute_codex_binds(cfg, w.env), harness=q.harness_hashes(), checks=checks,
+                   negative_probes={name: dict(result='pass') for name in q.probes_of(cfg)},
+                   launchd_receipt=dict(label=q.LABEL_PREFIX + cfg['role'], bootstrap_exit=0,
+                       loaded_after_bootstrap=True, finished=True, absent_after_bootout=True,
+                       launchctl='/bin/launchctl', inner=dict(ppid=1, xpc_service_name=q.LABEL_PREFIX + cfg['role'])))
+    w.receipt = w.run / 'QUALIFICATIONS' / 'verify-gpt-6.1-sol.json'
+    w.receipt.parent.mkdir()
+    w.receipt.write_text(json.dumps(receipt))
     w.write_state(engine='codex', sandbox_mode='locked', tmp_path=str(w.tmp), launch_config_path=str(launch))
-    done = w.kyb('prepare', JOB)
-    assert done.returncode == 0, done.stderr
-    record = json.loads(Path(str(w.S) + '-boundary.json').read_text())
-    assert record['mechanism'] == 'codex-workspace-write/1'
+    if prepare:
+        done = w.kyb('prepare', JOB)
+        assert done.returncode == 0, done.stderr
+        record = json.loads(Path(str(w.S) + '-boundary.json').read_text())
+        assert record['mechanism'] == 'codex-workspace-write/1'
     assert not str(w.view).startswith(str(w.S) + '/')
     env = dict(HOME=str(w.home), USER='tester', LANG='en_US.UTF-8', TERM='dumb', PATH=PATH,
                TMPDIR=str(w.tmp), JOB_SCRATCH=str(w.S), CODEX_HOME=str(w.program))
@@ -1248,3 +1267,95 @@ def test_native_codex_boundary_refuses_an_unconfined_argv(tmp_path):
     done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env, input='echo leaked')
     assert done.returncode == 70
     assert 'native Codex argv' in done.stderr
+
+
+@pytest.mark.parametrize('change', ['bytes', 'realpath', 'unreadable', 'missing', 'fifo'])
+def test_native_codex_rechecks_the_admitted_executable_before_exec_and_check(tmp_path, change):
+    w, argv = native_codex_world(tmp_path)
+    if change == 'bytes':
+        w.fake.write_text('#!/bin/sh\n[ "$1" = --version ] && echo "codex-cli 0.162.0" && exit 0\nexec /bin/sh\n')
+    elif change == 'realpath':
+        replacement = w.fake.with_name('same-bytes.py')
+        replacement.write_bytes(w.fake.read_bytes())
+        replacement.chmod(0o755)
+        w.fake.unlink()
+        w.fake.symlink_to(replacement)
+    elif change == 'unreadable':
+        w.fake.chmod(0)
+    else:
+        w.fake.unlink()
+        if change == 'fifo':
+            os.mkfifo(w.fake)
+    # The unused outer probe still succeeds: it must not bless a changed native CLI.
+    source = KYB.read_text().split("<<'PYEOF'\n", 1)[1].split('\nPYEOF', 1)[0]
+    namespace = {}
+    exec(source.rsplit('sys.exit(main(sys.argv[1:]))', 1)[0], namespace)
+    p = dict(job_scratch=str(w.S), view=str(w.view))
+    assert namespace['enforces'](p, [str(w.S)]) is True
+    target = w.shared['fleet']
+    before = target.read_bytes()
+    done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env,
+              input='echo leaked >> "%s"' % target)
+    assert done.returncode == 70, done.stderr
+    assert 'Codex executable' in done.stderr
+    assert target.read_bytes() == before
+    rc, doc, _ = w.check()
+    assert rc in (1, 3) and doc['mechanism_intact'] is not True, doc
+    assert w.kyb('prepare', JOB).returncode == 1
+
+
+@pytest.mark.parametrize('change', ['missing', 'failed', 'native-effects', 'binary-hash', 'argv', 'environment', 'boundary-hash'])
+def test_native_codex_prepare_requires_current_measured_qualification(tmp_path, change):
+    w, _ = native_codex_world(tmp_path, prepare=False)
+    doc = json.loads(w.receipt.read_text())
+    if change == 'missing':
+        w.receipt.unlink()
+    else:
+        if change == 'failed':
+            doc['result'] = 'FAIL'
+        elif change == 'native-effects':
+            doc['checks']['git_write_denied']['result'] = 'unknown'
+        elif change == 'binary-hash':
+            doc['binds']['codex_bin_sha256'] = '0' * 64
+        elif change == 'argv':
+            doc['binds']['argv'][doc['binds']['argv'].index('-s') + 1] = 'danger-full-access'
+        elif change == 'environment':
+            doc['binds']['child_path'] = '/bin'
+        else:
+            doc['checks']['no_tty_prompt']['observed']['verifier_boundary']['kyboundary_sha256'] = '0' * 64
+        w.receipt.write_text(json.dumps(doc))
+    done = w.kyb('prepare', JOB)
+    assert done.returncode == 1, done.stderr
+    assert not w.view.exists()
+
+
+@pytest.mark.parametrize('changed', ['receipt', 'config'])
+def test_native_codex_does_not_rebind_changed_launch_proof(tmp_path, changed):
+    w, argv = native_codex_world(tmp_path)
+    path = w.receipt if changed == 'receipt' else Path(w.state['launch_config_path'])
+    path.write_text(path.read_text() + '\n')
+    done = sh([BASH, KYB, 'exec', JOB, '--', *argv], env=w.env, input='echo leaked')
+    assert done.returncode == 70, done.stderr
+    assert w.kyb('prepare', JOB).returncode == 1
+    assert w.check()[1]['mechanism_intact'] is not True
+
+
+def test_native_codex_prepare_and_check_never_use_the_outer_probe(tmp_path, monkeypatch, capsys):
+    w, _ = native_codex_world(tmp_path, prepare=False)
+    source = KYB.read_text().split("<<'PYEOF'\n", 1)[1].split('\nPYEOF', 1)[0]
+    namespace = {}
+    exec(source.rsplit('sys.exit(main(sys.argv[1:]))', 1)[0], namespace)
+    def unused(*args):
+        raise AssertionError('the native launch never uses the outer profile')
+    namespace['enforces'] = unused
+    for key, value in w.env.items():
+        monkeypatch.setenv(key, value)
+    assert namespace['prepare'](JOB) == 0
+    rec = json.loads(Path(str(w.S) + '-boundary.json').read_text())
+    binding = rec['native_binding']
+    assert binding['codex_bin_realpath'] == str(w.fake.resolve())
+    assert binding['codex_bin_sha256'] == hashlib.sha256(w.fake.read_bytes()).hexdigest()
+    assert binding['qualification_sha256'] == hashlib.sha256(w.receipt.read_bytes()).hexdigest()
+    assert namespace['prepare'](JOB) == 0
+    assert namespace['check'](JOB) == 0
+    assert json.loads(capsys.readouterr().out)['mechanism_intact'] is True

@@ -100,8 +100,10 @@
 # CLAUDE_CODE_TMPDIR (auth/config reads retain their existing namespace; shared writes stay denied).
 # Codex exec validates the native job-rooted workspace-write launch and applies NO outer profile.
 # Its view is S-view and immutable record S-boundary.json, outside the only writable root S.
-# prepare/check probe OS Seatbelt compatibility; qualification proves the actual CLI's tool effects.
+# prepare/exec/check bind the native CLI to its measured qualification; the unused outer profile is not probed.
 # release removes both native sibling artifacts. Full-mode read-only Codex jobs are refused.
+# WB-01 (2026-10-14): pin native realpath/hash, qualification and launch-config bytes;
+# refuse changed or unreadable proof/executable, including immediately before exec.
 set -u
 PY=/opt/homebrew/bin/python3
 [ -x "$PY" ] || PY=/usr/bin/python3
@@ -162,7 +164,8 @@ def load(job_id):
     if not isinstance(st, dict):
         raise NotEstablished("state: not an object")
     p = {"job_id": job_id, "head": st.get("head"), "native_codex": st.get("engine") == "codex",
-         "launch_config_path": st.get("launch_config_path"), "sandbox_mode": st.get("sandbox_mode", "locked")}
+         "launch_config_path": st.get("launch_config_path"), "sandbox_mode": st.get("sandbox_mode", "locked"),
+         "qualification_dir": os.path.join(ky_run, "QUALIFICATIONS")}
     for key in ("worktree", "job_scratch", "tmp_path"):
         v = st.get(key)
         if not isinstance(v, str) or not os.path.isabs(v) or re.search(r"[\x00-\x1f]", v):
@@ -361,6 +364,96 @@ def mechanism(p):
     return CODEX_MECHANISM if p.get("native_codex") and MECHANISM in ACCEPTED else MECHANISM
 
 
+def bound_json(path):
+    """Parse and hash the same regular-file bytes; a FIFO never blocks the controller."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError("not a regular file: %s" % path)
+        data = f.read()
+    return json.loads(data), hashlib.sha256(data).hexdigest()
+
+
+def codex_executable(cfg):
+    try:
+        path = os.path.realpath(cfg["codex_bin"])
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as f:
+            if not stat.S_ISREG(os.fstat(f.fileno()).st_mode) or not os.access(path, os.X_OK):
+                raise OSError("not a readable executable regular file")
+            h = hashlib.sha256()
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+        return {"codex_bin_realpath": path, "codex_bin_sha256": h.hexdigest()}
+    except OSError as e:
+        raise NotEstablished("?Codex executable is unreadable: %s" % e) from e
+
+
+def native_binding(p):
+    """Use the admission receipt's existing binary hash and native effect detectors.
+
+    (I) INTERPRETATION: admission adapts only worktree/prompt (kyd_jobs.py:772-788).
+    Pin their launch-config bytes here; retain the receipt's exact native argv/env
+    contract and measured source/Git refusals. No engine program runs in this check.
+    """
+    try:
+        sys.path.insert(0, abs_env("KY_FLEET", ""))
+        import kyqualify as q
+        cfg, config_hash = bound_json(p["launch_config_path"])
+        if (q.validate_codex_config(cfg, check_disk=False) or not q.codex_verifier(cfg) or not q.job_rooted(cfg)
+                or cfg["worktree"] != p["worktree"] or cfg["sandbox"] != "workspace-write"
+                or cfg["network"] is not False or cfg["writable_dirs"]):
+            raise NotEstablished("unqualified native Codex configuration")
+        binary = codex_executable(cfg)
+        for root in p["writable"]:
+            if inside(binary["codex_bin_realpath"], root) or inside(p["qualification_dir"], root):
+                raise NotEstablished("native Codex executable/qualification overlaps writable scratch")
+        variant = "-tests" if "TESTS" in cfg["env_names"] else ""
+        path = os.path.join(p["qualification_dir"], "%s%s-%s.json" % (cfg["role"], variant, cfg["model"]))
+        doc, receipt_hash = bound_json(path)
+        if (not isinstance(doc, dict) or (doc.get("schema"), doc.get("engine"), doc.get("role"), doc.get("model"),
+                doc.get("result"), doc.get("context")) !=
+                ("ky.qualification/1", "codex", cfg["role"], cfg["model"], "PASS", "launchd")):
+            raise NotEstablished("native Codex qualification is not PASS/launchd for this role/model")
+        binds = doc.get("binds") or {}
+        if (binds.get("codex_bin") != cfg["codex_bin"]
+                or binds.get("codex_bin_sha256") != binary["codex_bin_sha256"]):
+            raise NotEstablished("Codex executable does not match the admitted qualification hash/path")
+        expected = q.build_argv(cfg)
+        wanted = {key: cfg[key] for key in ("model", "effort", "sandbox", "network", "writable_dirs",
+                                           "deadline_seconds", "child_path")}
+        wanted.update(engine="codex", work_root="job", env_names=sorted(cfg["env_names"]), argv=expected,
+                      argv_sha256=hashlib.sha256(json.dumps(expected, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest(),
+                      output_schema_sha256=file_sha256(cfg["output_schema"]) if cfg.get("output_schema") else "absent",
+                      harness_sha256=q.harness_hashes()["kyqualify_sha256"])
+        if any(json.dumps(binds.get(k), sort_keys=True) != json.dumps(v, sort_keys=True) for k, v in wanted.items()):
+            raise NotEstablished("native Codex qualification does not bind this argv/environment/configuration")
+        checks, probes = doc.get("checks") or {}, doc.get("negative_probes") or {}
+        lr = doc.get("launchd_receipt") or {}
+        if (q.overall(checks, probes, cfg, "launchd") != "PASS" or doc.get("boundary") != q.boundary_of(cfg)
+                or doc.get("harness") != q.harness_hashes() or None in q.harness_hashes().values()
+                or q.launchd_verdict(lr, q.LABEL_PREFIX + cfg["role"])["result"] != "pass"
+                or lr.get("launchctl") != q.SYSTEM_LAUNCHCTL or lr.get("label") != q.LABEL_PREFIX + cfg["role"]
+                or lr.get("bootstrap_exit") != 0 or lr.get("finished") is not True):
+            raise NotEstablished("native Codex qualification has missing/stale measured proof")
+        boundary = (checks["no_tty_prompt"].get("observed") or {}).get("verifier_boundary") or {}
+        runs = boundary.get("runs") or {}
+        if (boundary.get("enforced") is not True or boundary.get("kyboundary_sha256") != file_sha256(__file_boundary())
+                or boundary.get("codex_home_policy") != "JOB_SCRATCH/program; auth.json only; engine-owned CODEX_HOME"
+                or not runs or any(b.get("mechanism") != CODEX_MECHANISM or b.get("configured") is not True
+                                  or b.get("outer_sandbox") is not False for b in runs.values())):
+            raise NotEstablished("native Codex qualification has missing/stale source/Git refusal evidence")
+        return cfg, dict(binary, launch_config_path=p["launch_config_path"], launch_config_sha256=config_hash,
+                         qualification_path=path, qualification_sha256=receipt_hash)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, ImportError) as e:
+        raise NotEstablished("?native Codex qualification/configuration is unreadable: %s" % e) from e
+
+
+def __file_boundary():
+    # The embedded Python has no __file__; KY_FLEET names the installed script.
+    return os.path.join(abs_env("KY_FLEET", ""), "kyboundary.sh")
+
+
 def record_faults(p, rec):
     """why the record is not the boundary this state describes ([] = it is)"""
     if rec is None:
@@ -402,9 +495,17 @@ def view_faults(p, rec, files=True):
         faults.append("?the view's Git metadata cannot be read")
     elif meta != rec["git_state"].get("view_git_sha256"):
         faults.append("the view's Git metadata changed")
-    e = enforces(p, p["writable"])
-    if e is not True:
-        faults.append(("?the sandbox probe could not be run" if e is None else "sandbox-exec does not enforce the profile"))
+    if p.get("native_codex"):
+        try:
+            _, binding = native_binding(p)
+            if rec.get("native_binding") != binding:
+                faults.append("native Codex executable/qualification/configuration changed after preparation")
+        except NotEstablished as e:
+            faults.append(str(e))
+    else:
+        e = enforces(p, p["writable"])
+        if e is not True:
+            faults.append(("?the sandbox probe could not be run" if e is None else "sandbox-exec does not enforce the profile"))
     return faults
 
 
@@ -451,6 +552,7 @@ def write_json(path, doc):
 def prepare(job_id):
     try:
         p = load(job_id)
+        binding = native_binding(p)[1] if p.get("native_codex") else None
         if GIT is None:
             raise NotEstablished("git not found")
         if os.path.lexists(p["view"]):                 # verified, never rebuilt over
@@ -506,13 +608,15 @@ def prepare(job_id):
             raise NotEstablished("the view's Git metadata cannot be read")
         if MECHANISM not in ACCEPTED:
             say("prepare: tests-only override in force: mechanism %s" % MECHANISM)
-        e = enforces(p, p["writable"])
-        if e is not True:
-            raise NotEstablished("sandbox-exec does not enforce the profile on this host (probe: %s)" % ("not run" if e is None else "the view was writable"))
+        if not p.get("native_codex"):
+            e = enforces(p, p["writable"])
+            if e is not True:
+                raise NotEstablished("sandbox-exec does not enforce the profile on this host (probe: %s)" % ("not run" if e is None else "the view was writable"))
         write_json(p["record"], {
             "schema": SCHEMA, "mechanism": mechanism(p), "view": p["view"], "writable": p["writable"], "head": head,
             "tracked_sha256": v["tracked"], "prepared_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-            "git_state": {"view_git_sha256": meta, "worktree_head_ref": w["ref"]}})
+            "git_state": {"view_git_sha256": meta, "worktree_head_ref": w["ref"]},
+            **({"native_binding": binding} if binding else {})})
         if MECHANISM not in ACCEPTED:
             raise NotEstablished("mechanism %s is not an accepted boundary" % MECHANISM)
         return 0
@@ -541,9 +645,9 @@ def exec_(job_id, argv):
             # No outer sandbox_apply: the qualified Codex executable enforces tools.
             sys.path.insert(0, abs_env("KY_FLEET", ""))
             import kyqualify as q
-            cfg = json.load(open(p["launch_config_path"]))
-            if q.validate_codex_config(cfg) or not q.codex_verifier(cfg) or not q.job_rooted(cfg):
-                raise NotEstablished("unqualified native Codex configuration")
+            cfg, binding = native_binding(p)
+            if rec.get("native_binding") != binding:
+                raise NotEstablished("native Codex launch binding changed before exec")
             expected = q.build_argv(cfg, p["job_scratch"])
             if (argv[:2] != ["/usr/bin/env", "-i"] or argv[-len(expected):] != expected
                     or cfg["sandbox"] != "workspace-write" or cfg["network"] is not False or cfg["writable_dirs"]):
@@ -552,8 +656,13 @@ def exec_(job_id, argv):
             env = dict(pair.split("=", 1) for pair in pairs)
             if (len(env) != len(pairs) or set(env) != set(cfg["env_names"]) | {"CODEX_HOME"}
                     or env.get("JOB_SCRATCH") != p["job_scratch"] or env.get("TMPDIR") != p["tmp_path"]
-                    or env.get("CODEX_HOME") != p["program"]):
+                    or env.get("CODEX_HOME") != p["program"] or env.get("PATH") != cfg["child_path"]
+                    or env.get("HOME") != abs_env("HOME", "")):
                 raise NotEstablished("native Codex environment is not job-local")
+            if codex_executable(cfg) != {k: binding[k] for k in ("codex_bin_realpath", "codex_bin_sha256")}:
+                raise NotEstablished("Codex executable changed immediately before exec")
+            # Execute the checked resolved path, avoiding a second symlink resolution.
+            argv[-len(expected)] = binding["codex_bin_realpath"]
             os.execv(argv[0], argv)
         os.execv(SANDBOX_EXEC, [SANDBOX_EXEC, "-p", profile(p, p["writable"])] + argv)
     except (NotEstablished, OSError, ValueError, TypeError, KeyError) as e:

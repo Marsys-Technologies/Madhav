@@ -187,6 +187,24 @@ printf 'started\\n' > "$store/startup.txt"
     assert 'CODEX_HOME' in record['env_names']
 
 
+def test_native_boundary_checks_the_binary_before_its_version_program_runs(tmp_path, monkeypatch):
+    w, cfg = codex_world(tmp_path, verifier=True)
+    E = adapter()
+    versions = []
+    def version(path):
+        versions.append(path)
+        return '0.162.0'
+    def refuse(*args):
+        raise E.Refusal('Codex executable changed after admission')
+    monkeypatch.setattr(Q, 'codex_version_text', version)
+    helper = dict(check_prompt=lambda job: None, check_boundary_form=lambda job: True,
+                  job_environment=lambda job, own: list(w.expected_env().items()),
+                  parse_deadline=lambda text: time.time() + 60, prepare_boundary=refuse)
+    with pytest.raises(E.Refusal, match='Codex executable changed'):
+        E.plan(w.state, {}, helper)
+    assert versions == [], 'an unbound version program ran before native preparation'
+
+
 def test_codex_verifier_refuses_linked_program_store(tmp_path):
     w, cfg = codex_world(tmp_path, verifier=True)
     outside = w.base / 'outside-store'

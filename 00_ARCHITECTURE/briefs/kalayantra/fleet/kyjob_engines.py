@@ -7,6 +7,7 @@ interpretation: linked worktrees, exact file scope, no unproved action replay.
 Changelog: v1.0 (2026-10-13): engine selection, guarded landing and silence timeout.
 Campaign add-on (2026-10-13): launch-pinned kyroute owns/shared scope and blocking landing checks.
 Fix B1 (2026-10-13): unreadable persisted activity/log or launch/landing checkpoints hold; no invented replay.
+WB-01 (2026-10-14): native boundary preparation binds the CLI before its version check.
 """
 from __future__ import annotations
 
@@ -157,6 +158,8 @@ def plan(job, own, helper):
     deadline = helper['parse_deadline'](job['deadline'])
     if deadline is None or not time.time() < deadline <= time.time() + cfg['deadline_seconds']:
         raise Refusal('Codex deadline is missing, past or exceeds configured duration')
+    # Native preparation binds the measured CLI before even its version code runs.
+    prefix = helper['prepare_boundary'](job['job_id'], own) if bounded else []
     version = qualify.codex_version_text(cfg['codex_bin'])
     found = qualify.version_tuple(version)
     minimum = qualify.version_tuple(cfg['codex_min_version'])
@@ -168,7 +171,6 @@ def plan(job, own, helper):
     if before:
         if cfg_hash != before.get('config_sha256') or pointer(job) != before.get('pointer'):
             raise Refusal('Codex launch inputs changed after controller preparation')
-    prefix = helper['prepare_boundary'](job['job_id'], own) if bounded else []
     pairs = [(n, env[n]) for n in cfg['env_names']]
     if bounded:
         store = qualify.seed_codex_home(job['job_scratch'], own['HOME'])
