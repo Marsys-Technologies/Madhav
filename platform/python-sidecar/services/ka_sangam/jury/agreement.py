@@ -35,6 +35,7 @@ class Agreement:
 def agreement(horizon: Interval, nodes: Iterable[Node], uses: Iterable[Use],
               groups: Iterable[Group], *, alpha: float, exchangeable: bool,
               non_identity_shifts: int=DEFAULT_NON_IDENTITY_SHIFTS,
+              conditioning_intervals: tuple[Interval,...] | None=None,
               pipeline_selector: WholePipelineSelector | None=None) -> Agreement:
     nodes=tuple(nodes)
     groups=tuple(sorted(set(groups),key=lambda g:g.group_id)); uses=tuple(uses)
@@ -66,7 +67,12 @@ def agreement(horizon: Interval, nodes: Iterable[Node], uses: Iterable[Use],
     # corroborating root. Losing its credit must not erase anchor exposure.
     selected_anchor=tuple(i for u in uses if u.group_id=='G-P' and u.role=='selects'
         and roster['G-P'].status=='available' for i in intersect_intervals((u.interval,),roster['G-P'].coverage,horizon))
-    if 'G-P' in signature:
+    if conditioning_intervals is not None:
+        # The consumer pins W separately from the circular-shift domain.
+        # Corroboration elsewhere must not expand the fixed conditioning set.
+        selected_anchor=intersect_intervals(conditioning_intervals,roster['G-P'].coverage,horizon) if roster['G-P'].status=='available' else ()
+        witnesses=tuple(w for w in witnesses if w.witness_id!='G-P')+(Witness('G-P',selected_anchor),)
+    elif 'G-P' in signature:
         witnesses=tuple(Witness(w.witness_id,w.intervals+selected_anchor) if w.witness_id=='G-P' else w for w in witnesses)
     else:
         witnesses=(*witnesses,Witness('G-P',selected_anchor))

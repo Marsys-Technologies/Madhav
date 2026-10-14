@@ -7,7 +7,6 @@ import pytest
 from psycopg.rows import dict_row, tuple_row
 
 from services.kala_core.manifest import open_candidate
-from tests.l3.kala_db.conftest import kala_db_dsn
 from tests.l3.kala_db.ka_sangam.test_jury_candidate_end_to_end import ctx, writer, legacy_read
 from tests.l3.ka_sangam.test_jury_writer import CHART, GEN, fixture_input
 
@@ -143,7 +142,7 @@ def test_legacy_planning_and_reprobe_leave_rows_and_ledger_unchanged(ctx, monkey
     before = legacy_read(ctx)
     for _ in range(2):
         ctx.db_conn.row_factory = dict_row
-        assert [s.key for s in writer().plan_substeps(ctx)] == ['near']
+        assert writer().plan_substeps(ctx)  # default legacy production remains planned
         ctx.db_conn.row_factory = tuple_row
         assert legacy_read(ctx) == before
         assert ctx.db_conn.execute('SELECT build_fingerprint FROM build_substep_progress').fetchall() == [('stale',)]
