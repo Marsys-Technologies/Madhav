@@ -1,3 +1,4 @@
+import { disposableSql } from './disposable_sql.test_support'
 import { beforeEach, expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: db }))
@@ -38,9 +39,6 @@ it('a missing detector never promotes populated-looking figures', async () => {
 
 // TEMP fixtures only; execute the actual legacy reader SQL in the caller lane DB.
 async function postgres(sql: string, params: unknown[], nonempty: boolean) {
-  const { execFileSync } = await import('node:child_process')
-  const lane = process.env.KY_LANE
-  if (!lane || !/^k[1-8]$/.test(lane)) throw new Error('explicit builder lane required')
   const literal = (v: unknown) => v == null ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replaceAll("'", "''")}'`
   const schema = `
     CREATE TEMP TABLE kala_jivana_parva (id int, chart_id uuid, parva_index int, dasha_planet text, dominant_signal_class text,
@@ -52,13 +50,8 @@ async function postgres(sql: string, params: unknown[], nonempty: boolean) {
     INSERT INTO kala_convergence VALUES ('22222222-2222-4222-8222-222222222222');
     ${nonempty ? `INSERT INTO kala_convergence VALUES ('${chart}');` : ''}
   `
-  const output = execFileSync('docker', ['exec', '-i', 'ky-pg', 'psql', '-U', 'postgres', '-d', `ky_${lane}`, '-qAt', '-v', 'ON_ERROR_STOP=1'], {
-    input: `BEGIN; ${schema} PREPARE story(uuid,int,int) AS ${sql}; EXECUTE story(${params.map(literal).join(',')}); ROLLBACK;`,
-    encoding: 'utf8', timeout: 15000,
-  }).trim().split('\n').at(-1)!
-  const values = output.split('|')
-  return { rows: [{ ...parva, high_convergence_count: Number(values[8]), avg_effective_score: Number(values[9]),
-    narrative: JSON.parse(values[10]), convergence_source_available: values.at(-1) === 't' }] }
+  return { rows: disposableSql(`BEGIN; ${schema} PREPARE story(uuid,int,int) AS ${sql}; EXECUTE story(${params.map(literal).join(',')}); ROLLBACK;`) }
+
 }
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each([false, true])('actual SQL scopes source availability to the chart (nonempty=%s)', async nonempty => {
   db.mockImplementation((sql, params) => postgres(sql, params, nonempty))
