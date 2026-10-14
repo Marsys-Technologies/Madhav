@@ -2605,28 +2605,28 @@
         "density_contracts": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/stored_verification.test.ts",
-            "pattern": "(?s)\\A(?=.*const names = \\['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'\\] as const)(?=.*it\\.each\\(names\\)\\('%s binds SELECT and response to its own stored status, preserving contrary/missing proof', async name => \\{)(?=.*expect\\(contract\\.stored_tier_columns\\)\\.toContain\\('kala_darshana\\.verification_pass_status'\\))(?=.*expect\\(result\\.content\\)\\.toMatchObject\\(\\{ density: \\{ confirmed: 1, testimony: 0, catalog_only: 2, unknown: 3, context_only: 1 \\},)(?=.*\\{ record_id: '3', density: null, qualification: 'context_only' \\}, \\{ record_id: '4', density: null \\}, \\{ record_id: '5', density: null \\},)(?=.*expect\\(sql\\)\\.toContain\\(\"to_jsonb\\(s\\)\\->>'verification_pass_status'\"\\))(?=.*expect\\(sql\\)\\.not\\.toContain\\(\"s\\.assertion\\->>'operator_role'\"\\))(?=.*expect\\(result\\.density\\.confirmed\\)\\.toBe\\(0\\))(?=.*expect\\(result\\.rows\\.every\\(row => row\\.density === null\\)\\)\\.toBe\\(true\\))(?=.*it\\.each\\(names\\)\\('%s keeps absent stored columns as unknown with catalog flags', async name => \\{)(?=.*judgment_flags: expect\\.arrayContaining\\(\\['catalog_only_rows_present', 'stored_tier_contract_unavailable'\\]\\),)(?=.*const cap = getCapability\\(`marsys://tool/L3/\\$\\{name\\}_read`\\)!)(?=.*const contract = cap\\.density_contract as typeof cap\\.density_contract \\& \\{ stored_tier_columns: string\\[\\] \\})(?=.*const result = await cap\\.handler!\\(\\{ chart_id: 'chart', at: '2026\\-10\\-09T12:00:00Z',)"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K7-3.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"density_contracts\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "attribution_fix": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform-mcp/src/tools/kala_views/registry_contract.test.ts",
-            "pattern": "(?s)\\A(?=.*it\\('PA\\-REQ\\-05 remains revision/hash pinned with all four attribution requests', \\(\\) => \\{)(?=.*const revision = '2051951aaa3f4e1b6a55d728f703bc074daf11ef')(?=.*const path = '00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION\\.md')(?=.*const pinned = section\\(execFileSync\\('git', \\['show', `\\$\\{revision\\}:\\$\\{path\\}`\\], \\{)(?=.*for \\(const pair of \\['avadhi→life_arc', 'bhavishya→prospective_ledger',\\n      'kshetra→predictive_anchors', 'tulana→priority'\\]\\) expect\\(pinned\\)\\.toContain\\(pair\\))(?=.*expect\\(createHash\\('sha256'\\)\\.update\\(pinned\\)\\.digest\\('hex'\\)\\)\\.toBe\\('331f43695e0f2206854143d07153198a50ca25cab91f26f0cd16a41abd302bed'\\))"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K7-3.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"attribution_fix\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "sentinel_on_fixture": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform-mcp/src/tools/kala_views/serving_honesty.test.ts",
-            "pattern": "(?s)\\A(?=.*it\\('an explicit instant carries unavailable negative space through the installed NOW alias', async \\(\\) => \\{)(?=.*qualification: 'published', data: \\{ assertion: \\{ payload: \\{ effective_state: 'information_unavailable',)(?=.*release: \\{ kind: 'unknown', instant: null \\} \\}, roots: \\{ record_ids: \\['CODEX\\-window'\\] \\} \\} \\} \\}\\],)(?=.*const result = await tools\\.get\\('kala_now_get'\\)!\\(\\{ chart_id: chart, as_of: '2026\\-10\\-09', at \\}\\))(?=.*expect\\(result\\.structuredContent\\.object\\.published_now\\)\\.toMatchObject\\(\\{ at, capability: 'marsys://tool/L3/now_read',)(?=.*rows: \\[\\{ data: snapshot\\.rows\\[0\\]\\.data, density: null, density_reason: 'stored_tier_contract_unavailable' \\}\\] \\} \\}\\))(?=.*expect\\(stageCalls\\)\\.toEqual\\(\\[\\{ uri: 'marsys://tool/L3/now_read', args: \\{ chart_id: chart, at \\} \\}\\]\\))(?=.*expect\\(result\\.structuredContent\\.object\\)\\.not\\.toHaveProperty\\('published_now'\\))(?=.*\\.toMatchObject\\(\\{ status: 'information_unavailable', empty_reason: 'query_failed', snapshot: null \\}\\))(?=.*gochara_narrative: \\{ active_windows: \\[\\], context_windows: \\[\\{ qualification: 'context_only', resolution_disclosure: disclosure \\}\\] \\} \\}\\))"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K7-3.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"sentinel_on_fixture\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         }
       },
@@ -2692,10 +2692,10 @@
         "certification_mapping": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/tests/l3/test_ka_tulana.py",
-            "pattern": "(?s)\\A(?=.*def test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse\\(\\):)(?=.*validate = service\\.validate_certification_mapping\\n    assert validate\\(root, mapping\\) == \\[\\])(?=.*assert set\\(mapping\\[\"views\"\\]\\) == \\{\"now\", \"ahead\", \"priority\", \"elect\", \"story\", \"ritual\", \"explain\"\\})(?=.*assert entry\\[\"public_uri\"\\] == f\"marsys://tool/L3/kala_\\{name\\}_get\")(?=.*assert entry\\[\"density_contract\"\\]\\[\"empty_reason\"\\] is True\\n        assert entry\\[\"fidelity_tests\"\\])(?=.*lambda m: m\\[\"views\"\\]\\.pop\\(\"now\"\\))(?=.*lambda m: m\\[\"views\"\\]\\[\"now\"\\]\\.pop\\(\"tier_select\"\\))(?=.*lambda m: m\\[\"views\"\\]\\[\"now\"\\]\\.update\\(fidelity_tests=\\[\\]\\))(?=.*lambda m: m\\[\"hashes\"\\]\\.pop\\(next\\(iter\\(m\\[\"hashes\"\\]\\)\\)\\))(?=.*lambda m: m\\[\"hashes\"\\]\\.update\\(\\{next\\(iter\\(m\\[\"hashes\"\\]\\)\\): \"0\" \\* 64\\}\\))(?=.*lambda m: m\\.update\\(registry_revision=0\\))(?=.*lambda m: m\\[\"detectors\"\\]\\[\"Carr\\.D2\"\\]\\.update\\(verdict=\"PASS\"\\))(?=.*assert validate\\(root, bad\\), \"invalid certification mapping must refuse the step\")"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K7-4.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"certification_mapping\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         }
       },
@@ -4182,46 +4182,46 @@
         "identity_split": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py",
-            "pattern": "(?s)\\A(?=.*def test_two_issues_keep_one_episode_outcome_cluster\\(ctx\\):)(?=.*run\\(ctx, replace\\(value, version=2, delivery=replace\\(value\\.delivery, version=2\\)\\)\\))(?=.*assert ctx\\.db_conn\\.execute\\('SELECT count\\(\\*\\),count\\(DISTINCT \\(chart_id,event_class,phase,affected_person,episode\\)\\) ')(?=.*'FROM issued_forecast JOIN issued_forecast_outcome USING\\(issue_id,version\\)'\\)\\.fetchone\\(\\) == \\(2, 1\\))"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K6-5.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"identity_split\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "registrar_interface": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py",
-            "pattern": "(?s)\\A(?=.*class RegistrarInput:)(?=.*    delivery: DeliveryConfirmation \\| None\\n    ontology: ObservationPredicate \\| None)(?=.*return None, 'not_delivered')(?=.*or \\(delivery\\.issue_id, delivery\\.version, delivery\\.statement\\)\\n            != \\(value\\.issue_id, value\\.version, value\\.statement\\))(?=.*return None, 'information_unavailable:delivery_confirmation_mismatch')(?=.*or value\\.calibration_status != 'calibrated' or value\\.result_policy == 'all_null')(?=.*return None, 'information_unavailable:probability_not_qualified')(?=.*'affected_person': value\\.affected_person, 'episode': value\\.episode,)(?=.*'delivered_at': delivery\\.delivered_at, 'delivery_channel': delivery\\.channel,)(?=.*'delivered_statement': delivery\\.statement, 'result_policy': value\\.result_policy,)(?=.*'probability_target': probability,)(?=.*inserted \\+= int\\(insert_immutable_checked\\(\\n                    cur, 'issued_forecast', \\{'issue_id': row\\['issue_id'\\], 'version': row\\['version'\\]\\}, row,)"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K6-5.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"registrar_interface\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "reference_protection_switched": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py",
-            "pattern": "(?s)\\A(?=.*@register\\('ka_bhavishya_lekha'\\)\\nclass KaBhavishyaLekhaWriter\\(WriterBase\\):)(?=.*def _run_registrar\\(ctx, values\\) \\-> WriterResult:)(?=.*prepared = \\[_registrar_row\\(ctx, value\\) for value in values\\])(?=.*inserted \\+= int\\(insert_immutable_checked\\(\\n                    cur, 'issued_forecast', \\{'issue_id': row\\['issue_id'\\], 'version': row\\['version'\\]\\}, row,)(?=.*        return _run_registrar\\(ctx, ctx\\.config\\.get\\('registrar_inputs', \\(\\)\\)\\))"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K6-5.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"reference_protection_switched\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "oracles": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py",
-            "pattern": "(?s)\\A(?=.*def test_unchanged_inputs_create_no_new_issue\\(ctx\\):\\n    value = request\\(ctx\\)\\n    run\\(ctx, value\\)\\n    run\\(ctx, value\\)\\n    assert count\\(ctx\\) == 1)(?=.*def test_two_issues_keep_one_episode_outcome_cluster\\(ctx\\):)(?=.*'FROM issued_forecast JOIN issued_forecast_outcome USING\\(issue_id,version\\)'\\)\\.fetchone\\(\\) == \\(2, 1\\))(?=.*run\\(ctx, replace\\(value, delivery=mutations\\[confirmation\\]\\)\\)\\n    assert count\\(ctx\\) == 0)(?=.*def test_uncalibrated_probability_cannot_be_issued\\(ctx\\):\\n    run\\(ctx, request\\(ctx, probability_target=0\\.7\\)\\)\\n    assert count\\(ctx\\) == 0)(?=.*def test_domain_and_falsifier_come_from_pinned_ontology_not_keywords\\(ctx\\):)(?=.*'career', 'No recorded career change in the covered intervals'\\))(?=.*with pytest\\.raises\\(ImmutableIssueConflict\\):\\n        run\\(ctx, replace\\(value, point_functional='midpoint'\\)\\))(?=.*assert ctx\\.db_conn\\.execute\\('SELECT point_functional FROM issued_forecast'\\)\\.fetchone\\(\\) == \\('none',\\))(?=.*assert \\(count\\(ctx\\), 'information_unavailable' in result\\.notes\\) == \\(0, True\\))"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K6-5.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"oracles\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         },
         "certification_mapping": {
           "evidence": "pr_head_evidence",
           "detector": {
-            "type": "branch_file_contains",
-            "ref": "origin/main",
-            "path": "platform/python-sidecar/services/ka_bhavishya_lekha/certification_mapping.json",
-            "pattern": "(?s)\\A(?=.*\"version\": \"K6\\-5/v2\")(?=.*\"asset\": \"ka_bhavishya_lekha\")(?=.*\"scope\": \"Default append\\-only registrar dispatch and K6\\-5a reference protection; live source admission remains pending\")(?=.*\"production_certification\": null)(?=.*\"density_tier_columns\": null)(?=.*tests/l3/kala_db/ka_bhavishya_lekha/test_registrar\\.py::test_disconnected_intervals_and_verbatim_statement_survive)(?=.*\"oracles\": \"tests/l3/ka_bhavishya_lekha/test_reference_protection\\.py; tests/l3/kala_db/ka_bhavishya_lekha/test_registrar\\.py\")(?=.*FAIL under current Idem\\.pattern detector for insert_immutable_checked; reviewed immutable\\-insertion detector treatment routed to PLAN section7/R\\-10\\. Never delete issued history\\.)(?=.*\"detector_none\": \\[\\n        \"Carr\\.D2\"\\n      \\])(?=.*\"Build\\.contract\": 2)(?=.*\"Idem\\.pattern\": 4)(?=.*\"Earn\\.build_record\": 3)(?=.*\"Vocab\\.identity\": 2)(?=.*\"Ldgr\\.source_presence\": 6)(?=.*\"Dens\\.served\": 14)(?=.*\"Narr\\.agree\": 7)(?=.*\"Null\\.schema_default\": 9)(?=.*\"Carr\\.D1\": 5)(?=.*\"Build\": \\{\\n      \"revisions\": \\{)(?=.*\"Idem\": \\{\\n      \"revisions\": \\{)(?=.*\"Earn\": \\{\\n      \"revisions\": \\{)(?=.*\"Vocab\": \\{\\n      \"revisions\": \\{)(?=.*\"Ldgr\": \\{\\n      \"revisions\": \\{)(?=.*\"Dens\": \\{\\n      \"revisions\": \\{)(?=.*\"Narr\": \\{\\n      \"revisions\": \\{)(?=.*\"Null\": \\{\\n      \"revisions\": \\{)(?=.*\"Carr\": \\{\\n      \"revisions\": \\{)(?=.*\"kind\": \"data\")(?=.*\"carriage\": \\{\\n    \"nature\": \"source\",)(?=.*\"ldgr_source\": \\{\\n    \"column\": \"falsifier\\.provenance\",)(?=.*\"vocab_alias\": null)(?=.*\"prose_fields\": \\[\\n    \"delivered_statement\"\\n  \\])(?=.*\"null_convention\": \"Missing confirmations never issue; unavailable identity/qualification/ontology bindings retain named reasons; explicitly nullable probability_target\")(?=.*\"produced_tables\": \\[\\n    \"issued_forecast\"\\n  \\])(?=.*\"semantic_fingerprint\": \\{)(?=.*\"writer_digest\": \"platform/src/generated/nirmana\\-writer\\-digests\\.json:ka_bhavishya_lekha\")(?=.*\"disposition\": \"Default writer uses insert_immutable_checked and K6\\-5a lifecycle protection;)"
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/K6-5.STEP_VERDICTS.json",
+            "pattern": "\"step\"\\s*:\\s*\"certification_mapping\"\\s*,\\s*\"verdict\"\\s*:\\s*\"MET\"\\s*,\\s*\"mutation_verified\"\\s*:\\s*true\\s*,\\s*\"head\"\\s*:\\s*\"[0-9a-f]{40}\"\\s*,\\s*\"merged_on_main\"\\s*:\\s*true",
+            "measures": "independent step review at the merged head ran the step's oracles and showed each fails when the step's behaviour is reverted/disabled (revert-fails); written only by the cockpit from an independent Codex review result (same earned-signal class as the V-* packet verdict detectors)"
           }
         }
       },
