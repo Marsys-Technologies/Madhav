@@ -405,7 +405,9 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
             ? rawTiers as Record<string, unknown> : {}
           const factVerified = ids.length > 0 && ids.every(id => tiers[String(id)] === 'two_pass_verified')
           const unassessedReason = ledger['null_reason'] === 'partial_defeat_unassessed'
-            || ledger['null_reason'] === 'contestation_unassessed' ? ledger['null_reason'] as string : null
+            || ledger['null_reason'] === 'contestation_unassessed'
+            || ledger['null_reason'] === 'missing_defeat_facts'
+            || ledger['null_reason'] === 'conditions_unassessed' ? ledger['null_reason'] as string : null
           const rank = unassessedReason ? 2 : factVerified && !unverifiedYogaTier ? 0 : unverifiedYogaTier ? 1 : 2
           if (unassessedReason && !judgment_flags.includes(unassessedReason)) judgment_flags.push(unassessedReason)
           if (!unknownYogaTier) return { row, rank }
