@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -2604,15 +2604,30 @@
       "step_evidence": {
         "density_contracts": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K7-3.density_contracts.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K7\\-3\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"density_contracts\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "attribution_fix": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K7-3.attribution_fix.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K7\\-3\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"attribution_fix\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "sentinel_on_fixture": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K7-3.sentinel_on_fixture.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K7\\-3\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"sentinel_on_fixture\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         }
       },
       "triage": {
@@ -2676,7 +2691,12 @@
       "step_evidence": {
         "certification_mapping": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K7-4.certification_mapping.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K7\\-4\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"certification_mapping\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         }
       },
       "triage": {
@@ -4161,23 +4181,48 @@
       "step_evidence": {
         "identity_split": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K6-5.identity_split.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K6\\-5\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"identity_split\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "registrar_interface": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K6-5.registrar_interface.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K6\\-5\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"registrar_interface\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "reference_protection_switched": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K6-5.reference_protection_switched.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K6\\-5\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"reference_protection_switched\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "oracles": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K6-5.oracles.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K6\\-5\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"oracles\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         },
         "certification_mapping": {
           "evidence": "pr_head_evidence",
-          "detector": null
+          "detector": {
+            "type": "file_contains",
+            "path": "/Users/Dev/kalayantra/run/reviews/steps/K6-5.certification_mapping.json",
+            "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"K6\\-5\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"certification_mapping\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the merged head and showed every reversion of the step's production behaviour makes them fail (CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
         }
       },
       "triage": {
