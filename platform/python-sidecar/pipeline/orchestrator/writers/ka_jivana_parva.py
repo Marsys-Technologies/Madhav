@@ -206,6 +206,7 @@ class KaJivanaParvaWriter(WriterBase):
                 high_conv_count,
                 avg_score,
                 f"ka_jivana_parva:v2.0:MD={md_planet}",
+                UNVERIFIED_DEFAULT,
             ))
 
             # D7: AD sub-chapters — antardashas whose start_date falls within this MD span
@@ -268,6 +269,7 @@ class KaJivanaParvaWriter(WriterBase):
                     ad_high_cnt,
                     ad_avg_score,
                     f"ka_jivana_parva:v2.0:MD={md_planet}:AD={ad_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # O6: Pratyantar-dasha level-3 — additive, current AD only.
@@ -344,6 +346,7 @@ class KaJivanaParvaWriter(WriterBase):
                     pd_high_cnt,
                     pd_avg_score,
                     f"ka_jivana_parva:v2.0:PD={pd_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
@@ -355,7 +358,7 @@ class KaJivanaParvaWriter(WriterBase):
                         narrative, high_convergence_count, avg_effective_score,
                         source_citation, verification_pass_status
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, [(*row, UNVERIFIED_DEFAULT) for row in rows])
+                """, rows)
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 

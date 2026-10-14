@@ -136,6 +136,7 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                 json.dumps(obs_summary),
                 json.dumps(narrative),
                 f"ka_kala_darshana:v1.0:conv={conv_id}",
+                UNVERIFIED_DEFAULT,
             ))
 
         if rows:
@@ -146,7 +147,7 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                         effective_score, net_label, peak_date, window_start, window_end,
                         obstruction_summary, narrative, source_citation, verification_pass_status
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    [(*row, UNVERIFIED_DEFAULT) for row in rows],
+                    rows,
                 )
 
         return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))

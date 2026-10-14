@@ -1,5 +1,5 @@
--- Migration 1374: K7-3 producer-stored verification on the six stage sources.
--- Created: 2026-10-14. Number allocated by migration_number_guard --next.
+-- Migration 1376: K7-3 producer-stored verification on the six stage sources.
+-- Created: 2026-10-14. 1375 reserved by pending K6-123 PR #3495; 1376 checked by migration_number_guard.
 -- Nullable, without DEFAULT/backfill: existing rows have no new verification proof.
 -- Producers use UNVERIFIED_DEFAULT; only a future independent detector may promote.
 BEGIN;

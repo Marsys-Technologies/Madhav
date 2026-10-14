@@ -344,6 +344,7 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                 # L3-W3: carry a recorded outcome across the rebuild rather than resetting it.
                 *_reattach_outcome(preserved_outcomes, signal_id, peak_date),
                 f"ka_bhavishya_lekha:v1.0:rank={rank}",
+                UNVERIFIED_DEFAULT,
             ))
 
         # This assertion is intentionally still before DELETE. It guards future changes to the
@@ -427,7 +428,7 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                            verification_pass_status = %s,
                            computed_at = NOW()
                      WHERE chart_id = %s AND id = %s
-                """, [(*row[:-2], UNVERIFIED_DEFAULT, *row[-2:]) for row in matched_rows])
+                """, matched_rows)
 
         if new_rows:
             with conn.cursor() as cur:
@@ -439,7 +440,7 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                     falsifiability, source_chain, narrative,
                     outcome_recorded, outcome_notes, source_citation, verification_pass_status
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, [(*row, UNVERIFIED_DEFAULT) for row in new_rows])
+                """, new_rows)
 
         return WriterResult(
             asset_id='ka_bhavishya_lekha',

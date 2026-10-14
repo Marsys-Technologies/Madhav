@@ -123,7 +123,7 @@ def test_additive_migration_replays_keeps_old_rows_null_and_refuses_unknown_stat
         pytest.skip('requires explicitly enabled disposable SQL job')
     info = conninfo_to_dict(dsn)
     assert (info['host'], info['port'], info['dbname']) == ('127.0.0.1','55433','ky_cx_k73')
-    path = Path(__file__).parents[3]/'supabase/migrations/1374_k7_stage_verification_status.sql'
+    path = Path(__file__).parents[3]/'supabase/migrations/1376_k7_stage_verification_status.sql'
     assert path.exists(), 'additive stored-tier migration missing'
     body = path.read_text().replace('BEGIN;', '').replace('COMMIT;', '').replace('public.', 'pg_temp.')
     tables = ('kala_darshana','kala_obstruction','kala_gochara_contacts','kala_bhavishya','kala_convergence','kala_jivana_parva')
@@ -156,7 +156,7 @@ def persisted_producer_sql(monkeypatch):
     info = conninfo_to_dict(dsn)
     assert (info['host'],info['port'],info['dbname']) == ('127.0.0.1','55433','ky_cx_k73')
     tables=('kala_darshana','kala_obstruction','kala_gochara_contacts','kala_bhavishya','kala_convergence','kala_jivana_parva')
-    path=Path(__file__).parents[3]/'supabase/migrations/1374_k7_stage_verification_status.sql'
+    path=Path(__file__).parents[3]/'supabase/migrations/1376_k7_stage_verification_status.sql'
     with psycopg.connect(dsn) as conn:
         for table in tables:
             conn.execute(f'CREATE TEMP TABLE {table} (LIKE public.{table} INCLUDING DEFAULTS)')

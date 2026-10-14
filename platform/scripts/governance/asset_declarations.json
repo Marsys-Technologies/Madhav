@@ -17515,16 +17515,9 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_bhavishya; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251 reads `kala_bhavishya` (`FROM kala_bhavishya`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:323, function at :562) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:317; f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:528 and platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:529); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
+    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:324, function at :565) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:318; f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:531 and platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:532); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
    },
-   "evidence_kind": "writer",
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:427"
-    }
-   ]
+   "evidence_kind": "writer"
   },
   "ka_dasha_kala": {
    "kind": "service",
@@ -17610,16 +17603,9 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_jivana_parva; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:159 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:438; called at platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:191 MD, :251 AD, :327 PD; inserted to kala_jivana_parva.narrative at :354); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:153."
+    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:442; called at platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:192 MD, :253 AD, :330 PD; inserted to kala_jivana_parva.narrative at :358); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:153."
    },
-   "evidence_kind": "writer",
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:356"
-    }
-   ]
+   "evidence_kind": "writer"
   },
   "ka_kala_darshana": {
    "kind": "data",
@@ -17639,16 +17625,9 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_darshana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K0a-4/v1 candidate/fixture certification mapping (registry revision 26, no production certification claimed): platform/python-sidecar/services/kala_core/assertion/certification_mapping.json:1",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87 reads `kala_darshana` (`FROM kala_darshana`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_kala_darshana.py _build_narrative composes the JSONB narrative by f-string from effective score, net label, peak date, confidence, orb and obstructions and returns {headline, context, caution} (platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:242, built at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:115, inserted to kala_darshana.narrative at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:146); a served capability reads it (platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:86). obstruction_summary is a list of {type, severity, override_score} values: structured data, not declared."
+    "prose_fields": "writers/ka_kala_darshana.py _build_narrative composes the JSONB narrative by f-string from effective score, net label, peak date, confidence, orb and obstructions and returns {headline, context, caution} (platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:244, built at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:116, inserted to kala_darshana.narrative at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:148); a served capability reads it (platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:86). obstruction_summary is a list of {type, severity, override_score} values: structured data, not declared."
    },
-   "evidence_kind": "writer",
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:147"
-    }
-   ]
+   "evidence_kind": "writer"
   },
   "ka_kalasutra": {
    "kind": "data",
@@ -17750,14 +17729,7 @@
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_convergence; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K4-3/v1 fixture-only certification mapping (registry revision 30; no production certificate): platform/python-sidecar/services/ka_sangam/jury/certification_mapping.json:1",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:126 reads `kala_convergence` (`FROM kala_convergence`). Dens.served=FAIL.",
     "prose_fields": null
-   },
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py:948"
-    }
-   ]
+   }
   },
   "ka_sudarshana_varsha": {
    "kind": "data",
@@ -17860,16 +17832,9 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_obstruction; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K0a-4/v1 candidate/fixture certification mapping (registry revision 26, no production certification claimed): platform/python-sidecar/services/kala_core/assertion/certification_mapping.json:1",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:643 (test-only proxy), platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:695, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:752, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:829, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:908, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:964 (constant stubs at :790 and :865 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:290, and json.dumps(detail) in the dasha-anchored builder, INSERT at :335). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. The malefic-transit reason (ka_vighnakara.py:695) is now chart-relative (Track I-2): it names the building chart's own lagna and Moon sign (from chart_facts graha_position longitude_sidereal) and the house relation that made the sign adverse; with neither natal anchor known the detector emits nothing. Rows already stored keep the old hard-coded Aries/Aquarius text until the chart is rebuilt."
+    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:646 (test-only proxy), platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:698, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:755, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:832, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:911, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:967 (constant stubs at :793 and :868 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:291, and json.dumps(detail) in the dasha-anchored builder, INSERT at :338). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. The malefic-transit reason (ka_vighnakara.py:698) is now chart-relative (Track I-2): it names the building chart's own lagna and Moon sign (from chart_facts graha_position longitude_sidereal) and the house relation that made the sign adverse; with neither natal anchor known the detector emits nothing. Rows already stored keep the old hard-coded Aries/Aquarius text until the chart is rebuilt."
    },
-   "evidence_kind": "writer",
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:339"
-    }
-   ]
+   "evidence_kind": "writer"
   },
   "ka_yojaka": {
    "kind": "data",
@@ -18324,28 +18289,6 @@
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:514 reads `phala_suddha_sodhana` (`FROM phala_suddha_sodhana`). Dens.served=FAIL.",
     "prose_fields": null
    }
-  },
-  "ka_gochara_v4_41_candidate": {
-   "kind": "data",
-   "carriage": {
-    "served_surface": null
-   },
-   "prose_fields": null,
-   "terminal_by_construction": null,
-   "cross_asset_writes": null,
-   "read_evidence": null,
-   "read_table": null,
-   "read_kind": null,
-   "evidence": {
-    "kind": "Registered candidate contact writer delegates storage to services/gochara_kernel/ledger.py; no live serving certification claimed."
-   },
-   "density_tier_columns": [
-    {
-     "column": "verification_pass_status",
-     "why": "Verification state for this output is stored without inheriting source scores; no independent detector ran, so producers emit the canonical unverified default.",
-     "evidence": "platform/python-sidecar/services/gochara_kernel/ledger.py:205"
-    }
-   ]
   }
  },
  "source_declaration_fields": [

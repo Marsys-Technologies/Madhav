@@ -290,6 +290,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -328,6 +329,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
@@ -338,7 +340,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                         obstruction_type, severity, severity_score, override_score,
                         obstruction_detail, source_citation, verification_pass_status
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    [(*row, UNVERIFIED_DEFAULT) for row in rows],
+                    rows,
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
