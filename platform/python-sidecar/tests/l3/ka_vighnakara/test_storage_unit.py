@@ -15,8 +15,11 @@ class CandidateCursor:
         pass
 
     def execute(self,sql,params):
-        self.result = ((str(finding().chart_id),'candidate:fixture','building',{'fixture':True})
-                       if 'kala_layer_candidate' in sql else None)
+        if 'FROM pg_attribute' in sql:
+            self.result = (False,)
+        else:
+            self.result = ((str(finding().chart_id),'candidate:fixture','building',{'fixture':True})
+                           if 'kala_layer_candidate' in sql else None)
         return self
 
     def fetchone(self):
