@@ -61,7 +61,9 @@ class FakeCursor:
     def execute(self, sql, params=None):
         self._last_sql = sql
         low = sql.lower()
-        if 'insert into kala_convergence' in low:
+        if 'from pg_attribute' in low:
+            self._result = [(True,)]
+        elif 'insert into kala_convergence' in low:
             # Capture the emitted SQL and binds, including horizon_tier + score
             self._store['inserts'].append({'sql': sql, 'params': params})
             self._result = []

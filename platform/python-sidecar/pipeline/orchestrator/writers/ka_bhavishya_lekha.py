@@ -1,6 +1,7 @@
 """ka_bhavishya_lekha writer — probabilistic forward projection artifact."""
 import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 from datetime import date, datetime
 from dataclasses import dataclass
 from decimal import Decimal
@@ -414,9 +415,12 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                     [chart_id, *stale_ids],
                 )
 
+        with conn.cursor() as tier_cursor:
+            store_tier = has_stored_verification(tier_cursor, 'kala_bhavishya')
+
         if matched_rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                cur.executemany(f"""
                     UPDATE kala_bhavishya
                        SET projection_rank = %s,
                            probability_tier = %s,
@@ -433,22 +437,22 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                            outcome_recorded = %s,
                            outcome_notes = %s,
                            source_citation = %s,
-                           verification_pass_status = %s,
+                           {"verification_pass_status = %s," if store_tier else ""}
                            computed_at = NOW()
                      WHERE chart_id = %s AND id = %s
-                """, matched_rows)
+                """, matched_rows if store_tier else [row[:-3] + row[-2:] for row in matched_rows])
 
         if new_rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                cur.executemany(f"""
                 INSERT INTO kala_bhavishya (
                     chart_id, projection_rank, probability_tier, domain,
                     peak_date, window_start, window_end,
                     convergence_id, signal_id, effective_score,
                     falsifiability, source_chain, narrative,
-                    outcome_recorded, outcome_notes, source_citation, verification_pass_status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, new_rows)
+                    outcome_recorded, outcome_notes, source_citation{", verification_pass_status" if store_tier else ""}
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})
+                """, new_rows if store_tier else [row[:-1] for row in new_rows])
 
         return WriterResult(
             asset_id='ka_bhavishya_lekha',

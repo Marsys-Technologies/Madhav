@@ -61,3 +61,21 @@ it.each(['kala_bhavishya','kala_convergence','kala_jivana_parva'])(
     expect(result.rows[0]).toMatchObject({density:null,qualification:'context_only'})
   },
 )
+
+it.each(names)('%s keeps absent stored columns as unknown with catalog flags', async name => {
+  await import('./index')
+  const { getCapability } = await import('../../index')
+  db.mockReset().mockResolvedValue({ rows: [{ manifest, coverage: [], sources: [{
+    table: 'kala_darshana', total: 1, rows: [{ id: 'old', generation: '4.1',
+      effective_score: 0.99, assertion: { operator_role: 'scored' } }],
+  }] }] })
+  const result = await getCapability(`marsys://tool/L3/${name}_read`)!.handler!({ chart_id: 'chart',
+    at: '2026-10-09T12:00:00Z', date_from: '2026-10-09T00:00:00Z',
+    date_to: '2026-10-10T00:00:00Z', event_class: 'travel', assertion_id: 'a1' }, {})
+  expect(result.is_error).toBe(false)
+  expect(result.content).toMatchObject({ density: { confirmed: 0, catalog_only: 0, unknown: 1 },
+    catalog_only_rows_in_page: 1, rows: [{ density: null, verification: { status: null } }],
+    judgment_flags: expect.arrayContaining(['catalog_only_rows_present', 'stored_tier_contract_unavailable']),
+  })
+  expect(db.mock.calls[0][0]).not.toMatch(/s\.verification_pass_status/)
+})
