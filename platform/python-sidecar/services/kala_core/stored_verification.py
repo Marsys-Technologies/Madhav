@@ -16,4 +16,6 @@ def has_stored_verification(cursor, table: str) -> bool:
         ) AS present
     """, (table,))
     row = cursor.fetchone()
+    if row is None:     # no answer (e.g. a test double) is not proof the column exists: honest absent
+        return False
     return bool(row['present'] if isinstance(row, dict) else row[0])

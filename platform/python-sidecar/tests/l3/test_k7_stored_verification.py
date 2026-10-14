@@ -293,3 +293,23 @@ def test_schema_probe_refreshes_for_the_next_invocation(monkeypatch):
     c.has_tier = True
     assert has_stored_verification(c, 'kala_gochara_contacts') is True
     assert c.probes == 2
+
+
+@pytest.mark.parametrize('probe_row, expected', [
+    (None, False),
+    ((False,), False),
+    ((True,), True),
+    ({'present': False}, False),
+    ({'present': True}, True),
+])
+def test_schema_probe_requires_an_explicit_presence_answer(probe_row, expected):
+    from unittest.mock import MagicMock
+    from services.kala_core.stored_verification import has_stored_verification
+    cursor = MagicMock()
+    cursor.fetchone.return_value = probe_row
+    assert has_stored_verification(cursor, 'kala_bhavishya') is expected
+    cursor.execute.assert_called_once()
+    cursor.fetchone.assert_called_once()
+    sql, params = cursor.execute.call_args.args
+    assert 'FROM pg_attribute' in sql
+    assert params == ('kala_bhavishya',)
