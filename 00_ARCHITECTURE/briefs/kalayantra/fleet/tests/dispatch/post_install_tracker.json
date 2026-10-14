@@ -1,0 +1,2547 @@
+{
+  "next": {
+    "stream": "",
+    "version": 393,
+    "running": [
+      {
+        "id": "K7-3",
+        "title": "density_contract declared on the same capability entry that selects the tier column, for all seven views; the false attribution in PRIORITY removed; the negative-space sentinel distinction reaches kala_now_get on fixtures",
+        "lane": "K · K7 serving",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K7-2"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3337 @ 959d324483de3f3f26da98d4cc9b60d88cf39417. C485: all 6 required PR checks SUCCESS: Governance Tool Tests, Governance Gates, TypeScript, Unit Tests, TAP-6, Secret Scan. OSR-011 six-step reconciliation from C483 pushed; existing independent non-Kala Purna changed-diff ACCEPTED receipt inspected (93 focused tests); historical v2-v27 preserved. No source change or test rerun this cycle. Full CI still has 3 IN_PROGRESS jobs (DB Integration, C38 teardown round2, A5.5f slice round2); no observed failure. Previous exact-head itemprecheck RED1 blanket protected-path hygiene preserved, no waiver/check edit. PR remains DRAFT: KYD125/129 conductor producer-tier/L3 density pins and fresh independent item diff/tests verdict are still due; density acceptance is unearned. No completion, merge or production action. · 621 commits on origin/kalayantra/k7-3 not yet on main",
+        "progress": 0.6666666666666666,
+        "actor": "stream-K:k5",
+        "evidence": null,
+        "started_at": "2026-10-09T02:10:28+00:00",
+        "updated_at": "2026-10-12T22:34:17+00:00",
+        "checked_at": "2026-10-13T03:47:58+00:00",
+        "steps": [
+          {
+            "name": "density_contracts",
+            "done": false
+          },
+          {
+            "name": "attribution_fix",
+            "done": true
+          },
+          {
+            "name": "sentinel_on_fixture",
+            "done": true
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": 351510.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "density_contracts": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "attribution_fix": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "sentinel_on_fixture": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "K4-2b",
+        "title": "The jury's deletions, behind a compatibility shim: Modes A–D as row producers, the own ephemeris scan, the static prior, confidence_* fields and destructive plan_substeps removed from code; the three runtime readers of confidence_label move to D(W) + witness signature",
+        "lane": "K · K4 jury",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K4-2aw"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3390 @ c3c16d1c4cadbe882f973abf7f3f4ed1d72715d0. C484 rebased onto main after K4-2aw merged (actual method: merge origin/main, no history rewrite); parent squash67afae086 included, base now main. SQL fixture conflict takes exact main unique transactional verifier role; generated conflicts canonical regenerate:4checks+rev29pin PASS. All8 own source/test paths unchanged b52697e4e;4incoming paths exactmain; final10path diff only own reader/planning changes+4Kala digests/census hash. Itemprecheck GREEN0:442PASS0SKIP incl62realSQL; extra inherited legacy-dispatch oracle1PASS; scans/gitleaks/numberguard/hygiene PASS,no migration. Testedtree5cb8f8c845609309d028d44199b40c43e9447f6b equals committedtree. Required CI and independent review remain due; KYD139 fixture preparation only, live mapping/GJ/deletions/K9-4b due. Evidence Archives/kalayantra-k1-cycle484-c3c16d1c4.tar.gz. Session PostgreSQL15 stopped, zero fixture DBs; scratch cleaned after handoff. Existing checkout retained for open PR, no new worktree/production/automerge/DONE. · 544 commits on origin/kalayantra/k4-2b not yet on main",
+        "progress": 1.0,
+        "actor": "stream-K:k1",
+        "evidence": null,
+        "started_at": "2026-10-10T01:27:33+00:00",
+        "updated_at": "2026-10-12T08:48:46+00:00",
+        "checked_at": "2026-10-13T03:47:59+00:00",
+        "steps": [
+          {
+            "name": "deletions",
+            "done": true
+          },
+          {
+            "name": "shim_for_live_readers",
+            "done": true
+          },
+          {
+            "name": "three_readers_moved",
+            "done": true
+          },
+          {
+            "name": "tests",
+            "done": true
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-2aw"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-2aw"
+        ],
+        "elapsed_s": 267685.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "deletions": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "shim_for_live_readers": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "three_readers_moved": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "tests": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "K4-3",
+        "title": "Canonical claim attachment (reading claims → jury assertions); no double credit",
+        "lane": "K · K4 jury",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K4-2b"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3393 @ ee773b5383850067a5658ccafa42fd2488e6f344. C436 corrects C435 acceptance-retention note: rebased onto main after K4-2b PR3390 merged (actual method merge origin/main, no history rewrite); inherited test_jury_candidate_end_to_end.py:27-37 adds per-fixture transactional NOLOGIN verifier role from main. Source attachment computation/contract/mapping/oracles unchanged; 51 incoming paths exactmain, nine effective item paths. Nonmerge ancestry from accepted912efb617 includes four main squash commits, so do not infer current acceptance. Conductor M120318 requests delta verdict. Archived exact-head committed-tree itemprecheck verified this cycle:170jury+22realSQL=192PASS0SKIP, hygiene/scansGREEN0; four aggregatechecks/rev29pinPASS recorded C435. Evidence /Users/Dev/Archives/kalayantra-k5-cycle435-ee773b538.tar.gz final-precheck.log and inspection.json. No unchanged test rerun, migration, production, automerge or DONE; requiredCI stillrunning; fresh narrow inherited-delta review due. · 552 commits on origin/kalayantra/k4-3 not yet on main",
+        "progress": 1.0,
+        "actor": "stream-K:k5",
+        "evidence": null,
+        "started_at": "2026-10-10T02:01:21+00:00",
+        "updated_at": "2026-10-12T12:13:50+00:00",
+        "checked_at": "2026-10-13T03:47:59+00:00",
+        "steps": [
+          {
+            "name": "certification_mapping",
+            "done": true
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-2b"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-2b"
+        ],
+        "elapsed_s": 265657.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "K6-5a",
+        "title": "The L5 issued-forecast lifecycle contract (the one permitted cross-layer item): table location as D-R11 rules, the reference-protection contract that replaces the L4 phala_anchors protective read, tested before anything is removed",
+        "lane": "K · K6 read models",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "D-R11",
+          "K4-3"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3399 @ e59b1c03759699794d7b165d1ae5b97de092368d. C511 repaired DIRTY by merge origin/main6f8dee9e3, no history rewrite. All43 incoming non-list paths exactmain; all4 lifecycle source/test/contract paths unchanged; protected-list conflict sorted additive union verified. Five-path449line item preserved; testedtree932cd942=committedtree. ItemprecheckGREEN0:35realSQL+6unchangedL4=41PASS0SKIP;4canonicalaggregates/rev30pinPASS. Full migrate.ts disposableky_k4:464tables995ledger,exact9expectedrestoreerrors,bothlifecyclehashes match,2validatedRESTRICTFKs,4enabledimmutabletriggers. Dequeued ONLY ownPR for authorized update; gh/remote/local publishedhead verified,OPEN base main,unarmed. RequiredCI+inheritedmain/protected-list delta verdict due; original lifecycle acceptance preserved. OwnedDB dropped,ownserver stopped,scratch removed; retained supervisorworktree for openPR. Evidence Archives/kalayantra-k4-cycle511-e59b1c037.tar.gz and run/k4.c511.inspection.json. No production/autoarming/DONE. · 551 commits on origin/kalayantra/k6-5a not yet on main",
+        "progress": null,
+        "actor": "stream-K:k4",
+        "evidence": null,
+        "started_at": "2026-10-10T02:57:40+00:00",
+        "updated_at": "2026-10-12T20:35:59+00:00",
+        "checked_at": "2026-10-13T03:47:59+00:00",
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-3"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-3"
+        ],
+        "elapsed_s": 262278.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": null
+      },
+      {
+        "id": "K6-5",
+        "title": "ka_bhavishya_lekha as the registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; an issue exists only on delivery; no probability while uncalibrated",
+        "lane": "K · K6 read models",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K6-5a"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3402 @ 6898a3d8a04bdfe8996e1dd1542c8d88e2ba7bc4. C561 fixes CI shard3 stale ka_bhavishya_lekha narration citations: guard test_e6_1_declarations.py:321-323 now331/325/536/537; declaration asset_declarations.json:17518 matches plus builder570. Original failure reproduced;641 declaration tests PASS. Official itemprecheck GREEN0:784PASS0SKIP (143item incl75SQL and real lock+641governance),scans,numberguard,hygienePASS;canonical census regeneration unchanged/checkPASS. Necessary owns extension:matching governance guard. Source behavior and KYD141 live admission/reference cutover limits unchanged. Fresh changed-diff review and requiredCI due. No migration/production/arming/DONE. Owned fixtureDBs absent,PG56421 stopped;cleanup archive follows. · 559 commits on origin/kalayantra/k6-5 not yet on main",
+        "progress": 0.8,
+        "actor": "stream-K:k2",
+        "evidence": null,
+        "started_at": "2026-10-10T03:27:21+00:00",
+        "updated_at": "2026-10-12T21:29:50+00:00",
+        "checked_at": "2026-10-13T03:48:00+00:00",
+        "steps": [
+          {
+            "name": "identity_split",
+            "done": true
+          },
+          {
+            "name": "registrar_interface",
+            "done": true
+          },
+          {
+            "name": "reference_protection_switched",
+            "done": false
+          },
+          {
+            "name": "oracles",
+            "done": true
+          },
+          {
+            "name": "certification_mapping",
+            "done": true
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [
+          "K6-5a"
+        ],
+        "deps_merged_pending_deploy": [
+          "K6-5a"
+        ],
+        "elapsed_s": 260497.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "identity_split": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "registrar_interface": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "reference_protection_switched": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "oracles": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "K4-2aw",
+        "title": "Convergence writer and qualification",
+        "lane": "K · K4 jury",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K4-2a"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3385 @ 956a250197e437e7a43d41bb6e5260bf9ab6cd82. C495 corrects preceding full-SHA typo with git-verified committed/pushed head. Repairs both CI failures: missing verifier_principal grants at test_jury_candidate_end_to_end.py27-38 now use unique transactional NOLOGIN role; legacy enrichment guard test_fix_plan_proofs.py246-263 checks retained parent plus public delegation, preserving original assertion. Fresh PG15:20errors before/20PASS after; role/DB cleanup readback0. FIX5:1FAIL before/4PASS after. Final itemprecheckGREEN0:161PASS0SKIP incl39realSQL; scans/numberguard/hygienePASS. No production source/generated digest changes. Existing test_fix_plan_proofs.py owns extension disclosed. Evidence /Users/Dev/Archives/kalayantra-k2-cycle495-k4-2aw.tar.gz. Changed-head independent review and requiredCI due; no production/automerge/DONE. · 534 commits on origin/kalayantra/k4-2aw not yet on main",
+        "progress": null,
+        "actor": "stream-K:k2",
+        "evidence": null,
+        "started_at": "2026-10-10T00:22:30+00:00",
+        "updated_at": "2026-10-12T08:14:18+00:00",
+        "checked_at": "2026-10-13T03:48:03+00:00",
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-2a"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-2a"
+        ],
+        "elapsed_s": 271588.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "K4-2a",
+        "title": "Convergence core: schema, algebra, Jaimini, groups, agreement, contests",
+        "lane": "K · K4 jury",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K1-1b",
+          "K3-1",
+          "K4-1"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3379 @ 2ae6244c3cf743e7625f0b26b46b08a3d9a99676 (conductor: final merged head; verdict at c7dcc7ee8d0d066f0f6cfb20e548c67f2a476d5a carried by merge-only commits) · 494 commits on origin/kalayantra/k4-2a not yet on main",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": "2026-10-09T23:04:23+00:00",
+        "updated_at": "2026-10-13T00:03:50+00:00",
+        "checked_at": "2026-10-13T03:48:03+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": 276275.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": null
+      },
+      {
+        "id": "K6-123",
+        "title": "Kalasutra, kala_darshana and jivana_parva writers (three additive migrations, one PR)",
+        "lane": "K · K6 read models",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K4-3"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:branch_merged",
+        "detail": "PR #3404 @ 2c3b71f604161a6c90da59469a0dd66360745670. C522 merged main7e63cc872 (merge only); two generated conflicts canonical regeneration, four aggregates/rev30pinPASS. 100incoming nonitem paths exactmain;15item source/test/migration paths unchanged acceptedff6c69443. Testedtree59b47639=committedtree; final itemprecheck GREEN0,183PASS0SKIP incl63realSQL; focused declarations/extractor703PASS0SKIP. Full runner scratchPG15.17 ky_k3,448tables993ledger,exact9expectedrestoreerrors;4K6hashes match,3storedSQL validatorsPASS. Initial precommit hygieneRED from importedmain fixed by committed PRdiff; no disabledcheck. Fresh inherited-delta review/requiredCI due; previous accepted history retained. Protected/livebindings/K9-4b/deployfreeze remain due. Logs/k3.c522.*,run/k3.c522.inspection.json; ownDB/server/scratch cleanup follows. No production/automerge/DONE. · 559 commits on origin/kalayantra/k6-123 not yet on main",
+        "progress": null,
+        "actor": "stream-K:k3",
+        "evidence": null,
+        "started_at": "2026-10-10T03:53:15+00:00",
+        "updated_at": "2026-10-12T17:39:49+00:00",
+        "checked_at": "2026-10-13T03:48:03+00:00",
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-3"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-3"
+        ],
+        "elapsed_s": 258943.26424,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": null
+      },
+      {
+        "id": "J-0c",
+        "title": "Assign evidence-backed dispositions and landing phases to the inherited inventories",
+        "lane": "J · inherited inventory",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "J-0a",
+          "J-0b"
+        ],
+        "cross_stream": false,
+        "status": "review",
+        "source": "detector:file_exists",
+        "detail": "detector matched; guarded completion pending: J0_DISPOSITION.json (15743 bytes)",
+        "progress": 1.0,
+        "actor": "stream-K:k2",
+        "evidence": null,
+        "started_at": "2026-10-07T23:15:09+00:00",
+        "updated_at": "2026-10-08T01:34:10+00:00",
+        "checked_at": "2026-10-13T03:48:47+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": 448429.26424,
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "step_evidence": null
+      }
+    ],
+    "ready": [
+      {
+        "id": "KV3-B-REHEARSAL",
+        "title": "B-3 fixture rehearsal builder note",
+        "lane": "B · bootstrap",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [],
+        "cross_stream": false,
+        "status": "ready",
+        "source": "detector:file_exists",
+        "detail": "B3_REHEARSAL_v1.md not written yet",
+        "progress": null,
+        "actor": null,
+        "evidence": null,
+        "started_at": null,
+        "updated_at": null,
+        "checked_at": "2026-10-13T03:48:50+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "step_evidence": null
+      },
+      {
+        "id": "V-K0a",
+        "title": "Packet exit K0a: Astra review run, structured verdict ACCEPTED with every BLOCKING finding resolved or validly dispositioned",
+        "lane": "V · packet exits",
+        "gate": false,
+        "owner": "V",
+        "depends_on": [
+          "K0a-0",
+          "K0a-2",
+          "K0a-4"
+        ],
+        "cross_stream": false,
+        "status": "ready",
+        "source": "detector:file_contains",
+        "detail": "K0A.VERDICT.json does not have it yet",
+        "progress": null,
+        "actor": null,
+        "evidence": null,
+        "started_at": null,
+        "updated_at": null,
+        "checked_at": "2026-10-13T03:48:57+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "step_evidence": null
+      },
+      {
+        "id": "V-K12",
+        "title": "Packet exit K1+K2: Astra review, structured verdict ACCEPTED",
+        "lane": "V · packet exits",
+        "gate": false,
+        "owner": "V",
+        "depends_on": [
+          "K1-2",
+          "K2-2"
+        ],
+        "cross_stream": false,
+        "status": "ready",
+        "source": "detector:file_contains",
+        "detail": "K12.VERDICT.json does not have it yet",
+        "progress": null,
+        "actor": null,
+        "evidence": null,
+        "started_at": null,
+        "updated_at": null,
+        "checked_at": "2026-10-13T03:48:43+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "step_evidence": null
+      },
+      {
+        "id": "V-K3",
+        "title": "Packet exit K3 (fixtures): Astra review, structured verdict ACCEPTED",
+        "lane": "V · packet exits",
+        "gate": false,
+        "owner": "V",
+        "depends_on": [
+          "K3-1"
+        ],
+        "cross_stream": false,
+        "status": "ready",
+        "source": "detector:file_contains",
+        "detail": "K3.VERDICT.json does not have it yet",
+        "progress": null,
+        "actor": null,
+        "evidence": null,
+        "started_at": null,
+        "updated_at": null,
+        "checked_at": "2026-10-13T03:48:44+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "step_evidence": null
+      },
+      {
+        "id": "V-K4",
+        "title": "Packet exit K4: Astra review, structured verdict ACCEPTED",
+        "lane": "V · packet exits",
+        "gate": false,
+        "owner": "V",
+        "depends_on": [
+          "K4-3"
+        ],
+        "cross_stream": false,
+        "status": "ready",
+        "source": "detector:file_contains",
+        "detail": "K4.VERDICT.json not written yet",
+        "progress": null,
+        "actor": null,
+        "evidence": null,
+        "started_at": null,
+        "updated_at": null,
+        "checked_at": "2026-10-13T03:48:45+00:00",
+        "deps_open": [],
+        "deps_open_strict": [
+          "K4-3"
+        ],
+        "deps_merged_pending_deploy": [
+          "K4-3"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "step_evidence": null
+      }
+    ],
+    "blocked": [
+      {
+        "id": "B-DB-BASELINE",
+        "title": "Prepare the caller lane disposable DB from the governed current-main baseline and require the full migration runner before READY",
+        "lane": "B · disposable baseline repair",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "deferred (b) by the v3 triage: its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11; re-entry: if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed · 382 commits on origin/kalayantra/b-db-baseline not yet on main",
+        "progress": 0.5,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": "2026-10-07T21:38:36+00:00",
+        "updated_at": "2026-10-13T00:29:12+00:00",
+        "checked_at": "2026-10-13T03:48:02+00:00",
+        "steps": [
+          {
+            "name": "reproduce",
+            "done": true
+          },
+          {
+            "name": "baseline_source_repair",
+            "done": true
+          },
+          {
+            "name": "negative_readiness",
+            "done": false
+          },
+          {
+            "name": "independent_lane_receipt",
+            "done": false
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "reproduce": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "baseline_source_repair": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "negative_readiness": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "independent_lane_receipt": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "KA-4b",
+        "title": "Election view on scoped parihāra: reads `cancelled` with citation for in-scope undertakings (marriage, upanayana, general) and `cancellation_unassessed` otherwise",
+        "lane": "K · KA adapters and services",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "K7-1b",
+          "KA-4",
+          "L0-M"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "ALGO 3.17 step3 and PLAN §9 L0-M exit require evaluated scoped cancellations; KA-4b brief.notes explicitly requires registering a sidecar producer before this view. services/ka_muhurta_seva/service.py:122-129 exposes primitives only; origin/kalayantra/k7-1b platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts:3-7 reads only darshana/obstruction/contacts, no evaluated calendar ledger. Model contains no producer for ALGO3.17 steps1-3/5; L0-M brief.contract has prose cancellation_condition_text and no machine predicate/tika/priority fields. Options: register producer+typed source contract first, or compute in ELECT contrary to PLAN§5. Recommend producer first, then read its stored cancelled+locator rows; no source edits or fresh branch. · origin/kalayantra/ka-4b does not exist yet",
+        "progress": 0.0,
+        "actor": "stream-K:k5",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-09T01:21:13+00:00",
+        "checked_at": "2026-10-13T03:47:58+00:00",
+        "steps": [
+          {
+            "name": "certification_mapping",
+            "done": false
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [
+          "L0-M"
+        ],
+        "deps_merged_pending_deploy": [
+          "L0-M"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "K-CERT",
+        "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+        "lane": "K · certification support (Suvarṇa window)",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV",
+          "KV3-SCHEMA-1"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "C471: KYD-150 remains insufficient_evidence; no later admitted tier mapping or brief revision. Governed run/schema/prod_schema.sql bg_gochara_citation_resolution has no stored tier; register_gochara_windows.ts:796-800 selects citation_string/chunk_id/text_id/verse_ref/status. Retained branch kalayantra/k-cert-tier@6a7a20d5958ba97eb39ec427f33c2b111f3c0c6a has zero item diff against origin/main, no remote branch and no PR, so N450 instruction to open existing work cannot be fulfilled. Conductor/Suvarna custodian must admit exact stored column/mapping/schema evidence or reviewed additive prerequisite per KYD-150; no fabricated tier, PASS, migration or merge. · 459 commits on origin/kalayantra/k-cert-tier not yet on main",
+        "progress": null,
+        "actor": "stream-K:k1",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-10T20:27:10+00:00",
+        "checked_at": "2026-10-13T03:48:04+00:00",
+        "deps_open": [
+          "KV3-SCHEMA-1"
+        ],
+        "deps_open_strict": [
+          "KV3-SCHEMA-1"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "K-CERT-2",
+        "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
+        "lane": "K · certification support (Suvarṇa window)",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "SUPERSEDED-AS-COMPLETE: content merged to main via Suvarṇa integration PR #3435 (829d8db1d, 2026-10-11) under rulings N-444/N-472/N-534; migration 1362 applied in production; asset bg_gochara_citation_resolution built by its writer and certified in the rev-29 census; #3426 closed as merged-via-integration. The tracker cannot map the reviewed head to #3435's merge commit, so completion is recorded here instead of as done. No further work. · 462 commits on origin/kalayantra/k-cert-citation-resolution not yet on main",
+        "progress": null,
+        "actor": "stream-K",
+        "evidence": null,
+        "started_at": "2026-10-10T09:52:08+00:00",
+        "updated_at": "2026-10-12T07:21:25+00:00",
+        "checked_at": "2026-10-13T03:48:04+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "K-AVADHI-C",
+        "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
+        "lane": "K · certification support (Suvarṇa window)",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "K-AVADHI-C brief requires normal canonical rebuild integrity=True vs K1-2 brief.compat: never deletes or updates legacy/published rows; current main6a7a20d59 writers/ka_avadhi.py:239-251 returns0 without a build-bound candidate, test_writer.py:126-131 pins that nonmutation, migration1341:46 retains migration1023 conjunct(c) on legacy. W2 M4 L3_W2_DECIDE:84 requires real lord refs, not out-of-scope. Real SQL on guarded local ky_k4 using existing fictional Mars/Venus K1-2 inputs in TEMP tables (6available L1 graha facts), exact registry check equal1023+1341: integrity False before/after,0rows written, legacy unchanged; rolled back, no new DB. Options: expressly admit a surgical legacy grounding repair with K1 compatibility exception, or exclude ka_avadhi from certification tail pending K9 publication; do not weaken check or invent refs. Recommend named exclusion until legacy repair scope is admitted. No source/test changes, production or completion; retained branch kalayantra/k-avadhi-conjunct-c@6a7a20d59. · 459 commits on origin/kalayantra/k-avadhi-conjunct-c not yet on main",
+        "progress": null,
+        "actor": "stream-K:k4",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-10T19:08:26+00:00",
+        "checked_at": "2026-10-13T03:48:04+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "KV3-SCHEMA-1",
+        "title": "Schema prerequisite for K-CERT: the stored tier column that bg_gochara_citation_resolution's density contract names, added additively under the Suvarṇa asset custodian's recorded contract (KYD-150)",
+        "lane": "K · certification support (Suvarṇa window)",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "cross_stream": false,
+        "status": "blocked",
+        "source": "detector:branch_merged",
+        "detail": "blocked contract input: the column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (KYD-150); requested through CAMPAIGN_COORDINATION §6 by the conductor; unblocked when the contract is recorded · origin/kalayantra/kv3-schema-1 does not exist yet",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:12+00:00",
+        "checked_at": "2026-10-13T03:48:04+00:00",
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": null
+      },
+      {
+        "id": "J-7a",
+        "title": "Phase 12 — legacy retirement (A6.2): ka_gochara's writer retired after the flip, lifecycle fields set, the '_v2' and '2.0' rows handled exactly as Pravāha's plan disposes them",
+        "lane": "J · Gochara 5.0 absorbed",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "J-6l",
+          "V-J6"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:file_exists",
+        "detail": "deferred (b) by the v3 triage: legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11; re-entry: after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle · J7A_RETIREMENT.json not written yet",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:12+00:00",
+        "checked_at": "2026-10-13T03:48:47+00:00",
+        "deps_open": [
+          "J-6l",
+          "V-J6"
+        ],
+        "deps_open_strict": [
+          "J-6l",
+          "V-J6"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "step_evidence": null
+      },
+      {
+        "id": "J-7",
+        "title": "Tier-2 — Sudarśana as a judge method: the full BPHS 74 method, the coincident-frame rule, nested periods as F2 rows; proven on the lane database as a candidate method, not part of the sealed '5.0'",
+        "lane": "J · Gochara 5.0 absorbed",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "D-T2",
+          "K1-1b",
+          "KA-3b"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "deferred (b) by the v3 triage: the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'; re-entry: after the flip (J-6l) if D-T2 admits it · origin/kalayantra/j-7 does not exist yet",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:11+00:00",
+        "checked_at": "2026-10-13T03:48:01+00:00",
+        "deps_open": [
+          "D-T2",
+          "KA-3b"
+        ],
+        "deps_open_strict": [
+          "D-T2",
+          "KA-3b"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "J-7b",
+        "title": "Phase 12 — the L5 hand-off (B6.2): what L5 reads from '5.0' and how, recorded as the contract Pravāha's plan names",
+        "lane": "J · Gochara 5.0 absorbed",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "J-6l"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "deferred (b) by the v3 triage: documentation-only L5 hand-off contract; no retained item consumes it; re-entry: before L5 reads '5.0' · origin/kalayantra/j-7b does not exist yet",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:11+00:00",
+        "checked_at": "2026-10-13T03:48:01+00:00",
+        "deps_open": [
+          "J-6l"
+        ],
+        "deps_open_strict": [
+          "J-6l"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": null
+      },
+      {
+        "id": "J-GOCHARA-TIMEOUT",
+        "title": "Update only the measured materializer writer timeout through an additive migration and independent readback",
+        "lane": "J · ordinary registry timeout",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "D-GOCHARA-TIMEOUT"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "deferred (b) by the v3 triage: applies D-GOCHARA-TIMEOUT; no retained item consumes it; re-entry: with D-GOCHARA-TIMEOUT · origin/kalayantra/j-gochara-timeout does not exist yet",
+        "progress": 0.0,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:11+00:00",
+        "checked_at": "2026-10-13T03:48:02+00:00",
+        "steps": [
+          {
+            "name": "literal_evidence_bound",
+            "done": false
+          },
+          {
+            "name": "policy_approved",
+            "done": false
+          },
+          {
+            "name": "additive_migration_tested",
+            "done": false
+          },
+          {
+            "name": "independent_review",
+            "done": false
+          },
+          {
+            "name": "production_readback",
+            "done": false
+          }
+        ],
+        "deps_open": [
+          "D-GOCHARA-TIMEOUT"
+        ],
+        "deps_open_strict": [
+          "D-GOCHARA-TIMEOUT"
+        ],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "literal_evidence_bound": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "policy_approved": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "additive_migration_tested": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "independent_review": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "production_readback": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "L0-M",
+        "title": "Scoped Muhūrta Cintāmaṇi parihāra extraction into bg_parihara_rules: scope ∈ {marriage, upanayana, general}, exact locators, predicates as the card quotes them",
+        "lane": "L · L0 demands",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "Completion guard requires rows_extracted_with_locators and suvarna_reseal_coordinated, but kybrief L0-M notes say KYD-49/50 park ingestion/reseal and PR #3267 / migration 1332 performed bounded schema preparation only; post-deploy verdict ACCEPTED at merge 2eeb36ba2. Recommendation: ADHIKĀRIN align terminal steps with the ratified bounded-schema scope or re-scope a successor extraction/reseal item; do not bypass the hold. · 372 commits on origin/kalayantra/l0-m not yet on main",
+        "progress": 0.25,
+        "actor": "stream-K:k1",
+        "evidence": null,
+        "started_at": "2026-10-07T18:43:19+00:00",
+        "updated_at": "2026-10-08T04:14:43+00:00",
+        "checked_at": "2026-10-13T03:48:00+00:00",
+        "steps": [
+          {
+            "name": "rows_extracted_with_locators",
+            "done": false
+          },
+          {
+            "name": "scope_column",
+            "done": true
+          },
+          {
+            "name": "suvarna_reseal_coordinated",
+            "done": false
+          },
+          {
+            "name": "tests",
+            "done": false
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": {
+          "rows_extracted_with_locators": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "scope_column": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "suvarna_reseal_coordinated": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "tests": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "L0-K",
+        "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count",
+        "lane": "L · L0 demands",
+        "gate": false,
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "L0-K-RUNNER"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "detector:branch_merged",
+        "detail": "deferred (b) by the v3 triage: KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path; re-entry: with D-T2 · 361 commits on origin/kalayantra/l0-k not yet on main",
+        "progress": 0.0,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:11+00:00",
+        "checked_at": "2026-10-13T03:48:01+00:00",
+        "steps": [
+          {
+            "name": "chunks_ingested",
+            "done": false
+          },
+          {
+            "name": "count_recorded",
+            "done": false
+          },
+          {
+            "name": "search_returns_kp",
+            "done": false
+          }
+        ],
+        "deps_open": [],
+        "deps_open_strict": [],
+        "elapsed_s": null,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": {
+          "chunks_ingested": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "count_recorded": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "search_returns_kp": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        }
+      },
+      {
+        "id": "D-T2",
+        "title": "Tier-2 admissions in the enrichment order: Sudarśana as a judge method first; Tājaka and KP only after the corpus counts (G5)",
+        "lane": "N · decisions",
+        "gate": false,
+        "owner": "N",
+        "depends_on": [
+          "J-6l",
+          "L0-K"
+        ],
+        "cross_stream": false,
+        "status": "parked",
+        "source": "decision:D-T2",
+        "detail": "",
+        "progress": null,
+        "actor": "steward",
+        "evidence": null,
+        "started_at": null,
+        "updated_at": "2026-10-13T00:29:11+00:00",
+        "checked_at": null,
+        "deps_open": [
+          "J-6l",
+          "L0-K"
+        ],
+        "deps_open_strict": [
+          "J-6l",
+          "L0-K"
+        ],
+        "elapsed_s": null,
+        "completion_kind": null,
+        "producer": null,
+        "reviewer_rule": null,
+        "step_evidence": null
+      }
+    ]
+  },
+  "model": {
+    "items": [
+      {
+        "id": "V-K0a",
+        "track": "V",
+        "lane": "V · packet exits",
+        "title": "Packet exit K0a: Astra review run, structured verdict ACCEPTED with every BLOCKING finding resolved or validly dispositioned",
+        "owner": "V",
+        "depends_on": [
+          "K0a-0",
+          "K0a-2",
+          "K0a-4"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_contains",
+          "path": "/Users/Dev/kalayantra/run/reviews/K0A.VERDICT.json",
+          "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+        },
+        "brief": {
+          "spec": [
+            "CHARTER §10 packet-exit reviews",
+            "PARIKSAKA"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K0A_v*.md",
+            "/Users/Dev/kalayantra/run/reviews/K0A.VERDICT.json"
+          ]
+        },
+        "accepts_not_applicable_dependencies": true,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "V-K12",
+        "track": "V",
+        "lane": "V · packet exits",
+        "title": "Packet exit K1+K2: Astra review, structured verdict ACCEPTED",
+        "owner": "V",
+        "depends_on": [
+          "K1-2",
+          "K2-2"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_contains",
+          "path": "/Users/Dev/kalayantra/run/reviews/K12.VERDICT.json",
+          "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+        },
+        "brief": {
+          "spec": [
+            "CHARTER §10"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K12_v*.md",
+            "/Users/Dev/kalayantra/run/reviews/K12.VERDICT.json"
+          ]
+        },
+        "accepts_not_applicable_dependencies": true,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K7-3",
+        "track": "K",
+        "lane": "K · K7 serving",
+        "title": "density_contract declared on the same capability entry that selects the tier column, for all seven views; the false attribution in PRIORITY removed; the negative-space sentinel distinction reaches kala_now_get on fixtures",
+        "owner": "K",
+        "depends_on": [
+          "K7-2"
+        ],
+        "mandatory": true,
+        "steps": [
+          "density_contracts",
+          "attribution_fix",
+          "sentinel_on_fixture"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k7-3"
+        },
+        "brief": {
+          "spec": [
+            "PLAN §7 Dens row",
+            "PLAN §10 Serving",
+            "CLAUDE §N.6 items 1–4",
+            "ALGO 3.10 (attribution)"
+          ],
+          "owns": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/**",
+            "platform-mcp/src/tools/kala_views/**",
+            "platform/src/generated/capability_estate_census.json (regenerated only)",
+            "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)"
+          ],
+          "tests": [
+            "density census per view",
+            "sentinel: information_unavailable is never served as 'quiet'",
+            "contextual rows visible when no judge window exists"
+          ],
+          "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
+          "notes": [
+            "The PRIORITY false attribution lives in platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:392 (asset_ids ['ka_tulana']) — charter §8 rule 9 forbids L3 edits under retrieval/registry/knowledge/**: file a PA-REQ-nn on CAMPAIGN_COORDINATION.md for the four F-L20 attribution corrections (avadhi→life_arc, bhavishya→prospective_ledger, kshetra→predictive_anchors, tulana→priority); this item's acceptance records the request."
+          ]
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "density_contracts": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "attribution_fix": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "sentinel_on_fixture": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "KA-4b",
+        "track": "K",
+        "lane": "K · KA adapters and services",
+        "title": "Election view on scoped parihāra: reads `cancelled` with citation for in-scope undertakings (marriage, upanayana, general) and `cancellation_unassessed` otherwise",
+        "owner": "K",
+        "depends_on": [
+          "K7-1b",
+          "KA-4",
+          "L0-M"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/ka-4b"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.17 step 3",
+            "PLAN §9 row L0-M exit"
+          ],
+          "owns": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/** (ELECT)",
+            "platform-mcp/src/tools/kala_views/** (ELECT)",
+            "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
+            "one landing per packet",
+            "platform/src/generated/capability_estate_census.json (regenerated only)",
+            "platform/src/generated/capability_knowledge.snapshot.json (regenerated only)"
+          ],
+          "tests": [
+            "an in-scope planted doṣa with a parihāra row reads cancelled with its locator",
+            "an out-of-scope undertaking reads cancellation_unassessed (never 'clear')"
+          ],
+          "compat": "served names and response shapes stay valid: new capability beside the old, alias kept, golden test proves the old tool name still answers; no reader of a column that does not exist in production yet",
+          "notes": [
+            "carries K8-KA: Certification mapping for the five adapters and the three services (ka_graha_sancara, ka_muhurta_seva, ka_tulana) with uncited_legacy / uncited_extension qualifications on 3.13–3.15; explicit certification mapping for ka_gochara_v5, using the sealed-generation evidence and the current criterion-registry revision",
+            "ALGO 3.17 steps 1–3 and 5 (intra-day candidate boundaries, the doṣa ledger, parihāra predicate evaluation, Guru-bala/combustion factors) have no owning item: KA-4 (#3297) delivered primitives + Tāra-bala only, and a view may not compute (PLAN §5). Register a sidecar item (services/ka_muhurta_seva + kala_core/calendar) before this view; it reads its rows."
+          ]
+        },
+        "steps": [
+          "certification_mapping"
+        ],
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "V-K3",
+        "track": "V",
+        "lane": "V · packet exits",
+        "title": "Packet exit K3 (fixtures): Astra review, structured verdict ACCEPTED",
+        "owner": "V",
+        "depends_on": [
+          "K3-1"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_contains",
+          "path": "/Users/Dev/kalayantra/run/reviews/K3.VERDICT.json",
+          "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+        },
+        "brief": {
+          "spec": [
+            "CHARTER §10"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K3_v*.md",
+            "/Users/Dev/kalayantra/run/reviews/K3.VERDICT.json"
+          ]
+        },
+        "accepts_not_applicable_dependencies": true,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K4-2b",
+        "track": "K",
+        "lane": "K · K4 jury",
+        "title": "The jury's deletions, behind a compatibility shim: Modes A–D as row producers, the own ephemeris scan, the static prior, confidence_* fields and destructive plan_substeps removed from code; the three runtime readers of confidence_label move to D(W) + witness signature",
+        "owner": "K",
+        "depends_on": [
+          "K4-2aw"
+        ],
+        "mandatory": true,
+        "steps": [
+          "deletions",
+          "shim_for_live_readers",
+          "three_readers_moved",
+          "tests"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k4-2b"
+        },
+        "brief": {
+          "spec": [
+            "PLAN §8 row ka_sangam",
+            "PLAN §8.1 concept-note dispositions",
+            "PLAN §6.1 Saṅgam row",
+            "CHARTER §8 rule 8"
+          ],
+          "owns": [
+            "platform/python-sidecar/services/ka_sangam/**",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py (reader only)",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py (reader only)",
+            "platform/python-sidecar/services/ka_tulana/ranker* (reader only)",
+            "platform/python-sidecar/tests/l3/ka_sangam/**",
+            "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+            "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)",
+            "platform/python-sidecar/tests/l3/kala_db/ka_sangam/**"
+          ],
+          "tests": [
+            "Mode fixtures kept as tests",
+            "plan_substeps never deletes (a re-probe leaves kala_convergence unchanged)",
+            "each of the three readers returns the same served value for the legacy generation through the shim, and the new value for a candidate"
+          ],
+          "compat": "the shim pins the legacy generation for every live reader until K9-4b; register_d7_channel.ts is excluded as the concept note states",
+          "contract": "kala_convergence (prod_schema.sql:14633) columns as in K4-2a. confidence_label is read by more than the three named readers: platform-mcp/src/tools/retrieval/kala_temporal.ts, registry L3_kala/query_convergence_windows.ts, L4_phala/query_phala_calibration.ts, writers ph_nimitta.py and ph_rectification, services/ka_tulana/writer.py, pipeline/orchestrator/service_probes.py — the shim must keep them on legacy rows or each must be recorded as out of scope."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "deletions": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "shim_for_live_readers": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "three_readers_moved": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "tests": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K4-3",
+        "track": "K",
+        "lane": "K · K4 jury",
+        "title": "Canonical claim attachment (reading claims → jury assertions); no double credit",
+        "owner": "K",
+        "depends_on": [
+          "K4-2b"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k4-3"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.19 (attachment)",
+            "PLAN §3.2 row assertion (attach)"
+          ],
+          "owns": [
+            "platform/python-sidecar/services/ka_sangam/jury/**",
+            "platform/python-sidecar/services/kala_core/assertion/**",
+            "platform/python-sidecar/tests/l3/ka_sangam/**",
+            "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
+            "one landing per packet",
+            "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+            "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
+          ],
+          "tests": [
+            "a claim attached twice credits once",
+            "an unattached claim is reported, not dropped"
+          ],
+          "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+          "notes": [
+            "carries K8-K4: Certification mapping for ka_sangam",
+            "Contract (KALA_PIPELINE_CONCEPT_NOTE_v1_1 §5.5, not on main: /Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
+          ]
+        },
+        "steps": [
+          "certification_mapping"
+        ],
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "V-K4",
+        "track": "V",
+        "lane": "V · packet exits",
+        "title": "Packet exit K4: Astra review, structured verdict ACCEPTED",
+        "owner": "V",
+        "depends_on": [
+          "K4-3"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_contains",
+          "path": "/Users/Dev/kalayantra/run/reviews/K4.VERDICT.json",
+          "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+        },
+        "brief": {
+          "spec": [
+            "CHARTER §10"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K4_v*.md",
+            "/Users/Dev/kalayantra/run/reviews/K4.VERDICT.json"
+          ]
+        },
+        "accepts_not_applicable_dependencies": true,
+        "completion_kind": "packet",
+        "producer": "V",
+        "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K6-5a",
+        "track": "K",
+        "lane": "K · K6 read models",
+        "title": "The L5 issued-forecast lifecycle contract (the one permitted cross-layer item): table location as D-R11 rules, the reference-protection contract that replaces the L4 phala_anchors protective read, tested before anything is removed",
+        "owner": "K",
+        "depends_on": [
+          "D-R11",
+          "K4-3"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k6-5a"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.8",
+            "PLAN §12 R-11",
+            "PLAN §8 row ka_bhavishya_lekha",
+            "D-R11",
+            "CHARTER §2.2 (permitted exception)"
+          ],
+          "owns": [
+            "one additive migration: issued_forecast table(s) where D-R11 places them",
+            "platform/python-sidecar/tests/l3/issued_forecast/**",
+            "00_ARCHITECTURE/briefs/l3_families/contracts/ISSUED_FORECAST_LIFECYCLE_CONTRACT_v1_0.md",
+            "platform/python-sidecar/tests/l3/kala_db/issued_forecast/**",
+            "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
+          ],
+          "tests": [
+            "an outcome that references an issue cannot lose it (planted delete is refused)",
+            "the L4 protective read still passes unchanged in this item"
+          ],
+          "migration": "additive",
+          "compat": "additive only; the L4 read is not replaced here",
+          "contract": "kala_core.idempotency.insert_immutable_checked hard-codes table name `issued_forecast` and `ON CONFLICT (issue_id, version)`: the migration must create public.issued_forecast with UNIQUE (issue_id, version) (or this item must also own kala_core/idempotency). ALGO 3.8 issue-key fields: issue_id, version, issued_at, information_cutoff, manifest reference, delivered statement verbatim, model qualification (result policy, calibration status), intervals (disconnected allowed) with disclosed grain, declared point functional, probability_target (null unless calibrated), falsifier; episode key (event_class, phase, affected_person, episode); delivery linkage (named channel). Existing protective reference: phala_anchors.bhavishya_id → kala_bhavishya.id.",
+          "migration_class": "NEEDS-PROTECTED-WINDOW — issued_forecast is a new table with UNIQUE (issue_id, version) (required by insert_immutable_checked ON CONFLICT)."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K6-5",
+        "track": "K",
+        "lane": "K · K6 read models",
+        "title": "ka_bhavishya_lekha as the registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; an issue exists only on delivery; no probability while uncalibrated",
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K6-5a"
+        ],
+        "mandatory": true,
+        "steps": [
+          "identity_split",
+          "registrar_interface",
+          "reference_protection_switched",
+          "oracles",
+          "certification_mapping"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k6-5"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.8",
+            "PLAN §4.1 row 8",
+            "PLAN §7 Idem row (registrar reads FAIL under the current detector — routed, never a delete)",
+            "PLAN §10 Registrar"
+          ],
+          "owns": [
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py",
+            "platform/python-sidecar/tests/l3/ka_bhavishya_lekha/**",
+            "platform/src/generated/nirmana-writer-digests.json",
+            "platform/scripts/governance/asset_declarations.json — L3 (ka_*) entries ONLY; the L0–L2 entries are the Suvarṇa campaign's",
+            "one landing per packet",
+            "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+            "platform/python-sidecar/tests/l3/kala_db/ka_bhavishya_lekha/**"
+          ],
+          "tests": [
+            "unchanged inputs → no new issue",
+            "two issues per episode stay distinct",
+            "an undelivered candidate has no issue",
+            "no probability tier while calibration status is not calibrated",
+            "Domain never comes from a keyword (ALGO 3.8)",
+            "Two issues for one episode remain distinct while outcome credit stays episode-clustered (ALGO 3.8)"
+          ],
+          "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged; the L4 phala_anchors protective read is replaced only by the contract K6-5a tested",
+          "notes": [
+            "carries K8-K6: Certification mapping for the four read models and the registrar (the registrar's Idem row says FAIL under the current detector and names the routed rule)"
+          ],
+          "contract": "Registrar today writes kala_bhavishya (prod_schema.sql:14585: id, chart_id, projection_rank, probability_tier, domain, peak_date, window_start, window_end, convergence_id, signal_id, effective_score, falsifiability, source_chain, narrative, outcome_recorded, outcome_notes, source_citation, computed_at); phala_anchors.bhavishya_id (19915) references kala_bhavishya.id and is the protective read (ka_bhavishya_lekha.py:262-285). kala_core.idempotency.insert_immutable_checked writes only table `issued_forecast` with ON CONFLICT (issue_id, version)."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "identity_split": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "registrar_interface": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "reference_protection_switched": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "oracles": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "certification_mapping": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "L0-M",
+        "track": "L",
+        "lane": "L · L0 demands",
+        "title": "Scoped Muhūrta Cintāmaṇi parihāra extraction into bg_parihara_rules: scope ∈ {marriage, upanayana, general}, exact locators, predicates as the card quotes them",
+        "owner": "K",
+        "depends_on": [
+          "B-7"
+        ],
+        "mandatory": true,
+        "steps": [
+          "rows_extracted_with_locators",
+          "scope_column",
+          "suvarna_reseal_coordinated",
+          "tests"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/l0-m"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.17 step 3 (the exact predicates and PG locators)",
+            "PLAN §9 row L0-M",
+            "SURROGATE H1 exception",
+            "KYD-45 bounded source schema preparation for original k6; additive guard-numbered CHECK retains natal/muhurta and adds marriage/upanayana/general",
+            "KYD-49/50: ingestion/reseal remains parked until the existing shared log records table, scoped row shape, proposed count, pending Suvarna27 disposition and one agreed count/hash reseal"
+          ],
+          "owns": [
+            "one migration through the existing L0 ingestion/migration mechanism (rows + scope column)",
+            "platform/python-sidecar/tests/l3/l0_parihara/**"
+          ],
+          "shared": [
+            "bg_parihara_rules is PINNED at 60 rows (count + hash) by platform/migrations/703_bg_parihara_rules_orphan_cleanup_and_repin.sql and the Suvarṇa campaign has 27 further parihāra rows pending a source check. Before ingesting: post the table, the row shape and the count on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination (§6 log, addressed to Strategic Suvarṇa) and land ONE coordinated reseal — never move the pin alone"
+          ],
+          "tests": [
+            "each row's locator resolves to the quoted passage in the served corpus",
+            "New ingested rows use only marriage/upanayana/general; existing natal/muhurta rows and reader behavior are preserved",
+            "the pin (count + hash) after this item equals the coordinated reseal's figures"
+          ],
+          "migration": "additive (ON CONFLICT upsert — L0 idempotency, §N.3), carrying the agreed re-pin",
+          "compat": "additive reference rows; no reader until KA-4b",
+          "notes": "KYD-45 permits the original k6 bounded additive CHECK preparation. Do not edit historical migration544, delete existing rows or move the count/hash pin alone. Coordinate before ingestion/reseal, use one agreed pin, and retain independent source/CI/lease/runtime gates. Schema preparation does not authorize data ingestion or production mutation. KYD-49/50 parking of ingestion/reseal remains effective; the original bounded schema preparation permission does not waive that hold or actual FAILED lane receipt. Both k5/k6 migration1320 failures are the same B-DB-BASELINE repair.",
+          "contract": "bg_parihara_rules (prod_schema.sql:9701): id, dosha_canonical_id, dosha_name_en, dosha_category, cancellation_index, cancellation_condition_text, net_standing, scope (CHECK natal|muhurta; KYD-45 extends it via migration 1332, PR #3267), source_text_id, source_chapter, source_citation, build_id, computed_at, extraction_context. There is no machine-evaluable predicate column and no column for ALGO 3.17's conjunction_reading = tika, tika_extension, or priority_rank (v. 91); KA-4b cannot evaluate \"cancelled\" from prose.",
+          "migration_class": "ROUTINE-OK — 1332 is ALTER TABLE DROP/ADD CHECK + COMMENT on existing bg_parihara_rules, row INSERTs and any ADD COLUMN for predicate fields; no index (UNIQUE (dosha_canonical_id, cancellation_index) already exists). Requires amjis_app to own bg_parihara_rules — confirm with a migration_readback dry run."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": {
+          "rows_extracted_with_locators": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "scope_column": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "suvarna_reseal_coordinated": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "tests": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "L0-K",
+        "track": "L",
+        "lane": "L · L0 demands",
+        "title": "KP Reader V/VI local OCR ingested into the served corpus (classical_text_chunks) with the custodian's count recorded; G-K's corpus gate opens on the count",
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "L0-K-RUNNER"
+        ],
+        "mandatory": true,
+        "steps": [
+          "chunks_ingested",
+          "count_recorded",
+          "search_returns_kp"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/l0-k"
+        },
+        "brief": {
+          "spec": [
+            "PLAN §9 row L0-K",
+            "ALGO 3.19 (G-K)",
+            "ALGO §2 corpus check register ([D-local] locators)"
+          ],
+          "owns": [
+            "the existing corpus ingestion path (rows only)",
+            "/Users/Dev/kalayantra/run/L0K_COUNT.json"
+          ],
+          "tests": [
+            "search_classical_texts returns KP Reader V and VI passages",
+            "the recorded count equals the ingested chunk count"
+          ],
+          "migration": "data ingestion through the existing mechanism",
+          "compat": "additive corpus rows",
+          "notes": "No collision with Suvarṇa (a seeded corpus it does not rebuild); post one line on 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md on branch campaign-coordination when it lands. KYD-46 defers ingestion until L0-K-RUNNER is independently verified; its separate source repair does not authorize live data writes.",
+          "contract": "classical_text_chunks (prod_schema.sql:12860): id, text_id, chunk_id, verse_ref, chapter, verse_start, verse_end, content_sa, content_en, content_summary, topics, source_citation, ingested_at, translator, tradition_school, embedding vector(768), content_sha256, topic_tag, ocr_* columns, translation_status, translation_provenance. embedding needs a provider call; no executor op kind exists for corpus ingestion (executor_ops.json)."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "step_evidence": {
+          "chunks_ingested": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "count_recorded": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "search_returns_kp": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "b",
+          "reason": "KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path",
+          "re_entry": "with D-T2"
+        }
+      },
+      {
+        "id": "J-7a",
+        "track": "J",
+        "lane": "J · Gochara 5.0 absorbed",
+        "title": "Phase 12 — legacy retirement (A6.2): ka_gochara's writer retired after the flip, lifecycle fields set, the '_v2' and '2.0' rows handled exactly as Pravāha's plan disposes them",
+        "owner": "K",
+        "depends_on": [
+          "J-6l",
+          "V-J6"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_exists",
+          "path": "/Users/Dev/kalayantra/run/J7A_RETIREMENT.json",
+          "min_bytes": 200
+        },
+        "brief": {
+          "spec": [
+            "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md (A6.2)",
+            "PLAN §8 rows ka_gochara, ka_gochara_v4_41_candidate",
+            "PLAN §8.1 N-11"
+          ],
+          "owns": [
+            "the phase-12 retirement children J-0m created"
+          ],
+          "tests": [
+            "no reader of the retired tables remains on a live path (grep + a served-response check)",
+            "no registry row deleted"
+          ],
+          "compat": "contract phase: every reader already reads '5.0'"
+        },
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "triage": {
+          "class": "b",
+          "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
+          "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+        }
+      },
+      {
+        "id": "D-T2",
+        "track": "N",
+        "lane": "N · decisions",
+        "title": "Tier-2 admissions in the enrichment order: Sudarśana as a judge method first; Tājaka and KP only after the corpus counts (G5)",
+        "owner": "N",
+        "depends_on": [
+          "J-6l",
+          "L0-K"
+        ],
+        "mandatory": true,
+        "brief": {
+          "spec": [
+            "SURROGATE G5",
+            "ALGO 3.16",
+            "PLAN §8.1 E1"
+          ],
+          "notes": "approved admits Sudarśana as a candidate method; anything else waits for its own review."
+        },
+        "done_by": "decision",
+        "decision": "D-T2",
+        "triage": {
+          "class": "b",
+          "reason": "decides only J-7's admission",
+          "re_entry": "with J-7"
+        }
+      },
+      {
+        "id": "J-7",
+        "track": "J",
+        "lane": "J · Gochara 5.0 absorbed",
+        "title": "Tier-2 — Sudarśana as a judge method: the full BPHS 74 method, the coincident-frame rule, nested periods as F2 rows; proven on the lane database as a candidate method, not part of the sealed '5.0'",
+        "owner": "K",
+        "depends_on": [
+          "D-T2",
+          "K1-1b",
+          "KA-3b"
+        ],
+        "mandatory": false,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/j-7"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.16",
+            "PLAN §8 row ka_sudarshana_varsha",
+            "CHARTER §8 rule 1 (frozen spec v1.4)"
+          ],
+          "owns": [
+            "platform/python-sidecar/services/ka_sudarshana_varsha/**",
+            "platform/python-sidecar/services/kala_core/clocks/** (nested periods)",
+            "platform/python-sidecar/tests/l3/ka_sudarshana_varsha/**",
+            "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+            "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
+          ],
+          "tests": [
+            "three frames coincide by rule on a planted case",
+            "nested periods equal F2 rows",
+            "The active sign has period 12; month sub-periods partition the year (ALGO 3.16)",
+            "A chart with Lagna and Moon in one rāśi is judged from the birth chart only (the three-frame mutant fails) — ALGO 3.16",
+            "tri_lagna_convergence no longer exists (ALGO 3.16)"
+          ],
+          "compat": "no change to the sealed generation; the method is not admitted to a served generation in this campaign",
+          "notes": "S splits this into children before anyone claims it."
+        },
+        "requires_outcome": {
+          "D-T2": "approved"
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "b",
+          "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
+          "re_entry": "after the flip (J-6l) if D-T2 admits it"
+        }
+      },
+      {
+        "id": "J-7b",
+        "track": "J",
+        "lane": "J · Gochara 5.0 absorbed",
+        "title": "Phase 12 — the L5 hand-off (B6.2): what L5 reads from '5.0' and how, recorded as the contract Pravāha's plan names",
+        "owner": "K",
+        "depends_on": [
+          "J-6l"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/j-7b"
+        },
+        "brief": {
+          "spec": [
+            "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md (B6.2)"
+          ],
+          "owns": [
+            "00_ARCHITECTURE/briefs/pravaha/L5_HANDOFF_5_0_v1_0.md"
+          ],
+          "tests": [
+            "every field named in the hand-off exists in the sealed generation's tables (readback)"
+          ],
+          "compat": "documentation/declaration only — no runtime effect"
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "b",
+          "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
+          "re_entry": "before L5 reads '5.0'"
+        }
+      },
+      {
+        "id": "J-0c",
+        "track": "J",
+        "lane": "J · inherited inventory",
+        "title": "Assign evidence-backed dispositions and landing phases to the inherited inventories",
+        "owner": "K",
+        "depends_on": [
+          "J-0a",
+          "J-0b"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "file_exists",
+          "path": "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+          "min_bytes": 300
+        },
+        "brief": {
+          "spec": [
+            "CHARTER §2.3 (the twelve phases)",
+            "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+            "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/**",
+            "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+            "Existing preclaim split request M20261007T152634-535e; charter §4.2 split before claim"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/J0_DISPOSITION.json",
+            "/Users/Dev/kalayantra/run/J0_DISPOSITION.md — rendered view of the same disposition artifact only"
+          ],
+          "tests": [
+            "Exact coverage of the union of both independently accepted inventories, with each inherited entry represented once",
+            "Every row records keep/merge/supersede/salvage/not-applicable proposal, owner, dependencies, phase1–12 and evidence; unresolved or reserved rulings are explicit",
+            "Protected-window and small-test constraints preserved; no phase1 landing of a PR the checklist requires to remain unmerged; no disposition alone changes actual terminal state"
+          ],
+          "compat": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing.",
+          "notes": "One disposition artifact, retaining the original J0_DISPOSITION.json consumer contract. Keep /Users/Dev/kalayantra/run/J0_DISPOSITION.md only as the rendered view of this same artifact if needed. Proposed reserved rulings route to N; do not exercise them. Independently reviewed artifact and guarded owner completion required. Record observation timestamps and full source hashes; no invented terminal status or deployment acceptance. Never write a program under run/."
+        },
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "B-DB-BASELINE",
+        "track": "B",
+        "lane": "B · disposable baseline repair",
+        "title": "Prepare the caller lane disposable DB from the governed current-main baseline and require the full migration runner before READY",
+        "owner": "K",
+        "depends_on": [
+          "B-7"
+        ],
+        "mandatory": true,
+        "steps": [
+          "reproduce",
+          "baseline_source_repair",
+          "negative_readiness",
+          "independent_lane_receipt"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/b-db-baseline"
+        },
+        "brief": {
+          "spec": [
+            "KYD-47 existing report M20261007T153231-d330; follow-up M20261007T154221-65a8 is the same current-main baseline issue",
+            "run/local_db_k5_runner.log: migration1320 refuses absent bg_transit_rules in asset_registry; actual k5 receipt runner_rc1 and schema count do not prove READY",
+            "CHARTER local disposable lane boundaries; migration1320 is a read-only foreign prerequisite reference",
+            "KYD-50 consolidates existing k6 FAILED receipt/report M20261007T155312-9e48 with original k5 report; no duplicate baseline item",
+            "KYD-86/89; original K1 reports M20261007T213936-6b6e and M20261007T214357-84fd consolidate the current-main governed seed parser prerequisite in this existing unit; N54 inspection SHA e5ed904350d02d8aea50d0e6e8944a6187142243567971aafcaf7d0c2424ecfe",
+            "KYD-94; original K1 M20261007T223226-a151 and S M20261007T223421-8d3e: actual full runner1320 refuses missing bg_transit_rules integrity_check_sql. N59 inspection SHA026476c7b5ac079880042de5b78f645f4fd396bd369400e3f8e77969d787a4c0; exact predecessor migration1078 is a read-only provenance source, not an editable migration."
+          ],
+          "owns": [
+            "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh — canonical baseline preparation and readiness predicate only",
+            "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py — focused disposable-baseline/false-READY cases only",
+            "platform/scripts/seed/asset_registry_seed.ts — ALLOWED_VARS/DEFAULTS recognition of existing VIMSHOTTARI_LORDS and RASHI_BOUNDARY_SPLITS only, from the governed 27*9+6=249 derivation",
+            "platform/scripts/__tests__/asset_registry_seed_formula_validation.test.ts — focused existing-formula validation and refusal/mutation oracles only",
+            "platform/scripts/seed/fixtures/kalayantra_schema_registry_baseline_v1.json — versioned schema-only disposable registry predecessor metadata, with governed source commit/blob hashes; no production registry or corpus changes",
+            "platform/scripts/__tests__/kalayantra_registry_baseline_fixture.test.ts — focused governed fixture provenance, prerequisite removal/corruption, caller isolation and full-runner readiness oracles only"
+          ],
+          "tests": [
+            "Reproduce the failed k5 baseline on a disposable lane without production data or credential use; retain original log and failed receipt",
+            "Derive any prerequisite registry seed from the actual governed current-main declarations/baseline; do not invent a dummy row, weaken migration1320, alter its bytes or suppress its failure",
+            "Full current-main migration runner exits0 and normal schema checks pass before READY; planted runner failure, partial ledger and missing governed prerequisite each refuse READY",
+            "Independent exact-source review and actual caller-lane replay bind helper SHA, current-main commit, runner exit0, schema results and readiness receipt. Table/ledger counts alone fail acceptance",
+            "Recognize the existing governed bg_kp_sublord_division expression from its cited 27*9+6=249 derivation; retain unknown-variable, unsafe-expression and nonpositive-result rejection. Removing either declaration must fail the corresponding positive oracle",
+            "Run actual governed disposable registry seed and the full current-main migrate.ts to exit0, retain all original negative readiness tests, then independently replay an actual caller lane with exact source bindings. Parser tests or source admission alone do not establish DB READY",
+            "Derive exact predecessor registry metadata needed by current-main migrations from versioned authoritative declaration/migration bytes; include migration1078 bg_transit_rules integrity_check_sql and target_floor required by migration1320, preserving full text and guards. Bind every fixture contract to actual source commit/blob hashes; unknown or drifted provenance must refuse readiness",
+            "Existing canonical local_db.sh consumes the reviewed fixture only in the caller disposable DB. Removal or corruption of any authentic migration prerequisite must make full runner/readiness refuse; never fabricate a row/check, edit historical migration bytes, manipulate the applied ledger or skip/suppress a migration",
+            "Run full current-main migrate.ts to exit0 with normal schema assertions and truthful complete output/status hashes; independent actual caller replay must bind exact reviewed fixture/helper/current-main source. Existing runner_rc1/FAILED receipts remain historical evidence; registration and administrative unpark alone are not READY"
+          ],
+          "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change. KYD-89 permits parser recognition only: no L0-L2 asset declaration, target floor, count/size SQL, registry row/UPSERT policy, coefficient or foreign migration1320 changes. KYD-94 adds only versioned predecessor metadata consumption in disposable caller databases; the narrowly enumerated fixture may carry exact governed integrity text/floor needed by pending migrations. Existing production declarations/rows/UPSERT policy, corpus, historical migration guards and all parser restrictions remain unchanged.",
+          "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode. KYD-89 removes only the administrative source-scope park. Sole S records this scope before original eligible K1 work; lawful model admission/canonical preflight and original claim remain required. Existing K0a-2/L0-M/L0-K readiness blocks remain until measured. KYD-94 is same-item prerequisite remediation, with original eligible K1 source ownership retained. Enumerated source scope requires ordinary independent exact-head review, protected merge, lawful model mirror and canonical preflight before worker resumption. Frozen PR3277 parser qualification remains independent and unchanged; this later fixture scope grants no baseline readiness, caller acceptance or downstream unblock."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "reproduce": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "baseline_source_repair": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "negative_readiness": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "independent_lane_receipt": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "b",
+          "reason": "its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11",
+          "re_entry": "if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed"
+        }
+      },
+      {
+        "id": "J-GOCHARA-TIMEOUT",
+        "track": "J",
+        "lane": "J · ordinary registry timeout",
+        "title": "Update only the measured materializer writer timeout through an additive migration and independent readback",
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "D-GOCHARA-TIMEOUT"
+        ],
+        "requires_outcome": {
+          "D-GOCHARA-TIMEOUT": "approved"
+        },
+        "mandatory": true,
+        "steps": [
+          "literal_evidence_bound",
+          "policy_approved",
+          "additive_migration_tested",
+          "independent_review",
+          "production_readback"
+        ],
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/j-gochara-timeout"
+        },
+        "brief": {
+          "spec": [
+            "KYD-68; existing single M20261007T183855-4b15",
+            "Actual asset_registry row ka_gochara_v3_century_materialize, completed-run receipts and applicable policy",
+            "R9 materializer hold, retained data and existing J landing-phase/G8/frozen-contract boundaries"
+          ],
+          "owns": [
+            "platform/migrations/<new-guard-number>_ka_gochara_v3_century_materialize_timeout.sql — only target row writer_timeout_seconds",
+            "platform/tests/unit/migrations/ka_gochara_v3_century_materialize_timeout.test.ts — authentic baseline, actual table and unchanged-neighbour/columns cases"
+          ],
+          "tests": [
+            "No timeout-value source change before D-GOCHARA-TIMEOUT approved from literal independent registry/run/policy evidence; report3492/3600 and5400 proposal do not authorize a change",
+            "New guard-numbered additive migration updates only writer_timeout_seconds on the exact named asset; all other columns/neighbouring rows byte-equal. Missing target, stale expected baseline, unintended alias or broader update fails",
+            "Apply on authentic disposable baseline; test actual row/table behavior. Wrong row/table, extra column or unconstrained update mutation fails",
+            "Preserve R9 hold, retained data and existing J landing phase plus live-build migration collision/lease/G8 backup-restore/dry-run/request-bound acceptance/quiescence; no dispatch from budget update",
+            "Independent exact-head review, compatibility and protected merge required. Successful actual deployed commit contains accepted merge; production migration/value/all-other-column readbacks independently accepted before guarded DONE"
+          ],
+          "compat": "Only one registry timeout. No dispatch, hold lift, retained-data mutation, WriterBase/frozen contract, asset id, global spend/worker ceiling, credentials/IAM or foreign edit. A migration touching a running leased build waits for its release.",
+          "notes": "One existing J report, no open K0a dependency. Actual timeout decision is deferred. If3492 and70-percent policy are independently proven, minimumceil(3492/0.7)=4989;5400 remains proposal. No manual productionSQL or operation request under registration. Existing B-DB-BASELINE remains the authentic preparation scope, no dummy seed or forged ledger.",
+          "contract": "asset_registry.writer_timeout_seconds (prod_schema.sql:9018) on asset_id = ka_gochara_v3_century_materialize; all other columns must read back byte-equal.",
+          "migration_class": "ROUTINE-OK — single UPDATE of asset_registry.writer_timeout_seconds."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "step_evidence": {
+          "literal_evidence_bound": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "policy_approved": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "additive_migration_tested": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "independent_review": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          },
+          "production_readback": {
+            "evidence": "pr_head_evidence",
+            "detector": null
+          }
+        },
+        "triage": {
+          "class": "b",
+          "reason": "applies D-GOCHARA-TIMEOUT; no retained item consumes it",
+          "re_entry": "with D-GOCHARA-TIMEOUT"
+        }
+      },
+      {
+        "id": "K4-2aw",
+        "track": "K",
+        "lane": "K · K4 jury",
+        "title": "Convergence writer and qualification",
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K4-2a"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k4-2aw"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.19",
+            "PLAN §3.2 rows assertion and measure",
+            "PLAN §4.1 row 5",
+            "PLAN §10 Evidence algebra and Agreement",
+            "PLAN §8.1 Saṅgam table",
+            "RULINGS NR-KALA-R13"
+          ],
+          "owns": [
+            "platform/python-sidecar/services/ka_sangam/jury/__init__.py",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+            "platform/src/generated/nirmana-writer-digests.json",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_writer.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_qualification.py",
+            "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_jury_candidate_end_to_end.py",
+            "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
+          ],
+          "tests": [
+            "Candidate partitions replace only their own chart × generation × class grain and preserve legacy/published rows",
+            "A build on main completes with old serving output unchanged; plan_substeps has no delete side effect",
+            "Writer digest/provenance guard passes; a duplicate predicate cannot multiply candidate rows",
+            "J1–J5 and the algorithm §3.19 boundary, selection-root, duplicate and no-row-multiplication oracles pass",
+            "Mutations for reused root, symmetric geometry, interval boundary, group alias and published-row write each fail",
+            "Full candidate build readback shows one partition per grain while the published reader returns its prior value"
+          ],
+          "compat": "New candidate code path and additive rows only; Modes A–D and live published readers remain untouched in this item.",
+          "notes": [
+            "v2.0 regroup of K4-2a-writer, K4-2a-qualify, K4-2a (velocity amendment §2): ONE PR — writer integration + integrated qualification; claimed and built (join: false).",
+            "Destructive legacy retirement and reader shims belong to K4-2b."
+          ],
+          "shared": []
+        },
+        "join": false,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K4-2a",
+        "track": "K",
+        "lane": "K · K4 jury",
+        "title": "Convergence core: schema, algebra, Jaimini, groups, agreement, contests",
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K1-1b",
+          "K3-1",
+          "K4-1"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k4-2a"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.19",
+            "PLAN §3.2 rows assertion and measure",
+            "PLAN §4.1 row 5",
+            "PLAN §10 Evidence algebra and Agreement",
+            "PLAN §8.1 Saṅgam table",
+            "RULINGS NR-KALA-R13"
+          ],
+          "owns": [
+            "platform/migrations/<guard-number>_kala_jury_candidate.sql",
+            "platform/python-sidecar/tests/l3/kala_db/ka_sangam/test_candidate_schema.py",
+            "platform/python-sidecar/services/ka_sangam/jury/evidence.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_evidence.py",
+            "platform/python-sidecar/services/ka_sangam/jury/jaimini.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_jaimini.py",
+            "platform/python-sidecar/services/ka_sangam/jury/groups.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_groups.py",
+            "platform/python-sidecar/services/ka_sangam/jury/agreement.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_agreement.py",
+            "platform/python-sidecar/services/ka_sangam/jury/contests.py",
+            "platform/python-sidecar/tests/l3/ka_sangam/test_jury_contests.py",
+            "platform/python-sidecar/services/ka_sangam/jury/__init__.py (create)",
+            "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
+          ],
+          "tests": [
+            "Migration applies to ky_<lane> and retains all legacy columns and rows",
+            "Candidate partition key includes chart, generation and class; published reader contract remains byte-compatible",
+            "Rollback and re-apply fixture catches a destructive or unscoped write",
+            "Same contact_id through two roles increments once; duplicate and alias insertion leaves increment unchanged",
+            "A root used for selection or condition cannot also corroborate; a P8-selected window cannot gain G-J credit",
+            "Moving a computation between stages while retaining its root leaves the evidence graph unchanged",
+            "G-J emits a complete method output with its input provenance and coverage; a missing Cara or rāśi-dṛṣṭi input is information_unavailable",
+            "Directed rāśi-dṛṣṭi and Cara clock fixtures fail under symmetric-aspect or wrong-clock mutation",
+            "No partial Jaimini rule is admitted as an independent witness",
+            "G-P, G-J, G-T, G-K and G-A declare inputs, roles, coverage and admission status",
+            "G-T stays unavailable without corpus admission; G-K stays unavailable until ingestion; G-A Moon-nakṣatra ancestry prevents false corroboration",
+            "P8 selection ancestry and G-J overlap give zero extra credit; duplicate group aliases give zero extra credit",
+            "Half-open W=[0,30), A=[0,1), B=[29,30) has no joint segment",
+            "Universally active witness contributes approximately zero; zero null variance is explicit non-informative",
+            "Relocating a computation between stages, or inserting a duplicate alias, leaves D(W) unchanged",
+            "Opposing witnesses remain a typed contest with separate support, never an averaged confidence label",
+            "A disjoint interval cannot create a turning point or sequence; boundary equality is half-open",
+            "Witness or predicate duplication does not multiply contest rows"
+          ],
+          "compat": "Additive candidate tables/columns only; the published head and old reader queries remain valid before and after deploy.",
+          "notes": [
+            "v2.0 regroup of K4-2a-schema, K4-2a-algebra, K4-2a-jaimini, K4-2a-groups, K4-2a-agreement, K4-2a-contests (velocity amendment §2): ONE PR — schema + algebra + Jaimini + groups + agreement + contests.",
+            "Claim the migration number from the guard and CAMPAIGN_COORDINATION §2 when the PR opens.",
+            "G-J is separately reviewable and declared, not asserted statistically independent; the Jaimini method output is consumed, never partly reimplemented; reuse upstream F2 and shared geometry.",
+            "Consume kala_core.measure (K4-1) and its jury-specific null; do not implement another shift schedule. Claim attachment remains K4-3; writer integration remains K4-2aw.",
+            "Create platform/python-sidecar/services/ka_sangam/jury/__init__.py here (the package the six modules live in); K4-2aw only extends it."
+          ],
+          "migration": "one guard-numbered additive migration; never edit after application",
+          "shared": [
+            "platform/python-sidecar/services/kala_core/measure/** owned by K4-1; import only"
+          ],
+          "contract": "kala_convergence today (prod_schema.sql:14633): convergence_id, chart_id, window_start, window_end, convergence_score, constituent_factors, source_citation, computed_at, signal_id, mode, peak_date, orb_strength, rarity_years, confidence_score, confidence_label, independent_current_count, is_off_dasha_discovery, horizon_tier, domain, confidence_label_relative, tier_basis — no generation, no D(W)/segment columns. Readers of confidence_label beyond the three named in K4-2b: platform-mcp tools/retrieval/kala_temporal.ts, query_convergence_windows.ts, ph_nimitta.py, ph_rectification, L4 query_phala_calibration.ts, ka_tulana/writer.py, service_probes.py.",
+          "migration_class": "NEEDS-PROTECTED-WINDOW — <n>_kala_jury_candidate.sql: the brief requires a candidate partition key (chart, generation, class) — a new unique index or table. ROUTINE-OK only if it is ADD COLUMN on kala_convergence (PK-only table) with no index."
+        },
+        "join": false,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K6-123",
+        "track": "K",
+        "lane": "K · K6 read models",
+        "title": "Kalasutra, kala_darshana and jivana_parva writers (three additive migrations, one PR)",
+        "owner": "K",
+        "depends_on": [
+          "K0a-4",
+          "K4-3"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k6-123"
+        },
+        "brief": {
+          "spec": [
+            "ALGO 3.5",
+            "RULINGS NR-KALA-R13 (c)",
+            "PLAN §4.1 row ka_kalasutra",
+            "PLAN §8 row ka_kalasutra",
+            "ALGO 3.6",
+            "PLAN §4.1 row ka_kala_darshana",
+            "PLAN §8 row ka_kala_darshana",
+            "ALGO 3.7",
+            "PLAN §4.1 row ka_jivana_parva",
+            "PLAN §8 row ka_jivana_parva"
+          ],
+          "owns": [
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py",
+            "one additive migration",
+            "platform/python-sidecar/tests/l3/ka_kalasutra/**",
+            "platform/src/generated/nirmana-writer-digests.json",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py",
+            "platform/python-sidecar/tests/l3/ka_kala_darshana/**",
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py",
+            "platform/python-sidecar/tests/l3/ka_jivana_parva/**",
+            "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+            "platform/python-sidecar/tests/l3/kala_db/ka_kalasutra/**",
+            "platform/python-sidecar/tests/l3/kala_db/ka_kala_darshana/**",
+            "platform/python-sidecar/tests/l3/kala_db/ka_jivana_parva/**",
+            "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
+          ],
+          "tests": [
+            "golden SQL tests over a fixture candidate",
+            "rebuild twice → zero net rows",
+            "count_sql chart-scoped with a depth-0 chart_id = $1; integrity_check_sql valid after completion",
+            "a judge window without a daśā prerequisite survives unchanged",
+            "no eight-match truncation; no implicit today",
+            "no 0.5-on-missing default; no top-750 cut",
+            "contextual rows exist for a planted coverage gap",
+            "identical mechanisms under changed conditions diff non-empty",
+            "no count from any table outside the candidate; no LIMIT 1 predicate selection",
+            "Kalasutra: two mechanisms sharing one contact show the same contact_id; an interval outside judge coverage reads `unsearched`; the ladder has no fixed length; a PD-anchored testimony record never appears as a scored interval (ALGO 3.5)",
+            "Darshana: every published interval has a negative-space row; no numeric composite column exists (ALGO 3.6)",
+            "Jivana: removing the convergence table changes nothing; an AD chapter names its own lord (ALGO 3.7)"
+          ],
+          "migration": "additive",
+          "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
+          "shared": [],
+          "notes": [
+            "v2.0 regroup of K6-1, K6-2, K6-3 (velocity amendment §2)"
+          ],
+          "contract": "kala_activation (prod_schema.sql:14479: id, chart_id, signal_id, ayanamsha_id, signature_class, active_dasha_periods_jsonb, activation_predicted_dates_jsonb, dasha_activation_proximity_score, activation_start/end/peak_date, orb_strength, convergence_score, source_citation, computed_at), kala_darshana (14708), kala_jivana_parva (15900: id, chart_id, parva_index, start_year, end_year, dasha_planet, dominant_signal_class, parva_quality, theme_keywords, narrative, high_convergence_count, avg_effective_score, source_citation, computed_at, parva_level) — none has generation. Judge inputs: ka_gochara_eval_window (13860), ka_gochara_relationship_record (14064), ka_gochara_contact (13795: contact_id, occurrence_ordinal, t_in/t_out/t_exact, coverage), kala_gochara_coverage (15576).",
+          "migration_class": "NEEDS-PROTECTED-WINDOW — kala_activation UNIQUE idx (chart_id, signal_id, ayanamsha_id, source_citation) and kala_jivana_parva UNIQUE idx (chart_id, parva_index) and (chart_id, source_citation, start_year) lack generation; re-keying them creates indexes. kala_darshana (unique convergence_id) can stay ROUTINE-OK if candidate rows never reuse a legacy convergence_id."
+        },
+        "join": false,
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K-CERT",
+        "track": "K",
+        "lane": "K · certification support (Suvarṇa window)",
+        "owner": "K",
+        "mandatory": true,
+        "depends_on": [
+          "B-7",
+          "K0-SV",
+          "KV3-SCHEMA-1"
+        ],
+        "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k-cert-tier"
+        },
+        "brief": {
+          "spec": [
+            "Suvarṇa FINAL/strict FIX_LIST: bg_gochara_citation_resolution Dens.served PARTIAL",
+            "CLAUDE.md §N.6 Serving Density Principle",
+            "owner approval of the compressed certification plan (SS N-431), relayed 2026-10-10"
+          ],
+          "owns": [
+            "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+            "its test file",
+            "platform/src/generated/capability_estate_census.json (canonical regeneration only)"
+          ],
+          "tests": [
+            "a test that fails on base (no tier column in the served select) and passes after",
+            "Dens.served for bg_gochara_citation_resolution reads PASS on the census of the branch"
+          ],
+          "compat": "additive response field only; no migration; no other file",
+          "notes": "Branch work during the Kāla merge hold. The PR is labelled DO NOT MERGE; Suvarṇa's Engine reviews it and SS arms it in the Suvarṇa window. Completion = branch merged by Suvarṇa."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K-CERT-2",
+        "track": "K",
+        "lane": "K · certification support (Suvarṇa window)",
+        "owner": "K",
+        "mandatory": true,
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k-cert-citation-resolution"
+        },
+        "brief": {
+          "spec": [
+            "Suvarṇa SS N-443",
+            "PR #3055 (branch suvarna/land/TI-l0data-20-001, head 0dd4b6e59): the bg_gochara_citation_resolution half only",
+            "CLAUDE.md §N.2 frozen WriterBase contract, §N.3 L0 idempotency, §N.4 cockpit truth (count_sql)"
+          ],
+          "owns": [
+            "platform/python-sidecar/brahmagyan/l0_gochara_citation_resolution.py",
+            "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_citation_resolution.py",
+            "platform/python-sidecar/pipeline/orchestrator/writers/_l0_static_gate.py",
+            "platform/python-sidecar/tests/fixtures/gochara_citation_resolution_live.json",
+            "its tests incl. test_has_writer_completeness",
+            "one surgical data-only asset_registry migration if #3055 lacks the has_writer/count_sql flip (number claimed on CAMPAIGN_COORDINATION §2)",
+            "generated digests + census (canonical regeneration only)"
+          ],
+          "tests": [
+            "writer conforms to WriterBase (@register, run(ctx), never commits ctx.db_conn)",
+            "the 14 rows equal the live fixture; the migration-631 digest recomputes TRUE inside PostgreSQL after a damaged table is replaced",
+            "asset_registry has_writer true and count_sql returns 14 on a disposable DB"
+          ],
+          "compat": "new writer + registry flip; no serving change; Suvarṇa builds the asset once in its run",
+          "notes": "Branch work during the Kāla merge hold; DO NOT MERGE label; go/no-go to SS by 2026-10-11T12:00Z; hard deadline 2026-10-11T18:00Z, after which it stays out with a named reason."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "K-AVADHI-C",
+        "track": "K",
+        "lane": "K · certification support (Suvarṇa window)",
+        "owner": "K",
+        "mandatory": true,
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+        },
+        "brief": {
+          "spec": [
+            "Suvarṇa SS N-450 item (3)",
+            "production asset_throughput ka_avadhi: state=error since 2026-09-10T19:10Z, 'post-write integrity check failed: integrity_check_sql → False' (conjunct (c) lord_condition_fact_refs)",
+            "asset_registry.integrity_check_sql for ka_avadhi; W2 M4 ruling on lord_condition_fact_refs",
+            "CLAUDE.md §N.5 (L1 is the authority; fact refs must resolve), §N.7.6 (honest null over invented value), §N.8 (a check must measure what it claims)"
+          ],
+          "owns": [
+            "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py",
+            "platform/python-sidecar/services/ka_avadhi/**",
+            "one surgical data-only migration on asset_registry.integrity_check_sql for ka_avadhi IF the conjunct itself is wrong (number claimed on CAMPAIGN_COORDINATION §2)",
+            "platform/python-sidecar/tests/l3/ka_avadhi/**",
+            "generated digests + census (canonical regeneration only)"
+          ],
+          "tests": [
+            "on a disposable DB seeded with the canonical chart's L1/L2 inputs, the writer's rows satisfy integrity_check_sql → True",
+            "a fail-on-base test that reproduces today's False",
+            "no lord_condition_fact_ref is invented: every ref resolves to chart_facts.fact_id or the row carries an honest null with a reason"
+          ],
+          "compat": "first decide from evidence whether the WRITER is wrong (refs missing) or the CHECK is wrong (asserts something W2 M4 declared out of scope); fix the one that is wrong, never both, and never relax the check to pass",
+          "notes": "Branch work under the Kāla merge hold; DO NOT MERGE label; Suvarṇa merges in its window. Deadline 2026-10-12T18:00Z with a go/no-go to SS by 12:00Z; if not ready, ka_avadhi stays out of the tail with a named reason."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_deploy_containment",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "KV3-SCHEMA-1",
+        "track": "K",
+        "lane": "K · certification support (Suvarṇa window)",
+        "title": "Schema prerequisite for K-CERT: the stored tier column that bg_gochara_citation_resolution's density contract names, added additively under the Suvarṇa asset custodian's recorded contract (KYD-150)",
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/kv3-schema-1"
+        },
+        "brief": {
+          "spec": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 3, §8 (schema-prerequisite packets: admitted existing schema + intended additive contract)",
+            "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150",
+            "CLAUDE.md §N.6 Serving Density Principle; §N.4 surgical migrations, verified",
+            "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)"
+          ],
+          "owns": [
+            "platform/migrations/<allocated>_gochara_citation_resolution_tier.sql (additive; the number is allocated at job start, never written in the packet)",
+            "platform/python-sidecar/tests/l3/kala_db/certification/test_citation_resolution_tier_schema.py"
+          ],
+          "tests": [
+            "on the admitted schema the column is absent (the test fails on base) and present after the migration, with every existing column and row retained",
+            "the migration is idempotent and is verified applied after deploy (CLAUDE.md §N.4)",
+            "no value is synthesised: rows without a recorded tier stay NULL with the custodian's stated reason"
+          ],
+          "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
+          "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
+          "notes": "BLOCKED CONTRACT INPUT. The column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (bg_* tables are outside the Kāla partition, CAMPAIGN_COORDINATION §3a); none is defined here (CLAUDE.md B.10, §N.7 rule 6). The conductor requests the contract through the coordination §6 log, as KYD-150 directs. Until it is recorded this item is blocked and K-CERT waits. If the custodian adds the column in its own estate, this item is closed by a recorded decision naming that change, never silently."
+        },
+        "completion_kind": "code",
+        "producer": "K",
+        "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+        "triage": {
+          "class": "a"
+        }
+      },
+      {
+        "id": "KV3-B-REHEARSAL",
+        "track": "B",
+        "lane": "B · bootstrap",
+        "title": "B-3 fixture rehearsal builder note",
+        "owner": "K",
+        "depends_on": [],
+        "mandatory": true,
+        "detector": {
+          "type": "file_exists",
+          "path": "00_ARCHITECTURE/briefs/kalayantra/rehearsal/B3_REHEARSAL_v1.md",
+          "min_bytes": 1
+        },
+        "brief": {
+          "spec": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md §14 B-3",
+            "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-REHEARSAL_v1.md"
+          ],
+          "owns": [
+            "00_ARCHITECTURE/briefs/kalayantra/rehearsal/B3_REHEARSAL_v1.md"
+          ],
+          "tests": [
+            "test -s 00_ARCHITECTURE/briefs/kalayantra/rehearsal/B3_REHEARSAL_v1.md"
+          ],
+          "compat": "documentation/declaration only — no runtime effect",
+          "notes": "Fixture repository only. Write a short dated note saying the B-3 rehearsal builder ran, naming the job id from the environment. (I) INTERPRETATION: owner/producer K enables artifact BUILD; track B and lane B · bootstrap reuse B-0. The relative detector path requires the tracker working directory to contain the builder artifact; file_exists does not resolve paths against PRAVAHA_REPO."
+        },
+        "completion_kind": "artifact",
+        "producer": "K",
+        "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+        "triage": {
+          "class": "a"
+        }
+      }
+    ]
+  },
+  "packet": {
+    "id": "KV3-B-REHEARSAL",
+    "kind": "bootstrap",
+    "wave": "B",
+    "build_tier": "opus",
+    "routing_reason": "B-3 fixture bootstrap rehearsal; bootstrap schema requires Opus",
+    "needs_chart_data": false,
+    "max_loops": 3,
+    "plan_version": "2.7",
+    "spec_sources": [
+      {
+        "path": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md",
+        "revision": "12b668e176644731cab957033cbaeb6977096e70",
+        "section_range": "§14 B-3",
+        "sha256": "96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c"
+      }
+    ],
+    "schema_receipt_id": null,
+    "pw_mechanism_version": null,
+    "release_pins": "not_applicable: bootstrap",
+    "d1_paths": [
+      "00_ARCHITECTURE/briefs/kalayantra/rehearsal/B3_REHEARSAL_v1.md"
+    ],
+    "acceptance": {
+      "command": "test -s 00_ARCHITECTURE/briefs/kalayantra/rehearsal/B3_REHEARSAL_v1.md",
+      "expected_result": "exit 0: the rehearsal note is nonempty; independent review also verifies its date, builder-ran statement and environment job id",
+      "negative_cases": [
+        "missing note: command exits nonzero",
+        "empty note: command exits nonzero",
+        "missing date, builder-ran statement, or actual environment job id: semantic review rejects"
+      ]
+    },
+    "packet_sha256": "10b21a7f94da3aa6276f0fcb7c71a4eafc3189eab52018c304fb30fb439b675d"
+  },
+  "source": "B-3 rehearsal fixture, ky next --json on port 8768 after installed STAGED_MODEL_ACTIONS_v2_2 publication; shown rows joined to fixture plan model. Contains public campaign metadata only."
+}

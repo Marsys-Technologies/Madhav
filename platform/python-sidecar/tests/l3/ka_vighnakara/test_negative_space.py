@@ -1,6 +1,8 @@
 """ALGO3.4 consumer oracles; planted data proves no live doctrine admission."""
 import importlib.util
+import ast
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -175,9 +177,31 @@ def test_contract_survivors_are_not_invented():
 
 def test_no_downstream_reads_or_multiplier_in_new_path():
     api()
-    paths=list((ROOT/'services/ka_vighnakara').glob('*.py'))+[ROOT/'services/kala_trigger/negative_space.py']
-    prohibited=('kala_field','ka_kshetra','kala_convergence','compose_with_ka_sangam','severity_score','override_score')
-    assert not any(word in p.read_text() for p in paths if p.name != 'storage.py' for word in prohibited)
+    paths=list((ROOT/'services/ka_vighnakara').rglob('*.py'))+[
+        ROOT/'services/kala_trigger/negative_space.py',
+        ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py']
+    prohibited=re.compile(r'\b(?:kala_field\w*|ka_kshetra\w*|kala_convergence|compose_with_ka_sangam)\b')
+    weights={'severity_score','override_score','weight','multiplier'}
+    for path in paths:
+        tree=ast.parse(path.read_text())
+        if path == ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py':
+            # The registered dispatch is in scope; the explicitly retained
+            # legacy implementation keeps its old contract until cutover.
+            tree=next(node for node in tree.body if isinstance(node,ast.ClassDef)
+                      and node.name == 'KaVighnakaraWriter')
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Constant) and isinstance(node.value,str):
+                assert not prohibited.search(node.value), (path,node.lineno)
+                assert node.value not in weights, (path,node.lineno)
+            if isinstance(node,(ast.Name,ast.Attribute,ast.alias)):
+                name=(node.id if isinstance(node,ast.Name) else
+                      node.attr if isinstance(node,ast.Attribute) else node.name)
+                assert not prohibited.search(name) and name not in weights, (path,node.lineno)
+            if isinstance(node,ast.keyword) and node.arg in weights:
+                # Only the exact, inert legacy INSERT slots are exempt.
+                assert (path == ROOT/'services/ka_vighnakara/storage.py'
+                        and node.arg in {'severity_score','override_score'}
+                        and isinstance(node.value,ast.Constant) and node.value.value == 0), (path,node.lineno)
 
 
 @pytest.mark.parametrize('exposure',['outside_risk_set','method_inapplicable'])
@@ -203,3 +227,105 @@ def test_unqualified_vedha_preserves_node_reason_as_unavailable():
 
 def test_protection_requires_cited_evidence():
     with pytest.raises(ValueError): finding(protections=[protection(fact_ids=[])])
+
+
+# K3 packet-exit counterexamples (M_K3_*); planted inputs only.
+def test_split_full_protection_remains_cancelled():
+    edges = [protection(interval={'t0':'2026-01-01T00:00:00Z','t1':'2026-01-15T00:00:00Z'}),
+             protection(interval={'t0':'2026-01-15T00:00:00Z','t1':'2026-02-01T00:00:00Z'})]
+    assert evaluate(protections=edges).effective_state == 'obstruction_cancelled'
+    assert evaluate(protections=list(reversed(edges))).effective_state == 'obstruction_cancelled'
+
+
+@pytest.mark.parametrize('incoming,expected', [('cancelled','obstruction_cancelled'),
+    ('excepted','obstruction_cancelled'), ('unresolved','information_unavailable'),
+    ('contested','obstruction_contested')])
+def test_partial_protection_preserves_f1_state(incoming,expected):
+    row = evaluate(defeat_state=incoming, protections=[protection(interval={
+        't0':'2026-01-10T00:00:00Z','t1':'2026-02-01T00:00:00Z'})])
+    assert row.defeat_state == incoming
+    assert row.effective_state == expected
+
+
+@pytest.mark.parametrize('incoming', ['cancelled','excepted','partly_cancelled'])
+@pytest.mark.parametrize('edges', [[], [protection(target_assertion_id='unrelated')],
+    [protection(interval={'t0':'2027-01-01T00:00:00Z','t1':'2027-02-01T00:00:00Z'})],
+    [protection(kind='contests')]])
+def test_cancellation_requires_retained_defeating_evidence(incoming,edges):
+    row = evaluate(defeat_state=incoming,protections=edges)
+    assert row.effective_state == 'information_unavailable'
+    assert row.null_reason == 'defeating_evidence_unavailable'
+
+
+def test_partial_edge_cannot_substantiate_full_cancellation():
+    row = evaluate(defeat_state='cancelled',protections=[protection(kind='partly_defeats')])
+    assert row.effective_state == 'information_unavailable'
+
+
+@pytest.mark.parametrize('release', [{'kind':'instant','instant':'2026-02-01T00:00:00Z'},
+    {'kind':'instant','instant':'2026-01-10T00:00:00Z'}, {'kind':'unknown'}])
+def test_protection_onset_releases_remaining_obstruction(release):
+    row = evaluate(protections=[protection(interval={
+        't0':'2026-01-10T00:00:00Z','t1':'2026-02-01T00:00:00Z'})],release=release)
+    assert row.release.instant == datetime(2026,1,10,tzinfo=timezone.utc)
+    assert row.release_reason is None
+
+
+def test_split_terminal_protection_uses_earliest_continuous_onset():
+    row = evaluate(protections=[
+        protection(interval={'t0':'2026-01-10T00:00:00Z','t1':'2026-01-15T00:00:00Z'}),
+        protection(interval={'t0':'2026-01-15T00:00:00Z','t1':'2026-02-01T00:00:00Z'})])
+    assert row.release.instant == datetime(2026,1,10,tzinfo=timezone.utc)
+
+
+def test_protection_gap_is_partial_and_release_uses_terminal_suffix():
+    row = evaluate(protections=[
+        protection(interval={'t0':'2026-01-01T00:00:00Z','t1':'2026-01-14T00:00:00Z'}),
+        protection(kind='excepts',interval={'t0':'2026-01-15T00:00:00Z','t1':'2026-02-01T00:00:00Z'})])
+    assert row.effective_state == 'obstruction_partly_cancelled'
+    assert row.release.instant == datetime(2026,1,15,tzinfo=timezone.utc)
+
+
+def test_conditional_protection_release_is_not_assumed_satisfied():
+    row = evaluate(protections=[protection()],release={'kind':'conditional','predicate_ref':'fixture:condition'})
+    assert row.release.kind == 'conditional'
+    assert row.release.predicate_ref == 'fixture:condition'
+
+
+@pytest.mark.parametrize('changes', [{'defeat_state':'unresolved'}, {'coverage':'absent'},
+    {'knowledge':'unsearched'}, {'defeat_state':'contested'}])
+def test_unavailable_or_contested_input_cannot_license_early_release(changes):
+    row = evaluate(**changes,protections=[protection()])
+    assert row.release.instant == datetime(2026,2,1,tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize('edge', [protection(kind='partly_defeats'),
+    protection(kind='contests'), protection(target_assertion_id='unrelated'),
+    protection(interval={'t0':'2026-01-01T00:00:00Z','t1':'2026-01-15T00:00:00Z'})])
+def test_nonterminal_or_unqualified_protection_does_not_advance_release(edge):
+    assert evaluate(protections=[edge]).release.instant == datetime(2026,2,1,tzinfo=timezone.utc)
+
+
+def test_arbitrary_early_vedha_release_is_refused():
+    with pytest.raises(ValueError,match='release'):
+        finding(release={'kind':'instant','instant':'2026-01-10T00:00:00Z'})
+
+
+@pytest.mark.parametrize('relative', ['services/ka_vighnakara/storage.py',
+    'pipeline/orchestrator/writers/ka_vighnakara.py'])
+def test_forecaster_read_mutant_is_detected(monkeypatch,relative):
+    target = ROOT/relative
+    original = Path.read_text
+    def mutated(path,*args,**kwargs):
+        source = original(path,*args,**kwargs)
+        if path == target:
+            if path.name == 'storage.py':
+                source = source.replace("    if ctx.dry_run:",
+                    "    ctx.db_conn.execute('SELECT * FROM kala_field')\n    if ctx.dry_run:")
+            else:
+                source = source.replace("        if 'negative_space_fixture_inputs' in ctx.config:",
+                    "        if 'negative_space_fixture_inputs' in ctx.config:\n            ctx.db_conn.execute('SELECT * FROM kala_field')")
+        return source
+    monkeypatch.setattr(Path,'read_text',mutated)
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()

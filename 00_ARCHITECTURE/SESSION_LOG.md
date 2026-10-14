@@ -52775,3 +52775,251 @@ session_close:
 ### Next session objective
 
 Owner reviews deployed Journey6 Administration and existing designs with factual project-wide release annotations. Owner design acceptance, learning publication, missing measurements and existing consultation/CLI execution baseline remain separate. See `briefs/journey6/RELEASE.md` and `LIVE_RELEASE.json`.
+
+
+---
+
+## KALAYANTRA_CAMPAIGN_OPEN_20261007 — 2026-10-13
+
+```yaml
+session_open:
+  session_id: KALAYANTRA_CAMPAIGN_OPEN_20261007
+  cowork_thread_name: KĀLA-YANTRA — autonomous Kāla build
+  agent_name: Codex
+  agent_version: GPT-6
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/kalayantra/wt/sutradhara
+  step_number_or_layer: L3 Kāla — KĀLA-YANTRA
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-KALAYANTRA-20261007
+    lease_status_verified: true
+    lease_verified_at: '2026-10-07T01:34:35+05:30'
+    lease_commit: 939c7208cdc26317c72a7034ec1eb9e7a0aed62c
+    work_order_surface: 00_ARCHITECTURE/control/kalayantra/plan_model.json
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+    - CLAUDECODE_BRIEF.md (other workstream)
+  predecessor_session: MADHAV_JOURNEY6_DELIVERY_20261006
+  mandatory_reading_confirmation:
+  - file: CLAUDE.md
+    fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md
+    fingerprint_sha256: 77abd5413577a575b7229d2de79e85b9a822b839114552e7fcee069f0756dea1
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    fingerprint_sha256: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    read_at: '2026-10-07T01:34:35+05:30'
+  - file: origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    fingerprint_sha256: be557b2f75a78b25fa4ddeee41bf9347e5895dc0180af20859907b8badee1991
+    read_at: '2026-10-07T01:34:35+05:30'
+  canonical_artifact_fingerprint_check:
+  - canonical_id: L2_BODHA_CAMPAIGN_HANDOFF
+    declared_fingerprint: e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807
+    observed_fingerprint: e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807
+    match: true
+  - canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0
+    declared_fingerprint: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    observed_fingerprint: 0b32776d10e4c4fb1b0468bbac773c9d7b56b4dfa14c17f1132273147bd98523
+    match: true
+  - canonical_id: MADHAV_PRODUCT_DEFINITION
+    declared_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47
+    observed_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47
+    match: true
+  mirror_pair_freshness_check: not_applicable (mirror discipline retired 2026-05-27)
+  native_directive_obligations:
+  - NR-KALA-AUTONOMY-20261006
+  - NR-KALA-R13
+  - NR-KALA-R12
+  - NR-KALA-R2
+  red_team_due: false
+  declared_scope:
+    may_touch:
+    - platform/python-sidecar/services/kala_core/**
+    - platform/python-sidecar/services/ka_*/**
+    - platform/python-sidecar/services/kala_*/**
+    - platform/python-sidecar/services/gochara_*/**
+    - platform/python-sidecar/services/taranga_kernel/**
+    - platform/python-sidecar/services/taranga_service.py
+    - platform/python-sidecar/services/w2g/**
+    - platform/python-sidecar/brahmagyan/kala/**
+    - platform/python-sidecar/brahmagyan/mimamsa/l5_event_chart_state_index.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py
+    - platform/python-sidecar/pipeline/transit_search.py
+    - platform/python-sidecar/tests/l3/**
+    - .github/workflows/ci.yml
+    - platform/scripts/governance/asset_declarations.json
+    - platform/supabase/migrations/*.sql
+    - platform/migrations/*.sql
+    - platform/scripts/**
+    - platform/src/lib/retrieval/registry/layers/L3_kala/**
+    - platform/src/generated/**
+    - platform-mcp/src/tools/kala_views/**
+    - platform-mcp/src/tools/register_p1_aliases.ts
+    - platform-mcp/src/resources/vidhi/**
+    - platform/src/components/pariprashna/ArrivalLine.tsx
+    - 00_ARCHITECTURE/briefs/kalayantra/**
+    - 00_ARCHITECTURE/control/kalayantra/**
+    - 00_ARCHITECTURE/control/pravaha/**
+    - 00_ARCHITECTURE/briefs/pravaha/**
+    - 00_ARCHITECTURE/briefs/l3_families/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    must_not_touch:
+    - platform/python-sidecar/pipeline/orchestrator/asset_runner.py
+    - platform/python-sidecar/pipeline/orchestrator/runner.py
+    - platform/python-sidecar/pipeline/orchestrator/staleness.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/__init__.py
+    - platform/python-sidecar/ga_writers/**
+    - platform/python-sidecar/bodha_writers/**
+    - platform/python-sidecar/pipeline/orchestrator/writers/ph_*.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/mi_*.py
+    - 00_ARCHITECTURE/briefs/nirmana/**
+    - 00_ARCHITECTURE/briefs/suvarna/**
+    - 00_ARCHITECTURE/briefs/sampurti/**
+    - 00_ARCHITECTURE/briefs/purna_anvesana/**
+    - platform/src/lib/retrieval/registry/knowledge/**
+    - platform/src/lib/purna/**
+    - .github/workflows/tap-ci.yml
+    - CLAUDECODE_BRIEF.md
+    - CLAUDE.md
+  notes: 'Campaign-level handshake exception per charter §8.6: the 16-item per-session sequence is discharged
+    here. Operator-supplied SŪTRADHĀRA role prompt and CLAUDE.md §N.2–§N.8 read. Tool posture madhav-parity
+    is applied through generated ~/.codex/kalayantra.config.toml because the older madhav-parity.config.toml
+    references a renamed MCP transport.'
+```
+
+### Objective and recorded campaign handoff
+
+KV3-B5-BACKFILL discharges the governance portion of `KALAYANTRA_RELAUNCH_PLAN_v2_7.md:718` and surrogate answer 12 §2, row “B-5 backfill”. This entry transfers the recorded Codex campaign open to the Claude Code cockpit; it does not close the Kāla campaign. Facts below are the journal checkpoint through `2026-10-13T11:13:19Z`, not a new observation of running services.
+
+**(I) INTERPRETATION — handshake provenance.** Use the existing campaign-level handshake verbatim (`briefs/kalayantra/sessions/SESSION_OPEN_kalayantra.yaml:1-21`, authorized by `CROSS_CUTTING_DECISION_REGISTER_v1_0.md:573-585`, CCD-026), rather than invent a new live lease, model/profile or remote check. Its 2026-10-07 identity, fingerprints and lease verification are historical. The original lease's later release is recorded at `origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md:9147-9150`; this offline job reads the cached remote-tracking ref only. The close block identifies today's backfill agent/worktree and receiving planner.
+
+### Facts, evidence and remaining work
+
+- **Installed 2026-10-13:** bundle I `4fca17c70a35abf84f6e077b6f9e8f35ed299cfd`, receipt mode `bootstrap`, installed `2026-10-13T08:30:26Z` (`/Users/Dev/kalayantra/run/INSTALL_RECEIPT.json:1239,6975,7748-7753`; journal:315-316). Assembly log at `4fca17c70` records the binding review after the controller PATH/slot-journalling fix `4190b5d05`; earlier fixes remain in its history. A bootstrap receipt is not final acceptance.
+- **v2 stopped and archived:** 13 STOP files and zero v2 processes verified; handover `run/HANDOVER_STATE_20261013T0020Z.md`; archive `/Users/Dev/Archives/kalayantra-pre-B2-20261013T002110Z.tgz` (journal:268-269). This is recorded evidence, not a shutdown performed by this job.
+- **Rehearsal legs 1–2 passed under the recorded ruling:** surrogate answer 09:9,40 allows this wording. Preserve the qualification: journal:291 reports leg 1 at E as 6913 passed, 1 xfailed, 1 failed (obsolete pre-install premise in `test_kyreconcile::test_staged_actions_are_not_published`); tracker tests 127 passed (journal:289). Leg 2 at G passed dry planning and two ticks, with live EVENTS size/hash unchanged (journal:298). A fresh all-green final-bundle suite/results record is still owed under answer 12 §2, “Rest of B-3”.
+- **Leg 3 not run; replaced by the live first item:** fixture model-job mode is unfinished (journal:299-300; surrogate answer 09:13,36,40); owner explicitly authorized the watched live item (journal:303). `KV3-B-OPS-CONTRACT` PR #3485 opened at `26806eeaa`, autoMergeRequest null; VERIFY pending, HOLD_MERGES present (journal:320-321). Do not claim its ACCEPTED verdict, completion, merge, or fixture-model rehearsal PASS.
+- **Gate WAIT:** bootstrap-class work may proceed; campaign work awaits final acceptance/resume (journal:322; surrogate answer 12 §1-2). Remaining setup: release receipt from recorded certification/pins/regeneration/PR dispositions/coordinator closure, packet pin/admission checks, inbox dispositions, reviewed fixes/Codex role qualifications, reinstall and final-component rehearsal results, final `run/VERSIONS.json` plus final-mode installation receipt binding tracker revision/B-3/B-4/this backfill, then normal `kyversion.sh` and `kygate.sh --pre-resume` checks, `READY_TO_START` and owner/effective D-7 resume (plan:718-720; answer 12 §2-3). Wave-0 artifact ordering and production operation tooling remain separately owed. The production ka_/ph_ rebuild is not a gate precondition (answer 12 §2); it remains deferred behind its own evidence/tools/owner switches.
+
+### Scope discipline and validation
+
+Original insertion scope: exactly one new top banner in CURRENT_STATE §2 and this one appended SESSION_LOG entry; all prior bytes were preserved at that checkpoint. **(I) INTERPRETATION — validation scope:** the named validator's handshake and close-checklist CLI modes, with the companion handshake scope check, validate this backfill; scoped entry/banner checks retain the untouched historic corpus. No full-corpus green or canonical-state-YAML reconciliation is claimed. Reports and extracted YAML live only in JOB_SCRATCH. The final-receipt tool must run the command below and earn `backfill.validated` from its actual exit status.
+
+```sh
+python3 -B /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261013T111319Z-backfill/validate_backfill.py --repo-root .
+```
+
+Expected and subsequently checked output: two `schema_validator: 0 violations; exit=0` lines, then `backfill: one banner + one campaign entry; scope green; exit=0`.
+
+**(I) INTERPRETATION — corpus regression repair (KV3-B5-BACKFILL):** appending this entry requires advancing the final overriding `current_state.last_session_id` to `KALAYANTRA_CAMPAIGN_OPEN_20261007`. The repository detector at `platform/scripts/governance/schema_validator.py:433-448` compares that pointer with the log tail; retaining Journey6 introduced the sole new MEDIUM `current_state_last_session_id_disagreement`. Update only that pointer and refresh the embedded close's CURRENT_STATE `sha256_after`; the campaign remains open under WAIT. The original scoped command/output above records the insertion checkpoint. Its immutable banner-only assertion (`validate_backfill.py:36`) excludes this required pointer correction, so the cockpit must reconcile that scoped assertion before final receipt acceptance; no current scoped PASS is claimed from that historical command.
+
+```yaml
+session_close:
+  session_id: KALAYANTRA_CAMPAIGN_OPEN_20261007
+  closed_at: '2026-10-13T11:18:11.895462+00:00'
+  tool: Codex
+  close_scope: KV3-B5-BACKFILL governance handoff only; campaign and gate remain open/WAIT,
+    respectively
+  backfill_agent_model: gpt-6.1-sol
+  backfill_agent_effort: high
+  backfill_worktree_path: /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-backfill
+  receiving_tool: Claude Code
+  receiving_planner_session: 94345d41-9ed0-4758-a26e-121ac8553ca0
+  files_touched:
+  - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    mutation_type: modified
+    sha256_before: e4d49e508e56f68deae2d3098951744bf707e9eed180a63f6ad50513040dffe0
+    sha256_after: 9997e0b20c60bb762f4ba669a1c140c7e6bc2867350cc80bb6d947e43f72928a
+    justification: One new top banner per v2.7 §14 B-5 plus the required log-tail session pointer correction
+    within_declared_scope: true
+  - path: 00_ARCHITECTURE/SESSION_LOG.md
+    mutation_type: modified
+    sha256_before: 60c664cd9b94a51e0f4710390be1cb971dfa875a3def84b6062db869a4494ec8
+    sha256_after: null
+    sha256_after_rationale: Whole-log hash is self-referential; validator checks the
+      exact pre-entry prefix and this embedded entry.
+    justification: 'One campaign entry: original open + recorded handoff body + backfill
+      close'
+    within_declared_scope: true
+  registry_updates_made:
+    no_registry_update_required: '(I) INTERPRETATION: B-5 minimum changes only these
+      two already registered rolling governance surfaces; no artifact path/version/interface
+      is introduced.'
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+    rationale: Governance backfill; no corpus execution or macro-phase/campaign close.
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: null
+    report_path: null
+    performed: false
+    rationale: '(I) INTERPRETATION: B-5 minimum is backfill schema validation; no
+      full-corpus drift/deferred-state repair or DB access.'
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 0
+    violations_found: 0
+    command: python3 -B /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261013T111319Z-backfill/validate_backfill.py
+      --repo-root .
+    report_path: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261013T111319Z-backfill/close.report.md
+    validation_scope: Embedded historical campaign open, backfill close, scope-boundary
+      cross-reference and this entry/banner; not full corpus.
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    ccd_consumed:
+    - CCD-026
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/SESSION_LOG.md#KALAYANTRA_CAMPAIGN_OPEN_20261007
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    source_lease_id: L-KALAYANTRA-20261007
+    coordination_ref: origin/campaign-coordination
+    observed_remote_tracking_commit: 257c9e2417e4650b6c86a737709eca063e65628f
+    lease_evidence: 'Historical release: CAMPAIGN_COORDINATION.md:9147-9150 at the
+      locally cached origin/campaign-coordination ref; no fresh remote fetch, new
+      lease or release performed by this offline job.'
+    next_session_can_resume_from:
+    - 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    rationale: No chart/build state changed; B-5 governance-only scope.
+  may_touch_actual:
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch_respected: true
+  close_criteria_met: true
+  unblocks: Backfill validation input to the final installation receipt, not gate
+    OPEN
+  handoff_notes: '(I) INTERPRETATION: preserve the original campaign session_open
+    verbatim under CCD-026; historical identity/profile/fingerprints/lease assertions
+    apply at 2026-10-07 open, not this backfill. Close and remote-release booleans
+    attest the documented historical lease release plus this narrow handoff, not a
+    new live lease or campaign completion. Full-corpus validation is outside B-5 minimum;
+    final-bundle rehearsal, final receipts and resume remain cockpit work.'
+```
+
+### Next session objective
+
+Claude cockpit completes and independently accepts the final-bundle/release evidence, runs this backfill validator to earn the final receipt, and requests resume only after `READY_TO_START`; gate remains WAIT until that sequence completes.
+
+*End of KALAYANTRA_CAMPAIGN_OPEN_20261007 entry — 2026-10-13.*

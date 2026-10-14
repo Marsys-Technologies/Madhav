@@ -127,6 +127,12 @@ def actor_stream(actor: str) -> str | None:
     return None
 
 
+def actor_slot(actor: str) -> str | None:
+    """'stream-V:v1' -> 'v1'. None for an actor that names no slot."""
+    slot = (actor or "").partition(":")[2].strip()
+    return slot or None
+
+
 def validate_against_model(ev: dict, model: dict, events: list[dict] | None = None) -> None:
     """Refuse events that name unknown items/decisions, or that move another stream's item."""
     if ev.get("kind") == "item":
@@ -155,6 +161,16 @@ def validate_against_model(ev: dict, model: dict, events: list[dict] | None = No
         expected = model.get("control_plane", {}).get("verdict_stream")
         if not expected or actor_stream(ev["actor"]) != expected:
             raise EventError("only the model's independent verdict stream may review")
+        if isinstance(model.get("control_plane", {}).get("declarations"), dict):
+            # reviewer identity rule (relaunch plan v2.7 §6): the verdict comes from a slot, and never from a slot
+            # that registered this item's review
+            slot = actor_slot(ev["actor"])
+            if slot is None:
+                raise EventError("a verdict actor names its slot (stream-%s:<slot>)" % expected)
+            if slot in {actor_slot(past.get("actor", "")) for past in (events or [])
+                        if past.get("kind") == "item" and past.get("item") == ev["item"]
+                        and past.get("state") == "review"}:
+                raise EventError(f"slot {slot} registered this item's review; the verdict needs another slot")
         if str(item.get("owner", "")).upper() == expected:
             authors = {past.get("actor") for past in (events or [])
                        if past.get("kind") == "item" and past.get("item") == ev["item"]

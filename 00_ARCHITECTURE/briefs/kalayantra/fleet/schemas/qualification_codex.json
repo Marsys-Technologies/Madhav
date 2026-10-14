@@ -1,0 +1,595 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.qualification/1#codex",
+  "title": "KĀLA-YANTRA v3 launch qualification receipt of the OpenAI Codex CLI engine, run/QUALIFICATIONS/<role>-<model>.json, written by fleet/kyqualify.py (relaunch plan v2.7 §7 KV-06)",
+  "description": "What one Codex launch configuration was observed to do, bound to the exact program, launch line, model/effort, sandbox and network, writable roots, disabled features, environment names, prompt/output-schema hashes, the instruction and hook files Codex may still read and the harness itself (binds). The same schema id as a Claude Code receipt (qualification.json), told apart by engine = \"codex\" (a receipt without engine is Claude Code's). Shape only. Not checked by this schema, and recomputed by `kyqualify.py check`: result is PASS only when every required check (sign_in, model_identity, sandbox_observed, no_tty_prompt, project_instructions_visible, workspace_write, outside_write_denied, slash_tmp_write_denied, launchctl_denied, network, foreign_tools_absent, persistent_mode_absent, git_config_hooks_unchanged; git_write_denied (a commit and a write into the working copy's git directory are refused, its .git pointer and git directory unchanged) for a builder; item_read, item_write_denied and item_worktree_unchanged — instead of project_instructions_visible — for a job-rooted one;, launchd_context for launchd) is 'pass' and every negative probe is 'pass' — none may be 'not_simulated'; binds equal the binds recomputed from the configuration and the files on disk; a launchd context is backed by its launchd receipt, earned with /bin/launchctl. user_skills_visible and input_overhead_worktree are reported, never required. `boundary` says what a PASS is not.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "engine",
+    "role",
+    "model",
+    "context",
+    "result",
+    "boundary",
+    "binds",
+    "harness",
+    "offered_tools",
+    "checks",
+    "negative_probes",
+    "observations",
+    "exemptions",
+    "evidence",
+    "launchd_receipt",
+    "generated_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.qualification/1"
+    },
+    "engine": {
+      "const": "codex"
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$"
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+    },
+    "context": {
+      "description": "Where the canaries really ran; a shell run is never labelled launchd.",
+      "enum": [
+        "launchd",
+        "shell"
+      ]
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "unknown"
+      ]
+    },
+    "boundary": {
+      "description": "What this receipt is: canaries exercised the Codex sandbox; it is still not the enforced verifier boundary.",
+      "const": "configuration and controller after-exit checks; the Codex sandbox was exercised by canaries, it is not the enforced verifier boundary — that is a B-1 deliverable"
+    },
+    "binds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "codex_bin",
+        "codex_bin_sha256",
+        "codex_version",
+        "argv",
+        "argv_sha256",
+        "model",
+        "effort",
+        "sandbox",
+        "network",
+        "work_root",
+        "writable_dirs",
+        "deadline_seconds",
+        "worktree",
+        "env_names",
+        "child_path",
+        "prompt_sha256",
+        "output_schema_sha256",
+        "codex_disabled_features",
+        "ignore_user_config",
+        "ignore_rules",
+        "skills_include_instructions",
+        "persistent_mode",
+        "project_agents_md_sha256",
+        "user_codex_agents_md_sha256",
+        "user_codex_hooks_sha256",
+        "zdotdir_sha256",
+        "harness_sha256",
+        "exclude_slash_tmp",
+        "exclude_tmpdir_env_var",
+        "commit_mode"
+      ],
+      "properties": {
+        "engine": {
+          "const": "codex"
+        },
+        "codex_bin": {
+          "$ref": "#/$defs/path"
+        },
+        "codex_bin_sha256": {
+          "description": "sha256 of the real path of codex_bin.",
+          "$ref": "#/$defs/sha256"
+        },
+        "codex_version": {
+          "description": "What `codex --version` prints after 'codex-cli ', pre-release suffix included.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+[0-9A-Za-z.+-]*$"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "description": "The bound launch line, <JOB_DIR> unfilled."
+        },
+        "argv_sha256": {
+          "description": "sha256 of argv as compact JSON.",
+          "$ref": "#/$defs/sha256"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+        },
+        "effort": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "sandbox": {
+          "enum": [
+            "read-only",
+            "workspace-write"
+          ]
+        },
+        "network": {
+          "type": "boolean"
+        },
+        "work_root": {
+          "description": "Where -C points: the item's worktree, or the job's own folder (a reviewer).",
+          "enum": [
+            "worktree",
+            "job"
+          ]
+        },
+        "writable_dirs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/path"
+          }
+        },
+        "deadline_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "worktree": {
+          "$ref": "#/$defs/path"
+        },
+        "env_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "child_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "output_schema_sha256": {
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "codex_disabled_features": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.]*$"
+          }
+        },
+        "ignore_user_config": {
+          "description": "--ignore-user-config is on the line: $CODEX_HOME/config.toml is not loaded.",
+          "const": true
+        },
+        "ignore_rules": {
+          "description": "--ignore-rules is on the line: no execpolicy .rules file is loaded.",
+          "const": true
+        },
+        "skills_include_instructions": {
+          "description": "Bound launcher override skills.include_instructions=false; the reported skills check still measures visibility.",
+          "const": false
+        },
+        "persistent_mode": {
+          "description": "The line asks for persistent mode (reasoning effort \"persistent\"): always false.",
+          "const": false
+        },
+        "project_agents_md_sha256": {
+          "description": "sha256 of <worktree>/AGENTS.md, or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "user_codex_agents_md_sha256": {
+          "description": "sha256 of $HOME/.codex/AGENTS.md, or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "user_codex_hooks_sha256": {
+          "description": "sha256 of $HOME/.codex/hooks.json, or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "zdotdir_sha256": {
+          "description": "sha256 over name then content of every regular file directly under $KY_ROOT/zdotdir, names sorted; or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "harness_sha256": {
+          "description": "sha256 of kyqualify.py itself.",
+          "$ref": "#/$defs/sha256"
+        },
+        "exclude_slash_tmp": {
+          "description": "sandbox_workspace_write.exclude_slash_tmp=true is on the line: /tmp is no writable root.",
+          "const": true
+        },
+        "exclude_tmpdir_env_var": {
+          "description": "exclude_tmpdir_env_var is not set on the line: the job's own TMPDIR stays writable.",
+          "const": false
+        },
+        "commit_mode": {
+          "description": "\"launcher\" for a builder (it commits nothing itself), \"none\" otherwise.",
+          "enum": [
+            "launcher",
+            "none"
+          ]
+        }
+      }
+    },
+    "harness": {
+      "description": "The two files whose code judged this qualification; `check` refuses when either differs from the files it runs from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kyqualify_sha256",
+        "kyprobe_sha256"
+      ],
+      "properties": {
+        "kyqualify_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "kyprobe_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "offered_tools": {
+      "description": "Codex reports no tool list: always null.",
+      "type": "null"
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sign_in",
+        "model_identity",
+        "sandbox_observed",
+        "no_tty_prompt",
+        "project_instructions_visible",
+        "workspace_write",
+        "outside_write_denied",
+        "launchctl_denied",
+        "network",
+        "foreign_tools_absent",
+        "input_overhead_worktree",
+        "persistent_mode_absent",
+        "git_config_hooks_unchanged",
+        "slash_tmp_write_denied",
+        "user_skills_visible"
+      ],
+      "properties": {
+        "sign_in": {
+          "$ref": "#/$defs/check"
+        },
+        "model_identity": {
+          "$ref": "#/$defs/check"
+        },
+        "sandbox_observed": {
+          "$ref": "#/$defs/check"
+        },
+        "no_tty_prompt": {
+          "$ref": "#/$defs/check"
+        },
+        "project_instructions_visible": {
+          "$ref": "#/$defs/check"
+        },
+        "workspace_write": {
+          "$ref": "#/$defs/check"
+        },
+        "outside_write_denied": {
+          "$ref": "#/$defs/check"
+        },
+        "launchctl_denied": {
+          "$ref": "#/$defs/check"
+        },
+        "network": {
+          "$ref": "#/$defs/check"
+        },
+        "foreign_tools_absent": {
+          "$ref": "#/$defs/check"
+        },
+        "input_overhead_worktree": {
+          "$ref": "#/$defs/check"
+        },
+        "launchd_context": {
+          "$ref": "#/$defs/check"
+        },
+        "persistent_mode_absent": {
+          "$ref": "#/$defs/check"
+        },
+        "item_read": {
+          "$ref": "#/$defs/check"
+        },
+        "item_write_denied": {
+          "$ref": "#/$defs/check"
+        },
+        "item_worktree_unchanged": {
+          "$ref": "#/$defs/check"
+        },
+        "git_config_hooks_unchanged": {
+          "$ref": "#/$defs/check"
+        },
+        "slash_tmp_write_denied": {
+          "$ref": "#/$defs/check"
+        },
+        "user_skills_visible": {
+          "$ref": "#/$defs/check"
+        },
+        "git_write_denied": {
+          "$ref": "#/$defs/check"
+        }
+      }
+    },
+    "negative_probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missing_authentication",
+        "timeout",
+        "termination",
+        "restart"
+      ],
+      "properties": {
+        "missing_authentication": {
+          "$ref": "#/$defs/probe"
+        },
+        "timeout": {
+          "$ref": "#/$defs/probe"
+        },
+        "termination": {
+          "$ref": "#/$defs/probe"
+        },
+        "restart": {
+          "$ref": "#/$defs/probe"
+        }
+      }
+    },
+    "observations": {
+      "description": "Reported, never required.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_agents_md_in_context",
+        "user_codex_agents_md_sha256",
+        "user_codex_hooks_sha256",
+        "effort_observed",
+        "approval_policy_observed",
+        "network_access_observed",
+        "final_message_matches_stream",
+        "meaning"
+      ],
+      "properties": {
+        "user_agents_md_in_context": {
+          "enum": [
+            true,
+            false,
+            "unknown"
+          ]
+        },
+        "user_codex_agents_md_sha256": {
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "user_codex_hooks_sha256": {
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "effort_observed": {
+          "description": "the efforts of the base run's session record, or \"unknown\"",
+          "type": [
+            "array",
+            "string"
+          ]
+        },
+        "approval_policy_observed": {
+          "type": [
+            "array",
+            "string"
+          ]
+        },
+        "network_access_observed": {
+          "type": [
+            "array",
+            "string"
+          ]
+        },
+        "final_message_matches_stream": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "meaning": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "exemptions": {
+      "description": "A Codex receipt exempts no probe.",
+      "type": "array",
+      "maxItems": 0
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "files"
+      ],
+      "properties": {
+        "dir": {
+          "$ref": "#/$defs/path"
+        },
+        "files": {
+          "description": "An open map {relative path: sha256}; this schema cannot type its values.",
+          "type": "object"
+        }
+      }
+    },
+    "launchd_receipt": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "context": {
+            "const": "launchd"
+          }
+        },
+        "required": [
+          "context"
+        ]
+      },
+      "then": {
+        "properties": {
+          "launchd_receipt": {
+            "type": "object",
+            "required": [
+              "label",
+              "domain",
+              "plist",
+              "plist_sha256",
+              "launchctl",
+              "test_override",
+              "bootstrap_exit",
+              "loaded_after_bootstrap",
+              "finished",
+              "inner",
+              "bootout_exit",
+              "absent_after_bootout"
+            ]
+          },
+          "checks": {
+            "required": [
+              "launchd_context"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "launchd_receipt": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "path": {
+      "type": "string",
+      "pattern": "^/[^\\n]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "result",
+        "observed",
+        "evidence"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "observed": {
+          "description": "What the detector saw; any JSON value."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected",
+        "observed",
+        "result",
+        "why"
+      ],
+      "properties": {
+        "expected": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed": {
+          "description": "What the detector saw; any JSON value."
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_simulated"
+          ]
+        },
+        "why": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "sha256_or_absent": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64}|absent)$"
+    }
+  }
+}

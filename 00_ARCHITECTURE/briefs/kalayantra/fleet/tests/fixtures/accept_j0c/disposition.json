@@ -1,0 +1,260 @@
+{
+  "artifact": "J0_DISPOSITION",
+  "version": "1.1",
+  "item": "J-0c",
+  "observed_at": "2026-10-07T23:45:00Z",
+  "scope": "proposal-only disposition of accepted J-0 inventories; no inherited PR, tracker item, decision, hold, runtime, migration, or deployment state changes",
+  "sources": {
+    "pr_inventory": {
+      "path": "prs.json",
+      "sha256": "985009336b2b7d72c74edfefc73749d970d43b167a4c639946ad1862cc7ee57b",
+      "observed_at": "2026-10-07T19:58:18Z",
+      "count": 3
+    },
+    "state_inventory": {
+      "path": "state.json",
+      "sha256": "40d4f553c45dde76761faf843631718a0e983b51e254db13b7aec3d2f8d5c208",
+      "observed_at": "2026-10-07T20:55:02Z",
+      "count": 13
+    },
+    "phase_authority": "KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md §2.3",
+    "plan_model": {
+      "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+      "sha256": "39c10735591a686bffcc897990367c886bc74027b6873191befca6f9a958e7ee"
+    },
+    "pravaha_plan": {
+      "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+      "sha256": "54ecf3f2ffb20d229a042867818976ac6e0b53b862cee73f59a60ca45429d3a7"
+    },
+    "run_records": [
+      {
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/MEASURING_BUILD_CONTRACT_v1_0.md",
+        "sha256": "7bf117613c2e5c9220ab6aac8c20a2d46032fdf3d24088d977de220e2feea52d"
+      },
+      {
+        "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/FINAL_BUILD_SCOPE_PLAN.txt",
+        "sha256": "3853cf7448a662318724d05f8d68c05e02402baa40a58df87b8cf106a5307df1"
+      }
+    ]
+  },
+  "rules": [
+    "Every phase is a proposal for J-0m child creation; it is not a landing authorization.",
+    "A failed, absent, or stale check state is evidence only and never a completion claim.",
+    "Reserved decisions and unresolved holds remain explicit and route to ADHIKARIN; no disposition exercises them.",
+    "Protected-window and small-test constraints remain controlling; PR #3141 (G8 expected-class census) is excluded from phase 1 because its checklist requires it to remain unmerged through the small test, and it may be considered only in phase 8 with the final-rule builder/verifier changes.",
+    "Semantic refusal mutations: assigning A5.5h to phase 5, A5.5j or A5.5m to phase 5, A5.5k to phase 7, A5.5l to phase 5, or A5.6/B5.4/J2 to a pre-full-build phase is refused; replacing any listed source dependency for A5.6, B5.4, J2, or J3 is refused."
+  ],
+  "pr_dispositions": [
+    {
+      "pr": 3141,
+      "head": "35ceffb7f8b6b430a83dcee47d5d68795e426a06",
+      "proposal": "salvage",
+      "owner": "J-4c",
+      "phase": 8,
+      "dependencies": [
+        "small-test teardown/absence proof",
+        "final-rule verifier changes",
+        "failure diagnosis",
+        "G8 equality/non-interference proof"
+      ],
+      "evidence": "read `evidence.md:1`; PR #3141; commit abc1234"
+    },
+    {
+      "pr": 3193,
+      "head": "7e66f3362d7f1f58ab28d0deb283b35519e6f219",
+      "proposal": "salvage",
+      "owner": "J-4c",
+      "phase": 8,
+      "dependencies": [
+        "G12 snapshot validation"
+      ],
+      "evidence": "draft explicitly supersedes #3165 and has no check result"
+    },
+    {
+      "pr": 3165,
+      "head": "e6eb7ff890ff096c296ab432c63f40c840904287",
+      "proposal": "supersede",
+      "owner": "J-4c",
+      "phase": 8,
+      "dependencies": [
+        "PR #3193"
+      ],
+      "evidence": "title says route 1 snapshot copy; PR #3193 explicitly supersedes it"
+    }
+  ],
+  "state_dispositions": [
+    {
+      "id": "A5.5",
+      "proposal": "keep",
+      "owner": "J-3d",
+      "phase": 5,
+      "dependencies": [
+        "report/teardown"
+      ],
+      "evidence": "running event"
+    },
+    {
+      "id": "A5.5h",
+      "proposal": "keep",
+      "owner": "J-1a",
+      "phase": 1,
+      "dependencies": [
+        "A5.5f",
+        "A5.5g",
+        "B5.5b"
+      ],
+      "evidence": "small-test tooling source row; phase-1 prerequisite"
+    },
+    {
+      "id": "A5.5j",
+      "proposal": "keep",
+      "owner": "J-4b",
+      "phase": 7,
+      "dependencies": [
+        "A5.5e"
+      ],
+      "evidence": "post-window provisioning source row"
+    },
+    {
+      "id": "A5.5k",
+      "proposal": "keep",
+      "owner": "J-4a",
+      "phase": 6,
+      "dependencies": [],
+      "evidence": "Suvarna upstream-release prerequisite source row"
+    },
+    {
+      "id": "A5.5l",
+      "proposal": "keep",
+      "owner": "J-4c",
+      "phase": 8,
+      "dependencies": [
+        "A5.5f"
+      ],
+      "evidence": "G8 expected-class census source row; after small-test teardown"
+    },
+    {
+      "id": "A5.5m",
+      "proposal": "keep",
+      "owner": "J-4b",
+      "phase": 8,
+      "dependencies": [
+        "A5.5e",
+        "A5.5l"
+      ],
+      "evidence": "second protected-window source row; source prerequisites retained"
+    },
+    {
+      "id": "A5.6",
+      "proposal": "keep",
+      "owner": "J-5s",
+      "phase": 10,
+      "dependencies": [
+        "A5.5",
+        "N-CLOUD",
+        "A5.5i",
+        "A5.5j",
+        "A5.5k",
+        "A5.5l",
+        "N-G9",
+        "A5.5m"
+      ],
+      "evidence": "full generation 5.0 Cloud Run build source row"
+    },
+    {
+      "id": "A5.7",
+      "proposal": "keep",
+      "owner": "J-5q",
+      "phase": 10,
+      "dependencies": [
+        "A5.6"
+      ],
+      "evidence": "waiting event"
+    },
+    {
+      "id": "B5.4",
+      "proposal": "keep",
+      "owner": "J-5q",
+      "phase": 10,
+      "dependencies": [
+        "B5.3",
+        "A5.6",
+        "B4.3",
+        "B4.4"
+      ],
+      "evidence": "retrodiction source row; full-build input retained"
+    },
+    {
+      "id": "B6.3",
+      "proposal": "keep",
+      "owner": "J-8",
+      "phase": 12,
+      "dependencies": [
+        "A6.2",
+        "A6.3",
+        "B6.1",
+        "B6.2"
+      ],
+      "evidence": "waiting event; Pravāha plan §6.2 defines the close report, CURRENT_STATE and session-log lineage after Tier-2 prerequisites"
+    },
+    {
+      "id": "J2",
+      "proposal": "keep",
+      "owner": "ADHIKARIN",
+      "phase": 10,
+      "dependencies": [
+        "A5.7",
+        "B5.4"
+      ],
+      "evidence": "inherited candidate-gated-and-retrodicted join; no flip decision exercised"
+    },
+    {
+      "id": "J3",
+      "proposal": "keep",
+      "owner": "J-8",
+      "phase": 12,
+      "dependencies": [
+        "B6.3"
+      ],
+      "evidence": "inherited campaign-close join; B6.3 lineage retained"
+    },
+    {
+      "id": "N-G9",
+      "proposal": "keep",
+      "owner": "ADHIKARIN",
+      "phase": 9,
+      "dependencies": [
+        "D-G9"
+      ],
+      "evidence": "ready delegated decision; not exercised"
+    }
+  ],
+  "unresolved": [
+    {
+      "kind": "hold",
+      "proposal": "route_to_ADHIKARIN",
+      "evidence": "state inventory marks three operational holds historical_unresolved and does not establish current applicability"
+    },
+    {
+      "kind": "decision",
+      "proposal": "route_to_ADHIKARIN",
+      "evidence": "D-FLIP, D-G9 and D-T2 are pending in the accepted state inventory"
+    },
+    {
+      "kind": "landing",
+      "proposal": "defer_to_J-0m_children",
+      "evidence": "this artifact creates no child, merger, deployment, or completion transition"
+    }
+  ],
+  "coverage": {
+    "open_prs": 3,
+    "state_entries": 13,
+    "total_entries": 16,
+    "duplicates": 0,
+    "missing": 0,
+    "decisions": 1,
+    "sealed_decisions": 1,
+    "holds": 2
+  },
+  "compatibility": "Inventory/declaration evidence only; no runtime, migration, serving, source implementation or inherited PR landing."
+}

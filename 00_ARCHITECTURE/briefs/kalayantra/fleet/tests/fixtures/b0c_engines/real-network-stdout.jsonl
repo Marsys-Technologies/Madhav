@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"01a13244-b01f-75f1-96ff-542b6cdda34a"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`[features].web_search_request` is deprecated because web search is enabled by default. (Set `web_search` to `\"live\"`, `\"indexed\"`, `\"cached\"`, or `\"disabled\"` at the top level (or under a profile) in config.toml if you want to override it.)"}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"I’ll run the command once.\n"}}
+{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"/bin/zsh -lc 'curl -s -m 10 http://127.0.0.1:50642/KYQ-1e132a342f3c9a9b'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/bin/zsh -lc 'curl -s -m 10 http://127.0.0.1:50642/KYQ-1e132a342f3c9a9b'","aggregated_output":"","exit_code":7,"status":"failed"}}
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"REFUSED"}}
+{"type":"turn.completed","usage":{"input_tokens":30108,"cached_input_tokens":23296,"cache_write_input_tokens":0,"output_tokens":163,"reasoning_output_tokens":75}}

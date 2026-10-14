@@ -34,16 +34,31 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
             raise ValueError('input lies outside the build candidate partition')
         if len({value.assertion_id for value in inputs}) != len(inputs):
             raise ValueError('duplicate assertion identity')
+        # Labels, prose, protection facts and edge targets are evidence, not
+        # physical identity. Refuse aliases before replacing the partition.
+        physical = [(value.chart_id, value.generation, value.event_class_id, value.mechanism,
+                     value.interval.t0, value.interval.t1,
+                     tuple(sorted(set(value.roots.record_ids))),
+                     tuple(sorted(set(value.roots.contact_ids)))) for value in inputs]
+        if len(set(physical)) != len(physical):
+            raise ValueError('duplicate physical conclusion under assertion aliases')
         rows = []
         for value in inputs:
             result = interpret(value)
             if result is None:
                 continue
+            assertion = result.model_dump(mode='json')
+            # PG16 JSONPath .datetime() rejects Pydantic's UTC "Z" suffix.
+            # Preserve each evidence instant with an explicit numeric offset
+            # so migration 1374 can check its half-open interval overlap.
+            for payload, edge in zip(assertion['protections'], result.protections):
+                payload['interval'] = {key: getattr(edge.interval, key).isoformat()
+                                       for key in ('t0', 't1')}
             row = {key: getattr(result, key) for key in ('generation','assertion_id','event_class_id',
                    'exposure','knowledge','rule_conclusion','defeat_state','effective_state','measurement',
                    'what','by_what','null_reason','release_reason')}
             row.update(chart_id=chart, negative_space_contract_version=VERSION,
-                       assertion=Jsonb(result.model_dump(mode='json')),
+                       assertion=Jsonb(assertion),
                        roots=Jsonb(result.roots.model_dump(mode='json')),
                        release=Jsonb(result.release.model_dump(mode='json')),
                        interval_start=result.interval.t0, interval_end=result.interval.t1,

@@ -1,0 +1,34 @@
+{
+ "id": "KV3-B-KYLOCK",
+ "kind": "bootstrap",
+ "wave": "B",
+ "build_tier": "opus",
+ "routing_reason": "control-plane source under fleet/** (plan §9)",
+ "needs_chart_data": false,
+ "max_loops": 3,
+ "plan_version": "2.7",
+ "spec_sources": [
+  {
+   "path": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md",
+   "revision": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
+   "section_range": "§6 Claims, locks, renewals",
+   "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  }
+ ],
+ "schema_receipt_id": null,
+ "pw_mechanism_version": null,
+ "release_pins": "not_applicable: bootstrap",
+ "packet_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+ "d1_paths": [
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kylock.sh",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py"
+ ],
+ "acceptance": {
+  "command": "python3 -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py -q",
+  "expected_result": "all tests pass; a second instance is refused with exit 75",
+  "negative_cases": [
+   "a live holder is never displaced",
+   "a reused PID with another start time is not the holder"
+  ]
+ }
+}
