@@ -681,21 +681,68 @@ def test_apply_STOPS_writing_nothing_when_the_verifiers_pin_cannot_be_rewritten(
 # ── ONE end-to-end test against a DISPOSABLE PostgreSQL with chart_dashas-SHAPED rows: real psycopg3 connection (read-only), the real reader, the real builds / pre-flight queries ─────────
 import os as _os
 
-_PG = _os.environ.get("GOCHARA_A51_TEST_DATABASE_URL")
+from tests.l3._disposable_db_guard import assert_disposable_connection, validate_disposable_dsn
+from tests.l3.gochara._disposable_db_guard import guarded_admin_connect
 
 
-@pytest.mark.skipif(not _PG, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server; the test creates and drops its own database)")
+@pytest.fixture()
+def repin_database_url():
+    dsn = _os.environ.get("GOCHARA_A51_TEST_DATABASE_URL")
+    if not dsn or not dsn.strip():
+        message = "needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server; the test creates and drops its own database)"
+        if _os.environ.get("GOCHARA_REQUIRE_DB") == "1":
+            pytest.fail("GOCHARA_REQUIRE_DB=1: " + message)
+        pytest.skip(message)
+    # Libpq-parsed identity check before connecting; hostile DSNs always fail.
+    validate_disposable_dsn(dsn, "gochara_a51_test")
+    return dsn
+
+
+@pytest.mark.parametrize("required", [False, True])
+@pytest.mark.parametrize("url", [None, "", " "])
+def test_am10_missing_database_url_fails_when_required_and_skips_only_when_optional(monkeypatch, required, url):
+    if url is None:
+        monkeypatch.delenv("GOCHARA_A51_TEST_DATABASE_URL", raising=False)
+    else:
+        monkeypatch.setenv("GOCHARA_A51_TEST_DATABASE_URL", url)
+    monkeypatch.setenv("GOCHARA_REQUIRE_DB", "1" if required else "0")
+    # Neither outcome connects: a required job must fail, never turn green by skip.
+    expected = pytest.fail.Exception if required else pytest.skip.Exception
+    try:
+        repin_database_url.__wrapped__()
+    except (pytest.fail.Exception, pytest.skip.Exception) as exc:
+        assert isinstance(exc, expected), f"required={required}: unexpected {type(exc).__name__}"
+    else:
+        pytest.fail("missing database URL was accepted")
+
+
+@pytest.mark.parametrize("url", [
+    "postgresql://localhost:5432/production",
+    "postgresql://localhost:5432,db.example:5432/gochara_a51_test",
+    "postgresql://localhost:5432/gochara_a51_test?host=db.example",
+])
+def test_am10_refuses_unsafe_database_urls_before_any_connection(monkeypatch, url):
+    from tests.l3._disposable_db_guard import RefusedError
+    monkeypatch.setenv("GOCHARA_A51_TEST_DATABASE_URL", url)
+    try:
+        with pytest.raises(RefusedError):
+            repin_database_url.__wrapped__()
+    except pytest.skip.Exception:
+        pytest.fail("unsafe database URL was skipped instead of refused")
+
+
 @real_reader
-def test_end_to_end_against_a_disposable_database_with_real_chart_dashas_shaped_rows(monkeypatch, tmp_path, capsys):
+def test_end_to_end_against_a_disposable_database_with_real_chart_dashas_shaped_rows(monkeypatch, tmp_path, capsys, repin_database_url):
     import psycopg
     from psycopg.conninfo import conninfo_to_dict, make_conninfo
-    base = conninfo_to_dict(_PG)
-    admin = psycopg.connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
+    base = conninfo_to_dict(repin_database_url)
+    admin = guarded_admin_connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True, connect_timeout=3)
     name = f"repin_tool_{_uuid.uuid4().hex[:10]}"
     admin.execute(f'CREATE DATABASE "{name}"')
     try:
         dsn = make_conninfo(**{**base, "dbname": name})
         with psycopg.connect(dsn, autocommit=True) as c:
+            assert_disposable_connection(c, name)
             c.execute("""CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, system_id text NOT NULL,
                            level_n int NOT NULL, parent_row_id uuid, lord_graha text NOT NULL, start_iso timestamptz NOT NULL, end_iso timestamptz NOT NULL,
                            verification_pass_status text NOT NULL, is_truncated_at_window_start boolean NOT NULL DEFAULT false, is_truncated_at_window_end boolean NOT NULL DEFAULT false)""")
@@ -722,6 +769,7 @@ def test_end_to_end_against_a_disposable_database_with_real_chart_dashas_shaped_
         assert rc == 0 and "verdict: **CLEAN**" in out.out, (out.out[-900:], out.err[-400:])
         # and the same database with the OLD build coexisting is refused by the G6 guard through the real queries
         with psycopg.connect(dsn, autocommit=True) as c:
+            assert_disposable_connection(c, name)
             for r in _db_tuples("old", OLDB):
                 c.execute("INSERT INTO chart_dashas VALUES (%s,%s,'lahiri_chitrapaksha',%s,%s,%s,%s,%s,%s,%s,%s)", (r[0], chart, r[7], r[1], r[2], r[3], r[4], r[5], r[6], r[8]))
         rc = T.main(["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"])
@@ -895,20 +943,20 @@ def test_a_dry_run_writes_nothing_on_every_dispatch_path(monkeypatch, tmp_path):
     assert not out.exists() and not list(tmp_path.iterdir())
 
 
-@pytest.mark.skipif(not _PG, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server; the test creates and drops its own database)")
 @real_reader
-def test_the_NORMAL_cli_capture_path_against_a_disposable_database_without_a_pre_S_L1_replacement_build(monkeypatch, tmp_path, capsys):
+def test_the_NORMAL_cli_capture_path_against_a_disposable_database_without_a_pre_S_L1_replacement_build(monkeypatch, tmp_path, capsys, repin_database_url):
     """Codex R17-1 (rest): `--capture-old` through `conn=None` — the REAL psycopg3 read-only connect and the REAL reader — with NO --new-build-id and no lambda reader."""
     import psycopg
     from psycopg.conninfo import conninfo_to_dict, make_conninfo
-    base = conninfo_to_dict(_PG)
-    admin = psycopg.connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
+    base = conninfo_to_dict(repin_database_url)
+    admin = guarded_admin_connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True, connect_timeout=3)
     name = f"repin_cap_{_uuid.uuid4().hex[:10]}"
     admin.execute(f'CREATE DATABASE "{name}"')
     try:
         dsn = make_conninfo(**{**base, "dbname": name})
         chart = PERM.DASHA_READ_CONTRACT["chart_id"]
         with psycopg.connect(dsn, autocommit=True) as c:
+            assert_disposable_connection(c, name)
             c.execute("""CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, system_id text NOT NULL,
                            level_n int NOT NULL, parent_row_id uuid, lord_graha text NOT NULL, start_iso timestamptz NOT NULL, end_iso timestamptz NOT NULL,
                            verification_pass_status text NOT NULL, is_truncated_at_window_start boolean NOT NULL DEFAULT false, is_truncated_at_window_end boolean NOT NULL DEFAULT false)""")

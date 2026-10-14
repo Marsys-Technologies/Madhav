@@ -1,9 +1,9 @@
 ---
 artifact: PACKET_J-W4-P04_v1
-version: "1.1"
+version: "1.2"
 status: PREPARED_OFFLINE — source landing proposed; operational J-4a acceptance unearned
 produced_on: 2026-10-15
-changelog: "v1.1: fix review P04-B1/B2/B3; depend on J-4p's governed loader and historical reference export. v1.0: carry PRs 2903/3116, strengthen R4, record residual dispositions."
+changelog: "v1.2: verify merged governed loader without an overlay and make inherited AM-10 DB oracles mandatory/fail-closed (P04-B4/B5). v1.1: fix P04-B1/B2/B3; depend on J-4p's governed loader and historical reference export. v1.0: carry PRs 2903/3116, strengthen R4, record residual dispositions."
 ---
 
 # P04 — settled-L1 intake and repin
@@ -17,6 +17,9 @@ Owns:
 - `platform/python-sidecar/scripts/gochara/settled1_intake_check.py`
 - `platform/python-sidecar/tests/l3/gochara_rules/test_am10_repin_tool.py`
 - `platform/python-sidecar/tests/l3/gochara_rules/test_c50_settled1_intake.py`
+- `.github/workflows/ci.yml` (P04-B5: existing mandatory Gochara DB command)
+- `platform/scripts/governance/__tests__/test_ci_changes.py` (P04-B5 execution detector)
+- `platform/src/generated/capability_estate_census.json` (generator output only)
 - this packet brief (Q7 residual evidence path for all three residuals).
 
 All 75 AM-10 and 11 C50 inherited test declarations, their parametrizations and assertion counts are retained. The referenced chat fixture `platform/tests/fixtures/chat-v2/streaming-chunks/mixed.json` was already byte-identical at SHA-256 f6334c55e5c7074345bcc8973cbdcb2d8547f164d8397172b1cc006e7a8c0d5c; no duplicate/churn introduced. AM-10 was byte-identical to its manifest head in v1.0; v1.1 extends its shared capture validator and reads the historical reference-build export for J-4p compatibility. One synthetic AM-10 replacement timestamp changed 09:13:56 → 09:13:57 because current permission.py already contains 09:13:56; all rewrite/keep assertions remain. This changes test data, not an L1 fact.
@@ -76,3 +79,21 @@ The review's gochara suite plus J-4p settlement tests: **617 passed, 4 DB cases 
 (I) INTERPRETATION I-FP04-2: J-4p's `permission.py:38` historical `REFERENCE_DASHA_BUILD_ID` governs the old acquisition. The shared helper at `repin_dasha_contract.py:79-86` retains the pre-J-4p contract lookup only for legacy acquisition/tool compatibility; it never supplies settlement authority. The inherited AM-10 apply oracles reconstruct their original two-constant source shape only in test scratch. This patch does not authorize/adapt legacy `--apply` to rewrite the governed J-4p receipt; later re-pinning remains the reviewed REPIN MODEL work required by plan v2.7:529.
 
 Cockpit still owes prerequisite landing, a new exact-head independent review and CI (including Kāla DB Tests / DB Integration Tests), Q5 readback/detector reconciliation and Q7 registration. A2.5/A2.6, A5.5k and B5.4 retain the dispositions above. No production, Docker, network, Git-write or subagent action occurred; no separate governed SESSION_CLOSE is claimed.
+
+## v1.2 — review findings P04-B4/B5
+
+Base head `8a92cdddf` contains the cockpit's J-4p merge. The actual `services/gochara_kernel/dasha_read.py:44` loader reads the actual governed `dasha_settlement.json:12-13` full run/chart. C50 now passes **45/45** without any dependency overlay; the 37 formerly failing cases, including all eight inherited failures, pass. No intake implementation or C50 assertion needed changing. J-4p's loader, receipt, permission, verifier and `dasha_data.py` remain byte-identical to this base head; its ongoing J4P-B3 amendment is outside P04's scope.
+
+Fresh in-memory source reversions use the reviewer's `run_loader_diagnostic.py` mutation pattern with the dependency overlay removed. Across the full C50 module, B1 produces **9 assertion failures**, B2 **4**, and B3 **6**, with no collection/setup errors. B3 includes the all-new-UUID positive and the retained named validation diagnostics. Fresh fixed full-suite execution passes. These are exact-tree local results, not a receipt for a subsequently committed/remerged SHA.
+
+P04-B5: `.github/workflows/ci.yml:1568-1586` places the entire inherited AM-10 module in `gochara-a55-verifier-fixes`' existing mandatory DB-enabled command, with `GOCHARA_A51_TEST_DATABASE_URL` and `GOCHARA_REQUIRE_DB=1`. The neighbouring job's Postgres service, required ephemeris, failure propagation and unfiltered pytest invocation are retained. AM-10 creates/drops its own uniquely named databases; its base URL names the A5.1 disposable identity, while the guarded administrative connection uses `postgres`. No base database provisioning is needed for these oracles.
+
+`test_am10_repin_tool.py:688-698` fails on absent/blank required URLs, permits optional offline skips, and rejects hostile DSNs through the shared libpq-parsed disposable-identity guard. Both inherited DB tests now use that fixture and the existing guarded admin connector, then validate each created database connection before DDL. All inherited assertions and CREATE/DROP cleanup remain. Diagnostic runs with connections prohibited produce two setup failures for missing required URLs and two failures for a simulated unreachable server, with **zero skips** in either required mode. These diagnostics establish fail-closed behavior; live DB oracle execution remains **deferred to CI**.
+
+`test_ci_changes.py:458-502` adds an execution detector and six mutations: dropped module, dropped URL, dropped required flag, optional step, filtered pytest, and swallowed failure. The detector first failed against the missing command; it now passes and rejects all six mutations. Two additional AM-10 fixture mutations (required failure changed to skip; unsafe refusal changed to skip) each produce three failures. Their in-memory test-module harness requires `--assert=plain`; initial assertion-rewriting runs bypassed that harness and are not mutation evidence. The existing A5.5 hardening/discovery guards remain intact. Declaration/assertion audit retains all **75 AM-10 + 11 C50** inherited declarations.
+
+Local verification: **555 passed, 4 DB cases deferred to CI, 8 inherited xfails** across the full P04 non-DB suites; **113 governance tests passed**, with three Git-writing CLI tests deferred to CI; disposable/CI-list guards: **202 passed, 1 DB case deferred to CI**. Generator completed successfully; only the estate census's three stale source-hash entries changed. An initial generator attempt hit macOS's Unix-socket path-length limit; a temporary worktree link to the job's TMPDIR resolved it. Both dependency links and the TMPDIR link were removed.
+
+(I) INTERPRETATION I-FP04C-1: `done` means this source preparation and permitted local verification are complete. Independent review and mandatory live DB/CI evidence at the final committed head, including after any J-4p re-merge, remain cockpit obligations. Q5/Q7, all historical residual dispositions and B5.4's independent prerequisite remain unchanged.
+
+(I) INTERPRETATION I-FP04C-2: the job's absolute Git-write prohibition also covers scratch repositories created by governance tests. Therefore `test_cli_on_a_real_git_diff`, `test_cli_a_real_git_rename_of_a_pinned_document_is_not_docs_only`, and `test_cli_fails_closed` are deferred to CI; their implementations/assertions were not changed. This is a disclosed local verification limit, not a green result for those three tests.
