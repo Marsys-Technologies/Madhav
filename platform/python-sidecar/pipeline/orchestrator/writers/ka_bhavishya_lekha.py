@@ -1,6 +1,14 @@
 """ka_bhavishya_lekha writer — probabilistic forward projection artifact."""
 import json
-from datetime import date
+from datetime import date, datetime
+from dataclasses import dataclass
+from decimal import Decimal
+from uuid import UUID
+
+from psycopg.types.json import Jsonb
+from psycopg.rows import tuple_row
+from psycopg.types.multirange import Multirange
+from services.kala_core.idempotency import insert_immutable_checked
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
@@ -594,6 +602,180 @@ def _build_projection_narrative(tier: str, domain: str, peak_date, eff_score: fl
     }
 
 
+@dataclass(frozen=True)
+class DeliveryConfirmation:
+    """Fixture transport receipt, bound to the exact immutable statement."""
+
+    issue_id: UUID
+    version: int
+    statement: str
+    channel: str
+    delivered_at: datetime
+    confirmed: bool
+
+
+@dataclass(frozen=True)
+class ObservationPredicate:
+    """Ontology-sourced class/domain/predicate; never inferred from prose."""
+
+    locator: str
+    event_class: str
+    domain: str
+    predicate: str
+
+
+@dataclass(frozen=True)
+class RegistrarInput:
+    """Complete KYD-141 consumer input; live source admission is still due."""
+
+    issue_id: UUID
+    version: int
+    generation: str
+    event_class: str
+    phase: str
+    affected_person: str
+    episode: str
+    issued_at: datetime
+    information_cutoff: datetime
+    statement: str
+    intervals: Multirange
+    disclosed_grain: str
+    point_functional: str
+    probability_target: Decimal | float | None
+    model_digest: str
+    producer_ref: str
+    coverage_ref: str
+    qualification_ref: str
+    result_policy: str
+    calibration_status: str
+    delivery: DeliveryConfirmation | None
+    ontology: ObservationPredicate | None
+
+
+def _aware(value) -> bool:
+    return isinstance(value, datetime) and value.utcoffset() is not None
+
+
+def _registrar_row(ctx, value: RegistrarInput) -> tuple[dict | None, str]:
+    """Read/validate the entire fixture boundary before immutable issue SQL."""
+    if not isinstance(value, RegistrarInput):
+        return None, 'information_unavailable:typed_registrar_input_missing'
+    delivery = value.delivery
+    if delivery is None or (isinstance(delivery, DeliveryConfirmation) and delivery.confirmed is False):
+        return None, 'not_delivered'
+    if (not isinstance(delivery, DeliveryConfirmation) or delivery.confirmed is not True
+            or not isinstance(delivery.issue_id, UUID) or type(delivery.version) is not int
+            or (delivery.issue_id, delivery.version, delivery.statement)
+            != (value.issue_id, value.version, value.statement)
+            or not isinstance(delivery.channel, str) or not delivery.channel.strip()):
+        return None, 'information_unavailable:delivery_confirmation_mismatch'
+    identity = (value.generation, value.event_class, value.phase, value.affected_person,
+                value.episode, value.statement, value.disclosed_grain, value.point_functional,
+                value.model_digest, value.producer_ref, value.coverage_ref, value.qualification_ref)
+    if (not all(isinstance(part, str) and part.strip() for part in identity)
+            or not isinstance(value.issue_id, UUID) or type(value.version) is not int or value.version <= 0):
+        return None, 'information_unavailable:issue_or_episode_identity_missing'
+    if not all(_aware(part) for part in (value.issued_at, value.information_cutoff, delivery.delivered_at)):
+        return None, 'information_unavailable:aware_issue_times_required'
+    if value.information_cutoff > value.issued_at or delivery.delivered_at > value.issued_at:
+        return None, 'information_unavailable:issue_time_order_invalid'
+    intervals = value.intervals
+    if (not isinstance(intervals, Multirange) or not intervals
+            or any(part.isempty or not _aware(part.lower) or not _aware(part.upper)
+                   or not part.lower_inc or part.upper_inc or part.lower >= part.upper for part in intervals)):
+        return None, 'information_unavailable:finite_half_open_intervals_required'
+    probability = value.probability_target
+    if probability is not None:
+        if (isinstance(probability, bool) or not isinstance(probability, (Decimal, float, int))
+                or not Decimal(str(probability)).is_finite() or not 0 <= probability <= 1
+                or value.calibration_status != 'calibrated' or value.result_policy == 'all_null'):
+            return None, 'information_unavailable:probability_not_qualified'
+    ontology = value.ontology
+    if (not isinstance(ontology, ObservationPredicate) or ontology.event_class != value.event_class
+            or ontology.domain not in CANONICAL_DOMAINS
+            or not all(isinstance(part, str) and part.strip() for part in (ontology.locator, ontology.predicate))):
+        return None, 'information_unavailable:ontology_observation_predicate_missing'
+    chart_id, build_id = ctx.config.get('chart_id'), getattr(ctx, 'build_id', None)
+    if not chart_id or not build_id:
+        return None, 'information_unavailable:manifest_identity_missing'
+    # Existing real columns only. Qualification/ontology JSON below is explicitly
+    # fixture preparation; these are not claimed as admitted production fields.
+    with ctx.db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT state, model_digest, conventions FROM kala_layer_candidate "
+            "WHERE chart_id = %s AND generation = %s AND build_id = %s FOR SHARE",
+            (chart_id, value.generation, build_id),
+        )
+        manifest = cur.fetchone()
+        if manifest is None:
+            return None, 'information_unavailable:completed_manifest_missing'
+        if hasattr(manifest, 'keys'):
+            state, digest, conventions = (manifest[key] for key in ('state', 'model_digest', 'conventions'))
+        else:
+            state, digest, conventions = manifest
+        conventions = _json_value(conventions)
+        if state not in {'complete', 'verified'} or digest != value.model_digest:
+            return None, 'information_unavailable:completed_manifest_qualification_mismatch'
+        if not isinstance(conventions, dict) or conventions.get('fixture') is not True:
+            return None, 'information_unavailable:live_registrar_bindings_not_admitted'
+        cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,))
+        head = cur.fetchone()
+        if head and (head.get('generation') if hasattr(head, 'get') else head[0]) == value.generation:
+            return None, 'information_unavailable:published_generation_refused'
+    pins = conventions.get('registrar')
+    if not isinstance(pins, dict) or any(pins.get(key) != getattr(value, key)
+                                         for key in ('producer_ref', 'coverage_ref', 'qualification_ref')):
+        return None, 'information_unavailable:producer_coverage_qualification_bindings_missing'
+    classes = pins.get('classes')
+    class_pins = classes.get(value.event_class) if isinstance(classes, dict) else None
+    expected = {
+        'result_policy': value.result_policy, 'calibration_status': value.calibration_status,
+        'ontology_locator': ontology.locator, 'domain': ontology.domain,
+        'observation_predicate': ontology.predicate,
+    }
+    if (not isinstance(class_pins, dict) or any(class_pins.get(key) != part for key, part in expected.items())
+            or value.calibration_status not in {'calibrated', 'uncalibrated', 'unqualified'}
+            or not isinstance(value.result_policy, str) or not value.result_policy.strip()):
+        return None, 'information_unavailable:class_qualification_or_ontology_mismatch'
+    return {
+        'issue_id': value.issue_id, 'version': value.version, 'chart_id': UUID(str(chart_id)),
+        'generation': value.generation, 'event_class': value.event_class, 'phase': value.phase,
+        'affected_person': value.affected_person, 'episode': value.episode,
+        'issued_at': value.issued_at, 'information_cutoff': value.information_cutoff,
+        'delivered_at': delivery.delivered_at, 'delivery_channel': delivery.channel,
+        'delivered_statement': delivery.statement, 'result_policy': value.result_policy,
+        'calibration_status': value.calibration_status, 'intervals': intervals,
+        'disclosed_grain': value.disclosed_grain, 'point_functional': value.point_functional,
+        'probability_target': probability,
+        'falsifier': Jsonb({**expected, 'provenance': {
+            'model_digest': digest, 'producer_ref': value.producer_ref,
+            'coverage_ref': value.coverage_ref, 'qualification_ref': value.qualification_ref,
+            'acceptance_scope': 'KYD-141 fixture registrar oracles only',
+        }}),
+    }, 'fixture_ready'
+
+
+def _run_fixture_registrar(ctx) -> WriterResult:
+    """Explicit consumer preparation; never writes candidates or served rows."""
+    values = ctx.config['registrar_fixture_inputs']
+    if not isinstance(values, (tuple, list)):
+        return WriterResult('ka_bhavishya_lekha', 0, notes='information_unavailable:typed_input_sequence_required')
+    prepared = [_registrar_row(ctx, value) for value in values]
+    inserted = 0
+    for row, reason in prepared:
+        if row is not None and not ctx.dry_run:
+            # The shared immutable helper decodes tuples. A cursor adapter keeps
+            # the caller's dict-row connection and transaction settings intact.
+            with ctx.db_conn.cursor(row_factory=tuple_row) as cur:
+                inserted += int(insert_immutable_checked(
+                    cur, 'issued_forecast', {'issue_id': row['issue_id'], 'version': row['version']}, row,
+                ))
+    return WriterResult(
+        'ka_bhavishya_lekha', inserted, rows_skipped=len(values) - inserted,
+        notes='; '.join(reason for _, reason in prepared) or 'no_delivery_inputs',
+    )
+
+
 @register('ka_bhavishya_lekha')
 class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
     """Explicit fixture preparation; default legacy computation stays intact."""
@@ -603,6 +785,8 @@ class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
         return read_jury(ctx, generation=generation)
 
     def run(self, ctx) -> WriterResult:
+        if 'registrar_fixture_inputs' in ctx.config:
+            return _run_fixture_registrar(ctx)
         if 'jury_reader_generation' in ctx.config:
             from services.ka_sangam.jury.reader import preparation_result
             return preparation_result(ctx, 'ka_bhavishya_lekha')
