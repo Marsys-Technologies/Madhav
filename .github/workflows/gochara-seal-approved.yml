@@ -1,0 +1,335 @@
+# Gochara APPROVED SEAL — the trusted sealing workflow (Codex round 12, R12-2). DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
+#
+# What it does, in order (design: 00_ARCHITECTURE/briefs/pravaha/design/SEAL_APPROVAL_PAYLOAD_v1_2.md; runbook §5.3 / §6):
+#   job `brief`  (NO environment, NO sealer credential)
+#     1. runs ONLY from `main`, at one reviewed commit (github.sha, an ancestor of origin/main);
+#     2. resolves the immutable image DIGEST the registry holds for this commit and checks that the verification job is DEFINED with exactly that digest (R13-3);
+#     3. runs the verification job's `--brief` mode under the VERIFIER's own identity (the Cloud Run job) with --sealing-commit = this commit, ASYNCHRONOUSLY, writes the execution id
+#        out at once, polls it to a terminal state, and — on any non-success exit of this step, including a cancelled workflow — CANCELS the still-running execution;
+#     4. reads the EXECUTED resource (`jobs executions describe`): image digest, service account, runner commit, arguments, the one secret binding, no retries (R13-3). Log labels are NOT
+#        producer attestation: Cloud Logging does not authenticate who writes an entry;
+#     5. reassembles the brief from the execution's logs (root jsonPayload; the chunk transport), CHECKS it (digest recomputed, persisted receipt, candidate gate clean, every grain
+#        VERIFIED, policy all_null_candidate/1, sealing revision = this commit), writes the retained ENVELOPE (execution id, image digest, run, attempt, commit, brief digest, brief id),
+#        DISPLAYS it in the run summary and RETAINS it under a name carrying run id + attempt. The approver reads THIS before approving.
+#   job `seal`   (environment `gochara-seal` — the approval gate; the sealer credential exists ONLY here)
+#     6. waits for the approval (one required reviewer: the owner's account; the steward approves on his authority — native ruling #2). The wait is not job time;
+#     7. downloads the brief artifact of THIS run AND ATTEMPT (a seal-only re-run has no such artifact and FAILS: it must not reuse an older attempt's brief — start a full run),
+#        re-checks the brief and the envelope against this run/attempt/commit, retrieves THIS run's approval history and selects the approval by what its comment names —
+#        `brief-digest: <hex>  run: <id>  attempt: <n>  brief-id: <n>` — never by API order; ANY ambiguity (an approval and a refusal of one attempt, two approvals, an unattributable
+#        review) refuses and requires a fresh run — BEFORE any database contact;
+#     8. calls Stream A's seal job, which owns the ONE transaction (statement/lock timeouts; recompute under the seal locks -> publish -> authoritative seal -> receipt; any failure rolls
+#        back publication too) and fails this run on any non-zero exit;
+#     9. ALWAYS then RECONCILES — reads the publication, seal and receipt rows and reports SEALED / NOT_SEALED / INCONSISTENT / UNREADABLE in the run summary: a failed or cancelled
+#        status does not prove the transaction rolled back (a lost COMMIT acknowledgement), so the state is READ, not inferred.
+#
+# Honest limits (packet §R10a-2): the approval is NOT an independent human check (same account); GitHub enforces the pause, no admin bypass and protected-branch
+# use, not independence or attribution beyond the login; the database enforces that a receipt exists naming the manifest and a verifier-persisted brief, not that this workflow
+# computed it honestly. The approval comment's run/attempt are CLAIMED by the approver, not API metadata. The sealer credential outlives a run (runbook §5.3: five places).
+# CAPACITY: the verification job's own task timeout is 7200 s (#2976), so the brief job waits up to 125 min for it (job limit 150 min); the seal job is 30 min — Stream A's ESTIMATES (not
+# measured on a real build; the first seal's own timings are the first measurement) for the sealing transaction are ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and a 2 min lock_timeout. The approval wait does not count against either.
+# DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification job defined by #2976 at THIS SAME commit (same-commit rule); acts 12/13/14 (the workflow
+# identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
+# `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
+# WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
+# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
+name: Gochara approved seal (reviewed; draft HOLD)
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart_id:
+        description: 'Chart id (the canonical chart)'
+        required: true
+        type: string
+        default: '482012f1-710e-4a25-994a-93821f5871aa'
+      generation:
+        description: 'Generation (the first all-NULL candidate is 5.0)'
+        required: true
+        type: string
+        default: '5.0'
+      confirm:
+        description: 'Type exactly: SEAL-GOCHARA-CANDIDATE'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: gochara-verification-and-sealing           # the SAME group as the job-definition workflow (#2976): a redefinition never overlaps a brief or a seal
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: asia-south1
+  WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+  WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+  VERIFICATION_JOB: gochara-verification-job
+  VERIFIER_SERVICE_ACCOUNT: gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com
+  VERIFIER_SECRET: gochara-verifier-db-url
+  PIPELINE_IMAGE_REPO: asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline
+
+jobs:
+  brief:
+    name: Brief (verifier identity; no sealer credential)
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'SEAL-GOCHARA-CANDIDATE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    outputs:
+      brief_digest: ${{ steps.check.outputs.brief_digest }}
+      brief_id: ${{ steps.check.outputs.brief_id }}
+      sealing_commit: ${{ github.sha }}
+    steps:
+      - name: Checkout the dispatched commit (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Bind to the reviewed sealing revision
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Smoke the sealing job's dependencies (S-DEP) — install and import at the sealing commit, BEFORE any approval is requested
+        run: |
+          set -euo pipefail
+          python3 -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          PYTHONPATH=platform/python-sidecar python3 -c "import psycopg, swisseph; from pipeline.orchestrator import seal_job, verification_job; from services.gochara_kernel import seal_flow, seal_brief; print('S-DEP OK')"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Resolve the immutable image digest for this commit and check the job is defined with it
+        id: image
+        run: |
+          set -euo pipefail
+          DIGEST="$(gcloud artifacts docker images describe "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" --project madhav-astrology --format='value(image_summary.digest)')"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no image digest for commit ${GITHUB_SHA}"; exit 1; }
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
+          # maxRetries is read from the v2 REST representation, where it is a presence-bearing union member (F-R15-3); an absent value in BOTH representations is a refusal
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
+          python3 platform/scripts/gochara_seal_execution_check.py job-image --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET"
+
+      - name: Start the verification job in --brief mode (verifier identity) and record the execution id at once
+        id: execute
+        env:
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+        run: |
+          set -euo pipefail
+          EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" \
+            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --async --format='value(metadata.name)')"
+          [[ "$EXECUTION" =~ ^[a-z0-9-]+$ ]] || { echo "::error::the execution id is not a Cloud Run execution name"; exit 1; }
+          echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the execution to reach a terminal state
+        id: wait
+        timeout-minutes: 135
+        env:
+          EXECUTION: ${{ steps.execute.outputs.execution }}
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + 7500 ))
+          while true; do
+            gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+            S="$(python3 platform/scripts/gochara_seal_execution_check.py state --execution-file execution.json)"
+            echo "execution $EXECUTION: $S"
+            case "$S" in
+              SUCCEEDED) break ;;
+              FAILED) echo "::error::the verification execution failed or was cancelled; its logs name the refusal"; exit 1 ;;
+            esac
+            [ "$(date +%s)" -lt "$deadline" ] || { echo "::error::the verification execution did not finish within 125 minutes"; exit 1; }
+            sleep 20
+          done
+
+      - name: Cancel a still-running execution after any non-success (a cancelled wait does not stop the Cloud Run execution)
+        if: ${{ always() && steps.execute.outputs.execution != '' && steps.wait.outcome != 'success' }}
+        env:
+          EXECUTION: ${{ steps.execute.outputs.execution }}
+        run: |
+          set +e
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          S="$(python3 platform/scripts/gochara_seal_execution_check.py state --execution-file execution.json)"
+          echo "execution $EXECUTION is $S after this step's non-success"
+          if [ "$S" = "RUNNING" ]; then
+            gcloud run jobs executions cancel "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --quiet
+            echo "::warning::cancel requested for execution $EXECUTION — confirm it reached CANCELLED before starting a fresh run (the verifier may already have persisted a brief; a fresh run produces a new one)"
+          fi
+          exit 0
+
+      - name: Retrieve the brief from the execution's logs
+        env:
+          EXECUTION: ${{ steps.execute.outputs.execution }}
+        run: |
+          set -euo pipefail
+          # Fable F-R16-4a: `--freshness` is documented to work only with DESC ordering — with `--order=asc` it is silently NOT applied. The read is bounded EXPLICITLY instead: the execution's own
+          # `status.startTime` minus a 5-minute margin (the execution_name label already selects the one execution; the timestamp bound keeps the read small and is checked, not assumed).
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          START="$(python3 - <<'PYEOF'
+          import json, sys
+          from datetime import datetime, timedelta, timezone
+          st = json.load(open("execution.json")).get("status", {}).get("startTime")
+          if not st:
+              sys.exit("execution.json carries no status.startTime — cannot bound the log read")
+          print((datetime.fromisoformat(st.replace("Z", "+00:00")) - timedelta(minutes=5)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+          PYEOF
+          )"
+          gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\" AND timestamp>=\"$START\"" \
+            --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --format=json > execution_logs.json
+          python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out-brief brief.json --out-compact brief.compact.json
+
+      - name: Check the brief (digest recomputed, persisted receipt, gate clean, policy, revision) and bind it to the executed resource
+        id: check
+        env:
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+          EXECUTION: ${{ steps.execute.outputs.execution }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --compact-file brief.compact.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}/executions/${EXECUTION}" > execution.v2.json
+          ARGS_JSON="$(python3 -c 'import json,sys; print(json.dumps(["--chart",sys.argv[1],"--generation",sys.argv[2],"--brief","--sealing-commit",sys.argv[3]]))' "$CHART_ID" "$GENERATION" "$GITHUB_SHA")"
+          python3 platform/scripts/gochara_seal_execution_check.py build-envelope --v2-execution-file execution.v2.json --execution-file execution.json --compact-file brief.compact.json --execution-name "$EXECUTION" \
+            --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --secret-name "$VERIFIER_SECRET" --args-json "$ARGS_JSON" --run-id "$GITHUB_RUN_ID" \
+            --attempt "$GITHUB_RUN_ATTEMPT" --sealing-commit "$GITHUB_SHA" --brief-digest "$DIGEST" --out brief.envelope.json
+          BRIEF_ID="$(python3 -c 'import json; print(json.load(open("brief.compact.json"))["persisted"]["brief_id"])')"
+          echo "brief_digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "brief_id=$BRIEF_ID" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Seal brief — read this BEFORE approving"
+            echo
+            echo "- chart \`$CHART_ID\`, generation \`$GENERATION\`, sealing revision \`$GITHUB_SHA\`"
+            echo "- executed resource: execution \`$EXECUTION\`, image \`$IMAGE_DIGEST\`, verifier service account, runner commit = the sealing revision; the brief's own producer line (commit, image digest, execution id) is bound to it"
+            echo "- candidate gate: **clean (0 violations)**; policy **all_null_candidate/1**; every grain **VERIFIED**"
+            echo "- persisted brief id: **$BRIEF_ID**; **brief digest: \`$DIGEST\`**"
+            echo
+            echo "Approve the \`gochara-seal\` deployment with a comment containing exactly this line:"
+            echo
+            echo "    brief-digest: $DIGEST  run: $GITHUB_RUN_ID  attempt: $GITHUB_RUN_ATTEMPT  brief-id: $BRIEF_ID"
+            echo
+            echo "**This approval is NOT an independent human check:** the owner's account is the one required reviewer and the steward approves under it (native ruling #2). What the seal rests on is the database gate, the verifier-persisted brief the receipt must name, the recompute under the seal locks, and the receipt. **Log labels are not producer attestation.**"
+            echo
+            echo "The full brief is retained as the \`seal-brief-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT\` artifact. A seal is not a flip. If anything above is unexpected, reject — a fresh run is the only retry."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain the brief (the name carries run id and attempt)
+        uses: actions/upload-artifact@v4
+        with:
+          name: seal-brief-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            brief.json
+            brief.compact.json
+            brief.envelope.json
+          retention-days: 90
+          if-no-files-found: error
+
+  seal:
+    name: Seal (approval-gated; sealer credential only here)
+    needs: brief
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: gochara-seal
+    steps:
+      - name: Checkout the SAME reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.brief.outputs.sealing_commit }}
+          fetch-depth: 0
+
+      - name: Bind to the reviewed sealing revision
+        env:
+          EXPECTED_SEALING_COMMIT: ${{ needs.brief.outputs.sealing_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$EXPECTED_SEALING_COMMIT"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SEALING_COMMIT"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$EXPECTED_SEALING_COMMIT" origin/main
+
+      - name: Retrieve the retained brief OF THIS RUN AND ATTEMPT (a seal-only re-run has none and fails; it must not reuse an older attempt's brief, start a fresh run)
+        uses: actions/download-artifact@v4
+        with:
+          name: seal-brief-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Retrieve THIS run's approval history from the approval API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/approvals" > approvals.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" -o cloud-sql-proxy
+          echo "276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy" | sha256sum -c -
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_pid" 2>/dev/null && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          test "$ready" = true
+
+      - name: Install the sidecar dependencies
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+
+      - name: Verify the approval and call the seal job (one transaction)
+        id: seal
+        env:
+          GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
+          BRIEF_FILE: brief.json
+          BRIEF_COMPACT_FILE: brief.compact.json
+          BRIEF_ENVELOPE_FILE: brief.envelope.json
+          APPROVALS_FILE: approvals.json
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+          EXPECTED_SEALING_COMMIT: ${{ needs.brief.outputs.sealing_commit }}
+          EXPECTED_BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          PYTHONPATH: platform/python-sidecar
+        run: bash platform/scripts/gochara-seal-approved.sh
+
+      - name: Reconcile — READ the publication, seal and receipt state (a failed or cancelled status does not prove the transaction rolled back)
+        if: ${{ always() && steps.seal.conclusion != 'skipped' }}
+        env:
+          GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+          BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
+          PYTHONPATH: platform/python-sidecar
+        run: |
+          set +e
+          OUT="$(python3 platform/scripts/gochara_seal_reconcile.py --chart-id "$CHART_ID" --generation "$GENERATION" --brief-digest "$BRIEF_DIGEST" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT")"
+          RC=$?
+          echo "$OUT"
+          { echo "## Reconciliation after the sealing step"; echo; echo '```'; echo "$OUT"; echo '```'; echo; echo "State is READ from the database, not inferred from this run's status. NOT_SEALED = nothing was published (start a fresh run to retry); INCONSISTENT or UNREADABLE = STOP and report; do not retry."; } >> "$GITHUB_STEP_SUMMARY"
+          # SEALED (0) and NOT_SEALED (10) are both honest, reported outcomes; the seal step's own status decides whether this run is green. INCONSISTENT (11) / UNREADABLE (12) fail the run.
+          case "$RC" in 0|10) exit 0 ;; *) exit "$RC" ;; esac
+
+      - name: Retain the approval record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seal-approval-record-${{ github.run_id }}-${{ github.run_attempt }}
+          path: approvals.json
+          retention-days: 90
+          if-no-files-found: ignore
