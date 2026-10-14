@@ -247,3 +247,15 @@ def test_candidate_stores_honest_single_tier_and_legacy_stays_null(conn):
     assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation IS NULL').fetchone() == (None,)
     apply_stage_verification_migration(conn, 'kala_obstruction')
     assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT,)
+
+
+@pytest.mark.parametrize('has_tier', [False, True], ids=['before-1376', 'after-1376'])
+def test_candidate_write_is_deploy_safe(conn, has_tier):
+    if not has_tier:
+        conn.execute('ALTER TABLE kala_obstruction DROP COLUMN verification_pass_status')
+    assert write(conn) == 1
+    row = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o WHERE generation=%s', (GEN,)).fetchone()[0]
+    assert ('verification_pass_status' in row) == has_tier
+    if has_tier:
+        assert row['verification_pass_status'] == UNVERIFIED_DEFAULT
+    assert row['effective_state'] == interpret(finding()).effective_state

@@ -19,6 +19,7 @@ served start_year raised to birth_date.year (experienced portion only).
 """
 import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from collections import Counter
 from datetime import date, datetime
@@ -353,14 +354,15 @@ class KaJivanaParvaWriter(WriterBase):
 
         if rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                store_tier = has_stored_verification(cur, 'kala_jivana_parva')
+                cur.executemany(f"""
                     INSERT INTO kala_jivana_parva (
                         chart_id, parva_index, parva_level, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
-                        source_citation, verification_pass_status
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
+                        source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})
+                """, rows if store_tier else [row[:-1] for row in rows])
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 

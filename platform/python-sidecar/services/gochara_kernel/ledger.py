@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import json
 import math
 from datetime import datetime, timezone
@@ -358,12 +359,14 @@ def _normalize_episode(ep: dict, chart_id: str, generation: str,
 def _insert_contact_rows(conn, rows: list[tuple]) -> None:
     if not rows:
         return
-    cols = ", ".join(_CONTACT_COLUMNS)
-    placeholders = ", ".join(["%s"] * len(_CONTACT_COLUMNS))
     with conn.cursor() as cur:
+        store_tier = has_stored_verification(cur, "kala_gochara_contacts")
+        columns = _CONTACT_COLUMNS if store_tier else _CONTACT_COLUMNS[:-1]
+        cols = ", ".join(columns)
+        placeholders = ", ".join(["%s"] * len(columns))
         cur.executemany(
             f"INSERT INTO kala_gochara_contacts ({cols}) VALUES ({placeholders})",
-            rows,
+            rows if store_tier else [row[:-1] for row in rows],
         )
 
 

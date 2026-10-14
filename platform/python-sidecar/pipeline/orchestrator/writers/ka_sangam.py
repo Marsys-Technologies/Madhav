@@ -12,6 +12,7 @@ admission or a retirement claim.
 import hashlib
 import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date
 
@@ -895,6 +896,7 @@ class _LegacyKaSangamWriter(WriterBase):
 
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
+        store_tier = has_stored_verification(cur, 'kala_convergence')
         rows_inserted = 0
         # JL-014: within-chart relative tier, computed once over this batch's
         # convergence_score distribution (additive to I-21's absolute confidence_label).
@@ -939,7 +941,7 @@ class _LegacyKaSangamWriter(WriterBase):
                 icc = independent_current_count(currents)
 
                 cur.execute(
-                    """
+                    f"""
                     INSERT INTO kala_convergence (
                         chart_id, window_start, window_end, convergence_score,
                         constituent_factors, source_citation, computed_at,
@@ -947,7 +949,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis, verification_pass_status
+                        confidence_label_relative, tier_basis{", verification_pass_status" if store_tier else ""}
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -955,7 +957,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s, %s
+                        %s, %s{", %s" if store_tier else ""}
                     )
                     """,
                     (
@@ -980,7 +982,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
-                        UNVERIFIED_DEFAULT,
+                        *((UNVERIFIED_DEFAULT,) if store_tier else ()),
                     ),
                 )
                 rows_inserted += 1

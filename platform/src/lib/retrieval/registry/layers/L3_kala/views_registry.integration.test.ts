@@ -137,11 +137,13 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published STORY SQL nulls stal
     }) }),
   ]) } })
 })
-it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('all seven actual SQL readers preserve published binding, source tiers, references and coverage', async () => {
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each([false, true])('all seven actual SQL readers work with stored columns present=%s', async hasTier => {
   expect(existsSync(new URL('./view_common.ts', import.meta.url))).toBe(true)
   await import('./index')
   const { getCapability } = await import('../../index')
-  db.mockReset().mockImplementation(postgresQuery)
+  db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params, hasTier ? '' :
+    ['kala_darshana', 'kala_obstruction', 'kala_gochara_contacts', 'kala_bhavishya', 'kala_convergence', 'kala_jivana_parva']
+      .map(table => `ALTER TABLE ${table} DROP COLUMN verification_pass_status;`).join('\n')))
   for (const name of ['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain']) {
     const result = await getCapability(`marsys://tool/L3/${name}_read`)!.handler!({ chart_id: fixtureChart,
       at: name === 'now' ? '2026-10-09T12:00:00Z' : undefined,
@@ -152,7 +154,15 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('all seven actual SQL readers p
     expect(result.is_error).toBe(false)
     const content = result.content as Record<string, unknown>
     expect(content).toMatchObject({ manifest_id: '22222222-2222-4222-8222-222222222222',
-      generation: '4.1', empty_reason: null, density: { confirmed: 1 } })
+      generation: '4.1', empty_reason: null, density: { confirmed: hasTier ? 1 : 0 } })
+    if (!hasTier) {
+      const rows = content.rows as { density: unknown; verification: { status: unknown } }[]
+      expect(rows.length).toBeGreaterThan(0)
+      expect(rows.every(row => row.density === null && row.verification.status === null)).toBe(true)
+      expect(content.density).toMatchObject({ unknown: rows.length })
+      expect(content.catalog_only_rows_in_page).toBe(rows.length)
+      expect(content.judgment_flags).toEqual(expect.arrayContaining(['catalog_only_rows_present', 'stored_tier_contract_unavailable']))
+    }
     expect(content.coverage).toEqual(expect.arrayContaining([expect.objectContaining({ unsearched_reason: 'not_searched' })]))
     expect(JSON.stringify(content.rows)).not.toContain('9.9')
   }
