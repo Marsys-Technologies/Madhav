@@ -66,7 +66,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCP_REGION: asia-south1
+  GOOGLE_CLOUD_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
   VERIFICATION_JOB: gochara-verification-job
@@ -128,9 +128,9 @@ jobs:
           DIGEST="$(gcloud artifacts docker images describe "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" --project madhav-astrology --format='value(image_summary.digest)')"
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no image digest for commit ${GITHUB_SHA}"; exit 1; }
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
+          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > job.json
           # maxRetries is read from the v2 REST representation, where it is a presence-bearing union member (F-R15-3); an absent value in BOTH representations is a refusal
-          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GOOGLE_CLOUD_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
           python3 platform/scripts/gochara_seal_execution_check.py job-image --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET" --cloudsql-instance "$CLOUDSQL_INSTANCE"
 
       - name: Start the verification job in --brief mode (verifier identity) and record the execution id at once
@@ -140,7 +140,7 @@ jobs:
           GENERATION: ${{ inputs.generation }}
         run: |
           set -euo pipefail
-          EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" \
+          EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" \
             --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --async --format='value(metadata.name)')"
           [[ "$EXECUTION" =~ ^[a-z0-9-]+$ ]] || { echo "::error::the execution id is not a Cloud Run execution name"; exit 1; }
           echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
@@ -154,7 +154,7 @@ jobs:
           set -euo pipefail
           deadline=$(( $(date +%s) + 7500 ))
           while true; do
-            gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+            gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > execution.json
             S="$(python3 platform/scripts/gochara_seal_execution_check.py state --execution-file execution.json)"
             echo "execution $EXECUTION: $S"
             case "$S" in
@@ -171,11 +171,11 @@ jobs:
           EXECUTION: ${{ steps.execute.outputs.execution }}
         run: |
           set +e
-          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > execution.json
           S="$(python3 platform/scripts/gochara_seal_execution_check.py state --execution-file execution.json)"
           echo "execution $EXECUTION is $S after this step's non-success"
           if [ "$S" = "RUNNING" ]; then
-            gcloud run jobs executions cancel "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --quiet
+            gcloud run jobs executions cancel "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --quiet
             echo "::warning::cancel requested for execution $EXECUTION — confirm it reached CANCELLED before starting a fresh run (the verifier may already have persisted a brief; a fresh run produces a new one)"
           fi
           exit 0
@@ -187,7 +187,7 @@ jobs:
           set -euo pipefail
           # Fable F-R16-4a: `--freshness` is documented to work only with DESC ordering — with `--order=asc` it is silently NOT applied. The read is bounded EXPLICITLY instead: the execution's own
           # `status.startTime` minus a 5-minute margin (the execution_name label already selects the one execution; the timestamp bound keeps the read small and is checked, not assumed).
-          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > execution.json
           START="$(python3 - <<'PYEOF'
           import json, sys
           from datetime import datetime, timedelta, timezone
@@ -211,8 +211,8 @@ jobs:
         run: |
           set -euo pipefail
           DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --compact-file brief.compact.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
-          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
-          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}/executions/${EXECUTION}" > execution.v2.json
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > execution.json
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GOOGLE_CLOUD_REGION}/jobs/${VERIFICATION_JOB}/executions/${EXECUTION}" > execution.v2.json
           ARGS_JSON="$(python3 -c 'import json,sys; print(json.dumps(["--chart",sys.argv[1],"--generation",sys.argv[2],"--brief","--sealing-commit",sys.argv[3]]))' "$CHART_ID" "$GENERATION" "$GITHUB_SHA")"
           python3 platform/scripts/gochara_seal_execution_check.py build-envelope --v2-execution-file execution.v2.json --execution-file execution.json --compact-file brief.compact.json --execution-name "$EXECUTION" \
             --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --secret-name "$VERIFIER_SECRET" --args-json "$ARGS_JSON" --run-id "$GITHUB_RUN_ID" \

@@ -648,10 +648,13 @@ def world(tmp_path):
 
 
 def orch(world, **over):
-    env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "BRIEF_COMPACT_FILE": str(world["compact"]), "BRIEF_ENVELOPE_FILE": str(world["envelope"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
-           "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA, "TRIGGERING_ACTOR": "steward-as-owner",
+    # The runner's GitHub identity must not become this fixture workflow's identity.
+    inherited = {key: value for key, value in os.environ.items() if not key.startswith("GITHUB_")}
+    marker = "SECRETMARKER"
+    env = {**inherited, "BRIEF_FILE": str(world["brief"]), "BRIEF_COMPACT_FILE": str(world["compact"]), "BRIEF_ENVELOPE_FILE": str(world["envelope"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
+           "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA, "GITHUB_ACTOR": "steward-as-owner", "GITHUB_TRIGGERING_ACTOR": "steward-as-owner", "TRIGGERING_ACTOR": "steward-as-owner",
            "SEAL_JOB_CMD": world["shim"], "APPROVAL_FILE": str(world["tmp"] / "approval.json"), "PYTHON_BIN": sys.executable,
-           "GOCHARA_SEALER_DB_URL": "postgresql://gochara_sealer:SECRETMARKER@127.0.0.1:5432/x", **over}
+           "GOCHARA_SEALER_DB_URL": f"postgresql://gochara_sealer:{marker}@127.0.0.1:5432/x", **over}
     return subprocess.run(["bash", str(ORCH)], env=env, capture_output=True, text=True, timeout=60)
 
 
@@ -659,7 +662,9 @@ def called(world):
     return world["calls"].exists()
 
 
-def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the_reviewed_commit(world):
+def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the_reviewed_commit(world, monkeypatch):
+    monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", "amonty84")
+    monkeypatch.setenv("GITHUB_ACTOR", "amonty84")
     r = orch(world)
     assert r.returncode == 0 and "SEALED" in r.stdout, r.stdout + r.stderr
     lines = world["calls"].read_text().splitlines()

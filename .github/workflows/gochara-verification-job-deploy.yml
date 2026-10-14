@@ -50,7 +50,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCP_REGION: asia-south1
+  GOOGLE_CLOUD_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
   VERIFICATION_JOB: gochara-verification-job
@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
           gcloud run jobs deploy "$VERIFICATION_JOB" \
             --project madhav-astrology \
-            --region "$GCP_REGION" \
+            --region "$GOOGLE_CLOUD_REGION" \
             --image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}" \
             --service-account "$VERIFIER_SERVICE_ACCOUNT" \
             --command "python,-m,pipeline.orchestrator.verification_job" \
@@ -120,9 +120,9 @@ jobs:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
-          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
+          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > job.json
           # maxRetries is read from the v2 REST representation, where it is a presence-bearing union member (F-R15-3); an absent value in BOTH representations is a refusal
-          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GOOGLE_CLOUD_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
           python3 platform/scripts/gochara_verification_job_readback.py --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" \
             --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET" --cloudsql-instance "$CLOUDSQL_INSTANCE" \
             --timeout-seconds 7200 --memory 8Gi --cpu 2
@@ -138,7 +138,7 @@ jobs:
       - name: Run the secret-isolation preflight (#2961, act 7) EXPLICITLY against the deployed definition
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.GOOGLE_CLOUD_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
