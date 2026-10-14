@@ -404,13 +404,16 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           const tiers = rawTiers && typeof rawTiers === 'object' && !Array.isArray(rawTiers)
             ? rawTiers as Record<string, unknown> : {}
           const factVerified = ids.length > 0 && ids.every(id => tiers[String(id)] === 'two_pass_verified')
-          const rank = factVerified && !unverifiedYogaTier ? 0 : unverifiedYogaTier ? 1 : 2
+          const unassessedReason = ledger['null_reason'] === 'partial_defeat_unassessed'
+            || ledger['null_reason'] === 'contestation_unassessed' ? ledger['null_reason'] as string : null
+          const rank = unassessedReason ? 2 : factVerified && !unverifiedYogaTier ? 0 : unverifiedYogaTier ? 1 : 2
+          if (unassessedReason && !judgment_flags.includes(unassessedReason)) judgment_flags.push(unassessedReason)
           if (!unknownYogaTier) return { row, rank }
           if (!judgment_flags.includes('yoga_tier_unavailable')) judgment_flags.push('yoga_tier_unavailable')
           const priorFlags = Array.isArray(ledger['judgment_flags']) ? ledger['judgment_flags'] as string[] : []
           return { rank, row: { ...row, derivation_ledger_jsonb: {
             ...ledger, yoga_tier: null,
-            null_reason: 'ga_yoga_firings_carries_no_verification_tier',
+            null_reason: unassessedReason ?? 'ga_yoga_firings_carries_no_verification_tier',
             judgment_flags: [...new Set([...priorFlags, 'yoga_tier_unavailable'])],
           } } }
         })
