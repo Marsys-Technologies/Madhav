@@ -8,8 +8,9 @@ Build shares use UTC half-open days; scored shares use IST inclusive dates
 (1998-01-01 through 2026-04-17). P4 intersects the agents' instant unions
 before either calendar is applied. Near-miss counts are only a tally of
 supplied observations, never an independent recount or input to shares.
-Seam, wrap, graze, stretch, run-success and golden-capture verification belong
-to their separate measuring components. Marker digest integrity is unknown:
+Seam, wrap, graze, stretch and golden-capture verification belong to their
+separate measuring components. Full MB-6 acceptance is measuring_acceptance;
+read_measuring_acceptance is its read-only caller (J-3b / verifier B). Marker digest integrity is unknown:
 only its syntax is checked here, not the steward's stamp proof.
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
+from hashlib import sha256
 import json
 import math
 import re
@@ -46,6 +48,7 @@ PATHS = ("P1", "P2", "P3", "P4")
 VIA_PATHS = {"base": PATHS, "karakatva": ("P1",), "dvi": ("P4",), "kb": ("P3", "P4")}
 MEASURING_SCOPE = "test_slice"
 MEASURING_RUN = "all_classes_full"
+RULED_MEASURING_HORIZON = (date(1998, 1, 1), date(2084, 2, 5))
 MARKER_SCHEMA = "gochara_v5_test_slice/1"
 MARKER_DIGEST_NOT_CHECKED = "not_checked_by_verifier_steward_stamp_proof"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -240,6 +243,9 @@ class MeasuringBuildView:
     marker_digest_reason: str = MARKER_DIGEST_NOT_CHECKED
     marker_horizon: tuple | None = None
     status: str | None = None
+    horizon_basis: dict | None = None
+    run_verdict: dict | None = None
+    sink_counts: dict | None = None
 
     @property
     def classes_with_records(self):
@@ -247,7 +253,10 @@ class MeasuringBuildView:
 
 
 def measuring_refusals(view, *, expected_horizon, birth_date=None):
-    """Return all departures measured here; digest syntax is not integrity."""
+    """Inherited partial checks, NOT MB-6 acceptance; use measuring_acceptance.
+
+    Digest syntax is not integrity. Kept for inherited measurement callers.
+    """
     out = []
     checks = [
         (view.stored_scope != MEASURING_SCOPE, "measuring_scope_not_test_slice"),
@@ -281,6 +290,166 @@ def measuring_refusals(view, *, expected_horizon, birth_date=None):
     elif not isinstance(view.marker_digest, str) or re.fullmatch(r"[0-9a-f]{64}", view.marker_digest) is None:
         out.append("marker_digest_malformed")
     return out
+
+
+# MB-1.4: these are the captured columns, not a writer's row type.
+_BASIS_ROW_FIELDS = frozenset({
+    "event_id", "event_date", "category", "event_type", "domain", "provenance_lel_id",
+    "provenance_subcategory", "shape", "date_confidence", "interval_start", "interval_end",
+    "chain_parent_event_id", "date_tightened_at",
+})
+
+
+def _runtime_refusals(evidence, *, status, stored_scope):
+    """MB-4.7 raw R7c states and the log's last index/total, never exit status."""
+    if not isinstance(evidence, dict):
+        return ["verdict_not_success"]
+    out = []
+    if evidence.get("run_state") == "failed" and (
+            evidence.get("throughput_state") == "lit" or evidence.get("asset_state") == "complete"):
+        out.append("asset_lit_under_failed_run")
+    index, total = evidence.get("last_substep_index"), evidence.get("planned_substeps")
+    if type(index) is not int or type(total) is not int or total <= 0 or index != total:
+        out.append("substep_plan_incomplete")
+    expected = {"run_state": "completed", "asset_state": "complete", "disposition": "build",
+                "throughput_state": "lit", "inventory_classes": 26, "completed_classes": 26}
+    states_match = all(type(evidence.get(key)) is type(value) and evidence[key] == value
+                       for key, value in expected.items())
+    if out or status != "candidate" or stored_scope != MEASURING_SCOPE or not states_match:
+        out.insert(0, "verdict_not_success")
+    return out
+
+
+def _horizon_basis_refusals(basis, *, chart_id, birth_date, build_date, expected_horizon):
+    """Re-derive from the manifest's consumed rows alone (MB-1.4/1.5)."""
+    required = {"schema", "rule", "chart_id", "birth_date", "build_date", "horizon", "basis",
+                "chosen", "birth_row", "fully_dated_readings", "shape_readings",
+                "excluded_not_fully_dated", "rows_total", "consumed_rows", "consumed_rows_digest"}
+    if not isinstance(basis, dict) or not required <= basis.keys():
+        return ["horizon_basis_missing"]
+    try:
+        if basis["schema"] != "horizon_basis/1" or basis["rule"] != "ruling7+ruling13":
+            raise MeasuringReportError("horizon_basis_invalid: schema_or_rule")
+        birth = birth_date_of(birth_date)
+        if not isinstance(build_date, date):
+            raise MeasuringReportError("build_date_unreadable")
+        today = _utc(build_date).date() if isinstance(build_date, datetime) else build_date
+        if (basis["chart_id"] != str(chart_id) or not chart_id
+                or as_utc_date(basis["birth_date"]) != birth
+                or as_utc_date(basis["build_date"]) != today):
+            raise MeasuringReportError("horizon_basis_invalid: context_mismatch")
+        rows = basis["consumed_rows"]
+        if not isinstance(rows, list) or any(not isinstance(r, dict) or not _BASIS_ROW_FIELDS <= r.keys() for r in rows):
+            raise MeasuringReportError("horizon_basis_missing")
+        if type(basis["rows_total"]) is not int or basis["rows_total"] != len(rows):
+            raise MeasuringReportError("horizon_basis_invalid: rows_total")
+        ids = [r["event_id"] for r in rows]
+        if any(not isinstance(i, str) or not i for i in ids) or len(set(ids)) != len(ids):
+            raise MeasuringReportError("horizon_basis_invalid: event_ids")
+        if rows != sorted(rows, key=lambda r: (r["event_date"] or "", r["event_id"])):
+            raise MeasuringReportError("horizon_basis_invalid: row_order")
+        digest = sha256(json.dumps(rows, sort_keys=True, separators=(",", ":"),
+                                   ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
+        if basis["consumed_rows_digest"] != digest:
+            raise MeasuringReportError("horizon_basis_digest_mismatch")
+        # Reconstruct the stored reader shape explicitly; no live log or builder helper.
+        events = [{**r, "provenance": {"lel_id": r["provenance_lel_id"],
+                                      "subcategory": r["provenance_subcategory"]}} for r in rows]
+        detail = derive_chart_horizon_detail(birth, events, today)
+        derived = (detail["start"], detail["end"])
+        if (derived != tuple(as_utc_date(v) for v in expected_horizon)
+                or derived != tuple(as_utc_date(v) for v in basis["horizon"])):
+            return ["horizon_mismatch"]
+        if basis["basis"] != detail["basis"]:
+            raise MeasuringReportError("horizon_basis_invalid: basis")
+        if (type(basis["excluded_not_fully_dated"]) is not int
+                or basis["excluded_not_fully_dated"] != detail["excluded_undated"]):
+            raise MeasuringReportError("horizon_basis_invalid: excluded_count")
+        info = fully_dated_events(events, birth_date=birth)
+        chosen, br = info["chosen"], info["birth_row"]
+        expected_chosen = None if chosen is None else {
+            "event_id": chosen["event_id"], "lel_id": chosen["provenance_lel_id"],
+            "event_date": as_utc_date(chosen["event_date"]).isoformat(),
+            "date_confidence": chosen["date_confidence"], "shape": chosen["shape"]}
+        expected_birth = None if br is None else {
+            "event_id": br["event_id"], "lel_id": br["provenance_lel_id"],
+            "event_date": as_utc_date(br["event_date"]).isoformat(), "domain": br["domain"],
+            "provenance_subcategory": br["provenance_subcategory"], "column_used": "domain"}
+        if basis["chosen"] != expected_chosen or basis["birth_row"] != expected_birth:
+            raise MeasuringReportError("horizon_basis_invalid: chosen_or_birth_row")
+        shape_readings = {key + "_start": value.isoformat() if value else None
+                          for key, value in detail["readings"].items()}
+        if basis["shape_readings"] != shape_readings:
+            raise MeasuringReportError("horizon_basis_invalid: shape_readings")
+        # F/I disagreement is reported, not refused; the conjunction is authoritative.
+        others = [r for r in events if not is_birth_row(r)]
+        dates_f = [as_utc_date(r["event_date"]) for r in others if r["date_confidence"] == "exact"]
+        dates_i = []
+        for r in others:
+            ident = r["provenance_lel_id"]
+            match = re.fullmatch(r"EVT\.(\d{4})\.(\d{2})\.(\d{2})\.\d{2}", ident) if isinstance(ident, str) else None
+            try:
+                ident_date = date(*map(int, match.groups())) if match else None
+            except ValueError:
+                ident_date = None
+            if ident_date is not None and r["event_date"] is not None and ident_date == as_utc_date(r["event_date"]):
+                dates_i.append(ident_date)
+        readings = {"rule_F_start": date(min(dates_f).year, 1, 1).isoformat() if dates_f else None,
+                    "rule_I_start": date(min(dates_i).year, 1, 1).isoformat() if dates_i else None,
+                    "conjunction_start": shape_readings["event_date_start"]}
+        if basis["fully_dated_readings"] != readings:
+            raise MeasuringReportError("horizon_basis_invalid: fully_dated_readings")
+        return []
+    except MeasuringReportError as exc:
+        return [str(exc)]
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return ["horizon_basis_invalid: unreadable"]
+
+
+def _sink_refusals(counts):
+    """Aggregate B's independently recounted/consistency-checked sink counts."""
+    out = []
+    codes = {"omission": "certifier_omissions_present", "invented": "certifier_invented_present",
+             "anomaly": "certifier_anomalies_present", "unresolved": None, "near_miss": None}
+    for kind, code in codes.items():
+        count = counts.get(kind) if isinstance(counts, dict) else None
+        if type(count) is not int or count < 0:
+            if code:
+                out.append(f"sink_counts_missing: {kind}")
+        elif code and count:
+            out.append(f"{code}: {count}")
+    return out
+
+
+def measuring_acceptance(view, *, expected_horizon, chart_id, birth_date, build_date, reader_refusals=()):
+    """Full MB-6 acceptance owned by J-3b / verifier B; partial API is not a PASS.
+
+    run_verdict holds raw MB-4.7 R7c/log evidence, NOT a supplied SUCCESS flag.
+    sink_counts holds B's independent MB-2 recount/row-consistency results, NOT
+    unverified builder summaries. Missing/invalid counts refuse; positive
+    unresolved/near_miss counts are reported, never gates. The caller must bind
+    both to this candidate, and supply chart/birth/build context independently.
+    This aggregate does not perform the MB-2 geometric recount or stamp proof.
+    """
+    out = measuring_refusals(view, expected_horizon=expected_horizon, birth_date=birth_date)
+    if view.status != "candidate":
+        out.append("measuring_status_not_candidate")
+    out.extend(reader_refusals)
+    if tuple(as_utc_date(v) for v in expected_horizon) != RULED_MEASURING_HORIZON:
+        out.append("horizon_mismatch")
+    runtime = _runtime_refusals(view.run_verdict, status=view.status, stored_scope=view.stored_scope)
+    out.extend(runtime)
+    out.extend(_horizon_basis_refusals(view.horizon_basis, chart_id=chart_id, birth_date=birth_date,
+                                     build_date=build_date, expected_horizon=expected_horizon))
+    out.extend(_sink_refusals(view.sink_counts))
+    out = list(dict.fromkeys(out))
+    return {"accepted": not out, "refusals": out,
+            "run_verdict": "SUCCESS" if not runtime else None,
+            "sink_counts": {kind: value if type(value := view.sink_counts.get(kind)) is int and value >= 0 else None
+                            for kind in ("omission", "invented", "anomaly", "unresolved", "near_miss")}
+                           if isinstance(view.sink_counts, dict) else None,
+            "near_miss_rows_stored": view.near_miss_rows_stored, "marker_digest_verified": None,
+            "marker_digest_reason": MARKER_DIGEST_NOT_CHECKED}
 
 
 @dataclass(frozen=True)
@@ -507,7 +676,7 @@ def read_records(conn, chart_id, generation):
     return [SupportRecord(c, p, a, tuple(spans), "base") for (c, p, a), spans in sorted(grouped.items())]
 
 
-def read_measuring_view(conn, chart_id, generation):
+def read_measuring_view(conn, chart_id, generation, *, run_verdict=None, sink_counts=None):
     """Read the one manifest plus stored seal, versions and class-path census."""
     pair = (chart_id, generation)
     rows = conn.execute(
@@ -537,4 +706,32 @@ def read_measuring_view(conn, chart_id, generation):
                               near_miss_rows_stored=near_miss, class_paths_with_rows=paths, status=status,
                               marker_schema=marker.get("schema"), marker_digest=marker.get("marker_digest"),
                               marker_classes=frozenset(marker.get("classes") or ()),
-                              marker_horizon=tuple(marker["horizon"]) if marker.get("horizon") else None)
+                              marker_horizon=tuple(marker["horizon"]) if marker.get("horizon") else None,
+                              horizon_basis=vector.get("horizon_basis"), run_verdict=run_verdict, sink_counts=sink_counts)
+
+
+def read_measuring_acceptance(conn, chart_id, generation, *, expected_horizon, birth_date, build_date,
+                              run_verdict=None, sink_counts=None):
+    """Read-only MB-6 caller for verifier B (J-3b); no evidence defaults to PASS.
+
+    Runtime/log and independently checked sink evidence are explicit inputs;
+    the consumed-row basis comes from the captured manifest, never today's LEL.
+    Reader refusals join all other findings rather than disappearing.
+    """
+    try:
+        view = read_measuring_view(conn, chart_id, generation, run_verdict=run_verdict, sink_counts=sink_counts)
+    except MeasuringReportError as exc:
+        return {"accepted": False, "refusals": [str(exc)], "run_verdict": None,
+                "sink_counts": None, "near_miss_rows_stored": None, "marker_digest_verified": None,
+                "marker_digest_reason": MARKER_DIGEST_NOT_CHECKED}
+    reader_refusals = []
+    authority = conn.execute("SELECT authoritative_generation FROM public.kala_gochara_authority WHERE chart_id = %s",
+                             (chart_id,)).fetchone()
+    if authority is not None and str(_scalar(authority)) == str(generation):
+        reader_refusals.append("measuring_build_published")
+    try:
+        read_records(conn, chart_id, generation)
+    except MeasuringReportError as exc:
+        reader_refusals.append(str(exc))
+    return measuring_acceptance(view, expected_horizon=expected_horizon, chart_id=chart_id,
+                                birth_date=birth_date, build_date=build_date, reader_refusals=reader_refusals)
