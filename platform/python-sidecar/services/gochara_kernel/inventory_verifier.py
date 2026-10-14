@@ -661,13 +661,12 @@ def rederive_aspect_span_runs(
 # consumed, would be "accounted" by every derivation that reads the supplied ids. So the verifier checks
 # the CONSUMED set itself against the contract it is TOLD (its own constants, not the builder's):
 #   * every consumed row is of this chart, ayanāṃśa, system and tier, levels 1–3, and — for the canonical
-#     chart — the FROZEN pinned build (any other chart: one build, shared by every consumed row);
+#     chart — the single settled build selected by this verifier's own all-tier query;
 #   * no consumed row lies wholly outside the horizon (an EXTRA), and no pinned-build row overlapping the
 #     horizon is missing (an OMITTED);
 #   * no two pinned rows conflict on the same (level, parent, start) with different contract fields.
 
 _C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-_C_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"
 _C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", _TWO_PASS_VERIFIED
 _C_LEVELS = (1, 2, 3)
 
@@ -684,7 +683,16 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     for rid in consumed_ids:
         if str(rid) not in found:
             out.append(f"consumed id {rid} resolves to no row of this chart")
-    builds = {str(r["build_id"]) for r in consumed}
+    # Validate both sides: supplied consumed rows cannot assert a different build
+    # from the population selected by our own guarded query.
+    population = list(consumed) + list(pinned)
+    builds = {str(r["build_id"]) for r in population if r["build_id"] is not None}
+    if any(r["build_id"] is None for r in population):
+        out.append("dasha_build_null: a daśā row carries a NULL build_id")
+    if len(builds) > 1:
+        out.append(f"several builds {sorted(builds)} consumed/selected — an unpinned read")
+    if str(chart_id) == _C_CHART and not pinned:
+        out.append("dasha_build_unsettled: no two_pass_verified Vimśottarī population")
     for r in consumed:
         rid = r["dasha_row_id"]
         if r["ayanamsha_id"] != _C_AYANAMSHA or r["system_id"] != _C_SYSTEM:
@@ -696,12 +704,6 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
             out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
         if not (r["start_iso"] < hi and r["end_iso"] > lo):
             out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
-    if str(chart_id) == _C_CHART:
-        wrong = sorted(b for b in builds if b != _C_BUILD)
-        if wrong:
-            out.append(f"canonical chart: consumed build(s) {wrong} are not the frozen {_C_BUILD}")
-    elif len(builds) > 1:
-        out.append(f"several builds {sorted(builds)} consumed — an unpinned read")
     want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
     for rid in sorted(want - found):
         out.append(f"pinned row {rid} overlaps the horizon but was NOT consumed (omitted)")
@@ -733,18 +735,20 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         names = [c.strip() for c in cols.split(",")]
         return [dict(zip(names, r)) for r in conn.execute(sql, params).fetchall()]
     # G6 (verifier's OWN query, builder code not imported): every Vimśottarī / lahiri row of the chart — all tiers, all levels — is ONE build,
-    # and for the canonical chart the frozen one
+    # the governed settled-build rule is independent of the builder's contract code
     builds = sorted(str(r[0]) for r in conn.execute(
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s",
         (chart_id, _C_SYSTEM, _C_AYANAMSHA)).fetchall())
     if len(builds) > 1:
         raise Unverifiable(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
                            "a mixed L1 state is not verifiable")
-    if builds and str(chart_id) == _C_CHART and builds[0] != _C_BUILD:
-        raise Unverifiable(f"dasha_build_not_pinned: the canonical chart's only Vimśottarī build is {builds[0]}, the frozen contract pins {_C_BUILD}")
+    if builds == ["NULL"]:
+        raise Unverifiable(f"dasha_build_null: chart {chart_id} carries a NULL Vimśottarī build_id — refusing")
+    if not builds and str(chart_id) == _C_CHART:
+        raise Unverifiable(f"dasha_build_unsettled: no Vimśottarī build for chart {chart_id}")
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
-    build = _C_BUILD if str(chart_id) == _C_CHART else None
+    build = builds[0] if builds else None
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
                   " AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)"
                   " AND (%s::uuid IS NULL OR build_id = %s::uuid)",

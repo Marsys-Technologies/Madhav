@@ -80,14 +80,20 @@ def test_a_null_build_id_counts_as_a_second_build(built):
         dasha_read.assert_single_pinned_build(w.conn, CHART_ID)
 
 
-def test_a_single_build_that_is_not_the_pinned_one_is_refused_by_both_sides(built):
+def test_a_single_rebuilt_population_is_accepted_but_does_not_refresh_the_old_snapshot(built):
     w = built
     _verified(w)
     w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER,))
-    with pytest.raises(dasha_read.DashaBuildRefused, match="dasha_build_not_pinned"):
-        dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
-    with pytest.raises(RuntimeError, match="dasha_build_not_pinned"):
-        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)
+    rows, contract = dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
+    assert rows and contract["build_id"] == ANOTHER
+    assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
+    # Accepting the settled live population never re-labels the snapshot that
+    # consumed the previous build: row content (including build_id) stays bound.
+    stored, live = w.conn.execute(
+        "SELECT dasha_digest, public.ka_gochara_search_dasha_digest(chart_id, consumed_dasha_row_ids)"
+        " FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (CHART_ID, GEN)).fetchone()
+    assert live != stored
 
 
 def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):
@@ -116,16 +122,27 @@ def test_the_real_probe_reproduces_the_constant_on_the_pinned_corpus_from_the_ma
     assert abs(box["v"] - ivv.ABSOLUTE_PROBE_SUN_LAHIRI_DEG) <= ivv.ABSOLUTE_PROBE_TOLERANCE_DEG, box   # a fresh thread (per-thread state on Linux)
 
 
-# ── F-R17-2: the canonical daśā build id is pinned in exactly two governed places, and they can never drift ────────────
+# ── J-4p: both independently implemented sides accept the chart's settled build ─────────────────────────────────────
 
-def test_the_two_governed_pins_of_the_canonical_dasha_build_are_equal():
+@pytest.mark.parametrize("build", [
+    "75524b3e-102a-43ec-8cee-3f57fee752c3",
+    "ca17639b-f3cf-42c7-9866-0a61f3855802",
+    "22222222-2222-4222-8222-222222222222",  # synthetic future rebuild
+])
+def test_reader_and_independent_verifier_accept_the_same_single_build(build):
+    from datetime import datetime, timezone
+    a, b = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 2, 1, tzinfo=timezone.utc)
+    row = {"dasha_row_id": "11111111-1111-4111-8111-111111111111", "level_n": 1,
+           "parent_row_id": None, "lord_graha": "Saturn", "start_iso": a, "end_iso": b,
+           "build_id": build, "system_id": "vimshottari", "ayanamsha_id": "lahiri_chitrapaksha",
+           "verification_pass_status": "two_pass_verified"}
+    assert dasha_read.select_dasha_read_contract(CHART_ID, [row])["build_id"] == build
+    assert inv.check_dasha_population([row], [row], chart_id=CHART_ID,
+                                      horizon=(a, b), consumed_ids=[row["dasha_row_id"]]) == []
+
+
+def test_historical_reference_rows_keep_their_own_build_provenance():
     from services.gochara_rules import permission
-    assert permission.DASHA_READ_CONTRACT["build_id"] == inv._C_BUILD == "75524b3e-102a-43ec-8cee-3f57fee752c3"
-
-
-def test_the_canonical_dasha_build_is_pinned_in_no_other_governed_module():
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[3]
-    hits = sorted(str(p.relative_to(root)) for d in ("services", "pipeline") for p in (root / d).rglob("*.py")
-                  if "75524b3e-102a-43ec-8cee-3f57fee752c3" in p.read_text())
-    assert hits == ["services/gochara_kernel/inventory_verifier.py", "services/gochara_rules/permission.py"], hits
+    # The historical literal rows must not be relabelled as the selected live build.
+    assert permission.REFERENCE_DASHA_BUILD_ID == "75524b3e-102a-43ec-8cee-3f57fee752c3"
+    assert "build_id" not in permission.DASHA_READ_CONTRACT

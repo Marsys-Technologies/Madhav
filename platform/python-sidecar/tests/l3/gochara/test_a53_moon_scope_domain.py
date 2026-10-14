@@ -276,7 +276,7 @@ def test_the_pinned_population_passes():
 def test_a_wrong_build_moon_row_is_refused_not_made_authoritative_by_hashing_it():
     evil = _row(9, 2, "Moon", base._dt(2025, 1, 1), base._dt(2025, 3, 1), build="00000000-0000-4000-8000-000000000bad")
     out = _check(POP + [evil])
-    assert any("frozen" in p for p in out)
+    assert any("several builds" in p for p in out)
 
 
 def test_a_wrong_system_or_ayanamsha_or_tier_moon_row_is_refused():

@@ -9,11 +9,10 @@ the registered '5.0' writer's `period_running_at` prerequisite evaluation. They
 share this module so the rule cannot drift between them (§N.7 item 3: a second
 copy of the pin logic is a wrapper-local rule that can shadow the first).
 
-The pin is NEVER a constant in this module: the canonical chart is pinned by the
-frozen contract (`services.gochara_rules.permission.DASHA_READ_CONTRACT`, read,
-never copied); every other chart pins to the single tier-filtered build it
-carries; several builds, a NULL build, or a canonical-chart build that is not the
-frozen one is a CONFLICT — raised, never resolved by row order.
+The build pin is selected from the chart's single settled build, never a
+historical UUID constant. The all-tier guard runs before tier filtering;
+several builds or a NULL build are conflicts, never resolved by row order.
+The verified read and snapshot then bind the build actually consumed.
 """
 from __future__ import annotations
 
@@ -27,26 +26,16 @@ LEVEL_N = {"md": 1, "ad": 2, "pd": 3}
 
 
 def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
-    """The §4.0 pin Vimśottarī rows are read under: the frozen contract's build
-    for the canonical chart when present; else the single build the
-    tier-filtered rows carry; several builds ⇒ a conflict — refuse (raise),
-    never row-order pick; no Vimśottarī rows ⇒ build None (disclosed)."""
+    """Select the sole verified Vimśottarī build after the all-tier guard.
+
+    The canonical chart still refuses an absent verified population; another
+    chart with no rows discloses an empty read. Mixed/NULL builds always refuse.
+    """
     from services.gochara_rules.permission import DASHA_READ_CONTRACT
     vim = [p for p in dasha_periods if p.get("system_id") == PINNED_SYSTEM]
     null_build = sum(1 for p in vim if p.get("build_id") is None)
     builds = sorted({str(p.get("build_id")) for p in vim if p.get("build_id") is not None})
-    pinned = DASHA_READ_CONTRACT["build_id"]
-    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"]:
-        # the canonical chart is PINNED by the frozen contract: any other
-        # sole build is a wrong build, never accepted (ASTRA v1.1 P1-2)
-        if pinned not in builds:
-            raise DD.DashaReadConflict(
-                f"chart_dashas §4.0: the frozen read contract pins build {pinned} "
-                f"for chart {chart_id}, but the two_pass_verified vimshottari rows "
-                f"carry {builds or 'no build'} — refusing an unpinned read")
-        build = pinned
-        basis = "GOCHARA_DESIGN_SPECS_v1_4 §4.0 pinned build"
-    elif null_build:
+    if null_build:
         raise DD.DashaReadConflict(
             f"chart_dashas §4.0: {null_build} two_pass_verified vimshottari rows "
             f"for chart {chart_id} carry a NULL build_id — unpinnable, refusing")
@@ -54,6 +43,9 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
         build = builds[0]
         basis = "single two_pass_verified build present"
     elif not builds:
+        if str(chart_id) == DASHA_READ_CONTRACT["chart_id"]:
+            raise DD.DashaReadConflict(
+                f"chart_dashas §4.0: no two_pass_verified vimshottari rows for chart {chart_id}")
         build = None
         basis = "no vimshottari rows at the read tier"
     else:
@@ -68,7 +60,7 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
 
 
 class DashaBuildRefused(DD.DashaReadConflict):
-    """G6: the chart's Vimśottarī rows are not a single, pinned build — `code` is `dasha_builds_mixed` or `dasha_build_not_pinned`."""
+    """G6: the chart's Vimśottarī rows are not a single, pinned build — `code` is `dasha_builds_mixed` or `dasha_build_null`."""
 
     def __init__(self, code: str, detail: str):
         super().__init__(f"{code}: {detail}")
@@ -76,10 +68,10 @@ class DashaBuildRefused(DD.DashaReadConflict):
 
 
 def assert_single_pinned_build(conn, chart_id: str) -> list[str]:
-    """G6 (steward): refuse unless ALL of the chart's Vimśottarī / lahiri_chitrapaksha rows — every tier, every level — carry ONE build id, and,
-    for the canonical chart, that build is the frozen pin. During and after a part-failed L1 rebuild the table can hold a MIX of old and new
-    builds; the pinned read alone would accept the old build while its rows are present. Returns the builds seen (empty = no rows: the honest
-    empty read is the caller's)."""
+    """G6: ALL Vimśottarī / lahiri_chitrapaksha rows, every tier and level,
+    must carry ONE non-NULL build. A partial rebuild's mixed state is refused
+    before filtering. Empty is disclosed by the caller, never a guessed build.
+    """
     from services.gochara_rules.permission import DASHA_READ_CONTRACT
     rows = conn.execute(
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas"
@@ -88,10 +80,9 @@ def assert_single_pinned_build(conn, chart_id: str) -> list[str]:
     builds = [str(r[0] if not isinstance(r, dict) else next(iter(r.values()))) for r in rows]
     if len(builds) > 1:
         raise DashaBuildRefused("dasha_builds_mixed", f"chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier): "
-                                "a mixed L1 state is not readable — wait for the rebuild to settle and re-pin")
-    if builds and str(chart_id) == DASHA_READ_CONTRACT["chart_id"] and builds[0] != DASHA_READ_CONTRACT["build_id"]:
-        raise DashaBuildRefused("dasha_build_not_pinned", f"the canonical chart's only Vimśottarī build is {builds[0]}, the frozen read contract "
-                                f"pins {DASHA_READ_CONTRACT['build_id']} — re-pin deliberately (a code change), never read around it")
+                                "a mixed L1 state is not readable — wait for the rebuild to settle")
+    if builds == ["NULL"]:
+        raise DashaBuildRefused("dasha_build_null", f"chart {chart_id} carries a NULL Vimśottarī build_id — refusing")
     return builds
 
 
@@ -101,7 +92,7 @@ def load_pinned_vimshottari(conn, chart_id: str) -> tuple[list[dict], dict]:
     canonicalized — a foreign build's overlapping rows never enter the
     duplicate/conflict pass. Returns (rows, contract); rows is [] when the chart
     has none at the read tier (honest empty — the caller reports 'unknown')."""
-    assert_single_pinned_build(conn, chart_id)                     # G6: one build, and the pinned one — before any row is read
+    assert_single_pinned_build(conn, chart_id)                     # G6: one non-NULL build, before tier filtering
     raw = DD.fetch_dasha_periods_multilevel(
         conn, chart_id, systems=[PINNED_SYSTEM], canonicalize=False)
     contract = select_dasha_read_contract(chart_id, raw)
