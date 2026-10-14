@@ -23,4 +23,5 @@
 1354_k6_darshana_candidate.sql
 1355_k6_jivana_candidate.sql
 1356_k6_read_model_build_scoped_detectors.sql
+1375_k6_integrity_chart_build_binding.sql
 1376_k7_stage_verification_status.sql

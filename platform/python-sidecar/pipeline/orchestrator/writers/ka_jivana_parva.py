@@ -54,6 +54,8 @@ def _parse_birth_date(birth_params) -> date | None:
 @register('ka_jivana_parva')
 class KaJivanaParvaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        from pipeline.orchestrator.writers.ka_read_model_integrity import bind_integrity_target
+        bind_integrity_target(ctx)
         # KYD-140 fixture preparation only; the default legacy path is retained.
         if 'kala_read_model_fixture' in ctx.config:
             from pipeline.orchestrator.writers.k6_candidate import run_candidate

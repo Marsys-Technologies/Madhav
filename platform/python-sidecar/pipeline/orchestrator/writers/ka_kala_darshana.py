@@ -253,6 +253,8 @@ class KaKalaDarshanaWriter(_LegacyKaKalaDarshanaWriter):
         return read_jury(ctx, generation=generation)
 
     def run(self, ctx) -> WriterResult:
+        from pipeline.orchestrator.writers.ka_read_model_integrity import bind_integrity_target
+        bind_integrity_target(ctx)
         if 'jury_reader_generation' in ctx.config:
             from services.ka_sangam.jury.reader import preparation_result
             return preparation_result(ctx, 'ka_kala_darshana')
