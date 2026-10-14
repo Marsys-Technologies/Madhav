@@ -107,19 +107,59 @@ function mockPriorityFetch(capabilityContent: Record<string, unknown>) {
   })
 }
 
-async function invokePriority(capabilityContent: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function invokePriorityResult(
+  capabilityContent: Record<string, unknown>,
+  params: Record<string, unknown> = {},
+): Promise<unknown> {
   vi.stubGlobal('fetch', mockPriorityFetch(capabilityContent))
   try {
     const handler = captureRegisteredHandler(
       registerKalaPriorityTool as unknown as (server: { tool: (...args: unknown[]) => void }, principal: Principal) => void,
       TEST_PRINCIPAL,
     )
-    const mcpResult = await handler({ chart_id: TEST_CHART_ID })
-    return extractContent(mcpResult)
+    return await handler({ chart_id: TEST_CHART_ID, ...params })
   } finally {
     vi.unstubAllGlobals()
   }
 }
+
+async function invokePriority(capabilityContent: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return extractContent(await invokePriorityResult(capabilityContent))
+}
+
+describe('K7-4-R1: public PRIORITY preserves comparator refusals', () => {
+  it.each([
+    ['mixed snapshot', 'Error: Tulana comparison refused: mixed or unavailable field snapshot', {}],
+    ['invalid preference (HTTP 422)', 'Error: Tulana comparison refused (422)', { preference: ['nearest', 'nearest'] }],
+    ['unavailable sidecar', 'Error: Tulana comparison unavailable: sidecar not configured', {}],
+    ['invalid comparator response', 'Error: Tulana comparison refused: incompatible response', {}],
+  ])('%s remains a refusal in both MCP outputs', async (_case, reason, params) => {
+    // The real dispatcher wraps this ToolResult in HTTP {ok:true, content:...}.
+    // Reverting the is_error guard in priority.ts must fail on ok:false.
+    const mcpResult = await invokePriorityResult({
+      is_error: true, content: { chart_id: TEST_CHART_ID, error: reason },
+    }, params as Record<string, unknown>) as { isError?: boolean; structuredContent: { object: unknown } }
+    const content = extractContent(mcpResult)
+    expect(content.ok).toBe(false)
+    expect(mcpResult.isError).toBe(true)
+    expect(mcpResult.structuredContent.object).toEqual(content)
+    expect(content.error).toBe(reason)
+    expect(content.chart_id).toBe(TEST_CHART_ID)
+    expect(content.judgment_flags).toContain(reason)
+    expect(content.empty_reason).toBe(reason)
+    expect(content.density_contract).toEqual({ paginated: true, facets: ['domain', 'domains'], empty_reason: true })
+    expect(content).not.toHaveProperty('reading')
+    expect(content).not.toHaveProperty('ranked_signals')
+  })
+
+  it('refuses without inventing a cause when the registry supplies no reason', async () => {
+    const content = await invokePriority({ is_error: true, content: { chart_id: TEST_CHART_ID } })
+    expect(content.ok).toBe(false)
+    expect(content.error).toBe('Priority ranking unavailable: registry refused without a reason')
+    expect(content.judgment_flags).toContain(content.error)
+    expect(content.empty_reason).toBe(content.error)
+  })
+})
 
 describe('F-171: kala_priority_get forwards the F-131 disclosure receipt and narrates from curated labels', () => {
   it('MUST-FAIL-TODAY: a capability payload carrying excluded_internal_marker_count:3 is reflected in the served content', async () => {
@@ -229,7 +269,7 @@ it('K7-4 PRIORITY thesis follows Tulana while old scalar receipts remain intact'
     comparisons: [{ A: 'A', B: 'B', relation: 'incomparable', reason: 'unavailable' }],
     evidence: { B: { axes: { strongest: { state: 'information_unavailable', value: null } } } },
     order_policy: ['most_robust','strongest','nearest'], rejected: [] }
-  const fetchMock = mockPriorityFetch(capabilityPayload({ comparison, ordered_windows: ['B','A'], legacy_scalar: true }))
+  const fetchMock = mockPriorityFetch({ is_error: false, content: capabilityPayload({ comparison, ordered_windows: ['B','A'], legacy_scalar: true }) })
   vi.stubGlobal('fetch', fetchMock)
   const handler = captureRegisteredHandler(registerKalaPriorityTool, TEST_PRINCIPAL)
   const result = extractContent(await handler({ chart_id: TEST_CHART_ID, question_frame: { domain: 'career' }, preference: ['nearest'] }))

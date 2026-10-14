@@ -387,6 +387,22 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           ),
           fetchSalienceVector(chart_id, principal),
         ])
+        // HTTP success only means dispatch succeeded; the ToolResult can still refuse.
+        // Preserve that state before unwrapping, so unavailable comparison is never EMPTY.
+        const registryResult = raw as { is_error?: boolean; content?: { error?: unknown } } | null
+        if (registryResult?.is_error === true) {
+          // (I) INTERPRETATION I6: a reasonless refusal reports the missing reason;
+          // it never infers a comparator failure cause.
+          const reason = typeof registryResult.content?.error === 'string'
+            ? registryResult.content.error
+            : 'Priority ranking unavailable: registry refused without a reason'
+          return kalaErrorOutput(TOOL_NAME, reason, {
+            chart_id,
+            judgment_flags: [reason],
+            empty_reason: reason,
+            density_contract: { paginated: true, facets: ['domain', 'domains'], empty_reason: true },
+          })
+        }
         const payload = unwrapKalaPayload(raw)
         const rows = Array.isArray(payload['ranked_signals']) ? (payload['ranked_signals'] as RankedSignalRow[]) : []
         const resolvedDateFrom = (payload['date_from'] as string | undefined) ?? (date_from as string | undefined) ?? 'today'

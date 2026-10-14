@@ -351,8 +351,8 @@ CERTIFICATION_MAPPING = json.loads(r'''
     }
   },
   "hashes": {
-    "platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts": "a8d0c071042d0ebc3e2f7ecd19e86a3d60415f163962042120faa35c6f92a0c6",
-    "platform-mcp/src/tools/kala_views/priority.ts": "d4c61e746aeddf4f05552b0812d8a753cdc44b0da6b013f80db909eb3b3095cc",
+    "platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts": "b9b213125dc47fd3c937f0ed2152ff4ad0c6c0ef152cf719b913edbcb9ab5f16",
+    "platform-mcp/src/tools/kala_views/priority.ts": "65a47bc32d140ba3ca73751fbda2121429fe55a04b335e340765280486f42575",
     "platform-mcp/src/tools/register_p1_aliases.ts": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128",
     "platform/migrations/1377_k7_4_tulana_pareto_health_probe.sql": "b978e1b088631aadad198cc8080576575d06f706d3a8ffb50e36979dbfa39e76",
     "platform/python-sidecar/services/ka_tulana/ranker.py": "b1335f803b18a29e99fd763a851e59a10c579c9d030c86df1541f1a37198f853",
