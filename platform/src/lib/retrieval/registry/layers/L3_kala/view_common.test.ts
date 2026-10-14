@@ -236,3 +236,12 @@ it.each(['kala_darshana', 'kala_obstruction', 'kala_gochara_contacts', 'kala_bha
     expect(result.catalog_only_rows_in_page).toBe(1)
   },
 )
+
+it('K7-4 PRIORITY public adapter keeps preference with the established name', async () => {
+  const { makeLegacyViewHandler } = await common()
+  const invoke = vi.fn(async (_tool, args) => ({ content: args }))
+  const handler = makeLegacyViewHandler('priority', { authorize: async () => true, invoke })
+  const args = { chart_id: '11111111-1111-4111-8111-111111111111', question_frame: { domain: 'career' }, preference: ['nearest'] }
+  expect((await handler(args)).content).toEqual(args)
+  expect(invoke.mock.calls[0][0]).toBe('kala_priority_get')
+})

@@ -353,6 +353,7 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         '"spirituality", "character"), case-insensitive. Takes precedence over `domains`.'),
       domains: z.array(z.string()).optional().describe(
         'Filter to ANY of these life domains (OR/overlap match), case-insensitive. Ignored if `domain` is also given.'),
+      preference: z.array(z.enum(['nearest','strongest','most_robust','best_suited'])).optional().describe('Unique active axes; declared presentation order, evidence unchanged.'),
       question_frame: QuestionFrameSchema,
     },
     kalaViewAlias(principal, 'priority', async (params) => {
@@ -379,6 +380,8 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
               ...(top_k != null ? { top_k } : {}),
               ...(domain ? { domain } : {}),
               ...(domains ? { domains } : {}),
+              ...(question_frame ? { question_frame } : {}),
+              ...(params.preference ? { preference: params.preference } : {}),
             },
             principal,
           ),
@@ -391,6 +394,18 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         const domainFilter = Array.isArray(payload['domain_filter']) ? (payload['domain_filter'] as string[]) : null
 
         const reading = buildReading({ rows, dateFrom: resolvedDateFrom, dateTo: resolvedDateTo, domainFilter })
+        const comparison = payload['comparison'] as Record<string, unknown> | undefined
+        if (comparison) {
+          const ordered = Array.isArray(comparison.ordered) ? comparison.ordered as string[] : []
+          const pairs = Array.isArray(comparison.comparisons) ? comparison.comparisons as Array<Record<string, unknown>> : []
+          const incomparable = pairs.some(pair => pair.relation === 'incomparable')
+          reading.thesis = ordered.length
+            ? `Tulana presents window ${ordered[0]} first by declared order ${(comparison.order_policy as string[]).join(', ')}; ` +
+              (incomparable ? 'incomparable alternatives remain on the Pareto front; this is no winner claim.' : 'see the dominance table for ties and dominance.')
+            : 'No candidate forecaster windows; see the declared comparison gap.'
+          reading.verdict.statement = reading.thesis
+          // Existing signal references and disclosures remain legacy context.
+        }
 
         const triPlane: TriPlanePointers = {
           // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without domain/bhava.
@@ -485,6 +500,9 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           density_contract: densityContract,
           window: { date_from: resolvedDateFrom, date_to: resolvedDateTo },
           domain_filter: domainFilter,
+          ...(comparison ? { comparison, ordered_windows: payload['ordered_windows'],
+            front_members_omitted: payload['front_members_omitted'], empty_reason: payload['empty_reason'] } : {}),
+          legacy_scalar: true,
           ranked_signals: rows,
           signal_count: (payload['signal_count'] as number | undefined) ?? rows.length,
           neutral_dignity_downranked_count: payload['neutral_dignity_downranked_count'] ?? 0,

@@ -17797,6 +17797,12 @@
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_tulana/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
     "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
+   },
+   "service_probe": {
+    "probe_type": "tulana_ranking_forensic",
+    "max_age_hours": 24,
+    "why": "Tulana retains its independent service probe and replaces the weighted oracle with fixed Pareto relations; freshness follows the 24 hour wired-service detector rule.",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/service_probes.py:823"
    }
   },
   "ka_vedha_gochara": {

@@ -17,6 +17,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Principal } from '../../types.js'
 import { registerKalaPriorityTool } from './priority.js'
+import { registerP1AliasTools } from '../register_p1_aliases.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
@@ -220,4 +222,35 @@ describe('F-171: kala_priority_get forwards the F-131 disclosure receipt and nar
     const reading = content['reading'] as { evidence: Array<{ claim: string }> }
     expect(reading.evidence[0]?.claim).toContain('CATALOG-ONLY')
   })
+})
+
+it('K7-4 PRIORITY thesis follows Tulana while old scalar receipts remain intact', async () => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: ['B','A'], front: ['A','B'],
+    comparisons: [{ A: 'A', B: 'B', relation: 'incomparable', reason: 'unavailable' }],
+    evidence: { B: { axes: { strongest: { state: 'information_unavailable', value: null } } } },
+    order_policy: ['most_robust','strongest','nearest'], rejected: [] }
+  const fetchMock = mockPriorityFetch(capabilityPayload({ comparison, ordered_windows: ['B','A'], legacy_scalar: true }))
+  vi.stubGlobal('fetch', fetchMock)
+  const handler = captureRegisteredHandler(registerKalaPriorityTool, TEST_PRINCIPAL)
+  const result = extractContent(await handler({ chart_id: TEST_CHART_ID, question_frame: { domain: 'career' }, preference: ['nearest'] }))
+  expect(result.comparison).toEqual(comparison)
+  expect(result.legacy_scalar).toBe(true)
+  expect(JSON.stringify(result.reading)).toContain('B')
+  expect(JSON.stringify(result.reading)).toContain('incomparable')
+  const bodies = fetchMock.mock.calls.filter(call => (call[1] as { body?: string })?.body)
+    .map(call => JSON.parse((call[1] as { body: string }).body))
+  expect(JSON.stringify(bodies)).toContain('nearest')
+})
+
+it('K7-4 Compatibility: the real old kala_priority_ranking_get alias still returns its golden scalar shape', async () => {
+  const handlers = new Map<string, (params: Record<string, unknown>) => Promise<unknown>>()
+  const server = { tool: (...args: unknown[]) => handlers.set(String(args[0]), args[args.length - 1] as (params: Record<string, unknown>) => Promise<unknown>) }
+  registerP1AliasTools(server as unknown as McpServer, TEST_PRINCIPAL)
+  const payload = capabilityPayload({ legacy_scalar: true })
+  vi.stubGlobal('fetch', mockPriorityFetch(payload))
+  const result = extractContent(await handlers.get('kala_priority_ranking_get')!({ chart_id: TEST_CHART_ID, top_k: 1 }))
+  const content = (result.content ?? result) as Record<string, unknown>
+  expect(content.ranked_signals).toEqual(payload.ranked_signals)
+  expect(content.signal_count).toBe(1)
+  expect(content.legacy_scalar).toBe(true)
 })
