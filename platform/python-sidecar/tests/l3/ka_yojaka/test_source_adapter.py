@@ -158,3 +158,62 @@ def test_same_class_different_assumptions_remain_testimony():
     signals = [dict(signal_id='distinct', ayanamsha_id='a', constituent_facts_array=['f:moon'],
                     configuration_jsonb={'event_class_id': 'major_gain', 'assumptions': ['extra condition']})]
     assert any(r['route'] == 'testimony' for r in build_bundle(facts, firings, signals))
+
+
+@pytest.mark.parametrize('pattern', ['partial', 'contested', 'contested_unqualified'])
+def test_unassessed_evidence_is_served_with_ids_and_unavailable_density(pattern):
+    facts, firings = sources()
+    facts[0]['verification_pass_status'] = 'two_pass_verified'
+    for firing in firings:
+        firing['verification_pass_status'] = 'two_pass_verified'
+    if pattern == 'partial':
+        facts.append(dict(facts[0], fact_id='f:saturn', fact_subject='Saturn'))
+        firings[0]['constituent_fact_ids'] = ['f:moon', 'f:saturn']
+        firings[1]['bhanga_rules_jsonb'] = [dict(rule_id='NB-1', kind='defeats',
+            target_yoga_canonical_id='sunapha', target_event_class_id='major_gain',
+            rule_version='fixture-v1', source_locator='fixture:source:1')]
+        firings[1]['grounds_jsonb'] = {'cancellation_evidence': [
+            {'rule_id': 'NB-1', 'fact_ids': ['f:moon']}]}
+        bindings = EVENT_BINDINGS
+        reason = 'partial_defeat_unassessed'
+        ids = ['a:sunapha:major_gain:conclusion']
+    else:
+        firings[1].update(yoga_canonical_id='fixture:opposed', bhanga_active=False)
+        bindings = (
+            EventBinding('sunapha', 'major_gain', 'fixture:for', 'v1', 'fixture:1'),
+            EventBinding('fixture:opposed', 'major_gain', 'fixture:against', 'v1',
+                         'fixture:2', relation='opposes'),
+        )
+        reason = 'contestation_unassessed'
+        ids = ['a:fixture:opposed:major_gain:conclusion', 'a:sunapha:major_gain:conclusion']
+        if pattern == 'contested_unqualified':
+            firings[0]['bhanga_active'] = True
+    bundle = build_bundle(facts, firings, [], bindings=bindings)
+    affected = [r for r in bundle if r['conclusion_id'] in ids]
+    assert len(affected) == len(ids)
+    for row in affected:
+        assert row['effective_state'] == 'unresolved'
+        assert row['scored'] is False
+        assert row['null_reason'] == reason
+        assert row['effective_reason']['null_reason'] == reason
+        assert row['effective_reason']['conclusion_ids'] == ids
+        assert reason in row['judgment_flags']
+        if pattern == 'partial':
+            assert row['effective_reason']['defeat_ids'] == [row['defeats'][0]['defeat_id']]
+            assert row['defeats'][0]['rule_id'] == 'NB-1'
+        else:
+            assert row['effective_reason']['defeat_ids'] == []
+    if pattern == 'partial':
+        # The grounded unaffected conclusion remains ahead of unavailable rows.
+        unaffected = next(r for r in bundle if r['event_class_id'] == 'achievement_recognition')
+        assert unaffected['effective_state'] == 'in_force'
+        assert bundle.index(unaffected) < bundle.index(affected[0])
+
+
+def test_unassessed_density_does_not_inherit_a_verified_yoga_rank():
+    from services.ka_yojaka.promise_adapter import mechanism_density_key
+    unassessed = dict(mechanism_id='a', fact_ids=['f'],
+        constituent_fact_tiers={'f': 'two_pass_verified'}, canonical_id='sunapha',
+        yoga_tier='two_pass_verified', null_reason='partial_defeat_unassessed')
+    assessed = dict(unassessed, mechanism_id='z', null_reason=None)
+    assert mechanism_density_key(assessed) < mechanism_density_key(unassessed)

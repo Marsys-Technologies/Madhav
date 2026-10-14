@@ -18,6 +18,7 @@ from services.gochara_rules.registry import YOGA_EVENT_MAP
 from services.kala_core.promise import (
     Conclusion, Defeat, EdgePolarity, FactState, Mechanism, MechanismRoute,
     PromiseEdge, PromiseGraph, PromiseNode,
+    UnassessedReason,
 )
 from services.ka_yojaka.structural_adapter import structural_bundle
 from services.ka_yojaka.attachment_adapter import attach_sources
@@ -110,6 +111,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
         graph = graphs.setdefault(ayan, PromiseGraph())
         local_facts = available.get(ayan, {})
         state = "present" if fact_ids and set(fact_ids) <= local_facts.keys() else "missing_fact"
+        target = _target(fact_ids, local_facts)
         source = json.dumps({"l1": f"ga_yoga_firings:{firing['id']}", "l0": canonical,
                              "citations": firing.get("classical_citations") or []}, sort_keys=True)
         matches = [b for b in bindings if b.canonical_id == canonical]
@@ -137,7 +139,11 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                 graph.add_mechanism(Mechanism(mechanism_id, MechanismRoute.ADMITTED,
                     event_class, (formation_node, *participants), fact_ids, binding.source))
                 graph.add_conclusion(Conclusion(conclusion_id, mechanism_id,
-                    FactState(state), fact_ids))
+                    FactState(state), fact_ids,
+                    # (I) INTERPRETATION: use only the existing explicit target
+                    # identity and sourced binding relation; no target fallback.
+                    target_id=target['identity'] if target else None,
+                    valence=EdgePolarity(binding.relation)))
                 graph_nodes = [asdict(graph.nodes[n]) for n in (formation_node, *participants)]
             output.append(dict(
                 mechanism_id=mechanism_id, conclusion_id=conclusion_id,
@@ -149,7 +155,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                 qualification=("sourced" if qualified else "ambiguous_event_binding" if ambiguous else
                     "missing_l0_rule" if not firing.get("formation_rule_jsonb") or not firing.get("classical_citations") else "unbound_event_class"),
                 effective_state="unresolved", scored=False, defeats=[], excepts=[],
-                cancellation_unqualified=[], target=_target(fact_ids, local_facts),
+                cancellation_unqualified=[], target=target,
                 constituent_planets=list(firing.get("constituent_planets") or []),
                 yoga_tier=firing.get('verification_pass_status'),
                 null_reason=(None if firing.get('verification_pass_status') is not None else
@@ -183,7 +189,10 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             refs = _ids(records[0].get("fact_ids"))
             if not target or target["conclusion_id"] not in graphs[ayan].conclusions or not refs or not set(refs) <= available.get(ayan, {}).keys():
                 continue
-            defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"])
+            # (I) INTERPRETATION: identify each applied evidence row by its
+            # L1 firing id, target conclusion, kind and sourced rule id.
+            defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"],
+                defeat_id=f"ga_yoga_firings:{firing['id']}:{cid}:{spec['kind']}:{spec['rule_id']}")
             graphs[ayan].add_defeat(defeat)
             target[spec["kind"]].append({**asdict(defeat), "fact_ids": list(refs),
                 "rule_version": spec["rule_version"], "source_locator": spec["source_locator"]})
@@ -194,8 +203,15 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                     row["cancellation_unqualified"].append("missing_sourced_target_or_evidence")
     for row in output:
         graph = graphs[row["ayanamsha_id"]]
-        if row["conclusion_id"] in graph.conclusions and row["fact_state"] == "present" and not row["cancellation_unqualified"]:
-            row["effective_state"] = graph.effective_state(row["conclusion_id"], available.get(row["ayanamsha_id"], {})).value
+        if row["conclusion_id"] in graph.conclusions and row["fact_state"] == "present":
+            result = graph.effective_result(row["conclusion_id"], available.get(row["ayanamsha_id"], {}))
+            if not row['cancellation_unqualified'] or result.null_reason is not None:
+                row["effective_state"] = result.state.value
+            if result.null_reason is not None:
+                row['effective_reason'] = dict(null_reason=result.null_reason.value,
+                    conclusion_ids=list(result.conclusion_ids), defeat_ids=list(result.defeat_ids))
+                row['null_reason'] = result.null_reason.value
+                row['judgment_flags'].append(result.null_reason.value)
             row["scored"] = row["effective_state"] == "in_force"
     output.extend(structural_bundle(facts, served_locators=served_locators))
     attached = {signal_id for row in output for signal_id in row["attachments"]}
@@ -232,6 +248,8 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
 
 def mechanism_density_key(row):
     """Earned fact verification precedes an unavailable yoga verification tier."""
+    if row.get('null_reason') in {reason.value for reason in UnassessedReason}:
+        return (2, str(row['mechanism_id']))
     tiers = row.get('constituent_fact_tiers') or {}
     fact_verified = bool(row.get('fact_ids')) and set(tiers) == set(row['fact_ids']) and all(
         tier == TWO_PASS_VERIFIED for tier in tiers.values())
