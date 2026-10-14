@@ -99,6 +99,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 
@@ -146,11 +147,13 @@ GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + (MANIFEST_TABLE,)
 LEGACY_GUARD_TABLES = ("kala_gochara_windows", "kala_gochara_contacts")
 
 #: THE list of what the script needs, by object (schema public). The runbook's table states the same; a real-database test creates a role
-#: holding EXACTLY this and runs the script as it. The two verification tables are deliberately absent: they go by foreign-key cascade.
+#: holding EXACTLY this and runs the script as it. The cascade children need SELECT for measured absence, but no DELETE privilege.
 REQUIRED_PRIVILEGES = {
     "select_delete": ("asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
                       *(t for t, _ in GENERATION_TABLES)),
-    "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES),
+    "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES,
+               "ka_gochara_eval_window_record", "ka_gochara_record_prerequisite",
+               "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"),
     # T1 (Codex round 4): the rows are locked FOR UPDATE before validation and held through the delete, which needs UPDATE on them
     "update": ("build_runs", "kala_gochara_publication"),
     # the catalog-found tables that reference a build_runs row (counted, to refuse by name if any row references an owned run): on
@@ -454,6 +457,40 @@ def _delete_everything(cur, owned: list[str]) -> None:
         cur.execute(f"DELETE FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
 
 
+# These children are deleted by foreign-key cascade, but absence is measured too.
+CASCADE_PROOF_TABLES = ("ka_gochara_eval_window_record", "ka_gochara_record_prerequisite",
+                        "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification")
+
+
+def _absence_counts(cur, owned: list[str]) -> dict[str, int]:
+    """Read every deleted scope after deletion, under the same locks/transaction.
+
+    Moon coverage is deliberately retained; only event_class coverage is absent.
+    Run IDs remain in memory after DELETE, so both parent and child absence can
+    be checked without a join to the now-absent parent.
+    """
+    counts = {}
+    for table in ("asset_provenance_receipts", "asset_freshness", "asset_throughput"):
+        counts[table] = _count(cur, f"SELECT count(*) AS n FROM {table} WHERE asset_id = %s AND chart_id = %s",
+                               (ASSET_ID, CHART_ID))
+    counts["build_run_assets"] = _count(cur, "SELECT count(*) AS n FROM build_run_assets WHERE run_id = ANY(%s::uuid[])", (owned,))
+    counts["build_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE id = ANY(%s::uuid[])", (owned,))
+    counts["owned_test_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE chart_id = %s AND triggered_by = %s",
+                                       (CHART_ID, TRIGGERED_BY))
+    for table, extra in GENERATION_TABLES + tuple((t, "") for t in CASCADE_PROOF_TABLES):
+        counts[table] = _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
+                               (CHART_ID, GENERATION))
+    return counts
+
+
+def _prove_absence(cur, owned: list[str]) -> dict[str, int]:
+    counts = _absence_counts(cur, owned)
+    remaining = {table: n for table, n in counts.items() if n != 0}
+    if remaining:
+        raise TeardownRefused(f"absence proof failed: surviving rows {remaining}; success is not claimed")
+    return counts
+
+
 def _note_outcome(exc: BaseException, outcome: str) -> None:
     """Attach what is KNOWN about the transaction to the exception, for the process boundary to report."""
     try:
@@ -510,8 +547,13 @@ def teardown(*, dry_run: bool = True) -> None:
         post = _end_state_problems(cur)
         if post:
             raise TeardownRefused("the N-137 end state does not hold after the deletes, so success is not claimed: " + "; ".join(post))
+        absence = _prove_absence(cur, owned)
         # the report is prepared BEFORE the COMMIT: nothing after the COMMIT can fail for want of data or work
-        report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes])
+        report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes],
+                  {"schema": "ky.smalltest_absence/1", "chart_id": CHART_ID, "generation": GENERATION,
+                   "owned_run_ids": owned, "counts": absence,
+                   "status": "rehearsed_then_rolled_back" if dry_run else "committed",
+                   "observation": "after deletion, before commit, under teardown locks"})
         if dry_run:
             conn.rollback()
         else:
@@ -544,8 +586,9 @@ def teardown(*, dry_run: bool = True) -> None:
         if interrupted is not None and sys.exc_info()[1] is None:
             _note_outcome(interrupted, {"committed": "committed", "committing": "commit_unknown"}.get(phase, "rolled_back"))
             raise interrupted
-    kind, counts, retention = report
+    kind, counts, retention, absence_proof = report
     try:                                          # a failure while REPORTING keeps the outcome that is already known (item 3)
+        print("absence_proof\t" + json.dumps(absence_proof, sort_keys=True))
         if kind == "dry_run":
             print(f"[dry-run] the SAME statements an execution runs (locks, checks, every DELETE, the registry restore when the row is "
                   f"active, the end-state validation) ran for chart {CHART_ID} and were ROLLED BACK — zero commits; pass --execute "
@@ -573,8 +616,9 @@ def _safe_failure(exc: BaseException) -> str:
             f"connection error can carry credentials. {known}")
 
 
-def main(argv: list[str] | None = None) -> int:
+def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
+        allow_abbrev=False,
         prog="teardown_v5_small_test_job.py",
         description="Fail-closed teardown of the ka_gochara_v5 SMALL TEST run (pinned chart only). Dry run by default (the SAME "
                     "statements as an execution, rolled back); deleting needs --execute AND --i-am-steward. DATABASE_URL comes "
@@ -586,6 +630,11 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     if args.execute and not args.i_am_steward:
         p.error("--execute needs --i-am-steward (destruction requires explicit steward intent)")
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(sys.argv[1:] if argv is None else argv)
     if not os.environ.get("DATABASE_URL"):
         print("teardown refused: DATABASE_URL is not set in the process environment (this script reads no file and takes no "
               "URL argument).", file=sys.stderr)

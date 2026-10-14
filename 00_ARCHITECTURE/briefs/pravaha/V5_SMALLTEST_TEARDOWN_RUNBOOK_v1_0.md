@@ -1,11 +1,12 @@
 ---
 artifact: V5_SMALLTEST_TEARDOWN_RUNBOOK
-version: "1.2"
+version: "1.3"
 status: DRAFT for steward review — nothing in it has been executed against any database
 date: 2026-10-04
 author: Stream A (Exec A), answering Codex rounds 2 and 3 and Stream B on PR 3098 (steward TEARDOWN-CODEX-2, TEARDOWN-B-ADD)
 scope: How the small-test teardown (`platform/scripts/teardown_v5_small_test_job.py`) is run, when it refuses and what the steward does then, and which database role it needs.
 changelog:
+  - "1.3 (2026-10-15, Wave 4 P01): measured absence proof covers every deleted scope and four cascade children before commit; dry-run output labels the rolled-back rehearsal. SELECT on cascade children is now required; no grant or production operation is performed here."
   - "1.2 (2026-10-05): §6 added from steward TIMEOUT-RULING: the registry cap is 28800 s (8 h) for the small test and the measuring build, what a fired cap leaves behind, the misleading BLOCKED text it writes, and the pre-dispatch check against the Cloud Run task timeout."
   - "1.1 (2026-10-04): Stream B additions: direct connection required (B6), what the locks do not do (B7), the recovery conditions for NULL links (B9), the role section with Stream B's production verification and the conditional registry privileges (B1, B2), the catalog-discovered references (B4, B5)."
   - "1.0 (2026-10-04): first version."
@@ -21,7 +22,7 @@ The cockpit watchdog deletes terminal build runs (completed, failed, stopped) 90
 
 1. Dry run (the default; it runs every statement an execution runs, then rolls back, zero commits): `DATABASE_URL=... python3 scripts/teardown_v5_small_test_job.py`. Read the counts and the retention lines.
 2. Execute only on steward go: add `--execute --i-am-steward`.
-3. Afterwards: the registry row is inert (`is_active = false`, migration-1304 shape), the Nirmana monitor's N-137 end state holds (checked again by the script before it claims success), and nothing of the test remains for the pinned chart and generation `5.0`.
+3. The script emits `absence_proof` JSON with chart/generation, original owned run IDs and measured zero counts for every deleted scope plus cascade children. All counts are read after deletion, under the same locks, before commit; a survivor rolls back and refuses success. A dry run labels this `rehearsed_then_rolled_back`; only a confirmed commit can emit `committed`. Independent post-operation readback remains required by the campaign. Afterwards: the registry row is inert (`is_active = false`, migration-1304 shape), the Nirmana monitor's N-137 end state holds (checked again by the script before it claims success), and nothing of the test remains for the pinned chart and generation `5.0`.
 4. If a run ends with "COMMIT OUTCOME UNKNOWN": do not retry blindly. Run the dry run: it lists what remains. Nothing remaining and a clean N-137 check means the commit landed.
 
 ### What the locks do and do not do
@@ -58,7 +59,7 @@ Run `platform/scripts/v5_small_test_incoming_fks_readback.sql` (read only) and s
 | `asset_freshness` (additionally, **only if the registry row is found active**) | SELECT and UPDATE: the registry restore is a real `is_active` change, so migration 596's trigger runs `nirmana_invalidate_registry_receipts`, an **invoker-rights** function (not SECURITY DEFINER) that UPDATEs `asset_freshness` as the caller. With the row already inert (production's is) the script does not issue the UPDATE and none of this applies |
 | every table the catalog shows referencing an owned `build_runs` row or the manifest: `conversations`, `event_chart_state_index`, `mimamsa_predictions`, `mimamsa_calibration_snapshot`, `brahma_prospective_ledger`, `brahma_mimamsa_prediction_ledger` | SELECT, to count the rows that reference them (the script refuses by name if any do) |
 | `ka_gochara_lock_chart(uuid)` and `ka_gochara_generation_is_sealed(uuid, text)` (the DELETE guards on the chain tables call it as the invoker; a real-database test with PUBLIC EXECUTE revoked, as production has it, found it missing from the first draft of this table) | EXECUTE |
-| the two verification tables (`ka_gochara_eval_window_verification`, `ka_gochara_search_inventory_verification`) | none: removed by foreign-key cascade (the cascade runs as the child's owner; the 1240 write guard on them refuses only a sealed generation) |
+| cascade children `ka_gochara_eval_window_record`, `ka_gochara_record_prerequisite`, `ka_gochara_eval_window_verification`, `ka_gochara_search_inventory_verification` | SELECT: measure absence after the parent deletions; DELETE is still by foreign-key cascade (the cascade runs as the child's owner; the 1240 write guard refuses a sealed generation) |
 
 What each candidate holds (production catalog, read-only, Stream B, 2026-10-05; every table's owner is `amjis_app`):
 - **`amjis_app`** (the application's owner role, not the admin role): owns every object above, so it holds every privilege implicitly, including EXECUTE on the lock. **It is the only existing role that holds all of them.**

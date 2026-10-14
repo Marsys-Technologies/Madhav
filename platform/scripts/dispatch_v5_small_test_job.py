@@ -336,6 +336,7 @@ def image_skew_notice(manifest: dict) -> list[str]:
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
+        allow_abbrev=False,
         prog="dispatch_v5_small_test_job.py",
         description="Stage a SMALL TEST build_run of ka_gochara_v5 (steward only).")
     p.add_argument("--i-am-steward", action="store_true",

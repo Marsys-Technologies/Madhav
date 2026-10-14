@@ -208,10 +208,10 @@ class _Harness:
                         for refs in harness.references.values():
                             for (t, c, a, n) in refs:
                                 if t == table:
-                                    return {"n": n}
+                                    return {"n": 0 if harness.deleted else n}
                     if table in teardown_mod.LEGACY_GUARD_TABLES:
                         return {"n": harness.legacy.get(table, 0)}
-                    return {"n": harness.rows.get(table, 0)}
+                    return {"n": 0 if harness.deleted else harness.rows.get(table, 0)}
                 return None
 
         class FakeConn:
@@ -1012,7 +1012,8 @@ def test_b3_every_table_the_script_touches_is_in_the_documented_privilege_list()
     assert "UPDATE(is_active)" in rp["when_registry_active"]["asset_registry"]
     assert "ka_gochara_lock_chart(uuid)" in rp["execute"]
     verification = {"ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"}
-    assert not verification & (set(rp["select_delete"]) | set(rp["select"]))   # removed by cascade: no privilege needed
+    assert verification <= set(rp["select"])   # read absence after cascade; never DELETE the children directly
+    assert not verification & set(rp["select_delete"])
 
 
 def test_b3_the_runbook_names_every_object_in_the_documented_privilege_list():
