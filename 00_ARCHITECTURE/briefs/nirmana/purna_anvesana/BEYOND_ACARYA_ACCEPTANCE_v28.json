@@ -1,7 +1,7 @@
 {
     "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v28",
     "campaign_id": "madhav-purna-anvesana",
-    "packet_id": "K7-3-PR3337-OSR-011",
+    "packet_id": "K7-3-PR3337-OSR-012",
     "predecessor": {
         "artifact": "BEYOND_ACARYA_ACCEPTANCE_v27.json",
         "acceptance_version": "beyond-acarya-source-acceptance-v2",
@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-09-15",
-    "evaluated_source_revision": "07230af11190b652ac29dcc4ff47f213cb85fca6",
+    "evaluated_source_revision": "b67539e8f6ccc711cbbea24a8e9bd5b2ea372ff9",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:e982a6fca3f1494fb62830246b7c0af0a6161572fa056c388b5ac9c82b125421",
-        "capability_content_hash": "sha256:0f5c7d7639935c6e1b9a3e7c06d9fc9a67dddcf023f452e08f25eafebe209a52",
-        "source_catalog_fingerprint": "sha256:2d827fd85fe51777cb3fe9f4ede0b75c4f88e717b14021a4db05b3a2861c4c16",
+        "snapshot_file_sha256": "sha256:959ff7be032bdf15e1a1ec03cc302d6e10416edc3fbf59a1d80609f78cab635b",
+        "capability_content_hash": "sha256:ce4bf90ad8c7f4a4cd49641b3af9555a8c14019ee4b262ea2f7e7301e4497d00",
+        "source_catalog_fingerprint": "sha256:e2542f7fca83aa1e93d9e0acf261b309a30449332b55e26c40c4734e5c7347a5",
         "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
         "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
     },
-    "capability_content_hash": "sha256:0f5c7d7639935c6e1b9a3e7c06d9fc9a67dddcf023f452e08f25eafebe209a52",
-    "report_hash": "sha256:7f98c8533d910275210407c205d9d003e75e3d138fb7e4a2b1af67989cc1fe8a",
+    "capability_content_hash": "sha256:ce4bf90ad8c7f4a4cd49641b3af9555a8c14019ee4b262ea2f7e7301e4497d00",
+    "report_hash": "sha256:0f4ef835c42b38c189d71a07a6b4e13eae7a9c3a92dfa676933099c1983e006d",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "OSR-011, PR #3337, packet K7-3-PR3337-OSR-011: evaluator-derived source-provenance successor of immutable v27. The actual catalog cause is the optional at input in platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts and platform-mcp/src/tools/kala_views/published_now.ts joining public_registrar_source_set (51 -> 52). No seven-view density_contract declarations or PRIORITY attribution correction are present in this head; KYD-125/129 density acceptance remains open. Moved versus v27: capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256, report_hash. Unchanged: semantic_review_fingerprint, producer_contract_fingerprint and every metric JSON value (routes 34/34, omission 0/25, edges 9/9, novel 13/13, long-inquiry 1/1, abstention 3/3). The temporal_anchor_date is taken from the unchanged evaluator constant (2026-09-15); v27's metadata had recorded 2026-10-02, while its evaluator already used this same constant. The merged origin/main at 07230af11190b652ac29dcc4ff47f213cb85fca6 reproduces all five v27 snapshot fingerprints exactly; no merged main commit moves any of them. Commits between 07230af and the mint-time origin/main merge-base: none (merge-base equals 07230af11190b652ac29dcc4ff47f213cb85fca6). v2..v27 are byte-identical to origin/main, with v27 at sha256:c9f6cf7296277e7e94c470cd71d51b8a3c878e83489eb453f4338881b2560333. The corpus, evaluator, metric assertions and protected semantic scenario files are unchanged. Route-port regeneration changes only branch-deep-dive.json and branch-completeness-receipt.json: receipt sha and hash-derived ids plus the resulting hash-sorted fact-array ordering; the nonhash contents compare equal after restoring that ordering. SOURCE_ONLY_NOT_LIVE; candidate_validation, deployed_route_validation, production_validation and empirical_answer_quality remain NOT_RUN; REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE and the claim ceiling remain. This is synthetic source-local evidence only."
+    "provenance_note": "OSR-011 + OSR-012, PR #3337, packet K7-3-PR3337-OSR-012: evaluator-derived in-place re-mint of branch-only v28, preserving immutable v2..v27. The earlier OSR-011 optional at input / public registrar change remains part of the stack. The seven-view producer-tier hunk is now present: ee24bb1d242e00f312496841c96567a6d4bb3a06 removes inferred density, and 38aab353ac768667bf1c928e0a78c715961236a9 binds stored verification_pass_status and publication provenance through NOW, AHEAD, PRIORITY, ELECT, STORY, RITUAL and EXPLAIN (platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:199-211,329-384; platform-mcp/src/tools/kala_views/published_now.ts:50-79). Producer writes carry UNVERIFIED_DEFAULT (platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:3,148; ka_bhavishya_lekha.py:3,428-441; ka_jivana_parva.py:21,359; ka_sangam.py:12,948; ka_vighnakara.py:24,341; platform/python-sidecar/services/gochara_kernel/ledger.py:25,205). The additive schema is platform/supabase/migrations/1376_k7_stage_verification_status.sql; legacy null proof is retained and single is not independent verification credit. This packet records source provenance, not earned live density acceptance or a Pūrṇa PRIORITY attribution correction. Relative to the previous branch v28, source_catalog_fingerprint, capability_content_hash, snapshot_file_sha256 and report_hash moved; semantic_review_fingerprint, producer_contract_fingerprint and every metric JSON value are unchanged. evaluated_source_revision is the final HEAD/origin-main merge-base b67539e8f6ccc711cbbea24a8e9bd5b2ea372ff9. Main commits after the old merge-base 07230af11190b652ac29dcc4ff47f213cb85fca6 are 1e299fb43, 0f95e21af, 01869f0bb, f043fd859, 1650d6499 and b67539e8f. None moves any of the five v27 snapshot fingerprints: origin/main's snapshot bytes equal the old merge-base snapshot bytes. f043fd859 (K3 negative-space changes) moves the writer-digest inventory and census writer_digest_inventory source SHA through ka_vighnakara; b67539e8f (K0a assertion/manifest/verify and obstruction storage changes) further moves that inventory/source SHA through ka_bhavishya_lekha, ka_kala_darshana, ka_sangam, ka_tulana and ka_vighnakara. These implementation inventory digests are separate from the unchanged active-producer producer_contract_fingerprint (platform/src/lib/retrieval/registry/knowledge/compiler.ts:650-656). Final-head regeneration updates only stale machine-derived inventory/census aggregates; the knowledge snapshot and registry coverage report are already current. Temporal anchor comes from the unchanged evaluator constant (2026-09-15). Corpus, evaluator, metric assertions, historicalV27 and protected semantic scenarios remain unedited. SOURCE_ONLY_NOT_LIVE; candidate_validation, deployed_route_validation, production_validation and empirical_answer_quality remain NOT_RUN; REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE and the claim ceiling remain. Synthetic source-local evidence only."
 }

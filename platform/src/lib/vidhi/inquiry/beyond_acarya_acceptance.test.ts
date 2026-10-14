@@ -305,7 +305,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // OSR-009 / K7-1a v26: fourteen additive L3 views move catalog provenance; corpus metrics stay fixed.
     // OSR-010 / v27 (the vocabulary-round combined stack): get_dashas.ts (72ae74031, 70d5b6475) moved capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256; corpus metrics stay fixed. Re-pinned by regeneration from the evaluator, not typed.
     // OSR-011 / PR #3337 v28: optional at input and published_now registration move catalog hashes; corpus metrics stay fixed.
-    expect(report.report_hash).toBe('sha256:7f98c8533d910275210407c205d9d003e75e3d138fb7e4a2b1af67989cc1fe8a')
+    // OSR-012: re-mint v28 at the merged final head; seven-view stored producer tiers change catalog provenance only.
+    expect(report.report_hash).toBe('sha256:0f4ef835c42b38c189d71a07a6b4e13eae7a9c3a92dfa676933099c1983e006d')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -968,7 +969,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v28 source-successor artifact to the current executable report without claiming live acceptance (PR #3337 optional at input / OSR-011)', () => {
+  it('pins the v28 source-successor artifact to the current executable report without claiming live acceptance (PR #3337 seven-view producer-tier hunk / OSR-011 + OSR-012)', () => {
     const artifact = JSON.parse(readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v28.json',
       import.meta.url,
@@ -1026,8 +1027,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // OSR-011: the origin/main sha merged into the stack (their merge-base); the evaluator and corpus remain unchanged.
-      evaluated_source_revision: '07230af11190b652ac29dcc4ff47f213cb85fca6',
+      // OSR-012: the merged origin/main sha (merge-base); the evaluator, corpus and immutable v27 remain unchanged.
+      evaluated_source_revision: 'b67539e8f6ccc711cbbea24a8e9bd5b2ea372ff9',
     })
   })
 })
