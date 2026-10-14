@@ -12,7 +12,6 @@ from psycopg.types.json import Jsonb
 from services.kala_core.manifest import open_candidate
 from services.ka_sangam.jury import Opinion
 from services.kala_core.measure import Interval
-from tests.l3.kala_db.conftest import kala_db_dsn
 from tests.l3.ka_sangam.test_jury_writer import CHART, GEN, T, api, fixture_input
 
 ROOT = Path(__file__).parents[5]
@@ -77,6 +76,35 @@ def test_full_direct_build_repeated_readback_preserves_published_output(ctx):
     assert row[1] == 'whole_pipeline_selector_not_supplied'
     assert next(g for g in row[2] if g['group_id'] == 'G-J')['reason'] == 'jaimini_output_missing'
     assert row[3]['acceptance_scope'] == 'fixture_only'
+
+
+@pytest.mark.parametrize('start,end,observed,sign', [(5, 10, .5, 1), (15, 20, 0.0, -1)])
+def test_localized_experiment_writer_readback_preserves_window_and_legacy(ctx, start, end, observed, sign):
+    from tests.l3.ka_sangam.test_k4_regressions import localized_input
+    ctx.config['jury_fixture_inputs'] = [localized_input(start, end)]
+    before = legacy_read(ctx)
+    assert writer().run(ctx).rows_inserted == 1
+    row = ctx.db_conn.execute('SELECT window_start,window_end,conditional_effect,conditional_null,provenance '
+                              'FROM kala_jury_candidate').fetchone()
+    assert (row[0].timestamp(), row[1].timestamp()) == (T, T + 10)
+    assert row[2] * sign > 0
+    assert row[3]['observed'] == observed
+    assert row[3]['reason'] == 'exchangeability_not_established'
+    assert row[3]['denominator'] == 32
+    assert row[4]['experiment_exposure']['horizon'] == {'start': T, 'end': T + 30}
+    assert legacy_read(ctx) == before
+
+
+def test_p8_omitted_ancestry_cannot_replace_any_candidate_or_published_rows(ctx):
+    assert writer().run(ctx).rows_inserted == 1
+    before = candidate_read(ctx), legacy_read(ctx)
+    value = fixture_input()
+    value['anchor'] = value['anchor'].model_copy(update={'method': 'P8'})
+    value.pop('selection_ancestry')
+    ctx.config['jury_fixture_inputs'] = [value]
+    with pytest.raises(ValueError):
+        writer().run(ctx)
+    assert (candidate_read(ctx), legacy_read(ctx)) == before
 
 
 def test_canonical_reading_attachments_round_trip_in_the_candidate_only(ctx):

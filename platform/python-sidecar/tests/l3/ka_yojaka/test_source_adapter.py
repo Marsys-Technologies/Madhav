@@ -49,7 +49,8 @@ def test_l2_removal_preserves_the_entire_admitted_graph_and_duplicate_signals_at
     signals = [dict(signal_id=s, ayanamsha_id="a", constituent_facts_array=["f:moon"]) for s in ("s1", "s2")]
     attached = build_bundle(facts, firings, signals)
     clean = build_bundle(facts, firings, [])
-    assert [{k: v for k, v in r.items() if k != "attachments"} for r in attached] == [{k: v for k, v in r.items() if k != "attachments"} for r in clean]
+    attachment_metadata = {'attachments', 'l2_attachments', 'source_states', 'source_null_reasons'}
+    assert [{k: v for k, v in r.items() if k not in attachment_metadata} for r in attached] == [{k: v for k, v in r.items() if k not in attachment_metadata} for r in clean]
     assert next(r for r in attached if r["canonical_id"] == "sunapha")["attachments"] == ["s1", "s2"]
 
 
@@ -141,3 +142,19 @@ def test_event_binding_keeps_the_served_ocr_qualification():
     binding = next(b for b in EVENT_BINDINGS if b.rule_id == "Y-ADHI")
     assert binding.source_status == "verse_cited"
     assert binding.ocr_degradation and "house order" in binding.ocr_degradation
+
+
+def test_attachment_does_not_suppress_distinct_testimony():
+    facts, firings = sources()
+    signals = [dict(signal_id='distinct', ayanamsha_id='a', constituent_facts_array=['f:moon'],
+                    configuration_jsonb={'event_class_id': 'career_change', 'assumptions': ['proposal']})]
+    bundle = build_bundle(facts, firings, signals)
+    row = next((r for r in bundle if r['route'] == 'testimony'), None)
+    assert row is not None and row['event_class_id'] == 'career_change' and row['assumptions'] == ['proposal']
+
+
+def test_same_class_different_assumptions_remain_testimony():
+    facts, firings = sources()
+    signals = [dict(signal_id='distinct', ayanamsha_id='a', constituent_facts_array=['f:moon'],
+                    configuration_jsonb={'event_class_id': 'major_gain', 'assumptions': ['extra condition']})]
+    assert any(r['route'] == 'testimony' for r in build_bundle(facts, firings, signals))
