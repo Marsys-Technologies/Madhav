@@ -545,7 +545,7 @@ STOP_CASES = [
     ("pre-train", {"gochara_verifier','gochara_sealer": "gochara_verifier"}, "R7-roles-exist"),
     ("pre-train", {"has_database_privilege('gochara_sealer'": "f"}, "W4-sealer-connect"),
     ("pre-dispatch", {"SELECT filename FROM public._migrations_applied":
-                      "\n".join(sorted(POST_LEDGER + ["1376_evil.sql"]))}, "R8-ledger-diff"),
+                      "\n".join(sorted(POST_LEDGER + ["1378_evil.sql"]))}, "R8-ledger-diff"),
     ("post-window", {"C34 test privilege readback": "amjis_app\tpublic\tCREATE"}, "P9-privilege-readback"),
     ("post-window", {"has_schema_privilege('amjis_app'": "t"}, "P9-schema-create"),
     ("post-window", {"1204_gochara_av_qualifier_object_role":
@@ -553,7 +553,7 @@ STOP_CASES = [
     ("post-window", {"pg_get_userbyid": "relation\tka_gochara_x\tpostgres"}, "P9-ka-gochara-ownership"),
     ("post-window", {"has_function_privilege('PUBLIC'": "ka_gochara_evil"}, "P9-public-execute"),
     ("post-window", {"SELECT filename FROM public._migrations_applied":
-                     "\n".join(sorted(POST_LEDGER + ["1376_evil.sql"]))}, "P9-ledger-diff"),
+                     "\n".join(sorted(POST_LEDGER + ["1378_evil.sql"]))}, "P9-ledger-diff"),
     ("post-window", {"C34 test trigger manifest": "TRG\tkala_gochara_coverage\ttg_a"}, "W5-manifest"),
     ("post-window", {"ka_gochara_boundary_guard_inventory": "guard1\tt\tt\tt"}, "W5-guard-inventory"),
 ]

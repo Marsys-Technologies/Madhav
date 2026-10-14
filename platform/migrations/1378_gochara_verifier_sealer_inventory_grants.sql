@@ -1,4 +1,4 @@
--- Migration 1376: ONE reviewed, additive grants migration for the VERIFIER and the SEALER — it BACKFILLS 1240's role-conditional grants AND carries
+-- Migration 1378: ONE reviewed, additive grants migration for the VERIFIER and the SEALER — it BACKFILLS 1240's role-conditional grants AND carries
 -- the inventory/publication/seal-side grants of its own. Grants only, role-existence-guarded, idempotent, closed by an exact ACL check.
 -- Pravāha B6.0, Codex rounds 9 (R9-6) and 10 (R10-7); steward M20261002T062613-6d61, T075234-8e98, T111719-1bb1. Author: pravaha stream B.
 -- STATUS: DRAFT, HOLD. Creates no object, replaces no function, edits no applied migration, REVOKES nothing (PC-4 — the builder's 1206 §7 grant on
@@ -11,7 +11,7 @@
 -- (runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md: acts 1 and 2a precede act 9), so in the intended order 1240's guarded grants FIRE and this file is the
 -- complete additive specification applied afterwards (a backfill for any grant 1240 did not make, and the exact-ACL closure over everything). It also covers the
 -- other order — a role created AFTER the window: this file carries the UNION (every privilege 1240 would have granted, origin "1240" in the spec, and every
--- privilege 1376 adds, origin "1376"), so ONE application after the roles exist yields the complete, closed set. Applying it when a role already held 1240's grants
+-- privilege 1378 adds, origin "1378"), so ONE application after the roles exist yields the complete, closed set. Applying it when a role already held 1240's grants
 -- is a no-op for those. IF THIS FILE ITSELF RUNS WHILE A ROLE IS ABSENT, its WARNING creates NO deferred grant: an additive follow-up migration carrying the SAME
 -- spec is then required once the role exists. It also backfills the one builder grant 1240 makes conditionally (EXECUTE on the window CHECK helper), harmlessly if already held.
 -- TESTS (composed rehearsal): (i) the intended order — roles exist → window applied (1240's guarded grants fire) → this file applied → verification job + seal work;
@@ -92,19 +92,19 @@ DECLARE
       ["ka_gochara_rule_path_soft_factor","SELECT",null,"1240"],
       ["ka_gochara_factor","SELECT",null,"1240"],
       ["kala_gochara_publication","SELECT",null,"1240"],
-      ["ka_gochara_search_inventory_verification","SELECT",null,"1376"],
-      ["ka_gochara_search_inventory_verification","INSERT",null,"1376"],
-      ["ka_gochara_sky_convention","SELECT",null,"1376"],
-      ["ka_gochara_rule_path_prerequisite","SELECT",null,"1376"],
-      ["ka_gochara_predicate","SELECT",null,"1376"],
-      ["ka_gochara_search_obligation","SELECT",null,"1376"],
-      ["ka_gochara_convention_bridge","SELECT",null,"1376"],
-      ["ka_gochara_search_interval","SELECT",null,"1376"],
-      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1376"],
-      ["kala_gochara_contacts","SELECT",null,"1376"],
-      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1376"],
-      ["ka_gochara_seal_brief","SELECT",null,"1376"],
-      ["ka_gochara_seal_brief","INSERT",null,"1376"]
+      ["ka_gochara_search_inventory_verification","SELECT",null,"1378"],
+      ["ka_gochara_search_inventory_verification","INSERT",null,"1378"],
+      ["ka_gochara_sky_convention","SELECT",null,"1378"],
+      ["ka_gochara_rule_path_prerequisite","SELECT",null,"1378"],
+      ["ka_gochara_predicate","SELECT",null,"1378"],
+      ["ka_gochara_search_obligation","SELECT",null,"1378"],
+      ["ka_gochara_convention_bridge","SELECT",null,"1378"],
+      ["ka_gochara_search_interval","SELECT",null,"1378"],
+      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1378"],
+      ["kala_gochara_contacts","SELECT",null,"1378"],
+      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1378"],
+      ["ka_gochara_seal_brief","SELECT",null,"1378"],
+      ["ka_gochara_seal_brief","INSERT",null,"1378"]
      ],
      "functions": [
       ["ka_gochara_lock_chart(uuid)","1240"],
@@ -119,18 +119,18 @@ DECLARE
       ["ka_gochara_sha256_hex(text)","1240"],
       ["ka_gochara_f4_token(real)","1240"],
       ["ka_gochara_candidate_gate_violations(uuid,text)","1240"],
-      ["ka_gochara_window_verification_violations(uuid,text)","1376"],
-      ["ka_gochara_search_completeness_violations(uuid,text)","1376"],
-      ["ka_gochara_search_l1_facts_digest(uuid,text[])","1376"],
-      ["ka_gochara_search_dasha_digest(uuid,uuid[])","1376"],
-      ["ka_gochara_search_inventory_digest(uuid,text,text)","1376"],
-      ["ka_gochara_search_ledger_digest(uuid,text,text)","1376"],
-      ["ka_gochara_search_inventory_preimage(uuid,text,text)","1376"],
-      ["ka_gochara_utc_ts(timestamptz)","1376"],
-      ["ka_gochara_search_moon_scope_violations(uuid,text)","1376"],
-      ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1376"],
-      ["ka_gochara_legacy_projection_rows(uuid,text)","1376"],
-      ["ka_gochara_brief_state_digest(uuid,text)","1376"]
+      ["ka_gochara_window_verification_violations(uuid,text)","1378"],
+      ["ka_gochara_search_completeness_violations(uuid,text)","1378"],
+      ["ka_gochara_search_l1_facts_digest(uuid,text[])","1378"],
+      ["ka_gochara_search_dasha_digest(uuid,uuid[])","1378"],
+      ["ka_gochara_search_inventory_digest(uuid,text,text)","1378"],
+      ["ka_gochara_search_ledger_digest(uuid,text,text)","1378"],
+      ["ka_gochara_search_inventory_preimage(uuid,text,text)","1378"],
+      ["ka_gochara_utc_ts(timestamptz)","1378"],
+      ["ka_gochara_search_moon_scope_violations(uuid,text)","1378"],
+      ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1378"],
+      ["ka_gochara_legacy_projection_rows(uuid,text)","1378"],
+      ["ka_gochara_brief_state_digest(uuid,text)","1378"]
      ]
     },
     "gochara_sealer": {
@@ -146,26 +146,26 @@ DECLARE
       ["ka_gochara_record_prerequisite","SELECT",null,"1240"],
       ["ka_gochara_contact","SELECT",null,"1240"],
       ["ka_gochara_physical_object","SELECT",null,"1240"],
-      ["ka_gochara_seal_approval","SELECT",null,"1376"],
-      ["ka_gochara_seal_approval","INSERT",null,"1376"],
-      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1376"],
-      ["ka_gochara_seal_brief","SELECT",null,"1376"],
-      ["ka_gochara_generation_seal","INSERT",null,"1376"],
-      ["kala_gochara_publication","UPDATE",["status","published_at","content_digest","row_counts"],"1376"],
-      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1376"],
-      ["kala_gochara_coverage","SELECT",null,"1376"],
-      ["kala_gochara_contacts","SELECT",null,"1376"],
-      ["ka_gochara_rule_path_seal","SELECT",null,"1376"],
-      ["ka_gochara_rule_path","SELECT",null,"1376"],
-      ["ka_gochara_rule_path_prerequisite","SELECT",null,"1376"],
-      ["ka_gochara_rule_path_soft_factor","SELECT",null,"1376"],
-      ["ka_gochara_predicate","SELECT",null,"1376"],
-      ["ka_gochara_factor","SELECT",null,"1376"],
-      ["ka_gochara_convention_bridge","SELECT",null,"1376"],
-      ["ka_gochara_search_inventory","SELECT",null,"1376"],
-      ["ka_gochara_search_obligation","SELECT",null,"1376"],
-      ["ka_gochara_search_interval","SELECT",null,"1376"],
-      ["ka_gochara_search_inventory_verification","SELECT",null,"1376"]
+      ["ka_gochara_seal_approval","SELECT",null,"1378"],
+      ["ka_gochara_seal_approval","INSERT",null,"1378"],
+      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1378"],
+      ["ka_gochara_seal_brief","SELECT",null,"1378"],
+      ["ka_gochara_generation_seal","INSERT",null,"1378"],
+      ["kala_gochara_publication","UPDATE",["status","published_at","content_digest","row_counts"],"1378"],
+      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1378"],
+      ["kala_gochara_coverage","SELECT",null,"1378"],
+      ["kala_gochara_contacts","SELECT",null,"1378"],
+      ["ka_gochara_rule_path_seal","SELECT",null,"1378"],
+      ["ka_gochara_rule_path","SELECT",null,"1378"],
+      ["ka_gochara_rule_path_prerequisite","SELECT",null,"1378"],
+      ["ka_gochara_rule_path_soft_factor","SELECT",null,"1378"],
+      ["ka_gochara_predicate","SELECT",null,"1378"],
+      ["ka_gochara_factor","SELECT",null,"1378"],
+      ["ka_gochara_convention_bridge","SELECT",null,"1378"],
+      ["ka_gochara_search_inventory","SELECT",null,"1378"],
+      ["ka_gochara_search_obligation","SELECT",null,"1378"],
+      ["ka_gochara_search_interval","SELECT",null,"1378"],
+      ["ka_gochara_search_inventory_verification","SELECT",null,"1378"]
      ],
      "functions": [
       ["ka_gochara_window_verification_violations(uuid,text)","1240"],
@@ -180,28 +180,28 @@ DECLARE
       ["ka_gochara_sha256_hex(text)","1240"],
       ["ka_gochara_lock_chart(uuid)","1240"],
       ["ka_gochara_lock_global_shared()","1240"],
-      ["ka_gochara_seal_generation(uuid,text)","1376"],
-      ["ka_gochara_coverage_drift(uuid,text)","1376"],
-      ["ka_gochara_horizon_finite_ok(tstzrange)","1376"],
-      ["ka_gochara_coverage_facts(text,tstzrange,text[])","1376"],
-      ["ka_gochara_facts_horizon(jsonb)","1376"],
-      ["ka_gochara_membership_violations(uuid,text)","1376"],
-      ["ka_gochara_membership_violation(jsonb,uuid,text,jsonb,tstzrange[])","1376"],
-      ["ka_gochara_search_completeness_violations(uuid,text)","1376"],
-      ["ka_gochara_search_replay_violations(uuid,text)","1376"],
-      ["ka_gochara_search_l1_facts_digest(uuid,text[])","1376"],
-      ["ka_gochara_search_dasha_digest(uuid,uuid[])","1376"],
-      ["ka_gochara_search_inventory_digest(uuid,text,text)","1376"],
-      ["ka_gochara_search_ledger_digest(uuid,text,text)","1376"],
-      ["ka_gochara_search_inventory_preimage(uuid,text,text)","1376"],
-      ["ka_gochara_utc_ts(timestamptz)","1376"],
-      ["ka_gochara_search_moon_scope_violations(uuid,text)","1376"],
-      ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1376"],
-      ["ka_gochara_generation_governed(text)","1376"],
-      ["ka_gochara_seal_receipt_missing(uuid,text)","1376"],
-      ["ka_gochara_legacy_projection_rows(uuid,text)","1376"],
-      ["ka_gochara_brief_state_digest(uuid,text)","1376"],
-      ["ka_gochara_seal_brief_problem(uuid,text,uuid,text)","1376"]
+      ["ka_gochara_seal_generation(uuid,text)","1378"],
+      ["ka_gochara_coverage_drift(uuid,text)","1378"],
+      ["ka_gochara_horizon_finite_ok(tstzrange)","1378"],
+      ["ka_gochara_coverage_facts(text,tstzrange,text[])","1378"],
+      ["ka_gochara_facts_horizon(jsonb)","1378"],
+      ["ka_gochara_membership_violations(uuid,text)","1378"],
+      ["ka_gochara_membership_violation(jsonb,uuid,text,jsonb,tstzrange[])","1378"],
+      ["ka_gochara_search_completeness_violations(uuid,text)","1378"],
+      ["ka_gochara_search_replay_violations(uuid,text)","1378"],
+      ["ka_gochara_search_l1_facts_digest(uuid,text[])","1378"],
+      ["ka_gochara_search_dasha_digest(uuid,uuid[])","1378"],
+      ["ka_gochara_search_inventory_digest(uuid,text,text)","1378"],
+      ["ka_gochara_search_ledger_digest(uuid,text,text)","1378"],
+      ["ka_gochara_search_inventory_preimage(uuid,text,text)","1378"],
+      ["ka_gochara_utc_ts(timestamptz)","1378"],
+      ["ka_gochara_search_moon_scope_violations(uuid,text)","1378"],
+      ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1378"],
+      ["ka_gochara_generation_governed(text)","1378"],
+      ["ka_gochara_seal_receipt_missing(uuid,text)","1378"],
+      ["ka_gochara_legacy_projection_rows(uuid,text)","1378"],
+      ["ka_gochara_brief_state_digest(uuid,text)","1378"],
+      ["ka_gochara_seal_brief_problem(uuid,text,uuid,text)","1378"]
      ]
     }
   },
@@ -215,33 +215,33 @@ BEGIN
   IF to_regclass('public.ka_gochara_eval_window_verification') IS NULL
      OR to_regclass('public.ka_gochara_search_inventory_verification') IS NULL
      OR to_regclass('public.ka_gochara_generation_seal') IS NULL THEN
-    RAISE EXCEPTION 'migration 1376: the protected window (1206, 1240) has not been applied — refusing; apply the window first';
+    RAISE EXCEPTION 'migration 1378: the protected window (1206, 1240) has not been applied — refusing; apply the window first';
   END IF;
 
   -- 1. APPLY (role-existence-guarded; idempotent — a privilege already held is a no-op)
   FOR r IN SELECT jsonb_object_keys(spec->'roles') LOOP
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
       FOR g IN SELECT e->>0 AS tbl, e->>1 AS priv, e->2 AS cols FROM jsonb_array_elements(spec->'roles'->r->'tables') e LOOP
-        IF g.priv NOT IN ('SELECT','INSERT','UPDATE','DELETE') THEN RAISE EXCEPTION 'migration 1376: unexpected privilege %', g.priv; END IF;
-        IF to_regclass('public.' || quote_ident(g.tbl)) IS NULL THEN RAISE EXCEPTION 'migration 1376: relation % does not exist', g.tbl; END IF;
+        IF g.priv NOT IN ('SELECT','INSERT','UPDATE','DELETE') THEN RAISE EXCEPTION 'migration 1378: unexpected privilege %', g.priv; END IF;
+        IF to_regclass('public.' || quote_ident(g.tbl)) IS NULL THEN RAISE EXCEPTION 'migration 1378: relation % does not exist', g.tbl; END IF;
         cols_sql := CASE WHEN jsonb_typeof(g.cols) = 'array'
                          THEN ' (' || (SELECT string_agg(quote_ident(c), ', ') FROM jsonb_array_elements_text(g.cols) c) || ')' ELSE '' END;
         EXECUTE format('GRANT %s%s ON public.%I TO %I', g.priv, cols_sql, g.tbl, r);
       END LOOP;
       FOR g IN SELECT e->>0 AS sig FROM jsonb_array_elements(spec->'roles'->r->'functions') e LOOP
         fn_oid := to_regprocedure('public.' || g.sig)::oid;
-        IF fn_oid IS NULL THEN RAISE EXCEPTION 'migration 1376: function % does not exist', g.sig; END IF;
+        IF fn_oid IS NULL THEN RAISE EXCEPTION 'migration 1378: function % does not exist', g.sig; END IF;
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', fn_oid::regprocedure, r);
       END LOOP;
-      RAISE NOTICE 'migration 1376: grants (1240 backfill + 1376) issued to role %', r;
+      RAISE NOTICE 'migration 1378: grants (1240 backfill + 1378) issued to role %', r;
     ELSE
-      RAISE WARNING 'migration 1376: role % NOT FOUND — NO grant was issued to it; apply this migration again (a follow-up carrying the SAME spec) once the role exists', r;
+      RAISE WARNING 'migration 1378: role % NOT FOUND — NO grant was issued to it; apply this migration again (a follow-up carrying the SAME spec) once the role exists', r;
     END IF;
   END LOOP;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = spec->'builder_backfill'->>'role') THEN
     FOR sig IN SELECT jsonb_array_elements_text(spec->'builder_backfill'->'functions') LOOP
       fn_oid := to_regprocedure('public.' || sig)::oid;
-      IF fn_oid IS NULL THEN RAISE EXCEPTION 'migration 1376: function % does not exist', sig; END IF;
+      IF fn_oid IS NULL THEN RAISE EXCEPTION 'migration 1378: function % does not exist', sig; END IF;
       EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO %I', fn_oid::regprocedure, spec->'builder_backfill'->>'role');
     END LOOP;
   END IF;
@@ -249,7 +249,7 @@ BEGIN
   found_v := EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier');
   found_s := EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer');
   found_b := EXISTS (SELECT 1 FROM pg_roles WHERE rolname = spec->'builder_backfill'->>'role');
-  RAISE NOTICE 'migration 1376 principals found: gochara_verifier=%, gochara_sealer=%, data_plane_builder=%', found_v, found_s, found_b;
+  RAISE NOTICE 'migration 1378 principals found: gochara_verifier=%, gochara_sealer=%, data_plane_builder=%', found_v, found_s, found_b;
 
   -- 2. CLOSURE: for each FOUND principal the ENTIRE ACL over every ka_gochara_* / kala_gochara_* relation (table-level and per-column) and every
   --    ka_gochara_* function EQUALS the spec — required privileges present AND nothing else held (INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER
@@ -285,7 +285,7 @@ BEGIN
     END LOOP;
   END LOOP;
   IF array_length(problems, 1) > 0 THEN
-    RAISE EXCEPTION 'migration 1376 post-apply ACL closure failed (% difference(s)): %', array_length(problems, 1), array_to_string(problems[1:40], '; ');
+    RAISE EXCEPTION 'migration 1378 post-apply ACL closure failed (% difference(s)): %', array_length(problems, 1), array_to_string(problems[1:40], '; ');
   END IF;
 END
 $migration$;

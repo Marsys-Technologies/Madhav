@@ -21153,7 +21153,7 @@
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/decisions/PROTECTED_WINDOW_CLOSE_20261004.md"
         ],
         "owns": [
-          "platform/migrations/1376_gochara_verifier_sealer_inventory_grants.sql",
+          "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql",
           "platform/tests/unit/migrations/gochara_b6_1241_verifier_sealer_grants_static.test.ts"
         ],
         "tests": [

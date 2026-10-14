@@ -14,7 +14,7 @@
 #   pre-train    row 7 preconditions: both roles exist, W4 sealer CONNECT, 1206 absent, 1243 ledger sha AND the
 #                full registry-1243 readback re-run (all three release-gate items re-read at the sitting)
 #   pre-dispatch row 8 preconditions: window preread refusals again, 1206 absent, both roles, the ledger diff
-#                against the row-2 snapshot (only the five window files may be new, never a 1376_*), 1243 ledger sha
+#                against the row-2 snapshot (only the five window files may be new, never a 1378_*), 1243 ledger sha
 #   post-window  row 9: positive privilege readback (zero rows), amjis_app CREATE on public = false, the five
 #                window files recorded exactly once with EXPECTED_WINDOW_SHA256.txt hashes, ka_gochara_* /
 #                kala_gochara_* ownership = amjis_app, PUBLIC EXECUTE revoked on ka_gochara_* functions, ledger
@@ -45,7 +45,7 @@
 # later routine + 1243' is a steward read), W2(a)'s 'nothing unexpected' review, the W6 baseline REVIEW of every
 # row before act 9, W2(d) the code-isolation grep, the zero-gap enforce preflight (registry_1243_gap_preflight.py),
 # every gh/git check (MERGEABLE, baseRefName/isDraft, deploy.yml selection via the executing test, hashes on main,
-# no 1376_* on main, 'gh run list' drain), every gcloud/IAM/workflow action (rows 1, 4–6, 8), and the trigger
+# no 1378_* on main, 'gh run list' drain), every gcloud/IAM/workflow action (rows 1, 4–6, 8), and the trigger
 # manifest vs the rehearsal mirror (rehearsal, not production).
 set -euo pipefail
 
@@ -492,7 +492,7 @@ check_ledger_diff() { # B3d (rows 8 + 9) <id>: new ledger entries vs the row-2 s
   _evidence "$id" "$id-new-entries.tsv"
   bad="$(echo "$new" | grep -Ev '^(1204_gochara_av_qualifier_object_role|1206_gochara_search_inventory_completeness|1232_gochara_search_moon_scope_domain|1233_gochara_p1_period_anchor|1240_gochara_window_verification_gate)[.]sql$' | grep . || true)"
   if [ -n "$bad" ]; then
-    _stop "$id" "ledger entries since the row-2 snapshot that are NOT one of the five window files (a 1376_* or a protected file would appear here): $(echo "$bad" | tr '\n' ' ')"
+    _stop "$id" "ledger entries since the row-2 snapshot that are NOT one of the five window files (a 1378_* or a protected file would appear here): $(echo "$bad" | tr '\n' ' ')"
   else
     _pass "$id" "every new ledger entry since the row-2 snapshot is one of the five window files ($(echo "$new" | grep -c . || true) new)"
   fi

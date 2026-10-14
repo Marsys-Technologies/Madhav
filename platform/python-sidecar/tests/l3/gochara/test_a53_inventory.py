@@ -305,7 +305,7 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True):
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
                 [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or f != M1241_NAME] if faithful else []):
             if fname == M1241_NAME:
-                # PR #2949 lands as 1376. The loader pins the landing separately from
+                # PR #2949 lands as 1378. The loader pins the landing separately from
                 # the archived 1241 v7 fixture and permits only the migration renumber.
                 cur.execute(migration_1241_sql(MIGRATIONS))
             elif not (MIGRATIONS / fname).exists():
