@@ -407,6 +407,8 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           const unassessedReason = ledger['null_reason'] === 'partial_defeat_unassessed'
             || ledger['null_reason'] === 'contestation_unassessed'
             || ledger['null_reason'] === 'missing_defeat_facts'
+            || ledger['null_reason'] === 'defeat_evidence_missing'
+            || ledger['null_reason'] === 'defeat_evidence_ambiguous'
             || ledger['null_reason'] === 'conditions_unassessed' ? ledger['null_reason'] as string : null
           const rank = unassessedReason ? 2 : factVerified && !unverifiedYogaTier ? 0 : unverifiedYogaTier ? 1 : 2
           if (unassessedReason && !judgment_flags.includes(unassessedReason)) judgment_flags.push(unassessedReason)
