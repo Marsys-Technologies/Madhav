@@ -7,6 +7,7 @@ import json
 import psycopg.rows
 
 from services.kala_core.promise.relationships import Projection, resolve_relationships
+from services.kala_core.promise.candidate import building_candidate, natal_pin, pin_input_vector
 
 
 def store_projection(conn: Any, *, chart_id: str, ayanamsha_id: str, generation: str,
@@ -66,10 +67,12 @@ def build_candidate_projection(ctx: Any) -> tuple[int, str]:
     from services.ka_gochara_resonance.writer import TARGET_EVENT_CLASSES
     chart_id = ctx.config['chart_id']
     generation = ctx.config['candidate_generation']
-    ayan = ctx.config.get('ayanamsha_id', 'lahiri_chitrapaksha')
     with ctx.db_conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        pin = natal_pin(building_candidate(cur, chart_id, generation, ctx.build_id))
+        ayan = pin['ayanamsha_id']
+        source_params = (chart_id, pin['build_id'], ayan)
         cur.execute('''SELECT fact_id,fact_subject,fact_category,fact_key,fact_value_num,fact_value_text,unit
-          FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s''', (chart_id, ayan))
+          FROM chart_facts WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s''', source_params)
         facts = cur.fetchall()
         cur.execute('SELECT sign_id,lord FROM reference_signs')
         sign_lords = {row['sign_id']: row['lord'] for row in cur.fetchall()}
@@ -83,14 +86,20 @@ def build_candidate_projection(ctx: Any) -> tuple[int, str]:
         cur.execute('SELECT id,rule_type,graha,primary_house,classical_citation FROM bg_transit_rules ORDER BY id')
         rules = cur.fetchall()
         cur.execute('''SELECT yoga_canonical_id,fired,constituent_fact_ids,constituent_planets,constituent_houses,bhanga_active
-          FROM ga_yoga_firings WHERE chart_id=%s AND ayanamsha_id=%s AND fired=true''', (chart_id, ayan))
+          FROM ga_yoga_firings WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s AND fired=true''', source_params)
         yogas = cur.fetchall()
-        cur.execute('''SELECT DISTINCT lord_graha FROM chart_dashas WHERE chart_id=%s AND ayanamsha_id=%s
-          AND system_id='vimshottari' AND level_n=1''', (chart_id, ayan))
-        dashas = [r['lord_graha'] for r in cur.fetchall()]
+        cur.execute('''SELECT dasha_row_id,lord_graha,start_iso,end_iso,verification_pass_status
+          FROM chart_dashas WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s
+          AND system_id='vimshottari' AND level_n=1''', source_params)
+        dasha_rows = cur.fetchall()
+        dashas = sorted({r['lord_graha'] for r in dasha_rows if r['lord_graha'] is not None})
         cur.execute('''SELECT event_class_id,mechanism_id,derivation_ledger_jsonb FROM kala_activation_predicates
           WHERE chart_id=%s AND ayanamsha_id=%s AND generation=%s''', (chart_id, ayan, generation))
         promises = cur.fetchall()
+        pin_input_vector(cur, chart_id, generation, 'ka_gochara_resonance:inputs', pin,
+            chart_facts=facts, ga_yoga_firings=yogas, chart_dashas=dasha_rows,
+            reference_signs=[sign_lords], brahma_event_ontology=ontology,
+            bg_transit_rules=rules, kala_activation_predicates=promises)
     from services.kala_core.promise.relationships import _subject
     projections = []
     for row in ontology:
