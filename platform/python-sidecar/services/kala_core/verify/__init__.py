@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any
 
-from services.kala_core.manifest import Candidate
+from services.kala_core.manifest import Candidate, lock_candidate_inputs
 
 VERIFIER_PRINCIPAL = "verifier_principal"
 
@@ -31,17 +31,26 @@ def candidate_input_digest(conn: Any, candidate: Candidate) -> str:
 
 
 def verify_candidate(conn: Any, candidate: Candidate, *, independently_derived_digest: str) -> None:
-    """Persist one acceptance only as the separate local verifier principal."""
+    """Append one acceptance as the separate verifier; refuse an existing receipt.
+
+    Receipts are immutable. Even an identical retry is explicitly refused;
+    changed inputs require a new candidate generation, never a silent success
+    that leaves an older receipt in place. RETURNING uses only the conflict-key
+    read privilege already granted to the verifier by migration 1334.
+    """
     principal = _value(conn.execute("SELECT current_user").fetchone())
     if principal != VERIFIER_PRINCIPAL:
         raise VerificationRefused("verification must run as verifier_principal")
+    lock_candidate_inputs(conn, candidate)
     stored = candidate_input_digest(conn, candidate)
     if stored != independently_derived_digest:
         raise VerificationRefused("independent digest does not match stored candidate input")
-    conn.execute(
+    inserted = conn.execute(
         "INSERT INTO kala_layer_verification "
         "(chart_id, generation, verifier_principal, result, detail) VALUES (%s, %s, %s, 'accepted', %s) "
-        "ON CONFLICT (chart_id, generation) DO NOTHING",
+        "ON CONFLICT (chart_id, generation) DO NOTHING RETURNING chart_id",
         (candidate.chart_id, candidate.generation, VERIFIER_PRINCIPAL,
          json.dumps({"input_digest": stored}, sort_keys=True)),
-    )
+    ).fetchone()
+    if inserted is None:
+        raise VerificationRefused("candidate already has an immutable receipt; use a new generation")

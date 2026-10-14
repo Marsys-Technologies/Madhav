@@ -21,7 +21,7 @@ def fixture_input(event_class='career', generation=GEN, chart=CHART):
         assertion_id='judge:fixture', chart_id=chart, generation=generation, stage='judge',
         method='fixture:judge', rule_version='fixture:1',
         subject=dict(event_class=event_class, affected_person='native', objects=[]),
-        frame='fixture:frame', period_anchor=dict(system='vimshottari', MD='Jupiter',
+        frame='moon', period_anchor=dict(system='vimshottari', MD='Jupiter',
             AD='Saturn', applicability='applicable'),
         interval=dict(t0=datetime.fromtimestamp(T, timezone.utc),
             t1=datetime.fromtimestamp(T + 30, timezone.utc)), grain='day',
