@@ -316,7 +316,7 @@ NARR_CITES = {
     "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 115, "_build_narrative("), (_WR + "ka_kala_darshana.py", 146, "obstruction_summary, narrative"),
                          (_WR + "ka_kala_darshana.py", 242, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 191, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 438, "summary = ("),
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 193, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 440, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 153, "narrative, source_citation")],
     "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 331, "_build_projection_narrative("),
                            (_WR + "ka_bhavishya_lekha.py", 325, "_build_falsifiability("),
