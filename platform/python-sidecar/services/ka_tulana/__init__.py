@@ -368,7 +368,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts": "602628753eae5b79a8969e507965f8252a6cd4b4d814bae87e6fef83a503096b",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts": "c1d75b5a097bc4b315bbad19c2c1059aeba20a65ce8b653736382b4e25fc2c23",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "e5d4b6992f2bf60035ae75fea5e3fc34b9bb2c8a2ac36dec13fb6b7acb8a03eb"
+    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "478819f55b0a946116b1f62bd686fada30f77b9c8f6226e3f0d3a89f2eeb4ce8"
   },
   "declaration_sha256": "45538005b9d0c2074744f80c1924f64edbf4fb8719f70503332d7c36494ba340",
   "interpretations": [
