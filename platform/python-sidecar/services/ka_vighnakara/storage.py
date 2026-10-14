@@ -36,6 +36,14 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
             raise ValueError('input lies outside the build candidate partition')
         if len({value.assertion_id for value in inputs}) != len(inputs):
             raise ValueError('duplicate assertion identity')
+        # Labels, prose, protection facts and edge targets are evidence, not
+        # physical identity. Refuse aliases before replacing the partition.
+        physical = [(value.chart_id, value.generation, value.event_class_id, value.mechanism,
+                     value.interval.t0, value.interval.t1,
+                     tuple(sorted(set(value.roots.record_ids))),
+                     tuple(sorted(set(value.roots.contact_ids)))) for value in inputs]
+        if len(set(physical)) != len(physical):
+            raise ValueError('duplicate physical conclusion under assertion aliases')
         rows = []
         for value in inputs:
             result = interpret(value)

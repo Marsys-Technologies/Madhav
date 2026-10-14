@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a13244-9f08-7331-9282-4a76c4665939"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`[features].web_search_request` is deprecated because web search is enabled by default. (Set `web_search` to `\"live\"`, `\"indexed\"`, `\"cached\"`, or `\"disabled\"` at the top level (or under a profile) in config.toml if you want to override it.)"}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"I’ll run the exact command once.\n"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"REFUSED"}}
+{"type":"turn.completed","usage":{"input_tokens":30155,"cached_input_tokens":14848,"cache_write_input_tokens":0,"output_tokens":88,"reasoning_output_tokens":0}}

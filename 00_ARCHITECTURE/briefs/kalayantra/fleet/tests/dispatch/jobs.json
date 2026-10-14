@@ -1,0 +1,4919 @@
+{
+ "schema": "ky.test_cases/1",
+ "component": "kyd_jobs.py",
+ "packet": "KV3-B-KYDJOBS v1",
+ "note": "Each case: steps run in order by tests/dispatch/test_kyd_jobs.py; expect.states is the state sequence each job ends in (every persisted phase, in order; ended:<outcome> last).",
+ "cases": [
+  {
+   "name": "kt07_three_successive_successful_builds_on_one_slot",
+   "covers": [
+    "kt07.three_successive_builds"
+   ],
+   "why": "Each job's claim is released before the slot is used again: claim, release, three times, in that order.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j2",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j2",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j2"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j2",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    },
+    {
+     "op": "open",
+     "as": "j3",
+     "intent": {
+      "item": "K-3"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j3",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j3",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j3"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j3",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j3": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-3 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": true,
+     "j2": true,
+     "j3": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "item.K-2": false,
+     "item.K-3": false,
+     "slot.b1": false
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "kt07_immediate_rework_after_review",
+   "covers": [
+    "kt07.immediate_rework"
+   ],
+   "why": "A registered review is not claim release: while the BUILD job is not closed the slot takes no REWORK; once it is closed the REWORK of the same item opens at once on the same slot and claims again.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "head": "@A",
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "head": "@A",
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j2",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j2",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j2"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j2",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": true,
+     "j2": true
+    },
+    "job": {
+     "j2": {
+      "kind": "REWORK",
+      "head": "@A",
+      "slot": "b1"
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_blocked_exit",
+   "covers": [
+    "kt07.blocked_exit"
+   ],
+   "why": "A job that exits blocked releases its claim and frees its slot like any other; it is not handled, and its failure class is counted.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "blocked"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "blocked",
+      "detail": "freeze: fleet/FROZEN_PATHS.txt",
+      "failure_fp": "freeze"
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:blocked"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "failures": {
+     "K-1": {
+      "freeze": {
+       "count": 1,
+       "evidence_fp": null
+      }
+     }
+    },
+    "job": {
+     "j1": {
+      "exit_code": 0,
+      "failure_fp": "freeze",
+      "requeued": null
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_result",
+   "covers": [
+    "kt07.restart",
+    "negative.one_release"
+   ],
+   "why": "The controller dies right after the close step `result` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "result"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_exited",
+   "covers": [
+    "kt07.restart"
+   ],
+   "why": "The controller dies right after the close step `exited` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "exited"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_boundary",
+   "covers": [
+    "kt07.restart"
+   ],
+   "why": "The controller dies right after the close step `boundary` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "boundary"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_claim",
+   "covers": [
+    "kt07.restart"
+   ],
+   "why": "The controller dies right after the close step `claim` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "claim"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_locks",
+   "covers": [
+    "kt07.restart"
+   ],
+   "why": "The controller dies right after the close step `locks` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "locks"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "lock_resume_never_releases_another_jobs_lock",
+   "covers": [
+    "kt07.restart",
+    "review.KYDJOBS-R1-B1"
+   ],
+   "why": "KYDJOBS-R1-B1. The close dies after its locks were released and before the step `locks` was persisted; a REWORK job of the same item takes item.K-1 in the meantime. The resumed close ends the first job and leaves that lock with the job that holds it now, so no VERIFY job can open on the item while the REWORK job holds its worktree.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_before_persist": "locks"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    },
+    {
+     "op": "expect",
+     "locks": {
+      "item.K-1": true
+     }
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": true
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "lock_resume_after_a_restart_never_releases_another_jobs_lock",
+   "covers": [
+    "kt07.restart",
+    "review.KYDJOBS-R1-B1"
+   ],
+   "why": "KYDJOBS-R1-B1 across a restart: the new controller opens the REWORK job (item.K-1 under its own identity) and then recovers the first job; the resumed close leaves item.K-1 with the REWORK job.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_before_persist": "locks"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "locks": {
+      "item.K-1": true
+     }
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": true
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "kt07_restart_after_close_step_handled",
+   "covers": [
+    "kt07.restart"
+   ],
+   "why": "The controller dies right after the close step `handled` was persisted. The next controller resumes at the first unfinished step: one `ky release` in all, the slot free only at the end.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_after": "handled"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    },
+    "awaiting": [],
+    "job": {
+     "j1": {
+      "outcome": "done",
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1"
+     }
+    }
+   }
+  },
+  {
+   "name": "neg_restart_after_the_release_but_before_it_was_recorded",
+   "covers": [
+    "negative.one_release"
+   ],
+   "why": "The controller dies after `ky release` succeeded and before the claim step was persisted. The claim file says released for this job's claim_id, so the next controller releases nothing a second time.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "crash_before_persist": "claim"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]",
+      "release [K/b1]"
+     ]
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": true
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "neg_the_claim_file_claim_id_differs",
+   "covers": [
+    "negative.other_claim_id"
+   ],
+   "why": "run/claims/b1.json names another claim_id: no `ky release` (it would release whatever that file names), the slot is kept, one owner-wait says reconciliation required. Once the file matches again the close finishes.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "claim_id": "claim-of-another-job"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-claim"
+     ],
+     "question": [
+      "reconciliation required"
+     ],
+     "handled": {
+      "j1": false
+     },
+     "locks": {
+      "item.K-1": true
+     },
+     "states": {
+      "j1": [
+       "prepared",
+       "live",
+       "terminating"
+      ]
+     }
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "claim_id": "claim-1",
+      "item": "K-1",
+      "worker_id": "b1",
+      "state": "acquired"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "handled": {
+     "j1": true
+    }
+   }
+  },
+  {
+   "name": "neg_the_claim_file_item_differs",
+   "covers": [],
+   "why": "run/claims/b1.json names another item: no `ky release` (it would release whatever that file names), the slot is kept, one owner-wait says reconciliation required. Once the file matches again the close finishes.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "item": "K-77"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-claim"
+     ],
+     "question": [
+      "reconciliation required"
+     ],
+     "handled": {
+      "j1": false
+     },
+     "locks": {
+      "item.K-1": true
+     },
+     "states": {
+      "j1": [
+       "prepared",
+       "live",
+       "terminating"
+      ]
+     }
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "claim_id": "claim-1",
+      "item": "K-1",
+      "worker_id": "b1",
+      "state": "acquired"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "handled": {
+     "j1": true
+    }
+   }
+  },
+  {
+   "name": "neg_the_claim_file_worker_differs",
+   "covers": [],
+   "why": "run/claims/b1.json names another worker: no `ky release` (it would release whatever that file names), the slot is kept, one owner-wait says reconciliation required. Once the file matches again the close finishes.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "worker_id": "b2"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-claim"
+     ],
+     "question": [
+      "reconciliation required"
+     ],
+     "handled": {
+      "j1": false
+     },
+     "locks": {
+      "item.K-1": true
+     },
+     "states": {
+      "j1": [
+       "prepared",
+       "live",
+       "terminating"
+      ]
+     }
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "claim_id": "claim-1",
+      "item": "K-1",
+      "worker_id": "b1",
+      "state": "acquired"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "handled": {
+     "j1": true
+    }
+   }
+  },
+  {
+   "name": "neg_the_claim_file_state_differs",
+   "covers": [],
+   "why": "run/claims/b1.json is in a state this controller does not know: no `ky release` (it would release whatever that file names), the slot is kept, one owner-wait says reconciliation required. Once the file matches again the close finishes.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "state": "superseded"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-claim"
+     ],
+     "question": [
+      "reconciliation required"
+     ],
+     "handled": {
+      "j1": false
+     },
+     "locks": {
+      "item.K-1": true
+     },
+     "states": {
+      "j1": [
+       "prepared",
+       "live",
+       "terminating"
+      ]
+     }
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "patch": {
+      "claim_id": "claim-1",
+      "item": "K-1",
+      "worker_id": "b1",
+      "state": "acquired"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "handled": {
+     "j1": true
+    }
+   }
+  },
+  {
+   "name": "neg_the_claim_file_is_missing",
+   "covers": [],
+   "why": "A job that holds a claim_id and finds no claim file cannot show what it would release: nothing is released and the slot is kept.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "claim_file",
+     "slot": "b1",
+     "remove": true
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "handled": {
+     "j1": false
+    }
+   }
+  },
+  {
+   "name": "neg_the_release_is_refused_by_the_tracker",
+   "covers": [],
+   "why": "`ky release` exits non-zero: the claim is not released, the slot is kept, reconciliation required.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "ky_reply",
+     "match": "release",
+     "rc": 2
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "unreply",
+     "match": "release"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-claim"
+    ],
+    "question": [
+     "reconciliation required"
+    ]
+   }
+  },
+  {
+   "name": "neg_an_unknown_process_state_is_never_gone_and_never_reaped",
+   "covers": [
+    "negative.unknown_process"
+   ],
+   "why": "A start identity that cannot be compared makes the job's state unknown: an owner-wait and nothing else \u2014 no timeout kill although the deadline has passed, no renewal, no claim release, the slot kept.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "process_start": "not a start identity",
+      "deadline": "@past",
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "live"
+     },
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-process-unknown"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "failed",
+      "detail": "engine",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-unknown"
+    ],
+    "locks": {
+     "item.K-1": true
+    }
+   }
+  },
+  {
+   "name": "neg_a_leader_that_left_members_behind_is_not_gone",
+   "covers": [],
+   "why": "The leader has exited but its process group still has a member: survivors \u2014 an owner-wait only; the group is not signalled and the job is not finished.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "survivor"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "survivors"
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live"
+     ]
+    },
+    "process": {
+     "j1": "survivors"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-survivors"
+    ]
+   }
+  },
+  {
+   "name": "neg_a_stale_pending_launch_is_never_gone_and_never_relaunched",
+   "covers": [],
+   "why": "pid \"pending\" was persisted and the controller died before the start was recorded: whether a process exists is unknown. It is not started again, not recovered as prepared and its claim is not released.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "pid": "pending"
+     }
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done",
+     "expect_phase": "prepared"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done",
+     "expect_phase": "prepared"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "refused",
+      "detail": "admit: already_green",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-launch-pending"
+    ],
+    "job": {
+     "j1": {
+      "pid": "pending"
+     }
+    }
+   }
+  },
+  {
+   "name": "timeout_reaps_the_group_sleep",
+   "covers": [],
+   "why": "Past its deadline the job's group gets TERM, then \u2014 still there after the wait \u2014 KILL; gone, it is closed timed_out and its claim released.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "gone"
+     },
+     "job": {
+      "j1": {
+       "outcome": "timed_out",
+       "phase": "terminating"
+      }
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:timed_out"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "exit_code": -15
+     }
+    }
+   }
+  },
+  {
+   "name": "timeout_reaps_the_group_ignore_term",
+   "covers": [],
+   "why": "Past its deadline the job's group gets TERM, then \u2014 still there after the wait \u2014 KILL; gone, it is closed timed_out and its claim released.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "ignore_term"
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "gone"
+     },
+     "job": {
+      "j1": {
+       "outcome": "timed_out",
+       "phase": "terminating"
+      }
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:timed_out"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "exit_code": -9
+     }
+    }
+   }
+  },
+  {
+   "name": "renewal_every_twenty_minutes_and_none_once_termination_begins",
+   "covers": [],
+   "why": "Only a live job that holds a claim is renewed, and only when the last renewal is 20 minutes old; a job that is terminating is never renewed.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "open",
+     "as": "v1",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-2"
+     },
+     "slot": "v1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "launch",
+     "job": "v1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ]
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "set",
+     "job": "v1",
+     "patch": {
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]",
+      "renew --lease 10800 [K/b1]"
+     ]
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "set",
+     "job": "v1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1",
+      "v1"
+     ]
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1",
+      "v1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    },
+    {
+     "op": "close",
+     "job": "v1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:timed_out"
+     ],
+     "v1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:timed_out"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "renew --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ]
+   }
+  },
+  {
+   "name": "recover_a_gone_job",
+   "covers": [
+    "recover.gone"
+   ],
+   "why": "Recorded live by an earlier controller and its group gone: interrupted, claim released, re-queued once. The exit code of a process this controller did not start is not known.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 1,
+      "blocked": false
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "requeued": true,
+      "exit_code": null,
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1",
+      "provider_session_id": "sess-<j1>"
+     }
+    }
+   }
+  },
+  {
+   "name": "recover_two_interrupted_jobs_of_one_key_block_it",
+   "covers": [],
+   "why": "Re-queue once: the second interruption of the same key is not re-queued and blocks automatic attempts; another key of the item is not blocked.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j2",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j2",
+     "for": "gone"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T020000Z-3"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j2"
+     ]
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 1,
+      "blocked": true
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1",
+      "head": "@C"
+     },
+     "expect": {
+      "attempt": 1,
+      "blocked": false
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ],
+     "j2": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "requeued": true
+     },
+     "j2": {
+      "requeued": false
+     }
+    }
+   }
+  },
+  {
+   "name": "recover_a_live_job",
+   "covers": [
+    "recover.live"
+   ],
+   "why": "Recorded live by an earlier controller and still running with its start identity: adopted \u2014 supervised by this controller from now on (deadline, renewal), its exit code unknown.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "live"
+     },
+     "job": {
+      "j1": {
+       "phase": "live",
+       "controller_id": "CTL-dispatcher-20261012T010000Z-2"
+      }
+     },
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ]
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:timed_out"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "renew --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "exit_code": null,
+      "controller_id": "CTL-dispatcher-20261012T010000Z-2"
+     }
+    },
+    "locks": {
+     "item.K-1": false
+    }
+   }
+  },
+  {
+   "name": "recover_an_unknown_job",
+   "covers": [
+    "recover.unknown"
+   ],
+   "why": "Recorded live by an earlier controller and its state cannot be told: neither interrupted nor adopted \u2014 an owner-wait, asked once; the process is not touched.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "process_start": null
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "supervise",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-9"
+     },
+     "slot": "b1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-unknown"
+    ],
+    "job": {
+     "j1": {
+      "controller_id": "CTL-dispatcher-20261012T000000Z-1",
+      "phase": "live"
+     }
+    }
+   }
+  },
+  {
+   "name": "recover_a_prepared_job",
+   "covers": [
+    "recover.prepared"
+   ],
+   "why": "Prepared by an earlier controller and never started (pid null): closed refused, claim released, slot free.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    }
+   }
+  },
+  {
+   "name": "recover_a_terminating_job",
+   "covers": [
+    "recover.terminating"
+   ],
+   "why": "KYDJOBS-R1-B2. Found terminating by an earlier controller that recorded no outcome: its kind finish never ran, so nothing has checked what the job's own result.json asserts. The plan \u00a76 recovery rule applies: interrupted, the claim released, re-queued once, no handled record; the same key opens again.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "exit_code": 0,
+      "result_event": {
+       "subtype": "success",
+       "is_error": false,
+       "num_turns": 3,
+       "usage": {
+        "input_tokens": 7
+       }
+      },
+      "outcome": "interrupted",
+      "requeued": true
+     }
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "r2b1_an_unknown_jobs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.unknown"
+   ],
+   "why": "KYDJOBS-R2-B1 case 1. A live job whose state cannot be told; the controller dies and its pid is gone, as a real restart leaves the lock owners. The job's locks name it as their child, so kyaction never takes them over: no REWORK or VERIFY of the item opens into the worktree of a job that may still run, and item.K-1 stays the first job's.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "process_start": "not a start identity"
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-unknown"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    },
+    "job": {
+     "j1": {
+      "phase": "live"
+     }
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_terminating_jobs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.terminating"
+   ],
+   "why": "KYDJOBS-R2-B1 case 2. A close handed a job that still runs (and ignores TERM): terminating, its process live. The controller dies with its pid gone; recover carries the close on, which stops at exited. Its locks are never taken over: no REWORK or VERIFY of the item opens.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "ignore_term"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "failed",
+      "detail": "engine",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating"
+     ]
+    },
+    "process": {
+     "j1": "live"
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-process-live"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_stale_pending_launchs_locks_outlive_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1"
+   ],
+   "why": "KYDJOBS-R2-B1: a start recorded pending, then the controller dies with its pid gone. Whether a process exists is unknown, so its locks are never taken over: no REWORK or VERIFY of the item opens.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "pid": "pending"
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no2",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "awaiting": [
+     "job-<j1>-launch-pending"
+    ],
+    "locks": {
+     "item.K-1": true
+    },
+    "lock_owner": {
+     "item.K-1": "j1"
+    }
+   }
+  },
+  {
+   "name": "r2b1_a_gone_jobs_close_releases_the_locks_of_its_gone_controller",
+   "covers": [
+    "review.KYDJOBS-R2-B1",
+    "recover.gone"
+   ],
+   "why": "KYDJOBS-R2-B1, the other side: a lock that names its job is released by that job's own close. The job finished, its controller died with its pid gone; recover closes it interrupted, its locks are released, and a REWORK of the item then opens and holds item.K-1.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2",
+     "owners_gone": true
+    },
+    {
+     "op": "recover",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "kind": "REWORK",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ],
+    "awaiting": [],
+    "lock_owner": {
+     "item.K-1": "j2"
+    },
+    "job": {
+     "j1": {
+      "outcome": "interrupted"
+     }
+    }
+   }
+  },
+  {
+   "name": "refusal_after_open_is_closed_refused_and_frees_the_slot",
+   "covers": [
+    "refusal_after_open"
+   ],
+   "why": "The engine refuses a job after open (admission, a failed start): close with outcome refused releases claim and locks; the slot takes the next job; nothing is handled and nothing counted.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "refused",
+      "detail": "admit: already_green",
+      "failure_fp": null
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "locks": {
+     "item.K-1": false
+    },
+    "job": {
+     "j1": {
+      "pid": null,
+      "exit_code": null,
+      "failure_fp": null
+     }
+    }
+   }
+  },
+  {
+   "name": "refusal_by_kyjob_is_refused",
+   "covers": [
+    "refusal_after_open"
+   ],
+   "why": "kyjob.sh refused before any launch and left kyjob.refusal.json: the job is refused, whatever its exit code.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "refuse"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": null
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:refused"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "exit_code": 65,
+      "result_path": null
+     }
+    }
+   }
+  },
+  {
+   "name": "quota_refusal_is_fingerprinted_and_not_counted",
+   "covers": [],
+   "why": "A subscription refusal in the stream gives failure_fp quota: never counted as an attempt, never as an interruption.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "quota"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": null
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 1,
+      "blocked": false
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "failure_fp": "quota",
+      "exit_code": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "result_noresult_is_not_a_result",
+   "covers": [],
+   "why": "A job that ends with no result.json has no result_path; with no outcome handed in it is interrupted, never done.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "noresult"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": null
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "result_path": null
+     }
+    }
+   }
+  },
+  {
+   "name": "result_otherjob_is_not_a_result",
+   "covers": [],
+   "why": "A job that ends with a result.json that names another job has no result_path; with no outcome handed in it is interrupted, never done.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "otherjob"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": null
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "result_path": null
+     }
+    }
+   }
+  },
+  {
+   "name": "result_symlink_is_not_a_result",
+   "covers": [],
+   "why": "A job that ends with a result.json that is a symbolic link has no result_path; with no outcome handed in it is interrupted, never done.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "symlink"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": null
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:interrupted"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "handled": {
+     "j1": false
+    },
+    "job": {
+     "j1": {
+      "result_path": null
+     }
+    }
+   }
+  },
+  {
+   "name": "open_refuses_a_busy_slot_a_live_key_and_a_handled_key",
+   "covers": [],
+   "why": "The fresh look under the job lock: a slot or key with a job that has not ended, or a handled key, opens nothing and leaves nothing behind.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "locks": {
+      "item.K-2": false,
+      "slot.b1": false,
+      "slot.b2": false
+     }
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "head": "@C",
+      "item": "K-1"
+     },
+     "slot": "b2"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-1 --worker b2 --lease 10800 [K/b2]"
+    ]
+   }
+  },
+  {
+   "name": "open_undoes_everything_when_the_claim_is_refused",
+   "covers": [],
+   "why": "`ky claim` refuses: no job is returned, the locks are free again, the slot takes another item.",
+   "steps": [
+    {
+     "op": "ky_reply",
+     "match": "claim",
+     "rc": 2
+    },
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "unreply",
+     "match": "claim"
+    },
+    {
+     "op": "expect",
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "locks": {
+      "item.K-1": false,
+      "slot.b1": false
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "claim_id": null
+     }
+    }
+   }
+  },
+  {
+   "name": "open_releases_a_claim_whose_answer_was_lost",
+   "covers": [],
+   "why": "`ky claim` made the claim and its output was lost: the claim id is unknown to the job (\"pending\"). The claim file shows an active claim of this item by this slot \u2014 the job's own \u2014 and it is released.",
+   "steps": [
+    {
+     "op": "ky_reply",
+     "match": "claim",
+     "then": "lost"
+    },
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "unreply",
+     "match": "claim"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "claim_id": "claim-1"
+     }
+    },
+    "locks": {
+     "item.K-1": false
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "open_with_an_unknown_claim_and_no_claim_file_holds_nothing",
+   "covers": [],
+   "why": "`ky claim` answered nothing usable and no claim file names this item and slot: no claim was made, nothing is released, the slot is free.",
+   "steps": [
+    {
+     "op": "ky_reply",
+     "match": "claim",
+     "rc": 0,
+     "out": "ok"
+    },
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "expect": "none"
+    },
+    {
+     "op": "unreply",
+     "match": "claim"
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-2"
+     },
+     "slot": "b1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ],
+     "j2": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "claim K-2 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "claim_id": null
+     }
+    },
+    "awaiting": []
+   }
+  },
+  {
+   "name": "a_live_job_the_engine_closes_is_stopped_at_its_deadline",
+   "covers": [],
+   "why": "A close handed a job that still runs stops renewal and waits (the job is not signalled before its deadline); past the deadline the group is reaped like any other, and what it left is read then.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "sleep"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "failed",
+      "detail": "engine",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "renewed_at": "@long_ago"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "live"
+     },
+     "ky": [
+      "claim K-1 --worker b1 --lease 10800 [K/b1]"
+     ],
+     "awaiting": [
+      "job-<j1>-process-live"
+     ]
+    },
+    {
+     "op": "set",
+     "job": "j1",
+     "patch": {
+      "deadline": "@past"
+     }
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "expect",
+     "process": {
+      "j1": "gone"
+     }
+    },
+    {
+     "op": "close",
+     "job": "j1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "exit_code": -15,
+      "provider_session_id": "sess-<j1>"
+     }
+    }
+   }
+  },
+  {
+   "name": "a_job_first_seen_gone_by_its_close_is_still_read",
+   "covers": [],
+   "why": "A close that is the first to see the job gone reads what it left (exit code, session, result event) before anything is released.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "job": {
+     "j1": {
+      "exit_code": 0,
+      "provider_session_id": "sess-<j1>",
+      "result_event": {
+       "subtype": "success",
+       "is_error": false,
+       "num_turns": 3,
+       "usage": {
+        "input_tokens": 7
+       }
+      }
+     }
+    },
+    "handled": {
+     "j1": true
+    }
+   }
+  },
+  {
+   "name": "open_undoes_everything_when_a_lock_is_held",
+   "covers": [],
+   "why": "The item lock is another job's: nothing is claimed and no job state is written.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "head": "@C",
+      "item": "K-1"
+     },
+     "slot": "b2",
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "locks": {
+     "slot.b2": false
+    }
+   }
+  },
+  {
+   "name": "facts_with_tests_digests_and_migration",
+   "covers": [
+    "facts.with"
+   ],
+   "why": "tests[], test_digests[] and prerequisites[] go into the job state as given; a migration is reserved through kyalloc.py and its first number becomes migration_number, in the state and in the prompt header.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "facts": {
+      "tests": [
+       "platform/python-sidecar/tests/l3/kala/test_a.py"
+      ],
+      "test_digests": [
+       "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "migration": "NEXT",
+      "prerequisites": [
+       {
+        "item": "K-0",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "merge_commit": null
+       }
+      ]
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "sh": [
+     "kyalloc.py reserve --item K-1 --branch kalayantra/k-1 --repo ",
+     "worktree add -b kalayantra/k-1 "
+    ],
+    "job": {
+     "j1": {
+      "tests": [
+       "platform/python-sidecar/tests/l3/kala/test_a.py"
+      ],
+      "test_digests": [
+       "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "migration_number": 1401,
+      "prerequisites": [
+       {
+        "item": "K-0",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "merge_commit": null
+       }
+      ],
+      "base_sha": "@B",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "permission_mode": "bypassPermissions",
+      "max_turns": 150,
+      "mcp_config": "@mcp",
+      "extra_lean_flags": [
+       "--disable-slash-commands"
+      ],
+      "disallowed_tools": [
+       "WebFetch"
+      ],
+      "loop": 1,
+      "max_loops": 3
+     }
+    },
+    "prompt_header": {
+     "j1": {
+      "migration_number": 1401,
+      "slot": "b1",
+      "loop": 1,
+      "max_loops": 3,
+      "prerequisite_heads": [
+       {
+        "item": "K-0",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "merge_commit": null
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "name": "facts_without_tests_digests_and_migration",
+   "covers": [
+    "facts.without"
+   ],
+   "why": "Facts that carry none of the three: empty lists, a null migration_number, and kyalloc.py is not run.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "drop_facts": [
+      "tests",
+      "test_digests",
+      "migration",
+      "prerequisites"
+     ]
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]"
+    ],
+    "sh_absent": [
+     "kyalloc.py"
+    ],
+    "job": {
+     "j1": {
+      "tests": [],
+      "test_digests": [],
+      "migration_number": null,
+      "prerequisites": []
+     }
+    },
+    "prompt_header": {
+     "j1": {
+      "migration_number": null
+     }
+    }
+   }
+  },
+  {
+   "name": "facts_migration_that_cannot_be_reserved_undoes_the_open",
+   "covers": [],
+   "why": "kyalloc.py exits 3 (conflicted): no job; the claim is released, the worktree added for it removed.",
+   "steps": [
+    {
+     "op": "reply",
+     "match": "kyalloc.py",
+     "rc": 3,
+     "out": "{}"
+    },
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1",
+     "facts": {
+      "tests": [
+       "platform/python-sidecar/tests/l3/kala/test_a.py"
+      ],
+      "test_digests": [
+       "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "migration": "NEXT",
+      "prerequisites": [
+       {
+        "item": "K-0",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "merge_commit": null
+       }
+      ]
+     },
+     "expect": "none"
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "terminating",
+      "ended:refused"
+     ]
+    },
+    "ky": [
+     "claim K-1 --worker b1 --lease 10800 [K/b1]",
+     "release [K/b1]"
+    ],
+    "sh": [
+     "worktree remove "
+    ],
+    "locks": {
+     "item.K-1": false,
+     "slot.b1": false
+    }
+   }
+  },
+  {
+   "name": "verifier_pool_gets_the_boundary_and_no_claim",
+   "covers": [],
+   "why": "A verifier-pool job is a boundary verifier and holds no claim: its close releases the boundary view and its job and item locks only. A boundary that cannot be shown released keeps the slot.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "v1",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-1"
+     },
+     "slot": "v1"
+    },
+    {
+     "op": "launch",
+     "job": "v1",
+     "behaviour": "done"
+    },
+    {
+     "op": "wait",
+     "job": "v1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "v1"
+     ]
+    },
+    {
+     "op": "reply",
+     "match": "kyboundary.sh release",
+     "rc": 1
+    },
+    {
+     "op": "close",
+     "job": "v1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     },
+     "expect_phase": "terminating"
+    },
+    {
+     "op": "open",
+     "as": "no",
+     "intent": {
+      "kind": "VERIFY",
+      "item": "K-2"
+     },
+     "slot": "v1",
+     "expect": "none"
+    },
+    {
+     "op": "unreply",
+     "match": "kyboundary.sh release"
+    },
+    {
+     "op": "close",
+     "job": "v1"
+    }
+   ],
+   "expect": {
+    "states": {
+     "v1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [],
+    "sh": [
+     "kyboundary.sh release <v1>"
+    ],
+    "awaiting": [
+     "job-<v1>-boundary"
+    ],
+    "job": {
+     "v1": {
+      "boundary": "verifier",
+      "claim_id": null,
+      "stream": "V",
+      "head": "@A",
+      "verdict_phase": "pre_merge"
+     }
+    },
+    "locks": {
+     "item.K-1": false
+    },
+    "handled": {
+     "v1": true
+    }
+   }
+  },
+  {
+   "name": "counts_survive_restart",
+   "covers": [
+    "counts_survive_restart"
+   ],
+   "why": "The third identical failure blocks automatic attempts, across a restart and with nothing counted twice when the state write fails between counting and persisting and the close is repeated; a changed evidence fingerprint permits one more attempt; the count is never reset.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "j1",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j1",
+     "behaviour": "failed"
+    },
+    {
+     "op": "wait",
+     "job": "j1",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j1"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j1",
+     "result": {
+      "outcome": "failed",
+      "detail": "precheck red",
+      "failure_fp": "pytest:test_a"
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 2,
+      "blocked": false
+     }
+    },
+    {
+     "op": "open",
+     "as": "j2",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j2",
+     "behaviour": "failed"
+    },
+    {
+     "op": "wait",
+     "job": "j2",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j2"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j2",
+     "result": {
+      "outcome": "failed",
+      "detail": "precheck red",
+      "failure_fp": "pytest:test_a"
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 3,
+      "blocked": false
+     }
+    },
+    {
+     "op": "open",
+     "as": "j3",
+     "intent": {
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j3",
+     "behaviour": "failed"
+    },
+    {
+     "op": "wait",
+     "job": "j3",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j3"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j3",
+     "result": {
+      "outcome": "failed",
+      "detail": "precheck red",
+      "failure_fp": "pytest:test_a"
+     },
+     "crash_before_persist": "result"
+    },
+    {
+     "op": "expect",
+     "failures": {
+      "K-1": {
+       "pytest:test_a": {
+        "count": 3,
+        "evidence_fp": null
+       }
+      }
+     },
+     "states": {
+      "j3": [
+       "prepared",
+       "live",
+       "terminating"
+      ]
+     }
+    },
+    {
+     "op": "close",
+     "job": "j3",
+     "result": {
+      "outcome": "failed",
+      "detail": "precheck red",
+      "failure_fp": "pytest:test_a"
+     }
+    },
+    {
+     "op": "expect",
+     "failures": {
+      "K-1": {
+       "pytest:test_a": {
+        "count": 3,
+        "evidence_fp": null
+       }
+      }
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T010000Z-2"
+    },
+    {
+     "op": "recover",
+     "expect": []
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1"
+     },
+     "expect": {
+      "attempt": 4,
+      "blocked": true
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1",
+      "kind": "REWORK"
+     },
+     "expect": {
+      "attempt": 4,
+      "blocked": true
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-2"
+     },
+     "expect": {
+      "attempt": 1,
+      "blocked": false
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1",
+      "evidence_fp": "e2"
+     },
+     "expect": {
+      "attempt": 4,
+      "blocked": false
+     }
+    },
+    {
+     "op": "open",
+     "as": "j4",
+     "intent": {
+      "evidence_fp": "e2",
+      "item": "K-1"
+     },
+     "slot": "b1"
+    },
+    {
+     "op": "launch",
+     "job": "j4",
+     "behaviour": "failed"
+    },
+    {
+     "op": "wait",
+     "job": "j4",
+     "for": "gone"
+    },
+    {
+     "op": "supervise",
+     "expect": [
+      "j4"
+     ]
+    },
+    {
+     "op": "close",
+     "job": "j4",
+     "result": {
+      "outcome": "failed",
+      "detail": "precheck red",
+      "failure_fp": "pytest:test_a"
+     }
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1",
+      "evidence_fp": "e2"
+     },
+     "expect": {
+      "attempt": 5,
+      "blocked": true
+     }
+    },
+    {
+     "op": "restart",
+     "controller": "CTL-dispatcher-20261012T020000Z-3"
+    },
+    {
+     "op": "attempts",
+     "intent": {
+      "item": "K-1",
+      "evidence_fp": "e2"
+     },
+     "expect": {
+      "attempt": 5,
+      "blocked": true
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "j1": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ],
+     "j2": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ],
+     "j3": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ],
+     "j4": [
+      "prepared",
+      "live",
+      "terminating",
+      "ended:failed"
+     ]
+    },
+    "failures": {
+     "K-1": {
+      "pytest:test_a": {
+       "count": 4,
+       "evidence_fp": "e2"
+      }
+     }
+    },
+    "job": {
+     "j1": {
+      "attempt": 1
+     },
+     "j2": {
+      "attempt": 2
+     },
+     "j3": {
+      "attempt": 3
+     },
+     "j4": {
+      "attempt": 4
+     }
+    },
+    "handled": {
+     "j1": false
+    }
+   }
+  },
+  {
+   "name": "regen_keeps_its_header_base_sha",
+   "covers": [
+    "regen.base_sha"
+   ],
+   "why": "A launch key in the intent's header overrides the fact of the same name: REGEN keeps its header base_sha; a script job has no slot, no claim and no card, and its job id carries its kind.",
+   "steps": [
+    {
+     "op": "open",
+     "as": "r1",
+     "intent": {
+      "kind": "REGEN",
+      "header": {
+       "base_sha": "@C",
+       "regen": {
+        "outputs": [
+         "a.json"
+        ]
+       },
+       "max_turns": 7,
+       "job_id": "J-forged",
+       "boundary": "none",
+       "action": "regen"
+      },
+      "item": "K-1"
+     },
+     "slot": null,
+     "facts": {
+      "base_sha": "@B"
+     }
+    },
+    {
+     "op": "close",
+     "job": "r1",
+     "result": {
+      "outcome": "done",
+      "detail": "PR #7 @ head registered",
+      "failure_fp": null
+     }
+    }
+   ],
+   "expect": {
+    "states": {
+     "r1": [
+      "prepared",
+      "terminating",
+      "ended:done"
+     ]
+    },
+    "ky": [],
+    "sh": [
+     "worktree add -b kalayantra/k-1 ",
+     " cccccccccccccccccccccccccccccccccccccccc"
+    ],
+    "job": {
+     "r1": {
+      "base_sha": "@C",
+      "regen": {
+       "outputs": [
+        "a.json"
+       ]
+      },
+      "slot": null,
+      "claim_id": null,
+      "max_turns": 7,
+      "boundary": null,
+      "card_path": null,
+      "kind": "REGEN"
+     }
+    },
+    "handled": {
+     "r1": true
+    },
+    "locks": {
+     "item.K-1": false
+    }
+   }
+  }
+ ]
+}

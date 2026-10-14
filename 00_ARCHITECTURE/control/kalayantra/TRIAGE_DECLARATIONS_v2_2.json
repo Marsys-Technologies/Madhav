@@ -1,0 +1,270 @@
+{
+  "artifact": "TRIAGE_DECLARATIONS",
+  "content_version": "2.2",
+  "plan_version": "2.2",
+  "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 steps 3–4, §6 (item declaration), §14 B-0b",
+  "note": "Declared inputs of fleet/kyreconcile.py. The plan model is regenerated from the pre-reconciliation model and this file; neither the model's triage fields nor its joins are edited by hand.",
+  "authority": "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)",
+  "deferred": {
+    "J-7": {
+      "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
+      "re_entry": "after the flip (J-6l) if D-T2 admits it"
+    },
+    "J-7b": {
+      "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
+      "re_entry": "before L5 reads '5.0'"
+    },
+    "D-T2": {
+      "reason": "decides only J-7's admission",
+      "re_entry": "with J-7"
+    },
+    "L0-K": {
+      "reason": "KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path",
+      "re_entry": "with D-T2"
+    },
+    "D-GOCHARA-TIMEOUT": {
+      "reason": "rules one legacy materializer timeout; no retained item consumes it",
+      "re_entry": "if J-4e/J-4f show that timeout binding"
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "reason": "applies D-GOCHARA-TIMEOUT; no retained item consumes it",
+      "re_entry": "with D-GOCHARA-TIMEOUT"
+    },
+    "B-DB-BASELINE": {
+      "reason": "its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11",
+      "re_entry": "if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed"
+    },
+    "J-7a": {
+      "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
+      "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+    }
+  },
+  "dispositioned": {
+    "J-8a": {
+      "reason": "records the disposition of every remaining Pravāha item under the accepted J0_DISPOSITION (J-0c → J-0); owner decision 2026-10-11",
+      "basis": "J0_DISPOSITION once J-0c is independently accepted"
+    },
+    "J-8": {
+      "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
+      "basis": "J0_DISPOSITION once J-0c is independently accepted"
+    }
+  },
+  "recuts": [
+    {
+      "item": "J-8a",
+      "depends_on": [
+        "J-0",
+        "V-J6"
+      ],
+      "replaces": [
+        "J-7",
+        "J-7a",
+        "J-7b"
+      ],
+      "authority": "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)",
+      "reason": "its former inputs J-7, J-7a, J-7b are deferred (b); the disposition record needs the accepted inventory join (J-0) and the independent flip review (V-J6)"
+    }
+  ],
+  "retire_decisions": [
+    {
+      "id": "D-RETIRE-B-K-INBOX",
+      "retires": "B-K-INBOX",
+      "record": {
+        "id": "D-RETIRE-B-K-INBOX",
+        "title": "Retire B-K-INBOX (worker-prompt inbox, acknowledgement and renewal repair for the standing K lanes)",
+        "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+        "default": "refused (staged) — v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6)."
+      },
+      "item": {
+        "id": "D-RETIRE-B-K-INBOX",
+        "track": "N",
+        "lane": "N · decisions",
+        "title": "Retirement of B-K-INBOX by owner decision (relaunch plan v2.2 §0 step 4)",
+        "owner": "N",
+        "depends_on": [
+          "B-7"
+        ],
+        "mandatory": true,
+        "brief": {
+          "spec": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+            "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+          ],
+          "notes": "Owner-authorised outcome: refused — B-K-INBOX is retired, not completed. v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6). The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+        },
+        "done_by": "decision",
+        "decision": "D-RETIRE-B-K-INBOX"
+      }
+    },
+    {
+      "id": "D-RETIRE-B-CLAIM-RECOVERY",
+      "retires": "B-CLAIM-RECOVERY",
+      "record": {
+        "id": "D-RETIRE-B-CLAIM-RECOVERY",
+        "title": "Retire B-CLAIM-RECOVERY (tracker repair of checkpoint identity across released and expired claims)",
+        "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+        "default": "refused (staged) — v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet."
+      },
+      "item": {
+        "id": "D-RETIRE-B-CLAIM-RECOVERY",
+        "track": "N",
+        "lane": "N · decisions",
+        "title": "Retirement of B-CLAIM-RECOVERY by owner decision (relaunch plan v2.2 §0 step 4)",
+        "owner": "N",
+        "depends_on": [
+          "B-7"
+        ],
+        "mandatory": true,
+        "brief": {
+          "spec": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+            "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+          ],
+          "notes": "Owner-authorised outcome: refused — B-CLAIM-RECOVERY is retired, not completed. v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet. The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+        },
+        "done_by": "decision",
+        "decision": "D-RETIRE-B-CLAIM-RECOVERY"
+      }
+    }
+  ],
+  "schema_prerequisites": [
+    {
+      "id": "KV3-SCHEMA-1",
+      "consumer": "K-CERT",
+      "table": "bg_gochara_citation_resolution",
+      "missing": "the stored tier column its density contract names",
+      "evidence": [
+        "SCHEMA_RECEIPT_v2_2.json: bg_gochara_citation_resolution columns are citation_string, chunk_id, text_id, verse_ref, status, source_citation, constant_name, note, created_at — no tier column",
+        "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150 (outcome insufficient_evidence): do not synthesize a verification tier or select a column not evidenced in the table"
+      ],
+      "item": {
+        "id": "KV3-SCHEMA-1",
+        "track": "K",
+        "lane": "K · certification support (Suvarṇa window)",
+        "title": "Schema prerequisite for K-CERT: the stored tier column that bg_gochara_citation_resolution's density contract names, added additively under the Suvarṇa asset custodian's recorded contract (KYD-150)",
+        "owner": "K",
+        "depends_on": [
+          "B-7",
+          "K0-SV"
+        ],
+        "mandatory": true,
+        "detector": {
+          "type": "branch_merged",
+          "ref": "origin/kalayantra/kv3-schema-1"
+        },
+        "brief": {
+          "spec": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 3, §8 (schema-prerequisite packets: admitted existing schema + intended additive contract)",
+            "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150",
+            "CLAUDE.md §N.6 Serving Density Principle; §N.4 surgical migrations, verified",
+            "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)"
+          ],
+          "owns": [
+            "platform/migrations/<allocated>_gochara_citation_resolution_tier.sql (additive; the number is allocated at job start, never written in the packet)",
+            "platform/python-sidecar/tests/l3/kala_db/certification/test_citation_resolution_tier_schema.py"
+          ],
+          "tests": [
+            "on the admitted schema the column is absent (the test fails on base) and present after the migration, with every existing column and row retained",
+            "the migration is idempotent and is verified applied after deploy (CLAUDE.md §N.4)",
+            "no value is synthesised: rows without a recorded tier stay NULL with the custodian's stated reason"
+          ],
+          "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
+          "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
+          "notes": "BLOCKED CONTRACT INPUT. The column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (bg_* tables are outside the Kāla partition, CAMPAIGN_COORDINATION §3a); none is defined here (CLAUDE.md B.10, §N.7 rule 6). The conductor requests the contract through the coordination §6 log, as KYD-150 directs. Until it is recorded this item is blocked and K-CERT waits. If the custodian adds the column in its own estate, this item is closed by a recorded decision naming that change, never silently."
+        }
+      }
+    }
+  ],
+  "done_outside": [
+    "B-6r",
+    "B-8",
+    "B-DEPLOY-DIAG",
+    "D-R5",
+    "D-R9",
+    "L0-K-RUNNER"
+  ],
+  "completion_kind_overrides": {
+    "C-3": "artifact",
+    "C-4": "artifact",
+    "J-4a": "artifact"
+  },
+  "completion_kind_override_reasons": {
+    "C-3": "plan §12: `ky done C-3 --artifact-path DRAIN_RECEIPT.json`",
+    "C-4": "plan §12: `ky done C-4 --artifact-path FINAL_RECEIPT.json`",
+    "J-4a": "its evidence is the coordination line and run/J4A_PREREQUISITE.json, not a merged change on main"
+  },
+  "earned_completion_kinds": {
+    "source": "guarded done events in the EVENTS prefix (12192 lines, sha256 0bc219bc10403e1b8bf0592149d60e1c3932e2626cb4f30f019c5950bc2e41c1): completion.type",
+    "kinds": {
+      "B-0": "artifact",
+      "B-1": "code",
+      "B-1a": "code",
+      "B-1b": "code",
+      "B-1c": "artifact",
+      "B-1p": "artifact",
+      "B-1v": "artifact",
+      "B-2": "artifact",
+      "B-3": "artifact",
+      "B-3b": "artifact",
+      "B-4": "artifact",
+      "B-5": "artifact",
+      "B-6": "artifact",
+      "B-6r": "code",
+      "B-7": "artifact",
+      "B-8": "artifact",
+      "B-DEPLOY-DIAG": "artifact",
+      "J-0a": "artifact",
+      "J-0b": "artifact",
+      "K0-SV": "code",
+      "K0a-0": "code",
+      "K0a-1a": "code",
+      "K0a-1b": "code",
+      "K0a-1c": "code",
+      "K0a-2": "code",
+      "K0a-3": "code",
+      "K0a-4": "code",
+      "K1-1a": "code",
+      "K1-1b": "code",
+      "K1-2": "code",
+      "K2-1a": "code",
+      "K2-1b": "code",
+      "K2-2": "code",
+      "K4-1": "code",
+      "KA-1e": "code",
+      "KA-1w": "code",
+      "KA-2": "code",
+      "KA-4": "code",
+      "L0-K-RUNNER": "code"
+    }
+  },
+  "coverage_id_map": {
+    "K8-K0a": "K0a-4",
+    "K8-K12": "K2-2",
+    "K8-KA": "KA-4b",
+    "K8-K3": "K3-2",
+    "K8-K4": "K4-3",
+    "K8-K5": "K5-G1b",
+    "K8-K6": "K6-5",
+    "K8-K7": "K7-4"
+  },
+  "coverage_id_map_reason": "the v2.0 regroup folded each K8-<packet> certification-mapping item into the carrier item that now holds the `certification_mapping` step (ACCEPTANCE_ROOTS acceptance iii)",
+  "definition_of_done_line4": [
+    "K8-R26",
+    "K0a-4",
+    "K2-2",
+    "K3-2",
+    "K4-3",
+    "K5-G1b",
+    "K6-5",
+    "K7-4",
+    "KA-4b",
+    "K8-REG",
+    "K9-5",
+    "K-CERT",
+    "K-CERT-2"
+  ],
+  "branch_pattern_additions": {
+    "S": "kalayantra/campaign",
+    "N": "kalayantra/campaign"
+  }
+}

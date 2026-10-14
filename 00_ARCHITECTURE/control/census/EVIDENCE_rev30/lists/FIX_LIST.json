@@ -1,0 +1,186 @@
+{
+ "assets": 82,
+ "bar": "n268",
+ "bar_label": "bar: N-268 (named ceilings and disclosure gaps)",
+ "build_completion_counts_only": {
+  "assets": [],
+  "assets_of": 82,
+  "count": 0,
+  "limitation": "Build.completion: counts only (no integrity statement)"
+ },
+ "carr_d2": {
+  "assets": 82,
+  "na_no_per_witness": 76,
+  "other": {
+   "ruled N/A under another rule": 6
+  }
+ },
+ "census_target": "evaluation_copy",
+ "certified_at_a_ceiling": 69,
+ "date": "2026-10-13",
+ "db_identity": {
+  "database": "amjis",
+  "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731"
+ },
+ "evaluation_copy": {
+  "backup_id": "1791868791537",
+  "backup_time": "2026-10-13T05:21:32.951Z",
+  "instance": "amjis-ri02-validation-c720f1832",
+  "source_instance": "amjis-postgres"
+ },
+ "fix_list": {
+  "bo_laksana": [
+   {
+    "cause": "vocabulary values found by value in 3 column(s): bodha_msr_signals.configuration_jsonb (graha/nakshatra/rashi: Aries, Capricorn, Gemini, KET_MEAN, Libra, MER), bodha_msr_signals.epistemic_jsonb (graha: Jupiter, Mars, Rahu), bodha_msr_signals.graph_node_strength_contribution_jsonb (graha: Jupiter, Ketu, Mars, Mercury, Moon, Rahu); every whole value found is canonical, but: bodha_msr_signals.configuration_jsonb was read by a bounded sample only; bodha_msr_signals.epistemic_jsonb was read by a bounded sample only; bodha_msr_signals.graph_node_strength_contribution_jsonb was read by a bounded sample only; MIXED canonical spelling families in one column: bodha_msr_signals.configuration_jsonb (Aries, Capricorn, Gemini, KET_MEAN, Libra, MER: no single spelling family) (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS); embedded vocabulary, spelling unchecked: bodha_msr_signals.citation_ref ('ashtakavarga_bindu.MAR-HOUSE_6.bindus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=krishnamurti:eng=pyjhora/1.0.0', 'ashtakavarga_bindu.SARVA-HOUSE_11.bindus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=krishnamurti:eng=pyjhora/1.0.0', 'ashtakavarga_bindu.VEN-HOUSE_12.bindus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=krishnamurti:eng=pyjhora/1.0.0'); bodha_msr_signals.configuration_jsonb ('CYCLE_3.VISHAKHA', 'D10_MAR', 'D12_MOON_RAH_MEAN'); bodha_msr_signals.remedy_hooks_array ('sade_sati_saturn_retrograde_subset')",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Vocab.alias",
+    "layer": "L2",
+    "verdict": "PARTIAL"
+   }
+  ],
+  "bo_laksana_rerank": [
+   {
+    "cause": "vocabulary values found by value in 3 column(s): bodha_msr_signals.configuration_jsonb (bhava/graha/nakshatra/rashi: Aquarius, Aries, Cancer, Capricorn, Dhanishtha, Gemini; registered bg_ontology alias(es), counted canonical: house_1, house_2, house_3, house_4, house_5, house_6), bodha_msr_signals.epistemic_jsonb (graha: Jupiter, Ketu, Mars, Mercury, Moon, Rahu; JSON-KINDS, one kind per path, verified over the whole column: $.subject_resolution.resolved_graha=graha/name; 40036 leaf/leaves at 6 undeclared path(s) hold no vocabulary, not graded: $.ayanamsha_fragility (104), $.computation_vs_interpretation (11971), $.epistemic_tier (11867), $.ratification_domain_applied (743), $.subject_resolution.rule (3380), $.tradition_agreement_state (11971)), bodha_msr_signals.graph_node_strength_contribution_jsonb (graha: Jupiter, Ketu, Mars, Mercury, Moon, Rahu); every whole value found is canonical, but: bodha_msr_signals.graph_node_strength_contribution_jsonb was read by a bounded sample only; MIXED canonical spelling families in one column: bodha_msr_signals.configuration_jsonb (Aquarius, Aries, Cancer, Capricorn, Dhanishtha, Gemini: no single spelling family) (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS); bodha_msr_signals.configuration_jsonb: the declared vocab_json_kinds does not close the column, so it is not lifted: vocabulary at undeclared path(s) $.fact_key ('conjunct_JUP', 'conjunct_KET_MEAN', 'conjunct_MAR', 'conjunct_MER'); $.fact_subject ('ASC-JUP', 'ASC-MAR', 'ASC-MER', 'ASC-MOON'); $.fact_value_text ('Aquarius', 'Aries', 'Cancer', 'Capricorn'); $.l1_formula_id ('kn_rao_rahu_included', 'parashari_rahu_excluded'); $.member_sample_keys[*] ('house_1', 'house_10', 'house_11', 'house_12'); $.nakshatra ('Dhanishtha', 'Jyeshtha', 'Moola', 'Purva Ashadha'); $.nakshatras[*] ('Dhanishtha', 'Jyeshtha', 'Moola', 'Purva Ashadha'); $.neecha_bhanga.bhanga_rules_fired ('saturn@D9:nbry_rule_1_dispositor_kendra;saturn@D9:nbry_rule_2_exaltation_lord_kendra'); embedded vocabulary, spelling unchecked: bodha_msr_signals.citation_human ('Arudha: Mercury conjunct Arudha Lagna in H10 \u2014 benefic on public image', 'H1 (Aries) lord Mars is in H10 in D15 (surya_siddhanta_classical).', 'H1 (Aries) lord Mars is in H4 in D14 (surya_siddhanta_classical).'); bodha_msr_signals.citation_ref ('aprakasha_position.PATALA.sign@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=pyjhora/1.0.0', 'arudha_pada.ARUDHA_A12.sign@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=pyjhora/1.0.0', 'arudha_pada.ARUDHA_ME.sign@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=true_chitra:eng=pyjhora/1.0.0'); bodha_msr_signals.classical_sources_jsonb ('Jaimini Sutram: Arudha Lagna (perceived self) doctrine', 'Muhurta gandanta junction doctrine (Ashlesha/Jyeshtha/Revati -> Magha/Moola/Ashwini)', 'Sudarshana Chakra (tri-lagna concurrent judgment); BPHS quadrant classification (kendra/trikona/dusthana/upachaya)'); bodha_msr_signals.configuration_jsonb ('ASC-JUP', 'ASC-MAR', 'ASC-MER'); bodha_msr_signals.signal_headline_text ('D9 cross-check: Jupiter D1=own \u00d7 D9=Exalted \u2192 concordant_strong', 'D9 cross-check: Ketu D1=exalted \u00d7 D9=Neutral \u2192 mixed', 'D9 cross-check: Sun D1=neutral \u00d7 D9=Own \u2192 mixed'); bodha_msr_signals.signal_summary_text ('category=arudha_pada | key=sign | value_text=Aquarius | fact_subject=ARUDHA_SA | graha=Saturn', 'category=arudha_pada | key=sign | value_text=Aries | fact_subject=ARUDHA_ME | graha=Mars', 'category=arudha_pada | key=sign | value_text=Cancer | fact_subject=ARUDHA_A2 | graha=Moon')",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Vocab.alias",
+    "layer": "L2",
+    "verdict": "PARTIAL"
+   }
+  ],
+  "bo_samskara": [
+   {
+    "cause": "all 1 declared prose entry resolve to column(s) of bodha_signal_embeddings (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here); reverse leg unavailable: the writer's writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Narr.agree",
+    "layer": "L2",
+    "verdict": "PARTIAL"
+   },
+   {
+    "cause": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - unresolved write path(s): embedding_input_summary: bo_samskara.py:53 named parameter %(embedding_input_summary)s: dynamic row construction in the files that build it could also supply the key (bo_samskara.py:482 a subscript store with a non-literal key; +4 more); scope: bo_samskara.py:86 INSERT into bodha_signal_embeddings: unbalanced column list",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Null.blank_rows",
+    "layer": "L2",
+    "verdict": "PARTIAL"
+   },
+   {
+    "cause": "no schema default on the declared prose column(s) embedding_input_summary; writer literal fallbacks and constant columns are not measured here, so the writer source is scanned for them (E5.7) and the scan is not clean; writer scan NOT clean - unresolved write path(s): embedding_input_summary: bo_samskara.py:53 named parameter %(embedding_input_summary)s: dynamic row construction in the files that build it could also supply the key (bo_samskara.py:482 a subscript store with a non-literal key; +4 more); scope: bo_samskara.py:86 INSERT into bodha_signal_embeddings: unbalanced column list",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Null.schema_default",
+    "layer": "L2",
+    "verdict": "PARTIAL"
+   }
+  ],
+  "ga_structural": [
+   {
+    "cause": "vocabulary values found by value in 3 column(s): chart_facts.fact_subject (graha/rashi: Aquarius, JUP), chart_facts.fact_value_jsonb (graha/rashi: Aquarius, Aries, Cancer, Capricorn, Gemini, Jupiter), chart_facts.fact_value_text (graha/rashi: Gemini, JUP, Jupiter, MAR, MER, MOON); every whole value found is canonical, but: chart_facts.fact_subject was read by a bounded sample only; chart_facts.fact_value_jsonb was read by a bounded sample only; chart_facts.fact_value_text was read by a bounded sample only; MIXED canonical spelling families in one column: chart_facts.fact_subject (Aquarius, JUP: no single spelling family); chart_facts.fact_value_text (Gemini, JUP, Jupiter, MAR, MER, MOON: no single spelling family) (the cross-layer drift graha_vocabulary.py exists to stop; PARTIAL, not PASS); embedded vocabulary, spelling unchecked: chart_facts.fact_subject ('D108_Aquarius'); chart_facts.ayanamsha_id ('true_chitra'); chart_facts.citation_human ('AMATYAKARAKA (Saturn) conjunct PITRIKARAKA (Mars) in D2 (lahiri_chitrapaksha).', 'ATMAKARAKA (Moon) conjunct AMATYAKARAKA (Saturn) in D2 (lahiri_chitrapaksha).', 'ATMAKARAKA (Moon) conjunct DARAKARAKA (Mercury) in D2 (lahiri_chitrapaksha).'); chart_facts.citation_ref ('aspect_jaimini.Aries.on_Virgo@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0', 'aspect_jaimini.Cancer.on_Capricorn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0', 'aspect_jaimini.Cancer.on_Sagittarius@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0'); chart_facts.fact_category ('graha_functional_class_per_ascendant'); chart_facts.fact_key ('on_Aries'); chart_facts.fact_value_jsonb ('bphs:manglik:own_exalt_or_jupiter_aspect_or_sign_specific_cancels', 'chart_divisionals rows for JUP across saptavarga set (lahiri_chitrapaksha)', 'chart_divisionals rows for JUP across shodasavarga set (lahiri_chitrapaksha)'); chart_facts.fact_value_text ('Jupiter_in_Aquarius_Saturn_in_Pisces', 'Jupiter_in_H1', 'Jupiter_in_H11')",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Vocab.alias",
+    "layer": "L1",
+    "verdict": "PARTIAL"
+   }
+  ],
+  "ga_vichara": [
+   {
+    "cause": "4 declared edge(s); exists: all 4 are active registry assets (every layer); cycle: ga_vichara is on no dependency cycle (registry-wide graph); reads-match: FAIL \u2014 back-read: ga_vichara reads build_runs (ga_writers/ga_vichara_writer.py:1002, via ga_vichara.py \u2192 ga_writers/ga_vichara_writer.py:build_ga_vichara_substep), the product of ka_jivana_parva | ka_kala_darshana | ka_kalasutra, which already depends on ga_vichara (chain ka_jivana_parva -> ka_sangam -> bo_laksana -> ga_vichara); an edge ga_vichara -> ka_jivana_parva | ka_kala_darshana | ka_kalasutra would create a cycle",
+    "cause_class": "(e) defect in data or code",
+    "criterion": "Build.dag",
+    "layer": "L1",
+    "verdict": "FAIL"
+   }
+  ]
+ },
+ "layers": [
+  "L0",
+  "L1",
+  "L2"
+ ],
+ "named_not_blocking_on_fix_list": {
+  "bo_laksana": [
+   {
+    "criterion": "Build.completion",
+    "kind": "ceiling",
+    "pattern": "not-measurable:Build.completion:census-role-denied",
+    "reason": "not measurable: the integrity SQL needs an object the census role may not read (measured at build time under the runner role)"
+   },
+   {
+    "criterion": "Build.dag",
+    "kind": "ceiling",
+    "pattern": "dag-parse-incomplete",
+    "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+   },
+   {
+    "criterion": "Narr.lint",
+    "kind": "ceiling",
+    "pattern": "narr-lint-allowlisted",
+    "reason": "only allowlisted narration lint violations (fact-category-pin; 2 site(s))"
+   }
+  ],
+  "bo_laksana_rerank": [
+   {
+    "criterion": "Dens.served",
+    "kind": "ceiling",
+    "pattern": "not-measurable:Dens.served:shared-table",
+    "reason": "not measurable: only a shared table is referenced: the served surface cannot be attributed to it by code"
+   }
+  ],
+  "bo_samskara": [
+   {
+    "criterion": "Build.dag",
+    "kind": "ceiling",
+    "pattern": "dag-parse-incomplete",
+    "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 1 dynamic site(s) of the shared helper (not resolvable by static parse)"
+   },
+   {
+    "criterion": "Vocab.alias",
+    "kind": "ceiling",
+    "pattern": "vocab-embedded-only",
+    "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_signal_embeddings.ayanamsha_id); no non-canonical value found"
+   }
+  ],
+  "ga_structural": [
+   {
+    "criterion": "Null.blank_rows",
+    "kind": "gap",
+    "pattern": "null-blank-unresolved-write-path",
+    "reason": "no blank or placeholder row among the checkable prose rows; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+   },
+   {
+    "criterion": "Null.schema_default",
+    "kind": "gap",
+    "pattern": "null-default-unresolved-write-path",
+    "reason": "no schema default on the declared prose columns; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+   }
+  ],
+  "ga_vichara": [
+   {
+    "criterion": "Dens.served",
+    "kind": "gap",
+    "pattern": "dens-no-tier-column",
+    "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_dasha_lord_capability.ts, L1_ganita/get_vichara.ts"
+   },
+   {
+    "criterion": "Vocab.alias",
+    "kind": "ceiling",
+    "pattern": "vocab-canonical-with-caveats",
+    "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_vichara.ayanamsha_id, chart_vichara.target, chart_vichara.value_jsonb; bounded sample only: chart_vichara.value_jsonb"
+   }
+  ]
+ },
+ "overlays": [],
+ "registry_fingerprint": "b1acb3f678b5c8fbe343b93d96d8f2db24e2d024b15412aa960056b98bc5f23c",
+ "registry_revision": 30,
+ "tool": [
+  {
+   "tool_commit": "7e63cc872eda2da19eed3b484c6e36569e03bf50",
+   "tool_dirty": false
+  }
+ ],
+ "totals_by_layer_and_class": {
+  "L1": {
+   "(e) defect in data or code": 2
+  },
+  "L2": {
+   "(e) defect in data or code": 5
+  }
+ }
+}

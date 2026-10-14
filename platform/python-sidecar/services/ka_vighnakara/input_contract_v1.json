@@ -5,7 +5,7 @@
   "input_type": "services.ka_vighnakara.model.Finding",
   "axes": ["exposure", "knowledge", "rule_conclusion", "defeat_state", "measurement"],
   "required_references": ["assertion_id", "chart_id", "generation", "event_class_id", "interval", "roots", "source"],
-  "vedha_fixture": {"states": ["active", "inactive", "unqualified"], "scope": "Moon", "coverage": ["complete", "incomplete", "absent"], "release": "active interval end; unknown if no licensed end"},
+  "vedha_fixture": {"states": ["active", "inactive", "unqualified"], "scope": "Moon", "coverage": ["complete", "incomplete", "absent"], "release": "active interval end or evidenced onset of continuous terminal protection; conditional predicates retained; unknown if no licensed end"},
   "protection_fixture": {"target": "one assertion_id", "evidence": "nonempty fact_ids, source locator, scoped interval", "effect": "defeats/excepts/partly_defeats/contests only that conclusion"},
   "live_bindings": {
     "judge_vedha": {"state": "unbound", "reason": "judge_vedha_source_mapping_unadmitted", "source_candidates": ["ka_gochara_relationship_record", "kala_gochara_coverage"], "field_state_coverage_locator_map": null},

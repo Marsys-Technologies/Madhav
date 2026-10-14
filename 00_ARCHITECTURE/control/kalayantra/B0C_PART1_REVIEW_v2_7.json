@@ -1,0 +1,160 @@
+{
+ "artifact": "B0C_PART1_REVIEW",
+ "content_version": "2.7",
+ "what": "independent review of part 1 of step B-0c (supervisor, qualification and cards areas; plan v2.7 §14 row B-0c) — the loops, control and surrogate files are deferred to part 2",
+ "verdict": "ACCEPTED",
+ "reviewer_session_id": "876cd3db-6ba9-4fae-9b37-e44029555301",
+ "reviewer": "accepting reviewer: headless Claude Code job, claude-opus-5-5, launch configuration LAUNCH_CONFIG.area-reviewer.json (qualified PASS in the launchd context), read-only by configuration, not sandboxed",
+ "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
+ "components_commit": "8b27fca9c212830df5973c4785e36fe12a7190bf",
+ "inputs": {
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/BOOTSTRAP_COMPONENTS.txt": "adf0db3cf83fb70ecf5d90d826ad32ba6d03062bbd28f25ee79317231d42ae16",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md": "aa1eafb6bec8cf92af3441fd195d74f3035227dd7d818c10c9b8e89dde97a1d9",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md": "909ae3ad80681edbf9ee2498e7880c3b14afd4e4b0a9c26989f7aed0f1f05fe8",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md": "83e54c6a2a75d573365717fd6c5c705d0d8286e5a74601c5108cc19cb5776034",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md": "b99781969f6f714b27e2108945d4e8482513578e25624a72b9f9f4a0e0958e93",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md": "6ca62396c42e2cb2dcaeb117685fa5d872482a3dc51f4d43d554c6db9974c7f7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/cards/TOKEN_MEASUREMENT.json": "a9a1181441c163dc1ff76e736ea2ce0533f2db8512e6fbeeae2608d91bfbb8c2",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py": "a10e016e92c029eef8e282cc61380f8116f3442081d24357e8f7885e6e5a40ba",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kycardtokens.py": "2ceb714a280c934129e73953f94158cc3b5201c3ebfdb9b64b9778795f43bf85",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kymanifest.py": "dfcfec57c0eb8050fbc9c23ceb0a57befd96106e1e216eb727660e1464ef291d",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyprobe.py": "0f90ddb94a49eda65c735caa007ae681a2d9804021b55dd167ae9c18909162b4",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyqualify.py": "5c9a90cdaeaed26a6f070a0746fde8d7b3b5710d8f335af4df5af90f9a7cf758",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/kyschema.py": "62d09bd92bd98eabcafa5a2d0db1cfa89bd8bacda8e0c35f6ed39d79215056c9",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/awaiting.json": "23d7dcd63a731ca1dc864303ecbe171ca9f58e6f4de22f6f3141ad574668d32a",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/bootstrap_launch_input.json": "cd9e8e759b842432c4bae4cc96765484145e639658b8f3f97b67c1b2bbb03bba",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result.json": "00624f6cf4cfc07765bf2db0978b29a01d3dfb0ee4f85059692f8bc1381df18b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config.json": "7c72125ed3db1c8f3fd5698db6520c3aaf0ff3e8f970a992bad533e6d343cd6e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/packet.json": "742f6bbab3bc7b6ed096341da6127be3ec2dc28f3ebec98a05df3d9579b508d5",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json": "3683bacfef814037b06b4e4cbc4d79e55af97f2a46c59484665a54094e112fdf",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/release_receipt.json": "b5ad761e61d935c4be8461407195f9f49cb9bc954c11cd41d1780926f0a01618",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/surrogate_decision.json": "56aa75ced1a428cb5763e7a9bc8cb6279afa2e2276d6b4ac19177b9abdb4b5f1",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.README.md": "aeb06db93ef3ea910efbfd205e11bed178623bd0c5fe66ed495f0700fae6c12a",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.template.json": "a4d0eb4067cbe9c7bacf225f4f69979a7e1004f60ccd74555ebef14f12f71ece",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/KU_REPLACEMENTS_v2_7.md": "9ef9cfe6060b671e1d67a9f35d11ebcb85ad20935962beca872c82a1e94ab1fa",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json": "d7fbabb7a82f7b355937c35e4bb79b10de8ef59f7c893dfa5dc2af2046171559",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json": "4a298c6a163ef05d4f2c10972754d57a3f20b4f928f332f3efe95d0c26398242",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json": "6dcc3a53897d99003d8df120d309e713ac5627621621a823f8fb96a7710f89c5",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/templates/ku_bindings.json": "a3fe289264f11fc0399fc3f16c5cab96531a9b3bda971ecdb66ee4b25fd2a95c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/awaiting.json": "c41ed977ec26c2b0e76dc11d4facbe0e1260907dda0265788cf7ebdb193467e4",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_claude_ok.sh": "e0864a04eac9561f029cdbdb473f2c219346ec8ccacdf1d37808af81d154e40e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_claude_old.sh": "a0d5226896d9f63e1016951794a91002c39ee710178f9bca5041ff7b167244c9",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_claude_stubborn.sh": "4ed91aa36fd252382c4bd7736c36d8bd90cc7f49e981ee6ee371c66a6b347517",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/fake_launchctl.py": "59acad17f82b39766f6d3e756f97cdee43c8a274eac2bb42e66a72d35eadd476",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/job_result_blocked.json": "c756c6e6e286c2d1caeeb7e2b1d8e6de3c8dd3aa4c7ecd592b38e5a8874ac37f",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/job_result_done.json": "8fbf53aabe936a4d00f59c3d29e9d79ed1385d5df34c1a99cc2e2a3ed4c94df5",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/job_result_done_reviewer.json": "bc58b7bc18161ca02f38f8b5d5d0eba4b988db0d0b2edf4f61e609cecdbc293c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/job_result_failed.json": "b83fb874e92eb54d6f2e9d084fe985be8236811b261917b74cc137ca125d87af",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/launch_input.json": "ad849af1aab95bcfb9290216a11f7e21ec5dbf5601958277840ac62c2add8ddf",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/packet_artifact.json": "ee6daac3f6414ec46baa284884aefb5de54cbd95f22d438df7155c2a1c19dc7b",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/packet_bootstrap.json": "76f9c625ed4413da3445cd2a322f90d387d8646ae6f9c3a4c98c85eac6b6c7a7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/packet_feature.json": "ac81ac0076330f6472902b978e857e55eae7ab63e8ed4bdc981598738067eb2a",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/packet_operation.json": "662376af6fe48b36e4bd79f10dea39aa7458701d449f32eee8c587fc6a0bc054",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/packet_schema_prerequisite.json": "a9260842dbfa76271249bff7c1e8c0f745de2f9eac44a52c7fd47daaedc3878e",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/release_receipt_satisfied.json": "124f2d98c82b054c6c4c17188843495042c965cc0533ada46ec1613483c18012",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/release_receipt_wait.json": "10e0cbe8eda5525603f01d708af4d97d076e5f59e3fb31a0fa03f7730861e084",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_hard_stop.json": "4aab63f2d6c6b9afee991935a183f73d5f466b5de5b45622144d8e5318b05695",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_routine.json": "50804b36704ca9e07c053519d0cd832aad7e1df5c507fe1d6dd38dcc51fedad7",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_veto.json": "2f1d7a061c60e7386aa9e5744e5e488c2bd3c329af8fe113ec827ac5cea81056",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c/surrogate_decision_veto_effective.json": "10105759ddbc7c32bb2458162b27e8a9f878af8a83db9d1c69dd905e502684c2",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py": "71856bebfa93dccdebaa9be9ef7f2c8b960461094b876ef0fac16e4f342bee0c",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_decision_record_contract.py": "5fcae0552c6812d4d3c151053949284076353c0b8e56b8a0637bfd416dfc5bfb",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py": "58c7f31293974a8e5afd9b73f28469a99b6c0ef79c51435b30809a9b860f7dfa",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py": "b992f8c86f50a4225f0918e0bf663494707f187358de31cfa8ec8628dc2455a5",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kymanifest.py": "44cd448a0df49c5b1a0287237f25e4a1e575149a9afbaef41635ada90a636aad",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py": "ee22a03d2f5997d402ffb02b734d4d6f16066c3122889e65890ab4f8a70e5489",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py": "1d69509a2859bf79cfd29b28527dfa7a0b62394d5d3bea89d9cf80dbddcfc1ca",
+  "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyschema.py": "98dfa299bce347931965815205fb2d876a0aee8fd6b5cd0f4c90c8898a1fb31d"
+ },
+ "area_reviews": [
+  {
+   "area": "cards",
+   "record": "/Users/Dev/kalayantra/run/reviews/b0c-r3/cards.review.json",
+   "record_sha256": "09a3bb575708a561b07a611539cb5c3cf93f6e44d4c9b2570ac113489d3b9cc3"
+  },
+  {
+   "area": "qualification",
+   "record": "/Users/Dev/kalayantra/run/reviews/b0c-r5/qualification.review.json",
+   "record_sha256": "b04b404a645abd766b1c6faa63ded2abc5870697ac96d95d6aa4472a391b9bf1"
+  },
+  {
+   "area": "supervisor",
+   "record": "/Users/Dev/kalayantra/run/reviews/b0c-r3/supervisor.review.json",
+   "record_sha256": "9b419c45e2dfb413370d4f9d8551a4d17d67fda5f3edc78298fc6b9cfa7d81e9"
+  }
+ ],
+ "accepting_review_record": "/Users/Dev/kalayantra/run/reviews/b0c-accept/part1.review.json",
+ "accepting_review_record_sha256": "fe251d70aaa625b20811714e9ad85e2275db8cc7c1a79650792e476caca23f2a",
+ "conditions_for_b1": [
+  "Before builds: the manifest is built at head 8b27fca9c with 58 bound components, its review receipt names this session (distinct from the three area sessions), and kymanifest check passes.",
+  "Before builds: the owner confirms, where a reviewer can verify it, the two-part acceptance including the surrogate deferral, and the keychain exemption.",
+  "Each build launch: role bootstrap-builder, kind BUILD, card BOOTSTRAP.md with sha256 equal to the receipt binds.prompt_sha256 (aa1eafb6...), checked by the cockpit until kyboot compares it.",
+  "Each build launch: no KY_SCRATCH_ROOT_OVERRIDE, KY_TEST_PPID, KY_WORKTREE_ROOT_OVERRIDE, KY_LAUNCHCTL or KY_QUALIFY_TEST_OVERRIDE set; state.json shows no override.",
+  "Job worktrees are never the supervisor source checkout.",
+  "Every packet forbids the real launchctl, signalling foreign processes and tracker-state ky verbs.",
+  "Success is read from supervisor_exit and state.json, never from action state DONE; a job orphaned by a dead supervisor is ended by the planner before any relaunch.",
+  "Any change to a bound file, the user CLAUDE.md, user hooks or project settings voids receipts or manifest: requalify and re-review.",
+  "Nothing deferred is launched or installed; no surrogate job until part 2 is accepted.",
+  "Before reviews run through kyboot: make the reviewer launch line and area-reviewer role expressible, test every launch configuration against the launch-input schema, and obtain an owner decision on Bash(python3:*) and the 120-turn limit."
+ ],
+ "non_blocking": [
+  {
+   "id": "A-01",
+   "where": "job brief; BOOTSTRAP_COMPONENTS.txt",
+   "note": "The brief says 59 bound components; it lists 58, the component list binds 58 and the area records cover 58 (38 + 9 + 11). All 58 verified; the manifest must record 58."
+  },
+  {
+   "id": "A-02",
+   "where": "PLANNER_STATE.json active.owner_directions_20261012; BOOTSTRAP_COMPONENTS.txt deferred tranche",
+   "note": "The record exists (item A, written by the cockpit 2026-10-11T22:30:46Z, quoting the chat). I could not verify the chat, and the owner decisions file holds no such decision. The record names part 2 as loops and control only; the component list also defers the surrogate area (OWNER_SURROGATE.md, LAUNCH_CONFIG.surrogate.json). Deferring more binds less, but that scope is for the owner to confirm."
+  },
+  {
+   "id": "A-03",
+   "where": "kyboot.py binding_findings, expected_binds",
+   "note": "N-02 confirmed: any bound component may be card_path for any role and binds.prompt_sha256 is not compared, though plan section 7 names the prompt hash. Fails open only on a planner mistake; the card hash is recorded. Non-blocking given the third condition."
+  },
+  {
+   "id": "A-04",
+   "where": "schemas/bootstrap_launch_input.json vs LAUNCH_CONFIG.bootstrap-reviewer.json, LAUNCH_CONFIG.area-reviewer.json",
+   "note": "Reproduced in memory: the builder configuration yields a schema-valid launch input whose launch line, environment names and child PATH equal the receipt binds. Both reviewer configurations are refused by the extra_lean_flags pattern; area-reviewer is also outside the role enum and over the VERIFY turn cap. Fails closed; reviews only."
+  },
+  {
+   "id": "A-05",
+   "where": "kyqualify.py skippable_probes, exemptions; the three receipts",
+   "note": "Plan section 7 lists the inaccessible-keychain probe; the harness never simulates it and PASS needs no note. Each receipt says not_simulated and cites a cockpit note (hash verified; content not readable by me). Honest, but waiving a plan probe is for the owner. A locked keychain fails sign-in and the job ends without a result (exit 5): no build is made unsafe."
+  },
+  {
+   "id": "A-06",
+   "where": "kyboot.py parent_pid, resolve_scratch, worktree_root",
+   "note": "N-04 confirmed: tests-only overrides are honoured by the production program; recorded, not refused."
+  },
+  {
+   "id": "A-07",
+   "where": "kyboot.py run, line 1733",
+   "note": "N-03 confirmed: the launch action reads DONE whatever the exit code, once the group is gone and result.json is valid."
+  },
+  {
+   "id": "A-08",
+   "where": "kyboot.py worktree_policy_findings",
+   "note": "N-11 confirmed: the supervisor source checkout is an admissible job worktree; a builder under bypassPermissions there could alter bound files."
+  },
+  {
+   "id": "A-09",
+   "where": "cards/BOOTSTRAP.md",
+   "note": "N3-01 and N3-02 confirmed: no line forbids the real launchctl, foreign processes or ky verbs beyond the six named; ky is first on the builder PATH. Non-blocking only because every packet can carry the rule."
+  },
+  {
+   "id": "A-10",
+   "where": "kymanifest.py observe_review, observe_probes, observe_qualifications",
+   "note": "Area verdicts are self-declared JSON; evidence.launchd_context and the matrix hashes are not compared; check runs without --verify-evidence. Two area records were made at head 6c3b1ae0f; only kyqualify.py and its test changed since."
+  },
+  {
+   "id": "A-11",
+   "where": "tests/test_cards.py, tests/test_decision_record_contract.py, tests/test_kyboot.py, cards/TOKEN_MEASUREMENT.json",
+   "note": "The bound set depends on deferred files only in bound tests (kyveto.py, kynotify.sh, kyaction.py, OWNER_SURROGATE.md, the surrogate configuration) and one measurement-record entry. No run-time dependency: kyboot imports nothing from its folder and loads only the launch-input and job-result schemas; kymanifest starts kyqualify, which imports kyprobe; all bound."
+  }
+ ],
+ "history": "round 1: all five areas REJECTED (14 blocking); round 2: cards and control REJECTED, three without verdict; round 3: supervisor and cards ACCEPTED, qualification REJECTED; round 4: qualification REJECTED; round 5: qualification ACCEPTED. Records: /Users/Dev/kalayantra/run/reviews/b0c-r1 … b0c-r5.",
+ "two_part_acceptance": "owner direction given in the cockpit chat on 2026-10-12 and recorded by the cockpit in run/PLANNER_STATE.json (active.owner_directions_20261012); not yet in the owner-decisions file — the accepting reviewer asks the owner to confirm it where a reviewer can verify it"
+}

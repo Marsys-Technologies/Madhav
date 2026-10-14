@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- KĀLA-YANTRA v3 planner loop (relaunch plan §4a.2). TEMPLATE: rendered by kyctl.sh install; never loaded as-is.
+     launchd supervises the deterministic controller kyloop.py, never a chain of model runs. A clean exit
+     (STOP, completion, not enabled, breaker) must not respawn; a crash must: KeepAlive = SuccessfulExit false.
+     No credential of any kind belongs in EnvironmentVariables. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>in.marsys.kalayantra.planner</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/python3</string>
+    <string>-u</string>
+    <string>@KY_FLEET@/kyloop.py</string>
+    <string>planner</string>
+  </array>
+  <key>WorkingDirectory</key><string>@KY_ROOT@</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>@KY_ROOT@/bin:@SYSTEM_PATH@</string>
+    <key>HOME</key><string>@HOME@</string>
+    <key>USER</key><string>@USER@</string>
+    <key>LANG</key><string>en_US.UTF-8</string>
+    <key>KY_ROOT</key><string>@KY_ROOT@</string>
+    <key>KY_RUN</key><string>@KY_RUN@</string>
+    <key>KY_FLEET</key><string>@KY_FLEET@</string>
+    <key>KY_SCRATCH</key><string>@KY_SCRATCH@</string>
+    <key>KY_SOURCE_REPO</key><string>@KY_SOURCE_REPO@</string>
+    <key>CLAUDE_BIN</key><string>@CLAUDE_BIN@</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key><false/>
+  </dict>
+  <key>ProcessType</key><string>Background</string>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>@KY_SCRATCH@/loops/planner/launchd.log</string>
+  <key>StandardErrorPath</key><string>@KY_SCRATCH@/loops/planner/launchd.log</string>
+</dict>
+</plist>

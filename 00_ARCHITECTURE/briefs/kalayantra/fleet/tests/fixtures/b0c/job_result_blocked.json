@@ -1,0 +1,12 @@
+{
+ "schema": "ky.job_result/1",
+ "job_id": "J-20261011T215900Z-b1",
+ "item": "KV3-B-KYLOCK",
+ "status": "blocked",
+ "branch": "kalayantra/kv3-b-kylock",
+ "head_sha": null,
+ "pr_number": null,
+ "tests": [],
+ "blocked_reason": "freeze: platform/scripts/migrate.ts",
+ "notes": ""
+}

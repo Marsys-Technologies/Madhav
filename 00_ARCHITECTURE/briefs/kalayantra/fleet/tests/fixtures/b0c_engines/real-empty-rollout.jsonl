@@ -1,0 +1,3 @@
+{"type": "session_meta", "payload": {"id": "01a13244-5c7c-73f3-9d9c-b9c8e831d1a4"}}
+{"type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "# AGENTS.md instructions\n<INSTRUCTIONS>\n[user instructions redacted]\n</INSTRUCTIONS>"}]}}
+{"type": "turn_context", "payload": {"model": "gpt-6.1-sol", "effort": "high", "approval_policy": "never", "sandbox_policy": {"type": "workspace-write", "writable_roots": ["/Users/Dev/scratch.noindex/claude/madhav/20261013-kalayantra-v3-fleet/qual/bootstrap-builder-codex/runs/empty/job_scratch"], "network_access": false, "exclude_tmpdir_env_var": false, "exclude_slash_tmp": true}}}
