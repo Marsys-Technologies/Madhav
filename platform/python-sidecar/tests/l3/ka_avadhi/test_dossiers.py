@@ -16,7 +16,8 @@ END = datetime(2001, 1, 1, 12, tzinfo=timezone.utc)
 def period(lord="Mars", level=1):
     return dict(system_id="vimshottari", lord_graha=lord, level_n=level,
                 start_iso=START, end_iso=END, dasha_row_id="period",
-                lord_to_parent_relationship="friend" if level == 2 else None)
+                lord_to_parent_relationship="friend" if level == 2 else None,
+                is_truncated_at_window_start=False, is_truncated_at_window_end=False)
 
 
 def fact(subject, key, value, category="graha_position", extra=None):
@@ -215,3 +216,40 @@ def test_node_fruition_reverses_even_when_motion_is_not_direct_or_retrograde(mot
     source = [fact('RAH_TRUE', 'longitude_sidereal', 2)]
     if motion is not None: source.append(fact('RAH_TRUE', 'retrograde_flag', motion))
     assert dossier(lord='RAH_TRUE', source_facts=source)['fruition_phase']['value']['third'] == 3
+
+
+@pytest.mark.parametrize('flag', [None, 'absent'])
+def test_unknown_start_clipping_cannot_assert_natural_commencement(flag):
+    source = period()
+    if flag == 'absent':
+        source.pop('is_truncated_at_window_start')
+    else:
+        source['is_truncated_at_window_start'] = flag
+    answer = sky.ephemeris_at(2451545., sky.SkyConvention(), bodies=('Mars',))
+    assert answer.available
+    result = build_dossier(source, facts(), [], clock(), answer)
+    assert result['commencement_condition']['value'] is None
+    assert result['commencement_condition']['null_reason'] == 'information_unavailable'
+
+
+def test_boundary_qualifications_keep_each_period_endpoint_and_root():
+    source = period()
+    source['is_truncated_at_window_end'] = True
+    answer = sky.unavailable(sky.coverage_of((1, 1), None, backend='swieph', convention_id='CODEX'))
+    result = build_dossier(source, facts(), [], clock(), answer)
+    assert result['is_truncated_at_window_start'] == {
+        'value': False, 'null_reason': None, 'fact_ids': ['period']}
+    assert result['is_truncated_at_window_end'] == {
+        'value': True, 'null_reason': None, 'fact_ids': ['period']}
+    source['is_truncated_at_window_end'] = None
+    result = build_dossier(source, facts(), [], clock(), answer)
+    assert result['is_truncated_at_window_end'] == {
+        'value': None, 'null_reason': 'information_unavailable', 'fact_ids': ['period']}
+
+
+def test_ancestor_clipping_does_not_erase_child_natural_commencement():
+    from dataclasses import replace
+    answer = sky.ephemeris_at(2451545., sky.SkyConvention(), bodies=('Mars',))
+    assert answer.available
+    result = build_dossier(period(level=2), facts(), [], replace(clock(), boundary_truncated=True), answer)
+    assert result['commencement_condition']['value']['instant'] == START.isoformat()

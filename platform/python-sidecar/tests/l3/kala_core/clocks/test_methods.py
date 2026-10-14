@@ -221,3 +221,10 @@ def test_facade_reads_core_clock_without_legacy_scoring():
 
 def test_legacy_query_remains_an_explicit_compatibility_shim():
     assert callable(getattr(KaDashaKalaService(L1()), "legacy_query", None))
+
+
+@pytest.mark.parametrize('evidence', [None, ashtottari(lord_house=6)])
+def test_boundary_facade_refuses_unknown_or_inapplicable_method_evidence(evidence):
+    with pytest.raises(clocks.ClockUnavailable, match='applicability_unknown_or_inapplicable'):
+        KaDashaKalaService(L1(system='ashtottari')).boundaries(
+            CHART, 'ashtottari', as_of=T0, method_facts=evidence, **PIN)

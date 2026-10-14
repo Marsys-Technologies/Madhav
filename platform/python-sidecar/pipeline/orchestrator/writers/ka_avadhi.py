@@ -159,13 +159,20 @@ def build_dossier(period, facts, mechanisms, context, commencement):
         phase = typed(reason=NullReason.INFORMATION_UNAVAILABLE,
                       fact_ids=longitude['fact_ids'] + motion['fact_ids'])
     onset = typed(reason=commencement.null_reason or NullReason.INFORMATION_UNAVAILABLE)
-    if graha and commencement.available:
+    # DASHA_TABLE_CONTRACT §Agreed period rules 2: a window edge is not
+    # natural commencement. Use this row's flag, not the lineage aggregate.
+    # (I) INTERPRETATION: an unknown flag cannot license commencement either.
+    start_truncated = period.get('is_truncated_at_window_start')
+    if graha and start_truncated is False and commencement.available:
         answer = commencement.values[0]
         position = answer.position(graha)
         onset = typed({'instant': period['start_iso'].isoformat(), 'jd': answer.jd,
                        'position': asdict(position), 'backend': answer.backend,
                        'convention_id': answer.convention_id}, fact_ids=(str(period['dasha_row_id']),))
     elif not graha: onset = typed(reason=NullReason.METHOD_INAPPLICABLE)
+    elif start_truncated is not False:
+        onset = typed(reason=NullReason.INFORMATION_UNAVAILABLE,
+                      fact_ids=(str(period['dasha_row_id']),))
     attached = []
     from services.ka_yojaka.promise_adapter import mechanism_density_key
     for m in sorted(mechanisms, key=lambda m: mechanism_density_key(
@@ -196,6 +203,10 @@ def build_dossier(period, facts, mechanisms, context, commencement):
                                          fact_ids=(str(period['dasha_row_id']),)) if parent else typed(reason=NullReason.METHOD_INAPPLICABLE),
               'sublord_modulation': {'graha': parent, 'note': f"AD lord {period['lord_graha']} modulates MD lord {parent}."} if parent else None,
               'commencement_condition': onset, 'commencement_coverage': asdict(commencement.coverage),
+              **{f'is_truncated_at_window_{endpoint}': typed(
+                  period.get(f'is_truncated_at_window_{endpoint}'),
+                  reason=NullReason.INFORMATION_UNAVAILABLE,
+                  fact_ids=(str(period['dasha_row_id']),)) for endpoint in ('start', 'end')},
               'fruition_phase': phase, 'attached_mechanisms': attached,
               'judgment_flags': sorted({flag for m in attached for flag in m.get('judgment_flags', [])}),
               'attachment_evaluation': typed('evaluated' if mechanisms else None,
