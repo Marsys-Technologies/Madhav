@@ -54,7 +54,7 @@ def _second_build_row(w, tier="single"):
 
 def test_a_clean_single_pinned_build_is_accepted_by_both_sides(built):
     w = built
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["75524b3e-102a-43ec-8cee-3f57fee752c3"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["ca17639b-f3cf-42c7-9866-0a61f3855802"]
     _verified(w)
     assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
 
@@ -64,10 +64,10 @@ def test_a_second_build_of_any_tier_refuses_the_writer_and_the_verifier_by_name(
     w = built
     _verified(w)                                                                      # the world was built and verified on one build
     _second_build_row(w, tier)                                                       # …then an L1 rebuild leaves a MIX
-    with pytest.raises(dasha_read.DashaBuildRefused, match="dasha_builds_mixed") as exc:
+    with pytest.raises(dasha_read.DashaBuildRefused, match="settled_build_ambiguous") as exc:
         dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
-    assert exc.value.code == "dasha_builds_mixed" and isinstance(exc.value, dasha_read.DD.DashaReadConflict)
-    with pytest.raises(RuntimeError, match="dasha_builds_mixed"):
+    assert exc.value.code == "settled_build_ambiguous" and isinstance(exc.value, dasha_read.DD.DashaReadConflict)
+    with pytest.raises(RuntimeError, match="settled_build_ambiguous"):
         inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)
 
 
@@ -76,19 +76,19 @@ def test_a_null_build_id_counts_as_a_second_build(built):
     w.conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso, end_iso,"
                    " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso,"
                    " end_iso, NULL, 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1")
-    with pytest.raises(dasha_read.DashaBuildRefused, match="dasha_builds_mixed.*NULL"):
+    with pytest.raises(dasha_read.DashaBuildRefused, match="settled_build_ambiguous.*NULL"):
         dasha_read.assert_single_pinned_build(w.conn, CHART_ID)
 
 
-def test_a_single_rebuilt_population_is_accepted_but_does_not_refresh_the_old_snapshot(built):
+def test_an_ungoverned_rebuilt_population_refuses_and_stales_the_old_snapshot(built):
     w = built
     _verified(w)
     w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER,))
-    rows, contract = dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
-    assert rows and contract["build_id"] == ANOTHER
-    assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
-    # Accepting the settled live population never re-labels the snapshot that
-    # consumed the previous build: row content (including build_id) stays bound.
+    with pytest.raises(dasha_read.DashaBuildRefused, match="settled_build_absent"):
+        dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
+    with pytest.raises(inv.Unverifiable, match="settled_build_absent"):
+        inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)
+    # Refusal never relabels the snapshot that consumed the previous build.
     stored, live = w.conn.execute(
         "SELECT dasha_digest, public.ka_gochara_search_dasha_digest(chart_id, consumed_dasha_row_ids)"
         " FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
@@ -101,7 +101,7 @@ def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):
     w.conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso, end_iso,"
                    " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, 'yogini', 1, lord_graha, start_iso, end_iso,"
                    " %s::uuid, 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1", (ANOTHER,))
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["75524b3e-102a-43ec-8cee-3f57fee752c3"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["ca17639b-f3cf-42c7-9866-0a61f3855802"]
 
 
 # ── (d) the absolute probe ──────────────────────────────────────────────────────────────────────────────────────────
@@ -125,9 +125,7 @@ def test_the_real_probe_reproduces_the_constant_on_the_pinned_corpus_from_the_ma
 # ── J-4p: both independently implemented sides accept the chart's settled build ─────────────────────────────────────
 
 @pytest.mark.parametrize("build", [
-    "75524b3e-102a-43ec-8cee-3f57fee752c3",
     "ca17639b-f3cf-42c7-9866-0a61f3855802",
-    "22222222-2222-4222-8222-222222222222",  # synthetic future rebuild
 ])
 def test_reader_and_independent_verifier_accept_the_same_single_build(build):
     from datetime import datetime, timezone

@@ -230,15 +230,16 @@ def test_the_policy_table_is_the_explicit_minimum():
 
 def test_step06a_pinned_read_keeps_vimshottari_strict_and_reads_relabelled_level_one():
     mod = _load_step06a()
-    rows = _rows_from(AFTER) + [
+    settled = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    rows = [r[:7] + [settled] + r[8:] for r in _rows_from(AFTER)] + [
         # a vimshottari row at an honest-but-unverified tier must NOT enter the pin
         _row("vx", "vimshottari", CM, lord="Saturn", build="b-other")]
     periods, contract = mod.load_pinned_dasha_periods(
-        _Conn(rows), "not-the-canonical-chart", SYSTEMS)
+        _Conn(rows), "482012f1-710e-4a25-994a-93821f5871aa", SYSTEMS)
     got = {(p["system_id"], p["level_n"]): p["verification_pass_status"] for p in periods}
     assert got == {("vimshottari", 1): T, ("vimshottari", 2): T, ("vimshottari", 3): T,
                    ("mudda", 1): CM, ("narayana", 1): CM}
-    assert contract["tier"] == T and contract["builds_seen"] == [BUILD]
+    assert contract["tier"] == T and contract["builds_seen"] == [settled]
 
 
 class _CountConn:
