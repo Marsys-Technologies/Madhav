@@ -18,6 +18,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 
 import pytest
+from tests._insert_capture import insert_bindings
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -143,7 +144,8 @@ def test_pratyantar_rows_use_pd_citation():
     call_args = inserted.executemany.call_args
     rows_arg  = call_args[0][1]  # second positional arg = list of row tuples
 
-    citations = [row[-1] for row in rows_arg]
+    citations = [insert_bindings(inserted.executemany.call_args[0][0], row)['source_citation']
+                 for row in rows_arg]
     pd_citations = [c for c in citations if c.startswith('ka_jivana_parva:v2.0:PD=')]
     assert len(pd_citations) == 1, f"Expected 1 PD citation, found: {pd_citations}"
     assert pd_citations[0] == 'ka_jivana_parva:v2.0:PD=Venus'
@@ -164,7 +166,8 @@ def test_md_and_ad_citations_unchanged():
     KaJivanaParvaWriter().run(ctx)
 
     rows_arg  = inserted.executemany.call_args[0][1]
-    citations = [row[-1] for row in rows_arg]
+    citations = [insert_bindings(inserted.executemany.call_args[0][0], row)['source_citation']
+                 for row in rows_arg]
 
     md_citations = [c for c in citations if ':MD=' in c and ':AD=' not in c and ':PD=' not in c]
     ad_citations = [c for c in citations if ':AD=' in c and ':PD=' not in c]
@@ -354,7 +357,7 @@ def test_pd_parva_index_continues_from_ad():
     assert len(indices) == 4
 
     # Last index is the PD (citation check)
-    last_citation = rows_arg[-1][-1]
+    last_citation = insert_bindings(inserted.executemany.call_args[0][0], rows_arg[-1])['source_citation']
     assert last_citation.startswith('ka_jivana_parva:v2.0:PD='), (
         f"Last row should be PD, got citation: {last_citation}"
     )
@@ -388,19 +391,19 @@ def test_existing_md_ad_rows_unchanged_when_pd_present():
     md_out = rows_arg[0]
     assert md_out[2] == 1, f"Expected parva_level=1 (MD) in row 0, got {md_out[2]}"
     assert md_out[5] == 'Jupiter', f"Expected Jupiter as dasha_planet in row 0, got {md_out[5]}"
-    assert md_out[-1] == 'ka_jivana_parva:v2.0:MD=Jupiter'
+    assert insert_bindings(inserted.executemany.call_args[0][0], md_out)['source_citation'] == 'ka_jivana_parva:v2.0:MD=Jupiter'
 
     # Second row is AD
     ad_out = rows_arg[1]
     assert ad_out[2] == 2, f"Expected parva_level=2 (AD) in row 1, got {ad_out[2]}"
     assert ad_out[5] == 'Venus', f"Expected Venus as dasha_planet in row 1, got {ad_out[5]}"
-    assert ad_out[-1] == 'ka_jivana_parva:v2.0:MD=Jupiter:AD=Venus'
+    assert insert_bindings(inserted.executemany.call_args[0][0], ad_out)['source_citation'] == 'ka_jivana_parva:v2.0:MD=Jupiter:AD=Venus'
 
     # Third row is PD
     pd_out = rows_arg[2]
     assert pd_out[2] == 3, f"Expected parva_level=3 (PD) in row 2, got {pd_out[2]}"
     assert pd_out[5] == 'Sun', f"Expected Sun as dasha_planet in row 2, got {pd_out[5]}"
-    assert pd_out[-1] == 'ka_jivana_parva:v2.0:PD=Sun'
+    assert insert_bindings(inserted.executemany.call_args[0][0], pd_out)['source_citation'] == 'ka_jivana_parva:v2.0:PD=Sun'
 
 
 # ---------------------------------------------------------------------------

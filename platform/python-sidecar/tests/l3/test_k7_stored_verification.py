@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import re
 
 import pytest
+from tests._insert_capture import insert_bindings
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 class Capture:
@@ -29,10 +30,7 @@ def bound_rows(capture, table):
     for sql, params in capture.writes:
         match = re.search(r'INSERT INTO ' + table + r'\s*\((.*?)\)\s*VALUES\s*\((.*)\)', sql, re.S)
         if match:
-            columns = [c.strip() for c in match[1].split(',')]
-            values = [v.strip() for v in match[2].split(',')]
-            it = iter(params)
-            result.append({c: next(it) for c, v in zip(columns, values) if '%s' in v})
+            result.append(insert_bindings(sql, params))
             if Capture.db is not None:
                 adapted = tuple('11111111-1111-4111-8111-111111111111' if value in ('chart','convention','manifest','build') else value for value in params)
                 Capture.db.execute(sql, adapted)

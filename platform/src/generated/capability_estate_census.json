@@ -23510,7 +23510,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "b35dd53052ad0978c040e432ca18444b747f4ae1a96ec6bf420f19feb16af073"
+            "sha256": "ac1cfc979a8733c4f728f6fcc20c54746813aa9d0fdeb2ebdf30bd4b13d9e336"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23726,7 +23726,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "0d11e43f6522bac248cee79d8fc33bbb1f28030e6b324be197725fa8a665343e"
+        "sha256": "c1282b0170feb63fea565ebde65c6a4a6a0e174f1b2c80079804cd6bfd68976b"
       },
       {
         "id": "service_effect_contracts",

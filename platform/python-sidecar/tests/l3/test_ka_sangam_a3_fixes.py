@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch, call
 from typing import Any
 
 import pytest
+from tests._insert_capture import insert_bindings
 
 # Ensure the sidecar root is on sys.path
 _SIDECAR = os.path.join(os.path.dirname(__file__), "..", "..")
@@ -216,8 +217,7 @@ class TestB4SrcDomainPropagation:
         call_args = mock_cur.execute.call_args
         params = call_args[0][1]   # second positional arg = params tuple
 
-        # domain is the last parameter
-        domain_value = params[-3]  # domain, then confidence_label_relative, tier_basis (JL-014)
+        domain_value = insert_bindings(call_args[0][0], params)['domain']
         assert domain_value == 'career', (
             f"B4-src: expected domain='career' in INSERT params, got {domain_value!r}"
         )
@@ -248,7 +248,7 @@ class TestB4SrcDomainPropagation:
 
         call_args = mock_cur.execute.call_args
         params = call_args[0][1]
-        domain_value = params[-3]  # domain, then confidence_label_relative, tier_basis (JL-014)
+        domain_value = insert_bindings(call_args[0][0], params)['domain']
         assert domain_value is None, (
             f"B4-src: expected domain=None when no signal domains, got {domain_value!r}"
         )

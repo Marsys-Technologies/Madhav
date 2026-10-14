@@ -8,8 +8,9 @@ import psycopg
 import pytest
 
 from services.ka_vighnakara.model import Finding, NegativeSpace, interpret
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 from tests.l3.ka_vighnakara.test_negative_space import finding, protection
-from tests.l3.kala_db._schema import apply_schema_migration
+from tests.l3.kala_db._schema import apply_schema_migration, apply_stage_verification_migration
 
 ROOT=Path(__file__).parents[4]
 MIGRATION=ROOT.parent/'migrations/1349_k3_1_negative_space_contract.sql'
@@ -47,6 +48,7 @@ def database(isolated_kala_db_dsn):
         assert MIGRATION.exists(), 'K3 additive candidate schema missing'
         apply_schema_migration(c, MIGRATION)
         apply_schema_migration(c, EVIDENCE_MIGRATION)
+        apply_stage_verification_migration(c, 'kala_obstruction')
         c.execute('INSERT INTO charts VALUES (%s)',(CHART,))
         c.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building','{\"fixture\":true}')",(CHART,GEN,BUILD))
     yield isolated_kala_db_dsn
@@ -236,3 +238,12 @@ def test_alias_rejection_preserves_existing_candidate(conn):
         storage()(ctx(conn),[finding(protections=[protection()]),
             finding(assertion_id='alias',protections=[protection()])])
     assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
+
+
+def test_candidate_stores_honest_single_tier_and_legacy_stays_null(conn):
+    conn.execute("INSERT INTO kala_obstruction (chart_id,obstruction_type,severity,severity_score,source_citation) VALUES (%s,'malefic_transit','mild',0.5,'fixture:legacy')", (CHART,))
+    write(conn)
+    assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT,)
+    assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation IS NULL').fetchone() == (None,)
+    apply_stage_verification_migration(conn, 'kala_obstruction')
+    assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT,)

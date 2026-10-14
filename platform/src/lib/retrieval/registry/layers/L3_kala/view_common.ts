@@ -360,7 +360,7 @@ export function makeView(spec: ViewSpec): CapabilityDescriptor & { density_contr
       }], editorial: true,
     }],
     annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
-    density_contract,
+    density_contract: density_contract,
     input_schema: {
       chart_id: { type: 'string', required: true, description: 'Explicit chart UUID.' },
       at: { type: 'string', description: 'Exact ISO instant with timezone for NOW; intervals are half open.' },
