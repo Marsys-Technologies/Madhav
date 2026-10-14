@@ -8,6 +8,26 @@ keeps the original adverse conclusion and its fact references. Missing
 coverage or an unadmitted binding produces a named unavailable state. No rate,
 weight or astrology is computed. Unknown release is a valid result.
 
+The K3 packet-exit corrections union adjacent/overlapping `defeats` and
+`excepts` intervals before assessing full cancellation. A gap or a
+`partly_defeats` edge cannot become full coverage. An unresolved F1 state
+remains unavailable; cancellation without surviving, targeted defeating
+evidence becomes `information_unavailable/defeating_evidence_unavailable`.
+
+**(I) INTERPRETATION:** an already evaluated F1 cancellation/exception remains
+authoritative when its targeted `defeats`/`excepts` evidence survives, even
+when additional protection covers only part of the interval. Evidence must
+retain its source, scoped interval and protecting fact IDs. This preserves
+the upstream evaluated axis without inferring a new full defeat from a
+`partly_defeats` edge (ALGO §3.4; NR-KALA-R13(b)).
+
+Release is the start of the terminal, continuously protected suffix when
+full-defeat/exception evidence licenses that instant; an unprotected vedha
+retains its geometric interval end. Contested/unresolved or unavailable
+inputs do not license an earlier release. **(I) INTERPRETATION:** an explicit
+conditional predicate is retained, rather than assumed satisfied by an
+interval edge. Without a computable endpoint, release stays unknown.
+
 The only writer entry is the explicitly selected
 `ctx.config['negative_space_fixture_inputs']` list. It requires the build's
 `kala_layer_candidate` to be `building` with `conventions.fixture=true`; all
@@ -17,11 +37,31 @@ replace only that private candidate partition. The legacy writer and its Swiss
 backend guard remain the default dispatch. The old trigger composition shim
 remains callable until K4-2b.
 
+**(I) INTERPRETATION:** until a canonical physical identity resolver is
+admitted, duplicate `(chart, generation, event class, mechanism, interval,
+judge record roots, contact roots)` conclusions are rejected before any
+replacement. Assertion labels, citations and supplementary protecting facts
+cannot create another physical conclusion. This may conservatively reject
+ambiguous fixtures; it never retargets a protection to an invented identity.
+
 Migration 1349 adds only nullable metadata columns and a CHECK restricted to
 this contract version. Legacy NOT NULL score/type/severity slots are filled
 with inert zero/mild/malefic_transit compatibility values; the typed assertion
 is the meaning of a candidate row. These slots are never read by the new
 consumer. Migration 1338 already provides the five separate axis columns.
+
+Migration 1374 adds a version-scoped CHECK requiring retained, overlapping,
+targeted defeating evidence and protecting fact IDs for cancellation rows.
+**(I) INTERPRETATION:** the additive constraint is `NOT VALID` to enforce new
+writes without certifying or rewriting historical fixture candidates.
+Historical validation and post-deploy application proof remain separate
+cockpit operations. Migration 1349 is unchanged.
+
+The forecaster-read lint covers every new negative-space module, storage,
+the trigger boundary and the registered writer dispatch. Only the exact
+zero-valued legacy score INSERT slots are exempt. **(I) INTERPRETATION:** the
+retained `_LegacyKaVighnakaraWriter` is outside this fixture-path lint until
+its planned cutover; the registered dispatch class itself is fully checked.
 
 The filename moved from 1343 to 1349 after the live open-PR/coordination
 check found Suvarṇa PR #3368 already owned 1343 and PR #3371 owned 1344–1348.
