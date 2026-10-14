@@ -20,7 +20,10 @@ class Cursor:
 class Conn:
     def __init__(self, rows=()): self.rows = iter(rows); self.calls = []
     def execute(self, query, params=()):
-        self.calls.append((query, params)); return Cursor(next(self.rows, None))
+        self.calls.append((query, params))
+        if "pg_advisory_xact_lock" in query:
+            return Cursor(None)
+        return Cursor(next(self.rows, None))
 
 
 def test_read_model_resolves_its_unpublished_candidate_not_a_served_head():
@@ -41,7 +44,7 @@ def test_candidate_open_serializes_conventions_for_postgres_jsonb():
 
 
 def test_attestation_records_zero_rows_as_a_result():
-    conn = Conn()
+    conn = Conn([("building",)])
     candidate = Candidate("chart", "candidate", "build", None)
     attest_grain(conn, candidate, grain_key="read-model", result_state="zero_rows", input_vector="digest")
     assert conn.calls[-1][1][-2:] == ("zero_rows", "digest")
@@ -130,6 +133,8 @@ class PublishConn:
             if "verifier_principal" not in query or "detail" not in query:
                 return Cursor(("accepted",))
             return Cursor(self.verification)
+        if "FROM kala_layer_candidate " in query:
+            return Cursor(("building",))
         if query.startswith("UPDATE kala_layer_head"):
             return Cursor(("candidate",))
         return Cursor(None)
@@ -202,3 +207,64 @@ def test_reader_current_lint_rejects_a_planted_bypass(tmp_path):
     reader.write_text("generation = 'current'\n")
     with pytest.raises(ValueError, match="resolves current"):
         lint_no_self_resolved_generation([reader])
+
+
+class LifecycleConn(PublishConn):
+    def __init__(self, state="building", build_id="build"):
+        import hashlib
+        import json
+        digest = hashlib.sha256(json.dumps([("writer", "A")], separators=(",", ":")).encode()).hexdigest()
+        super().__init__([("writer", "rows", "A")],
+                         ("verifier_principal", "accepted", {"input_digest": digest}))
+        self.state, self.build_id = state, build_id
+        self.locked = False
+        self.inputs_locked = False
+
+    def execute(self, query, params=()):
+        if "pg_advisory_xact_lock" in query:
+            self.inputs_locked = True
+        if "FROM kala_layer_candidate " in query and "FOR UPDATE" in query:
+            assert self.inputs_locked, "row lock before input lock can deadlock a verifier's receipt FK"
+            self.calls.append((query, params))
+            self.locked = True
+            assert params == ("chart", "candidate", "build")
+            return Cursor((self.state,)) if self.build_id == "build" else Cursor(None)
+        if "candidate_grain" in query:
+            assert self.locked, "grain evidence was accessed before the lifecycle lock"
+        return super().execute(query, params)
+
+
+@pytest.mark.parametrize("operation", ["attest", "publish"])
+def test_candidate_evidence_is_locked_before_attestation_or_publication(operation):
+    conn = LifecycleConn()
+    candidate = Candidate("chart", "candidate", "build", "published")
+    if operation == "attest":
+        attest_grain(conn, candidate, grain_key="writer", result_state="failed", input_vector="B")
+    else:
+        publish_candidate(conn, candidate, expected_grains=("writer",))
+    assert conn.locked
+
+
+@pytest.mark.parametrize("state", ["published", "rejected", "complete", "verified"])
+@pytest.mark.parametrize("operation", ["attest", "publish"])
+def test_terminal_candidate_evidence_cannot_be_changed_or_republished(state, operation):
+    conn = LifecycleConn(state)
+    candidate = Candidate("chart", "candidate", "build", "published")
+    with pytest.raises(CandidateNotPublishable, match="building"):
+        if operation == "attest":
+            attest_grain(conn, candidate, grain_key="writer", result_state="failed", input_vector="B")
+        else:
+            publish_candidate(conn, candidate, expected_grains=("writer",))
+    assert not any("candidate_grain" in query or "kala_layer_head" in query for query, _ in conn.calls)
+
+
+@pytest.mark.parametrize("operation", ["attest", "publish"])
+def test_candidate_build_binding_must_exist_before_evidence_can_change(operation):
+    conn = LifecycleConn(build_id="another-build")
+    candidate = Candidate("chart", "candidate", "build", "published")
+    with pytest.raises(CandidateNotPublishable, match="bound to this build"):
+        if operation == "attest":
+            attest_grain(conn, candidate, grain_key="writer", result_state="rows", input_vector="B")
+        else:
+            publish_candidate(conn, candidate, expected_grains=("writer",))
+    assert not any("candidate_grain" in query or "kala_layer_head" in query for query, _ in conn.calls)
