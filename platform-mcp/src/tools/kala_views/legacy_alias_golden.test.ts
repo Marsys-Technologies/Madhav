@@ -77,6 +77,11 @@ describe('K7-1b legacy public names, recorded before aliasing', () => {
       ['/api/mcp/authz', { user_uid: principal.user_uid, chart_id: chart, required: 'view' }],
     ])
   })
+  it('an exact-instant request cannot bypass NOW chart authorization to reach published stages', async () => {
+    const result = await call('kala_now_get', { chart_id: chart, at: '2026-10-09T12:00:00Z' })
+    expect([result.isError, fetchMock.mock.calls.map(([url]) => new URL(url).pathname)])
+      .toEqual([true, ['/api/mcp/authz']])
+  })
   it('EXPLAIN never invents assertion identity from a missing domain/bhava', async () => {
     expect(await call('kala_explain_get', { chart_id: chart })).toMatchInlineSnapshot(`
       {
