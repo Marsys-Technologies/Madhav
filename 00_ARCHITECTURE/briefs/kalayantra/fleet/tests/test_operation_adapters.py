@@ -394,16 +394,22 @@ def test_the_spec_sources_are_the_packets_at_the_source_pin(rel):
     assert hashlib.sha256(p.stdout).hexdigest() == PINS[rel]
 
 
-def test_the_table_is_unchanged_twenty_entries_and_exactly_four_enabled():
-    assert sha_file(OPS_FILE) == PINS[OPS_REL]
+def test_the_table_has_twenty_one_entries_the_same_four_enabled_and_disabled_backup_rebuild_mappings():
+    # PINS guards historical spec sources at SOURCE_PIN; this digest guards the scoped update.
+    assert sha_file(OPS_FILE) == "65d3f27eacdc106378500cf6c3b79ef756f7f3022ce86b904e1200a77802c16f"
     ops = real_table()
-    assert len(ops) == 20
+    assert len(ops) == 21
     assert all(e["enabled"] is True or e["enabled"] is False for e in ops.values())
+    assert ENABLED_KINDS == {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
     assert {k for k, e in ops.items() if e["enabled"]} == ENABLED_KINDS
+    prepared_kinds = {"backup_snapshot", "backup_restore_verify", "orchestrator_rebuild_dryrun",
+                      "orchestrator_rebuild", "orchestrator_rebuild_readback"}
+    assert all(ops[k]["enabled"] is False for k in prepared_kinds)
     disabled = {k: e for k, e in ops.items() if not e["enabled"]}
-    assert len(disabled) == 16
-    assert len([k for k, e in disabled.items() if "TO_BE_SET" in e["script"]]) == 14
-    assert sorted(k for k, e in disabled.items() if "TO_BE_SET" not in e["script"]) == ["smalltest_dispatch", "smalltest_dispatch_dryrun"]
+    assert len(disabled) == 17
+    assert len([k for k, e in disabled.items() if "TO_BE_SET" in e["script"]]) == 10
+    assert {k for k, e in disabled.items() if "TO_BE_SET" not in e["script"]} == prepared_kinds | {
+        "smalltest_dispatch", "smalltest_dispatch_dryrun"}
 
 
 def test_the_fixture_table_differs_from_the_table_in_the_two_fixture_entries_only():
