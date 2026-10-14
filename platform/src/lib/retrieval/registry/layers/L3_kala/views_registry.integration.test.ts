@@ -142,7 +142,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('all seven actual SQL readers p
     expect(result.is_error).toBe(false)
     const content = result.content as Record<string, unknown>
     expect(content).toMatchObject({ manifest_id: '22222222-2222-4222-8222-222222222222',
-      generation: '4.1', empty_reason: null, density: { confirmed: 1 } })
+      generation: '4.1', empty_reason: null, density: { confirmed: 0 } })
     expect(content.coverage).toEqual(expect.arrayContaining([expect.objectContaining({ unsearched_reason: 'not_searched' })]))
     expect(JSON.stringify(content.rows)).not.toContain('9.9')
   }
@@ -172,7 +172,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('pages protect confirmed findin
   const { priorityViewCapability } = await import('./view_priority')
   db.mockReset().mockImplementation(postgresQuery)
   const first = await priorityViewCapability.handler!({ chart_id: fixtureChart, limit: 1 }, {})
-  expect(first.content).toMatchObject({ density: { confirmed: 1 }, rows: [
+  expect(first.content).toMatchObject({ density: { confirmed: 0 }, rows: [
     { density: 'confirmed', record_id: '1' }, { source_table: 'kala_convergence', qualification: 'context_only' },
   ], pagination: { more_available: true } })
   const exhausted = await priorityViewCapability.handler!({ chart_id: fixtureChart, limit: 1, offset: 4 }, {})
@@ -200,7 +200,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a hea
       rows: [{ record_id: '2', qualification: 'published' }, { record_id: '3', qualification: 'context_only' }] })
   db.mockImplementation(postgresQuery)
   expect((await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})).content)
-    .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 1 } })
+    .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 0 } })
 })
 
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['information_unavailable', 'evaluated_silent'])
@@ -221,7 +221,49 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('context stays visible when pub
     'DELETE FROM kala_darshana; DELETE FROM kala_convergence;'))
   expect(await storyViewCapability.handler!({ chart_id: fixtureChart }, {}))
     .toMatchObject({ is_error: false, content: { empty_reason: null, rows: [{
-      source_table: 'kala_jivana_parva', qualification: 'context_only', density: 'catalog_only',
+      source_table: 'kala_jivana_parva', qualification: 'context_only', density: null,
       data: { high_convergence_count: null, convergence_null_reason: 'source_table_empty_for_chart' },
     }] } })
+})
+
+it.each([
+  ['now', ['kala_darshana', 'kala_obstruction']],
+  ['ahead', ['kala_darshana', 'kala_bhavishya', 'kala_gochara_contacts']],
+  ['priority', ['kala_darshana', 'kala_convergence']],
+  ['elect', ['kala_darshana', 'kala_obstruction', 'kala_gochara_contacts']],
+  ['story', ['kala_darshana', 'kala_jivana_parva']],
+  ['ritual', ['kala_darshana', 'kala_obstruction']],
+  ['explain', ['kala_darshana', 'kala_obstruction', 'kala_gochara_contacts', 'kala_bhavishya', 'kala_convergence', 'kala_jivana_parva']],
+])('%s actual entry discloses its no-tier sources and retains unknown counts, order, pages and drills', async (name, tables) => {
+  await import('./index')
+  const { getCapability } = await import('../../index')
+  const cap = getCapability(`marsys://tool/L3/${name}_read`)!
+  expect(cap.density_contract).toMatchObject({ stored_tier_columns: [], unavailable_sources: tables })
+  db.mockReset().mockResolvedValue({ rows: [{ manifest: { manifest_id: 'test-build', generation: '4.1' },
+    coverage: [], sources: [{ table: 'kala_darshana', total: 100, rows: [
+      { id: '2', generation: '4.1', tier: 'confirmed', assertion_id: 'a2', source_citation: 'fixture:2' },
+      { id: '10', generation: '4.1', tier: 'testimony', assertion_id: 'a10', source_citation: 'fixture:10' },
+      { id: '0', generation: null, source_citation: 'fixture:legacy' },
+    ] }] }] })
+  const result = await cap.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z',
+    date_from: '2026-10-09T00:00:00Z', date_to: '2026-10-10T00:00:00Z',
+    event_class: 'travel', assertion_id: 'a2', limit: 3, offset: 3 }, {})
+  expect(result.content).toMatchObject({ density: { confirmed: 0, testimony: 0, unknown: 3, context_only: 1 },
+    catalog_only_rows_in_page: 3,
+    judgment_flags: ['catalog_only_rows_present', 'stored_tier_contract_unavailable',
+      'context_only_rows_present', 'coverage_unavailable'],
+    pagination: { total_matching: 100, returned: 3, more_available: true, limit_per_source: 3, offset_per_source: 3 },
+    rows: [
+      { record_id: '0', density: null, qualification: 'context_only', data: { source_citation: 'fixture:legacy' },
+        drill: { args: { chart_id: fixtureChart, source_table: 'kala_darshana', record_id: '0' } } },
+      { record_id: '10', density: null, data: { tier: 'testimony', source_citation: 'fixture:10' },
+        drill: { args: { chart_id: fixtureChart, assertion_id: 'a10' } } },
+      { record_id: '2', density: null, data: { tier: 'confirmed', source_citation: 'fixture:2' },
+        drill: { args: { chart_id: fixtureChart, assertion_id: 'a2' } } },
+    ],
+  })
+  const sql = db.mock.calls[0][0]
+  expect(sql).toContain('ORDER BY tier_order, record_id LIMIT $7 OFFSET $8')
+  expect(sql).not.toContain('kala_darshana_candidate')
+  expect(sql).not.toContain('kala_jivana_parva_candidate')
 })

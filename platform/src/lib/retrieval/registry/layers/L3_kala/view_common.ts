@@ -144,7 +144,7 @@ export function makePublicView(view: ViewName): CapabilityDescriptor {
   }
 }
 type Data = Record<string, unknown>
-type Density = 'confirmed' | 'testimony' | 'catalog_only'
+type Density = 'confirmed' | 'testimony' | 'catalog_only' | null
 export interface Manifest extends Data { manifest_id: string; generation: string }
 export interface ViewSnapshot {
   manifest: Manifest | null
@@ -175,37 +175,38 @@ const SOURCES = {
     end: 'make_date(s.end_year + 1, 1, 1)::timestamp AT TIME ZONE \'UTC\'' },
 } as const
 const object = (v: unknown): Data => v && typeof v === 'object' && !Array.isArray(v) ? v as Data : {}
-const strings = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : []
 
-function rowDensity(table: string, row: Data, generation: string): { density: Density; context: boolean } {
-  const context = !row.generation || row.generation === '3.0' || row.generation !== generation
-  if (context) return { density: 'catalog_only', context: true }
-  const assertion = object(row.assertion)
-  const roots = object(assertion.roots)
-  const sourced = [roots.fact_ids, roots.contact_ids, roots.record_ids].some(x => strings(x).length > 0)
-  const state = object(assertion.payload).effective_state
-  if (['information_unavailable', 'method_inapplicable', 'outside_risk_set'].includes(String(state))) {
-    return { density: 'catalog_only', context: false }
-  }
-  if (table === 'kala_gochara_contacts' || (sourced && assertion.operator_role === 'testimony')) {
-    return { density: 'testimony', context: false }
-  }
-  return { density: sourced && assertion.operator_role === 'scored' && ['conditions', 'qualifies', 'corroborates', 'explains'].includes(String(assertion.role))
-    ? 'confirmed' : 'catalog_only', context: false }
+/** None of the six selected stage tables has an admitted producer tier binding.
+ * Candidate tiers live in different, fixture-only tables (migrations 1354/1355).
+ * Keep proof unavailable until the producer/schema/declaration/publication pins
+ * exist; roles, roots, probability and geometry cannot stand in for that proof.
+ */
+function rowDensity(row: Data, generation: string): { density: Density; context: boolean } {
+  return { density: null,
+    context: !row.generation || row.generation === '3.0' || row.generation !== generation }
+}
+
+// Local additive disclosure: this does not amend the shared descriptor contract
+// or claim that the missing stored-tier SELECT bindings have been implemented.
+type StageDensityContract = NonNullable<CapabilityDescriptor['density_contract']> & {
+  stored_tier_columns: []
+  unavailable_sources: SourceTable[]
 }
 
 export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnapshot, offset = 0) {
   const manifest = snapshot.manifest
   const sources = manifest ? snapshot.sources : []
-  const density = { scope: 'page' as const, confirmed: 0, testimony: 0, catalog_only: 0, context_only: 0 }
+  const density = { scope: 'page' as const, confirmed: 0, testimony: 0, catalog_only: 0, context_only: 0, unknown: 0 }
   const rows = sources.flatMap(source => source.rows.map(stored => {
     const data = source.table === 'kala_jivana_parva' ? qualifyStoryConvergence(stored) : stored
-    const tier = rowDensity(source.table, data, manifest!.generation)
-    density[tier.density]++
+    const tier = rowDensity(data, manifest!.generation)
+    if (tier.density === null) density.unknown++
+    else density[tier.density]++
     if (tier.context) density.context_only++
     const assertion_id = typeof data.assertion_id === 'string' ? data.assertion_id : object(data.assertion).assertion_id
     const id = data.id ?? data.convergence_id ?? data.contact_id ?? assertion_id
     return { source_table: source.table, record_id: String(id), density: tier.density,
+      density_reason: 'stored_tier_contract_unavailable',
       qualification: tier.context ? 'context_only' : 'published', data,
       drill: typeof assertion_id === 'string'
         ? { capability: 'marsys://tool/L3/explain_read', args: { chart_id, assertion_id } }
@@ -213,14 +214,15 @@ export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnap
     }
   }))
   const order = { confirmed: 0, testimony: 1, catalog_only: 2 }
-  rows.sort((a, b) => order[a.density] - order[b.density] || a.source_table.localeCompare(b.source_table) || a.record_id.localeCompare(b.record_id))
+  rows.sort((a, b) => (a.density === null ? 2 : order[a.density]) - (b.density === null ? 2 : order[b.density]) || a.source_table.localeCompare(b.source_table) || a.record_id.localeCompare(b.record_id))
   const total_matching = sources.reduce((n, source) => n + Number(source.total), 0)
   return { view, chart_id, manifest_id: manifest?.manifest_id ?? null, manifest,
     generation: manifest?.generation ?? null, empty_reason: !manifest ? 'unpublished' : !rows.length ? 'no_matching_rows' : null,
-    rows, density, coverage: manifest ? snapshot.coverage : [],
+    rows, density, catalog_only_rows_in_page: density.catalog_only + density.unknown, coverage: manifest ? snapshot.coverage : [],
     pagination: { total_matching, returned: rows.length, more_available: sources.some(source => Number(source.total) > offset + source.rows.length) },
     sources: sources.map(s => ({ table: s.table, total_matching: Number(s.total), returned: s.rows.length })),
-    judgment_flags: [ ...(density.catalog_only ? ['catalog_only_rows_present'] : []),
+    judgment_flags: [ ...(density.catalog_only + density.unknown ? ['catalog_only_rows_present'] : []),
+      ...(density.unknown ? ['stored_tier_contract_unavailable'] : []),
       ...(density.context_only ? ['context_only_rows_present'] : []), ...(!snapshot.coverage.length ? ['coverage_unavailable'] : []) ],
   }
 }
@@ -240,16 +242,9 @@ export function viewSql(spec: ViewSpec): string {
              AND ($6::text IS NULL OR d.assertion_id = $6)
              AND d.assertion->'roots'->'contact_ids' ? s.contact_id))`
         : '($5::text IS NULL AND $6::text IS NULL)'
-    const rank = source.assertion
-      ? `CASE WHEN s.generation = p.generation AND s.generation <> '3.0'
-          AND s.assertion->>'operator_role' = 'scored'
-          AND s.assertion->>'role' IN ('conditions', 'qualifies', 'corroborates', 'explains')
-          AND (COALESCE(jsonb_array_length(s.assertion->'roots'->'fact_ids'), 0)
-            + COALESCE(jsonb_array_length(s.assertion->'roots'->'contact_ids'), 0)
-            + COALESCE(jsonb_array_length(s.assertion->'roots'->'record_ids'), 0)) > 0
-          AND COALESCE(s.assertion->'payload'->>'effective_state', '')
-            NOT IN ('information_unavailable', 'method_inapplicable', 'outside_risk_set') THEN 0
-          WHEN s.assertion->>'operator_role' = 'testimony' THEN 1 ELSE 2 END` : '2'
+    // No selected table has an admitted tier column. Keep unknown rows in
+    // stable catalog order before pagination; never rank verification proxies.
+    const rank = '2'
     return `source_${i} AS NOT MATERIALIZED (
       SELECT to_jsonb(s)${table === 'kala_jivana_parva' ? ` || jsonb_build_object('convergence_source_available',
         EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid))` : ''} AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
@@ -308,7 +303,9 @@ function inputs(spec: ViewSpec, args: Data): unknown[] {
   return [text('chart_id'), at, from, to, text('event_class') || null, text('assertion_id') || null, limit, offset, table || null, record || null]
 }
 
-export function makeView(spec: ViewSpec): CapabilityDescriptor {
+export function makeView(spec: ViewSpec): CapabilityDescriptor & { density_contract: StageDensityContract } {
+  const density_contract: StageDensityContract = { paginated: true, facets: ['event_class', 'source_table'],
+    empty_reason: true, stored_tier_columns: [], unavailable_sources: [...spec.sources] }
   return {
     uri: viewRoutes[spec.name].stage_uri, type: 'tool', layer: 'L3', name: `${spec.name}_read`,
     description: `${spec.description} Reads published Kāla stages and manifest; older unbound rows are context only.`,
@@ -329,10 +326,11 @@ export function makeView(spec: ViewSpec): CapabilityDescriptor {
       },
       provenance_requirements: ['chart_id', 'manifest_id', 'generation', 'assertion.roots'],
       freshness_policy: 'Read one current published-head SQL snapshot; no private candidate is an answer.',
-      entitlement: 'native', safety_notes: ['Legacy rows are context only; geometry is testimony, not a scored conclusion.'],
+      entitlement: 'native', safety_notes: ['Legacy rows are context only; Unbound geometry has unknown density.'],
       known_gaps: ['MCP aliases and public bridge activation belong to K7-1b.',
         'Published-generation availability has no planner receipt contract in this fixture slice.',
-        'Per-source pagination is bounded; a page count is not a whole-result evidence count.'],
+        'Per-source pagination is bounded; a page count is not a whole-result evidence count.',
+        'Selected stage tables lack admitted producer/schema/declaration tier bindings; density is unknown.'],
       availability_dispositions: [{ binding_id: `registry:marsys://tool/L3/${spec.name}_read`,
         status: 'deliberately_dark', reason: 'Registry fixture reach is tested; planner answer readiness awaits a published-generation receipt contract and the serving handover.',
         source_refs: ['00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md#§5',
@@ -340,7 +338,7 @@ export function makeView(spec: ViewSpec): CapabilityDescriptor {
       }], editorial: true,
     }],
     annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
-    density_contract: { paginated: true, facets: ['event_class', 'source_table'], empty_reason: true },
+    density_contract,
     input_schema: {
       chart_id: { type: 'string', required: true, description: 'Explicit chart UUID.' },
       at: { type: 'string', description: 'Exact ISO instant with timezone for NOW; intervals are half open.' },

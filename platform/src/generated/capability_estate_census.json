@@ -22223,7 +22223,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "e818eab6f310b40019bc63dd062325fc4be1fd444854868462ca91013623138d"
+        "sha256": "d237cbf5773555c752a6fd9fcbf077322d7616db7c80d8e78a81aab4f40aecc8"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22676,7 +22676,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/published_now.ts",
-            "sha256": "0e1408e06089d6af85d4bf675aa980a70b1c66333411bd4c490ef96b5f5b613d"
+            "sha256": "9f4335c974a5b553635ac725b8273dd8e1f697fe1538aa1d4a63f59f965738ed"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
@@ -22688,7 +22688,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/registry_alias.vitest.config.ts",
-            "sha256": "94949a14bab780d8ddbf3b67e15a47bb2f316fc474577800943a5529b4b39d05"
+            "sha256": "a463f6d939579c55fd031328a08a12a24ffcc604b5adcf81190caa7118cb4739"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ritual.ts",
@@ -22832,7 +22832,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "c5b41502e26f59cba213006e4377816d89fd73c16dc8826ebdd89486108c72ee"
+        "sha256": "7616b001662761e98979d097c9d01c2fdb775566775d66fb66653482778c72f1"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23502,7 +23502,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "453b5b04e61cad9829641834526eebfdc788c0d38be0e4155f0551042305de41"
+            "sha256": "37e08ee50166b1e220b03ab149025e32bd001355a1531688d1a88bdee729bf85"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23718,7 +23718,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "cf716cb4707c32b9448e867be3527c7913611013d4e4e5d8d42033e410067145"
+        "sha256": "e806930c222d885e8a187094336488ad0fe55d3e024aa4c6e291e22bb0ef0484"
       },
       {
         "id": "service_effect_contracts",

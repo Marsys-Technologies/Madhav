@@ -83,3 +83,28 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('a private candidate is unavail
   expect(await installedNow('evaluated_silent', false))
     .toMatchObject({ status: 'information_unavailable', empty_reason: 'unpublished', snapshot: null })
 })
+
+// Offline contract check complements (never replaces) the gated real-SQL oracles.
+// It makes this named file executable when the sandbox forbids database clients.
+it('NOW emits no role/root ranking for a stage without admitted tier proof', async () => {
+  db.mockReset().mockResolvedValueOnce({ rows: [{
+    manifest: { manifest_id: build, generation: 'CODEX-published' }, coverage: [],
+    sources: [{ table: 'kala_obstruction', total: 1, rows: [{
+      id: '1', generation: 'CODEX-published', assertion: {
+        operator_role: 'scored', role: 'corroborates', roots: { fact_ids: ['CODEX-fact'] },
+        payload: { effective_state: 'information_unavailable', release: { instant: null } },
+      },
+    }] }],
+  }] })
+  const response = await nowViewCapability.handler!({ chart_id: chart, at }, {})
+  expect(response.content).toMatchObject({ density: { confirmed: 0, unknown: 1 },
+    catalog_only_rows_in_page: 1, rows: [{ density: null, data: { assertion: { payload: {
+      effective_state: 'information_unavailable', release: { instant: null },
+    } } } }] })
+  const sql = db.mock.calls[0][0]
+  expect(sql).toContain("c.state = 'published'")
+  expect(sql).toContain('s.generation = p.generation')
+  expect(sql).toContain('2 AS tier_order')
+  expect(sql).not.toContain("s.assertion->>'operator_role'")
+  expect(sql).not.toContain('jsonb_array_length')
+})

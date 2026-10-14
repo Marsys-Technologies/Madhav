@@ -48,8 +48,8 @@ export function publishedNowDisclosure(
   return { at, capability: 'marsys://tool/L3/now_read',
     status: source.rows.length ? 'published' : 'information_unavailable',
     empty_reason: source.empty_reason as string | null, snapshot: { ...source,
-      // The dependency's reader still infers tiers from roles/roots. KYD-125
-      // forbids exposing those as density proof through this new public path.
+      // KYD-125 still requires admitted producer/schema/declaration tier pins.
+      // This public boundary independently withholds unavailable proof.
       // Do not substitute catalog_only either: the producer has not classified
       // the row. Raw stored data, provenance and context disclosure stay intact.
       density: null, density_reason: 'stored_tier_contract_unavailable',
