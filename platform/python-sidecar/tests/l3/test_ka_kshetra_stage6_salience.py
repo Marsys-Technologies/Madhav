@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 Tests for services.ka_kshetra.stage6_salience — KALA_W2_FIELD_DESIGN_v1_0.md §6.1.
 
 Most tests here are pure (no DB) since stage6_salience.py is a pure
@@ -31,10 +36,6 @@ from services.ka_kshetra.stage6_salience import (
     compute_salience_vector,
 )
 
-_DSN = os.environ.get(
-    "LANE_D_COHORT_DSN",
-    "postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532",
-)
 
 
 class TestComputeInformativeness:
@@ -241,11 +242,7 @@ class TestComputeDomainsTouchedRealData:
     """Against the REAL seeded brahma_event_ontology (migration 388)."""
 
     def _connect(self):
-        try:
-            import psycopg2
-            return psycopg2.connect(_DSN)
-        except Exception as exc:  # pragma: no cover
-            pytest.skip(f"throwaway Postgres not available: {exc}")
+        pytest.skip('K0A-R1 NOT_RUN: requires an isolated fixture seeded from authoritative brahma_event_ontology migration 388 with its adjacency corpus; schema-only SQL acceptance does not prove these source-data expectations (B.10).')
 
     def test_career_change_touches_career_domain_only_for_resolvable_adjacency(self):
         """

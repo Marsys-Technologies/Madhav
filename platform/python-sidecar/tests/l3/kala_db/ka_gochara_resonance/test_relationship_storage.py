@@ -6,13 +6,13 @@ from types import SimpleNamespace
 import psycopg
 import pytest
 
-from tests.l3.kala_db.conftest import kala_db_dsn  # guarded disposable-server fixture
 from services.ka_gochara_resonance.writer import KaGocharaResonanceWriter
+from tests.l3.kala_db._schema import apply_schema_migration
 
 CHART = '00000000-0000-4000-8000-000000000384'
 BUILD = '00000000-0000-4000-8000-000000000385'
 AYAN = 'lahiri_chitrapaksha'
-MIGRATION = Path(__file__).resolve().parents[4] / 'migrations/1342_k2_2_f1_relationships.sql'
+MIGRATION = Path(__file__).resolve().parents[5] / 'migrations/1342_k2_2_f1_relationships.sql'
 
 
 def api():
@@ -22,8 +22,8 @@ def api():
 
 
 @pytest.fixture
-def db(kala_db_dsn):
-    with psycopg.connect(kala_db_dsn) as conn:
+def db(isolated_kala_db_dsn):
+    with psycopg.connect(isolated_kala_db_dsn) as conn:
         conn.execute('''CREATE TABLE kala_layer_head(chart_id uuid PRIMARY KEY, generation text);
           CREATE TABLE kala_layer_candidate(chart_id uuid, generation text, state text, build_id uuid,
             PRIMARY KEY(chart_id,generation));
@@ -37,7 +37,7 @@ def db(kala_db_dsn):
 
 def migrate(conn):
     assert MIGRATION.exists(), 'K2-2 additive migration is missing'
-    conn.execute(MIGRATION.read_text())
+    apply_schema_migration(conn, MIGRATION)
 
 
 def projection():
@@ -189,5 +189,6 @@ def test_same_physical_object_two_roles_persist_as_two_edges(db):
 def test_store_has_no_independent_commit(db):
     migrate(db)
     store(db)
+    schema = db.execute("SELECT current_schema()").fetchone()[0]
     db.rollback()
-    assert db.execute("SELECT to_regclass('public.kala_f1_target_object')").fetchone()[0] is None
+    assert db.execute("SELECT to_regclass(%s)", (f"{schema}.kala_f1_target_object",)).fetchone()[0] is None

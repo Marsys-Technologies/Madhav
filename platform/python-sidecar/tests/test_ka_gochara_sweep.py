@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 tests/test_ka_gochara_sweep.py — D-5 Lane G-4 "Forward sweep + serving" tests.
 
 No DATABASE_URL required for the bulk of this suite — `shape_output.py` is a
@@ -813,25 +818,8 @@ def test_consolidation_three_year_span_converges_regardless_of_dispatch_order(mo
 
 # ── integration (live proxy, excluded by -m "not integration") ───────────
 
-LIVE_DSN = os.environ.get("DATABASE_URL", "")
 
 
 @pytest.mark.integration
 def test_live_sweep_small_window_marriage_specimen():
-    import psycopg
-    from services.ka_gochara_sweep.sweep import sweep_event_class_chunk
-
-    try:
-        conn = psycopg.connect(LIVE_DSN, connect_timeout=10, row_factory=psycopg.rows.dict_row)
-    except Exception:
-        pytest.skip("live DB proxy not reachable")
-    try:
-        start_jd = _jd(2013, 11, 15)
-        end_jd = _jd(2013, 12, 31)
-        rows = sweep_event_class_chunk(swe, conn, CHART_ID, "marriage", start_jd, end_jd, step_days=1.0)
-        assert isinstance(rows, list)
-        for r in rows:
-            assert r["temporal_shape"] == "point"
-            assert r["window_start"] == r["window_end"]
-    finally:
-        conn.close()
+    pytest.skip('K0A-R1 NOT_RUN: requires an authenticated isolated native chart_facts, dasha and resonance-target fixture; production access is forbidden and no native data is fabricated (B.10).')

@@ -49,11 +49,18 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
             result = interpret(value)
             if result is None:
                 continue
+            assertion = result.model_dump(mode='json')
+            # PG16 JSONPath .datetime() rejects Pydantic's UTC "Z" suffix.
+            # Preserve each evidence instant with an explicit numeric offset
+            # so migration 1374 can check its half-open interval overlap.
+            for payload, edge in zip(assertion['protections'], result.protections):
+                payload['interval'] = {key: getattr(edge.interval, key).isoformat()
+                                       for key in ('t0', 't1')}
             row = {key: getattr(result, key) for key in ('generation','assertion_id','event_class_id',
                    'exposure','knowledge','rule_conclusion','defeat_state','effective_state','measurement',
                    'what','by_what','null_reason','release_reason')}
             row.update(chart_id=chart, negative_space_contract_version=VERSION,
-                       assertion=Jsonb(result.model_dump(mode='json')),
+                       assertion=Jsonb(assertion),
                        roots=Jsonb(result.roots.model_dump(mode='json')),
                        release=Jsonb(result.release.model_dump(mode='json')),
                        interval_start=result.interval.t0, interval_end=result.interval.t1,
