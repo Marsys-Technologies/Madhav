@@ -94,6 +94,10 @@ describe('query_temporal_activation bounded temporal closure', () => {
     ['missing_defeat_facts', null],
     ['conditions_unassessed', 'two_pass_verified'],
     ['conditions_unassessed', null],
+    ['defeat_evidence_missing', 'two_pass_verified'],
+    ['defeat_evidence_missing', null],
+    ['defeat_evidence_ambiguous', 'two_pass_verified'],
+    ['defeat_evidence_ambiguous', null],
   ])('preserves %s with yoga tier %s in the unavailable layer', async (reason, tier) => {
     const evidence = { null_reason: reason, conclusion_ids: ['c:for', 'c:against'], defeat_ids: ['d:1'] }
     const yoga = { id: 'a-unassessed', signature_class: 'YOGA', derivation_ledger_jsonb: {
