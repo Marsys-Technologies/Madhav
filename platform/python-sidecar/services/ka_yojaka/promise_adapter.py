@@ -91,7 +91,8 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
     Cancellation adapter contract: L0 bhanga_rules_jsonb must name kind, rule_id,
     version, locator, target canonical yoga and event class. L1 grounds_jsonb
     must separately name cancellation_evidence[{rule_id,fact_ids}]. Older
-    producers without that information are unqualified, never guessed. NBRY's
+    producers without a sourced target are unqualified, never guessed. A named
+    fired target with absent/ambiguous evidence stays unresolved. NBRY's
     flag describes its own formation; only a separately identified target can
     be defeated. These contracts do not write or alter either source layer.
     """
@@ -180,26 +181,33 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             if not isinstance(spec, dict) or not all(spec.get(k) for k in (
                 "rule_id", "rule_version", "source_locator", "target_yoga_canonical_id", "target_event_class_id")):
                 continue
-            # A matching L1 evaluation is mandatory; no substring matching.
-            records = [e for e in evidence if e.get("rule_id") == spec["rule_id"]]
-            if len(records) != 1 or firing.get("bhanga_rule_fired") != spec["rule_id"] or spec.get("kind") not in {"defeats", "excepts"}:
+            # The fired rule must match exactly; evidence cardinality cannot
+            # erase its separately named target.
+            if firing.get("bhanga_rule_fired") != spec["rule_id"] or spec.get("kind") not in {"defeats", "excepts"}:
                 continue
             if canonical == "neecha_bhanga_raja_yoga" and spec["target_yoga_canonical_id"] == canonical:
                 continue
             cid = f"{ayan}:{spec['target_yoga_canonical_id']}:{spec['target_event_class_id']}:conclusion"
             target = by_conclusion.get(cid)
-            refs = _ids(records[0].get("fact_ids"))
             if not target or target["conclusion_id"] not in graphs[ayan].conclusions:
                 continue
+            records = [e for e in evidence if isinstance(e, dict) and e.get("rule_id") == spec["rule_id"]] if isinstance(evidence, list) else []
+            evidence_reason = (UnassessedReason.DEFEAT_EVIDENCE_MISSING if not records else
+                               UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS if len(records) > 1 else None)
+            # (I) INTERPRETATION: duplicate records, even identical ones, remain
+            # ambiguous. Their union of ids is audit data, never earned grounding.
+            refs = _ids([fact_id for record in records for fact_id in _ids(record.get("fact_ids"))])
             # Retain named evidence even when its roots are missing: the graph
             # earns defeat only after grounding, otherwise it reports unresolved.
             # (I) INTERPRETATION: identify each evidence row by its L1 firing id,
             # target conclusion, kind and sourced rule id.
             defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"],
-                defeat_id=f"ga_yoga_firings:{firing['id']}:{cid}:{spec['kind']}:{spec['rule_id']}")
+                defeat_id=f"ga_yoga_firings:{firing['id']}:{cid}:{spec['kind']}:{spec['rule_id']}",
+                evidence_reason=evidence_reason)
             graphs[ayan].add_defeat(defeat)
             target[spec["kind"]].append({**asdict(defeat), "fact_ids": list(refs),
-                "rule_version": spec["rule_version"], "source_locator": spec["source_locator"]})
+                "rule_version": spec["rule_version"], "source_locator": spec["source_locator"],
+                "evidence_records": [dict(record) for record in records]})
             retained = True
         if not retained and canonical != "neecha_bhanga_raja_yoga":
             for row in output:
@@ -216,6 +224,9 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                     conclusion_ids=list(result.conclusion_ids), defeat_ids=list(result.defeat_ids))
                 if result.null_reason is UnassessedReason.MISSING_DEFEAT_FACTS:
                     row['effective_reason']['missing_fact_ids'] = list(result.missing_fact_ids)
+                if result.null_reason in {UnassessedReason.DEFEAT_EVIDENCE_MISSING,
+                                          UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS}:
+                    row['effective_reason']['evidence_fact_ids'] = list(result.evidence_fact_ids)
                 row['null_reason'] = result.null_reason.value
                 row['judgment_flags'].append(result.null_reason.value)
             row["scored"] = row["effective_state"] == "in_force"
