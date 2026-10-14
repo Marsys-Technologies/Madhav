@@ -239,7 +239,8 @@ def test_jury_coverage_and_provenance_carried_without_qualification_order():
     assert annotations["witness_signature"] == ["G-J"]
 
 
-def test_authenticated_route_mount_and_validation(monkeypatch):
+@pytest.fixture
+def tulana_client(monkeypatch):
     import sys
     from types import ModuleType
     import dotenv
@@ -248,18 +249,47 @@ def test_authenticated_route_mount_and_validation(monkeypatch):
     monkeypatch.setenv("PYTHON_SIDECAR_API_KEY", "fixture-key")
     monkeypatch.setitem(sys.modules, "asyncpg", ModuleType("asyncpg"))
     from fastapi.testclient import TestClient
-    from main import app, verify_api_key
-    client = TestClient(app)
-    assert client.post("/api/compute/tulana_compare", json={"windows": []}).status_code in (401, 403)
-    app.dependency_overrides[verify_api_key] = lambda: None
-    try:
-        response = client.post("/api/compute/tulana_compare", json={"windows": [window()], "date_from": FROM, "date_to": TO})
-        assert response.status_code == 200
-        assert response.json()["front"] == ["A"]
-        assert client.post("/api/compute/tulana_compare", json={"windows": [window()], "date_from": FROM,
-            "date_to": FROM}).status_code == 422
-    finally:
-        app.dependency_overrides.pop(verify_api_key, None)
+    import main
+    # main may already have been imported by another test during collection.
+    # The existing sidecar guard reads this cached value, not the environment.
+    monkeypatch.setattr(main, "API_KEY", "fixture-key")
+    return TestClient(main.app)
+
+
+def test_mounted_compute_routes_reject_unauthenticated_requests(tulana_client):
+    paths = tulana_client.app.openapi()["paths"]
+    assert "/api/compute/tulana_compare" in paths
+    for path, operations in paths.items():
+        if not path.startswith("/api/compute/"):
+            continue
+        for method in operations:
+            if method not in {"get", "post", "put", "patch", "delete"}:
+                continue
+            response = tulana_client.request(method, path, json={})
+            assert response.status_code in (401, 403), (method, path, response.status_code)
+
+
+@pytest.mark.parametrize("headers", [{}, {"x-api-key": ""}, {"x-api-key": "wrong-key"}])
+def test_tulana_route_rejects_missing_or_invalid_credentials(tulana_client, headers):
+    response = tulana_client.post("/api/compute/tulana_compare", headers=headers,
+        json={"windows": [window()], "date_from": FROM, "date_to": TO})
+    assert response.status_code in (401, 403)
+
+
+def test_tulana_route_authenticated_happy_path(tulana_client):
+    response = tulana_client.post("/api/compute/tulana_compare",
+        headers={"x-api-key": "fixture-key"},
+        json={"windows": [window()], "date_from": FROM, "date_to": TO})
+    assert response.status_code == 200
+    assert response.json()["front"] == ["A"]
+
+
+def test_authenticated_route_mount_and_validation(tulana_client):
+    assert tulana_client.post("/api/compute/tulana_compare", json={"windows": []}).status_code in (401, 403)
+    response = tulana_client.post("/api/compute/tulana_compare",
+        headers={"x-api-key": "fixture-key"},
+        json={"windows": [window()], "date_from": FROM, "date_to": FROM})
+    assert response.status_code == 422
 
 
 def test_allocated_probe_migration_is_the_same_independent_oracle():
