@@ -75,3 +75,23 @@ def test_defeat_alters_only_its_target_conclusion_and_keeps_formation_present():
     subject.defeats.append(Defeat("c:career", (FACT_ID,), "L0:R-2"))
     assert subject.effective_state("c:career", {FACT_ID}) is EffectiveState.DEFEATED
     assert subject.effective_state("c:other", {FACT_ID}) is EffectiveState.IN_FORCE
+
+
+@pytest.mark.parametrize('state', [FactState.EVALUATED_EMPTY, FactState.MISSING_FACT])
+def test_empty_candidate_never_in_force(state):
+    subject = graph()
+    subject.conclusions['c:career'] = Conclusion('c:career', 'm:career', state, (FACT_ID,))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.UNRESOLVED
+
+
+def test_additional_unknown_defeat_does_not_weaken_full_defeat():
+    subject = graph()
+    subject.add_defeat(Defeat('c:career', (FACT_ID,), 'full'))
+    subject.add_defeat(Defeat('c:career', ('missing',), 'unknown'))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.DEFEATED
+
+
+def test_unknown_defeating_evidence_is_unresolved_not_in_force():
+    subject = graph()
+    subject.add_defeat(Defeat('c:career', ('missing',), 'unknown'))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.UNRESOLVED

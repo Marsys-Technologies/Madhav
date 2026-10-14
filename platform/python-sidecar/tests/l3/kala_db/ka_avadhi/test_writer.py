@@ -42,13 +42,13 @@ def seed(conn, *, migrate=True):
     conn.execute("INSERT INTO asset_registry VALUES ('ka_avadhi',%s,ARRAY['ga_dashas'],NULL)", (check,))
     if migrate:
         conn.execute((PLATFORM / 'migrations/1341_k1_2_avadhi_candidate_dossiers.sql').read_text())
-    pins = {'f2': {'build_id': DASHA, 'ayanamsha_id': AYA, 'tier': 'verified', 'systems': ['vimshottari']},
-            'natal': {'build_id': NATAL, 'ayanamsha_id': AYA, 'tier': 'verified'}, 'node_model': 'mean'}
+    pins = {'f2': {'build_id': DASHA, 'ayanamsha_id': AYA, 'tier': 'two_pass_verified', 'systems': ['vimshottari']},
+            'natal': {'build_id': NATAL, 'ayanamsha_id': AYA, 'tier': 'two_pass_verified'}, 'node_model': 'mean'}
     conn.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building',%s)", (CHART, GEN, BUILD, Jsonb(pins)))
     for row_id, lord, level, parent, start, end in [
         (MD, 'Mars', 1, None, '1999-01-01T12:00:00Z', '2002-01-01T12:00:00Z'),
         (AD, 'Venus', 2, MD, '2000-01-01T12:00:00Z', '2001-01-01T12:00:00Z')]:
-        conn.execute('''INSERT INTO chart_dashas VALUES (%s,%s,%s,%s,'verified','vimshottari',%s,%s,%s,
+        conn.execute('''INSERT INTO chart_dashas VALUES (%s,%s,%s,%s,'two_pass_verified','vimshottari',%s,%s,%s,
             %s,%s,%s::timestamptz::date,%s::timestamptz::date,true,false,false,'friend')''',
             (row_id, CHART, DASHA, AYA, level, lord, parent, start, end, start, end))
         conn.execute('''INSERT INTO kala_avadhi(chart_id,system_id,level_n,lord_graha,period_start,period_end,dossier)
@@ -57,10 +57,10 @@ def seed(conn, *, migrate=True):
                 {'fact_id': f'CODEX-{lord}-house', 'fact_subject': 'MAR' if lord == 'Mars' else 'VEN'}]})))
     for graha, code, house in [('Mars', 'MAR', 3), ('Venus', 'VEN', 7)]:
         for key, value in [('house_d1', house), ('longitude_sidereal', 12), ('retrograde_flag', 'direct')]:
-            conn.execute('''INSERT INTO chart_facts VALUES (%s,%s,%s,%s,'verified','graha_position',%s,%s,%s,%s,NULL,'CODEX-l1')''',
+            conn.execute('''INSERT INTO chart_facts VALUES (%s,%s,%s,%s,'two_pass_verified','graha_position',%s,%s,%s,%s,NULL,'CODEX-l1')''',
                 (f'CODEX-{graha}-house' if key == 'house_d1' else f'CODEX-{graha}-{key}', CHART, NATAL, AYA, code, key,
                  value if isinstance(value, str) else None, value if isinstance(value, int) else None))
-    conn.execute("INSERT INTO chart_facts VALUES ('CODEX-Mars-dignity',%s,%s,%s,'verified','graha_dignity_per_varga','D1_MAR','dignity_state','own',NULL,'{\"varga\":\"D1\"}','CODEX-l1')", (CHART, NATAL, AYA))
+    conn.execute("INSERT INTO chart_facts VALUES ('CODEX-Mars-dignity',%s,%s,%s,'two_pass_verified','graha_dignity_per_varga','D1_MAR','dignity_state','own',NULL,'{\"varga\":\"D1\"}','CODEX-l1')", (CHART, NATAL, AYA))
     ledger = {'constituent_planets': ['Mars'], 'fact_ids': ['CODEX-Mars-house'], 'source': 'CODEX-rule',
               'graph_edges': [{'polarity': 'supports'}], 'rule_version': 'v1'}
     conn.execute("INSERT INTO kala_activation_predicates VALUES (%s,%s,%s,%s,'CODEX-f1','admitted','major_gain',%s,%s)",

@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+
 import pipeline.orchestrator.writers.ka_avadhi as avadhi
 import pipeline.orchestrator.writers.ka_yojaka as yojaka
 import services.ka_gochara_resonance.writer as resonance
@@ -249,16 +251,28 @@ def test_avadhi_preserves_published_rows_without_build_candidate():
     assert conn.mutations == []
 
 
-def test_avadhi_preserves_candidate_if_pinned_period_is_invalid():
+@pytest.mark.parametrize(
+    ("tier", "row_build", "error_type", "message"),
+    [
+        (TWO_PASS_VERIFIED, "f2-build", RuntimeError,
+         "pinned chart_dashas row has a non-positive period"),
+        ("L1", "f2-build", avadhi.clocks.ClockUnavailable, "tier_unavailable"),
+        (TWO_PASS_VERIFIED, "other-build", avadhi.clocks.ClockUnavailable, "build_not_pinned"),
+    ],
+    ids=["invalid-period", "unsupported-tier-first", "wrong-build-first"],
+)
+def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message):
     pins = {
         "f2": {"build_id": "f2-build", "ayanamsha_id": "lahiri",
-               "tier": "L1", "systems": ["vimshottari"]},
-        "natal": {"build_id": "natal-build", "ayanamsha_id": "lahiri", "tier": "L1"},
+               "tier": tier, "systems": ["vimshottari"]},
+        "natal": {"build_id": "natal-build", "ayanamsha_id": "lahiri", "tier": TWO_PASS_VERIFIED},
         "node_model": "mean",
     }
     invalid = {"system_id": "vimshottari", "level_n": 1,
                "dasha_row_id": "period-1", "start_iso": "2027-01-01T00:00:00Z",
-               "end_iso": "2026-01-01T00:00:00Z"}
+               "end_iso": "2026-01-01T00:00:00Z",
+               "build_id": row_build, "ayanamsha_id": "lahiri",
+               "verification_pass_status": TWO_PASS_VERIFIED}
     conn = RecordingConnection([
         [{"generation": "candidate-1", "state": "building", "conventions": pins}],
         [], [invalid], [], [],
@@ -266,7 +280,10 @@ def test_avadhi_preserves_candidate_if_pinned_period_is_invalid():
     ctx = _ctx(conn)
     ctx.build_id = "candidate-build"
 
-    with pytest.raises(avadhi.clocks.ClockUnavailable, match="non-positive F2 period"):
+    # (I) INTERPRETATION: admit the F2 tier/build before inspecting its
+    # intervals (ALGO v1.1 §3.1). A malformed admitted row is rejected by
+    # the clock reader before the writer can construct its index or mutate.
+    with pytest.raises(error_type, match=f"^{message}$"):
         avadhi.KaAvdhiWriter().run(ctx)
 
     assert conn.mutations == []

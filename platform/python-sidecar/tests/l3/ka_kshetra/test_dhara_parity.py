@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 tests/l3/ka_kshetra/test_dhara_parity.py — SAMPURTI-D2 V3 PARITY BATTERY
 
 Compares DHARA analytic engine outputs against the frozen sampled-engine golden
@@ -117,17 +122,7 @@ def _load_fixtures() -> dict[str, dict]:
 
 
 def _active_fixtures() -> list[dict]:
-    """Return all non-skipped fixtures (rare_event skipped=True excluded).
-
-    Requires PARITY_DB_TEST=1 to activate — the fixture-comparison path calls
-    dhara_build_segments() which needs a DB-backed FieldEvaluator.  Without
-    the env var the E1-E5 tests return no pairs to compare and pass trivially,
-    preserving CI greenness without a false parity signal.
-    """
-    if not os.environ.get("PARITY_DB_TEST"):
-        return []
-    all_fx = _load_fixtures()
-    return [v for v in all_fx.values() if not v.get("skipped")]
+    pytest.skip('K0A-R1 NOT_RUN: native parity needs authenticated isolated upstream inputs matching the frozen goldens; an empty comparison is not acceptance (B.10).')
 
 
 # ---------------------------------------------------------------------------
@@ -230,82 +225,11 @@ def _build_field_evaluator(conn, chart_id: str, event_class: str):
 
 
 def _call_dhara(fixture: dict) -> list[dict]:
-    """Invoke DHARA for the given fixture and return window dicts.
-
-    When DHARA is available AND PARITY_DB_TEST=1 AND DATABASE_URL is set,
-    constructs a FieldEvaluator from the live DB and calls dhara_build_segments.
-    Returns windows in the same format as the golden fixtures:
-        window_start, window_end, peak_days, expected_count,
-        is_suppression_active (bool)
-
-    Without PARITY_DB_TEST=1+DATABASE_URL: skips (no false parity signal).
-    """
-    # This function is only reached when dhara_available=True (pytestmark
-    # ensures the whole module is skipped otherwise).
-    from services.ka_kshetra.dhara_sweep import dhara_build_segments  # noqa: F811
-    from services.ka_kshetra import integrator as I
-
-    chart_id = fixture["chart_id"]
-    event_class = fixture["event_class"]
-    decade_start = fixture["decade_start_days"]
-    decade_end = fixture["decade_end_days"]
-
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        pytest.skip(
-            "DATABASE_URL not set — cannot construct FieldEvaluator for DHARA. "
-            f"Fixture: {chart_id}:{event_class}:{fixture.get('decade_index', '?')}. "
-            "Set DATABASE_URL=... PARITY_DB_TEST=1 to activate parity comparison."
-        )
-
-    import psycopg
-    import psycopg.rows
-    with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
-        evaluator = _build_field_evaluator(conn, chart_id, event_class)
-    segments = dhara_build_segments(evaluator)
-    if not segments:
-        return []
-
-    # Derive q the same way the sampled engine does in the golden generator.
-    n_steps = max(1, int(round(decade_end - decade_start)))
-    lambdas = [I.lambda_at(segments, float(decade_start + k)) for k in range(n_steps + 1)]
-    lambdas_sorted = sorted(lambdas)
-    q_idx = max(0, math.ceil(0.50 * len(lambdas_sorted)) - 1)
-    q = lambdas_sorted[q_idx]
-    if q <= 0.0:
-        q = math.exp(segments[0].alpha) * 0.5
-
-    raw_windows = I.find_windows(segments, q)
-    return [
-        {
-            "window_start": w.t_start,
-            "window_end": w.t_end,
-            "peak_days": w.t_peak,
-            "expected_count": w.expected_count,
-            "is_suppression_active": getattr(w, "is_suppression_active", False),
-        }
-        for w in raw_windows
-    ]
+    pytest.skip('K0A-R1 NOT_RUN: native DHARA parity requires an authenticated isolated L1 primitives, clocks, ladder, kinematics, weights and promise fixture matching the frozen sampled-engine goldens; synthetic unit scenarios are separate and no native inputs are fabricated (B.10).')
 
 
 def _call_dhara_null_q(fixture: dict) -> float:
-    """Return DHARA-computed null threshold q_e for E4 comparison.
-
-    When DHARA ships stage5_null-equivalent logic, it will expose a q_e
-    surface we compare against fixture['null_stats']['p_value']-derived q_e.
-    Until then, this returns the fixture's own null median as q_e_old so
-    the E4 test can be structurally wired and ready.
-    """
-    ns = fixture.get("null_stats", {})
-    nec = ns.get("null_expected_counts", [])
-    if not nec:
-        return float("nan")
-    # q_e_old = median of null_expected_counts (what the sampled engine stores)
-    sorted_nec = sorted(nec)
-    mid = len(sorted_nec) // 2
-    if len(sorted_nec) % 2 == 1:
-        return sorted_nec[mid]
-    return (sorted_nec[mid - 1] + sorted_nec[mid]) / 2.0
+    pytest.skip('K0A-R1 NOT_RUN: independent DHARA null-threshold computation and authenticated native inputs are unavailable; reusing the sampled fixture median is not a parity oracle (B.10, N.8).')
 
 
 # ---------------------------------------------------------------------------
@@ -1163,8 +1087,8 @@ class TestParityClassified:
 # ===========================================================================
 
 @pytest.mark.skip(reason=(
-    "Integration parity path — requires real DB and PARITY_DB_TEST=1 env var.  "
-    "Run: PARITY_DB_TEST=1 pytest tests/l3/ka_kshetra/test_dhara_parity.py -m integration -v"
+    "K0A-R1 NOT_RUN: native DHARA parity requires authenticated isolated upstream inputs; "
+    "production access is forbidden and no native data is fabricated (B.10)."
 ))
 @pytest.mark.integration
 class TestParityIntegration:
@@ -1178,7 +1102,7 @@ class TestParityIntegration:
     def test_integration_parity_all_fixtures(self, tmp_path):
         """Full integration parity: re-run both engines from DB for all V1 fixtures."""
         if not os.environ.get("PARITY_DB_TEST"):
-            pytest.skip("PARITY_DB_TEST not set")
+            pytest.skip("K0A-R1 NOT_RUN: native DHARA parity requires authenticated isolated upstream inputs; no production access or fabricated native data (B.10).")
 
         all_fx = _load_fixtures()
         all_rows: list[DiffRow] = []

@@ -12,12 +12,15 @@ import hashlib
 import json
 import math
 from collections.abc import Iterable, Mapping
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
 
 from services.gochara_rules.registry import YOGA_EVENT_MAP
 from services.kala_core.promise import (
     Conclusion, Defeat, EdgePolarity, FactState, Mechanism, MechanismRoute,
     PromiseEdge, PromiseGraph, PromiseNode,
 )
+from services.ka_yojaka.structural_adapter import structural_bundle
+from services.ka_yojaka.attachment_adapter import attach_sources
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,7 @@ def _target(fact_ids, facts):
 
 
 def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: Iterable[Mapping],
-                 *, bindings=EVENT_BINDINGS) -> list[dict]:
+                 *, bindings=EVENT_BINDINGS, cgm=(), pratijna=(), served_locators=()) -> list[dict]:
     """Retain formations; compute only sourced, convention-local conclusions.
 
     Cancellation adapter contract: L0 bhanga_rules_jsonb must name kind, rule_id,
@@ -95,6 +98,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
     firings = sorted((r for r in firings if r.get("fired") is True),
                      key=lambda r: (str(r["ayanamsha_id"]), str(r["yoga_canonical_id"])))
     signals = list(signals)
+    cgm, pratijna = list(cgm), list(pratijna)
     graphs: dict[str, PromiseGraph] = {}
     available: dict[str, dict] = {}
     for fact in facts:
@@ -147,6 +151,10 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                 effective_state="unresolved", scored=False, defeats=[], excepts=[],
                 cancellation_unqualified=[], target=_target(fact_ids, local_facts),
                 constituent_planets=list(firing.get("constituent_planets") or []),
+                yoga_tier=firing.get('verification_pass_status'),
+                null_reason=(None if firing.get('verification_pass_status') is not None else
+                             'ga_yoga_firings_carries_no_verification_tier'),
+                judgment_flags=[] if firing.get('verification_pass_status') is not None else ['yoga_tier_unavailable'],
                 attachments=sorted({str(s["signal_id"]) for s in signals
                     if str(s["ayanamsha_id"]) == ayan and fact_ids
                     and set(fact_ids) <= set(_ids(s.get("constituent_facts_array")))}),
@@ -189,10 +197,17 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
         if row["conclusion_id"] in graph.conclusions and row["fact_state"] == "present" and not row["cancellation_unqualified"]:
             row["effective_state"] = graph.effective_state(row["conclusion_id"], available.get(row["ayanamsha_id"], {})).value
             row["scored"] = row["effective_state"] == "in_force"
+    output.extend(structural_bundle(facts, served_locators=served_locators))
     attached = {signal_id for row in output for signal_id in row["attachments"]}
     for signal in sorted(signals, key=lambda s: str(s["signal_id"])):
         signal_id, ayan = str(signal["signal_id"]), str(signal["ayanamsha_id"])
-        if signal_id in attached:
+        config = signal.get('configuration_jsonb') or {}
+        equivalent = any(signal_id in row['attachments']
+                         and config.get('event_class_id') == row['event_class_id']
+                         and not config.get('assumptions') for row in output)
+        # (I) INTERPRETATION: a signal without an event proposal or assumptions
+        # is only an attachment; explicit distinct proposals remain testimony.
+        if signal_id in attached and (equivalent or not config):
             continue
         refs = _ids(signal.get("constituent_facts_array"))
         config = signal.get("configuration_jsonb") or {}
@@ -211,4 +226,15 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             target=_target(refs, available.get(ayan, {})), constituent_planets=[], attachments=[signal_id],
             assumptions=config.get("assumptions"),
         ))
-    return output
+    attach_sources(output, available, signals, cgm, pratijna)
+    return sorted(output, key=mechanism_density_key)
+
+
+def mechanism_density_key(row):
+    """Earned fact verification precedes an unavailable yoga verification tier."""
+    tiers = row.get('constituent_fact_tiers') or {}
+    fact_verified = bool(row.get('fact_ids')) and set(tiers) == set(row['fact_ids']) and all(
+        tier == TWO_PASS_VERIFIED for tier in tiers.values())
+    unverified_yoga = bool(row.get('canonical_id')) and row.get('yoga_tier') != TWO_PASS_VERIFIED
+    rank = 0 if fact_verified and not unverified_yoga else 1 if unverified_yoga else 2
+    return (rank, str(row['mechanism_id']))

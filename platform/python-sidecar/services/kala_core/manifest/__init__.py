@@ -86,11 +86,41 @@ def candidate_generation(ctx: Any) -> str:
     return row[0]
 
 
+def lock_candidate_inputs(conn: Any, candidate: Candidate) -> None:
+    """Serialize receipt reads with evidence changes without broadening role grants.
+
+    The verifier can take this transaction-scoped advisory lock using its
+    existing narrow SELECT/INSERT grants. Writers and publishers take it before
+    their row lock, avoiding inversion with receipt INSERT's candidate FK lock.
+    The caller owns the enclosing transaction.
+    """
+    key = json.dumps([str(candidate.chart_id), candidate.generation], separators=(",", ":"))
+    conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (key,))
+
+
+def _lock_building_candidate(conn: Any, candidate: Candidate) -> None:
+    """Hold the lifecycle row lock until the caller's transaction ends.
+
+    Attestation and publication take the same lock before accessing evidence.
+    A waiter rechecks state after publication commits, so a published candidate
+    cannot acquire a failed grain or a different input vector afterwards.
+    """
+    lock_candidate_inputs(conn, candidate)
+    row = conn.execute(
+        "SELECT state FROM kala_layer_candidate "
+        "WHERE chart_id = %s AND generation = %s AND build_id = %s FOR UPDATE",
+        (candidate.chart_id, candidate.generation, candidate.build_id),
+    ).fetchone()
+    if row is None or row[0] != "building":
+        raise CandidateNotPublishable("only a building candidate bound to this build can be changed")
+
+
 def attest_grain(conn: Any, candidate: Candidate, *, grain_key: str,
                  result_state: str, input_vector: str) -> None:
     """Record every included grain, including an honestly empty result."""
     if not grain_key or result_state not in {"rows", "zero_rows", "failed"} or not input_vector:
         raise ValueError("grain key, result state, and input vector are required")
+    _lock_building_candidate(conn, candidate)
     conn.execute(
         "INSERT INTO kala_layer_candidate_grain "
         "(chart_id, generation, grain_key, result_state, input_vector) VALUES (%s, %s, %s, %s, %s) "
@@ -109,6 +139,7 @@ def publish_candidate(conn: Any, candidate: Candidate, *, expected_grains: Itera
     required = tuple(expected_grains)
     if not required or any(not grain for grain in required):
         raise ValueError("expected grains must be explicit and non-empty")
+    _lock_building_candidate(conn, candidate)
     rows = conn.execute(
         "SELECT grain_key, result_state, input_vector FROM kala_layer_candidate_grain "
         "WHERE chart_id = %s AND generation = %s",
