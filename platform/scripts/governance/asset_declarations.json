@@ -17490,7 +17490,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:95 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_avadhi.py build_dossier composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:172) for antardasha rows; run binds the builder output through dossier=Jsonb(dossier) at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:281 and replace_candidate_partition into kala_avadhi at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:284. The note reads 'AD lord {period[lord_graha]} modulates MD lord {parent}', retaining the AD row's own lord and its parent MD lord. Served legacy rows remain isolated by generation='legacy'; platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:94 selects dossier and :95 reads kala_avadhi. lord_condition_fact_refs and attached_mechanisms are structural evidence, not prose."
+    "prose_fields": "writers/ka_avadhi.py build_dossier composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:197) for antardasha rows; run binds the builder output through dossier=Jsonb(dossier) at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:316 and replace_candidate_partition into kala_avadhi at platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:319. The note reads 'AD lord {period[lord_graha]} modulates MD lord {parent}', retaining the AD row's own lord and its parent MD lord. Served legacy rows remain isolated by generation='legacy'; platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:94 selects dossier and :95 reads kala_avadhi. lord_condition_fact_refs and attached_mechanisms are structural evidence, not prose."
    },
    "evidence_kind": "writer"
   },
@@ -17844,12 +17844,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:388",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389",
    "read_table": "kala_activation_predicates",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_activation_predicates; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:388 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
