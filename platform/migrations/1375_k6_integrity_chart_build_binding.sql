@@ -12,18 +12,21 @@
 -- through the existing registry trigger; no candidate/published/legacy data is modified.
 DO $migration$
 DECLARE
-  old_target constant text := $old$WITH k6_target AS (
+  -- Keep each quoted target query complete for the governance SQL parser.
+  -- Replace its final SELECT to recover the exact stored-detector prefix.
+  old_target constant text := replace($old$WITH k6_target AS (
     SELECT b.chart_id,c.generation,c.conventions FROM public.build_runs b
     LEFT JOIN public.kala_layer_candidate c ON c.chart_id=b.chart_id AND c.build_id=b.id
     ORDER BY b.created_at DESC,b.id DESC LIMIT 1
-  ) SELECT CASE WHEN EXISTS$old$;
-  new_target constant text := $new$WITH k6_target AS (
+  ) SELECT true FROM k6_target$old$, 'SELECT true FROM k6_target', 'SELECT CASE WHEN EXISTS');
+  new_target constant text := replace($new$WITH k6_target AS (
     SELECT b.chart_id,c.generation,c.conventions FROM public.build_runs b
     LEFT JOIN public.kala_layer_candidate c ON c.chart_id=b.chart_id AND c.build_id=b.id
     WHERE b.chart_id = NULLIF(current_setting('kala.integrity_chart_id',true),'')::uuid
       AND b.id = NULLIF(current_setting('kala.integrity_build_id',true),'')::uuid
     ORDER BY b.created_at DESC,b.id DESC LIMIT 1
-  ) SELECT CASE WHEN EXISTS (SELECT 1 FROM k6_target) THEN CASE WHEN EXISTS$new$;
+  ) SELECT true FROM k6_target$new$, 'SELECT true FROM k6_target',
+    'SELECT CASE WHEN EXISTS (SELECT 1 FROM k6_target) THEN CASE WHEN EXISTS');
   asset text;
   stored_sql text;
 BEGIN
