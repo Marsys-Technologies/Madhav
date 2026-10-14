@@ -9,10 +9,11 @@ import pytest
 
 from tests.l3.kala_db.conftest import kala_db_dsn
 from services.ka_vighnakara.model import Finding
-from tests.l3.ka_vighnakara.test_negative_space import finding
+from tests.l3.ka_vighnakara.test_negative_space import finding, protection
 
 ROOT=Path(__file__).parents[3]
 MIGRATION=ROOT.parent/'migrations/1349_k3_1_negative_space_contract.sql'
+EVIDENCE_MIGRATION=ROOT.parent/'migrations/1374_k3_defeating_evidence_guard.sql'
 CHART='00000000-0000-0000-0000-000000000392'
 BUILD='00000000-0000-0000-0000-000000000393'
 GEN='candidate:fixture'
@@ -45,6 +46,7 @@ def database(kala_db_dsn):
         c.execute((ROOT.parent/'migrations/1338_kala_assertion_vertical_slice.sql').read_text())
         assert MIGRATION.exists(), 'K3 additive candidate schema missing'
         c.execute(MIGRATION.read_text())
+        c.execute(EVIDENCE_MIGRATION.read_text())
         c.execute('INSERT INTO charts VALUES (%s)',(CHART,))
         c.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building','{\"fixture\":true}')",(CHART,GEN,BUILD))
     yield kala_db_dsn
@@ -183,3 +185,33 @@ def test_candidate_unknown_release_with_null_reason_refused(conn):
 def test_writer_dry_run_requires_no_inputs():
     from pipeline.orchestrator.writers.ka_vighnakara import KaVighnakaraWriter
     assert KaVighnakaraWriter().run(SimpleNamespace(dry_run=True)).rows_inserted == 0
+
+
+@pytest.mark.parametrize('mutation', [
+    "assertion=jsonb_set(assertion,'{protections}','[]')",
+    "assertion=jsonb_set(assertion,'{protections,0,target_assertion_id}','\"unrelated\"')",
+    "assertion=jsonb_set(assertion,'{protections,0,fact_ids}','[]')",
+    "assertion=jsonb_set(assertion,'{protections,0,kind}','\"contests\"')",
+    "assertion=jsonb_set(assertion,'{protections,0,interval}', '{\"t0\":\"2027-01-01T00:00:00Z\",\"t1\":\"2027-02-01T00:00:00Z\"}')",
+    "roots=jsonb_set(roots,'{fact_ids}','[]')",
+])
+def test_database_cancellation_requires_targeted_retained_evidence(conn,mutation):
+    write(conn,protections=[protection()])
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute('UPDATE kala_obstruction SET '+mutation)
+
+
+def test_evidence_guard_reapplies_without_changing_rows(conn):
+    write(conn,protections=[protection()])
+    before=conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    conn.execute(EVIDENCE_MIGRATION.read_text())
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
+
+
+def test_alias_rejection_preserves_existing_candidate(conn):
+    write(conn,protections=[protection()])
+    before=conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    with pytest.raises(ValueError,match='duplicate physical'):
+        storage()(ctx(conn),[finding(protections=[protection()]),
+            finding(assertion_id='alias',protections=[protection()])])
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
