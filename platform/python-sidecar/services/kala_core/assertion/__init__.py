@@ -7,9 +7,11 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
-from services.kala_core.vocab import EvidenceRole, OperatorRole
+from services.kala_core.vocab import (
+    EvidenceRole, OperatorRole, frame_id, period_lord, system_id,
+)
 
 Ref = Annotated[str, Field(min_length=1, pattern=r"\S")]
 
@@ -30,6 +32,20 @@ class PeriodAnchor(Typed):
     AD: Ref
     PD: Ref | None = None
     applicability: Literal["applicable", "inapplicable", "unknown"]
+
+    @field_validator("system")
+    @classmethod
+    def canonical_system(cls, value: str) -> str:
+        return system_id(value).value
+
+    @field_validator("MD", "AD", "PD")
+    @classmethod
+    def canonical_lord(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value is None or "system" not in info.data:
+            return value
+        # Keep the envelope's string wire format while preserving the method's
+        # distinct graha, sign or Yoginī identity through the canonical adapter.
+        return period_lord(info.data["system"], value).value.value
 
 
 class Interval(Typed):
@@ -157,6 +173,11 @@ class AssertionEnvelope(Typed):
     coverage_ref: Ref
     precision: Precision
     input_vector_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+    @field_validator("frame")
+    @classmethod
+    def canonical_frame(cls, value: str) -> str:
+        return frame_id(value).wire_id
 
 
 class Assertion(AssertionEnvelope):

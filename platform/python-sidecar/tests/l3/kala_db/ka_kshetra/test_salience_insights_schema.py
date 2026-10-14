@@ -1,6 +1,6 @@
 """
 Integration test: rows produced by stage6_salience / stage65_insights
-actually INSERT cleanly into the real migration-487 tables
+actually INSERT cleanly into the real migration-495 tables
 (kala_field_salience, kala_insights) against a live throwaway Postgres --
 not just asserted as Python dicts. This closes the loop between the Python
 computation layer and the SQL schema this PR ships, catching any
@@ -9,15 +9,11 @@ CHECK/NOT NULL mismatch a pure-Python test could miss.
 from __future__ import annotations
 
 import json
-import os
-import sys
+from pathlib import Path
 import uuid
 
+import psycopg
 import pytest
-
-_SIDECAR = os.path.join(os.path.dirname(__file__), "..", "..")
-if _SIDECAR not in sys.path:
-    sys.path.insert(0, _SIDECAR)
 
 from services.ka_kshetra.stage65_insights import (
     ClockAgreement,
@@ -27,26 +23,22 @@ from services.ka_kshetra.stage65_insights import (
 from services.ka_kshetra.stage6_salience import EventOntologyInfo, compute_salience_vector
 from tests.l3.test_ka_kshetra_stage65_insights import _window
 
-_DSN = os.environ.get(
-    "LANE_D_COHORT_DSN",
-    "postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532",
-)
+
+@pytest.fixture(scope="module")
+def schema_dsn(isolated_kala_db_dsn):
+    # The historical test filename called this 487; the checked-in schema
+    # authority for these two tables is 495_kala_field_salience_insights.sql.
+    migration = Path(__file__).resolve().parents[5] / "supabase/migrations/495_kala_field_salience_insights.sql"
+    with psycopg.connect(isolated_kala_db_dsn, autocommit=True) as connection:
+        connection.execute(migration.read_text())
+    return isolated_kala_db_dsn
 
 
 @pytest.fixture
-def conn():
-    try:
-        import psycopg2
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"psycopg2 unavailable: {exc}")
-    try:
-        c = psycopg2.connect(_DSN)
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"throwaway Postgres not available: {exc}")
-    c.autocommit = False
-    yield c
-    c.rollback()
-    c.close()
+def conn(schema_dsn):
+    with psycopg.connect(schema_dsn) as connection:
+        yield connection
+        connection.rollback()
 
 
 @pytest.mark.integration

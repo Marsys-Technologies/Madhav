@@ -7,11 +7,11 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from tests.l3.kala_db.conftest import kala_db_dsn
-from services.ka_vighnakara.model import Finding
+from services.ka_vighnakara.model import Finding, NegativeSpace, interpret
 from tests.l3.ka_vighnakara.test_negative_space import finding, protection
+from tests.l3.kala_db._schema import apply_schema_migration
 
-ROOT=Path(__file__).parents[3]
+ROOT=Path(__file__).parents[4]
 MIGRATION=ROOT.parent/'migrations/1349_k3_1_negative_space_contract.sql'
 EVIDENCE_MIGRATION=ROOT.parent/'migrations/1374_k3_defeating_evidence_guard.sql'
 CHART='00000000-0000-0000-0000-000000000392'
@@ -26,8 +26,8 @@ def storage():
 
 
 @pytest.fixture(scope='module')
-def database(kala_db_dsn):
-    with psycopg.connect(kala_db_dsn) as c:
+def database(isolated_kala_db_dsn):
+    with psycopg.connect(isolated_kala_db_dsn) as c:
         c.execute('''CREATE TABLE charts (id uuid PRIMARY KEY);
           CREATE TABLE kala_obstruction (
             id bigserial PRIMARY KEY, chart_id uuid NOT NULL REFERENCES charts(id),
@@ -43,13 +43,13 @@ def database(kala_db_dsn):
             build_id uuid UNIQUE NOT NULL, state text NOT NULL, conventions jsonb NOT NULL,
             PRIMARY KEY(chart_id,generation));
           CREATE TABLE kala_layer_head (chart_id uuid PRIMARY KEY, generation text NOT NULL);''')
-        c.execute((ROOT.parent/'migrations/1338_kala_assertion_vertical_slice.sql').read_text())
+        apply_schema_migration(c, ROOT.parent/'migrations/1338_kala_assertion_vertical_slice.sql')
         assert MIGRATION.exists(), 'K3 additive candidate schema missing'
-        c.execute(MIGRATION.read_text())
-        c.execute(EVIDENCE_MIGRATION.read_text())
+        apply_schema_migration(c, MIGRATION)
+        apply_schema_migration(c, EVIDENCE_MIGRATION)
         c.execute('INSERT INTO charts VALUES (%s)',(CHART,))
         c.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building','{\"fixture\":true}')",(CHART,GEN,BUILD))
-    yield kala_db_dsn
+    yield isolated_kala_db_dsn
 
 
 @pytest.fixture
@@ -164,7 +164,7 @@ def test_fixture_contract_is_version_pinned():
 
 
 def test_additive_migration_reapplies(conn):
-    conn.execute(MIGRATION.read_text())
+    apply_schema_migration(conn, MIGRATION)
     assert conn.execute("SELECT count(*) FROM pg_constraint WHERE conrelid='kala_obstruction'::regclass AND conname='kala_obstruction_k3_axes_check'").fetchone()[0] == 1
 
 
@@ -192,7 +192,9 @@ def test_writer_dry_run_requires_no_inputs():
     "assertion=jsonb_set(assertion,'{protections,0,target_assertion_id}','\"unrelated\"')",
     "assertion=jsonb_set(assertion,'{protections,0,fact_ids}','[]')",
     "assertion=jsonb_set(assertion,'{protections,0,kind}','\"contests\"')",
-    "assertion=jsonb_set(assertion,'{protections,0,interval}', '{\"t0\":\"2027-01-01T00:00:00Z\",\"t1\":\"2027-02-01T00:00:00Z\"}')",
+    "assertion=jsonb_set(assertion,'{protections,0,interval}', '{\"t0\":\"2027-01-01T00:00:00+00:00\",\"t1\":\"2027-02-01T00:00:00+00:00\"}')",
+    "assertion=jsonb_set(assertion,'{protections,0,interval}', '{\"t0\":\"2026-02-01T00:00:00+00:00\",\"t1\":\"2026-03-01T00:00:00+00:00\"}')",
+    "assertion=jsonb_set(assertion,'{protections,0,interval}', '{\"t0\":\"2025-12-01T00:00:00+00:00\",\"t1\":\"2026-01-01T00:00:00+00:00\"}')",
     "roots=jsonb_set(roots,'{fact_ids}','[]')",
 ])
 def test_database_cancellation_requires_targeted_retained_evidence(conn,mutation):
@@ -201,10 +203,29 @@ def test_database_cancellation_requires_targeted_retained_evidence(conn,mutation
         conn.execute('UPDATE kala_obstruction SET '+mutation)
 
 
+@pytest.mark.parametrize('kind,state', [('defeats','obstruction_cancelled'),
+    ('excepts','obstruction_cancelled'), ('partly_defeats','obstruction_partly_cancelled')])
+@pytest.mark.parametrize('offset', ['Z', '+05:30'])
+def test_protected_candidate_preserves_evidence_and_instants(conn,kind,state,offset):
+    interval={'t0':f'2026-01-01T00:00:00.123456{offset}',
+              't1':f'2026-02-01T00:00:00.654321{offset}'}
+    value=finding(interval=interval,release={'kind':'unknown'},
+                  protections=[protection(kind=kind,interval=interval)])
+    assert storage()(ctx(conn),[value]) == 1
+    payload,roots,release,start,end,stored_state=conn.execute(
+        "SELECT assertion,roots,(release->>'instant')::timestamptz,"
+        'interval_start,interval_end,effective_state FROM kala_obstruction').fetchone()
+    expected=interpret(value)
+    assert NegativeSpace.model_validate(payload) == expected
+    assert (roots,release,start,end,stored_state) == (
+        expected.roots.model_dump(mode='json'),None if kind == 'partly_defeats' else value.interval.t0,
+        value.interval.t0,value.interval.t1,state)
+
+
 def test_evidence_guard_reapplies_without_changing_rows(conn):
     write(conn,protections=[protection()])
     before=conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
-    conn.execute(EVIDENCE_MIGRATION.read_text())
+    apply_schema_migration(conn, EVIDENCE_MIGRATION)
     assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
 
 
