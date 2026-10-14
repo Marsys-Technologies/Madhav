@@ -201,6 +201,13 @@ const historicalV26 = {
   artifact_hash: 'sha256:ffe465e3d25d796c0c657123112a2ac1dab9b9e2c163f0a3f7c78cb2eae963de',
 } as const
 
+// OSR-011: v27 is the immutable predecessor of PR #3337's evaluator-derived v28.
+const historicalV27 = {
+  capability_content_hash: 'sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85',
+  report_hash: 'sha256:9f745aea6b55837f6d1e174e40412ed83cf7c3cfcd4f8fabea4e75cdd9edb7e0',
+  artifact_hash: 'sha256:c9f6cf7296277e7e94c470cd71d51b8a3c878e83489eb453f4338881b2560333',
+} as const
+
 describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   it('closes the unchanged frozen route denominator through receipted transit derivation', () => {
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -297,7 +304,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
     // OSR-009 / K7-1a v26: fourteen additive L3 views move catalog provenance; corpus metrics stay fixed.
     // OSR-010 / v27 (the vocabulary-round combined stack): get_dashas.ts (72ae74031, 70d5b6475) moved capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256; corpus metrics stay fixed. Re-pinned by regeneration from the evaluator, not typed.
-    expect(report.report_hash).toBe('sha256:9f745aea6b55837f6d1e174e40412ed83cf7c3cfcd4f8fabea4e75cdd9edb7e0')
+    // OSR-011 / PR #3337 v28: optional at input and published_now registration move catalog hashes; corpus metrics stay fixed.
+    // OSR-012: re-mint v28 at the merged final head; seven-view stored producer tiers change catalog provenance only.
+    expect(report.report_hash).toBe('sha256:0f4ef835c42b38c189d71a07a6b4e13eae7a9c3a92dfa676933099c1983e006d')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -939,9 +948,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v27 source-successor artifact to the current executable report without claiming live acceptance (the vocabulary-round combined stack / OSR-010)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v27 source-successor artifact immutable after the K7-3 optional at input catalog advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v27.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV27.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v27',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v26.json',
+        capability_content_hash: historicalV26.capability_content_hash,
+        report_hash: historicalV26.report_hash,
+      },
+      capability_content_hash: historicalV27.capability_content_hash,
+      report_hash: historicalV27.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v28 source-successor artifact to the current executable report without claiming live acceptance (PR #3337 seven-view producer-tier hunk / OSR-011 + OSR-012)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v28.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -949,12 +979,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v27',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v28',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v26.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v27.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV26.capability_content_hash,
-        report_hash: historicalV26.report_hash,
+        capability_content_hash: historicalV27.capability_content_hash,
+        report_hash: historicalV27.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -997,8 +1027,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // OSR-010: the origin/main sha merged into the stack (their merge-base); the evaluator and corpus remain unchanged.
-      evaluated_source_revision: '4a7bd85ef22b5271fa318eb18feab30cd2e439b1',
+      // OSR-012: the merged origin/main sha (merge-base); the evaluator, corpus and immutable v27 remain unchanged.
+      evaluated_source_revision: 'b67539e8f6ccc711cbbea24a8e9bd5b2ea372ff9',
     })
   })
 })
