@@ -40,6 +40,12 @@ class EdgePolarity(StrEnum):
     OPPOSES = "opposes"
 
 
+class EventRelation(StrEnum):
+    SUPPORTS = "supports"
+    OPPOSES = "opposes"
+    CONDITIONS = "conditions"
+
+
 class AttachmentSource(StrEnum):
     MSR = "MSR"
     CGM = "CGM"
@@ -77,6 +83,7 @@ class Conclusion:
     fact_ids: tuple[str, ...]
     target_id: str | None = None
     valence: EdgePolarity | None = None
+    event_relation: EventRelation | None = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +102,8 @@ class Defeat:
 class UnassessedReason(StrEnum):
     PARTIAL_DEFEAT = "partial_defeat_unassessed"
     CONTESTATION = "contestation_unassessed"
+    MISSING_DEFEAT_FACTS = "missing_defeat_facts"
+    CONDITIONS = "conditions_unassessed"
 
 
 @dataclass(frozen=True)
@@ -103,6 +112,7 @@ class EffectiveResult:
     null_reason: UnassessedReason | None = None
     conclusion_ids: tuple[str, ...] = ()
     defeat_ids: tuple[str, ...] = ()
+    missing_fact_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -252,6 +262,11 @@ class PromiseGraph:
         if not grounded(conclusion):
             return EffectiveResult(EffectiveState.UNRESOLVED)
         defeats = [d for d in self.defeats if d.conclusion_id == conclusion_id]
+        if conclusion.event_relation is EventRelation.CONDITIONS:
+            # (I) INTERPRETATION: a sourced conditions relation identifies no
+            # satisfied precondition. Retain it without assigning a valence.
+            return EffectiveResult(EffectiveState.UNRESOLVED, UnassessedReason.CONDITIONS,
+                (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})))
         active = [d for d in defeats if d.fact_ids and set(d.fact_ids) <= facts]
         # (I) INTERPRETATION: coverage is the intersection with the conclusion's
         # cited roots, even if a defeat also cites other evidence roots. A strict
@@ -260,6 +275,7 @@ class PromiseGraph:
         partial = any(set(d.fact_ids) & roots and set(d.fact_ids) & roots < roots for d in active)
         event_class = self.mechanisms[conclusion.mechanism_id].event_class_id
         peers = [c for c in self.conclusions.values() if grounded(c)
+                 and c.event_relation is not EventRelation.CONDITIONS
                  and conclusion.target_id is not None and c.target_id == conclusion.target_id
                  and self.mechanisms[c.mechanism_id].event_class_id == event_class
                  and c.valence in {EdgePolarity.SUPPORTS, EdgePolarity.OPPOSES}]
@@ -279,7 +295,11 @@ class PromiseGraph:
         if not defeats:
             return EffectiveResult(EffectiveState.IN_FORCE)
         # Unknown additional evidence cannot weaken a grounded full defeat.
-        return EffectiveResult(EffectiveState.DEFEATED if active else EffectiveState.UNRESOLVED)
+        if active:
+            return EffectiveResult(EffectiveState.DEFEATED)
+        return EffectiveResult(EffectiveState.UNRESOLVED, UnassessedReason.MISSING_DEFEAT_FACTS,
+            (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})),
+            tuple(sorted({fact_id for d in defeats for fact_id in d.fact_ids if fact_id not in facts})))
 
     def fact_state(self, mechanism_id: str, available_fact_ids: Iterable[str]) -> FactState:
         mechanism = self.mechanisms[mechanism_id]
@@ -290,7 +310,7 @@ class PromiseGraph:
 
 
 __all__ = [
-    "Attachment", "AttachmentInput", "AttachmentSource", "Conclusion", "Defeat", "EdgePolarity",
+    "Attachment", "AttachmentInput", "AttachmentSource", "Conclusion", "Defeat", "EdgePolarity", "EventRelation",
     "EffectiveResult", "EffectiveState", "FactState", "Mechanism", "MechanismRoute", "PromiseEdge", "PromiseGraph",
     "PromiseNode", "attachment_input_from_mapping", "load_l2_attachments",
     "UnassessedReason",
