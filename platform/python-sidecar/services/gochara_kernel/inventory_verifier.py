@@ -28,6 +28,11 @@ doctrine, nothing here (or in SQL) can detect it.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
@@ -671,6 +676,73 @@ _C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", _TWO_PA
 _C_LEVELS = (1, 2, 3)
 
 
+_SETTLEMENT_PATH = Path(__file__).with_name("dasha_settlement.json")
+
+
+class SettlementRefused(Unverifiable):
+    """Typed independent settlement refusal; no verification is earned."""
+
+    def __init__(self, code: str, detail: str):
+        self.code = code
+        super().__init__(f"{code}: {detail}")
+
+
+def _load_dasha_settlement(chart_id: str) -> dict:
+    """Verifier's own parser of the reviewed authority, with no reader imports."""
+    try:
+        source = _SETTLEMENT_PATH.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise SettlementRefused("settlement_malformed", "governed settlement is not UTF-8") from exc
+    except OSError as exc:
+        raise SettlementRefused("settlement_missing", "cannot read governed settlement") from exc
+    try:
+        doc = json.loads(source)
+        if not isinstance(doc, dict) or doc["schema"] != "gochara_dasha_settlement/1":
+            raise ValueError("settlement schema")
+        if not isinstance(doc["header_comment"], str) or "reviewed PR" not in doc["header_comment"]:
+            raise ValueError("review policy")
+        tokens = doc["line"].split(" ")
+        names = ["utc", "pos_build", "dash_build", "natal_fp", "vim13_fp", "vim13_rows", "dash_all_fp"]
+        if tokens[:2] != ["L1_SETTLED", "v1"] or len(tokens) != 9:
+            raise ValueError("settlement line format")
+        fields = {}
+        for name, token in zip(names, tokens[2:]):
+            key, value = token.split("=")
+            if key != name:
+                raise ValueError("settlement line keys")
+            fields[key] = value
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", fields["utc"]):
+            raise ValueError("settlement timestamp")
+        datetime.strptime(fields["utc"], "%Y-%m-%dT%H:%M:%SZ")
+        for name in ("pos_build", "dash_build", "natal_fp", "vim13_fp", "dash_all_fp"):
+            if not re.fullmatch(r"[0-9a-f]{8}", fields[name]):
+                raise ValueError("settlement hex field")
+        if not re.fullmatch(r"[0-9]+", fields["vim13_rows"]):
+            raise ValueError("settlement row count")
+        fields["vim13_rows"] = int(fields["vim13_rows"])
+        if type(doc["vim13_rows"]) is not int or doc["vim13_rows"] <= 0:
+            raise ValueError("settlement row count type")
+        if fields != {name: doc[name] for name in names}:
+            raise ValueError("line differs from stored settlement fields")
+        if any(str(UUID(doc[name])) != doc[name] for name in ("run_id", "chart_id")):
+            raise ValueError("settlement UUID")
+        if doc["run_id"].split("-")[0] != fields["dash_build"]:
+            raise ValueError("settlement run prefix")
+        origin = doc["provenance"]
+        if (not isinstance(origin, dict)
+                or origin["source"] != "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
+                or not re.fullmatch(r"[0-9a-f]{40}", origin["commit"])
+                or origin["heading"] != "L1_SETTLED v1"
+                or not isinstance(origin["release_receipt"], str) or not origin["release_receipt"]
+                or origin["rebuild_run"] != doc["run_id"]):
+            raise ValueError("settlement provenance")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise SettlementRefused("settlement_malformed", "invalid governed settlement shape or line") from exc
+    if doc["chart_id"] != str(chart_id):
+        raise SettlementRefused("chart_not_settled", f"chart {chart_id} has no settlement entry")
+    return doc
+
+
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
                            chart_id: str, horizon: tuple, consumed_ids: Sequence[str]) -> list[str]:
     """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
@@ -717,6 +789,7 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
 
 
 def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+    settlement = _load_dasha_settlement(chart_id)
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -740,19 +813,24 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s",
         (chart_id, _C_SYSTEM, _C_AYANAMSHA)).fetchall())
     if len(builds) > 1:
-        raise Unverifiable(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
-                           "a mixed L1 state is not verifiable")
+        raise SettlementRefused("settled_build_ambiguous", f"chart {chart_id} carries several builds {builds} (every tier)")
     if builds == ["NULL"]:
         raise Unverifiable(f"dasha_build_null: chart {chart_id} carries a NULL Vimśottarī build_id — refusing")
-    if not builds and str(chart_id) == _C_CHART:
-        raise Unverifiable(f"dasha_build_unsettled: no Vimśottarī build for chart {chart_id}")
+    eligible = sorted(str(r[0]) for r in conn.execute(
+        "SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s"
+        " AND ayanamsha_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)",
+        (chart_id, _C_SYSTEM, _C_AYANAMSHA, _C_TIER, list(_C_LEVELS))).fetchall())
+    if len(eligible) > 1:
+        raise SettlementRefused("settled_build_ambiguous", f"several eligible builds {eligible}")
+    build = settlement["run_id"]
+    if eligible != [build]:
+        raise SettlementRefused("settled_build_absent", f"named build {build} is not eligible for chart {chart_id}")
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
-    build = builds[0] if builds else None
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
                   " AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)"
-                  " AND (%s::uuid IS NULL OR build_id = %s::uuid)",
-                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build, build))
+                  " AND build_id = %s::uuid",
+                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build))
     problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
                                       horizon=(horizon[0], horizon[1]), consumed_ids=ids)
     if problems:

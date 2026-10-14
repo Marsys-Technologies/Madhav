@@ -1,5 +1,5 @@
 """AM-10 rule 2(g), amended by J-4p: both readers accept one settled build.
-Historical, settled and future rebuilds obey the same independent guard.
+Only the reviewed settlement licenses a singleton; unknown builds refuse.
 """
 import importlib.util
 import pathlib
@@ -25,8 +25,7 @@ def rows(build):
     return [{"system_id": "vimshottari", "build_id": build, "level_n": 1}]
 
 
-@pytest.mark.parametrize("build", [OLD, NEW, "ca17639b-f3cf-42c7-9866-0a61f3855802",
-                                   "22222222-2222-4222-8222-222222222222"])
+@pytest.mark.parametrize("build", ["ca17639b-f3cf-42c7-9866-0a61f3855802"])
 def test_reader_and_verifier_accept_the_same_single_settled_build(build):
     from datetime import datetime, timezone
     a, b = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 2, 1, tzinfo=timezone.utc)
@@ -45,3 +44,9 @@ def test_mixed_null_and_unsettled_populations_are_still_refused(builds):
     with pytest.raises(DashaReadConflict):
         select_dasha_read_contract(DASHA_READ_CONTRACT["chart_id"],
                                   [r for build in builds for r in rows(build)])
+
+
+@pytest.mark.parametrize("build", [OLD, NEW, "22222222-2222-4222-8222-222222222222"])
+def test_cutover_refuses_an_ungoverned_singleton(build):
+    with pytest.raises(DashaReadConflict, match="settled_build_absent"):
+        select_dasha_read_contract(DASHA_READ_CONTRACT["chart_id"], rows(build))

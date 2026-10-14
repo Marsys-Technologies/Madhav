@@ -384,7 +384,7 @@ def test_a_mixed_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatc
         " %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     assert code == vj.EXIT_REFUSED == 2, out
-    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_builds_mixed" in out["detail"], out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "settled_build_ambiguous" in out["detail"], out
     assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}
 
 
