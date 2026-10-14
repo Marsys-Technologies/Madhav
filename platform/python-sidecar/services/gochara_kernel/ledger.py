@@ -22,6 +22,7 @@ the whole generation-scoped write — the WP6 crash/resume test depends on it.
 from __future__ import annotations
 
 import hashlib
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 import json
 import math
 from datetime import datetime, timezone
@@ -201,7 +202,7 @@ _CONTACT_COLUMNS = (
     "tier_basis",
     "convention_id", "ephemeris_backend", "evidence_fact_ids",
     "classical_citation", "uncited_extension", "corpus_verifiable",
-    "input_generation_vector_id", "build_id", "computed_at",
+    "input_generation_vector_id", "build_id", "computed_at", "verification_pass_status",
 )
 
 _COVERAGE_COLUMNS = (
@@ -350,6 +351,7 @@ def _normalize_episode(ep: dict, chart_id: str, generation: str,
         manifest_id,
         build_id,
         computed_at or datetime.now(timezone.utc),
+        UNVERIFIED_DEFAULT,  # Row geometry/role is not a second derivation.
     )
 
 

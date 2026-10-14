@@ -69,3 +69,20 @@ it('an unpublished manifest never carries candidate rows', () => {
     ...snapshot([row('evaluated_silent')]), manifest_id: null, manifest: null, empty_reason: 'unpublished',
   } })).toMatchObject({ status: 'information_unavailable', snapshot: null })
 })
+
+it('carries bound stored tiers while refusing a substituted served density or inherited upstream credit', () => {
+  const response = { view: 'now', chart_id: 'fixture-chart', manifest_id: 'fixture-build', generation: '4.1',
+    manifest: { manifest_id: 'fixture-build', generation: '4.1' }, empty_reason: null,
+    density_contract: { stored_tier_columns: ['kala_darshana.verification_pass_status'] },
+    rows: [{ source_table: 'kala_darshana', record_id: 'a', qualification: 'published', density: 'confirmed',
+      data: { generation: '4.1', verification_pass_status: 'single', source_citation: 'fixture:source' },
+      verification: { column: 'kala_darshana.verification_pass_status', status: 'single', generation: '4.1', manifest_id: 'fixture-build' } },
+      { source_table: 'kala_darshana', record_id: 'b', qualification: 'context_only', density: 'confirmed',
+        data: { generation: null, verification_pass_status: 'two_pass_verified' },
+        verification: { column: 'kala_darshana.verification_pass_status', status: 'two_pass_verified', generation: null, manifest_id: null } }],
+  }
+  const result = publishedNowDisclosure('fixture-chart', '2026-10-09T12:00:00Z', { ok: true, content: response })
+  expect(result.snapshot).toMatchObject({ density: { confirmed: 0, catalog_only: 1, unknown: 1 }, rows: [
+    { density: 'catalog_only', data: { source_citation: 'fixture:source' } }, { density: null },
+  ] })
+})

@@ -1,5 +1,6 @@
 """ka_kala_darshana writer — display-ready temporal view synthesizer."""
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 import logging
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
@@ -143,9 +144,9 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                     """INSERT INTO kala_darshana (
                         chart_id, convergence_id, signal_id,
                         effective_score, net_label, peak_date, window_start, window_end,
-                        obstruction_summary, narrative, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_summary, narrative, source_citation, verification_pass_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    [(*row, UNVERIFIED_DEFAULT) for row in rows],
                 )
 
         return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))

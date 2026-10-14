@@ -205,17 +205,17 @@ it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as c
 )
 
 it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const)(
-  '%s declares unavailable tier proof on the reader entry and cannot rank roles as verification', async name => {
+  '%s declares its stored tier binding on the reader entry and cannot rank roles as verification', async name => {
     const { makeView } = await common()
     const capability = makeView({ name, description: 'B1 fixture', sources: ['kala_darshana'], required: [] })
-    expect(capability.density_contract).toMatchObject({ stored_tier_columns: [],
-      unavailable_sources: ['kala_darshana'] })
+    expect(capability.density_contract).toMatchObject({ stored_tier_columns: ['kala_darshana.verification_pass_status'],
+      unavailable_sources: [] })
     db.mockResolvedValue({ rows: [{ manifest, coverage: [], sources: [] }] })
     await capability.handler!({ chart_id: 'chart' }, {})
     const sql = db.mock.calls[0][0]
     expect(sql).not.toContain("s.assertion->>'operator_role'")
     expect(sql).not.toContain('jsonb_array_length')
-    expect(sql).toContain('2 AS tier_order')
+    expect(sql).toContain("to_jsonb(s)->>'verification_pass_status'")
   },
 )
 

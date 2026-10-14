@@ -21,6 +21,7 @@ and real panchāṅga calls.  Detection hierarchy:
 NEVER commits or rollbacks — orchestrator owns the transaction.
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 import logging
 from datetime import date as DateType
 from typing import Optional
@@ -335,9 +336,9 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     """INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_detail, source_citation, verification_pass_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    [(*row, UNVERIFIED_DEFAULT) for row in rows],
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))

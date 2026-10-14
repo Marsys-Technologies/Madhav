@@ -160,7 +160,7 @@ class _StrictCursor:
 
         if statement.startswith("UPDATE kala_bhavishya SET projection_rank"):
             for values in param_rows:
-                assert len(values) == 17
+                assert len(values) == 18
                 chart_id, row_id = values[-2:]
                 assert chart_id == CHART_ID
                 row = next(row for row in self.conn.rows if row["id"] == row_id)
@@ -180,13 +180,14 @@ class _StrictCursor:
                     "outcome_recorded": values[12],
                     "outcome_notes": values[13],
                     "source_citation": values[14],
+                    "verification_pass_status": values[15],
                 })
             return
         if statement.startswith("INSERT INTO kala_bhavishya"):
             if self.conn.fail_insert:
                 raise RuntimeError("injected insert failure")
             for values in param_rows:
-                assert len(values) == 16
+                assert len(values) == 17
                 self.conn.next_id += 1
                 self.conn.rows.append({
                     "id": self.conn.next_id,
@@ -205,6 +206,7 @@ class _StrictCursor:
                     "outcome_recorded": values[13],
                     "outcome_notes": values[14],
                     "source_citation": values[15],
+                    "verification_pass_status": values[16],
                 })
             return
         raise AssertionError(f"unmodeled executemany SQL: {statement}")

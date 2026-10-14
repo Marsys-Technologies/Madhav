@@ -3,6 +3,8 @@
 Legacy required score columns are inert compatibility slots. Interpretation
 and consumers use the typed axes exclusively; no numeric measure is derived.
 """
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+
 from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
@@ -49,6 +51,7 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
                        interval_start=result.interval.t0, interval_end=result.interval.t1,
                        obstruction_type='malefic_transit', severity='mild',
                        severity_score=0, override_score=0, obstruction_detail=Jsonb({}),
-                       source_citation=result.source.locator)
+                       source_citation=result.source.locator,
+                       verification_pass_status=UNVERIFIED_DEFAULT)
             rows.append(row)
         return replace_candidate_partition(cursor, 'kala_obstruction', chart, generation, None, rows)

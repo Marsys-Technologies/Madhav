@@ -1,7 +1,7 @@
 /** K7-3: real published-head SQL → installed MCP public-name envelope.
- * Fixtures are TEMP tables inside a rolled-back transaction on ky_k5 only.
+ * Fixtures are TEMP tables inside a rolled-back transaction on the explicitly named disposable loopback database only.
  */
-import { execFileSync } from 'node:child_process'
+import { disposableSql } from '../../../../platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support'
 import { afterEach, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -18,9 +18,7 @@ const build = '22222222-2222-4222-8222-222222222222'
 const principal = { user_uid: 'CODEX-k5', key_id: 'CODEX-k5-key', role: 'guest' as const }
 const at = '2026-10-09T12:00:00+05:30'
 
-function postgres(sql: string, params: unknown[], state: string, published: boolean) {
-  const lane = process.env.KY_LANE
-  if (!lane || !/^k[1-8]$|^v[1-4]$/.test(lane)) throw new Error('explicit disposable lane required')
+function postgres(sql: string, params: unknown[], state: string, published: boolean, storedTier: string | null = null) {
   const literal = (value: unknown) => value == null ? 'NULL' : typeof value === 'number' ? String(value)
     : `'${String(value).replaceAll("'", "''")}'`
   const fixture = `
@@ -44,17 +42,15 @@ function postgres(sql: string, params: unknown[], state: string, published: bool
     INSERT INTO kala_obstruction SELECT 2, chart_id, 'CODEX-private', assertion_id, assertion,
       interval_start, interval_end, window_start, window_end FROM kala_obstruction WHERE id = 1;
   `
-  const output = execFileSync('docker', ['exec', '-i', 'ky-pg', 'psql', '-U', 'postgres', '-d', `ky_${lane}`,
-    '-qAt', '-v', 'ON_ERROR_STOP=1'], { encoding: 'utf8', timeout: 15000,
-    input: `BEGIN; ${fixture}\nPREPARE ky_view(uuid,timestamptz,timestamptz,timestamptz,text,text,int,int,text,text)
-      AS ${sql}; EXECUTE ky_view(${params.map(literal).join(',')}); ROLLBACK;`,
-  }).trim().split('\n').at(-1)!
-  const [manifest, coverage, sources] = output.split('|').map(value => value ? JSON.parse(value) : null)
-  return { rows: [{ manifest, coverage, sources }] }
+  return { rows: disposableSql(`BEGIN; ${fixture}
+    ${storedTier === null ? '' : `ALTER TABLE kala_obstruction ADD COLUMN verification_pass_status text; UPDATE kala_obstruction SET verification_pass_status = ${literal(storedTier)};`}
+    PREPARE ky_view(uuid,timestamptz,timestamptz,timestamptz,text,text,int,int,text,text)
+      AS ${sql}; EXECUTE ky_view(${params.map(literal).join(',')}); ROLLBACK;`) }
+
 }
 
-async function installedNow(state: string, published = true) {
-  db.mockReset().mockImplementation((sql, params) => postgres(sql, params, state, published))
+async function installedNow(state: string, published = true, storedTier: string | null = null) {
+  db.mockReset().mockImplementation((sql, params) => postgres(sql, params, state, published, storedTier))
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
     const body = JSON.parse(String(init?.body ?? '{}'))
     if (body.uri === 'marsys://tool/L3/now_read') return { ok: true,
@@ -104,7 +100,16 @@ it('NOW emits no role/root ranking for a stage without admitted tier proof', asy
   const sql = db.mock.calls[0][0]
   expect(sql).toContain("c.state = 'published'")
   expect(sql).toContain('s.generation = p.generation')
-  expect(sql).toContain('2 AS tier_order')
+  expect(sql).toContain("to_jsonb(s)->>'verification_pass_status'")
   expect(sql).not.toContain("s.assertion->>'operator_role'")
   expect(sql).not.toContain('jsonb_array_length')
+})
+
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('real SQL to installed public NOW carries single without promoting the stored sentinel', async () => {
+  expect(await installedNow('information_unavailable',true,'single')).toMatchObject({ status: 'published', snapshot: {
+    density: { confirmed: 0, catalog_only: 1, unknown: 0 }, rows: [{ density: 'catalog_only',
+      verification: { column: 'kala_obstruction.verification_pass_status', status: 'single', manifest_id: build },
+      data: { assertion: { payload: { effective_state: 'information_unavailable', release: { instant: null } } } },
+    }],
+  } })
 })

@@ -2,8 +2,10 @@
  * This is transport/identity validation only. State, roots, release, context,
  * coverage are carried from now_read. No empty page
  * becomes evaluated_silent, and no density is inferred from roles or roots.
- * KYD-125: producer-stored tier columns and their detector proof remain due.
+ * Stored tier carriage is checked independently at this public boundary.
  */
+import { isVerifiedPassStatus, VERIFICATION_PASS_STATUS_VOCAB } from '../../generated/envelope.js'
+
 type Data = Record<string, unknown>
 const object = (value: unknown): Data | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Data : null
@@ -45,15 +47,36 @@ export function publishedNowDisclosure(
     || (source.rows.length > 0 ? source.empty_reason !== null : source.empty_reason !== 'no_matching_rows')) {
     return unavailable('invalid_published_snapshot')
   }
+  const columns = object(source.density_contract)?.stored_tier_columns
+  const bound = Array.isArray(columns) && columns.includes('kala_darshana.verification_pass_status')
+    && columns.includes('kala_obstruction.verification_pass_status')
+  // Partial explicit contracts are still accepted per row: never transfer proof
+  // across a sibling source. Old snapshots lacking bindings keep null density.
+  const hasBindings = bound || (Array.isArray(columns) && columns.length > 0)
+  const counts = { scope: 'page', confirmed: 0, testimony: 0, catalog_only: 0, unknown: 0, context_only: 0 }
+  const rows = source.rows.map(value => {
+    const row = object(value) ?? {}
+    const data = object(row.data)
+    const proof = object(row.verification)
+    const column = `${row.source_table}.verification_pass_status`
+    const status = data?.verification_pass_status
+    const admitted = ['kala_darshana','kala_obstruction'].includes(String(row.source_table))
+    const valid = admitted && Array.isArray(columns) && columns.includes(column)
+      && data?.generation === source.generation && row.qualification === 'published'
+      && proof?.column === column && proof.status === status
+      && proof.generation === source.generation && proof.manifest_id === source.manifest_id
+      && VERIFICATION_PASS_STATUS_VOCAB.some(entry => entry.status === status)
+    const density = valid ? (isVerifiedPassStatus(status) ? 'confirmed' : 'catalog_only') : null
+    if (density === null) counts.unknown++
+    else counts[density]++
+    if (row.qualification === 'context_only') counts.context_only++
+    return { ...row, density, density_reason: valid ? null : 'stored_tier_contract_unavailable' }
+  })
   return { at, capability: 'marsys://tool/L3/now_read',
     status: source.rows.length ? 'published' : 'information_unavailable',
     empty_reason: source.empty_reason as string | null, snapshot: { ...source,
-      // KYD-125 still requires admitted producer/schema/declaration tier pins.
-      // This public boundary independently withholds unavailable proof.
-      // Do not substitute catalog_only either: the producer has not classified
-      // the row. Raw stored data, provenance and context disclosure stay intact.
-      density: null, density_reason: 'stored_tier_contract_unavailable',
-      rows: source.rows.map(row => ({ ...object(row), density: null,
-        density_reason: 'stored_tier_contract_unavailable' })),
+      density: hasBindings ? counts : null,
+      density_reason: hasBindings ? null : 'stored_tier_contract_unavailable', rows,
+      ...(hasBindings ? { catalog_only_rows_in_page: counts.catalog_only + counts.unknown } : {}),
     } }
 }

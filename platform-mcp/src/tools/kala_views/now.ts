@@ -67,6 +67,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import { kalaViewAlias } from './registry_alias.js'
+import { stageDensityBudgetSections } from './stage_budget.js'
 import { publishedNowDisclosure, validPublishedNowInstant, type PublishedNowDisclosure } from './published_now.js'
 import {
   makeKalaEnvelope,
@@ -1034,7 +1035,9 @@ function dualOutput(data: unknown, toolName = 'kala_now_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
-    const sections = autoDetectTrimmableSections(obj, toolName)
+    const stageSections = stageDensityBudgetSections(obj)
+    const sections = [...autoDetectTrimmableSections(obj, toolName).filter(section =>
+      !stageSections.some(stage => section.path === stage.path)), ...stageSections]
     finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
   }
   const structuredContent = { type: 'object' as const, object: finalData }

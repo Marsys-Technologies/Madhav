@@ -1,3 +1,4 @@
+import { disposableSql } from './disposable_sql.test_support'
 import { existsSync } from 'node:fs'
 import { expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => vi.fn())
@@ -97,23 +98,32 @@ SELECT id, '${fixtureChart}'::uuid, generation, 'a'||id, jsonb_build_object(
 FROM (VALUES (1, '4.1', 'scored', 'corroborates'), (2, '9.9', 'scored', 'corroborates'),
              (3, NULL, 'scored', 'corroborates'), (4, '4.1', 'testimony', 'corroborates'),
              (5, '4.1', 'scored', 'selects')) fixture(id, generation, operator_role, role);
+INSERT INTO kala_obstruction SELECT 101, chart_id, generation, 'obstruction', assertion, interval_start, interval_end, window_start, window_end FROM kala_darshana WHERE id = 1;
+ALTER TABLE kala_darshana ADD COLUMN verification_pass_status text;
+ALTER TABLE kala_obstruction ADD COLUMN verification_pass_status text;
+UPDATE kala_obstruction SET verification_pass_status = 'single';
+UPDATE kala_darshana SET verification_pass_status = CASE WHEN id = 1 THEN 'two_pass_verified' WHEN id = 4 THEN 'single' ELSE NULL END;
 INSERT INTO kala_gochara_contacts VALUES ('${fixtureChart}', '4.1', 'c1', '2026-10-09T00:00:00Z', '2026-10-10T00:00:00Z');
 INSERT INTO kala_bhavishya VALUES (1, '${fixtureChart}', '2026-10-09', '2026-10-09');
 INSERT INTO kala_convergence VALUES (1, '${fixtureChart}', '2026-10-09', '2026-10-09');
 INSERT INTO kala_jivana_parva VALUES (1, '${fixtureChart}', 2026, 2026, 8838, 0.91,
   '{"summary":"8838 high-convergence windows","high_convergence_count":8838,"avg_effective_score":0.91}');
+ALTER TABLE kala_gochara_contacts ADD COLUMN verification_pass_status text;
+ALTER TABLE kala_gochara_contacts ADD COLUMN build_id uuid;
+UPDATE kala_gochara_contacts SET verification_pass_status = 'single', build_id = '22222222-2222-4222-8222-222222222222';
+ALTER TABLE kala_bhavishya ADD COLUMN verification_pass_status text;
+UPDATE kala_bhavishya SET verification_pass_status = 'single';
+ALTER TABLE kala_convergence ADD COLUMN verification_pass_status text;
+UPDATE kala_convergence SET verification_pass_status = 'single';
+ALTER TABLE kala_jivana_parva ADD COLUMN verification_pass_status text;
+UPDATE kala_jivana_parva SET verification_pass_status = 'single';
 `
 async function postgresQuery(sql: string, params: unknown[], before = '') {
-  const { execFileSync } = await import('node:child_process')
-  const lane = process.env.KY_LANE
-  if (!lane || !/^k[1-8]$|^v[1-4]$/.test(lane)) throw new Error('an explicit disposable campaign lane is required')
   const literal = (v: unknown) => v == null ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replaceAll("'", "''")}'`
-  const output = execFileSync('docker', ['exec', '-i', 'ky-pg', 'psql', '-U', 'postgres', '-d', `ky_${lane}`, '-qAt', '-v', 'ON_ERROR_STOP=1'], {
-    input: `BEGIN; SET LOCAL timezone = 'UTC'; ${schema} ${before}\nPREPARE ky_view(uuid,timestamptz,timestamptz,timestamptz,text,text,int,int,text,text) AS ${sql};\nEXECUTE ky_view(${params.map(literal).join(',')}); ROLLBACK;`,
-    encoding: 'utf8', timeout: 15000,
-  }).trim().split('\n').at(-1)!
-  const [manifest, coverage, sources] = output.split('|').map(x => x ? JSON.parse(x) : null)
-  return { rows: [{ manifest, coverage, sources }] }
+  return { rows: disposableSql(`BEGIN; SET LOCAL timezone = 'UTC'; ${schema} ${before}
+    PREPARE ky_view(uuid,timestamptz,timestamptz,timestamptz,text,text,int,int,text,text) AS ${sql};
+    EXECUTE ky_view(${params.map(literal).join(',')}); ROLLBACK;`) }
+
 }
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published STORY SQL nulls stale chapter figures even when another chart has convergence rows', async () => {
   const { storyViewCapability } = await import('./view_story')
@@ -142,7 +152,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('all seven actual SQL readers p
     expect(result.is_error).toBe(false)
     const content = result.content as Record<string, unknown>
     expect(content).toMatchObject({ manifest_id: '22222222-2222-4222-8222-222222222222',
-      generation: '4.1', empty_reason: null, density: { confirmed: 0 } })
+      generation: '4.1', empty_reason: null, density: { confirmed: 1 } })
     expect(content.coverage).toEqual(expect.arrayContaining([expect.objectContaining({ unsearched_reason: 'not_searched' })]))
     expect(JSON.stringify(content.rows)).not.toContain('9.9')
   }
@@ -172,7 +182,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('pages protect confirmed findin
   const { priorityViewCapability } = await import('./view_priority')
   db.mockReset().mockImplementation(postgresQuery)
   const first = await priorityViewCapability.handler!({ chart_id: fixtureChart, limit: 1 }, {})
-  expect(first.content).toMatchObject({ density: { confirmed: 0 }, rows: [
+  expect(first.content).toMatchObject({ density: { confirmed: 1 }, rows: [
     { density: 'confirmed', record_id: '1' }, { source_table: 'kala_convergence', qualification: 'context_only' },
   ], pagination: { more_available: true } })
   const exhausted = await priorityViewCapability.handler!({ chart_id: fixtureChart, limit: 1, offset: 4 }, {})
@@ -200,7 +210,7 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('published readers follow a hea
       rows: [{ record_id: '2', qualification: 'published' }, { record_id: '3', qualification: 'context_only' }] })
   db.mockImplementation(postgresQuery)
   expect((await nowViewCapability.handler!({ chart_id: fixtureChart, at: '2026-10-09T12:00:00Z' }, {})).content)
-    .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 0 } })
+    .toMatchObject({ generation: '4.1', manifest_id: '22222222-2222-4222-8222-222222222222', density: { confirmed: 1 } })
 })
 
 it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['information_unavailable', 'evaluated_silent'])
@@ -238,7 +248,7 @@ it.each([
   await import('./index')
   const { getCapability } = await import('../../index')
   const cap = getCapability(`marsys://tool/L3/${name}_read`)!
-  expect(cap.density_contract).toMatchObject({ stored_tier_columns: [], unavailable_sources: tables })
+  expect(cap.density_contract).toMatchObject({ stored_tier_columns: tables.map(table => `${table}.verification_pass_status`), unavailable_sources: [] })
   db.mockReset().mockResolvedValue({ rows: [{ manifest: { manifest_id: 'test-build', generation: '4.1' },
     coverage: [], sources: [{ table: 'kala_darshana', total: 100, rows: [
       { id: '2', generation: '4.1', tier: 'confirmed', assertion_id: 'a2', source_citation: 'fixture:2' },
@@ -266,4 +276,26 @@ it.each([
   expect(sql).toContain('ORDER BY tier_order, record_id LIMIT $7 OFFSET $8')
   expect(sql).not.toContain('kala_darshana_candidate')
   expect(sql).not.toContain('kala_jivana_parva_candidate')
+})
+
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['kala_obstruction','kala_gochara_contacts','kala_bhavishya','kala_convergence','kala_jivana_parva'])(
+  'real EXPLAIN SELECT carries %s own stored single and provenance without inheriting verdicts', async source_table => {
+    const { explainViewCapability } = await import('./view_explain')
+    db.mockReset().mockImplementation(postgresQuery)
+    const record_id = source_table === 'kala_gochara_contacts' ? 'c1' : source_table === 'kala_obstruction' ? '101' : '1'
+    const result = await explainViewCapability.handler!({ chart_id: fixtureChart, source_table, record_id }, {})
+    expect(result).toMatchObject({ is_error: false, content: { rows: [{ source_table,
+      data: { verification_pass_status: 'single' }, verification: { column: `${source_table}.verification_pass_status`, status: 'single' },
+      density: ['kala_obstruction','kala_gochara_contacts'].includes(source_table) ? 'catalog_only' : null,
+    }] } })
+  },
+)
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('real SQL does not give contact verification credit to a different build sharing the generation label', async () => {
+  const { explainViewCapability } = await import('./view_explain')
+  db.mockReset().mockImplementation((sql,params) => postgresQuery(sql,params,
+    "UPDATE kala_gochara_contacts SET build_id = '99999999-9999-4999-8999-999999999999', verification_pass_status = 'two_pass_verified';"))
+  expect(await explainViewCapability.handler!({ chart_id: fixtureChart, source_table: 'kala_gochara_contacts', record_id: 'c1' }, {}))
+    .toMatchObject({ is_error: false, content: { rows: [{ density: null, qualification: 'context_only',
+      verification: { status: 'two_pass_verified', manifest_id: null },
+    }] } })
 })

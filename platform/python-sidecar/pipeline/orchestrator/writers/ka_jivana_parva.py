@@ -18,6 +18,7 @@ birth are dropped outright (never experienced); rows straddling birth have their
 served start_year raised to birth_date.year (experienced portion only).
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 import logging
 from collections import Counter
 from datetime import date, datetime
@@ -352,9 +353,9 @@ class KaJivanaParvaWriter(WriterBase):
                         chart_id, parva_index, parva_level, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
-                        source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
+                        source_citation, verification_pass_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [(*row, UNVERIFIED_DEFAULT) for row in rows])
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 

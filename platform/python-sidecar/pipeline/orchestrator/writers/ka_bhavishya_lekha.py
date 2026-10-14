@@ -1,5 +1,6 @@
 """ka_bhavishya_lekha writer — probabilistic forward projection artifact."""
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 from datetime import date
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
@@ -423,9 +424,10 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                            outcome_recorded = %s,
                            outcome_notes = %s,
                            source_citation = %s,
+                           verification_pass_status = %s,
                            computed_at = NOW()
                      WHERE chart_id = %s AND id = %s
-                """, matched_rows)
+                """, [(*row[:-2], UNVERIFIED_DEFAULT, *row[-2:]) for row in matched_rows])
 
         if new_rows:
             with conn.cursor() as cur:
@@ -435,9 +437,9 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                     peak_date, window_start, window_end,
                     convergence_id, signal_id, effective_score,
                     falsifiability, source_chain, narrative,
-                    outcome_recorded, outcome_notes, source_citation
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, new_rows)
+                    outcome_recorded, outcome_notes, source_citation, verification_pass_status
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [(*row, UNVERIFIED_DEFAULT) for row in new_rows])
 
         return WriterResult(
             asset_id='ka_bhavishya_lekha',

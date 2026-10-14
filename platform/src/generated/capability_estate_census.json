@@ -22223,7 +22223,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "d237cbf5773555c752a6fd9fcbf077322d7616db7c80d8e78a81aab4f40aecc8"
+        "sha256": "d5b606c8528e3ecd9a05a5062f405a27741764726a9c1cafd797957f4f477a41"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22620,7 +22620,7 @@
       },
       {
         "id": "public_registrar_source_set",
-        "member_count": 52,
+        "member_count": 53,
         "members": [
           {
             "path": "platform-mcp/src/tools/bo_2-8.ts",
@@ -22664,7 +22664,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "e6601d75b008acff4da8d8666e03d116308a5fb6d6bbf5734febe06a84b5a1c3"
+            "sha256": "0ac067fa62d1fc5f8b2b556110b2d7f04b1d0e48bc73ab4f34c5fc9652bdc1bf"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
@@ -22676,7 +22676,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/published_now.ts",
-            "sha256": "9f4335c974a5b553635ac725b8273dd8e1f697fe1538aa1d4a63f59f965738ed"
+            "sha256": "416c7105afe64dc168e590954ea7bf00742ebf8ab940d4bb2ecf727c20055dd1"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
@@ -22697,6 +22697,10 @@
           {
             "path": "platform-mcp/src/tools/kala_views/shared.ts",
             "sha256": "9300a9e2c014cbe47728854078bdd3627c4a7914c38c71bd0b94e694cbab2e69"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/stage_budget.ts",
+            "sha256": "acd666edbb2d0225132037cf95cf9d662c1111aee12e17b8a02ce3794222acbb"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/story.ts",
@@ -22832,7 +22836,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "7616b001662761e98979d097c9d01c2fdb775566775d66fb66653482778c72f1"
+        "sha256": "4f761ad65c5a2de1b938cf1961361c194db5ca5db595ea29208bfc6983143203"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -22846,7 +22850,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 217,
+        "member_count": 218,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23425,6 +23429,10 @@
             "sha256": "0995059e19b3c28ec16c96b13d207110558f2134f0dc13f78d9caa444fd7993d"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support.ts",
+            "sha256": "e4757ac166daca2fe3046f6328cbe9bbd1ead5f4a712bf4e247b5281c7d4e7ad"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
             "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
           },
@@ -23502,7 +23510,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "37e08ee50166b1e220b03ab149025e32bd001355a1531688d1a88bdee729bf85"
+            "sha256": "b35dd53052ad0978c040e432ca18444b747f4ae1a96ec6bf420f19feb16af073"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23718,7 +23726,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "e806930c222d885e8a187094336488ad0fe55d3e024aa4c6e291e22bb0ef0484"
+        "sha256": "1d76034e2a505ca5a613862f50493488300ed36ad768496715a401a60a5642fc"
       },
       {
         "id": "service_effect_contracts",

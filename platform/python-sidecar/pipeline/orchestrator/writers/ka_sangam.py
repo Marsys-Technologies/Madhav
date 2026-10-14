@@ -9,6 +9,7 @@ convergence search, inserts ranked windows into kala_convergence.
 """
 import hashlib
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 import logging
 from datetime import date
 
@@ -944,7 +945,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis
+                        confidence_label_relative, tier_basis, verification_pass_status
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -952,7 +953,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s
+                        %s, %s, %s
                     )
                     """,
                     (
@@ -977,6 +978,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        UNVERIFIED_DEFAULT,
                     ),
                 )
                 rows_inserted += 1
