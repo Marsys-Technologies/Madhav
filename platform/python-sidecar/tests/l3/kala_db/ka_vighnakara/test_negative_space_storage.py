@@ -7,11 +7,11 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from tests.l3.kala_db.conftest import kala_db_dsn
 from services.ka_vighnakara.model import Finding
 from tests.l3.ka_vighnakara.test_negative_space import finding
+from tests.l3.kala_db._schema import apply_schema_migration
 
-ROOT=Path(__file__).parents[3]
+ROOT=Path(__file__).parents[4]
 MIGRATION=ROOT.parent/'migrations/1349_k3_1_negative_space_contract.sql'
 CHART='00000000-0000-0000-0000-000000000392'
 BUILD='00000000-0000-0000-0000-000000000393'
@@ -25,8 +25,8 @@ def storage():
 
 
 @pytest.fixture(scope='module')
-def database(kala_db_dsn):
-    with psycopg.connect(kala_db_dsn) as c:
+def database(isolated_kala_db_dsn):
+    with psycopg.connect(isolated_kala_db_dsn) as c:
         c.execute('''CREATE TABLE charts (id uuid PRIMARY KEY);
           CREATE TABLE kala_obstruction (
             id bigserial PRIMARY KEY, chart_id uuid NOT NULL REFERENCES charts(id),
@@ -42,12 +42,12 @@ def database(kala_db_dsn):
             build_id uuid UNIQUE NOT NULL, state text NOT NULL, conventions jsonb NOT NULL,
             PRIMARY KEY(chart_id,generation));
           CREATE TABLE kala_layer_head (chart_id uuid PRIMARY KEY, generation text NOT NULL);''')
-        c.execute((ROOT.parent/'migrations/1338_kala_assertion_vertical_slice.sql').read_text())
+        apply_schema_migration(c, ROOT.parent/'migrations/1338_kala_assertion_vertical_slice.sql')
         assert MIGRATION.exists(), 'K3 additive candidate schema missing'
-        c.execute(MIGRATION.read_text())
+        apply_schema_migration(c, MIGRATION)
         c.execute('INSERT INTO charts VALUES (%s)',(CHART,))
         c.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building','{\"fixture\":true}')",(CHART,GEN,BUILD))
-    yield kala_db_dsn
+    yield isolated_kala_db_dsn
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ def test_fixture_contract_is_version_pinned():
 
 
 def test_additive_migration_reapplies(conn):
-    conn.execute(MIGRATION.read_text())
+    apply_schema_migration(conn, MIGRATION)
     assert conn.execute("SELECT count(*) FROM pg_constraint WHERE conrelid='kala_obstruction'::regclass AND conname='kala_obstruction_k3_axes_check'").fetchone()[0] == 1
 
 
