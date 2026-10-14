@@ -1,3 +1,4 @@
+# Historical legacy implementation oracles; default registrar cutover is tested separately.
 """DP-SD-017 BHAV-P0: identity/history-safe ka_bhavishya_lekha refresh."""
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import pytest
 
 from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
     _PARTITION_LOCK_SQL,
-    KaBhavishyaLekhaWriter,
+    _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
     _assign_tier,
     _build_falsifiability,
     _build_projection_narrative,
