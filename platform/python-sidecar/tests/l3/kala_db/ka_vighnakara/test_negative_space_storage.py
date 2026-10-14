@@ -48,15 +48,16 @@ def database(isolated_kala_db_dsn):
         assert MIGRATION.exists(), 'K3 additive candidate schema missing'
         apply_schema_migration(c, MIGRATION)
         apply_schema_migration(c, EVIDENCE_MIGRATION)
-        apply_stage_verification_migration(c, 'kala_obstruction')
         c.execute('INSERT INTO charts VALUES (%s)',(CHART,))
         c.execute("INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,'building','{\"fixture\":true}')",(CHART,GEN,BUILD))
     yield isolated_kala_db_dsn
 
 
-@pytest.fixture
-def conn(database):
+@pytest.fixture(params=[False, True], ids=['before-1376', 'after-1376'])
+def conn(database, request):
     with psycopg.connect(database) as c:
+        if request.param:
+            apply_stage_verification_migration(c, 'kala_obstruction')
         yield c
         c.rollback()
 
@@ -240,22 +241,47 @@ def test_alias_rejection_preserves_existing_candidate(conn):
     assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
 
 
-def test_candidate_stores_honest_single_tier_and_legacy_stays_null(conn):
+def test_candidate_stores_honest_single_tier_and_legacy_stays_null(conn, request):
+    has_tier = request.node.callspec.params['conn']
     conn.execute("INSERT INTO kala_obstruction (chart_id,obstruction_type,severity,severity_score,source_citation) VALUES (%s,'malefic_transit','mild',0.5,'fixture:legacy')", (CHART,))
+    write(conn)
+    rows = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o ORDER BY id').fetchall()
+    assert all(('verification_pass_status' in row[0]) == has_tier for row in rows)
+    assert rows[0][0].get('verification_pass_status') is None
+    assert rows[1][0].get('verification_pass_status') == (UNVERIFIED_DEFAULT if has_tier else None)
+    apply_stage_verification_migration(conn, 'kala_obstruction')
+    assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT if has_tier else None,)
     write(conn)
     assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT,)
     assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation IS NULL').fetchone() == (None,)
-    apply_stage_verification_migration(conn, 'kala_obstruction')
-    assert conn.execute('SELECT verification_pass_status FROM kala_obstruction WHERE generation=%s', (GEN,)).fetchone() == (UNVERIFIED_DEFAULT,)
 
 
-@pytest.mark.parametrize('has_tier', [False, True], ids=['before-1376', 'after-1376'])
-def test_candidate_write_is_deploy_safe(conn, has_tier):
-    if not has_tier:
-        conn.execute('ALTER TABLE kala_obstruction DROP COLUMN verification_pass_status')
+def test_candidate_write_is_deploy_safe(conn, request):
+    has_tier = request.node.callspec.params['conn']
     assert write(conn) == 1
     row = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o WHERE generation=%s', (GEN,)).fetchone()[0]
     assert ('verification_pass_status' in row) == has_tier
     if has_tier:
         assert row['verification_pass_status'] == UNVERIFIED_DEFAULT
     assert row['effective_state'] == interpret(finding()).effective_state
+
+
+def test_label_only_replacement_preserves_protected_candidate(conn):
+    write(conn, protections=[protection()])
+    before = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    with pytest.raises(ValueError, match='protection target'):
+        write(conn, assertion_id='alias:replacement', protections=[protection()])
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
+
+
+@pytest.mark.parametrize('retarget', [False, True])
+def test_overlapping_alias_preserves_protected_candidate(conn, retarget):
+    write(conn, protections=[protection()])
+    before = conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall()
+    alias = finding(assertion_id='alias:segment',
+        protections=[protection(target_assertion_id='alias:segment' if retarget else 'fixture:vedha')],
+        interval={'t0':'2026-01-01T00:00:00Z','t1':'2026-01-15T00:00:00Z'},
+        release={'kind':'instant','instant':'2026-01-15T00:00:00Z'})
+    with pytest.raises(ValueError, match='duplicate physical'):
+        storage()(ctx(conn), [finding(protections=[protection()]), alias])
+    assert conn.execute('SELECT to_jsonb(o) FROM kala_obstruction o').fetchall() == before
