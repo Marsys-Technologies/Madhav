@@ -174,13 +174,71 @@ def _source_list_of(scope, name):
     return None
 
 
+class _StoredTierBranch(ast.NodeTransformer):
+    """Specialize the two explicit K7 schema branches without evaluating code.
+
+    Only the named boolean, literal SQL pieces, and the exact trailing-tier
+    tuple slice are understood. Other SQL/parameter shapes still fail closed.
+    """
+    def __init__(self, present):
+        self.present = present
+
+    def visit_IfExp(self, node):
+        if isinstance(node.test, ast.Name) and node.test.id == 'store_tier':
+            return self.visit(node.body if self.present else node.orelse)
+        return self.generic_visit(node)
+
+    def visit_JoinedStr(self, node):
+        node = self.generic_visit(node)
+        pieces = []
+        for part in node.values:
+            if isinstance(part, ast.FormattedValue) and part.conversion == -1 and part.format_spec is None:
+                part = part.value
+            if not isinstance(part, ast.Constant) or not isinstance(part.value, str):
+                return node
+            pieces.append(part.value)
+        return ast.copy_location(ast.Constant(value=''.join(pieces)), node)
+
+    def visit_Call(self, node):
+        node = self.generic_visit(node)
+        if (not self.present and isinstance(node.func, ast.Attribute) and node.func.attr == 'append'
+                and len(node.args) == 1 and isinstance(node.args[0], ast.Tuple) and node.args[0].elts
+                and isinstance(node.args[0].elts[-1], ast.Name) and node.args[0].elts[-1].id == 'UNVERIFIED_DEFAULT'):
+            node.args[0].elts = node.args[0].elts[:-1]
+        return node
+
+    def visit_ListComp(self, node):
+        # A list of tuples with only its final tier bind removed. A different
+        # slice/iterator stays opaque and is rejected by the existing witness.
+        if (not self.present and len(node.generators) == 1 and isinstance(node.elt, ast.Subscript)
+                and isinstance(node.elt.value, ast.Name) and isinstance(node.elt.slice, ast.Slice)):
+            gen, cut = node.generators[0], node.elt.slice
+            if (isinstance(gen.target, ast.Name) and gen.target.id == node.elt.value.id
+                    and isinstance(gen.iter, ast.Name) and not gen.ifs and not gen.is_async
+                    and cut.lower is None and cut.step is None and isinstance(cut.upper, ast.UnaryOp)
+                    and isinstance(cut.upper.op, ast.USub) and isinstance(cut.upper.operand, ast.Constant)
+                    and cut.upper.operand.value == 1):
+                return gen.iter
+        return self.generic_visit(node)
+
+
 def bound_values(src, table, col, expect_statements=1):
     """(problems, [expression bound to `col`]) over every `execute/executemany(<INSERT INTO table ...>, params)` in `src`.
     The INSERT must name `col` and give it exactly one placeholder (comments in the SQL are ignored); `params` is a literal
     tuple, or a list of tuples the same function `.append`s (directly, or through a list filled from a loop over another
     such list). The expression returned is the element at the column's position in every such tuple; a star-arg at or
     before that position makes the binding unknowable and is a problem."""
-    return bound_values_tree(_parents(ast.parse(src)), table, col, expect_statements)
+    tree = ast.parse(src)
+    if not any(isinstance(n, ast.IfExp) and isinstance(n.test, ast.Name) and n.test.id == 'store_tier'
+               for n in ast.walk(tree)):
+        return bound_values_tree(_parents(tree), table, col, expect_statements)
+    problems, values = [], []
+    for present in (False, True):
+        branch = _StoredTierBranch(present).visit(ast.parse(src))
+        errors, bound = bound_values_tree(_parents(branch), table, col, expect_statements)
+        problems.extend(errors)
+        values.extend(bound)
+    return problems, values
 
 
 def bound_values_tree(tree, table, col, expect_statements=1):
