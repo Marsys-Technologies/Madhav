@@ -24,11 +24,11 @@
 "a call repeated on several lines or in a second transcript is counted once",
 "a transcript cut mid-line (killed job) adds no call and raises nothing",
 "a test that would read ~/.claude, ~/.codex or /Users/Dev/kalayantra/logs: the root guard fails it"]},
-"packet_sha256":"c5f27a7ee27f2580dae260646699afde7bfed9ade657b775bdfd4049439cc714"}
+"packet_sha256":"5542363a48bb1ebab82a93dcda1728434c02ba6a21b6176b7a5bf338320d0870"}
 ```
 # KV3-B-BASELINE: the token-baseline script, committed for independent review
 
-P = `scripts/token_economy/token_baseline.py`; SRC = `/Users/Dev/scratch.noindex/claude/madhav/20261011-token-economy/token_baseline.py`; H = `28c1bb5b9df644a0a60a44a80b0a9a01c949db2838e03bf766631411b45c4176`.
+P = `scripts/token_economy/token_baseline.py`; SRC = payload after 2 provenance lines of `00_ARCHITECTURE/briefs/kalayantra/evidence/KV3-PKT-EXTERNAL-REFS/token_baseline.py`; H = `28c1bb5b9df644a0a60a44a80b0a9a01c949db2838e03bf766631411b45c4176`.
 
 **Pins.** Plan v2.7 at e709f60d7; base = the reviewed B-0c head in the job header. Ruling P14: the script's bytes are SRC, sha256 H (26,018 bytes).
 

@@ -1,0 +1,84 @@
+<!-- Source: /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-b-ops-scripts/00_ARCHITECTURE/briefs/kalayantra/fleet/ops/README.md -->
+<!-- Original sha256: b7c9a6c91ad6817bb5dde602fb652e0214aefe47e6f589cc42d8e2bffb22ac95; date: 2026-10-14 -->
+# Disabled executor operation preparation
+
+Detailed source citations, interpretations, exact dry-run examples, prerequisites and per-operation enablement follow. This is one combined job; no production qualification is claimed.
+
+# KV3-B-OPS-BACKUP v1 — disabled preparation
+Version 1; initial implementation. F = 00_ARCHITECTURE/briefs/kalayantra/fleet.
+
+```excerpt D-1
+- **D-1** Control-plane changes permitted in Wave B, scoped per packet, independently
+  reviewed, installed with a hash-bound receipt; campaign builders keep the prohibition.
+```
+
+This is bootstrap preparation, not production evidence or an enablement decision. Only the new ops files, test_ops files, these two packets, and disabled table mappings were written. No executor, real database, credential file, network, Git mutation, or background process was used. The cockpit commits and independently reviews this combined delivery.
+
+Reconciliation: `00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json` retains its four original enabled kinds. Four primary adapter mappings are disabled; the existing disabled rebuild dry-run kind aliases the rebuild wrapper. Executor/dispatcher/contract sources are unchanged.
+
+The output is ky.op_adapter/1 (operation_adapters.py:36–39,170–176), not an executor receipt. Executor.py:224–233,344–345 produces the receipt; operation_adapters.py:407–464 still requires terminal request/receipt-bound observation and an independent verdict at the receipt digest. No wrapper removes the production fence.
+
+(I) INTERPRETATION I1: the owner finite set narrows the broad ka_*/ph_* rule. At runtime all nine named assets must exist, be active chart writers, and have L3/L4 layer_index matching their prefix. ka_avadhi is never scheduled; any direct dependency on it refuses. Other dependencies must already be lit/service_ok, never rebuilt. Extra prefix matches cannot widen the set. Owner phase barriers plus live registry edges determine order; contradictions/cycles refuse. Authority: /Users/Dev/kalayantra/run/PLANNER_STATE.json:897–910, especially :904–905. The plan itself leaves this concrete launch unresolved.
+
+(I) INTERPRETATION I2: reviewed ky.ops_scope/1 JSON is a new local preflight input, produced by ops/scope.sql on the governed readback path (not by these dry runs). It contains the existing registry fields and public table/FK inventory. Dry-run reads only this file, prints commands/SQL/scope/identities, writes nothing and connects nowhere; live checks are null. Execute re-reads and compares the complete source inventory. The pg_dump snapshot identifier is explicitly a runtime substitution, not a fabricated ID.
+
+(I) INTERPRETATION I3: adapter idempotency is a persistent attempted-key marker under KY_ROOT/run/ops/adapter_keys, in addition to the executor ledger. Duplicate, failed and interrupted keys refuse forever; no automatic write retry. Operator request args must carry the same idempotency key as the complete executor request. Artifact labels/keys/path boundaries reject unsafe input or symlinks; connection values never appear in argv/output. Only DATABASE_URL is consumed, with explicit username/password and no .pgpass/service fallback.
+
+Open validation conflict: test_operation_adapters.py:397–407 asserts the exact historical table digest, 20 entries and 14 placeholders. The authorized mappings necessarily contradict it. Do not change or bypass this test under this job scope. Baseline 81/81 passed; final behavioral contract cases pass, but this one invariant fails. Cockpit must authorize a scoped contract-test update before either packet can be treated as fully qualified.
+
+Backup_snapshot exports one repeatable-read snapshot, measures table row counts and stable SHA-256 row-content digests, and invokes three pg_dump commands against that same exported snapshot: full pre-data schema, bounded data, full post-data constraints. It records file digests, snapshot, source identity without password, time and script/input identity in a protected manifest. Success proves capture; restore_verified stays null. A failed dump, runtime scope change, missing target, foreign reference outside the known public inventory, reused label/key, or empty dump refuses.
+
+Backup_restore_verify checks all three file digests and exact scope before execution. It requires an already provisioned empty database at 127.0.0.1 named ky_<name>, given in DATABASE_URL. It invokes psql --no-psqlrc --no-password --set ON_ERROR_STOP=1 --single-transaction with schema.sql, data.sql, constraints.sql in that order, then compares every recorded count and content digest in a fresh read-only snapshot. Same count with changed content fails. It never creates/drops/cleans a database or overwrites existing scratch data. It leaves the restored scratch database for the operator's independent inspection and cleanup; none was created by this job.
+
+(I) INTERPRETATION I4: bounded data is full rows of runtime ka_/ph_/kala_/phala_/build_/asset_ tables, selected assets' actual target_table values, and recursive public foreign-key dependencies. Copying dependencies is not rebuilding their L0–L2 assets. Full schema supports these tables; unselected table data is absent. This conservatively covers secondary outputs and build progress (writers/ka_sangam.py:437–439,514–518; writers/ka_gochara_v3_century_materialize.py:496–502). Completeness for all writer side effects, sequences, external schemas and live permissions remains an enablement prerequisite; this is not a whole-database/cloud snapshot. DEFINE_J-1a.md Q5 recommended whole-DB backup until bounded completeness is proven; the user explicitly requested bounded logical capture here.
+
+(I) INTERPRETATION I5: owner capability replaces gcloud for the pair because executor.py:304–306 otherwise forwards no connection. Restore additionally requires the executor owner connection to be provisioned for the empty loopback scratch target for that operation. The current executor has one configured owner URL, not a per-kind scratch-secret interface: cockpit must supply an owner-approved operational handover or a separately reviewed environment-routing extension. No new credential provisioning or file reader is implemented.
+
+Exact dry-run examples (S is a proposed reviewed input path; not a file claimed to exist):
+```sh
+KY_ROOT=/Users/Dev/kalayantra python3 -B 00_ARCHITECTURE/briefs/kalayantra/fleet/ops/backup_snapshot.py --dry-run --scope /Users/Dev/kalayantra/run/ops/scope/K_REBUILD_SCOPE.json --label k-rebuild-1 --idempotency-key k-rebuild-1-backup
+KY_ROOT=/Users/Dev/kalayantra python3 -B 00_ARCHITECTURE/briefs/kalayantra/fleet/ops/backup_restore_verify.py --dry-run --scope /Users/Dev/kalayantra/run/ops/scope/K_REBUILD_SCOPE.json --label k-rebuild-1 --idempotency-key k-rebuild-1-restore
+```
+Omitting --dry-run is equivalent. Dry-run restore can plan before any backup exists and cannot claim restorable data.
+
+Enablement later: independent review and immutable source/runtime qualification; resolve the contract-test conflict; prove bounded completeness and actual fresh backup/restore comparison; qualify psycopg plus pg_dump/psql versions and scratch privileges; settle DEFINE_J-1a Q3/Q5/Q6 authority/evidence/freshness. Only after the main-merge hold permits it, owner publishes the reviewed disabled table/script mappings on origin/main and separately switches backup_snapshot.enabled and backup_restore_verify.enabled to true. Both entries keep production=true, needs=owner and fixed_args=[--execute]. Requests bind merged reviewed_commit, canonical chart, sole live lease, expiry and verifier acceptance. Backup_restore_verify requires backup_taken; snapshot is exempt from prior backup/restore checks (executor.py:270–276). Explicit execution needs reviewed --scope, --label and matching --idempotency-key request args; no connection in args. Recheck all owner production-window conditions, including SS window-free and Exec PROBES DONE. These scripts do not infer those conditions from capabilities.
+
+
+# KV3-B-OPS-REBUILD v1 — disabled preparation
+Version 1; initial implementation. F = 00_ARCHITECTURE/briefs/kalayantra/fleet.
+
+```excerpt D-1
+- **D-1** Control-plane changes permitted in Wave B, scoped per packet, independently
+  reviewed, installed with a hash-bound receipt; campaign builders keep the prohibition.
+```
+
+This is bootstrap preparation, not production evidence or an enablement decision. Only the new ops files, test_ops files, these two packets, and disabled table mappings were written. No executor, real database, credential file, network, Git mutation, or background process was used. The cockpit commits and independently reviews this combined delivery.
+
+Reconciliation: `00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json` retains its four original enabled kinds. Four primary adapter mappings are disabled; the existing disabled rebuild dry-run kind aliases the rebuild wrapper. Executor/dispatcher/contract sources are unchanged.
+
+The output is ky.op_adapter/1 (operation_adapters.py:36–39,170–176), not an executor receipt. Executor.py:224–233,344–345 produces the receipt; operation_adapters.py:407–464 still requires terminal request/receipt-bound observation and an independent verdict at the receipt digest. No wrapper removes the production fence.
+
+(I) INTERPRETATION I1: the owner finite set narrows the broad ka_*/ph_* rule. At runtime all nine named assets must exist, be active chart writers, and have L3/L4 layer_index matching their prefix. ka_avadhi is never scheduled; any direct dependency on it refuses. Other dependencies must already be lit/service_ok, never rebuilt. Extra prefix matches cannot widen the set. Owner phase barriers plus live registry edges determine order; contradictions/cycles refuse. Authority: /Users/Dev/kalayantra/run/PLANNER_STATE.json:897–910, especially :904–905. The plan itself leaves this concrete launch unresolved.
+
+(I) INTERPRETATION I2: reviewed ky.ops_scope/1 JSON is a new local preflight input, produced by ops/scope.sql on the governed readback path (not by these dry runs). It contains the existing registry fields and public table/FK inventory. Dry-run reads only this file, prints commands/SQL/scope/identities, writes nothing and connects nowhere; live checks are null. Execute re-reads and compares the complete source inventory. The pg_dump snapshot identifier is explicitly a runtime substitution, not a fabricated ID.
+
+(I) INTERPRETATION I3: adapter idempotency is a persistent attempted-key marker under KY_ROOT/run/ops/adapter_keys, in addition to the executor ledger. Duplicate, failed and interrupted keys refuse forever; no automatic write retry. Operator request args must carry the same idempotency key as the complete executor request. Artifact labels/keys/path boundaries reject unsafe input or symlinks; connection values never appear in argv/output. Only DATABASE_URL is consumed, with explicit username/password and no .pgpass/service fallback.
+
+Open validation conflict: test_operation_adapters.py:397–407 asserts the exact historical table digest, 20 entries and 14 placeholders. The authorized mappings necessarily contradict it. Do not change or bypass this test under this job scope. Baseline 81/81 passed; final behavioral contract cases pass, but this one invariant fails. Cockpit must authorize a scoped contract-test update before either packet can be treated as fully qualified.
+
+Orchestrator_rebuild requires a pre-staged planned build_runs row, canonical chart, action=rebuild and an exact runtime-derived plan. Existing --assets may only confirm that list; it cannot override it. Out-of-plan upstreams must already be ready. Runtime registry drift, ka_avadhi dependency, wrong chart/action/plan, attempted run, lower-layer downstream staleness, failure, missing or ambiguous readback refuses. No stage/clear SQL, writer changes, migration, remote job, retry, layer publication or head flip is supplied.
+
+(I) INTERPRETATION I6: existing main.py:52–59 only accepts --run-id and has no dry-run/assets CLI. The wrapper calls the existing runner.execute_run, preserving manifest/code/registry validation, chart locking, worker connections, savepoints and final state reconciliation. Through runner.py:625–642's execute_dag callback interface it forces width one; worker failure, timeout or dependency block signals stop before the next dispatch. Scheduler binding is restored in finally. NIRMANA_FORCE_EXECUTE=1 is set only around this rebuild to prevent delta-skip from masquerading as an executed rebuild (runner.py:1163–1169; cockpit/runs/route.ts:472). Diagnostics are suppressed to avoid driver-text credential leakage. No frozen writer signature or pipeline source is edited. This adapter scheduling choice requires independent review and installed-runtime qualification before enablement.
+
+The safe staging producer is still a prerequisite. The product route supports scope=asset_set (platform/src/app/api/cockpit/runs/route.ts:74–92) and freezes a manifest (:239–250), but also dispatches; it is not assumed to be a safe stage-only operation. Cockpit must provide a reviewed unstarted frozen run without triggering a second remote build. No interface or staging command is invented here. A missing or already attempted run blocks this wrapper.
+
+Orchestrator_rebuild_readback independently rechecks registry scope and reads the whole actual run census. Completed run plus exact asset set, complete build_run_assets rows, lit/service_ok throughput, chart-scoped registry count_sql ($1 bound by parameter) and passing registry integrity_check_sql are required. Both rebuild and readback output post-run scoped counts/content SHA-256s. Incomplete/failed/stopped/paused state, hidden extra asset, absent detector, or same-count changed content is observable in evidence; local exit zero alone proves nothing. Legitimate zero requires target_floor=0; no aspirational positive floor is enforced.
+
+(I) INTERPRETATION I7: these are mechanical registry count/integrity checks, not K9-1's still-missing independent writer/grain semantic oracle, benchmarks or publication/rollback proof. Backup and rebuild are a combined delivery; common.py and executor_ops.json are jointly reviewed, so do not launch two concurrent packet builders against these shared files. Four primary wrappers are mapped; the existing fifth rebuild_dryrun mapping is retained as a disabled alias. Packet build_tier=opus is the required existing bootstrap schema literal, not a claim about the actual Codex job model.
+
+Exact dry-run examples (scope path is proposed; UUID is a syntax fixture, not a staged run claimed to exist):
+```sh
+KY_ROOT=/Users/Dev/kalayantra python3 -B 00_ARCHITECTURE/briefs/kalayantra/fleet/ops/orchestrator_rebuild.py --dry-run --scope /Users/Dev/kalayantra/run/ops/scope/K_REBUILD_SCOPE.json --idempotency-key k-rebuild-1-run --run-id 0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11
+KY_ROOT=/Users/Dev/kalayantra python3 -B 00_ARCHITECTURE/briefs/kalayantra/fleet/ops/orchestrator_rebuild_readback.py --dry-run --scope /Users/Dev/kalayantra/run/ops/scope/K_REBUILD_SCOPE.json --idempotency-key k-rebuild-1-readback --run-id 0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11
+```
+Enablement later: resolve the contract-test conflict; independently review and qualify the installed bridge and sidecar dependencies with real disposable-lane evidence; provide reviewed scope and safe staged-run producer; prove backup fresh/restorable and all owner window conditions (PLANNER_STATE.json:900–910), including installation/rehearsal, SS window-free, lease/coordination and Exec PROBES DONE. Only when main publication is permitted, owner publishes merged script/table sources and independently switches orchestrator_rebuild_dryrun.enabled, orchestrator_rebuild.enabled and orchestrator_rebuild_readback.enabled to true as needed. All stay production=true, needs=builder. Alias fixed_args=[--dry-run]; execution/readback fixed_args=[--execute]. Each executor request binds reviewed_commit, canonical chart, unique key, sole lease, expiry, verifier acceptance; backup_taken and restore_verified required, plus dry_run_passed for execution/readback (executor.py:270–276). Supply --scope, --run-id and matching --idempotency-key; optional --assets must match exactly. Owner surrogate still makes the time-of-run go/no-go and releases fences only after independent request-bound quiescence. DEFINE_K9-3.md was absent in the named study folders; DEFINE_K9-23.md exists under J-20261012T213436Z-b4-define-k9-23, consistent with the plan regrouping. Its Q1/Q4/Q5 production/tooling/semantic/rollback questions remain unresolved by this preparation.
