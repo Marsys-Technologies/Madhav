@@ -35,6 +35,7 @@ from brahmagyan import verification_vocab as V  # noqa: E402
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
 from services.gochara_grammar import read_tier_policy as RTP  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
+from services.gochara_kernel import dasha_read  # noqa: E402
 
 STEP06A = (Path(__file__).resolve().parents[3]
            / "scripts" / "kala_gochara_cutover" / "step06a_class_context.py")
@@ -57,6 +58,15 @@ class _Conn:
 
     def execute(self, sql, params):
         self.calls.append((sql, params))
+        if "SELECT DISTINCT" in sql:
+            _chart, system, _ayan = params
+            builds = sorted({str(r[7]) if r[7] is not None else "NULL"
+                             for r in self.rows if r[1] == system})
+
+            class _Builds:
+                def fetchall(_s):
+                    return [(build,) for build in builds]
+            return _Builds()
         _chart, _ayan, systems, levels, tier_param = params[:5]
         accepted = (set(tier_param) if "ANY(%s)\n" in sql.split(
             "verification_pass_status =")[1][:20] + "\n" else {tier_param})
@@ -233,13 +243,40 @@ def test_step06a_pinned_read_keeps_vimshottari_strict_and_reads_relabelled_level
     settled = "ca17639b-f3cf-42c7-9866-0a61f3855802"
     rows = [r[:7] + [settled] + r[8:] for r in _rows_from(AFTER)] + [
         # a vimshottari row at an honest-but-unverified tier must NOT enter the pin
-        _row("vx", "vimshottari", CM, lord="Saturn", build="b-other")]
+        _row("vx", "vimshottari", CM, lord="Saturn", build=settled)]
     periods, contract = mod.load_pinned_dasha_periods(
         _Conn(rows), "482012f1-710e-4a25-994a-93821f5871aa", SYSTEMS)
     got = {(p["system_id"], p["level_n"]): p["verification_pass_status"] for p in periods}
     assert got == {("vimshottari", 1): T, ("vimshottari", 2): T, ("vimshottari", 3): T,
                    ("mudda", 1): CM, ("narayana", 1): CM}
     assert contract["tier"] == T and contract["builds_seen"] == [settled]
+
+
+# J4P-B2: only SQL is emulated; both readers and the shared selector are real.
+# These are negative fixtures, not asserted L1 computations.
+@pytest.mark.parametrize("build,tier,level", [
+    ("33333333-3333-4333-8333-333333333333", SG, 1),
+    ("33333333-3333-4333-8333-333333333333", T, 4),
+    (None, SG, 1),
+    (None, T, 4),
+], ids=["foreign-single", "foreign-level4", "null-single", "null-level4"])
+@pytest.mark.parametrize("reader", ["cutover", "kernel"])
+def test_readers_refuse_mixed_or_null_builds_hidden_by_tier_or_level(reader, build, tier, level):
+    chart = "482012f1-710e-4a25-994a-93821f5871aa"
+    conn = _Conn([
+        _row("settled", "vimshottari", T,
+             build="ca17639b-f3cf-42c7-9866-0a61f3855802"),
+        _row("foreign", "vimshottari", tier, level=level, build=build),
+    ])
+    with pytest.raises(dasha_read.DashaBuildRefused) as refusal:
+        if reader == "cutover":
+            _load_step06a().load_pinned_dasha_periods(conn, chart, ["vimshottari"])
+        else:
+            dasha_read.load_pinned_vimshottari(conn, chart)
+    assert refusal.value.code == "settled_build_ambiguous"
+    # Refuse the full population before any tier/level-filtered query runs.
+    assert len(conn.calls) == 1
+    assert conn.calls[0][1] == (chart, "vimshottari", "lahiri_chitrapaksha")
 
 
 class _CountConn:

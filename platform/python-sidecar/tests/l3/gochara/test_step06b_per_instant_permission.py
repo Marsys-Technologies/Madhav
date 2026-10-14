@@ -785,9 +785,9 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
 
 
 class _DashaConn:
-    """Stub chart_dashas: answers the RAW tier-pinned read (no build
-    predicate) with rows of every build, and the build-PINNED read with the
-    pinned build's rows only — the two reads main() now performs."""
+    """Stub chart_dashas: answers the all-build guard, the RAW tier-pinned
+    read with rows of every build, and the build-PINNED read with only the
+    pinned build's rows — the three Vimśottarī reads main() performs."""
 
     def __init__(self, rows_by_build: dict):
         self._rows = rows_by_build
@@ -795,6 +795,16 @@ class _DashaConn:
 
     def execute(self, sql, params):
         self.queries.append((sql, params))
+        if "SELECT DISTINCT" in sql:
+            _chart, system, _ayan = params
+            builds = sorted({str(build) if build is not None else "NULL"
+                             for build, rows in self._rows.items()
+                             if any(r["system_id"] == system for r in rows)})
+
+            class _Builds:
+                def fetchall(self_inner):
+                    return [(build,) for build in builds]
+            return _Builds()
         systems = params[2]
         pinned = params[-1] if "AND build_id = %s" in sql else None
         out = []
@@ -830,8 +840,11 @@ def test_actual_main_path_pins_the_build_before_canonicalization():
     assert {str(p["build_id"]) for p in periods if p["system_id"] == "vimshottari"} == {settled}
     assert not any(p["dasha_row_id"] == "md-foreign" for p in periods)
     # the raw read carried no build predicate; the pinned read did
-    raw_sql, raw_params = conn.queries[0]
-    pinned_sql, pinned_params = conn.queries[1]
+    guard_sql, guard_params = conn.queries[0]
+    assert "SELECT DISTINCT" in guard_sql
+    assert guard_params == (CHART["chart_id"], "vimshottari", "lahiri_chitrapaksha")
+    raw_sql, raw_params = conn.queries[1]
+    pinned_sql, pinned_params = conn.queries[2]
     assert "AND build_id = %s" not in raw_sql and raw_params[2] == ["vimshottari"]
     assert "AND build_id = %s" in pinned_sql and pinned_params[-1] == settled
     # and the C5 licence evaluates on the pinned set at t₁ (Mars AD scored)
@@ -840,7 +853,7 @@ def test_actual_main_path_pins_the_build_before_canonicalization():
                                          tier=contract["tier"])
     assert ctx["period_context"]["ad"]["lord"] == "Mars"
     # A foreign overlapping build is refused by the shared build rule.
-    with pytest.raises(DD.DashaReadConflict, match="several.*builds"):
+    with pytest.raises(DD.DashaReadConflict, match="mixed L1 state"):
         mod.load_pinned_dasha_periods(
             _DashaConn({settled: _l1_rows(build=settled), "other-build": foreign}),
             CHART["chart_id"], ["vimshottari", "yogini"])
