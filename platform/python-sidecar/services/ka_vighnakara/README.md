@@ -38,11 +38,16 @@ backend guard remain the default dispatch. The old trigger composition shim
 remains callable until K4-2b.
 
 **(I) INTERPRETATION:** until a canonical physical identity resolver is
-admitted, duplicate `(chart, generation, event class, mechanism, interval,
-judge record roots, contact roots)` conclusions are rejected before any
-replacement. Assertion labels, citations and supplementary protecting facts
-cannot create another physical conclusion. This may conservatively reject
-ambiguous fixtures; it never retargets a protection to an invented identity.
+admitted, conclusions with the same `(chart, generation, event class, mechanism,
+judge record roots, contact roots)` and overlapping half-open intervals are
+rejected before any replacement. Adjacent segments remain distinct. Assertion
+labels, citations and supplementary protecting facts cannot create another
+physical conclusion. A singleton replacement with overlapping protection
+evidence targeting another label is also rejected: the current envelope has no
+immutable target roots with which to distinguish an unrelated edge from a stale
+alias. This conservatively rejects ambiguous fixtures rather than dropping or
+retargeting that evidence (architecture plan v1.1 §10 alias/negative-space
+oracles; re-review `ASTRA_REVIEW_K3_v1_2.md`, K3-B4).
 
 Migration 1349 adds only nullable metadata columns and a CHECK restricted to
 this contract version. Legacy NOT NULL score/type/severity slots are filled
@@ -60,8 +65,11 @@ cockpit operations. Migration 1349 is unchanged.
 The forecaster-read lint covers every new negative-space module, storage,
 the trigger boundary and the registered writer dispatch. Only the exact
 zero-valued legacy score INSERT slots are exempt. **(I) INTERPRETATION:** the
-retained `_LegacyKaVighnakaraWriter` is outside this fixture-path lint until
-its planned cutover; the registered dispatch class itself is fully checked.
+retained `_LegacyKaVighnakaraWriter` and explicitly named compatibility helpers
+are outside this fixture-path lint until their planned cutover. Every other
+writer-module global is checked; a compatibility helper reached from the
+registered dispatch is checked transitively as well. The `super().run` legacy
+fallback retains its existing exemption (re-review K3-B5).
 
 The filename moved from 1343 to 1349 after the live open-PR/coordination
 check found Suvarṇa PR #3368 already owned 1343 and PR #3371 owned 1344–1348.
