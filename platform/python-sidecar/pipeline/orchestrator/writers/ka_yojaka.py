@@ -152,7 +152,9 @@ class KaYojakaWriter(WriterBase):
             rows.append((chart_id, row['ayanamsha_id'], None, 'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
                          json.dumps(dasha), json.dumps(trigger), '{}', json.dumps(row), generation,
                          row['route'], json.dumps({k: row[k] for k in ('conclusion_id', 'formation_state',
-                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}),
+                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}
+                         | ({'null_reason': row['null_reason'], 'effective_reason': row['effective_reason']}
+                            if row.get('effective_reason') else {})),
                          row['mechanism_id'], event_class))
         with conn.cursor() as cur:
             cur.execute('''DELETE FROM kala_activation_predicates WHERE chart_id = %s
