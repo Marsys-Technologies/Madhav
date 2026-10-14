@@ -10,6 +10,7 @@ from bisect import bisect_right
 from datetime import timezone
 from decimal import Decimal
 import json
+from copy import deepcopy
 
 import psycopg.rows
 from psycopg.types.json import Jsonb
@@ -166,19 +167,29 @@ def build_dossier(period, facts, mechanisms, context, commencement):
                        'convention_id': answer.convention_id}, fact_ids=(str(period['dasha_row_id']),))
     elif not graha: onset = typed(reason=NullReason.METHOD_INAPPLICABLE)
     attached = []
-    for m in mechanisms:
+    from services.ka_yojaka.promise_adapter import mechanism_density_key
+    for m in sorted(mechanisms, key=lambda m: mechanism_density_key(
+            {**m['derivation_ledger_jsonb'], 'mechanism_id': m['mechanism_id']})):
         ledger, state = m['derivation_ledger_jsonb'], m['conclusion_state_jsonb']
         participants = {norm_graha(p) for p in ledger.get('constituent_planets', [])}
         # A grounding/context fact does not by itself confer a participant role.
         if graha is None or norm_graha(graha) not in participants:
             continue
+        # Dossiers remain numeric-weight-free. The F1 testimony route supplies
+        # zero contribution; omit only its explicit zero, never hide a score.
+        roles = [{k: deepcopy(v) for k, v in e.items()
+                  if not (k == 'weight' and v == 0 and e.get('operator_role') == 'testimony')}
+                 for e in ledger.get('graph_edges', [])]
         attached.append({'mechanism_id': m['mechanism_id'], 'route': m['mechanism_route'],
                          'effective_state': state['effective_state'], 'qualification': state.get('qualification'),
                          'event_class_id': m.get('event_class_id', ledger.get('event_class_id')),
                          'binding': dict(ledger['binding']) if ledger.get('binding') else None,
-                         'roles': ledger.get('graph_edges', []), 'defeats': state.get('defeats', []),
+                         'roles': roles, 'defeats': state.get('defeats', []),
                          'excepts': state.get('excepts', []), 'source': ledger['source'],
-                         'rule_version': ledger.get('rule_version'), 'fact_ids': ledger.get('fact_ids', [])})
+                         'rule_version': ledger.get('rule_version'), 'fact_ids': ledger.get('fact_ids', []),
+                         **{k: deepcopy(ledger[k]) for k in ('yoga_tier', 'null_reason', 'judgment_flags',
+                             'constituent_fact_tiers', 'sources_consulted', 'source_states',
+                             'source_null_reasons', 'l2_attachments', 'method_qualification') if k in ledger}})
     result = {'lord_condition': condition, 'lord_condition_fact_refs': refs,
               'placement': placement, 'ad_placement_from_md': relative,
               'ad_relation_to_md': typed(period.get('lord_to_parent_relationship'),
@@ -186,6 +197,7 @@ def build_dossier(period, facts, mechanisms, context, commencement):
               'sublord_modulation': {'graha': parent, 'note': f"AD lord {period['lord_graha']} modulates MD lord {parent}."} if parent else None,
               'commencement_condition': onset, 'commencement_coverage': asdict(commencement.coverage),
               'fruition_phase': phase, 'attached_mechanisms': attached,
+              'judgment_flags': sorted({flag for m in attached for flag in m.get('judgment_flags', [])}),
               'attachment_evaluation': typed('evaluated' if mechanisms else None,
                                              reason=NullReason.INFORMATION_UNAVAILABLE),
               'applicability': asdict(context.applicability_detail),

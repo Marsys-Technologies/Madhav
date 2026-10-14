@@ -78,6 +78,41 @@ def test_attached_cancellation_and_signed_roles_are_not_promoted():
     assert dossier()["attached_mechanisms"][0]["roles"][0]["polarity"] == "supports"
 
 
+def test_attached_yoga_keeps_null_tier_and_source_states_and_sorts_behind_verified_facts():
+    yoga, structural = mechanism(), mechanism()
+    yoga['mechanism_id'] = 'yoga'
+    yoga['derivation_ledger_jsonb'].update(canonical_id='sunapha', yoga_tier=None,
+        null_reason='ga_yoga_firings_carries_no_verification_tier',
+        judgment_flags=['yoga_tier_unavailable'],
+        sources_consulted=['msr', 'cgm', 'pratijna'],
+        source_states={'msr': 'present', 'cgm': 'missing_fact', 'pratijna': 'missing_fact'},
+        l2_attachments=[{'source': 'CGM', 'state': 'missing_fact',
+                         'null_reason': 'no_fact_root_identity_in_l2_source'}])
+    structural['mechanism_id'] = 'structure'
+    structural['derivation_ledger_jsonb']['constituent_fact_tiers'] = {'CODEX-MAR-house_d1': 'two_pass_verified'}
+    result = dossier(mechanisms=[yoga, structural])
+    attached = result['attached_mechanisms']
+    assert [r['mechanism_id'] for r in attached] == ['structure', 'yoga']
+    assert attached[1]['yoga_tier'] is None
+    assert attached[1]['null_reason'] == 'ga_yoga_firings_carries_no_verification_tier'
+    assert attached[1]['sources_consulted'] == ['msr', 'cgm', 'pratijna']
+    assert attached[1]['source_states']['cgm'] == 'missing_fact'
+    assert attached[1]['l2_attachments'][0]['null_reason'] == 'no_fact_root_identity_in_l2_source'
+    assert result['judgment_flags'] == ['yoga_tier_unavailable']
+
+
+def test_fact_backed_argala_reaches_dossier_as_unscored_d_local_testimony():
+    from services.ka_yojaka.promise_adapter import build_bundle
+    from tests.l3.ka_yojaka.test_k12_structure import structural_facts
+    row = build_bundle([structural_facts()[-1]], [], [])[0]
+    source = dict(mechanism_id=row['mechanism_id'], mechanism_route=row['route'],
+                  derivation_ledger_jsonb=row, conclusion_state_jsonb={'effective_state': 'unresolved'})
+    attached = dossier(mechanisms=[source])['attached_mechanisms'][0]
+    assert attached['route'] == 'testimony'
+    assert attached['method_qualification'] == 'd_local'
+    assert all(e['operator_role'] == 'testimony' and e['rule_version'] == 'unadmitted' for e in attached['roles'])
+
+
 def test_commencement_equals_real_sky_at_exact_boundary():
     convention = sky.SkyConvention()
     answer = sky.ephemeris_at(2451545., convention, bodies=("mars",))

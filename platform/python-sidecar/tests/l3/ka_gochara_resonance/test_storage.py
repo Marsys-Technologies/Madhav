@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 
 from tests.l3.kala_db.conftest import kala_db_dsn  # guarded disposable-server fixture
 from services.ka_gochara_resonance.writer import KaGocharaResonanceWriter
@@ -25,12 +26,12 @@ def api():
 def db(kala_db_dsn):
     with psycopg.connect(kala_db_dsn) as conn:
         conn.execute('''CREATE TABLE kala_layer_head(chart_id uuid PRIMARY KEY, generation text);
-          CREATE TABLE kala_layer_candidate(chart_id uuid, generation text, state text, build_id uuid,
+          CREATE TABLE kala_layer_candidate(chart_id uuid, generation text, state text, build_id uuid, conventions jsonb,
             PRIMARY KEY(chart_id,generation));
           CREATE TABLE gochara_resonance_map(chart_id uuid, target_ref text, weight double precision);
           INSERT INTO gochara_resonance_map VALUES ('00000000-0000-4000-8000-000000000384','legacy',.8);''')
         conn.execute('INSERT INTO kala_layer_head VALUES (%s,%s)', (CHART, 'published:old'))
-        conn.execute('INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,%s)', (CHART, 'candidate:new', 'building', BUILD))
+        conn.execute('INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,%s,%s)', (CHART, 'candidate:new', 'building', BUILD, Jsonb({'natal': {'build_id': BUILD, 'ayanamsha_id': AYAN}})))
         yield conn
         conn.rollback()
 
@@ -100,7 +101,7 @@ def test_isolation_across_generations(db):
     migrate(db)
     store(db)
     db.execute('UPDATE kala_layer_candidate SET state=%s', ('published',))
-    db.execute('INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,%s)', (CHART, 'candidate:next', 'building', BUILD))
+    db.execute('INSERT INTO kala_layer_candidate VALUES (%s,%s,%s,%s,%s)', (CHART, 'candidate:next', 'building', BUILD, Jsonb({'natal': {'build_id': BUILD, 'ayanamsha_id': AYAN}})))
     store(db, 'candidate:next')
     assert db.execute('SELECT generation, count(*) FROM kala_f1_relationship GROUP BY generation ORDER BY generation').fetchall() == [('candidate:new', 1), ('candidate:next', 1)]
 
@@ -119,26 +120,33 @@ def test_foreign_key_cannot_cross_generation(db):
         db.execute('UPDATE kala_f1_relationship SET generation=%s', ('candidate:other',))
 
 
-def test_candidate_entrypoint_uses_real_sources_and_keeps_legacy(db):
+def seed_candidate_sources(db):
     migrate(db)
+    db.execute("CREATE TABLE kala_layer_candidate_grain(chart_id uuid,generation text,grain_key text,result_state text,input_vector text,PRIMARY KEY(chart_id,generation,grain_key))")
     db.execute('''CREATE TABLE chart_facts(chart_id uuid, ayanamsha_id text, fact_id text,
-      fact_category text, fact_subject text, fact_key text, fact_value_num numeric, fact_value_text text, unit text);
+      fact_category text, fact_subject text, fact_key text, fact_value_num numeric, fact_value_text text, unit text, build_id uuid);
       CREATE TABLE reference_signs(sign_id int,lord text);
       CREATE TABLE brahma_event_ontology(event_class_id text,signature_model jsonb,citations jsonb);
       CREATE TABLE bg_transit_rules(id int,rule_type text,graha text,primary_house int,classical_citation text);
       CREATE TABLE ga_yoga_firings(chart_id uuid,ayanamsha_id text,yoga_canonical_id text,fired bool,
-          constituent_fact_ids jsonb,constituent_planets jsonb,constituent_houses jsonb,bhanga_active bool);
-      CREATE TABLE chart_dashas(chart_id uuid,ayanamsha_id text,system_id text,level_n int,lord_graha text);
+          constituent_fact_ids jsonb,constituent_planets jsonb,constituent_houses jsonb,bhanga_active bool,build_id uuid);
+      CREATE TABLE chart_dashas(chart_id uuid,ayanamsha_id text,system_id text,level_n int,lord_graha text,build_id uuid,
+          dasha_row_id uuid DEFAULT gen_random_uuid(), verification_pass_status text DEFAULT 'two_pass_verified',
+          start_iso timestamptz DEFAULT '2000-01-01Z',end_iso timestamptz DEFAULT '2001-01-01Z');
       CREATE TABLE kala_activation_predicates(chart_id uuid,ayanamsha_id text,generation text,
           event_class_id text,mechanism_id text,derivation_ledger_jsonb jsonb);''')
-    db.execute('INSERT INTO chart_facts VALUES (%s,%s,%s,%s,%s,%s,%s,NULL,%s)',
-               (CHART, AYAN, 'venus', 'graha_position', 'VEN', 'longitude_sidereal', 0, 'degrees'))
+    db.execute('INSERT INTO chart_facts VALUES (%s,%s,%s,%s,%s,%s,%s,NULL,%s,%s)',
+               (CHART, AYAN, 'venus', 'graha_position', 'VEN', 'longitude_sidereal', 0, 'degrees', BUILD))
     db.execute('INSERT INTO brahma_event_ontology VALUES (%s,%s,%s)',
                ('marriage', '{"karakas":["Venus"]}', '["BPHS"]'))
     from services.ka_gochara_resonance.writer import TARGET_EVENT_CLASSES
     for c in TARGET_EVENT_CLASSES:
         if c != 'marriage':
             db.execute('INSERT INTO brahma_event_ontology VALUES (%s,%s,%s)', (c, '{}', '[]'))
+
+
+def test_candidate_entrypoint_uses_real_sources_and_keeps_legacy(db):
+    seed_candidate_sources(db)
     ctx = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'},
                           build_id=BUILD, dry_run=False)
     result = KaGocharaResonanceWriter().run(ctx)
@@ -191,3 +199,35 @@ def test_store_has_no_independent_commit(db):
     store(db)
     db.rollback()
     assert db.execute("SELECT to_regclass('public.kala_f1_target_object')").fetchone()[0] is None
+
+
+@pytest.mark.parametrize('table', ['chart_facts', 'ga_yoga_firings', 'chart_dashas'])
+def test_relationship_sources_exclude_other_build_and_ayanamsha(db, table):
+    seed_candidate_sources(db)
+    if table == 'ga_yoga_firings':
+        db.execute("INSERT INTO ga_yoga_firings VALUES (%s,%s,'foreign',true,'[\"venus\"]','[\"Venus\"]','[]',false,%s)", (CHART, AYAN, BUILD))
+    if table == 'chart_dashas':
+        db.execute("INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,lord_graha,build_id) VALUES (%s,%s,'vimshottari',1,'Venus',%s)", (CHART, AYAN, BUILD))
+    db.execute(f"UPDATE {table} SET build_id='00000000-0000-4000-8000-000000000399'")
+    context = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new',
+        'ayanamsha_id': 'wrong_config_convention'}, build_id=BUILD)
+    api().build_candidate_projection(context)
+    edges = db.execute('SELECT role FROM kala_f1_relationship').fetchall()
+    if table == 'chart_facts':
+        assert db.execute('SELECT * FROM kala_f1_target_object').fetchall() == []
+    else:
+        assert ('yoga_constituent' if table == 'ga_yoga_firings' else 'dasha_lord_portfolio',) not in edges
+        assert db.execute('SELECT DISTINCT ayanamsha_id FROM kala_f1_target_object').fetchall() == [(AYAN,)]
+
+
+@pytest.mark.parametrize('mutation', ["lord_graha='Mars'", "end_iso='2002-01-01Z'"])
+def test_relationship_dasha_lords_hash_refuses_changed_inputs(db, mutation):
+    seed_candidate_sources(db)
+    db.execute("INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,lord_graha,build_id) VALUES (%s,%s,'vimshottari',1,'Venus',%s)", (CHART, AYAN, BUILD))
+    context = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'}, build_id=BUILD)
+    api().build_candidate_projection(context)
+    before = db.execute('SELECT * FROM kala_f1_relationship ORDER BY edge_id').fetchall()
+    db.execute(f"UPDATE chart_dashas SET {mutation}")
+    with pytest.raises(ValueError, match='input'):
+        api().build_candidate_projection(context)
+    assert db.execute('SELECT * FROM kala_f1_relationship ORDER BY edge_id').fetchall() == before

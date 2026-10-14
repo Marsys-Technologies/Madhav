@@ -49,7 +49,8 @@ def test_l2_removal_preserves_the_entire_admitted_graph_and_duplicate_signals_at
     signals = [dict(signal_id=s, ayanamsha_id="a", constituent_facts_array=["f:moon"]) for s in ("s1", "s2")]
     attached = build_bundle(facts, firings, signals)
     clean = build_bundle(facts, firings, [])
-    assert [{k: v for k, v in r.items() if k != "attachments"} for r in attached] == [{k: v for k, v in r.items() if k != "attachments"} for r in clean]
+    attachment_metadata = {'attachments', 'l2_attachments', 'source_states', 'source_null_reasons'}
+    assert [{k: v for k, v in r.items() if k not in attachment_metadata} for r in attached] == [{k: v for k, v in r.items() if k not in attachment_metadata} for r in clean]
     assert next(r for r in attached if r["canonical_id"] == "sunapha")["attachments"] == ["s1", "s2"]
 
 

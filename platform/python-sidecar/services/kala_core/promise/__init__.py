@@ -93,6 +93,7 @@ class Attachment:
     source: AttachmentSource
     fact_ids: tuple[str, ...]
     state: FactState = FactState.PRESENT
+    null_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -126,12 +127,14 @@ def load_l2_attachments(
     for item in inputs:
         state = (
             FactState.MISSING_FACT
-            if not set(item.fact_ids) <= available
+            if (not item.fact_ids and not item.evaluated_empty) or not set(item.fact_ids) <= available
             else FactState.EVALUATED_EMPTY
             if item.evaluated_empty
             else FactState.PRESENT
         )
-        attachments.append(Attachment(item.attachment_id, mechanism_id, item.source, item.fact_ids, state))
+        reason = ('no_fact_root_identity_in_l2_source' if not item.fact_ids else
+                  'fact_roots_not_in_pinned_natal_source') if state is FactState.MISSING_FACT else None
+        attachments.append(Attachment(item.attachment_id, mechanism_id, item.source, item.fact_ids, state, reason))
     return tuple(attachments)
 
 
