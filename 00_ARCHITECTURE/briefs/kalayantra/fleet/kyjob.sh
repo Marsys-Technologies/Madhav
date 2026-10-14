@@ -622,6 +622,8 @@ def check_prompt(state):
         raise Refuse(65, "prompt: what follows `--- job header ---` is not one JSON object")
     if header.get("job_id") != state["job_id"]:
         raise Refuse(65, "prompt: the job header does not name job %s" % state["job_id"])
+    if "result_path" in header and header["result_path"] != os.path.join(state["job_scratch"], "result.json"):
+        raise Refuse(65, "prompt: result_path must name job_scratch/result.json")
     for key in HEADER_EQUALS_STATE:
         if key in header and not same_json(header[key], state[key]):
             raise Refuse(65, "prompt: the job header's %s is not the job state's" % key)

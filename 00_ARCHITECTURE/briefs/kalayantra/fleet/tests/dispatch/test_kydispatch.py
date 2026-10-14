@@ -1793,3 +1793,60 @@ def test_restart_recovers_two_no_post_action_jobs_without_a_third_model_build(wo
     assert 'no_post_action' not in json.loads((world.run / 'jobs' / 'failures.json').read_text())['K-1']
     assert json.loads((world.run / 'claims' / (recovered[0]['slot'] + '.json')).read_text())['state'] == 'released'
     assert any(json.loads(line).get('state') == 'review' for line in (world.run / 'EVENTS.jsonl').read_text().splitlines())
+
+
+@pytest.mark.parametrize("packet", [None, ""])
+def test_packetless_model_refuses_admission_before_precheck_or_job(world, monkeypatch, packet):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    e = d.Engine(world.env(), dry=True)
+    e.ctx.priority = ["K-1"]
+    intent = dict(d.B.intents(e.ctx)[0], kind="RULING", item="msg.fixture", packet=packet)
+    monkeypatch.setattr(d.A, "precheck", lambda *a: pytest.fail("packetless model reached precheck"))
+    state = {"hold": False, "gate": "OPEN", "hold_merges": False, "open_keys": set(), "busy": set(),
+             "short": set(), "sizes": {"builder": 6, "verifier": 4}, "provisioned": False}
+    assert e._admit(intent, state) == "refused:packet"
+    assert d.J.load(e.ctx) == []
+
+
+def test_complete_ceiling_reopens_only_for_changed_matching_post_deploy_evidence(world, monkeypatch):
+    import kydispatch as d
+    world.apply(BUILD_READY, first=True)
+    e = d.Engine(world.env(), dry=True)
+    head, merge = "a" * 40, "b" * 40
+    intent = d.L._complete_code(e.ctx, "K-1", "K", {"deps_open_strict": []},
+                               {"number": 12, "head": head, "merge_commit": merge})
+    ledger = []
+    e.ctx.events = lambda item: list(ledger)
+    failure = {"K-1": {"independent_post_deploy_verdict_at_merge_commit_is_missing": {
+        "count": 3, "evidence_fp": intent["evidence_fp"], "last_job": "J-old"}}}
+    world.write(world.run / "jobs" / "failures.json", failure)
+    admitted = []
+    def precheck(ctx, got, slot):
+        admitted.append(got)
+        return {"admitted": True, "facts": {}, "refusals": []}
+    monkeypatch.setattr(d.A, "precheck", precheck)
+    state = {"hold": False, "gate": "OPEN", "hold_merges": False, "open_keys": set(), "busy": set(),
+             "short": set(), "sizes": {"builder": 6, "verifier": 4}, "provisioned": False}
+    assert e._admit(intent, state) == "refused:attempts"
+    for event in [
+        {"kind": "verdict", "item": "K-1", "head": head, "phase": "post_deploy", "result": "ACCEPTED"},
+        {"kind": "verdict", "item": "K-1", "head": merge, "phase": "pre_merge", "result": "ACCEPTED"},
+        {"kind": "verdict", "item": "K-other", "head": merge, "phase": "post_deploy", "result": "ACCEPTED"},
+        {"kind": "message", "item": "K-1", "detail": "unrelated"},
+    ]:
+        ledger.append(event)
+        assert e._admit(intent, state) == "refused:attempts"
+    ledger.append({"kind": "verdict", "item": "K-1", "head": merge, "phase": "post_deploy",
+                   "result": "ACCEPTED", "actor": "stream-V:v1"})
+    assert e._admit(intent, state) == "launch"
+    changed = admitted[-1]
+    assert changed["evidence_fp"] != intent["evidence_fp"]
+    assert changed["key"] == intent["key"]  # land.start rechecks this key; do not invalidate it.
+    assert e._admit(intent, state) == "launch" and admitted[-1]["evidence_fp"] == changed["evidence_fp"]
+    for n in range(3):
+        d.J._account(e.ctx, dict(changed, job_id="J-new-%d" % n, outcome="blocked",
+            failure_fp="independent_post_deploy_verdict_at_merge_commit_is_missing"))
+    assert e._admit(intent, state) == "refused:attempts"
+    assert json.loads((world.run / "jobs" / "failures.json").read_text())["K-1"][
+        "independent_post_deploy_verdict_at_merge_commit_is_missing"]["count"] == 6

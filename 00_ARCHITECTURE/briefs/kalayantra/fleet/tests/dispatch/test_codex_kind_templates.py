@@ -112,8 +112,11 @@ def test_ops_header_respects_codex_policy_and_readonly_mapping(ctx, role, tmp_pa
     (Path(ctx.run) / 'JOB_ENGINE').write_text(role + '=codex')
     A.refresh_job_engine(ctx)
     parent, _, _, stream, pool = ROLES[role]
+    packet = tmp_path / 'packet.md'
+    packet.write_text('# Fixture packet for the admitted model role\n')
     intent = O._intent(ctx, role.upper(), 'KV3-T', stream=stream, runner='model', pool=pool,
-                       tier='opus', evidence_fp='evidence', effort='xhigh' if parent == 'build' else 'high')
+                       packet=str(packet), tier='opus', evidence_fp='evidence',
+                       effort='xhigh' if parent == 'build' else 'high')
     assert intent['header']['model'] == A.CODEX_MODEL and intent['header']['effort'] == 'high'
     refusals, admitted = launch(ctx, role.upper())
     assert refusals == []

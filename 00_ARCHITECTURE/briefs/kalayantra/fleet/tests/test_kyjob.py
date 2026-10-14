@@ -1367,3 +1367,9 @@ def test_explicit_invalid_engine_refuses_before_claude(world, engine):
     w.state['engine'] = engine
     write_json(w.state_path, w.state)
     assert_refused(w.launch(), 65, 'engine:')
+
+
+@pytest.mark.parametrize("value", ["relative/result.json", "/elsewhere/result.json", None])
+def test_header_cannot_redirect_the_proposal_file(world, value):
+    world.header["result_path"] = value
+    assert_refused(world.build().launch(), 65, "prompt: ")

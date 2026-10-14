@@ -1237,6 +1237,27 @@ class Engine:
             pass
         return self._unknown("handled job", "%s has no matching ended, done job record" % path)
 
+    def _completion_evidence(self, intent):
+        """Bind code completion retries to the latest recorded post-deploy verdict at its merge commit.
+
+        (I) INTERPRETATION: this is a changed retry condition, not permission to complete: ky done still
+        checks independence and every completion gate. Keep the key that land.start re-derives; persist
+        the enriched evidence_fp through open/account so unchanged evidence cannot reset the ceiling.
+        """
+        header = intent.get("header") or {}
+        if intent["kind"] != "COMPLETE" or header.get("completion_kind") != "code":
+            return intent
+        events = self.ctx.events(intent["item"])
+        if not isinstance(events, list):
+            return None
+        matching = [e for e in events if isinstance(e, dict) and e.get("kind") == "verdict"
+                    and e.get("item") == intent["item"] and e.get("phase") == "post_deploy"
+                    and e.get("head") == header.get("merge_commit")
+                    and e.get("result") in ("ACCEPTED", "REJECTED")]
+        if not matching:
+            return intent
+        return dict(intent, evidence_fp=ka.sha_bytes(ka.canonical([intent.get("evidence_fp"), matching[-1]])))
+
     def _admit(self, intent, state):
         ctx, kind, item, key, pool = self.ctx, intent["kind"], intent["item"], intent["key"], intent.get("pool")
         if self._admission_held(state):
@@ -1259,9 +1280,16 @@ class Engine:
             return "wait:stale"
         if handled:
             return "refused:open"
+        intent = self._completion_evidence(intent)
+        if intent is None:
+            return "wait:stale"
         if J.attempts(ctx, intent)["blocked"]:
             return "refused:attempts"
         model = intent.get("runner") == "model"
+        if model and not (isinstance(intent.get("packet"), str) and intent["packet"].strip()):
+            self.journal("admission refused", "%s %s: packet: the model launcher requires a non-empty packet_path"
+                         % (kind, item))
+            return "refused:packet"
         if model and self._in_backoff():
             return "wait:backoff"
         slot = None
