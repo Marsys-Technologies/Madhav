@@ -238,7 +238,10 @@ def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[
     fetched PINNED to that build and canonicalized — a foreign build's
     overlapping rows never enter the duplicate/conflict pass; (3) the other
     DR-14 systems (legacy generators) are fetched and canonicalized on their
-    own. Returns (periods, contract)."""
+    own. Before filtering, every Vimśottarī tier and level must share one
+    non-NULL build, enforced by the kernel's shared guard.
+    Returns (periods, contract)."""
+    _dasha_read.assert_single_pinned_build(conn, chart_id)
     raw_vim = DD.fetch_dasha_periods_multilevel(
         conn, chart_id, systems=["vimshottari"], canonicalize=False)
     contract = select_dasha_read_contract(chart_id, raw_vim)
