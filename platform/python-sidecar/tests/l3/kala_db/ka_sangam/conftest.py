@@ -21,7 +21,9 @@ def kala_db_dsn(request):
             raise RuntimeError("K4 provided database must use its authorized loopback endpoint")
         with psycopg.connect(dsn, connect_timeout=3) as probe:
             try:
-                assert_disposable_connection(probe, "ky_cx_k4")
+                # The provided endpoint has a pinned bridge identity even in CI;
+                # do not inherit the shared guard's broader RFC1918 allowance.
+                assert_disposable_connection(probe, "ky_cx_k4", env={})
             except RefusedError:
                 # (I) INTERPRETATION: the cockpit explicitly provided this
                 # disposable loopback endpoint. Bind the observed Docker bridge
