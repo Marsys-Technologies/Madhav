@@ -3,6 +3,7 @@ import importlib.util
 import ast
 import json
 import re
+from types import SimpleNamespace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -185,10 +186,34 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
     for path in paths:
         tree=ast.parse(path.read_text())
         if path == ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py':
-            # The registered dispatch is in scope; the explicitly retained
-            # legacy implementation keeps its old contract until cutover.
-            tree=next(node for node in tree.body if isinstance(node,ast.ClassDef)
-                      and node.name == 'KaVighnakaraWriter')
+            # Exempt only named compatibility definitions. All other globals
+            # are inspected, including newly introduced helper bodies. An
+            # exempt helper used by the registered path loses its exemption,
+            # transitively; only the explicit super().run fallback stays legacy.
+            legacy = {'_LegacyKaVighnakaraWriter', '_is_rikta_tithi', '_ordinal',
+                '_chart_adverse_signs', '_severity', '_coerce_date', '_get_sidereal_lon',
+                '_lon_to_sign', '_jd_from_date', '_detect_all', '_check_malefic_transit',
+                '_check_panchanga_obstruction', '_check_gandanta', '_check_papakartari',
+                '_check_combustion', '_detect_obstructions'}
+            definitions = {node.name:node for node in tree.body
+                           if isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))}
+            for node in tree.body:
+                if isinstance(node,(ast.Assign,ast.AnnAssign)):
+                    targets = node.targets if isinstance(node,ast.Assign) else [node.target]
+                    for target in targets:
+                        if isinstance(target,ast.Name):
+                            definitions[target.id] = node
+            pending = list(definitions['KaVighnakaraWriter'].body)
+            reachable = set()
+            while pending:
+                for node in ast.walk(pending.pop()):
+                    if (isinstance(node,ast.Name) and node.id in definitions
+                            and node.id not in reachable):
+                        reachable.add(node.id)
+                        pending.append(definitions[node.id])
+            tree.body = [node for node in tree.body
+                         if not isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))
+                         or node.name not in legacy or node.name in reachable]
         for node in ast.walk(tree):
             if isinstance(node,ast.Constant) and isinstance(node.value,str):
                 assert not prohibited.search(node.value), (path,node.lineno)
@@ -327,5 +352,46 @@ def test_forecaster_read_mutant_is_detected(monkeypatch,relative):
                     "        if 'negative_space_fixture_inputs' in ctx.config:\n            ctx.db_conn.execute('SELECT * FROM kala_field')")
         return source
     monkeypatch.setattr(Path,'read_text',mutated)
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+def test_forecaster_read_in_reachable_writer_helper_is_rejected(monkeypatch):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    def with_helper(path,*args,**kwargs):
+        source = original(path,*args,**kwargs)
+        if path == target:
+            marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+            assert source.count(marker) == 1
+            source = source.replace(marker, marker+'\n            _review_fixture_helper(ctx)')
+            source += '\n\ndef _review_fixture_helper(ctx):\n    return ctx.db_conn.execute("SELECT * FROM kala_field")\n'
+            helper = ast.parse(source).body[-1]
+            ns = {}
+            exec(compile(ast.Module(body=[helper], type_ignores=[]), '<review helper>', 'exec'), ns)
+            calls = []
+            ns['_review_fixture_helper'](SimpleNamespace(db_conn=SimpleNamespace(execute=calls.append)))
+            assert calls == ['SELECT * FROM kala_field']
+        return source
+    monkeypatch.setattr(Path, 'read_text', with_helper)
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('call,helper', [
+    ('_review_outer(ctx)', '\n\ndef _review_outer(ctx):\n    return _review_inner(ctx)\n\ndef _review_inner(ctx):\n    return ctx.db_conn.execute("SELECT * FROM kala_field")\n'),
+    ('_detect_obstructions(None)', ''),
+])
+def test_reachable_transitive_or_legacy_helper_cannot_escape_lint(monkeypatch, call, helper):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    def mutated(path,*args,**kwargs):
+        source = original(path,*args,**kwargs)
+        if path == target:
+            marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+            assert source.count(marker) == 1
+            source = source.replace(marker, marker+'\n            '+call) + helper
+        return source
+    monkeypatch.setattr(Path, 'read_text', mutated)
     with pytest.raises(AssertionError):
         test_no_downstream_reads_or_multiplier_in_new_path()
