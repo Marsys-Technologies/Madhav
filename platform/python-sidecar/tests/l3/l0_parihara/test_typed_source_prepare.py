@@ -5,9 +5,11 @@ load_rules contract. Fixtures are deliberately synthetic, never source proof.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 import os
 from pathlib import Path
 import re
+import shlex
 import uuid
 
 import psycopg
@@ -200,21 +202,64 @@ def test_migration_is_listed_for_the_protected_public_schema_window():
     assert MIGRATION_NAME in names
 
 
+def assert_required_source_ci(ci):
+    # Unit Tests is a documented required context (ci.yml's merge-queue and
+    # DB-split declarations). A step in an advisory job is insufficient.
+    job = ci["jobs"]["unit-tests"]
+    assert job["name"] == "Unit Tests"
+    assert job["needs"] == "changes"
+    assert job["if"] == "${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}"
+    assert "postgres" in job["services"]
+    assert not job.get("continue-on-error")
+    steps = [step for step in job["steps"]
+             if "pytest" in step.get("run", "") and "tests/l3/l0_parihara" in step["run"]]
+    assert len(steps) == 1, "entire L0-M DB suite must execute in required Unit Tests"
+    step = steps[0]
+    assert not step.get("if") and not step.get("continue-on-error")
+    assert str(step["env"]["KALA_REQUIRE_DB"]) == "1"
+    assert step["env"]["KALA_ADMIN_DSN"] == "postgresql://postgres:postgres@localhost:5432/postgres"
+    # Exact invocation prevents filtered collection, skip-only execution and
+    # shell soft-passes from satisfying the required-DB claim.
+    assert shlex.split(step["run"]) == [
+        "cd", "python-sidecar", "python", "-m", "pytest", "tests/l3/l0_parihara",
+        "-q", "-rs", "--tb=short", "-p", "no:cacheprovider",
+    ]
+
+
 def test_required_ci_executes_all_source_tests_against_postgres():
     ci = yaml.safe_load((PLATFORM.parent / ".github/workflows/ci.yml").read_text())
-    steps = [(job, step) for job in ci["jobs"].values() for step in job.get("steps", [])
-             if "pytest" in step.get("run", "") and "tests/l3/l0_parihara" in step["run"]]
-    assert len(steps) == 1
-    job, step = steps[0]
-    assert job["name"] == "DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)"
-    assert "postgres" in job["services"]
-    assert job["needs"] == "changes"
-    assert "!cancelled()" in job["if"]
-    assert "needs.changes.outputs.docs_only != 'true'" in job["if"]
-    assert str(step["env"]["KALA_REQUIRE_DB"]) == "1"
-    assert step["env"]["KALA_ADMIN_DSN"]
-    assert "no:cacheprovider" in step["run"]
-    tokens = step["run"].split()
-    assert not any(token in tokens[tokens.index("pytest") + 1:] for token in
-                   ("-k", "-m", "--deselect", "--ignore", "||", "--collect-only"))
-    assert not job.get("continue-on-error") and not step.get("continue-on-error")
+    assert_required_source_ci(ci)
+
+
+@pytest.mark.parametrize("mutation", [
+    "advisory_only", "missing_step", "skip_job", "skip_step", "soft_job", "soft_step",
+    "optional_db", "missing_dsn", "missing_service", "filtered", "collect_only", "soft_shell",
+])
+def test_required_ci_detector_rejects_non_gating_execution(mutation):
+    ci = deepcopy(yaml.safe_load((PLATFORM.parent / ".github/workflows/ci.yml").read_text()))
+    job = ci["jobs"]["unit-tests"]
+    step = next(step for step in job["steps"]
+                if "tests/l3/l0_parihara" in step.get("run", ""))
+    if mutation in {"advisory_only", "missing_step"}:
+        job["steps"].remove(step)
+        if mutation == "advisory_only":
+            ci["jobs"]["db-integration-tests"]["steps"].append(step)
+    elif mutation == "skip_job":
+        job["if"] = "false"
+    elif mutation == "skip_step":
+        step["if"] = "false"
+    elif mutation == "soft_job":
+        job["continue-on-error"] = True
+    elif mutation == "soft_step":
+        step["continue-on-error"] = True
+    elif mutation == "optional_db":
+        step["env"]["KALA_REQUIRE_DB"] = "0"
+    elif mutation == "missing_dsn":
+        del step["env"]["KALA_ADMIN_DSN"]
+    elif mutation == "missing_service":
+        del job["services"]["postgres"]
+    else:
+        step["run"] += {"filtered": " -k projection", "collect_only": " --collect-only",
+                        "soft_shell": " || true"}[mutation]
+    with pytest.raises((AssertionError, KeyError)):
+        assert_required_source_ci(ci)
