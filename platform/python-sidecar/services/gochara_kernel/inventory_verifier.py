@@ -28,6 +28,11 @@ doctrine, nothing here (or in SQL) can detect it.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
@@ -801,15 +806,81 @@ def rederive_aspect_span_runs(
 # consumed, would be "accounted" by every derivation that reads the supplied ids. So the verifier checks
 # the CONSUMED set itself against the contract it is TOLD (its own constants, not the builder's):
 #   * every consumed row is of this chart, ayanāṃśa, system and tier, levels 1–3, and — for the canonical
-#     chart — the FROZEN pinned build (any other chart: one build, shared by every consumed row);
+#     chart — the single settled build selected by this verifier's own all-tier query;
 #   * no consumed row lies wholly outside the horizon (an EXTRA), and no pinned-build row overlapping the
 #     horizon is missing (an OMITTED);
 #   * no two pinned rows conflict on the same (level, parent, start) with different contract fields.
 
 _C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-_C_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"
 _C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", _TWO_PASS_VERIFIED
 _C_LEVELS = (1, 2, 3)
+
+
+_SETTLEMENT_PATH = Path(__file__).with_name("dasha_settlement.json")
+
+
+class SettlementRefused(Unverifiable):
+    """Typed independent settlement refusal; no verification is earned."""
+
+    def __init__(self, code: str, detail: str):
+        self.code = code
+        super().__init__(f"{code}: {detail}")
+
+
+def _load_dasha_settlement(chart_id: str) -> dict:
+    """Verifier's own parser of the reviewed authority, with no reader imports."""
+    try:
+        source = _SETTLEMENT_PATH.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise SettlementRefused("settlement_malformed", "governed settlement is not UTF-8") from exc
+    except OSError as exc:
+        raise SettlementRefused("settlement_missing", "cannot read governed settlement") from exc
+    try:
+        doc = json.loads(source)
+        if not isinstance(doc, dict) or doc["schema"] != "gochara_dasha_settlement/1":
+            raise ValueError("settlement schema")
+        if not isinstance(doc["header_comment"], str) or "reviewed PR" not in doc["header_comment"]:
+            raise ValueError("review policy")
+        tokens = doc["line"].split(" ")
+        names = ["utc", "pos_build", "dash_build", "natal_fp", "vim13_fp", "vim13_rows", "dash_all_fp"]
+        if tokens[:2] != ["L1_SETTLED", "v1"] or len(tokens) != 9:
+            raise ValueError("settlement line format")
+        fields = {}
+        for name, token in zip(names, tokens[2:]):
+            key, value = token.split("=")
+            if key != name:
+                raise ValueError("settlement line keys")
+            fields[key] = value
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", fields["utc"]):
+            raise ValueError("settlement timestamp")
+        datetime.strptime(fields["utc"], "%Y-%m-%dT%H:%M:%SZ")
+        for name in ("pos_build", "dash_build", "natal_fp", "vim13_fp", "dash_all_fp"):
+            if not re.fullmatch(r"[0-9a-f]{8}", fields[name]):
+                raise ValueError("settlement hex field")
+        if not re.fullmatch(r"[0-9]+", fields["vim13_rows"]):
+            raise ValueError("settlement row count")
+        fields["vim13_rows"] = int(fields["vim13_rows"])
+        if type(doc["vim13_rows"]) is not int or doc["vim13_rows"] <= 0:
+            raise ValueError("settlement row count type")
+        if fields != {name: doc[name] for name in names}:
+            raise ValueError("line differs from stored settlement fields")
+        if any(str(UUID(doc[name])) != doc[name] for name in ("run_id", "chart_id")):
+            raise ValueError("settlement UUID")
+        if doc["run_id"].split("-")[0] != fields["dash_build"]:
+            raise ValueError("settlement run prefix")
+        origin = doc["provenance"]
+        if (not isinstance(origin, dict)
+                or origin["source"] != "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
+                or not re.fullmatch(r"[0-9a-f]{40}", origin["commit"])
+                or origin["heading"] != "L1_SETTLED v1"
+                or not isinstance(origin["release_receipt"], str) or not origin["release_receipt"]
+                or origin["rebuild_run"] != doc["run_id"]):
+            raise ValueError("settlement provenance")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise SettlementRefused("settlement_malformed", "invalid governed settlement shape or line") from exc
+    if doc["chart_id"] != str(chart_id):
+        raise SettlementRefused("chart_not_settled", f"chart {chart_id} has no settlement entry")
+    return doc
 
 
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
@@ -825,7 +896,16 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     for rid in consumed_ids:
         if str(rid) not in found:
             out.append(f"consumed id {rid} resolves to no row of this chart")
-    builds = {str(r["build_id"]) for r in consumed}
+    # Validate both sides: supplied consumed rows cannot assert a different build
+    # from the population selected by our own guarded query.
+    population = list(consumed) + list(pinned)
+    builds = {str(r["build_id"]) for r in population if r["build_id"] is not None}
+    if any(r["build_id"] is None for r in population):
+        out.append("dasha_build_null: a daśā row carries a NULL build_id")
+    if len(builds) > 1:
+        out.append(f"several builds {sorted(builds)} consumed/selected — an unpinned read")
+    if str(chart_id) == _C_CHART and not pinned:
+        out.append("dasha_build_unsettled: no two_pass_verified Vimśottarī population")
     for r in consumed:
         rid = r["dasha_row_id"]
         if r["ayanamsha_id"] != _C_AYANAMSHA or r["system_id"] != _C_SYSTEM:
@@ -837,12 +917,6 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
             out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
         if not (r["start_iso"] < hi and r["end_iso"] > lo):
             out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
-    if str(chart_id) == _C_CHART:
-        wrong = sorted(b for b in builds if b != _C_BUILD)
-        if wrong:
-            out.append(f"canonical chart: consumed build(s) {wrong} are not the frozen {_C_BUILD}")
-    elif len(builds) > 1:
-        out.append(f"several builds {sorted(builds)} consumed — an unpinned read")
     want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
     for rid in sorted(want - found):
         out.append(f"pinned row {rid} overlaps the horizon but was NOT consumed (omitted)")
@@ -1055,8 +1129,9 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
 
     `against_live=True` is the CAPTURE-TIME check the writer runs once, right after the snapshot is taken: in addition to the above, this verifier derives the
     upstream scope ITSELF from live `chart_dashas` (every Vimśottarī / lahiri MD, AD, PD row overlapping the horizon, EVERY tier and build), judges it by the
-    same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The frozen-build pin is enforced there, at build
-    time, where it belongs. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
+    same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The governed settlement pin is enforced there, at capture
+    time, where it belongs. (I) INTERPRETATION: settlement governs capture and legacy reads; an owned copy remains verifiable after a later rebuild. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
+    settlement = _load_dasha_settlement(chart_id) if against_live else None
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -1086,16 +1161,25 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
             " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
         if horizon is None or horizon[0] is None:
             raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+    settlement = settlement or _load_dasha_settlement(chart_id)
     # G6 (verifier's OWN query, builder code not imported): every Vimśottarī / lahiri row of the chart — all tiers, all levels — is ONE build,
-    # and for the canonical chart the frozen one
+    # the governed settled-build rule is independent of the builder's contract code
     builds = sorted(str(r[0]) for r in conn.execute(
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s",
         (chart_id, _C_SYSTEM, _C_AYANAMSHA)).fetchall())
     if len(builds) > 1:
-        raise Unverifiable(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
-                           "a mixed L1 state is not verifiable")
-    if builds and str(chart_id) == _C_CHART and builds[0] != _C_BUILD:
-        raise Unverifiable(f"dasha_build_not_pinned: the canonical chart's only Vimśottarī build is {builds[0]}, the frozen contract pins {_C_BUILD}")
+        raise SettlementRefused("settled_build_ambiguous", f"chart {chart_id} carries several builds {builds} (every tier)")
+    if builds == ["NULL"]:
+        raise Unverifiable(f"dasha_build_null: chart {chart_id} carries a NULL Vimśottarī build_id — refusing")
+    eligible = sorted(str(r[0]) for r in conn.execute(
+        "SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s"
+        " AND ayanamsha_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)",
+        (chart_id, _C_SYSTEM, _C_AYANAMSHA, _C_TIER, list(_C_LEVELS))).fetchall())
+    if len(eligible) > 1:
+        raise SettlementRefused("settled_build_ambiguous", f"several eligible builds {eligible}")
+    build = settlement["run_id"]
+    if eligible != [build]:
+        raise SettlementRefused("settled_build_absent", f"named build {build} is not eligible for chart {chart_id}")
     if has_copy:
         live = _periods_of_live_rows(rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s"
                                           " AND level_n = ANY(%s)", (chart_id, _C_AYANAMSHA, _C_SYSTEM, list(_C_LEVELS))))
@@ -1117,11 +1201,10 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         return {"consumed": len(stored), "pinned_overlapping": len(scope), "source": "snapshot_copy_and_live"}
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
-    build = _C_BUILD if str(chart_id) == _C_CHART else None
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
                   " AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)"
-                  " AND (%s::uuid IS NULL OR build_id = %s::uuid)",
-                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build, build))
+                  " AND build_id = %s::uuid",
+                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build))
     problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
                                       horizon=(horizon[0], horizon[1]), consumed_ids=ids)
     if problems:
@@ -1132,3 +1215,55 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
 
 __all__ += ["check_dasha_population", "validate_consumed_dasha_population", "copy_contract_violations", "fact_copy_violations",
             "dasha_copy_violations", "period_contract_violations"]
+
+
+# Snapshot-bound record verification SQL; deliberately independent of the builder.
+RECORD_SUPPORT_SQL_TEMPLATE = """
+WITH snap AS (
+  SELECT s.consumed_dasha_row_ids AS ids,
+         (to_jsonb(s) -> 'consumed_dasha_rows') AS copy      -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
+  FROM public.ka_gochara_search_input_snapshot s
+  WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
+src AS (
+  SELECT lower(e.value #>> '{content,lord_graha}') AS lord, (e.value #>> '{key,level_n}')::int AS level_n,
+         (e.value #>> '{key,start_iso}')::timestamptz AS s, (e.value #>> '{content,end_iso}')::timestamptz AS e
+  FROM snap, jsonb_array_elements(snap.copy) AS e(value)
+  WHERE jsonb_typeof(snap.copy) = 'array'@@LEGACY_ARM@@),
+runs AS (
+  SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
+  FROM src WHERE level_n IN (1, 2, 3)
+  GROUP BY 1, 2),
+rec AS (
+  SELECT r.record_id, r.period_anchor_lord AS lord,
+         CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
+         r.temporal_support_state AS state,
+         COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange) AS stored,
+         tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS contact,
+         (SELECT p.result FROM public.ka_gochara_record_prerequisite p
+           WHERE p.record_id = r.record_id AND p.predicate_id = 'period_running_at') AS result
+  FROM public.ka_gochara_relationship_record r
+  JOIN public.ka_gochara_contact c
+    ON (c.chart_id, c.generation, c.contact_id) = (r.chart_id, r.generation, r.contact_id)
+  JOIN public.kala_gochara_coverage cov
+    ON (cov.chart_id, cov.generation, cov.partition_kind, cov.partition_key)
+     = (r.chart_id, r.generation, r.coverage_partition_kind, r.coverage_partition_key)
+  WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
+    AND r.path_id = 'P1' AND r.contact_id IS NOT NULL)
+SELECT rec.record_id::text, rec.stored::text,
+       (CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END)::text AS expected_text,
+       rec.stored = (CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS equal,
+       isempty(CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS expected_empty,
+       rec.result, runs.m IS NOT NULL AS has_rows
+FROM rec LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
+"""
+
+# A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
+# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live arm, as before.
+RECORD_SUPPORT_LEGACY_ARM = """
+  UNION ALL
+  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
+  FROM public.chart_dashas d, snap
+  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
+    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)"""
+RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "")
+RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM)

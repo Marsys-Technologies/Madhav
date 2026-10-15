@@ -487,7 +487,7 @@ def test_a_second_build_of_another_tier_present_at_capture_refuses_the_snapshot_
     conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
                  " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
                  " gen_random_uuid(), 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1")
-    with pytest.raises(Exception, match=r"dasha_builds_mixed"):
+    with pytest.raises(Exception, match=r"settled_build_ambiguous"):
         step(writer_mod.SNAPSHOT_SUBSTEP)
 
 

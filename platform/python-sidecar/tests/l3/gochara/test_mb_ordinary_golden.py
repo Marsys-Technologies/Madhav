@@ -15,6 +15,10 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
   * the candidate manifest's input vector, every component.
 HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window already matches accepted P06, pinned below) and (b) ONE extra
 read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
+J-4p/J4P-B1 amends the accepted P06 golden's snapshot note to name the settled build, and pins the exact settlement-enforcement SQL transcripts for
+inventory:marriage and verify:marriage. P06's final-rule census and snapshot-copy probes remain in those transcripts. These three sections alone are
+amended; every other captured field retains the accepted P06 value.
+The settlement reads are intentional: reverting them would bypass J-4p's governed reader and independent verifier. No SQL comparison or normalisation is relaxed.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs.
 """

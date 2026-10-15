@@ -272,7 +272,11 @@ def test_avadhi_preserves_published_rows_without_build_candidate():
     ],
     ids=["invalid-period", "unsupported-tier-first", "wrong-build-first"],
 )
-def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message):
+def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message, monkeypatch):
+    # This oracle starts with F2 projection rows and exercises admission of
+    # their tier/build/interval before output mutation, after settlement.
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(avadhi, "execute_governed_dasha_query", emulated_projection)
     pins = {
         "f2": {"build_id": "f2-build", "ayanamsha_id": "lahiri",
                "tier": tier, "systems": ["vimshottari"]},

@@ -35,6 +35,9 @@ REUSE CONTRACT (for WP-2.3-temporal — CGM edge `active_dasha_periods_jsonb`):
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Optional, Sequence
@@ -345,13 +348,7 @@ def load_dasha_timeline(
     """
     import psycopg
 
-    sql = """
-        SELECT lord_graha, level_n, start_date, end_date
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s
-          AND level_n <= %s
-          AND start_date IS NOT NULL AND end_date IS NOT NULL
-    """
+    sql = dasha_query('temporal_timeline')
     params: list = [str(chart_id), system_id, ayanamsha_id, max_level]
     if birth_date is not None:
         sql += " AND end_date >= %s"
@@ -360,7 +357,7 @@ def load_dasha_timeline(
 
     periods: list[DashaPeriod] = []
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        cur.execute(sql, tuple(params))
+        execute_governed_dasha_query(conn, chart_id, sql, tuple(params), ayanamsha_id=ayanamsha_id, cursor=cur)
         for row in cur.fetchall():
             lord = normalize_graha(row["lord_graha"])
             if lord is None:
