@@ -1,6 +1,6 @@
-"""Codex round 3 (steward MB-CODEX-3): an ORDINARY (markerless) build is observably identical to MAIN's, proven against a golden GENERATED FROM THE UNMODIFIED MAIN TREE.
+"""Codex round 3 (steward MB-CODEX-3): an ORDINARY (markerless) build matches MAIN's captured baseline with the documented J-4p amendments below.
 
-The golden (`fixtures/mb_ordinary_golden_main.json`) was produced by running THIS file's capture, byte for byte the same code, on commit 75eeda4c9 (main when the
+The original golden (`fixtures/mb_ordinary_golden_main.json`) was produced by running THIS file's capture, byte for byte the same code, on commit 75eeda4c9 (main when the
 measuring build merged it; its `services/` and `pipeline/` differ from this branch only in the measuring build's own files):
 
     MB_GOLDEN_OUT=<path> python -m pytest tests/l3/gochara/test_mb_ordinary_golden.py -k capture
@@ -13,6 +13,10 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
   * the candidate manifest's input vector, every component.
 HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window inherited P05's grants-provenance correction, pinned below) and (b) ONE extra
 read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
+J-4p/J4P-B1 also amends the golden's snapshot note to name the settled build, and pins the exact settlement-enforcement SQL transcripts for inventory:marriage
+and verify:marriage. See 00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_J-4p_v1.md:25-29, platform/python-sidecar/services/gochara_kernel/dasha_read.py:95,482 (settled-build selection and governed projection),
+and platform/python-sidecar/services/gochara_kernel/inventory_verifier.py:791-833 (independent settlement guard). These three sections alone are amended; every other captured field retains main's value.
+The settlement reads are intentional: reverting them would bypass J-4p's governed reader and independent verifier. No SQL comparison or normalisation is relaxed.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs. Two captures on main agree exactly after that."""
 from __future__ import annotations
