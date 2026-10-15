@@ -14,7 +14,7 @@ it('ELECT reads stored stages and manifest, preserves nulls/roots and separate d
   ] }] })
   const result = await electViewCapability.handler!({ chart_id: 'chart', event_class: 'travel', date_from: '2026-10-09T00:00:00Z', date_to: '2026-10-10T00:00:00Z' }, {})
   expect(result.content).toMatchObject({ view: 'elect', manifest_id: 'build', empty_reason: null,
-    density: { confirmed: 1, testimony: 0, catalog_only: 0 },
+    density: { confirmed: 0, testimony: 0, catalog_only: 0, unknown: 1 },
     rows: [{ data: { assertion: { roots: { contact_ids: ['c1'] }, payload: { release: { instant: null } } } },
       drill: { args: { assertion_id: 'a1' } } }],
   })

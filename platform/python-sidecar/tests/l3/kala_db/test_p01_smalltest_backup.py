@@ -35,7 +35,7 @@ def captured(isolated_kala_db_dsn, tmp_path, monkeypatch):
     fixed_scratch = backup.scratch_settings
     def scratch(name):
         target = fixed_scratch(name)
-        target.update(port=settings.get('port', '5432'), user=settings['user'], password=settings['password'])
+        target.update(port=settings.get('port', '5432'), user=settings['user'], password=settings.get('password', ''))
         return target
     monkeypatch.setattr(backup, 'scratch_settings', scratch)
     proof = backup.snapshot(folder, label)

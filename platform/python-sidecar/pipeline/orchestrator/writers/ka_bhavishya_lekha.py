@@ -1,5 +1,7 @@
 """ka_bhavishya_lekha writer — probabilistic forward projection artifact."""
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 from datetime import date, datetime
 from dataclasses import dataclass
 from decimal import Decimal
@@ -83,7 +85,8 @@ def _planned_claim(row: tuple) -> dict:
     }
 
 
-# Legacy implementation retained until the qualified K9-4b cutover.
+# Legacy implementation retained for historical safety oracles only.
+# It is not a registered/default build path: legacy served rows remain untouched.
 class _LegacyKaBhavishyaLekhaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or rollback
@@ -351,6 +354,7 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                 # L3-W3: carry a recorded outcome across the rebuild rather than resetting it.
                 *_reattach_outcome(preserved_outcomes, signal_id, peak_date),
                 f"ka_bhavishya_lekha:v1.0:rank={rank}",
+                UNVERIFIED_DEFAULT,
             ))
 
         # This assertion is intentionally still before DELETE. It guards future changes to the
@@ -412,9 +416,12 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                     [chart_id, *stale_ids],
                 )
 
+        with conn.cursor() as tier_cursor:
+            store_tier = has_stored_verification(tier_cursor, 'kala_bhavishya')
+
         if matched_rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                cur.executemany(f"""
                     UPDATE kala_bhavishya
                        SET projection_rank = %s,
                            probability_tier = %s,
@@ -431,21 +438,22 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                            outcome_recorded = %s,
                            outcome_notes = %s,
                            source_citation = %s,
+                           {"verification_pass_status = %s," if store_tier else ""}
                            computed_at = NOW()
                      WHERE chart_id = %s AND id = %s
-                """, matched_rows)
+                """, matched_rows if store_tier else [row[:-3] + row[-2:] for row in matched_rows])
 
         if new_rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                cur.executemany(f"""
                 INSERT INTO kala_bhavishya (
                     chart_id, projection_rank, probability_tier, domain,
                     peak_date, window_start, window_end,
                     convergence_id, signal_id, effective_score,
                     falsifiability, source_chain, narrative,
-                    outcome_recorded, outcome_notes, source_citation
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, new_rows)
+                    outcome_recorded, outcome_notes, source_citation{", verification_pass_status" if store_tier else ""}
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})
+                """, new_rows if store_tier else [row[:-1] for row in new_rows])
 
         return WriterResult(
             asset_id='ka_bhavishya_lekha',
@@ -755,9 +763,12 @@ def _registrar_row(ctx, value: RegistrarInput) -> tuple[dict | None, str]:
     }, 'fixture_ready'
 
 
-def _run_fixture_registrar(ctx) -> WriterResult:
-    """Explicit consumer preparation; never writes candidates or served rows."""
-    values = ctx.config['registrar_fixture_inputs']
+def _run_registrar(ctx, values) -> WriterResult:
+    """Append delivered issues under K6-5a; never mutate legacy served rows.
+
+    Source admission remains fail-closed in _registrar_row. The fixture input
+    alias and default path share this exact immutable insertion contract.
+    """
     if not isinstance(values, (tuple, list)):
         return WriterResult('ka_bhavishya_lekha', 0, notes='information_unavailable:typed_input_sequence_required')
     prepared = [_registrar_row(ctx, value) for value in values]
@@ -777,8 +788,13 @@ def _run_fixture_registrar(ctx) -> WriterResult:
 
 
 @register('ka_bhavishya_lekha')
-class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
-    """Explicit fixture preparation; default legacy computation stays intact."""
+class KaBhavishyaLekhaWriter(WriterBase):
+    """Default append-only registrar; K6-5a owns issue reference protection.
+
+    No delivery input means no issue and no legacy rebuild. Until live source
+    bindings are admitted, typed inputs still require the existing fixture
+    qualification boundary; this dispatch change grants no live admission.
+    """
 
     def read_jury(self, ctx, *, generation=None):
         from services.ka_sangam.jury.reader import read_jury
@@ -786,8 +802,8 @@ class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
 
     def run(self, ctx) -> WriterResult:
         if 'registrar_fixture_inputs' in ctx.config:
-            return _run_fixture_registrar(ctx)
+            return _run_registrar(ctx, ctx.config['registrar_fixture_inputs'])
         if 'jury_reader_generation' in ctx.config:
             from services.ka_sangam.jury.reader import preparation_result
             return preparation_result(ctx, 'ka_bhavishya_lekha')
-        return super().run(ctx)
+        return _run_registrar(ctx, ctx.config.get('registrar_inputs', ()))

@@ -21,6 +21,8 @@ and real panchāṅga calls.  Detection hierarchy:
 NEVER commits or rollbacks — orchestrator owns the transaction.
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date as DateType
 from typing import Optional
@@ -289,6 +291,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -327,17 +330,19 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
             with conn.cursor() as cur:
+                store_tier = has_stored_verification(cur, 'kala_obstruction')
                 cur.executemany(
-                    """INSERT INTO kala_obstruction (
+                    f"""INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_detail, source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                    rows if store_tier else [row[:-1] for row in rows],
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))

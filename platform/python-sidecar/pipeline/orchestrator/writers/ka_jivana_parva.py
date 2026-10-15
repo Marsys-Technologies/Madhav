@@ -17,7 +17,12 @@ parva (MD/AD/PD) is therefore clipped to [birth_date, ...): rows that end before
 birth are dropped outright (never experienced); rows straddling birth have their
 served start_year raised to birth_date.year (experienced portion only).
 """
+
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from collections import Counter
 from datetime import date, datetime
@@ -87,14 +92,7 @@ class KaJivanaParvaWriter(WriterBase):
             # × all 5 ayanamshas (~7,800 rows); the AD loop then matches ADs across that whole
             # mix, so parva_index overflows smallint AND the chapters are a meaningless blend of
             # systems. Scope to one system + one ayanamsha (14 MD + 211 AD).
-            cur.execute("""
-                SELECT lord_graha, start_date, end_date, level_n
-                FROM chart_dashas
-                WHERE chart_id = %s AND level_n IN (1, 2)
-                  AND system_id = 'vimshottari'
-                  AND ayanamsha_id = 'lahiri_chitrapaksha'
-                ORDER BY start_date, level_n
-            """, (chart_id,))
+            execute_governed_dasha_query(ctx.db_conn, chart_id, dasha_query('jivana_md_ad'), (chart_id,), ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             all_dashas = cur.fetchall()
 
         if not all_dashas:
@@ -207,6 +205,7 @@ class KaJivanaParvaWriter(WriterBase):
                 high_conv_count,
                 avg_score,
                 f"ka_jivana_parva:v2.0:MD={md_planet}",
+                UNVERIFIED_DEFAULT,
             ))
 
             # D7: AD sub-chapters — antardashas whose start_date falls within this MD span
@@ -269,6 +268,7 @@ class KaJivanaParvaWriter(WriterBase):
                     ad_high_cnt,
                     ad_avg_score,
                     f"ka_jivana_parva:v2.0:MD={md_planet}:AD={ad_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # O6: Pratyantar-dasha level-3 — additive, current AD only.
@@ -279,17 +279,7 @@ class KaJivanaParvaWriter(WriterBase):
         # IMPORTANT: do NOT expand the main query above to include level_n=3 —
         # that would recreate the smallint overflow (all PDs across all MDs × ADs).
         with conn.cursor() as cur_pd:
-            cur_pd.execute("""
-                SELECT lord_graha, start_date, end_date, level_n
-                FROM chart_dashas
-                WHERE chart_id = %s
-                  AND level_n = 3
-                  AND system_id = 'vimshottari'
-                  AND ayanamsha_id = 'lahiri_chitrapaksha'
-                  AND start_date <= %s
-                  AND end_date >= %s
-                ORDER BY start_date
-            """, (chart_id, as_of_date, as_of_date))
+            execute_governed_dasha_query(ctx.db_conn, chart_id, dasha_query('jivana_pd'), (chart_id, as_of_date, as_of_date), ayanamsha_id="lahiri_chitrapaksha", cursor=cur_pd)
             pd_dashas = cur_pd.fetchall()
 
         if not pd_dashas:
@@ -345,18 +335,20 @@ class KaJivanaParvaWriter(WriterBase):
                     pd_high_cnt,
                     pd_avg_score,
                     f"ka_jivana_parva:v2.0:PD={pd_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                store_tier = has_stored_verification(cur, 'kala_jivana_parva')
+                cur.executemany(f"""
                     INSERT INTO kala_jivana_parva (
                         chart_id, parva_index, parva_level, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
-                        source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
+                        source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})
+                """, rows if store_tier else [row[:-1] for row in rows])
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 

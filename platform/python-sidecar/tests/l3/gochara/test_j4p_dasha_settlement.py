@@ -91,7 +91,7 @@ def invoke(request, monkeypatch):
                     conn.pins.append(build_id)
                 return [row(b) for b in builds if tier == "two_pass_verified"
                         and (build_id is None or b == build_id)]
-            monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fetch)
+            monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
             rows, contract = reader.load_pinned_vimshottari(conn, chart)
             return contract["build_id"], conn.pins
         def forbidden(*args, **kwargs):
@@ -235,7 +235,7 @@ def test_p01_lazy_p1_operand_refuses_ungoverned_sole_build(settlement, monkeypat
     def fetch(c, chart_id, **kw):
         calls.append(kw)
         return [row(build)]
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fetch)
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
     rows_for, contract = reader.make_period_rows_for(conn, CHART)
     with pytest.raises(reader.DashaBuildRefused, match="settled_build_absent"):
         rows_for("Saturn", "md")
@@ -249,7 +249,7 @@ def test_p01_lazy_p1_operand_uses_full_settled_build_once(settlement, monkeypatc
     def fetch(c, chart_id, **kw):
         pins.append(kw.get("build_id"))
         return [row(BUILD)]
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fetch)
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
     rows_for, contract = reader.make_period_rows_for(conn, CHART)
     assert rows_for("Saturn", "md") == [{"start_iso": LO, "end_iso": HI}]
     assert rows_for("Saturn", "ad") == []
@@ -262,7 +262,7 @@ def test_p01_snapshot_refuses_unknown_build_before_generation_delete(settlement,
     from pipeline.orchestrator.writers import ka_gochara_v5 as writer
     from pipeline.orchestrator.writers import SubStep
     conn = Conn([UNKNOWN])
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", lambda *a, **kw: [row(UNKNOWN)])
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", lambda *a, **kw: [row(UNKNOWN)])
     monkeypatch.setattr(writer, "fetch_chart_context", lambda *a: {})
     monkeypatch.setattr(writer, "require_complete", lambda *a: None)
     monkeypatch.setattr(writer.SkyEventStore, "register_convention", lambda self: "synthetic-convention")

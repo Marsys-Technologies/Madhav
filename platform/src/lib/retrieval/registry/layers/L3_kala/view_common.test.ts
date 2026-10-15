@@ -112,11 +112,11 @@ it('populated response carries manifest, exact roots and a usable drill', async 
     { table: 'kala_darshana', total: 1, rows: [{ id: '1', generation: '4.1', assertion }] },
   ] })
   expect(result).toMatchObject({ manifest_id: 'build-7', empty_reason: null, rows: [
-    { density: 'confirmed', data: { assertion }, drill: { capability: 'marsys://tool/L3/explain_read',
+    { density: null, data: { assertion }, drill: { capability: 'marsys://tool/L3/explain_read',
       args: { chart_id: 'chart', assertion_id: 'a1' } } },
   ] })
 })
-it('flattening testimony/catalog/context into confirmed fails the density oracle', async () => {
+it('roles cannot classify missing-tier rows; context remains separately counted', async () => {
   const { composeView } = await common()
   const result = composeView('now', 'chart', { manifest, coverage: [], sources: [
     { table: 'kala_darshana', total: 5, rows: [
@@ -126,7 +126,7 @@ it('flattening testimony/catalog/context into confirmed fails the density oracle
       { id: '4', generation: '3.0', assertion }, { id: '5', generation: '4.1' },
     ] },
   ] })
-  expect(result.density).toEqual({ scope: 'page', confirmed: 1, testimony: 1, catalog_only: 3, context_only: 1 })
+  expect(result.density).toEqual({ scope: 'page', confirmed: 0, testimony: 0, catalog_only: 0, context_only: 1, unknown: 5 })
 })
 it.each(['information_unavailable', 'method_inapplicable', 'outside_risk_set'])('does not confirm unavailable negative-space state %s', async state => {
   const { composeView } = await common()
@@ -182,4 +182,66 @@ it.each([
   expect(composeView('now', 'chart', { manifest, coverage: [], sources: [
     { table: 'kala_darshana', total: 1, rows: [{ id: '1', generation: '4.1', assertion: { ...assertion, ...changes } }] },
   ] }).density.confirmed).toBe(0)
+})
+
+// B1: independent review's missing/contrary-tier fixtures, using the shared roots.
+it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const)(
+  '%s must not confirm a row without producer tier proof', async view => {
+    const { composeView } = await common()
+    const result = composeView(view, 'review-chart', { manifest, coverage: [], sources: [
+      { table: 'kala_darshana', total: 1, rows: [{ id: '1', generation: '4.1', assertion }] },
+    ] })
+    expect(result.rows[0].density).toBeNull()
+  },
+)
+it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const)(
+  '%s must not promote a contextual stored tier from role/roots', async view => {
+    const { composeView } = await common()
+    const result = composeView(view, 'review-chart', { manifest, coverage: [], sources: [
+      { table: 'kala_darshana', total: 1, rows: [{ id: '1', generation: '4.1', tier: 'contextual', assertion }] },
+    ] })
+    expect(result.rows[0].density).not.toBe('confirmed')
+  },
+)
+
+it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const)(
+  '%s declares its stored tier binding on the reader entry and cannot rank roles as verification', async name => {
+    const { makeView } = await common()
+    const capability = makeView({ name, description: 'B1 fixture', sources: ['kala_darshana'], required: [] })
+    expect(capability.density_contract).toMatchObject({ stored_tier_columns: ['kala_darshana.verification_pass_status'],
+      unavailable_sources: [] })
+    db.mockResolvedValue({ rows: [{ manifest, coverage: [], sources: [] }] })
+    await capability.handler!({ chart_id: 'chart' }, {})
+    const sql = db.mock.calls[0][0]
+    expect(sql).not.toContain("s.assertion->>'operator_role'")
+    expect(sql).not.toContain('jsonb_array_length')
+    expect(sql).toContain("to_jsonb(s)->>'verification_pass_status'")
+  },
+)
+
+it.each(['kala_darshana', 'kala_obstruction', 'kala_gochara_contacts', 'kala_bhavishya',
+  'kala_convergence', 'kala_jivana_parva'])(
+  '%s cannot infer density from tier_basis, geometry, confidence or an unbound label', async table => {
+    const { composeView } = await common()
+    const stored = { id: '1', generation: '4.1', assertion, tier: 'confirmed',
+      tier_basis: 'two_pass_verified', confidence_score: 1, source_citation: 'fixture:source',
+      upstream_refs: { build_id: 'fixture:build' } }
+    const result = composeView('explain', 'chart', { manifest, coverage: [], sources: [
+      { table, total: 1, rows: [stored] },
+    ] })
+    expect(result.rows[0]).toMatchObject({ density: null, density_reason: 'stored_tier_contract_unavailable',
+      data: { tier: 'confirmed', tier_basis: 'two_pass_verified', source_citation: 'fixture:source',
+        upstream_refs: { build_id: 'fixture:build' } } })
+    expect(result.density).toMatchObject({ confirmed: 0, testimony: 0, unknown: 1 })
+    expect(result.catalog_only_rows_in_page).toBe(1)
+  },
+)
+
+it('K7-4 PRIORITY public adapter keeps preference with the established name', async () => {
+  const { makeLegacyViewHandler } = await common()
+  const invoke = vi.fn(async (_tool, args) => ({ content: args }))
+  const handler = makeLegacyViewHandler('priority', { authorize: async () => true, invoke })
+  const args = { chart_id: '11111111-1111-4111-8111-111111111111', question_frame: { domain: 'career' }, preference: ['nearest'] }
+  expect((await handler(args)).content).toEqual(args)
+  expect(invoke.mock.calls[0][0]).toBe('kala_priority_get')
 })

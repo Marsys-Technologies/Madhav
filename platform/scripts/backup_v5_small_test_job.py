@@ -218,10 +218,12 @@ def restore_verify(folder: Path, label: str) -> dict:
     if (folder / 'restore.json').exists():
         raise BackupRefused('restore evidence already exists; use a fresh label')
     target = scratch_settings(label)
-    # Psycopg/libpq merges PG* defaults too: scrub them via client_env and
-    # connect with all endpoint fields explicit, including an empty service.
-    # make_conninfo's passfile/service are explicit below to deny redirects.
-    admin = dict(target, dbname='postgres', service='', passfile=os.devnull, options='')
+    # libpq treats service='' as a service lookup, not as disabling services.
+    # Refuse an inherited service before connecting; all scratch endpoint fields
+    # are explicit and the passfile/options defaults are disabled below.
+    if 'PGSERVICE' in os.environ:
+        raise BackupRefused('scratch restore refuses inherited PGSERVICE')
+    admin = dict(target, dbname='postgres', passfile=os.devnull, options='')
     with psycopg.connect(**admin, autocommit=True) as control:
         if receipt['source'].get('database') == target['dbname']:
             raise BackupRefused('restore target has the source database name')
@@ -233,7 +235,7 @@ def restore_verify(folder: Path, label: str) -> dict:
         try:
             run_client(['pg_restore', '--exit-on-error', '--single-transaction', '--no-owner', '--no-privileges',
                         '--dbname', target['dbname'], str(archive)], target)
-            with psycopg.connect(**dict(target, service='', passfile=os.devnull, options=''), autocommit=True) as conn:
+            with psycopg.connect(**dict(target, passfile=os.devnull, options=''), autocommit=True) as conn:
                 conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
                 actual = measurements(conn)
                 compare_restore(expected, actual)

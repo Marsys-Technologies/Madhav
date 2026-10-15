@@ -1,5 +1,7 @@
 """ka_kala_darshana writer — display-ready temporal view synthesizer."""
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
@@ -135,17 +137,19 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                 json.dumps(obs_summary),
                 json.dumps(narrative),
                 f"ka_kala_darshana:v1.0:conv={conv_id}",
+                UNVERIFIED_DEFAULT,
             ))
 
         if rows:
             with conn.cursor() as cur:
+                store_tier = has_stored_verification(cur, 'kala_darshana')
                 cur.executemany(
-                    """INSERT INTO kala_darshana (
+                    f"""INSERT INTO kala_darshana (
                         chart_id, convergence_id, signal_id,
                         effective_score, net_label, peak_date, window_start, window_end,
-                        obstruction_summary, narrative, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_summary, narrative, source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                    rows if store_tier else [row[:-1] for row in rows],
                 )
 
         return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))

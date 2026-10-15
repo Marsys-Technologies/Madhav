@@ -52,6 +52,13 @@ import { TRACKER_DDL, TRACKER_IDENTITY_DDL, runMigrations } from '../../scripts/
 import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
+const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1'
+
+describe('AM-7 CI database prerequisite', () => {
+  it.skipIf(!REQUIRE_DB)('requires the disposable DB URL when GOCHARA_REQUIRE_DB=1', () => {
+    expect(TEST_DB_URL, 'GOCHARA_REQUIRE_DB=1 but GOCHARA_A51_TEST_DATABASE_URL is unset').toBeTruthy()
+  })
+})
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
 const PARENT_FILES = [

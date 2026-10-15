@@ -1,3 +1,4 @@
+# Historical legacy implementation oracles; default registrar cutover is tested separately.
 """BHAV-P0: `ka_bhavishya_lekha` preserves outcomes across an EMPTY rebuild.
 
 `MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` §5 row P0, second hazard:
@@ -60,7 +61,7 @@ def conn():
 
 @pytest.fixture
 def writer():
-    from pipeline.orchestrator.writers.ka_bhavishya_lekha import KaBhavishyaLekhaWriter
+    from pipeline.orchestrator.writers.ka_bhavishya_lekha import _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter
 
     return KaBhavishyaLekhaWriter()
 

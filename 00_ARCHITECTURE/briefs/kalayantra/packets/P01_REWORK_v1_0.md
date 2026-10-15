@@ -1,9 +1,10 @@
 ---
 artifact: P01_REWORK
-version: "1.0"
+version: "1.1"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-15
 changelog:
+  - "1.1: integrate final J-4p/main; retain main launch bridge and earned model receipts; qualify real backup restore locally."
   - "1.0: P01-B1 settlement caller regressions; P01-B2 executable bindings, measured teardown absence, paired logical backup/restore, explicit residual scope and CI coverage."
 ---
 
@@ -56,3 +57,19 @@ CI now collects the new operations/backup tests in DB Integration Tests, and the
 Remaining cockpit work: exact resulting head independently reviewed; required CI green; source/inheritance and nonempty scope disposition accepted; broader full-model reconciliation/activation; applicable scratch capability/role/source/window/image/migration/lease receipts before any operation. Actual two-run timing, teardown and independent absence/backup/restore evidence remain J-2d/A5.5i. Done for this builder job means code/tests/handoff completed, not earned operational completion.
 
 The provided worktree and JOB_SCRATCH evidence are retained for the cockpit. Finished pytest temporary trees are removed. No test database, worktree copy or background process is created by this job.
+
+## Final J-4p/main integration (2026-10-16)
+
+The in-progress merge targets `cf9831bceff36abd5a50e95328b83d16a4c1ce24` (main, containing final J-4p #3504). J-4p's governed loader, settlement guard and conflicted tests are main's bytes. Only P01's four caller regression cases are appended to main's settlement suite, with their doubles moved to the final private SQL primitive. Generated artifacts and the implementation digest lock start from main and pass both required regenerators.
+
+**(I) INTERPRETATION P01-I4:** P01's deliberate six-operation enablement applies to main's final bindings. `smalltest_dispatch` retains main's `smalltest_launch.py` bridge and `also_needs: [gcloud]`; the bridge supplies the reviewed staging flags internally. The alternative, restoring P01's older staging-only dispatch binding, would lose main's remote-launch identity and capability checks. P01's parser/request tests and the launch tests cover the combined behavior. Main's remaining disabled operation preparations remain unchanged.
+
+P01-I3 is superseded by the current reconciliation: all main model items, dependencies, triage and earned step receipts are retained. Only the J-1a-a55h brief's additional P01 owns/test obligations and integration note are applied, plus the existing P01 version suffix. Enablement is not a substitute for main's independent completion detectors.
+
+The real local backup suites exposed two previously unexecuted defects. The fixture now accepts the prescribed passwordless loopback DSN (`test_p01_smalltest_backup.py:38`). The restore implementation omits invalid `service=''` connection settings and refuses an inherited `PGSERVICE` before connecting (`backup_v5_small_test_job.py:221–238`); endpoint, passfile, options and fresh-target checks remain explicit. Both fixes have fail-on-revert proofs in separate JOB_SCRATCH tree copies. All created databases use the guarded local fixtures and restore cleanup.
+
+The integration job retains its result, command logs and revert-proof copies in JOB_SCRATCH for the cockpit; dependency symlinks and finished test temporary folders are removed before handoff. No merge commit, runtime activation or operational production acceptance is emitted by this job.
+
+Final focused results: 329 script/operation tests, 236 governed-daśā/backup tests, 58 safe executor/launch tests, 193 governance CI tests and 91 N-137 tests pass. The seven Git-writing governance cases and 28 executor World-fixture cases are not run under this job's explicit prohibition. Both real backup fixes have passing fixed-tree and failing reverted-copy proofs. The supplemental inherited C46/A55/C37/C38/launch-bridge run reports 151 passed and is then cleanly interrupted during the first broader C38 teardown build to honor the 45-minute job bound; no full C38-suite pass is claimed. Its completed cases include the full real dispatch → runner → teardown path. Required CI admission remains separate.
+
+During testing, shared `origin/main` advanced to `901ebaa36249623d6ba487b3e77c32a8ef5f4b43`. This job resolves the existing merge target `MERGE_HEAD=cf9831bceff36abd5a50e95328b83d16a4c1ce24`; it does not start another merge. The model completion-detector regression names that immutable target rather than a mutable remote ref. The P01 diff against that target is whitespace-clean; the staged merge inherits the target's unchanged EOF blank-line warning in `platform/python-sidecar/tests/l3/gochara/test_p09_real_seal.py:36`.

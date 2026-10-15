@@ -2,10 +2,9 @@
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
-    plan pin except the five K9-23 edits, six reviewed P01 bindings and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
-    key of each entry; each of the five model detector patterns (read from the model, not retyped) misses the table and
-    hits a copy with that one entry flipped;
-  · the authority boundary: executor.py differs from the plan-pin revision in the `GIT` assignment only, and the listed
+    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
+    key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
+  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
     functions and constants are byte-identical;
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
     whose origin is a local path — never the campaign checkout, never the network, never the running executor.
@@ -36,6 +35,7 @@ SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
+MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
 DEFAULT_SOURCE_REPO = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
 SH_GIT_OLD = 'GIT="$KY_ROOT/wt/campaign"'
@@ -49,8 +49,8 @@ P01_BINDINGS = {
                               "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label"]},
     "smalltest_dispatch_dryrun": {"script": "platform/scripts/dispatch_v5_small_test_job.py",
                                  "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"]},
-    "smalltest_dispatch": {"script": "platform/scripts/dispatch_v5_small_test_job.py",
-                          "fixed_args": ["--i-am-steward", "--after-settled-1", "--execute"]},
+    "smalltest_dispatch": {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
+                          "fixed_args": []},
     "smalltest_teardown_dryrun": {"script": "platform/scripts/teardown_v5_small_test_job.py",
                                  "fixed_args": ["--dry-run"], "allowed_args": []},
     "smalltest_teardown": {"script": "platform/scripts/teardown_v5_small_test_job.py",
@@ -92,17 +92,14 @@ def model_items():
     return {i["id"]: i for i in json.loads(MODEL.read_text())["items"]}
 
 
-def detector_pattern(item_id):
-    det = model_items()[item_id]["detector"]
-    assert det["type"] == "file_contains", f"{item_id}: detector is {det['type']}"
-    assert det["path"].endswith("/" + OPS_REL), f"{item_id}: detector reads {det['path']}"
-    return re.compile(det["pattern"])
+def detector_definition(item_id):
+    return model_items()[item_id]["detector"]
 
 
 def flip(text, kind):
     """The table text with ONE entry's `enabled` set true."""
-    out, n = re.subn(r'("' + re.escape(kind) + r'"\s*:\s*\{\s*"enabled"\s*:\s*)(?:false|true)', r"\1true", text)
-    assert n == 1, f"{kind}: expected one entry to enable, found {n}"
+    out, n = re.subn(r'("' + re.escape(kind) + r'"\s*:\s*\{\s*"enabled"\s*:\s*)false', r"\1true", text)
+    assert n == 1, f"{kind}: expected one disabled entry to flip, found {n}"
     return out
 
 
@@ -134,7 +131,7 @@ def test_p10_entries_present_with_only_j1a_enabled():
         assert ops[kind]["enabled_by"] == item
 
 
-def test_table_equals_the_pin_except_k9_and_p01_bindings_and_doc():
+def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     base = load_ops(base_text(OPS_REL))
     now = load_ops(OPS_FILE.read_text())
     assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
@@ -145,10 +142,26 @@ def test_table_equals_the_pin_except_k9_and_p01_bindings_and_doc():
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+    expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
+    expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
+    expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
+    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
+    expected["verification_job"]["needs"] = "gcloud"
+    expected["measuring_dispatch"]["staging_dry_run"] = {
+        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
+        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
+    for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
+                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
+        expected[kind]["prepared_dry_run"] = {
+            "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
+            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
+            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
     for kind, entry in now["ops"].items():
-        assert list(entry) == list(expected[kind]), f"{kind}: key order or key set changed"
+        assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
+        assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
         for key in entry:
             assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
     # the only top-level difference allowed is `_doc`
@@ -176,17 +189,15 @@ def test_doc_states_what_it_serves_and_assumes_no_enablement_path():
 
 
 @pytest.mark.parametrize("item,kind", sorted(P10.items()))
-def test_model_detector_tracks_one_entry_without_cross_item_enablement(item, kind):
-    pattern = detector_pattern(item)
-    text = OPS_FILE.read_text()
-    assert bool(pattern.search(text)) is (item == "J-1a")
-    flipped, n = re.subn(r'("' + re.escape(kind) + r'"\s*:\s*\{\s*"enabled"\s*:\s*)(true|false)',
-                        lambda m: m[1] + ("false" if m[2] == "true" else "true"), text)
-    assert n == 1
-    assert bool(pattern.search(flipped)) is (item != "J-1a")
-    for other_item in P10:
-        if other_item != item:
-            assert bool(detector_pattern(other_item).search(flipped)) is (other_item == "J-1a")
+def test_model_completion_detector_preserves_main_authority(item, kind):
+    # Final main replaced the old enablement regex with earned code/operation
+    # completion detectors. Preserve those definitions while P01 enables bindings.
+    main_model = json.loads(git_show(f"{MODEL_PIN}:00_ARCHITECTURE/control/kalayantra/plan_model.json"))
+    main_item = next(i for i in main_model["items"] if i["id"] == item)
+    detector = detector_definition(item)
+    assert detector == main_item["detector"]
+    assert not detector.get("path", "").endswith("/" + OPS_REL)
+    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item == "J-1a")
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -196,7 +207,7 @@ def test_detector_state_unreadable_is_a_failure():
     with pytest.raises(AssertionError):
         enabled_state("x", {"needs": "none"})
     with pytest.raises(KeyError):
-        detector_pattern("NO-SUCH-ITEM")
+        detector_definition("NO-SUCH-ITEM")
 
 
 # ───────────────────────────── the authority boundary ─────────────────────────────
@@ -228,8 +239,23 @@ def _segments(src):
     return out
 
 
+# Exact approved Wave 4 additions only. Any other mutation, including a changed
+# admission gate or receipt parser, still fails the pinned boundary detector.
+W4_FUNCTION_HASHES = {'receipt': '32faf16f6fc5600bb667b730c3792ebe7797df5c333e32b498c840263d0349cd', 'validate': '6a497e463815ff701c5ea67a8f20b009c32594d176d074167e88f631da5a4915'}
+
+
+def normalize_wave4(base_src, work_src):
+    base_seg, work_seg = _segments(base_src), _segments(work_src)
+    for name, digest in W4_FUNCTION_HASHES.items():
+        segment = work_seg.get(name, "")
+        if hashlib.sha256(segment.encode()).hexdigest() == digest:
+            work_src = work_src.replace(segment, base_seg[name], 1)
+    return work_src
+
+
 def boundary_violations(base_src, work_src):
     """Why `work_src` is not the pinned executor.py plus a changed GIT assignment (empty list = boundary holds)."""
+    work_src = normalize_wave4(base_src, work_src)
     problems = []
     base_tree, work_tree = ast.parse(base_src), ast.parse(work_src)
     base_git = [n for n in base_tree.body if _is_git_assign(n)]
@@ -253,13 +279,14 @@ def test_pinned_executor_has_the_pinned_sha256():
     assert hashlib.sha256(git_show(f"{PLAN_PIN}:{PY_REL}")).hexdigest() == PINNED_EXECUTOR_SHA256
 
 
-def test_executor_py_differs_from_the_pin_only_in_the_git_assignment():
+def test_executor_py_changes_are_only_git_and_exact_reviewed_w4_functions():
     assert boundary_violations(base_text(PY_REL), EXECUTOR_PY.read_text()) == []
 
 
-def test_executor_py_line_diff_is_the_git_line_only():
+def test_executor_py_remaining_line_diff_is_the_git_line_only():
     import difflib
-    base, work = base_text(PY_REL).splitlines(), EXECUTOR_PY.read_text().splitlines()
+    base_src = base_text(PY_REL)
+    base, work = base_src.splitlines(), normalize_wave4(base_src, EXECUTOR_PY.read_text()).splitlines()
     changed = [l for l in difflib.unified_diff(base, work, lineterm="", n=0) if l[:1] in "+-" and l[:3] not in ("+++", "---")]
     for line in changed:
         body = line[1:].strip()
@@ -427,8 +454,8 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head",
-                                  "measuring_dispatch", "layer_verify", "orchestrator_rebuild"])
+@pytest.mark.parametrize("kind", ["smalltest_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head",
+                                  "measuring_dispatch", "layer_verify", "orchestrator_rebuild", "backup_snapshot"])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)

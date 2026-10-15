@@ -4,7 +4,7 @@ writer.py — Self-test WriterBase subclass for ka_tulana (L3 Kāla — cross-pa
 Registered as @register('ka_tulana').
 
 The writer does NOT insert rows into any data table.
-It runs a self-test (rank two synthetic WindowInputs; assert stable order)
+It compares two synthetic forecaster windows against pinned Pareto relations
 and writes `service_health` + `selftest_detail` to asset_registry.
 
 Contract adherence:
@@ -23,43 +23,23 @@ logger = logging.getLogger(__name__)
 
 
 def _run_selftest() -> tuple[bool, str]:
-    """
-    Run service self-test.  Returns (ok: bool, detail_json: str).
-
-    Test: a rare high-convergence window must outrank a common low-convergence
-    window when ranked by I-11 composite weights.
-    """
-    from services.ka_tulana.ranker import KaTulanaService, WindowInput
-
-    svc = KaTulanaService()
-
-    a = WindowInput(
-        window_id="t_a",
-        mode="A",
-        peak_date=date(2027, 1, 1),
-        convergence_score=0.9,
-        confidence_label="high",
-        rarity_years=30.0,
-        domains=["career"],
-    )
-    b = WindowInput(
-        window_id="t_b",
-        mode="A",
-        peak_date=date(2027, 1, 1),
-        convergence_score=0.4,
-        confidence_label="moderate",
-        rarity_years=2.0,
-        domains=["wealth"],
-    )
-
-    ranked = svc.rank_windows([a, b], reference_date=date(2026, 1, 1))
-    ok = len(ranked) == 2 and ranked[0].window.window_id == "t_a"
-    detail = json.dumps({
-        "test": "tulana_rank_order",
-        "top": ranked[0].window.window_id if ranked else None,
-        "n": len(ranked),
-    })
-    return ok, detail
+    """Keep the (ok, JSON detail) interface; independently pin Pareto relations."""
+    from services.ka_tulana.ranker import KaTulanaService
+    windows = [
+        dict(chart_id="fixture", field_snapshot_id="fixture", window_id="A",
+             window_start="2026-10-20", window_end="2026-11-30", confidence_tier="structural_prior"),
+        dict(chart_id="fixture", field_snapshot_id="fixture", window_id="B",
+             window_start="2026-11-02", window_end="2026-11-30", confidence_tier="concurrent")]
+    try:
+        result = KaTulanaService().compare_windows(windows, date_from="2026-10-13", date_to="2027-01-11")
+        pair = result["comparisons"][0]
+        ok = (result["ordered"] == ["B", "A"] and result["front"] == ["A", "B"]
+              and pair["relation"] == "incomparable" and pair["reason"] == "unavailable"
+              and {k:v["relation"] for k,v in pair["axes"].items()} ==
+                  {"nearest":"A_better", "strongest":"unavailable", "most_robust":"B_better"})
+        return ok, json.dumps({"test":"tulana_pareto", "result":result})
+    except Exception as exc:
+        return False, json.dumps({"test":"tulana_pareto", "error":str(exc)})
 
 
 def _update_registry_health(conn, ok: bool, detail: str) -> None:

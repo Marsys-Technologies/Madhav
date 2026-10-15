@@ -229,3 +229,12 @@ def test_negative_valence_graha_produces_negative_weight():
     assert sat_weight < 0, (
         f"SAT has negative valence (-0.7) → signed weight must be negative; got {sat_weight}"
     )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; J4P tests retain real settlement/refusal coverage."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.taranga_service'),
+                        "execute_governed_dasha_query", emulated_projection)

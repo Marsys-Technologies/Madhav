@@ -14,7 +14,7 @@ it('NOW reads stored stages and manifest, preserves nulls/roots and separate den
   ] }] })
   const result = await nowViewCapability.handler!({ chart_id: 'chart', at: '2026-10-09T10:00:00Z' }, {})
   expect(result.content).toMatchObject({ view: 'now', manifest_id: 'build', empty_reason: null,
-    density: { confirmed: 1, testimony: 0, catalog_only: 0 },
+    density: { confirmed: 0, testimony: 0, catalog_only: 0, unknown: 1 },
     rows: [{ data: { assertion: { roots: { contact_ids: ['c1'] }, payload: { release: { instant: null } } } },
       drill: { args: { assertion_id: 'a1' } } }],
   })

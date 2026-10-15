@@ -234,3 +234,14 @@ def test_table_fingerprints_measure_real_row_bytes_and_sequence_state(backup):
     assert backup.measurements(MeasureConnection()) == {
         'tables': {'public.fixture': {'rows': 2, 'sha256': expected_digest.hexdigest()}},
         'sequences': {'public.seq': {'last_value': 2, 'is_called': True}}}
+
+
+@pytest.mark.parametrize('service', ['synthetic_redirect', ''])
+def test_restore_refuses_inherited_service_before_connecting(backup, capture, monkeypatch, service):
+    import psycopg
+    folder, _ = capture
+    monkeypatch.setenv('PGSERVICE', service)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: pytest.fail('inherited service reached libpq'))
+    with pytest.raises(backup.BackupRefused, match='PGSERVICE'):
+        backup.restore_verify(folder, 'p01_fixture')
+    assert not (folder / 'restore.json').exists()

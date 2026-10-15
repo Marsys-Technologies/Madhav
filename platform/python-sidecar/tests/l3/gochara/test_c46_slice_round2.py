@@ -98,7 +98,11 @@ def test_the_in_build_verify_step_of_a_sliced_build_is_told_the_default_exclusio
     assert default_told is None                                       # default: the verifier reads the manifest's own scope
     assert list(sliced_told) == ["moon"], sliced_told                  # slice: the DEFAULT scope's exclusion, told explicitly
     assert "not a scope this verifier knows" not in sliced_notes, sliced_notes
-    assert sliced_notes == default_notes, f"a sliced verify reported differently from a default one:\n{sliced_notes}\n{default_notes}"
+    # a slice adds ONE documented segment to the notes: the STRETCH_SINK/1 counts (MEASURING_BUILD_CONTRACT MB-2); everything else is what a default build reports
+    import re
+    stripped = re.sub(r"; stretch_sink/1: [^;]*?(?=; verification NOT persisted)", "", sliced_notes)
+    assert "stretch_sink/1" in sliced_notes and "stretch_sink/1" not in default_notes
+    assert stripped == default_notes, f"a sliced verify reported differently from a default one:\n{sliced_notes}\n{default_notes}"
 
 
 def test_the_in_build_verify_step_would_refuse_a_slice_without_the_told_exclusion(template, monkeypatch):

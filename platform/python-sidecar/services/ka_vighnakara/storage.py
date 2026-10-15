@@ -3,6 +3,9 @@
 Legacy required score columns are inert compatibility slots. Interpretation
 and consumers use the typed axes exclusively; no numeric measure is derived.
 """
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
+
 from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
@@ -54,6 +57,7 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
                and edge.interval.t0 < value.interval.t1 and edge.interval.t1 > value.interval.t0
                for value in inputs for edge in value.protections):
             raise ValueError('overlapping protection target cannot be resolved to this physical conclusion')
+        store_tier = has_stored_verification(cursor, 'kala_obstruction')
         rows = []
         for value in inputs:
             result = interpret(value)
@@ -77,5 +81,7 @@ def write_fixture_candidate(ctx, inputs: list[Finding]) -> int:
                        obstruction_type='malefic_transit', severity='mild',
                        severity_score=0, override_score=0, obstruction_detail=Jsonb({}),
                        source_citation=result.source.locator)
+            if store_tier:
+                row["verification_pass_status"] = UNVERIFIED_DEFAULT
             rows.append(row)
         return replace_candidate_partition(cursor, 'kala_obstruction', chart, generation, None, rows)

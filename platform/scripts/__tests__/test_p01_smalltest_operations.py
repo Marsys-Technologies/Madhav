@@ -38,6 +38,24 @@ def test_enabled_table_argv_agrees_with_script(kind):
     assert op['enabled_by'] == 'J-1a'
     assert op['allowed_args'] == (['label'] if kind.startswith('backup_') else
                                  ['run', 'classes', 'horizon-start', 'horizon-end'] if 'dispatch' in kind else [])
+    if kind == 'smalltest_dispatch':
+        # Final main owns remote launching; the bridge injects the reviewed staging argv.
+        assert op['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py'
+        assert op['fixed_args'] == [] and op['also_needs'] == ['gcloud']
+        spec = importlib.util.spec_from_file_location('p01_launch_bridge', ROOT / op['script'])
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        from types import SimpleNamespace
+        staging = []
+        def stop_after_parse(argv):
+            staging.extend(argv)
+            raise RuntimeError('p01 staging boundary')
+        dispatcher = SimpleNamespace(build_slice_marker=lambda **kw: {}, main=stop_after_parse)
+        with pytest.raises(RuntimeError, match='p01 staging boundary'):
+            bridge.run(argv_for(op), dispatcher=dispatcher, connect=lambda: pytest.fail('unexpected DB'))
+        assert staging[:3] == ['--i-am-steward', '--after-settled-1', '--execute']
+        assert staging[3:7] == ['--run', 'one_class_full', '--classes', 'marriage']
+        return
     module = (importlib.import_module('backup_v5_small_test_job') if kind.startswith('backup_') else
               dispatch if 'dispatch' in kind else teardown)
     args = module._parse_args(argv_for(op))
@@ -158,7 +176,7 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     table = json.loads(TABLE.read_text())['ops']
     request = {'operation_id': 'p01_fixture', 'kind': kind, 'item_id': 'J-1a', 'idempotency_key': 'p01_fixture',
                'requested_by': 'adhikarin', 'kyd': 'synthetic', 'chart_id': globals_['CANONICAL_CHART'], 'lease_id': 'synthetic'}
-    caps = {'owner': True, 'builder': True}
+    caps = {'owner': True, 'builder': True, 'gcloud': True}
     assert 'pre-acceptance receipt missing' in validate(request, table, caps)
     assert 'disallowed args' in validate(dict(request, args={'run-id': 'synthetic'}), table, caps)
     assert 'may not request' in validate(dict(request, requested_by='v1'), table, caps)

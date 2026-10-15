@@ -4,6 +4,8 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { registerAllKalaViews } from './register_all.js'
 import { createKalaLegacyAdapter, type KalaView } from './registry_alias.js'
@@ -96,4 +98,26 @@ describe('K7-1b generated bridge and authentic registry adapter', () => {
       stage_capability: 'marsys://tool/L3/now_read', unavailable_stage_bindings: ['at'],
     }, 1])
   })
+})
+
+// Request-only acceptance: the custodian correction and its readback are separate.
+// Revision read by independent review; hash binds just PA-REQ-05, not unrelated notes.
+it('PA-REQ-05 remains revision/hash pinned with all four attribution requests', () => {
+  const revision = '2051951aaa3f4e1b6a55d728f703bc074daf11ef'
+  const path = '00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md'
+  const repo = resolve('..')
+  const section = (text: string) => {
+    const start = text.indexOf('## 2026-10-09 — PA-REQ-05')
+    if (start < 0) throw new Error('PA-REQ-05 missing')
+    const end = text.indexOf('\n## ', start + 1)
+    return text.slice(start, end < 0 ? undefined : end)
+  }
+  const pinned = section(execFileSync('git', ['show', `${revision}:${path}`], {
+    cwd: repo, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }, encoding: 'utf8',
+  }))
+  // This request is on the coordination revision; it is not in this item base.
+  // Do not edit the custodian-owned document to copy it into the item branch.
+  for (const pair of ['avadhi→life_arc', 'bhavishya→prospective_ledger',
+      'kshetra→predictive_anchors', 'tulana→priority']) expect(pinned).toContain(pair)
+  expect(createHash('sha256').update(pinned).digest('hex')).toBe('331f43695e0f2206854143d07153198a50ca25cab91f26f0cd16a41abd302bed')
 })
