@@ -1635,6 +1635,9 @@ jobs:
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
+          # P04-B5: AM-10 creates/drops its own guarded databases on this disposable cluster.
+          GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
+          GOCHARA_REQUIRE_DB: '1'
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           se1_dir="$(mktemp -d)"
@@ -1650,7 +1653,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_p1_exclusion_h_unknown.py tests/l3/gochara/test_member_geometry_seam.py tests/l3/gochara/test_graze_interim.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_p1_exclusion_h_unknown.py tests/l3/gochara/test_member_geometry_seam.py tests/l3/gochara/test_graze_interim.py tests/l3/gochara_rules/test_am10_repin_tool.py -q --tb=short -rs -p no:cacheprovider
 
   pratijna-v4-fixture-property-tests:
     needs: changes
