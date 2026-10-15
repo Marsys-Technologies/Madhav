@@ -1,8 +1,8 @@
 {
-  "version": "K6-5/v1",
-  "registry_revision": 26,
+  "version": "K6-5/v3",
+  "registry_revision": 30,
   "asset": "ka_bhavishya_lekha",
-  "scope": "KYD-141 fixture registrar-interface preparation; live admission and reference-protection cutover pending",
+  "scope": "Default append-only registrar dispatch and K6-5a reference protection; live source admission remains pending",
   "kind": "data",
   "carriage": {
     "nature": "source",
@@ -28,10 +28,10 @@
   "semantic_fingerprint": {
     "inputs": "Exact issue/version, full episode identity, confirmed named-channel statement, cutoff/windows, manifest-qualified class and ontology pins",
     "outputs": "Immutable delivered issue with explicit provenance; equal retries create no row",
-    "oracles": "tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py"
+    "oracles": "tests/l3/ka_bhavishya_lekha/test_reference_protection.py; tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py"
   },
   "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_bhavishya_lekha",
-  "disposition": "Append-only registrar fixture interface added; legacy default and L4 protection retained until accepted live/L5/downstream cutover",
+  "disposition": "Default writer uses insert_immutable_checked and K6-5a lifecycle protection; no delivery inputs leave legacy served rows untouched. Historical legacy implementation retained only for safety oracles; live source bindings remain unadmitted",
   "production_certification": null,
   "gates": {
     "Build": {
@@ -40,17 +40,17 @@
         "Build.contract": 2,
         "Build.target": 2,
         "Build.dag": 4,
-        "Build.count_integrity": 3,
-        "Build.completion": 6,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
         "Build.exercised": 3,
         "Build.history": 3,
         "Build.dep_liveness": 3
       },
-      "expected_reading": "Fixture registrar dispatch only; default legacy registry/count/runtime contract retained; production build/dependency completion unproved"
+      "expected_reading": "Default registrar and fixture alias share immutable insertion; no delivery inputs perform no SQL. Existing registry/count contract and legacy serving retained; production build/dependency completion unproved"
     },
     "Idem": {
       "revisions": {
-        "Idem.pattern": 4
+        "Idem.pattern": 5
       },
       "expected_reading": "FAIL under current Idem.pattern detector for insert_immutable_checked; reviewed immutable-insertion detector treatment routed to PLAN section7/R-10. Never delete issued history. Repeat and changed-retry SQL oracles pass; no production certificate"
     },
@@ -59,12 +59,12 @@
         "Earn.build_record": 3,
         "Earn.service_state": 2
       },
-      "expected_reading": "Only actual local fixture insertion/retry results; production build record not measured"
+      "expected_reading": "Local default-path insertion, equal retry, changed retry and unavailable-L4 mutation measured through strict SQL boundary; lifecycle SQL oracles deferred to CI; production build record not measured"
     },
     "Vocab": {
       "revisions": {
-        "Vocab.identity": 2,
-        "Vocab.alias": 8
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
       },
       "expected_reading": "Explicit issue/version and full episode identity; canonical domain comes from pinned ontology, never keyword matching; live aliases unproved"
     },
@@ -82,17 +82,17 @@
     },
     "Narr": {
       "revisions": {
-        "Narr.agree": 7,
-        "Narr.checkable": 6,
-        "Narr.fidelity_test": 6,
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
         "Narr.lint": 7
       },
       "expected_reading": "Delivered statement preserved verbatim; no prose composed in registrar; SQL fidelity oracle; legacy prose declarations retained"
     },
     "Null": {
       "revisions": {
-        "Null.schema_default": 9,
-        "Null.blank_rows": 9
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
       },
       "expected_reading": "Missing delivery yields no issue; unavailable bindings have named reasons; probability_target null unless calibrated and allowed; whole-table live grading unmeasured"
     },

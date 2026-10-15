@@ -313,25 +313,25 @@ NARR_CITES = {
                     (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
     "bg_compendium_index": [(_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
                             (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
-    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 115, "_build_narrative("), (_WR + "ka_kala_darshana.py", 146, "obstruction_summary, narrative"),
-                         (_WR + "ka_kala_darshana.py", 242, "'headline': headline"),
+    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 117, "_build_narrative("), (_WR + "ka_kala_darshana.py", 150, "obstruction_summary, narrative"),
+                         (_WR + "ka_kala_darshana.py", 246, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 193, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 440, "summary = ("),
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 191, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 153, "narrative, source_citation")],
-    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 331, "_build_projection_narrative("),
-                           (_WR + "ka_bhavishya_lekha.py", 325, "_build_falsifiability("),
-                           (_WR + "ka_bhavishya_lekha.py", 536, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 537, "deny = f"),
+    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 334, "_build_projection_narrative("),
+                           (_WR + "ka_bhavishya_lekha.py", 328, "_build_falsifiability("),
+                           (_WR + "ka_bhavishya_lekha.py", 544, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 545, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 643, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 695, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 752, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 829, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 908, "'reason': ("), (_WR + "ka_vighnakara.py", 964, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 648, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 700, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 757, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 834, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 913, "'reason': ("), (_WR + "ka_vighnakara.py", 969, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 292, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
-    "ka_avadhi": [(_WR + "ka_avadhi.py", 204, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
-                  (_WR + "ka_avadhi.py", 327, "dossier=Jsonb(dossier)"),
+    "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
+                  (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
     "ph_nimitta": [(_SC + "services/ph_nimitta/engine.py", 237, "def as_text"), (_SC + "services/ph_nimitta/engine.py", 552, "falsifier=sf.as_text()"),
                    (_WR + "ph_nimitta.py", 279, "a.falsifier"), (_L + "L4_phala/query_predictive_anchors.ts", 137, "falsifier, source_citation")],
@@ -668,7 +668,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [643, 695, 752, 829, 908, 964] and constant == [790, 865]
+    assert composed == [648, 700, 757, 834, 913, 969] and constant == [795, 870]
 
 
 def _avadhi_dossier_prose_report(src):
@@ -701,7 +701,7 @@ def _avadhi_dossier_prose_report(src):
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
-    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(204, True)]
+    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(198, True)]
 
 
 @pytest.mark.parametrize("old,new", [
@@ -3658,3 +3658,23 @@ def test_decl_helper_honours_a_monkeypatched_declarations_path(monkeypatch, tmp_
     assert len(_decl()) == len(real)
     got["bg_panchanga"]["kind"] = "edited"
     assert _decl()["bg_panchanga"]["kind"] != "edited"                # a deep copy: one test's edit is not another's
+
+
+def test_stored_tier_sql_branches_keep_narration_binding_and_reject_mutations():
+    src = '''
+import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+def run(conn, store_tier):
+    n = build(1)
+    rows = []
+    rows.append((1, json.dumps(n), UNVERIFIED_DEFAULT))
+    conn.executemany(f"INSERT INTO t (id, narrative{', verification_pass_status' if store_tier else ''}) VALUES (%s, %s{', %s' if store_tier else ''})", rows if store_tier else [row[:-1] for row in rows])
+def build(x):
+    return {"k": f"v{x}"}
+'''
+    assert nw.check_tuple_json_from_builder(src, 't', 'narrative', 'build') == []
+    for bad in (src.replace('json.dumps(n)', 'json.dumps({})'),
+                src.replace('row[:-1]', 'row[:-2]'),
+                src.replace('id, narrative{', 'id, wrong_column{'),
+                src.replace("', %s' if store_tier", "', %s, %s' if store_tier")):
+        assert nw.check_tuple_json_from_builder(bad, 't', 'narrative', 'build')

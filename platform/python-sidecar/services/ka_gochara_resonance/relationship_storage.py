@@ -1,4 +1,7 @@
 """Candidate-only F1 storage; caller owns transaction and publication lifecycle."""
+
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
 from collections.abc import Iterable
 from dataclasses import asdict, replace
 from typing import Any
@@ -88,9 +91,7 @@ def build_candidate_projection(ctx: Any) -> tuple[int, str]:
         cur.execute('''SELECT yoga_canonical_id,fired,constituent_fact_ids,constituent_planets,constituent_houses,bhanga_active
           FROM ga_yoga_firings WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s AND fired=true''', source_params)
         yogas = cur.fetchall()
-        cur.execute('''SELECT dasha_row_id,lord_graha,start_iso,end_iso,verification_pass_status
-          FROM chart_dashas WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s
-          AND system_id='vimshottari' AND level_n=1''', source_params)
+        execute_governed_dasha_query(ctx.db_conn, chart_id, dasha_query('resonance_candidate_md'), source_params, ayanamsha_id=pin['ayanamsha_id'], cursor=cur)
         dasha_rows = cur.fetchall()
         dashas = sorted({r['lord_graha'] for r in dasha_rows if r['lord_graha'] is not None})
         cur.execute('''SELECT event_class_id,mechanism_id,derivation_ledger_jsonb FROM kala_activation_predicates

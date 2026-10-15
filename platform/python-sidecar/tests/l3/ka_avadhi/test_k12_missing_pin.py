@@ -22,5 +22,5 @@ class Conn:
 def test_missing_f2_pin_clears_dossiers():
     conn=Conn()
     ctx=SimpleNamespace(config={'chart_id':'chart'}, build_id='owner', db_conn=conn, dry_run=False)
-    with pytest.raises((ValueError, RuntimeError), match='pin'): KaAvdhiWriter().run(ctx)
+    with pytest.raises((ValueError, RuntimeError), match='chart_not_settled'): KaAvdhiWriter().run(ctx)
     assert not conn.writes

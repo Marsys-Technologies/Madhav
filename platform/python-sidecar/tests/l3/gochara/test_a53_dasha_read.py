@@ -89,13 +89,13 @@ def test_reader_returns_only_that_lords_rows_pinned_to_the_build(monkeypatch):
     fake = _FakeRead([_row("Saturn", 1, 1, 9, SETTLED_BUILD), _row("Saturn", 2, 2, 4, SETTLED_BUILD),
                       _row("Jupiter", 1, 9, 20, SETTLED_BUILD),
                       _row("Saturn", 1, 1, 9, "b-foreign")])
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fake)
+    monkeypatch.setattr(dasha_read, "_fetch_dasha_periods_multilevel", fake)
     # two builds for the settled chart ⇒ a conflict, never a row-order pick
     with pytest.raises(DD.DashaReadConflict):
         dasha_read.make_period_rows_for(None, CANON)[0]("saturn")
     fake2 = _FakeRead([_row("Saturn", 1, 1, 9, SETTLED_BUILD), _row("Saturn", 2, 2, 4, SETTLED_BUILD),
                        _row("Jupiter", 1, 9, 20, SETTLED_BUILD)])
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fake2)
+    monkeypatch.setattr(dasha_read, "_fetch_dasha_periods_multilevel", fake2)
     rows_for, contract = dasha_read.make_period_rows_for(None, CANON)
     assert rows_for("SATURN") == [{"start_iso": T(1), "end_iso": T(9)},
                                   {"start_iso": T(2), "end_iso": T(4)}]
@@ -106,7 +106,7 @@ def test_reader_returns_only_that_lords_rows_pinned_to_the_build(monkeypatch):
 
 def test_reader_reads_once_lazily_raw_then_pinned(monkeypatch):
     fake = _FakeRead([_row("Saturn", 1, 1, 9, SETTLED_BUILD)])
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fake)
+    monkeypatch.setattr(dasha_read, "_fetch_dasha_periods_multilevel", fake)
     rows_for, contract = dasha_read.make_period_rows_for(None, CANON)
     assert fake.calls == [] and contract["read"] is False       # lazy
     rows_for("saturn"), rows_for("jupiter"), rows_for("saturn")
@@ -115,7 +115,7 @@ def test_reader_reads_once_lazily_raw_then_pinned(monkeypatch):
 
 
 def test_reader_with_no_rows_refuses_never_guesses(monkeypatch):
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", _FakeRead([]))
+    monkeypatch.setattr(dasha_read, "_fetch_dasha_periods_multilevel", _FakeRead([]))
     rows_for, contract = dasha_read.make_period_rows_for(None, CANON)
     with pytest.raises(dasha_read.DashaBuildRefused, match="settled_build_absent"):
         rows_for("saturn")
@@ -125,7 +125,7 @@ def test_reader_with_no_rows_refuses_never_guesses(monkeypatch):
 @pytest.mark.parametrize("build", [SETTLED_BUILD])
 def test_reader_records_the_actual_canonical_build_and_pins_the_second_read(monkeypatch, build):
     fake = _FakeRead([_row("Saturn", 1, 1, 9, build)])
-    monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fake)
+    monkeypatch.setattr(dasha_read, "_fetch_dasha_periods_multilevel", fake)
     rows_for, contract = dasha_read.make_period_rows_for(None, CANON)
     assert rows_for("saturn") == [{"start_iso": T(1), "end_iso": T(9)}]
     assert contract["read"] and contract["build_id"] == build

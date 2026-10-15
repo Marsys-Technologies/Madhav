@@ -127,3 +127,73 @@ def test_every_a53_fixture_that_creates_or_drops_goes_through_the_guard():
         if re.search(r"psycopg\.connect\(\s*(ADMIN_DSN|MAINT_DSN)\b", text):
             offenders.append(p.name)
     assert not offenders, offenders
+
+
+@pytest.mark.parametrize("mismatch", [None, "image", "label", "port", "host", "address", "stopped", "database"])
+def test_local_docker_admin_requires_the_exact_container_identity(monkeypatch, mismatch):
+    import json
+    from types import SimpleNamespace
+    import psycopg
+    from tests.l3.kala_db import conftest as kala_fixture
+    from ._disposable_db_guard import guarded_admin_connect
+
+    class Admin:
+        closed = False
+
+        def execute(self, statement):
+            row = (("172.17.0.3",) if statement == "SELECT inet_server_addr()" else
+                   ("wrong_database" if mismatch == "database" else "postgres", "172.17.0.3/32"))
+            return SimpleNamespace(fetchone=lambda: row)
+
+        def close(self):
+            self.closed = True
+
+    container = {
+        "State": {"Running": mismatch != "stopped"},
+        "Config": {"Image": "wrong" if mismatch == "image" else "pgvector/pgvector:pg16",
+                   "Labels": {"campaign": "wrong" if mismatch == "label" else "kalayantra"}},
+        "NetworkSettings": {
+            "Ports": {"5432/tcp": [{"HostIp": "0.0.0.0" if mismatch == "host" else "127.0.0.1",
+                                     "HostPort": "5432" if mismatch == "port" else "55433"}]},
+            "Networks": {"bridge": {"IPAddress": "172.17.0.4" if mismatch == "address" else "172.17.0.3"}},
+        },
+    }
+    inspected = []
+
+    def inspect(args, **kwargs):
+        inspected.append(args)
+        return SimpleNamespace(stdout=json.dumps([container]))
+
+    admin = Admin()
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("KY_PG_PORT", raising=False)
+    for var in ("PGHOST", "PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(psycopg, "connect", lambda *args, **kwargs: admin)
+    monkeypatch.setattr(kala_fixture.subprocess, "run", inspect)
+    dsn = "postgresql://postgres:postgres@127.0.0.1:55433/postgres"
+    if mismatch:
+        with pytest.raises(UnsafeAdminDSN):
+            guarded_admin_connect(dsn)
+        assert admin.closed
+    else:
+        assert guarded_admin_connect(dsn) is admin
+        assert not admin.closed
+    assert inspected == [["docker", "inspect", "ky-pg"]]
+
+
+@pytest.mark.parametrize("endpoint", ["localhost:55433/postgres", "127.0.0.1:5432/postgres", "127.0.0.1:55433/other"])
+def test_other_local_endpoints_do_not_get_the_campaign_exception(monkeypatch, endpoint):
+    import psycopg
+    from ._disposable_db_guard import guarded_admin_connect
+
+    admin = _Conn("172.17.0.3")
+    closed = []
+    admin.close = lambda: closed.append(True)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    for var in ("PGHOST", "PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(psycopg, "connect", lambda *args, **kwargs: admin)
+    with pytest.raises(UnsafeAdminDSN):
+        guarded_admin_connect("postgresql://postgres:postgres@" + endpoint)
+    assert closed == [True]

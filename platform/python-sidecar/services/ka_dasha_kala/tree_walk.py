@@ -27,6 +27,9 @@ of each Sookshma (level-4) interval.  These computed rows are ephemeral
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date
@@ -76,20 +79,9 @@ def _fetch_level1(
     if query_counter is not None:
         query_counter.append(f"level1:{system_id}")
 
-    sql = """
-        SELECT dasha_row_id, lord_graha, start_date, end_date,
-               kp_sublevel, kp_sub_lord
-        FROM chart_dashas
-        WHERE chart_id       = %s
-          AND ayanamsha_id   = %s
-          AND system_id      = %s
-          AND level_n        = 1
-          AND start_date     < %s
-          AND end_date       > %s
-        ORDER BY start_date
-    """
-    rows = conn.execute(sql, [chart_id, ayanamsha_id, system_id,
-                               date_end, date_start]).fetchall()
+    sql = dasha_query('tree_level1')
+    rows = execute_governed_dasha_query(conn, chart_id, sql, [chart_id, ayanamsha_id, system_id,
+                               date_end, date_start], ayanamsha_id=ayanamsha_id).fetchall()
     cols = ["dasha_row_id", "lord_graha", "start_date", "end_date",
             "kp_sublevel", "kp_sub_lord"]
     return [dict(zip(cols, r)) if not isinstance(r, dict) else r for r in rows]
@@ -102,21 +94,14 @@ def _fetch_children(
     date_end: date,
     query_counter: Optional[list] = None,
     system_id: str = "",
+    *, chart_id: str, ayanamsha_id: str,
 ) -> list[dict]:
     """Fetch direct children of a given parent row that overlap [date_start, date_end]."""
     if query_counter is not None:
         query_counter.append(f"children:{system_id}:{parent_row_id}")
 
-    sql = """
-        SELECT dasha_row_id, lord_graha, start_date, end_date, level_n,
-               parent_row_id, kp_sublevel, kp_sub_lord
-        FROM chart_dashas
-        WHERE parent_row_id = %s
-          AND start_date    < %s
-          AND end_date      > %s
-        ORDER BY start_date
-    """
-    rows = conn.execute(sql, [parent_row_id, date_end, date_start]).fetchall()
+    sql = dasha_query('tree_children')
+    rows = execute_governed_dasha_query(conn, chart_id, sql, [parent_row_id, date_end, date_start], ayanamsha_id=ayanamsha_id).fetchall()
     cols = ["dasha_row_id", "lord_graha", "start_date", "end_date", "level_n",
             "parent_row_id", "kp_sublevel", "kp_sub_lord"]
     return [dict(zip(cols, r)) if not isinstance(r, dict) else r for r in rows]
@@ -255,7 +240,7 @@ def walk_eligible_intervals(
         # -- Level-2: Antar-dasa -------------------------------------------
         ad_rows = _fetch_children(
             conn, str(md["dasha_row_id"]), date_start, date_end,
-            query_counter, system_id,
+            query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
         )
 
         for ad in ad_rows:
@@ -291,7 +276,7 @@ def walk_eligible_intervals(
             # -- Level-3: Pratyantar-dasa ------------------------------------
             pd_rows = _fetch_children(
                 conn, str(ad["dasha_row_id"]), date_start, date_end,
-                query_counter, system_id,
+                query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
             )
 
             for pd in pd_rows:
@@ -327,7 +312,7 @@ def walk_eligible_intervals(
                 # -- Level-4: Sookshma (default floor) -----------------------
                 sk_rows = _fetch_children(
                     conn, str(pd["dasha_row_id"]), date_start, date_end,
-                    query_counter, system_id,
+                    query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
                 )
 
                 for sk in sk_rows:

@@ -7,6 +7,9 @@ different L1 convention cannot be silently mixed into a context.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -93,19 +96,19 @@ def _read_rows(
         raise ClockUnavailable("build_not_pinned")
     if tier not in RESTRICTED_TABLE_VOCAB or tier == DIVERGENT_FLAGGED:
         raise ClockUnavailable("tier_unavailable")
-    rows = conn.execute(
-        """
-        SELECT dasha_row_id, level_n, lord_graha, parent_row_id,
-               start_iso, end_iso, build_id, ayanamsha_id, system_id,
-               verification_pass_status, applies_to_this_chart_flag,
-               is_truncated_at_window_start, is_truncated_at_window_end
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s
-          AND level_n BETWEEN 1 AND 4
-        ORDER BY level_n ASC, start_iso ASC, dasha_row_id ASC
-        """,
+    rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('clock_rows'),
         [chart_id, system, ayanamsha_id],
-    ).fetchall()
+     ayanamsha_id=ayanamsha_id, clock_tier=tier).fetchall()
+    return validate_clock_rows(rows, build_id=build_id, tier=tier)
+
+
+def validate_clock_rows(rows, *, build_id, tier):
+    """Pure validation for rows already obtained through the governed loader."""
+    if not build_id:
+        raise ClockUnavailable("build_not_pinned")
+    if tier not in RESTRICTED_TABLE_VOCAB or tier == DIVERGENT_FLAGGED:
+        raise ClockUnavailable("tier_unavailable")
     # Coherence is checked before tier selection, including unconsumed rows.
     if not rows or any(str(row.get("build_id")) != str(build_id) for row in rows):
         raise ClockUnavailable("build_not_pinned")
@@ -243,13 +246,33 @@ def period_context(
     method_facts: AshtottariFacts | KalachakraFacts | None = None,
     scenario_id: str | None = None,
 ) -> PeriodContext:
-    """Read the MD–SD hierarchy active at the supplied, explicit ``as_of``."""
+    """Read the MD–SD hierarchy from the settlement-bound loader."""
+    _as_utc(as_of)
+    _method(system)
+    rows = _read_rows(conn, chart_id, stored_system(system), build_id=build_id,
+                      ayanamsha_id=ayanamsha_id, tier=tier)
+    return period_context_from_rows(
+        rows, chart_id, as_of, system, build_id=build_id, ayanamsha_id=ayanamsha_id,
+        tier=tier, uncertainty=uncertainty, method_facts=method_facts, scenario_id=scenario_id)
+
+
+def period_context_from_rows(
+    rows: list[dict[str, Any]],
+    chart_id: str,
+    as_of: datetime,
+    system: str,
+    *,
+    build_id: str,
+    ayanamsha_id: str,
+    tier: str,
+    uncertainty: BoundaryUncertainty | None = None,
+    method_facts: AshtottariFacts | KalachakraFacts | None = None,
+    scenario_id: str | None = None,
+) -> PeriodContext:
+    """Evaluate a previously governed row slice without another SQL read."""
     as_of = _as_utc(as_of)
     method = _method(system)
-    rows = _read_rows(
-        conn, chart_id, stored_system(system), build_id=build_id,
-        ayanamsha_id=ayanamsha_id, tier=tier,
-    )
+    rows = validate_clock_rows(rows, build_id=build_id, tier=tier)
     active = _active_hierarchy(rows, as_of)
     lords = {_LEVEL_NAMES[int(row["level_n"])]: _lord(row) for row in active}
 

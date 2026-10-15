@@ -75,10 +75,11 @@ class _ManifestConn:
         self.statements.append((sql, params))
         manifest = self.manifest
         digest = _digest_of(manifest) if self.digest == "auto" else self.digest
+        absent = "asset_throughput" in sql          # the state guard's read: no orchestrator row in a unit test (skip-on-absent)
 
         class _R:
             def fetchone(self):
-                return (manifest, digest) if manifest is not None else None
+                return None if absent else (manifest, digest) if manifest is not None else None
 
             def fetchall(self):
                 return []
@@ -273,14 +274,14 @@ def test_the_refusal_names_the_marker_key():
 def test_a_grain_outside_the_marker_is_refused_by_name_never_skipped():
     """Fable P1 (scenario B): this branch used to RETURN success. The plan is fixed at asset start; a substep for a class the marker
     now read does not name means the stored plan_manifest changed — refused, and nothing but the chart lock and the marker read
-    was issued."""
+    was issued (and the state guard's read-only SELECT of asset_throughput, which precedes everything)."""
     cls = writer_mod.SCORED_CLASSES[0]
     other = writer_mod.SCORED_CLASSES[1]
     ctx = _ctx({writer_mod.TEST_SLICE_KEY: _marker(classes=[cls])})
     ctx = writer_mod._native_ctx(ctx)
     with pytest.raises(writer_mod.TestSliceRefusal, match=r"not in the run's validated marker"):
         writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"record:{other}:P1"))
-    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql) for sql, _ in ctx.db_conn.statements)
+    assert all(("build_runs" in sql) or ("ka_gochara_lock_chart" in sql) or ("SELECT state FROM public.asset_throughput" in sql) for sql, _ in ctx.db_conn.statements)
 
 
 def test_class_of_grain_parses_every_per_class_prefix():

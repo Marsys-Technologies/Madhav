@@ -512,3 +512,12 @@ def test_writer_dry_run_no_writes():
     assert result.rows_inserted == 0
     assert "deletes" not in sink
     assert "inserted" not in sink
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """These domain fixtures supply projection rows; settlement guards have their own SQL tests."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_gochara_resonance.writer'),
+                        "execute_governed_dasha_query", emulated_projection)

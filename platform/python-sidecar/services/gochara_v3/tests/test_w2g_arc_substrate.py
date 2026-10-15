@@ -161,11 +161,30 @@ def test_context_fetch_does_all_db_access():
     mock_conn = MagicMock()
     mock_conn.autocommit = False
 
-    # Mock cursor that returns empty results (honest empty)
+    # Resonance/natal queries are empty; the live context still requires a
+    # settled daśā population. Emulate SQL alone, retaining the real loader.
+    from services.gochara_kernel.dasha_read import load_dasha_settlement
+    build = load_dasha_settlement(CHART_ID)["run_id"]
     mock_cursor = MagicMock()
     mock_cursor.fetchall.return_value = []
     mock_cursor.fetchone.return_value = None
-    mock_conn.execute.return_value = mock_cursor
+
+    def execute(sql, params=None):
+        if "SELECT DISTINCT coalesce" in sql:
+            cursor = MagicMock()
+            cursor.fetchall.return_value = [(build,)]
+            return cursor
+        if "chart_dashas" in sql:
+            cursor = MagicMock()
+            cursor.fetchall.return_value = [dict(
+                dasha_row_id="fixture-md", system_id="vimshottari", level_n=1,
+                parent_row_id=None, lord_graha="Sun", start_iso="2000-01-01T00:00:00Z",
+                end_iso="2001-01-01T00:00:00Z", build_id=build,
+                verification_pass_status="two_pass_verified")]
+            return cursor
+        return mock_cursor
+
+    mock_conn.execute.side_effect = execute
 
     context = ClassContext.fetch(mock_conn, CHART_ID, "marriage")
 
@@ -174,10 +193,11 @@ def test_context_fetch_does_all_db_access():
         "ClassContext.fetch() must do DB queries — that's its job"
     )
 
-    # The resulting context should be usable (even with empty data)
+    # The resulting context is usable with empty targets and settled daśā rows
     assert context.chart_id == CHART_ID
     assert context.event_class == "marriage"
     assert context.promise == 0.0  # no targets from empty DB -> honest 0.0
+    assert context.dasha_periods and all(row["build_id"] == build for row in context.dasha_periods)
 
 
 def test_zero_db_queries_during_evaluation_phase():

@@ -7,7 +7,7 @@ import path from 'node:path'
 /**
  * Pravāha B6.0 / Codex round 19 R19-1 — the owner's dispatch (`gh workflow run deploy.yml -f gochara_contracts_schema_migration=true`) must
  * hand `migrate.ts --only` EXACTLY the Gochara protected window: 1153–1157 and the five pending files 1204, 1206, 1232, 1233, 1240, in
- * ascending order, and never 1241 (1241 is a routine file that waits for SETTLED-1).
+ * ascending order, and never 1378 (1378 is a routine file that waits for SETTLED-1).
  *
  * This test does not grep: it EXTRACTS the real shell block of the step "Apply exact protected public-schema migrations" from
  * .github/workflows/deploy.yml and EXECUTES it under `bash -e` (GitHub's default shell for `run:`), with `npx` replaced by a stub that prints its
@@ -16,7 +16,7 @@ import path from 'node:path'
  *
  * Run it on #2961's head, on the integration ref and — as the merge control of the protected train — on merged `main` with
  * WINDOW_MERGE_CONTROL=1 (then every selected file must exist on the tree, the selection must equal migrate.ts's protected set for the Gochara
- * files, and no 1241_* file may be present).
+ * files, and no 1378_* file may be present).
  */
 const repoRoot = path.resolve(__dirname, '../../..')
 const workflowText = fs.readFileSync(path.join(repoRoot, '.github/workflows/deploy.yml'), 'utf8')
@@ -98,13 +98,13 @@ describe('owner dispatch — the protected window selection, executed from deplo
     expect(nums).toEqual([...nums].sort((a, b) => a - b))
   })
 
-  it('never selects 1241 (a routine file that waits for SETTLED-1) in ANY input combination', () => {
+  it('never selects 1378 (a routine file that waits for SETTLED-1) in ANY input combination', () => {
     const flags = ['APPLY_JATAKA_SCHEMA_MIGRATIONS', 'APPLY_AI_CONSOLE_SCHEMA_MIGRATION', 'APPLY_AI_METERING_SCHEMA_MIGRATION', 'APPLY_GOCHARA_SCHEMA_MIGRATION', 'APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION']
     for (let mask = 1; mask < 1 << flags.length; mask++) {
       const inputs = Object.fromEntries(flags.map((f, i) => [f, mask & (1 << i) ? 'true' : 'false']))
       const r = run(inputs)
       expect(r.status, JSON.stringify(inputs) + r.out).toBe(0)
-      expect(r.only!.filter((f) => f.startsWith('1241')), JSON.stringify(inputs)).toEqual([])
+      expect(r.only!.filter((f) => f.startsWith('1378')), JSON.stringify(inputs)).toEqual([])
     }
   }, 120_000)
 
@@ -138,8 +138,8 @@ describe('owner dispatch — the protected window selection, executed from deplo
       expect(refused.sort()).toEqual([...WINDOW_FILES].sort())
     })
 
-    it('no 1241_* file is present on main (it is applied only after SETTLED-1)', () => {
-      expect(fs.readdirSync(path.join(repoRoot, 'platform/migrations')).filter((f) => f.startsWith('1241_'))).toEqual([])
+    it('no 1378_* file is present on main (it is applied only after SETTLED-1)', () => {
+      expect(fs.readdirSync(path.join(repoRoot, 'platform/migrations')).filter((f) => f.startsWith('1378_'))).toEqual([])
     })
   })
 })

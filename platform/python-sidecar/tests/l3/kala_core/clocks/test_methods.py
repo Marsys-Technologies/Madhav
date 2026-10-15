@@ -228,3 +228,16 @@ def test_boundary_facade_refuses_unknown_or_inapplicable_method_evidence(evidenc
     with pytest.raises(clocks.ClockUnavailable, match='applicability_unknown_or_inapplicable'):
         KaDashaKalaService(L1(system='ashtottari')).boundaries(
             CHART, 'ashtottari', as_of=T0, method_facts=evidence, **PIN)
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.tree_walk'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.service'),
+                        "execute_governed_dasha_query", emulated_projection)

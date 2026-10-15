@@ -53,7 +53,7 @@ def test_reopened_item_not_in_history():
     assert [r["id"] for r in s["recently_completed"]] == ["B", "A"]
     series = s["history"]["series"]
     assert series[0]["done"] == 0
-    assert series[-1] == {"date": "2026-10-14", "done": 2, "total": 8}
+    assert {k: series[-1][k] for k in ("date", "done", "total")} == {"date": "2026-10-14", "done": 2, "total": 8}
     assert next(r for r in series if r["date"] == "2026-10-12")["done"] == 1
 
 
@@ -289,3 +289,240 @@ def test_fleet_pid_with_unrecognised_process_makes_count_unknown(tmp_path):
 
 def test_hash_is_not_presented_as_review_evidence():
     assert 'reviewed' not in server.plain_text('Code at 6898a3d8a04bdfe8996e1dd1542c8d88e2ba7bc4.')
+
+
+def d21_state():
+    state = fixture_state()
+    state['tracks'] = [{'id': 'J', 'title': 'Transit', 'plain': 'Transit work', 'items': [
+        {'id': 'J-1a', 'title': 'Build small-test tools', 'status': 'done'},
+        {'id': 'J-W4-P01', 'title': 'Packet join', 'status': 'not_applicable'},
+        {'id': 'J-0m', 'title': 'Extend plan model', 'status': 'done'},
+        {'id': 'J-4b', 'title': 'Apply protected changes', 'status': 'waiting'},
+        {'id': 'V-J6', 'title': 'Review publication', 'status': 'done'},
+        {'id': 'VC-1', 'title': 'Freeze pre-registration', 'status': 'done'},
+        {'id': 'K7-1a', 'title': 'Build registry views and registration', 'status': 'done'},
+        {'id': 'K8-REG', 'title': 'Registry migration', 'status': 'done'},
+    ]}]
+    for item in state['tracks'][0]['items']:
+        item['completion_kind'] = 'artifact' if item['id'] in ('J-0m', 'VC-1') else 'code'
+    state['overall'] = {'pct': 99, 'total': 999}
+    return state
+
+
+def d21_dates():
+    return {iid: server.parse_time(ts) for iid, ts in {
+        'J-1a': '2026-10-14T09:00:00Z', 'J-0m': '2026-10-14T10:00:00Z',
+        'V-J6': '2026-10-13T12:00:00Z', 'VC-1': '2026-10-08T12:00:00Z',
+        'K7-1a': '2026-10-07T11:59:59Z', 'K8-REG': '2026-10-14T13:00:00Z',
+    }.items()}
+
+
+def test_d21_one_percentage_and_wave_partition():
+    s = server.compute_summary(d21_state(), d21_dates(), NOW)
+    assert s['metrics']['percent'] == 87.5  # seven complete, eight in scope; ignore weighted 99
+    assert s['progress_lines'] == [
+        {'id': 'wave4', 'label': 'Wave 4 · Gochara 5.0', 'complete': 3, 'total': 4},
+        {'id': 'rest', 'label': 'Everything else', 'complete': 4, 'total': 4},
+        {'id': 'total', 'label': 'Total', 'complete': 7, 'total': 8},
+    ]
+
+
+def test_d21_burnup_includes_not_needed_and_splits_wave():
+    dates = d21_dates()
+    complete_dates = {**dates, 'J-W4-P01': server.parse_time('2026-10-14T08:00:00Z')}
+    s = server.compute_summary(d21_state(), dates, NOW, first_complete=complete_dates)
+    last = s['history']['series'][-1]
+    assert (last['wave4'], last['rest'], last['complete']) == (3, 3, 6)
+    assert s['history']['undated_complete'] == 1  # future event is not historical evidence
+    assert s['history']['dated_complete'] == 6
+    assert s['history']['not_applicable'] == 1
+
+
+def test_d21_scope_marker_has_exact_time_and_size():
+    now = server.parse_time('2026-10-15T12:00:00Z')
+    s = server.compute_summary(d21_state(), {}, now)
+    assert s['history']['scope_changes'][0] == {
+        'at': '2026-10-14T19:04:00+00:00', 'before': 152, 'after': 213,
+        'label': 'Scope grew: 152 → 213 items · 14 Oct 19:04 UTC',
+    }
+    assert any(p['at'] == '2026-10-14T19:04:00+00:00' for p in s['history']['series'])
+    assert server.compute_summary(d21_state(), {}, NOW)['history']['scope_changes'] == []
+
+
+def test_d21_closure_classes_and_rolling_boundaries():
+    m = server.compute_summary(d21_state(), d21_dates(), NOW)['metrics']
+    assert m['closures_24h'] == {'capability': 1, 'verdict': 1, 'planning': 1}
+    assert m['closures_7d'] == {'capability': 1, 'verdict': 1, 'planning': 2}
+    assert (m['completed_24h'], m['completed_7d']) == (3, 4)
+    assert server.compute_summary(d21_state(), None, NOW)['metrics']['closures_24h'] is None
+
+
+def test_d21_event_reader_retains_not_applicable_dates(tmp_path):
+    p = tmp_path / 'events'
+    p.write_text('\n'.join(json.dumps(e) for e in [
+        {'kind': 'item', 'item': 'J-W4-P01', 'state': 'not_applicable', 'ts': '2026-10-14T08:00:00Z'},
+        {'kind': 'item', 'item': 'J-1a', 'state': 'done', 'ts': '2026-10-14T09:00:00Z'},
+    ]) + '\n')
+    reader = server.EventHistory(p)
+    done = reader.read()
+    assert set(done) == {'J-1a'}
+    s = server.compute_summary(d21_state(), done, NOW, first_complete=reader.first_complete)
+    assert s['history']['series'][-1]['wave4'] == 2
+    assert s['metrics']['completed_24h'] == 1  # not-needed is not a code closure
+    p.write_text('')
+    reader.read()
+    assert reader.first_complete == {}
+
+
+def make_duration_job(root, name, end):
+    import os
+    job = root / name
+    job.mkdir()
+    (job / 'DONE').touch()
+    stamp = server.parse_time(end).timestamp()
+    os.utime(job / 'DONE', (stamp, stamp))
+    return job
+
+
+def test_d21_agent_hours_per_closure_uses_all_finished_work(tmp_path):
+    # Include failed/review jobs, count each once; unfinished/future/out-of-window jobs contribute nothing.
+    make_duration_job(tmp_path, 'X-20261014T080000Z-build', '2026-10-14T10:00:00Z')
+    failed = make_duration_job(tmp_path, 'X-20261013T100000Z-review', '2026-10-13T12:00:00Z')
+    (failed / 'result.json').write_text('{"status":"blocked"}')
+    make_duration_job(tmp_path, 'X-20261008T100000Z-old', '2026-10-08T11:00:00Z')
+    make_duration_job(tmp_path, 'X-20261014T130000Z-future', '2026-10-14T14:00:00Z')
+    (tmp_path / 'X-20261014T070000Z-running').mkdir()
+    hours = server.job_effort(tmp_path, NOW)
+    assert hours['agent_hours_24h'] == 4
+    assert hours['agent_hours_7d'] == 5
+    s = server.compute_summary(d21_state(), d21_dates(), NOW, effort=hours)
+    assert s['metrics']['agent_hours_per_closure_24h'] == pytest.approx(4 / 3)
+    assert s['metrics']['agent_hours_per_closure_7d'] == 1.25
+    zero = server.compute_summary(fixture_state(), {}, NOW, effort=hours)['metrics']
+    assert zero['agent_hours_per_closure_24h'] is None
+    unknown = server.compute_summary(fixture_state(), completions(), NOW)['metrics']
+    assert unknown['agent_hours_per_closure_24h'] is None
+
+
+def test_d21_bad_job_timing_is_unknown_not_zero(tmp_path):
+    make_duration_job(tmp_path, 'X-20261014T100000Z-bad', '2026-10-14T09:00:00Z')
+    with pytest.raises(ValueError):
+        server.job_effort(tmp_path, NOW)
+
+
+def test_d21_dashboard_observes_further_scope_changes(tmp_path):
+    p = tmp_path / 'events'; p.write_text('')
+    d, f = tmp_path / 'd', tmp_path / 'f'; d.mkdir(); f.mkdir()
+    state = fixture_state()
+    dashboard = server.Dashboard(event_path=p, direct_jobs=d, fleet_jobs=f,
+                                 fetch_tracker=lambda: state, process_list=lambda: '', cache_seconds=0)
+    dashboard.summary(NOW)
+    state['tracks'][0]['items'].append({'id': 'NEW', 'title': 'Extra scope', 'status': 'waiting'})
+    later = NOW + server.timedelta(minutes=5)
+    state['generated_at'] = later.isoformat()
+    change = dashboard.summary(later)['history']['scope_changes'][-1]
+    assert (change['before'], change['after'], change['at']) == (8, 9, later.isoformat())
+
+
+def evaluate_page(expression, state):
+    """Run the real inline render functions with macOS's system JS engine; no packages/scripts."""
+    import ctypes
+    import ctypes.util
+    import sys
+    if sys.platform != 'darwin':
+        pytest.skip('Rendering smoke test uses the macOS system JavaScriptCore framework')
+    lib = ctypes.CDLL(ctypes.util.find_library('JavaScriptCore'))
+    ptr = ctypes.c_void_p
+    signatures = {
+        'JSGlobalContextCreate': (ptr, [ptr]), 'JSGlobalContextRelease': (None, [ptr]),
+        'JSStringCreateWithUTF8CString': (ptr, [ctypes.c_char_p]), 'JSStringRelease': (None, [ptr]),
+        'JSEvaluateScript': (ptr, [ptr, ptr, ptr, ptr, ctypes.c_int, ctypes.POINTER(ptr)]),
+        'JSValueToStringCopy': (ptr, [ptr, ptr, ctypes.POINTER(ptr)]),
+        'JSStringGetMaximumUTF8CStringSize': (ctypes.c_size_t, [ptr]),
+        'JSStringGetUTF8CString': (ctypes.c_size_t, [ptr, ctypes.c_char_p, ctypes.c_size_t]),
+    }
+    for name, (result, args) in signatures.items():
+        function = getattr(lib, name); function.restype = result; function.argtypes = args
+    page = (Path(__file__).parent / 'index.html').read_text()
+    script = page.split('<script>', 1)[1].split('function setTheme', 1)[0]
+    script = "const document={documentElement:{clientWidth:390}};\n" + script
+    script += '\nsummary=' + json.dumps(state) + ';\n' + expression
+    context = lib.JSGlobalContextCreate(None)
+    source = lib.JSStringCreateWithUTF8CString(script.encode())
+    exception = ptr()
+    result = lib.JSEvaluateScript(context, source, None, None, 1, ctypes.byref(exception))
+    value = lib.JSValueToStringCopy(context, exception.value or result, None)
+    size = lib.JSStringGetMaximumUTF8CStringSize(value)
+    buffer = ctypes.create_string_buffer(size)
+    lib.JSStringGetUTF8CString(value, buffer, size)
+    text = buffer.value.decode()
+    lib.JSStringRelease(value); lib.JSStringRelease(source); lib.JSGlobalContextRelease(context)
+    assert not exception.value, text
+    return text
+
+
+def test_d21_page_renders_one_percentage_three_lines_and_scope_marker():
+    from html.parser import HTMLParser
+    class Markup(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.text = []; self.tags = []
+        def handle_data(self, data):
+            self.text.append(data)
+        def handle_starttag(self, tag, attrs):
+            self.tags.append((tag, dict(attrs)))
+    state = server.compute_summary(d21_state(), d21_dates(), server.parse_time('2026-10-15T08:00:00Z'),
+                                   effort={'agent_hours_24h': 6, 'agent_hours_7d': 10})
+    markup = Markup()
+    markup.feed(evaluate_page('headline()+chart()', state))
+    text = ''.join(markup.text)
+    assert text.count('%') == 1 and '87.5%' in text
+    assert sum(attrs.get('class') == 'progress-line' for _, attrs in markup.tags) == 3
+    assert sum(tag == 'polyline' for tag, _ in markup.tags) == 3
+    assert all(label in text for label in ('Wave 4', 'Everything else', 'Total complete'))
+    assert '152 → 213' in text and '19:04' in text and 'UTC' in text
+    assert 'Capabilities' in text and 'Verdicts' in text and 'Planning' in text
+    assert 'Agent-hours per closed item' in text and '2.00' in text
+
+
+def test_d21_closure_class_uses_code_metadata_not_registry_title():
+    assert server.closure_class({'id': 'K7-1a', 'completion_kind': 'code'}) == 'capability'
+    assert server.closure_class({'id': 'J-0m', 'completion_kind': 'code'}) == 'planning'
+    assert server.closure_class({'id': 'V-J6', 'completion_kind': 'packet'}) == 'verdict'
+    assert server.closure_class({'id': 'PLAN', 'completion_kind': 'artifact'}) == 'planning'
+    assert server.closure_class({'id': 'JOIN-ALL'}) == 'planning'
+
+
+def test_d21_timing_failure_keeps_closure_counts(tmp_path):
+    p = tmp_path / 'events'
+    p.write_text('{"kind":"item","item":"B","state":"done","ts":"2026-10-14T09:00:00Z"}\n')
+    d, f = tmp_path / 'missing', tmp_path / 'f'; f.mkdir()
+    dashboard = server.Dashboard(event_path=p, direct_jobs=d, fleet_jobs=f,
+                                 fetch_tracker=fixture_state, process_list=lambda: '', cache_seconds=0)
+    s = dashboard.summary(NOW)
+    assert s['metrics']['completed_24h'] == 1
+    assert s['metrics']['agent_hours_per_closure_24h'] is None
+    assert not s['sources']['job_timing']['available']
+
+
+def test_d21_page_has_no_competing_done_over_total_metric():
+    from html.parser import HTMLParser
+    class Text(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.data = []
+        def handle_data(self, value):
+            self.data.append(value)
+    state = server.compute_summary(d21_state(), d21_dates(), NOW)
+    text = Text(); text.feed(evaluate_page('headline()', state))
+    visible = ''.join(text.data)
+    assert '6 / 8' not in visible  # six done omits the not-needed completion
+    assert '7 / 8' in visible
+    assert visible.count('%') == 1
+
+
+def test_tracker_unknown_status_is_accepted_and_shown_as_not_yet_measured():
+    """The live tracker reports 'unknown' for items whose detector has not been measured yet; the whole
+    feed must not be rejected (that blanked the dashboard on 2026-10-15) and the item counts as waiting."""
+    import server
+    assert 'unknown' in server.STATUSES
+    assert server.GROUPS['unknown'] == 'waiting'
+    assert server.LABELS['unknown'] == 'Not yet measured'
