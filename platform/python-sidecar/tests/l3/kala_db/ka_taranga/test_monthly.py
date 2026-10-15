@@ -19,7 +19,7 @@ CHART = '00000000-0000-0000-0000-000000000641'
 OTHER = '00000000-0000-0000-0000-000000000642'
 BUILD = '00000000-0000-0000-0000-000000000643'
 GEN = 'candidate:k6-4'
-MIGRATION = PLATFORM / 'migrations/1386_k6_taranga_candidate.sql'
+MIGRATION = PLATFORM / 'migrations/1389_k6_taranga_candidate.sql'
 
 
 @pytest.fixture
