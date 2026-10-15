@@ -276,7 +276,7 @@ def test_the_pinned_population_passes():
 def test_a_wrong_build_moon_row_is_refused_not_made_authoritative_by_hashing_it():
     evil = _row(9, 2, "Moon", base._dt(2025, 1, 1), base._dt(2025, 3, 1), build="00000000-0000-4000-8000-000000000bad")
     out = _check(POP + [evil])
-    assert any("frozen" in p for p in out)
+    assert any("several builds" in p for p in out)
 
 
 def test_a_wrong_system_or_ayanamsha_or_tier_moon_row_is_refused():
@@ -321,7 +321,7 @@ def test_a_snapshot_over_a_wrong_build_moon_row_fails_the_verifiers_ledger_deriv
     _chain(step)
     conn.execute("UPDATE public.chart_dashas SET build_id = '00000000-0000-4000-8000-000000000bad'"
                  " WHERE dasha_row_id = %s", (str(uuid.UUID(int=2)),))
-    with pytest.raises(RuntimeError, match="dasha_builds_mixed"):
+    with pytest.raises(RuntimeError, match="settled_build_ambiguous"):
         ver.rederive_ledger_digest(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
                                    obligations=[], capability={"position_probe": True, "arc_index": True})
 

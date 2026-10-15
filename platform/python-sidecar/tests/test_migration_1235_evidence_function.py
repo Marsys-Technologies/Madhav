@@ -11,8 +11,9 @@ from pathlib import Path
 
 import pytest
 
-PG = os.environ.get("GOCHARA_A51_TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not PG, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server)")
+PG = os.environ.get("GOCHARA_A51_TEST_DATABASE_URL", "").strip()
+REQUIRE_DB = os.environ.get("GOCHARA_REQUIRE_DB") == "1"
+pytestmark = pytest.mark.skipif(not PG and not REQUIRE_DB, reason="needs GOCHARA_A51_TEST_DATABASE_URL (a disposable PostgreSQL server)")
 
 MIGRATION = Path(__file__).resolve().parents[2] / "migrations" / "1235_ka_gochara_staged_candidate_evidence_function.sql"
 V41, V5 = "ka_gochara_v4_41_candidate", "ka_gochara_v5"
@@ -22,10 +23,12 @@ LOADER_ROLES = ("amjis_app", "nirmana_campaign_control_writer", "nirmana_evidenc
 
 @pytest.fixture(scope="module")
 def dsn():
-    import psycopg
-    from psycopg.conninfo import conninfo_to_dict, make_conninfo
-    base = conninfo_to_dict(PG)
-    admin = psycopg.connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
+    from psycopg.conninfo import make_conninfo
+    from tests.l3.gochara._disposable_db_guard import check_admin_dsn, guarded_admin_connect
+    if not PG:
+        pytest.fail("GOCHARA_REQUIRE_DB=1 requires GOCHARA_A51_TEST_DATABASE_URL")
+    base = check_admin_dsn(PG)
+    admin = guarded_admin_connect(make_conninfo(**{**base, "dbname": "postgres"}), autocommit=True)
     name = f"fn1235_{uuid.uuid4().hex[:10]}"
     admin.execute(f'CREATE DATABASE "{name}"')
     try:
@@ -37,8 +40,8 @@ def dsn():
 
 @pytest.fixture()
 def conn(dsn):
-    import psycopg
-    c = psycopg.connect(dsn, autocommit=True)
+    from tests.l3.gochara._disposable_db_guard import guarded_admin_connect
+    c = guarded_admin_connect(dsn, autocommit=True)
     c.execute(f"DROP FUNCTION IF EXISTS {FN}(text); DROP TABLE IF EXISTS asset_provenance_receipts, build_run_assets, asset_throughput CASCADE")
     for role in (*LOADER_ROLES, "outsider_role"):
         c.execute(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN CREATE ROLE {role} NOLOGIN; END IF; END $$")

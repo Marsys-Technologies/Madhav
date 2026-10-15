@@ -553,3 +553,32 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
         expected = tuple(_job_suites(job))
         for name, mutated in _mutations(job).items():
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
+
+
+# P07-R2: the ported publication oracles must execute, not merely be discovered.
+def test_p07_mcp_oracles_run_in_the_mandatory_mcp_job(jobs):
+    job = jobs["typecheck-mcp"]
+    assert not job.get("continue-on-error", False)
+    commands = [s for s in job["steps"] if "vitest run" in str(s.get("run", ""))]
+    for suite in ("src/tools/retrieval/register_gochara_contact_ledger.test.ts",
+                  "src/tools/retrieval/register_gochara_windows_governed_gate.test.ts"):
+        matching = [s for s in commands if suite in s["run"].split()]
+        assert matching, f"{suite} has no mandatory MCP test command"
+        assert all(not s.get("continue-on-error", False) and "if" not in s
+                   and not any(x in s["run"] for x in ("||", "--passWithNoTests", "-t ", "--testNamePattern")) for s in matching)
+
+
+def test_p07_migration_1235_runs_fail_closed_in_the_disposable_db_job(jobs):
+    job = jobs["db-integration-tests"]
+    assert "postgres" in job["services"] and not job.get("continue-on-error", False)
+    suite = "tests/test_migration_1235_evidence_function.py"
+    steps = [s for s in job["steps"] if suite in _pytest_suites(str(s.get("run", "")))]
+    assert len(steps) == 1, "all five 1235 cases need one explicit mandatory DB command"
+    step = steps[0]
+    assert step["working-directory"] == "platform/python-sidecar"
+    assert step["env"]["GOCHARA_REQUIRE_DB"] == '1'
+    assert step["env"]["GOCHARA_A51_TEST_DATABASE_URL"] == "postgresql://postgres:postgres@localhost:5432/gochara_a51_test"
+    assert not step.get("continue-on-error", False) and "if" not in step
+    assert "||" not in step["run"]
+    args = next(line.split("pytest", 1)[1] for line in step["run"].splitlines() if "pytest" in line)
+    assert not any(x in args for x in ("--deselect", "--ignore", "-k ", "-m ", "::"))

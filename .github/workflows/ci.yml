@@ -155,6 +155,8 @@ jobs:
           cache-dependency-path: platform-mcp/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: P07 — ported Gochara publication oracles (REQUIRED)
+        run: npx vitest run src/tools/retrieval/register_gochara_contact_ledger.test.ts src/tools/retrieval/register_gochara_windows_governed_gate.test.ts
 
   unit-tests:
     needs: changes
@@ -444,6 +446,15 @@ jobs:
         run: |
           npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
           python3 scripts/gochara/mutation_check_1206.py
+
+      - name: P07 — migration 1235 protected evidence function (REQUIRED, never skipped)
+        working-directory: platform/python-sidecar
+        env:
+          GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
+          GOCHARA_REQUIRE_DB: '1'
+        run: |
+          python3 -m pip install -r requirements-ci.txt --quiet
+          python3 -m pytest tests/test_migration_1235_evidence_function.py -q -rs
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
         # The A5.3 tests build their OWN throwaway databases (a53t_*) and cluster roles on the CI Postgres through the
