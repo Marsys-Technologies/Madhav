@@ -29,10 +29,13 @@ DASHA_READ_CONTRACT = {
     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
     "ayanamsha_id": "lahiri_chitrapaksha",
     "system_id": "vimshottari",
-    "build_id": "75524b3e-102a-43ec-8cee-3f57fee752c3",
     "tier": TWO_PASS_VERIFIED,
     "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]",
 }
+
+# Historical literal-fixture provenance only. Live reads select the chart's
+# single settled build in gochara_kernel.dasha_read; this UUID never gates them.
+REFERENCE_DASHA_BUILD_ID = "75524b3e-102a-43ec-8cee-3f57fee752c3"
 
 # Pinned reference rows (§4.0 [L]; every row id printed in full — C6).
 MD_ROWS: tuple[dict, ...] = (
@@ -174,7 +177,7 @@ def permission(chart: dict, t: str, event_class: str) -> dict:
     pd = _row_at(PD_ROWS, t, ad["row_id"]) if ad else None
 
     period_context = {"system": DASHA_READ_CONTRACT["system_id"],
-                      "build_id": DASHA_READ_CONTRACT["build_id"]}
+                      "build_id": REFERENCE_DASHA_BUILD_ID}
     licences = []
     for level, row in (("md", md), ("ad", ad), ("pd", pd)):
         if row is None:

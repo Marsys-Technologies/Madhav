@@ -163,9 +163,11 @@ def test_ephemeris_legacy_constructor_preserves_fields_without_fabricating_metad
     ) == (None,) * 12
 
 
-def test_ka_dasha_kala_fails_closed_on_one_system_read_failure():
+def test_ka_dasha_kala_fails_closed_on_population_read_failure():
+    from services.gochara_kernel.dasha_read import DashaBuildRefused
+
     service = KaDashaKalaService(_FailingDashaConnection())
-    with pytest.raises(RuntimeError, match="vimshottari"):
+    with pytest.raises(DashaBuildRefused, match="dasha_read_unavailable") as refusal:
         service.query(
             chart_id="chart-1",
             ayanamsha_id="lahiri_chitrapaksha",
@@ -176,6 +178,9 @@ def test_ka_dasha_kala_fails_closed_on_one_system_read_failure():
             max_level=1,
             systems={"vimshottari"},
         )
+    assert refusal.value.code == "dasha_read_unavailable"
+    assert isinstance(refusal.value.__cause__, RuntimeError)
+    assert str(refusal.value.__cause__) == "fixture system read failed"
 
 
 @pytest.mark.parametrize(
