@@ -34,7 +34,7 @@ def test_marriage_cited_cancellation_and_exact_metadata(sky, request_data, rule)
     out = run(request_data, [r])
     assert out["dosas"] == [{"dosha_canonical_id": "venus_sixth", "state": "cancelled", "by_rules": [101], "reason": None}]
     row = out["rules"][0]
-    for key in ("scope", "source_citation", "source_chunk_id", "conjunction_reading", "tika_extension", "priority_rank", "net_standing"):
+    for key in ("scope", "source_citation", "source_chunk_id", "source_verse", "conjunction_reading", "tika_extension", "priority_rank", "net_standing"):
         assert row[key] == r[key]
     assert row["rule_id"] == 101 and row["result"] == "applies"
     assert len(calls) == 3 and calls[1] == (calls[0]+calls[2])/2
@@ -248,7 +248,7 @@ def test_other_verses_in_the_same_chunk_do_not_count_as_v88_readings(sky,request
     rows=[
         rule(None,id=301),
         rule(None,id=302,extraction_context="mula_reconstructed",source_chunk_id="muhurta_chintamani_pg0115_c02"),
-        rule(None,id=303,source_citation="Muhūrta Cintāmaṇi v.90"),
+        rule(None,id=303,source_verse=90,source_citation="Muhūrta Cintāmaṇi v.90"),
     ]
     original=ev._rule
     def synthetic_result(row,samples):
