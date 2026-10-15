@@ -53,7 +53,7 @@ def sky(monkeypatch):
 def rule():
     def make(predicate=None, **kwargs):
         r = dict(id=101, dosha_canonical_id="venus_sixth", scope="marriage", source_citation="Muhūrta Cintāmaṇi v.88",
-                 source_chunk_id="muhurta_chintamani_pg0116_c01", predicate=predicate,
+                 source_chunk_id="muhurta_chintamani_pg0116_c01", source_verse=88, predicate=predicate,
                  conjunction_reading="tika", tika_extension=False, priority_rank=None,
                  net_standing="cancellable_by_condition", extraction_context="tika_commentary")
         r.update(kwargs)

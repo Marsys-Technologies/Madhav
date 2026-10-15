@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timezone
 from math import isfinite
-import re
 from typing import Any
 
 from brahmagyan.dignity_oracle import classify_dignity
@@ -29,13 +28,14 @@ EVALUATOR_VERSION = "1"
 REFERENCE_LOCATION = {"lat": 20.27, "lon": 85.84, "tz_offset_minutes": 330}
 # Read the L0 seed shared with its writer; no wrapper-local orb constants.
 _COMBUSTION = next(c for c in CONSTANTS if c["constant_id"] == "combustion_orbs")
-_METADATA = ("dosha_canonical_id", "scope", "source_citation", "source_chunk_id",
+_METADATA = ("dosha_canonical_id", "scope", "source_citation", "source_chunk_id", "source_verse",
              "conjunction_reading", "tika_extension", "priority_rank", "net_standing", "extraction_context")
 _V88 = {"tika_commentary": "muhurta_chintamani_pg0116_c01",
         "mula_reconstructed": "muhurta_chintamani_pg0115_c02"}
-# This is locator identity, never inference from cancellation prose. The
-# commentary chunk also contains vv.89–91, so chunk identity alone is unsafe.
-_V88_LOCATOR = re.compile(r"\b(?:vv?\.?|verse)\s*88\b", re.IGNORECASE)
+# (I) INTERPRETATION NB01-I1: the prepared L0-M contract carries source_verse
+# as a positive integer within the cited chunk/context, separate from display
+# citation spelling. Source admission/reseal must supply it; never parse prose.
+# The commentary chunk also contains vv.89–91, so chunk identity alone is unsafe.
 
 
 def scopes_for(undertaking: str) -> tuple[str, ...]:
@@ -46,7 +46,7 @@ def scopes_for(undertaking: str) -> tuple[str, ...]:
 def load_rules(conn, undertaking: str, dosas_present: list[str]) -> list[dict]:
     """Only parameterized SELECT; missing schema is an error, not an empty set."""
     return list(conn.execute("""
-        SELECT id, dosha_canonical_id, scope, source_citation, source_chunk_id,
+        SELECT id, dosha_canonical_id, scope, source_citation, source_chunk_id, source_verse,
                predicate, conjunction_reading, tika_extension, priority_rank,
                net_standing, extraction_context
           FROM public.bg_parihara_rules
@@ -223,6 +223,8 @@ def _rule(row: dict, samples: list[dict]) -> dict:
     out = {"rule_id": row["id"], **{k: row.get(k) for k in _METADATA}}
     if not row.get("source_citation") or not row.get("source_chunk_id"):
         return dict(out, result="unassessable", reason="predicate_not_encoded", terms=[])
+    if type(row.get("source_verse")) is not int or row["source_verse"] <= 0:
+        return dict(out, result="unassessable", reason="source_locator_invalid", terms=[])
     if row.get("net_standing") == "never_cancelled":
         return dict(out, result="does_not_apply", reason="never_cancelled_by_text", terms=[])
     value, reason, terms = _predicate(row.get("predicate"), samples)
@@ -236,11 +238,15 @@ def _dosha(dosha: str, rules: list[dict]) -> dict:
     out = {"dosha_canonical_id": dosha, "by_rules": [r["rule_id"] for r in rules]}
     if any(r["reason"] == "never_cancelled_by_text" for r in rules):
         return dict(out, state="residual", reason="never_cancelled_by_text")
+    # An unidentified verse could be the conflicting reading. It cannot be
+    # bypassed by another applies row; a sourced never-cancelled row still wins.
+    if any(r["reason"] == "source_locator_invalid" for r in rules):
+        return dict(out, state="cancellation_unassessed", reason="source_locator_invalid")
     readings = [
         r for r in rules
         if r["extraction_context"] in _V88
         and _V88[r["extraction_context"]] == r["source_chunk_id"]
-        and _V88_LOCATOR.search(r["source_citation"] or "")
+        and r["source_verse"] == 88
     ]
     contexts = {r["extraction_context"] for r in readings}
     if len(contexts) == 2:
