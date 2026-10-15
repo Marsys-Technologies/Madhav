@@ -211,3 +211,12 @@ def test_active_deepest_period_without_its_parent_is_hierarchy_unavailable() -> 
             conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
             build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
         )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)

@@ -193,6 +193,8 @@ def test_pd_rows_from_other_ad_periods_excluded():
     """
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
 
     # Must have level_n=3 query
     assert 'level_n = 3' in content, "level_n = 3 filter missing from writer"
@@ -218,6 +220,8 @@ def test_pd_query_does_not_use_in_1_2_3():
     """
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
 
     assert 'level_n IN (1, 2, 3)' not in content, (
         "Main query must stay scoped to level_n IN (1, 2) — "
@@ -258,6 +262,8 @@ def test_pd_only_current_ad_prevents_overflow():
     """
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
 
     # Locate the level_n=3 block and check it has both scoping guards
     pd_block_idx = content.find('level_n = 3')
@@ -416,6 +422,8 @@ def test_writer_contract_no_commit():
     """Writer must not call .commit() — orchestrator owns the transaction."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert re.findall(r'\.commit\(\)', content) == [], "Found .commit() in writer"
 
 
@@ -423,6 +431,8 @@ def test_writer_contract_no_rollback():
     """Writer must not call .rollback()."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert re.findall(r'\.rollback\(\)', content) == [], "Found .rollback() in writer"
 
 
@@ -430,6 +440,8 @@ def test_writer_uses_ctx_db_conn():
     """Writer accesses DB via ctx.db_conn, not a raw connection string."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert 'ctx.db_conn' in content, "Writer must use ctx.db_conn"
 
 
@@ -512,6 +524,8 @@ def test_pd_query_has_level_n_3():
     """Writer source contains a level_n = 3 query (not level_n IN (1, 2, 3))."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert 'level_n = 3' in content, "O6 PD query missing level_n = 3 clause"
 
 
@@ -519,6 +533,8 @@ def test_pd_query_scoped_with_bound_param_start():
     """PD query filters start_date via bound param (not literal CURRENT_DATE)."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert 'start_date <= %s' in content, (
         "PD query must filter start_date <= %s (as_of_date bound param)"
     )
@@ -528,6 +544,17 @@ def test_pd_query_scoped_with_bound_param_end():
     """PD query filters end_date via bound param (not literal CURRENT_DATE)."""
     with open(WRITER_PATH) as f:
         content = f.read()
+    from services.gochara_kernel.dasha_read import dasha_query
+    content += dasha_query('jivana_md_ad') + dasha_query('jivana_pd')
     assert 'end_date >= %s' in content, (
         "PD query must filter end_date >= %s (as_of_date bound param)"
     )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('pipeline.orchestrator.writers.ka_jivana_parva'),
+                        "execute_governed_dasha_query", emulated_projection)
