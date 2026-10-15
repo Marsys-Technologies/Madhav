@@ -268,7 +268,31 @@ def _alias_references(tree: ast.AST) -> int:
 
 
 def _literal_count(tree: ast.AST) -> int:
-    return sum(1 for c in _string_constants(tree) if c.value in _TIER_WORDS)
+    # B.10 payloads use this structural key to hold an exact computation spec.
+    # Exempt only dictionary keys/stores; the same string used as a tier counts.
+    requirement_keys = {
+        id(key) for node in ast.walk(tree) if isinstance(node, ast.Dict)
+        for key in node.keys if isinstance(key, ast.Constant)
+        and key.value == "external_computation_required"
+    }
+    requirement_keys.update(
+        id(node.slice) for node in ast.walk(tree) if isinstance(node, ast.Subscript)
+        and isinstance(node.ctx, ast.Store) and isinstance(node.slice, ast.Constant)
+        and node.slice.value == "external_computation_required"
+    )
+    return sum(1 for c in _string_constants(tree) if c.value in _TIER_WORDS) - len(requirement_keys)
+
+
+def test_external_computation_payload_key_is_not_a_tier_emission():
+    # KA-3b uses B.10's structured requirement key, not a verification tier.
+    payload = ast.parse('row = {"external_computation_required": {"asset": "ga_positions"}}')
+    assert _literal_count(payload) == 0
+    assignment = ast.parse('row["external_computation_required"] = {"asset": "ga_positions"}')
+    assert _literal_count(assignment) == 0
+    emission = ast.parse('row = {"verification_pass_status": "external_computation_required"}')
+    assert _literal_count(emission) == 1
+    other_key = ast.parse('row = {"single": 1}')
+    assert _literal_count(other_key) == 1
 
 
 # ── guard 1: no new `single_pass` emission ────────────────────────────────────

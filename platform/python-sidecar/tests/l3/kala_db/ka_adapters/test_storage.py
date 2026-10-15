@@ -11,7 +11,7 @@ from psycopg.types.json import Jsonb
 from tests.l3.ka_adapters.test_candidates import (
     CHART,NATAL,BUILD,LO,HI,FAMILIES,RINGS,api,context,cov,moorti,sudarshana,indexes,  # noqa: F401
 )
-from tests.l3.ka_adapters.conftest import MIGRATION
+from tests.l3.kala_db.ka_adapters.conftest import MIGRATION
 
 
 def values(indexes):
