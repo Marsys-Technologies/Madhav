@@ -1,0 +1,125 @@
+{
+  "schema": "ky.vc1_preregistration/1",
+  "version": "1.1",
+  "status": "PREBUILD_AWAITING_G1_FREEZE",
+  "execution_authorized": false,
+  "baseline": {
+    "model": "G1",
+    "receipt_path": "/Users/Dev/kalayantra/run/G1_BASELINE.json",
+    "head_sha": null,
+    "code_digest": null,
+    "required_repairs": ["a", "b", "c", "d", "e", "f", "g"],
+    "replacement_or_compaction_admitted": false
+  },
+  "freeze": {
+    "preregistration_commit": null,
+    "tracker_record": null,
+    "order": [
+      "full_G1_independently_accepted_and_frozen",
+      "bind_G1_head_and_code_digest_to_preregistration_commit_and_content_hashes",
+      "record_binding_in_tracker",
+      "VC-2_READY",
+      "generate_all_arm_outputs",
+      "both_independent_judges_score",
+      "adjudicate_and_record_D-VC"
+    ],
+    "binding_required_before_ready": [
+      "G1_head_sha", "G1_code_digest", "preregistration_commit", "declaration_sha256",
+      "protocol_sha256", "baseline_receipt_sha256", "tracker_event_ref"
+    ],
+    "after_edit": "new_item_new_version_new_freeze_before_new_outputs",
+    "preexisting_outputs": "invalidate_run"
+  },
+  "arms": [
+    {"id": "A", "adds": ["sangam_windows"]},
+    {"id": "A_prime", "adds": ["sangam_windows", "taranga_monthly_waveform"]},
+    {"id": "B", "adds": ["sangam_windows", "taranga_monthly_waveform", "G1_segments_and_term_composition"]}
+  ],
+  "presentation": {
+    "same_source_snapshot": true,
+    "same_shared_information": true,
+    "same_renderer_and_layout": true,
+    "max_words_per_arm_pair": 1200,
+    "budget_overflow": "not_evaluable_no_silent_truncation",
+    "labels": ["P", "Q", "R"],
+    "partial_blinding_disclosed": true,
+    "seed": "first_8_hex_digits_of_protocol_sha256",
+    "map_reveal": "after_both_judges_return",
+    "outcomes_visible_to_judges": false
+  },
+  "population": {
+    "chart_scope": ["482012f1-710e-4a25-994a-93821f5871aa"],
+    "requires": ["consent", "real_outcome_records", "evaluation_eligible"],
+    "synthetic_in_denominator": false,
+    "class_scope": "six_calibrated_classes_from_frozen_G1_receipt",
+    "pairs": "adjacent_MD_both_chapters_inside_LEL_covered_span",
+    "max_pairs_per_chart": 8,
+    "selection": "ascending_sha256(chart_id|pair_index)_then_pair_index",
+    "ordinary": {
+      "criterion": "LEL_event_count_at_or_below_nearest_rank_25th_percentile",
+      "selection": "lowest_hash_qualifier_reserve_before_filling_other_slots",
+      "required_scored_pairs": 1,
+      "if_absent": "insufficient_evidence"
+    },
+    "minimum_scored_pairs": 2,
+    "selection_before_outputs": true
+  },
+  "rubric": {
+    "distinction_text": "L3-Q06 — How does this chapter differ from the preceding one? Distinction: recurrence with changes in participants, conditions, clocks, relationships and uncertainty. Falsifier: matched mechanism identities across intervals; no universal narrative template.",
+    "dimensions": ["participants", "conditions", "clocks", "relationships", "uncertainty"],
+    "dimension_scores": {"0": "absent", "1": "change_named", "2": "specific_moved_operand_identified"},
+    "driver": "classical_operand_drove_change_not_just_witness_presence",
+    "recurrence": "matched_mechanism_identity_not_narrative_template",
+    "binary_items": ["driver", "recurrence"]
+  },
+  "judges": {
+    "primary": "fresh_context_review_agent",
+    "secondary": "Kimi_K3_effort_max",
+    "different_tools": true,
+    "author_scores": false,
+    "author_adjudicates": false,
+    "author_sees_outputs": "after_both_judges_return",
+    "inputs": ["sealed_rubric", "blinded_outputs"],
+    "disagreement_or_cannot_tell": "native_adjudication",
+    "ambiguous": "censored_not_scored",
+    "dimension_or_recurrence_disagreement": "native_adjudication"
+  },
+  "censoring": {
+    "stratum": ["chart_id", "event_class"],
+    "also_report_per_chart": true,
+    "numerator": "native_adjudicated_ambiguous_pairs",
+    "denominator": "all_selected_eligible_pairs_before_censoring",
+    "excluded_from_all_scores": true,
+    "ceiling": {"numerator": 1, "denominator": 5},
+    "block_when": "censored_times_5_greater_than_selected",
+    "zero_selected": "insufficient_evidence",
+    "above_ceiling": "insufficient_evidence",
+    "pooled_rescue": false
+  },
+  "verdicts": {
+    "allowed": ["pass", "fail", "insufficient_evidence", "not_evaluable"],
+    "precedence": ["not_evaluable", "insufficient_evidence", "fail", "pass"],
+    "pass_all": [
+      "B_driver_exceeds_A_prime_on_strict_majority_and_never_below",
+      "B_dimension_2_where_A_prime_at_most_1_on_scored_ordinary_control",
+      "B_recurrence_1_on_at_least_half_scored_pairs"
+    ],
+    "partial_pass": "fail",
+    "nonapproval": "park_G2_preserve_G1",
+    "automatic_production_flip": false,
+    "report_per_arm": true
+  },
+  "evidence": {
+    "actual_scores": null,
+    "actual_verdict": null,
+    "required": [
+      "freeze_binding_and_tracker_event", "G1_receipt_and_code_digest",
+      "consent_and_eligibility_references", "LEL_coverage_and_selection_inventory",
+      "event_class_prior_provenance", "input_snapshot_hashes_and_conventions",
+      "matched_budgets_and_renderer_version", "verbatim_outputs_and_reproduction_digest",
+      "seeds_and_hidden_order_map", "both_judges_raw_score_sheets_and_operand_citations",
+      "adjudication_and_censoring_reasons", "per_stratum_and_per_chart_denominators",
+      "per_arm_four_way_results_and_D-VC_record"
+    ]
+  }
+}
