@@ -1549,7 +1549,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py tests/l3/gochara/test_w4_launch_bridge.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
