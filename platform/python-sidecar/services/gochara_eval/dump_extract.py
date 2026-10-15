@@ -35,7 +35,6 @@ from pathlib import Path
 from .freeze import (EPHEMERIS_KEYS, FreezeRefused, bind_dump_run, ephemeris_component_problems,  # noqa: F401
                      require_stage1)
 
-CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 H_START = "1998-01-01"
 H_END_EXCL = "2026-04-18"
 CANDIDATE_GENERATIONS = ("4.1",)
@@ -98,30 +97,30 @@ def _cell(v):
     return v
 
 
-def header(generation: str, pinned_at: str, row_count: int) -> dict:
+def header(generation: str, pinned_at: str, row_count: int, *, chart_id: str) -> dict:
     return {"artifact": f"baseline_{generation.replace('.', '_')}_extract", "version": "1.0", "pinned_at": pinned_at,
-            "predicate": f"kala_gochara_windows where chart_id='{CHART_ID}' and generation='{generation}'",
+            "predicate": f"kala_gochara_windows where chart_id='{chart_id}' and generation='{generation}'",
             "tz_convention": TZ_CONVENTION, "row_count": row_count, "columns": COLUMNS}
 
 
-def dump_rows(conn, generation: str, horizon_check: bool) -> list[dict]:
+def dump_rows(conn, generation: str, horizon_check: bool, *, chart_id: str) -> list[dict]:
     """READ ONLY transaction; returns the rows as dicts keyed by COLUMNS. `horizon_check`: assert nothing outside the scored horizon."""
     _require_read_only(conn)
     with conn.cursor() as cur:
         # si := raw_intensity (the unsigned magnitude; protocol §4.5: si is stored non-negative for every class). The 4.x writer
         # stores signed_intensity = raw * (-1 if adverse else 1), which the §4.5 adapter would reject; the two columns must agree
         # in magnitude on every row, and no raw may be negative.
-        cur.execute(SQL_SIGN_CHECK, (CHART_ID, generation))
+        cur.execute(SQL_SIGN_CHECK, (chart_id, generation))
         mismatch, negative = cur.fetchone()
         if mismatch or negative:
             raise RuntimeError(f"INPUT_REJECTED: {mismatch} rows with |signed_intensity| != raw_intensity, "
                                f"{negative} rows with raw_intensity < 0 (generation {generation})")
         if horizon_check:
-            cur.execute(SQL_HORIZON, (CHART_ID, generation, H_START, H_END_EXCL))
+            cur.execute(SQL_HORIZON, (chart_id, generation, H_START, H_END_EXCL))
             outside = cur.fetchone()[0]
             if outside != 0:
                 raise RuntimeError(f"INPUT_REJECTED: {outside} windows of generation {generation} fall outside the scored horizon")
-        cur.execute(SQL_DUMP, (CHART_ID, generation))
+        cur.execute(SQL_DUMP, (chart_id, generation))
         return [dict(zip(COLUMNS, (_cell(c) for c in r))) for r in cur.fetchall()]
 
 
@@ -130,17 +129,17 @@ def rows_multiset_equal(a: list[dict], b: list[dict]) -> bool:
     return sorted(map(key, a)) == sorted(map(key, b))
 
 
-def render(generation: str, pinned_at: str, rows: list[dict]) -> bytes:
+def render(generation: str, pinned_at: str, rows: list[dict], *, chart_id: str) -> bytes:
     """Byte layout of the pinned '3.0' extract: indent=1, header key order, no trailing newline."""
-    return json.dumps({**header(generation, pinned_at, len(rows)), "rows": rows}, indent=1).encode()
+    return json.dumps({**header(generation, pinned_at, len(rows), chart_id=chart_id), "rows": rows}, indent=1).encode()
 
 
-def read_manifest_orb(conn, generation: str) -> dict:
+def read_manifest_orb(conn, generation: str, *, chart_id: str) -> dict:
     """The activity orb AND the ephemeris identity the candidate chain DECLARES in its manifest (kala_gochara_publication.input_generation_vector keys
     `orb_max_deg`, `orb_ruling`, `ephemeris`; the ephemeris is checked against the AM-16 component definition). Read-only; touches no window row. Recorded in the Stage-1 freeze at freeze time."""
     _require_read_only(conn)
     with conn.cursor() as cur:
-        cur.execute(SQL_MANIFEST_ORB, (CHART_ID, generation))
+        cur.execute(SQL_MANIFEST_ORB, (chart_id, generation))
         rows = cur.fetchall()
     if len(rows) != 1:
         raise RuntimeError(f"expected exactly one manifest for generation {generation}, found {len(rows)}")
@@ -149,25 +148,25 @@ def read_manifest_orb(conn, generation: str) -> dict:
             "ephemeris": eph, "ephemeris_problems": ephemeris_component_problems(eph)}
 
 
-def read_av_donor_identity(conn) -> dict:
+def read_av_donor_identity(conn, *, chart_id: str) -> dict:
     """PRESENCE and CONTENT identity of the L1 `ashtakavarga_bindu_contributor` rows for the chart, per ayanāṁśa: the row count and a sha256 over the canonical
     ordered (fact_subject | fact_key | fact_value_num) lines (NULL digest when there are none). Read-only; touches no window row. Recorded in the Stage-1 freeze as
     the NAMED input `av_donor_rows`: a '4.1' run made while these rows are absent (the gochara_v3 sign-grain interim) and one made after they exist (donor-resolved
     P5c) are DIFFERENT candidates and must never be compared as one."""
     _require_read_only(conn)
     with conn.cursor() as cur:
-        cur.execute(SQL_AV_DONOR_IDENTITY, (CHART_ID, CHART_ID))
+        cur.execute(SQL_AV_DONOR_IDENTITY, (chart_id, chart_id))
         rows = cur.fetchall()
     return {"fact_category": "ashtakavarga_bindu_contributor",
             "per_ayanamsha": {r[0]: {"row_count": int(r[1]), "digest": (r[2] if int(r[1]) > 0 else None)} for r in rows}}
 
 
-def read_dasha_tiers(conn) -> list[dict]:
+def read_dasha_tiers(conn, *, chart_id: str) -> list[dict]:
     """The OBSERVED per-(system, level) verification tiers and row counts of the eight DR-14 daśā systems for the chart (frozen as
     `dasha_plurality_tier_policy.observed_tiers`; the '4.1' run must observe the same — DR-15(d))."""
     _require_read_only(conn)
     with conn.cursor() as cur:
-        cur.execute(SQL_DASHA_TIERS, (CHART_ID,))
+        cur.execute(SQL_DASHA_TIERS, (chart_id,))
         rows = cur.fetchall()
     return [{"system": r[0], "level": int(r[1]), "tier": r[2], "count": int(r[3])} for r in rows]
 
@@ -203,13 +202,13 @@ def _connect(args, conn_factory):
     return conn
 
 
-def read_coverage_summary(conn, generation: str) -> dict:
+def read_coverage_summary(conn, generation: str, *, chart_id: str) -> dict:
     """What the candidate's coverage ledger rows actually say — DISCLOSURE ONLY. Read-only; touches no window row. The protocol's
     T-honesty coverage is per (class, year) cell (§6.5); the 4.1 chain writes per body-target partitions, so this summary is never
     supplied to the scorer as a coverage manifest."""
     _require_read_only(conn)
     with conn.cursor() as cur:
-        cur.execute(SQL_COVERAGE_SUMMARY, (CHART_ID, generation))
+        cur.execute(SQL_COVERAGE_SUMMARY, (chart_id, generation))
         rows = cur.fetchall()
     kinds = {r[0]: {"partitions": r[1], "full_horizon": r[2], "unsearched": r[3], "targets_requested": int(r[4]),
                     "targets_resolved": int(r[5]), "targets_unresolved": int(r[6]), "first_key_segment": list(r[7])}
@@ -223,6 +222,7 @@ def read_coverage_summary(conn, generation: str) -> dict:
 def main(argv: list[str] | None = None, conn_factory=None) -> int:
     ap = argparse.ArgumentParser(prog="dump_extract")
     ap.add_argument("--generation", required=True)
+    ap.add_argument("--chart-id", help="requested chart UUID (candidate default: the verified Stage-1 cohort; required for readbacks and baseline requalification)")
     ap.add_argument("--stage1", help="committed Stage-1 freeze file (required for a candidate generation)")
     ap.add_argument("--inputs-root", help="campaign measurement directory the freeze's input paths are relative to "
                                           "(default: the Stage-1 file's own directory)")
@@ -243,23 +243,34 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
     ap.add_argument("--compare-to", help="with --requalify-3-0: the pinned extract file; its ROW MULTISET is compared as well "
                                          "(the pinned file's row order within (event_class, ws) ties was database-defined)")
     args = ap.parse_args(argv)
+    chart_id = args.chart_id
+    if chart_id is not None:
+        from uuid import UUID
+        try:
+            chart_id = str(UUID(chart_id))
+        except ValueError:
+            print("REFUSED: --chart-id is not a UUID", file=sys.stderr)
+            return 2
 
     if args.read_manifest_orb or args.read_coverage_summary or args.read_av_donor_rows or args.read_dasha_tiers:
         if args.generation not in CANDIDATE_GENERATIONS:
             print(f"REFUSED: no manifest/coverage read for generation {args.generation!r}", file=sys.stderr)
+            return 2
+        if chart_id is None:
+            print("REFUSED: --chart-id is required for readbacks", file=sys.stderr)
             return 2
         conn = _connect(args, conn_factory)
         if conn is None:
             return 2
         try:
             if args.read_manifest_orb:
-                print(json.dumps(read_manifest_orb(conn, args.generation)))
+                print(json.dumps(read_manifest_orb(conn, args.generation, chart_id=chart_id)))
             if args.read_coverage_summary:
-                print(json.dumps(read_coverage_summary(conn, args.generation)))
+                print(json.dumps(read_coverage_summary(conn, args.generation, chart_id=chart_id)))
             if args.read_av_donor_rows:
-                print(json.dumps(read_av_donor_identity(conn)))
+                print(json.dumps(read_av_donor_identity(conn, chart_id=chart_id)))
             if args.read_dasha_tiers:
-                print(json.dumps(read_dasha_tiers(conn)))
+                print(json.dumps(read_dasha_tiers(conn, chart_id=chart_id)))
         finally:
             conn.rollback()
             conn.close()
@@ -271,6 +282,9 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
     if args.requalify_3_0:
         if args.generation not in BASELINE_GENERATIONS:
             print(f"REFUSED: --requalify-3-0 re-dumps only {BASELINE_GENERATIONS}", file=sys.stderr)
+            return 2
+        if chart_id is None:
+            print("REFUSED: --chart-id is required for baseline requalification", file=sys.stderr)
             return 2
         horizon_check = False
     else:
@@ -287,6 +301,11 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
         except FreezeRefused as exc:
             print(str(exc), file=sys.stderr)
             return 2
+        frozen_chart = str(frozen["cohort"]["chart_id"])
+        if chart_id is not None and chart_id != frozen_chart:
+            print("FREEZE REFUSED: --chart-id differs from the frozen cohort", file=sys.stderr)
+            return 2
+        chart_id = frozen_chart
         bind = bind_dump_run(frozen, generation=args.generation, stage1=args.stage1, pinned_at=args.pinned_at, out=args.out)
         if bind:
             print("FREEZE REFUSED: the invocation does not match the frozen command: " + "; ".join(bind), file=sys.stderr)
@@ -298,30 +317,30 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
         return 2
     try:
         if horizon_check:                         # reconcile the LIVE manifest with the frozen read-back before any window row is read
-            live = read_manifest_orb(conn, args.generation)
+            live = read_manifest_orb(conn, args.generation, chart_id=chart_id)
             rb = frozen["ephemeris_requirement"]["manifest_readback"]
             diffs = [k for k in ("ephemeris", "orb_max_deg", "orb_ruling", "manifest_status") if live.get(k) != rb.get(k)]
             if live["ephemeris_problems"] or diffs:
                 print("FREEZE REFUSED: the live manifest differs from the frozen read-back "
                       f"(fields {diffs}; live ephemeris problems {live['ephemeris_problems']})", file=sys.stderr)
                 return 2
-            live_av = read_av_donor_identity(conn)                  # ... and the donor-row identity (which behaviour this candidate is)
+            live_av = read_av_donor_identity(conn, chart_id=chart_id)                  # ... and the donor-row identity (which behaviour this candidate is)
             frozen_av = frozen["av_donor_rows"]["per_ayanamsha"]
             if live_av["per_ayanamsha"] != frozen_av:
                 print("FREEZE REFUSED: the live ashtakavarga_bindu_contributor rows differ from the frozen `av_donor_rows` "
                       f"(live {live_av['per_ayanamsha']}, frozen {frozen_av}) — a different candidate", file=sys.stderr)
                 return 2
-            live_t = sorted((r["system"], r["level"], r["tier"], r["count"]) for r in read_dasha_tiers(conn))
+            live_t = sorted((r["system"], r["level"], r["tier"], r["count"]) for r in read_dasha_tiers(conn, chart_id=chart_id))
             frozen_t = sorted((r["system"], r["level"], r["tier"], r["count"]) for r in frozen["dasha_plurality_tier_policy"]["observed_tiers"])
             if live_t != frozen_t:
                 print("FREEZE REFUSED: the live daśā tiers/counts differ from the frozen `observed_tiers` — a different measurement (DR-15(d)): stop, report",
                       file=sys.stderr)
                 return 2
-        rows = dump_rows(conn, args.generation, horizon_check)
+        rows = dump_rows(conn, args.generation, horizon_check, chart_id=chart_id)
     finally:
         conn.rollback()
         conn.close()
-    blob = render(args.generation, args.pinned_at, rows)
+    blob = render(args.generation, args.pinned_at, rows, chart_id=chart_id)
     Path(args.out).write_bytes(blob)
     sha = hashlib.sha256(blob).hexdigest()
     print(f"rows={len(rows)} sha256={sha} out={args.out}")

@@ -14,7 +14,7 @@ K = "python-sidecar/services/gochara_kernel/"
 W = "python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py"
 TESTS = ["tests/l3/gochara/test_horizon_derivation.py", "tests/l3/gochara/test_mb_horizon_shape_guard.py", "tests/l3/gochara/test_mb_stretch_sink.py",
          "tests/l3/gochara/test_c46_v5_test_slice.py", "tests/l3/gochara/test_a53_gochara_v5_writer.py", "tests/l3/gochara/test_a53_writerbase_conformance.py", "tests/l3/gochara/test_mb_station_instant.py",
-         "../scripts/__tests__/test_dispatch_v5_small_test.py", "../scripts/__tests__/test_teardown_v5_small_test.py"]
+         "../scripts/__tests__/test_dispatch_v5_small_test.py", "../scripts/__tests__/test_teardown_v5_small_test.py", "tests/l3/gochara/test_mb_circularity.py"]
 #: a mutation is only KILLED by a test that fails on what it ASSERTS (an `assert`, a `DID NOT RAISE`, a refusal of another name, a wrong value); a mutant that merely
 #: crashes the suite (a failure line naming one of these exception types, or any collection error) is BROKEN: reported, and counted as not caught, so its text must be fixed.
 CRASH_TYPES = ("AttributeError", "NameError", "UnboundLocalError", "TypeError", "SyntaxError", "IndentationError", "ImportError", "ModuleNotFoundError", "IndexError", "KeyError")
@@ -47,8 +47,8 @@ MUTATIONS = [
     ("an ordinary build is handed a basis", W, "    if slice_ is None or slice_.run != MEASURING_RUN:\n        return None", "    if slice_ is None and False:\n        return None"),
     ("the two older shapes are validated against the measuring horizon", W, "    if run == MEASURING_RUN:\n        return MEASURING_HORIZON if outer is None else outer\n    return DEFAULT_HORIZON", "    if True:\n        return MEASURING_HORIZON if outer is None else outer\n    return DEFAULT_HORIZON"),
     ("the older shapes read the log through the run-time outer bound", W, "    if isinstance(marker, dict) and marker.get(\"run\") == MEASURING_RUN and ctx.config.get(\"birth_params\")", "    if isinstance(marker, dict) and ctx.config.get(\"birth_params\")"),
-    ("the derivation reads every chart's rows", W, "FROM public.life_events WHERE chart_id = %s ORDER BY event_date, event_id\",\n            (chart_id,)).fetchall())]", "FROM public.life_events WHERE %s = %s ORDER BY event_date, event_id\",\n            (chart_id, chart_id)).fetchall())]"),
-    ("the ruling guard is not passed for the pinned chart", W, "ruled=gk_horizon.RULED_HORIZONS.get(chart_id) if ruling else None)", "ruled=None)"),
+    ("the field reads outcome rows again", W, '    chart_id = str(ctx.config["chart_id"])\n    row = ctx.db_conn.execute("SELECT created_at', '    chart_id = str(ctx.config["chart_id"])\n    ctx.db_conn.execute("SELECT event_id FROM public.life_events WHERE chart_id = %s", (chart_id,)).fetchall()\n    row = ctx.db_conn.execute("SELECT created_at'),
+    ("the ruled scope guard is not applied", W, "    if ruling and (start, end) != MEASURING_HORIZON:", "    if False:"),
     ("the plan-time ruling guard is gone", W, "    if pinned is None:\n        return _derive_horizon(ctx).bounds", "    if pinned is None:\n        return _derive_horizon(ctx, ruling=False).bounds"),
     ("the ruling guard runs BEFORE the pinned basis is compared", W, "    pinned = _pinned_horizon_basis(ctx)\n    if pinned is None:\n        return _derive_horizon(ctx).bounds", "    pinned = None\n    if pinned is None:\n        return _derive_horizon(ctx).bounds"),
     ("a changed horizon is not refused by the pinned comparison", W, "    _raise_if_horizon_changed(live.basis_record(), pinned)\n    return live.bounds", "    return live.bounds"),
@@ -58,8 +58,8 @@ MUTATIONS = [
     ("the manifest substep does not refuse a measuring horizon outside the substrate domain", W, "                gk_horizon.require_inside_substrate_domain((horizon[0], horizon[1]))        # FB-3 for the measuring", "                pass                                                                         # FB-3 for the measuring"),
     ("the manifest vector is built without the basis", W, "                test_slice=_slice_component(slice_) if slice_ is not None else None,\n                horizon_basis=_horizon_basis(ctx, slice_))", "                test_slice=_slice_component(slice_) if slice_ is not None else None)"),
     ("the live check does not compare the basis", W, "        horizon_basis=_live_basis_for_check(ctx, slice_, stored))", "        horizon_basis=stored.get(\"horizon_basis\"))"),
-    ("a log edit that does not change the horizon still drifts the vector", W, "    if live.get(\"horizon\") != pinned.get(\"horizon\") or live.get(\"basis\") != pinned.get(\"basis\"):\n        raise HorizonBasisHorizonChanged(", "    if True:\n        raise HorizonBasisHorizonChanged("),
-    ("a log edit that changes the horizon is forgiven", W, "    if live.get(\"horizon\") != pinned.get(\"horizon\") or live.get(\"basis\") != pinned.get(\"basis\"):\n        raise HorizonBasisHorizonChanged(", "    if False:\n        raise HorizonBasisHorizonChanged("),
+    ("a run input edit that does not change the horizon still drifts the vector", W, "    if live.get(\"horizon\") != pinned.get(\"horizon\") or live.get(\"basis\") != pinned.get(\"basis\"):\n        raise HorizonBasisHorizonChanged(", "    if True:\n        raise HorizonBasisHorizonChanged("),
+    ("a config edit that changes the horizon is forgiven", W, "    if live.get(\"horizon\") != pinned.get(\"horizon\") or live.get(\"basis\") != pinned.get(\"basis\"):\n        raise HorizonBasisHorizonChanged(", "    if False:\n        raise HorizonBasisHorizonChanged("),
     ("the vector drops the basis when assembling", K + "input_vector.py", '      | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {})', "      | {}"),
     # the state guard (MB-4)
     ("the state guard no longer refuses a non-building row", W, '    if state != "building":\n        raise AssetNotBuilding(', '    if False:\n        raise AssetNotBuilding('),

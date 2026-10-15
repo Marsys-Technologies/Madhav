@@ -18,6 +18,7 @@ import pytest
 from services.gochara_kernel import horizon as hz
 from services.gochara_kernel.horizon import LelEvent, derive_chart_horizon
 
+CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 UTC = timezone.utc
 BIRTH = date(1984, 2, 5)
 BUILD = date(2026, 10, 6)
@@ -183,8 +184,8 @@ def test_a_non_empty_log_without_exactly_one_birth_row_is_refused(birth_rows):
 # ── the basis record (v1.0 MB-1.4) ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_the_basis_record_pins_every_consumed_row_with_its_13_fields_the_birth_row_the_readings_and_the_digest():
-    rec = _derive(_fixture(), chart_id=hz.PINNED_CHART_ID).basis_record()
-    assert rec["schema"] == "horizon_basis/1" and rec["rule"] == "ruling7+ruling13" and rec["basis"] == "first_dated_event" and rec["chart_id"] == hz.PINNED_CHART_ID
+    rec = _derive(_fixture(), chart_id=CHART_ID).basis_record()
+    assert rec["schema"] == "horizon_basis/1" and rec["rule"] == "ruling7+ruling13" and rec["basis"] == "first_dated_event" and rec["chart_id"] == CHART_ID
     assert rec["birth_date"] == "1984-02-05" and rec["build_date"] == "2026-10-06" and rec["horizon"] == [hz.RULED_HORIZON[0].isoformat(), hz.RULED_HORIZON[1].isoformat()]
     assert rec["chosen"]["lel_id"] == "EVT.1998.02.16.01" and rec["chosen"]["event_date"] == "1998-02-16" and set(rec["chosen"]) == {"event_id", "lel_id", "event_date", "date_confidence", "shape"}
     assert rec["birth_row"]["lel_id"] == "EVT.1984.02.05.01" and rec["birth_row"]["domain"] == "other/birth" and rec["birth_row"]["column_used"] == "domain"
@@ -263,7 +264,6 @@ def test_the_ruling_guard_refuses_a_derivation_that_is_not_the_owner_approved_pa
         _derive(revised, ruled=hz.RULED_HORIZON)
     assert "2007-01-01" in str(e.value) and "1998-01-01" in str(e.value)
     assert _derive(_fixture(), ruled=hz.RULED_HORIZON).bounds == hz.RULED_HORIZON
-    assert hz.RULED_HORIZONS == {hz.PINNED_CHART_ID: hz.RULED_HORIZON}
 
 
 def test_the_domain_edges_are_two_different_refusals_and_the_pinned_horizon_leaves_331_days_of_margin():
@@ -320,8 +320,8 @@ def test_the_real_logs_first_eight_rows_derive_1998_and_report_the_three_kinds_o
     """R-LEL: the first row passing the conjunction is EVT.1998.02.16.01, so the start is 1998-01-01 (the owner-approved pair); the log's other rows are excluded and
     reported: the row with NO lel_id (never a refusal), the four rows flagged exact whose ids are undated, and the year_only row."""
     rows = _real_first_eight()
-    got = _derive(rows, ruled=hz.RULED_HORIZON, chart_id=hz.PINNED_CHART_ID)
-    assert got.bounds == hz.RULED_HORIZON and got.basis == "first_dated_event" and got.first_event.provenance_lel_id == hz.PINNED_FIRST_DATED_EVENT_ID
+    got = _derive(rows, ruled=hz.RULED_HORIZON, chart_id=CHART_ID)
+    assert got.bounds == hz.RULED_HORIZON and got.basis == "first_dated_event" and got.first_event.provenance_lel_id == "EVT.1998.02.16.01"
     assert got.birth_row.provenance_lel_id == "EVT.1984.02.05.01"                                                         # the other/birth row, not the arc on the same date
     rec = got.basis_record()
     assert rec["rows_without_lel_id"] == [{"event_id": rows[0].event_id, "event_date": "1984-02-05"}]                      # exclusion 1: no lel_id

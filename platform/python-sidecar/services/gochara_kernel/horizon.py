@@ -1,7 +1,8 @@
-"""Measuring-only horizon evidence, per MEASURING_BUILD_CONTRACT v1.0.1.
+"""Measuring scope records and the separate outcome-based measurement detector.
 
-The ruled pair remains authority. Derive from raw chart rows and retain every
-consumed field so a later reader can reproduce the result after teardown.
+The field writer records ruled scope plus the chart's birth centenary, without
+outcome inputs. The pure measurement detector below retains its supplied rows
+for reproducible evaluation; it must not select the field writer's scope.
 """
 from __future__ import annotations
 
@@ -15,16 +16,13 @@ HORIZON_BASIS_SCHEMA = "horizon_basis/1"
 RULE_NAME = "ruling7+ruling13"
 BASIS_FIRST_DATED_EVENT = "first_dated_event"
 BASIS_BUILD_DATE = "build_date"
+BASIS_RULED_HORIZON = "ruled_horizon"
 HORIZON_YEARS = 100
 BIRTH_DOMAIN = "other/birth"
 CONFIDENCES = ("exact", "month_known", "year_only")
 SHAPES = ("point", "interval", "chain")
 _FULLY_DATED_ID = re.compile(r"^EVT\.(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})$")
-PINNED_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-PINNED_BIRTH_DATE = date(1984, 2, 5)
-PINNED_FIRST_DATED_EVENT_ID = "EVT.1998.02.16.01"
 RULED_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc), datetime(2084, 2, 5, tzinfo=timezone.utc))
-RULED_HORIZONS = {PINNED_CHART_ID: RULED_HORIZON}
 
 
 class HorizonRefusal(ValueError):
@@ -165,7 +163,9 @@ class ChartHorizon(NamedTuple):
             birth = {"event_id": event.event_id, "lel_id": event.provenance_lel_id, "event_date": _iso(event.event_date),
                      "domain": event.domain, "provenance_subcategory": event.provenance_subcategory, "column_used": "domain"}
         return {
-            "schema": HORIZON_BASIS_SCHEMA, "rule": RULE_NAME, "chart_id": self.chart_id,
+            "schema": HORIZON_BASIS_SCHEMA,
+            "rule": "ruled_scope+birth_centenary" if self.basis == BASIS_RULED_HORIZON else RULE_NAME,
+            "chart_id": self.chart_id,
             "birth_date": _iso(self.birth_date), "build_date": _iso(self.build_date),
             "horizon": [self.start.isoformat(), self.end.isoformat()], "basis": self.basis,
             "chosen": chosen, "birth_row": birth,

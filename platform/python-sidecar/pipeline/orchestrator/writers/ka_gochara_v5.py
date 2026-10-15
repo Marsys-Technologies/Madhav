@@ -330,9 +330,8 @@ def _parse_slice_horizon(raw, outer=None) -> tuple:
 
 
 def _outer_for_run(run, outer=None) -> tuple:
-    """The outer horizon a marker of this run is validated against. `all_classes_full` (the measuring build): the horizon DERIVED from the database when the
-    caller has one (the run-time call), else the owner-approved MEASURING_HORIZON (the dispatch's staging call and the teardown's stamp proof have no run to
-    derive from). Every other shape: DEFAULT_HORIZON, exactly as on main — an `outer` argument is only ever used for all_classes_full."""
+    """The outer horizon a marker of this run is validated against. `all_classes_full` (the measuring build): the scope validated from chart/run inputs
+    when the caller has them, else the owner-approved MEASURING_HORIZON (staging and teardown stamp checks have no run inputs). Every other shape: DEFAULT_HORIZON, exactly as on main — an `outer` argument is only ever used for all_classes_full."""
     if run == MEASURING_RUN:
         return MEASURING_HORIZON if outer is None else outer
     return DEFAULT_HORIZON
@@ -415,8 +414,8 @@ def _test_slice(ctx: ContextSpec) -> TestSlice | None:
         return None
     marker = manifest[TEST_SLICE_KEY]
     # FB-4, `all_classes_full` ONLY (steward MB-CODEX-1 ruling 1): the marker's outer bound is the chart's DERIVED horizon whenever the run carries the chart's birth
-    # parameters (the orchestrator always passes them), so a marker staged for a different horizon than the database now derives is refused by name. The two older
-    # shapes (and a marker that is not an object, refused below by name) never touch the life-event log: they are validated against DEFAULT_HORIZON as on main.
+    # parameters (the orchestrator always passes them), so a marker staged for a different horizon than the chart inputs now derive is refused by name. The two older
+    # shapes (and a marker that is not an object, refused below by name) consume only the declared scope: they are validated against DEFAULT_HORIZON as on main.
     outer = None
     if isinstance(marker, dict) and marker.get("run") == MEASURING_RUN and ctx.config.get("birth_params") and ctx.db_conn is not None:
         outer = _derived_outer_bound(ctx)
@@ -587,39 +586,45 @@ def _row_values(row) -> tuple:
 
 
 def _derive_horizon(ctx: ContextSpec, *, ruling: bool = True) -> "gk_horizon.ChartHorizon":
-    """The chart's horizon from what the database holds NOW (FB-1/FB-2): the birth date from the run's birth parameters, the life-event log from
-    `public.life_events`, and the build date (read only when no event is fully dated) from this run's `build_runs.created_at`. Pure derivation in
-    `services.gochara_kernel.horizon`; this function only reads."""
+    """Validate the ruled measuring scope from chart/run inputs only.
+
+    (I) INTERPRETATION: the standing circularity rail takes precedence over
+    outcome-based scope selection. The measurement detector remains separate;
+    the field records the ruled scope and consumes no outcome rows.
+    """
     birth_params = ctx.config.get("birth_params")
-    # the REAL runner's birth parameters (`birth_params._to_birth_params`): datetime_iso (the civil birth datetime in its own offset), latitude_deg,
-    # longitude_deg, tz_offset_hours, place_name, subject_label. There is NO birth_date key: the birth date is the civil DATE of datetime_iso.
     if not birth_params or birth_params.get("datetime_iso") in (None, ""):
-        raise HorizonUnderivable(f"{ASSET_ID}: no horizon in ctx.config and no birth date (the date of ctx.config['birth_params']['datetime_iso']) — the "
-                                 "horizon cannot be derived (refused by name; a build never falls back to a constant horizon)")
+        raise HorizonUnderivable(f"{ASSET_ID}: no birth date in ctx.config['birth_params']['datetime_iso'] — refused by name")
     if ctx.db_conn is None:
-        raise HorizonUnderivable(f"{ASSET_ID}: no horizon in ctx.config and no connection to read the life-event log — refused by name")
-    birth = _as_date(str(birth_params["datetime_iso"])[:10])      # the civil date, never converted to another zone
-    # the RAW rows, every one, with the shape column: the "fully dated, birth entry aside" rule is applied by the derivation, never pre-filtered here
+        raise HorizonUnderivable(f"{ASSET_ID}: no connection to read this build's date — refused by name")
+    birth = _as_date(str(birth_params["datetime_iso"])[:10])
     chart_id = str(ctx.config["chart_id"])
-    optional = lambda v: None if v is None else _as_date(v)         # noqa: E731
-    text = lambda v: None if v is None else str(v)                  # noqa: E731
-    # the RAW rows of the chart, every one, with the 13 columns the detector and `horizon_basis/1` read (MEASURING_BUILD_CONTRACT v1.0 MB-1.4): the canonical
-    # `EVT.YYYY.MM.DD.NN` id is `provenance->>'lel_id'` (event_id is a uuid5), the birth word is `domain = 'other/birth'`
-    events = [gk_horizon.LelEvent(
-        event_id=str(r[0]), event_date=optional(r[1]), category=text(r[2]), event_type=text(r[3]), domain=text(r[4]), provenance_lel_id=text(r[5]),
-        provenance_subcategory=text(r[6]), shape=str(r[7]), date_confidence=str(r[8]), interval_start=optional(r[9]), interval_end=optional(r[10]),
-        chain_parent_event_id=text(r[11]), date_tightened_at=None if r[12] is None else (r[12].isoformat() if hasattr(r[12], "isoformat") else str(r[12])))
-        for r in map(_row_values, ctx.db_conn.execute(
-            "SELECT event_id, event_date, category, event_type, domain, provenance->>'lel_id', provenance->>'subcategory', shape, date_confidence, "
-            "interval_start, interval_end, chain_parent_event_id, date_tightened_at FROM public.life_events WHERE chart_id = %s ORDER BY event_date, event_id",
-            (chart_id,)).fetchall())]
     row = ctx.db_conn.execute("SELECT created_at FROM public.build_runs WHERE id = %s", (str(ctx.build_id),)).fetchone()
     if row is None:
-        raise HorizonUnderivable(f"{ASSET_ID}: build run {ctx.build_id!r} has no created_at to take the build date from (the start-in-the-future "
-                                 "check and a build-date start both need it) — refused by name")
+        raise HorizonUnderivable(f"{ASSET_ID}: build run {ctx.build_id!r} has no created_at — refused by name")
     created = _row_values(row)[0]
     build_date = created.astimezone(timezone.utc).date() if isinstance(created, datetime) else _as_date(created)
-    return gk_horizon.derive_chart_horizon(birth, events, build_date, chart_id=chart_id, ruled=gk_horizon.RULED_HORIZONS.get(chart_id) if ruling else None)
+    end_date = gk_horizon.add_years(birth, gk_horizon.HORIZON_YEARS)
+    end = datetime(end_date.year, end_date.month, end_date.day, tzinfo=timezone.utc)
+    start = MEASURING_HORIZON[0]
+    if "horizon" in ctx.config:
+        configured = ctx.config["horizon"]
+        if isinstance(configured, (tuple, list)) and len(configured) == 2 and all(isinstance(day, datetime) for day in configured):
+            configured = [day.isoformat() for day in configured]
+        start, configured_end = _parse_slice_horizon(configured, (start, end))
+        if configured_end != end:
+            raise gk_horizon.HorizonDerivationDisagreesWithRuling("configured end is not the birth centenary")
+    if start >= end:
+        raise gk_horizon.HorizonEmpty(f"empty interval [{start}, {end})")
+    if start.date() < birth:
+        raise gk_horizon.HorizonStartBeforeBirth(f"the start {start} precedes birth {birth}")
+    if start.date() > build_date:
+        raise gk_horizon.HorizonStartInTheFuture(f"the start {start} follows build {build_date}")
+    gk_horizon.require_inside_substrate_domain((start, end))
+    if ruling and (start, end) != MEASURING_HORIZON:
+        raise gk_horizon.HorizonDerivationDisagreesWithRuling(
+            f"derived {[start.isoformat(), end.isoformat()]}, ruled {[day.isoformat() for day in MEASURING_HORIZON]}")
+    return gk_horizon.ChartHorizon(start, end, gk_horizon.BASIS_RULED_HORIZON, chart_id=chart_id, build_date=build_date, birth_date=birth)
 
 
 def _pinned_horizon_basis(ctx: ContextSpec) -> dict | None:
@@ -630,8 +635,8 @@ def _pinned_horizon_basis(ctx: ContextSpec) -> dict | None:
 
 
 def _derived_outer_bound(ctx: ContextSpec) -> tuple:
-    """The all_classes_full outer horizon the run is validated against, in the order MB-1.5 names: the PINNED basis comes FIRST. Once the manifest has pinned a
-    basis, the live derivation (which does not apply the ruling guard here) is compared with it and a log edit that changed the derived horizon refuses
+    """The all_classes_full scope validated from chart/run inputs: the PINNED basis comes FIRST. Once the manifest has pinned a
+    basis, current chart inputs are compared with it and a config edit that changed the derived horizon refuses
     `horizon_basis_horizon_changed`, not the ruling guard's token; the ruling guard (`horizon_derivation_disagrees_with_ruling`) applies at PLAN time and at the
     manifest substep, i.e. while nothing is pinned yet."""
     pinned = _pinned_horizon_basis(ctx)
@@ -655,8 +660,8 @@ def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
 
 def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None):
     """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` — an absent key is DEFAULT_HORIZON, an
-    explicit null stays None (and fails downstream as it always did; Codex P2-4: it must not be quietly turned into the default). Ordinary builds never read
-    the life-event log (steward MB-CODEX-1 ruling 1). Under a marker a config horizon that is present and null, or that CONTRADICTS the marker, is ambiguous —
+    explicit null stays None (and fails downstream as it always did; Codex P2-4: it must not be quietly turned into the default). Ordinary builds retain their
+    existing scope (steward MB-CODEX-1 ruling 1). Under a marker a config horizon that is present and null, or that CONTRADICTS the marker, is ambiguous —
     refused, never guessed."""
     if slice_ is None:
         return ctx.config.get("horizon", DEFAULT_HORIZON)
@@ -811,20 +816,21 @@ def _raise_if_horizon_changed(live: dict, pinned: dict) -> None:
     if live.get("horizon") != pinned.get("horizon") or live.get("basis") != pinned.get("basis"):
         raise HorizonBasisHorizonChanged(
             f"horizon_basis_horizon_changed: the derived horizon is now {live.get('horizon')} (basis {live.get('basis')}), the manifest pinned {pinned.get('horizon')} "
-            f"(basis {pinned.get('basis')}); changed rows: {gk_horizon.changed_row_ids(pinned.get('consumed_rows', []), live.get('consumed_rows', []))}")
+            f"(basis {pinned.get('basis')}); changed inputs: {gk_input_vector.diff_vectors({'horizon_basis': pinned}, {'horizon_basis': live})}")
 
 
 def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
-    """The horizon basis a later substep compares with the one pinned in the manifest (steward ruling 3 on MB-1.4): a log edit that CHANGES the derived horizon
-    refuses the next substep by name (`horizon_basis_horizon_changed`, raised first by `_test_slice` through `_derived_outer_bound`, and again here); an edit
-    that does NOT change the horizon is a REPORT line `horizon_basis_rows_changed` with the changed row ids and never a refusal (the stored basis is handed to
-    the check)."""
+    """Compare current chart/run inputs with the pinned scope before writing.
+
+    Scope/basis changes refuse by name; other input changes are reported and
+    retain the pinned basis. No outcome rows participate in this comparison.
+    """
     live = _horizon_basis(ctx, slice_)
     pinned = stored.get("horizon_basis")
     if live is None or pinned is None or live == pinned:
         return live
     _raise_if_horizon_changed(live, pinned)
-    logger.warning("horizon_basis_rows_changed: %s", json.dumps(gk_horizon.changed_row_ids(pinned.get("consumed_rows", []), live.get("consumed_rows", []))))
+    logger.warning("horizon_basis_inputs_changed: %s", json.dumps(gk_input_vector.diff_vectors({"horizon_basis": pinned}, {"horizon_basis": live})))
     return pinned
 
 

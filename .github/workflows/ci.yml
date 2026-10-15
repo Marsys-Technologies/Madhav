@@ -1463,6 +1463,10 @@ jobs:
         image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
+        # The dump guard verifies the actual server address; a mounted local
+        # socket answers NULL rather than the service bridge address.
+        volumes:
+          - /var/run/postgresql:/var/run/postgresql
         ports:
           - 5432:5432
         options: >-
@@ -1476,7 +1480,7 @@ jobs:
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
-          GOCHARA_EVAL_TEST_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_EVAL_TEST_ADMIN_DSN: postgresql://postgres:postgres@/postgres?host=/var/run/postgresql
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           se1_dir="$(mktemp -d)"

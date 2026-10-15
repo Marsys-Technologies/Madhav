@@ -553,3 +553,18 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
         expected = tuple(_job_suites(job))
         for name, mutated in _mutations(job).items():
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
+
+
+def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(jobs):
+    """TCP port publishing reports a bridge address; the dump fixture requires a local socket."""
+    job = jobs["gochara-a55-measuring-build"]
+    peer = jobs["gochara-a55-replace-chain"]
+    service = job["services"]["postgres"]
+    for key in ("image", "env", "ports", "options"):
+        assert service[key] == peer["services"]["postgres"][key]
+    step = next(s for s in job["steps"] if "GOCHARA_EVAL_TEST_ADMIN_DSN" in s.get("env", {}))
+    dsn = step["env"]["GOCHARA_EVAL_TEST_ADMIN_DSN"]
+    socket_dir = dsn.split("?host=", 1)[1]
+    assert socket_dir == "/var/run/postgresql"
+    assert f"{socket_dir}:/var/run/postgresql" in service["volumes"]
+    assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]

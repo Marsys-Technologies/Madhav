@@ -21,6 +21,7 @@ from .conftest import synth_registry, write_json
 from ._candidate_oracles import (CAMPAIGN_MEASUREMENT, EXTRACT_3_0, EXTRACT_3_0_PIN, REGISTRY_V2_3,
                                  pinned_candidate_oracles, requires_pinned_oracles)
 
+CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 COMMIT = "a" * 40
 SIDECAR = Path(__file__).resolve().parents[3]
 
@@ -340,18 +341,18 @@ class TestTransactionConfiguration:
         c = FakeConn(ROWS, manifest=[("candidate", 5.0, "r", None)])
         out = dx._connect(argparse.Namespace(libpq_env=False), lambda: c)
         assert out is c and c.read_only is True and c.isolation_level == psycopg.IsolationLevel.REPEATABLE_READ and c.executed == []
-        dx.read_manifest_orb(c, "4.1"); dx.read_av_donor_identity(c); dx.read_dasha_tiers(c); dx.dump_rows(c, "4.1", horizon_check=True)
+        dx.read_manifest_orb(c, "4.1", chart_id=CHART_ID); dx.read_av_donor_identity(c, chart_id=CHART_ID); dx.read_dasha_tiers(c, chart_id=CHART_ID); dx.dump_rows(c, "4.1", horizon_check=True, chart_id=CHART_ID)
         assert c.read_only is True            # nothing re-assigned inside the transaction (it would have raised)
 
     def test_a_reader_refuses_a_connection_that_was_not_configured_read_only(self):
-        for fn in (lambda c: dx.read_manifest_orb(c, "4.1"), lambda c: dx.read_av_donor_identity(c), lambda c: dx.read_dasha_tiers(c),
-                   lambda c: dx.read_coverage_summary(c, "4.1"), lambda c: dx.dump_rows(c, "4.1", horizon_check=False)):
+        for fn in (lambda c: dx.read_manifest_orb(c, "4.1", chart_id=CHART_ID), lambda c: dx.read_av_donor_identity(c, chart_id=CHART_ID), lambda c: dx.read_dasha_tiers(c, chart_id=CHART_ID),
+                   lambda c: dx.read_coverage_summary(c, "4.1", chart_id=CHART_ID), lambda c: dx.dump_rows(c, "4.1", horizon_check=False, chart_id=CHART_ID)):
             with pytest.raises(RuntimeError, match="not configured read-only"):
                 fn(FakeConn(ROWS))
 
     def test_the_cli_reads_back_on_a_non_autocommit_connection_in_one_transaction(self):
         c = FakeConn(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)])
-        rc = dx.main(["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: c)
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: c)
         assert rc == 0 and c.read_only is True
 
 
@@ -386,7 +387,7 @@ class TestAvDonorRows:
         assert stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND) == []
 
     def test_the_read_back_reports_count_and_digest_per_ayanamsha(self):
-        out = dx.read_av_donor_identity(RO(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]))
+        out = dx.read_av_donor_identity(RO(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]), chart_id=CHART_ID)
         assert out["per_ayanamsha"] == {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA}, "raman": {"row_count": 0, "digest": None}}
 
 
@@ -433,7 +434,7 @@ class TestDashaPlurality:
         assert any("yields" in p and "not the frozen voting set" in p for p in stage1_problems(changed, tmp_path, dx.CANONICAL_COMMAND))
 
     def test_the_read_back_lists_tiers_and_counts(self):
-        out = dx.read_dasha_tiers(RO(ROWS, tiers=[("mudda", 1, "classical_match", 48), ("mudda", 2, "single", 432)]))
+        out = dx.read_dasha_tiers(RO(ROWS, tiers=[("mudda", 1, "classical_match", 48), ("mudda", 2, "single", 432)]), chart_id=CHART_ID)
         assert out == [{"system": "mudda", "level": 1, "tier": "classical_match", "count": 48}, {"system": "mudda", "level": 2, "tier": "single", "count": 432}]
 
     def test_tiers_that_moved_since_the_freeze_are_refused_before_any_window_row_is_read(self, tmp_path, monkeypatch, capsys):
@@ -441,7 +442,7 @@ class TestDashaPlurality:
         doc, p = make_stage1(tmp_path)
         c = conn_for(doc)
         c.tiers = [t for t in c.tiers if t[0] != "kalachakra"]
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: c)
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: c)
         assert rc == 2 and "daśā tiers/counts differ from the frozen" in capsys.readouterr().err
         assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in c.executed)
 
@@ -468,9 +469,9 @@ class TestEphemerisComponent:
             assert any(f"lacks key {k!r}" in p for p in dx.ephemeris_component_problems(c))
 
     def test_the_manifest_read_back_carries_the_verdict(self):
-        ok = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)]), "4.1")
+        ok = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)]), "4.1", chart_id=CHART_ID)
         assert ok["ephemeris_problems"] == [] and ok["ephemeris"] == GOOD_EPH
-        old = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", None)]), "4.1")
+        old = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", None)]), "4.1", chart_id=CHART_ID)
         assert old["ephemeris_problems"] and old["ephemeris"] is None
 
 
@@ -485,36 +486,36 @@ class TestDump:
 
     def test_rows_are_rendered_deterministically_in_the_pinned_layout(self):
         conn = RO(ROWS)
-        rows = dx.dump_rows(conn, "4.1", horizon_check=True)
+        rows = dx.dump_rows(conn, "4.1", horizon_check=True, chart_id=CHART_ID)
         assert conn.read_only is True
         assert rows[0] == {"event_class": "marriage", "ws": "2010-01-01", "we": "2010-02-01", "pk": "2010-01-10", "si": 0.5,
                            "valence": "gain", "adv": False, "resolution": None, "temporal_shape": "interval"}
-        a, b = dx.render("4.1", "2026-10-05", rows), dx.render("4.1", "2026-10-05", rows)
+        a, b = dx.render("4.1", "2026-10-05", rows, chart_id=CHART_ID), dx.render("4.1", "2026-10-05", rows, chart_id=CHART_ID)
         assert a == b and not a.endswith(b"\n") and a.startswith(b'{\n "artifact": "baseline_4_1_extract"')
         assert json.loads(a)["row_count"] == 2 and json.loads(a)["predicate"].endswith("generation='4.1'")
 
     def test_si_is_the_unsigned_raw_intensity_and_the_two_columns_must_reconcile(self):
         assert "raw_intensity AS si" in dx.SQL_DUMP and "signed_intensity AS si" not in dx.SQL_DUMP
         with pytest.raises(RuntimeError, match=r"2 rows with \|signed_intensity\| != raw_intensity"):
-            dx.dump_rows(RO(ROWS, sign=(2, 0)), "4.1", horizon_check=True)
+            dx.dump_rows(RO(ROWS, sign=(2, 0)), "4.1", horizon_check=True, chart_id=CHART_ID)
         with pytest.raises(RuntimeError, match="1 rows with raw_intensity < 0"):
-            dx.dump_rows(RO(ROWS, sign=(0, 1)), "3.0", horizon_check=False)      # the check runs for the baseline too
+            dx.dump_rows(RO(ROWS, sign=(0, 1)), "3.0", horizon_check=False, chart_id=CHART_ID)      # the check runs for the baseline too
 
     def test_manifest_orb_read_touches_no_window_row(self, capsys):
         conn = FakeConn(ROWS, manifest=[("candidate", 5.0, "M-1 fallback no-box x 5.0 deg (unratified)", GOOD_EPH)])
-        rc = dx.main(["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: conn)
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: conn)
         out = json.loads(capsys.readouterr().out)
         assert rc == 0 and out["orb_max_deg"] == 5.0 and out["orb_ruling"].endswith("(unratified)")
         assert all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
         assert out["ephemeris_problems"] == []
-        assert dx.main(["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
         with pytest.raises(RuntimeError, match="exactly one manifest"):
-            dx.read_manifest_orb(RO(ROWS, manifest=[]), "4.1")
+            dx.read_manifest_orb(RO(ROWS, manifest=[]), "4.1", chart_id=CHART_ID)
 
     def test_coverage_summary_is_disclosure_only_and_says_per_class_year_cells_are_not_derivable(self, capsys):
         cov = [("body_target", 24, 24, 0, 300, 290, 10, ["jupiter", "ketu", "mars", "mercury", "rahu", "saturn", "sun", "venus"])]
         conn = FakeConn(ROWS, coverage=cov)
-        assert dx.main(["--generation", "4.1", "--read-coverage-summary"], conn_factory=lambda: conn) == 0
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--read-coverage-summary"], conn_factory=lambda: conn) == 0
         out = json.loads(capsys.readouterr().out)
         assert out["partition_kinds"]["body_target"]["partitions"] == 24 and out["event_class_partitions"] == 0
         assert out["per_class_year_cells_derivable"] is False
@@ -523,13 +524,13 @@ class TestDump:
 
     def test_horizon_violation_stops(self):
         with pytest.raises(RuntimeError, match="outside the scored horizon"):
-            dx.dump_rows(RO(ROWS, outside=3), "4.1", horizon_check=True)
+            dx.dump_rows(RO(ROWS, outside=3), "4.1", horizon_check=True, chart_id=CHART_ID)
 
     def test_refuses_without_a_freeze_and_for_governed_generations(self, tmp_path, capsys):
         out = tmp_path / "o.json"
         base = ["--pinned-at", "2026-10-05", "--out", str(out)]
-        assert dx.main(["--generation", "4.1", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
-        assert dx.main(["--generation", "5.0", "--stage1", "x", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.0", "--stage1", "x", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
         assert "eval-window reader" in capsys.readouterr().err
         assert not out.exists()
 
@@ -539,7 +540,7 @@ class TestDump:
         write_json(p, doc)
         out = tmp_path / "o.json"
         created = []
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", str(out)],
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", str(out)],
                      conn_factory=lambda: created.append(1) or FakeConn(ROWS))
         assert rc == 2 and not out.exists() and created == []          # never even connected
         assert "placeholder" in capsys.readouterr().err
@@ -548,7 +549,7 @@ class TestDump:
         monkeypatch.chdir(tmp_path)
         doc, p = make_stage1(tmp_path)
         conn = conn_for(doc)
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT],
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT],
                      conn_factory=lambda: conn)
         assert rc == 0 and conn.closed and json.loads((tmp_path / OUT).read_text())["row_count"] == 2
 
@@ -558,7 +559,7 @@ class TestDump:
         doc, p = make_stage1(tmp_path)
         argv = {"--generation": "4.1", "--stage1": str(p), "--pinned-at": "2026-10-05", "--out": OUT, flag: value}
         created = []
-        rc = dx.main([x for kv in argv.items() for x in kv], conn_factory=lambda: created.append(1) or conn_for(doc))
+        rc = dx.main(["--chart-id", CHART_ID] + [x for kv in argv.items() for x in kv], conn_factory=lambda: created.append(1) or conn_for(doc))
         assert rc == 2 and created == [] and "does not match the frozen command" in capsys.readouterr().err
         assert not (tmp_path / "elsewhere.json").exists()
 
@@ -568,7 +569,7 @@ class TestDump:
         rb = doc["ephemeris_requirement"]["manifest_readback"]
         other = {**GOOD_EPH, "library_sha256": "cd" * 32}
         conn = FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], other)])
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
         assert rc == 2 and "live manifest differs" in capsys.readouterr().err
         assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
 
@@ -579,13 +580,13 @@ class TestDump:
         rb = doc["ephemeris_requirement"]["manifest_readback"]
         moved = [("lahiri_chitrapaksha", 672, "cd" * 32), ("raman", 672, SHA[::-1])]
         conn = FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])], av=moved)
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
         assert rc == 2 and "ashtakavarga_bindu_contributor rows differ from the frozen" in capsys.readouterr().err
         assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
 
     def test_the_cli_reads_back_the_donor_row_identity(self, capsys):
         conn = FakeConn(ROWS, av=[("lahiri_chitrapaksha", 672, SHA)])
-        assert dx.main(["--generation", "4.1", "--read-av-donor-rows"], conn_factory=lambda: conn) == 0
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--read-av-donor-rows"], conn_factory=lambda: conn) == 0
         assert json.loads(capsys.readouterr().out)["per_ayanamsha"]["lahiri_chitrapaksha"] == {"row_count": 672, "digest": SHA}
 
     def test_bind_dump_run_names_each_mismatch(self, tmp_path):
@@ -595,30 +596,30 @@ class TestDump:
 
     def test_requalify_3_0_reports_the_byte_comparison(self, tmp_path):
         out = tmp_path / "o.json"
-        rc = dx.main(["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0", "0" * 64],
+        rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0", "0" * 64],
                      conn_factory=lambda: FakeConn(ROWS))
         assert rc == 1
         want = hashlib.sha256(out.read_bytes()).hexdigest()
-        assert dx.main(["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0", want],
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0", want],
                        conn_factory=lambda: FakeConn(ROWS)) == 0
-        assert dx.main(["--generation", "4.1", "--pinned-at", "x", "--out", str(out), "--requalify-3-0", want],
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", "--pinned-at", "x", "--out", str(out), "--requalify-3-0", want],
                        conn_factory=lambda: FakeConn(ROWS)) == 2
 
     def test_requalify_compares_the_row_multiset_when_the_pinned_order_was_database_defined(self, tmp_path):
         pinned = tmp_path / "pinned.json"
-        rows = dx.dump_rows(RO(ROWS), "3.0", horizon_check=False)
-        pinned.write_bytes(dx.render("3.0", "2026-09-29", list(reversed(rows))))      # same rows, other order
+        rows = dx.dump_rows(RO(ROWS), "3.0", horizon_check=False, chart_id=CHART_ID)
+        pinned.write_bytes(dx.render("3.0", "2026-09-29", list(reversed(rows)), chart_id=CHART_ID))      # same rows, other order
         out = tmp_path / "o.json"
         argv = ["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0",
                 hashlib.sha256(pinned.read_bytes()).hexdigest(), "--compare-to", str(pinned)]
-        assert dx.main(argv, conn_factory=lambda: FakeConn(ROWS)) == 0           # rows identical -> ok although bytes differ
-        pinned.write_bytes(dx.render("3.0", "2026-09-29", rows[:1]))             # a row missing -> fail
-        assert dx.main(argv, conn_factory=lambda: FakeConn(ROWS)) == 1
+        assert dx.main(["--chart-id", CHART_ID] + argv, conn_factory=lambda: FakeConn(ROWS)) == 0           # rows identical -> ok although bytes differ
+        pinned.write_bytes(dx.render("3.0", "2026-09-29", rows[:1], chart_id=CHART_ID))             # a row missing -> fail
+        assert dx.main(["--chart-id", CHART_ID] + argv, conn_factory=lambda: FakeConn(ROWS)) == 1
 
     @requires_pinned_oracles
     def test_the_layout_reproduces_the_pinned_3_0_file_byte_for_byte(self):
         doc = json.loads(EXTRACT_3_0.read_bytes())
-        blob = dx.render("3.0", doc["pinned_at"], doc["rows"])
+        blob = dx.render("3.0", doc["pinned_at"], doc["rows"], chart_id=CHART_ID)
         assert hashlib.sha256(blob).hexdigest() == EXTRACT_3_0_PIN
 
 

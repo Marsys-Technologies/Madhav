@@ -1,16 +1,10 @@
 """The measuring-build PR, writer side (FINAL_BUILD_SCOPE FB-1..FB-4, FB-8; steward MEASURING-BUILD, TIMEOUT-RULING, MB-ADDITIONS 1-3, 6).
 
-No database, no ephemeris: recording fakes answer exactly the reads the writer issues.
-
-  (a) the horizon derivation (raw life-event-log rows and the run's build date, never a constant) is refused by name when it cannot be made; and it applies to the
-      `all_classes_full` shape ONLY: an ordinary build and the two older slice shapes keep DEFAULT_HORIZON exactly as on main and never read the log (steward
-      MB-CODEX-1 ruling 1);
-  (b) the horizon BASIS is pinned in the manifest vector beside the horizon (all_classes_full only), and a re-derivation that disagrees drifts by name, the PINNED
-      basis compared FIRST (ruling 6);
-  (c) the third slice shape `all_classes_full` (every scored class, the whole derived horizon): accepted, refused for a subset or a different horizon, and its
-      plan is the whole default plan; the two older shapes keep their old bounds;
-  (d) the state guard: one read-only SELECT at the top of every substep, refused by name when the row is present and not `building`, skip-on-absent;
-  (e) the agent names the enumerators put on edges are the exact lowercase set the kernel uses.
+No database, no ephemeris: recording fakes answer the writer's reads.
+The circularity rail takes precedence over the historical outcome-log horizon
+selection. Measuring scope comes from the standing ruling and birth centenary;
+config changes are still refused against the pinned scope before another write.
+Ordinary builds and the two older shapes retain their existing bounds.
 """
 from __future__ import annotations
 
@@ -140,20 +134,17 @@ def test_the_two_older_shapes_refuse_the_measuring_horizon_exactly_as_main_did()
     assert tuple(writer_mod._validate_test_slice(_marker("one_class_full", classes=writer_mod.SCORED_CLASSES[:1], horizon=OLD_DEFAULT), derived).horizon) == OLD_DEFAULT
 
 
-def test_the_derivation_reads_the_raw_log_rows_of_the_chart_and_pre_filters_nothing():
-    conn = _Conn()
+def test_the_measuring_scope_reads_only_the_chart_run_date():
+    conn = _Conn(lel=[("invalid row",)])
     got = writer_mod._derive_horizon(_ctx(conn, birth_params=BIRTH_PARAMS)).bounds
-    assert tuple(got) == FULL == tuple(writer_mod.MEASURING_HORIZON)
-    log_read = [(sql, p) for sql, p in conn.statements if "life_events" in sql]
-    assert len(log_read) == 1 and log_read[0][1] == (CHART_ID,), "every raw row of the CHART is read (migration 423): the only filter is the chart"
-    sql = log_read[0][0]
-    assert "WHERE chart_id = %s" in sql and "WHERE chart_id = %s ORDER BY" in sql and "shape" in sql and "interval_start" in sql and "chain_parent_event_id" in sql
-    assert "provenance->>'lel_id'" in sql and "provenance->>'subcategory'" in sql and "domain" in sql and "date_tightened_at" in sql and "event_type" in sql
+    assert got == FULL
+    assert conn.statements == [("SELECT created_at FROM public.build_runs WHERE id = %s", ("b-1",))]
 
 
-def test_the_derivation_reports_how_many_raw_rows_it_set_aside():
+def test_the_field_basis_records_no_outcome_rows_or_chosen_event():
     h = writer_mod._derive_horizon(_ctx(birth_params=BIRTH_PARAMS))
-    assert (len(h.consumed_rows), h.excluded_not_fully_dated) == (5, 2) and h.first_event.provenance_lel_id == "EVT.1998.02.16.01" and h.birth_row.provenance_lel_id == "EVT.1984.02.05.01"
+    assert h.basis == "ruled_horizon"
+    assert h.consumed_rows == () and h.first_event is None and h.birth_row is None
 
 
 def test_the_build_date_is_the_runs_created_at_taken_as_a_utc_date():
@@ -178,9 +169,10 @@ def test_a_derived_horizon_outside_the_substrate_domain_is_refused_by_name_on_bo
     late_birth = {**BIRTH_PARAMS, "datetime_iso": "1990-07-01T08:00:00"}                                              # end 2090-07-01 > the domain end
     with pytest.raises(hz.HorizonOutsideSubstrateDomain, match="horizon_outside_substrate_domain"):
         writer_mod._derive_horizon(_ctx(_Conn(lel=[]), birth_params=late_birth))
-    early = [LEL_ROWS[0], _lel("u-1990", "EVT.1990.06.06.01", date(1990, 6, 6))]                              # start 1990-01-01 < the domain start
+    # The pure measurement detector separately verifies the earlier edge.
+    early = (datetime(1990, 1, 1, tzinfo=UTC), FULL[1])
     with pytest.raises(hz.HorizonStartBeforeSubstrateDomain, match="horizon_start_before_substrate_domain"):
-        writer_mod._derive_horizon(_ctx(_Conn(lel=early), birth_params=BIRTH_PARAMS), ruling=False)
+        hz.require_inside_substrate_domain(early)
 
 
 def test_an_explicit_config_horizon_is_returned_as_given_and_an_explicit_null_stays_null():
@@ -212,16 +204,15 @@ def test_the_substrate_domain_check_at_the_manifest_substep_is_behind_the_measur
 
 # ── (b) the basis is pinned beside the horizon ────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_basis_record_is_the_derivation_record_for_the_measuring_shape_and_none_otherwise():
+def test_the_basis_record_is_ruled_scope_for_the_measuring_shape_and_none_otherwise():
     assert writer_mod._horizon_basis(_ctx(horizon=FULL, birth_params=BIRTH_PARAMS), None) is None
-    assert writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), None) is None                           # an ordinary build: no basis (ruling 1)
-    assert writer_mod._horizon_basis(_ctx(), _slice()) is None                                                # no birth parameters: nothing to derive
+    assert writer_mod._horizon_basis(_ctx(), _slice()) is None
     rec = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), _slice())
-    assert rec["schema"] == "horizon_basis/1" and rec["basis"] == "first_dated_event" and rec["chosen"]["lel_id"] == "EVT.1998.02.16.01" and rec["chosen"]["event_id"] == "u-1998"
-    assert rec["chosen"]["event_date"] == "1998-02-16" and rec["chosen"]["date_confidence"] == "exact" and rec["build_date"] == "2026-10-06"
-    assert rec["birth_row"]["event_id"] == "u-birth" and rec["birth_row"]["lel_id"] == "EVT.1984.02.05.01" and rec["birth_row"]["column_used"] == "domain"
-    assert rec["excluded_not_fully_dated"] == 2 and rec["rows_total"] == 5
-    assert len(rec["consumed_rows"]) == 5 and rec["birth_date"] == "1984-02-05"
+    assert rec["schema"] == "horizon_basis/1" and rec["basis"] == "ruled_horizon"
+    assert rec["horizon"] == [x.isoformat() for x in FULL]
+    assert rec["chosen"] is None and rec["birth_row"] is None
+    assert rec["rows_total"] == 0 and rec["consumed_rows"] == []
+    assert rec["birth_date"] == "1984-02-05" and rec["build_date"] == "2026-10-06"
 
 
 def _basis():
@@ -248,30 +239,25 @@ def test_diff_vectors_names_horizon_basis_when_a_later_substep_re_derives_a_diff
 
 # steward ruling 3 on MB-1.4: an edit of the log that CHANGES the derived horizon refuses the next substep by name; one that does not is a REPORT line, never a refusal
 
-def test_a_log_edit_that_does_not_change_the_horizon_is_a_report_line_with_the_changed_row_ids_and_never_a_refusal(caplog):
+def test_a_build_date_edit_that_does_not_change_scope_is_reported_without_refusal(caplog):
     pinned = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), _slice())
-    more = LEL_ROWS + [_lel("u-2010", "EVT.2010.01.01.01", date(2010, 1, 1))]                                     # a new row after the first dated event: the horizon is unchanged
+    ctx = _ctx(_Conn(created=datetime(2026, 10, 7, tzinfo=UTC)), birth_params=BIRTH_PARAMS)
     with caplog.at_level("WARNING"):
-        got = writer_mod._live_basis_for_check(_ctx(_Conn(lel=more, pinned={"horizon_basis": pinned}), birth_params=BIRTH_PARAMS), _slice(), {"horizon_basis": pinned})
-    assert got == pinned, "the PINNED basis is handed to the check: no drift"
-    assert any("horizon_basis_rows_changed" in r.message and "u-2010" in r.message for r in caplog.records)
+        got = writer_mod._live_basis_for_check(ctx, _slice(), {"horizon_basis": pinned})
+    assert got == pinned
+    assert any("horizon_basis_inputs_changed" in r.message for r in caplog.records)
 
 
-def test_a_log_edit_that_changes_the_horizon_refuses_the_next_substep_by_name_on_the_pinned_chart():
-    """Codex blocker 6: on the PINNED chart (the real writer refuses any other) the manifest pinned the 1998 basis; the first event is then removed so 2007 becomes
-    first. The next substep refuses `horizon_basis_horizon_changed` — the pinned basis is compared FIRST — and NOT the ruling guard's token."""
+def test_a_config_edit_that_changes_scope_refuses_the_pinned_comparison_first():
     pinned = writer_mod._horizon_basis(_ctx(birth_params=BIRTH_PARAMS), _slice())
-    assert pinned["horizon"][0].startswith("1998-01-01")
-    revised = [r for r in LEL_ROWS if r[5] != "EVT.1998.02.16.01"]
+    changed = (datetime(2007, 1, 1, tzinfo=UTC), FULL[1])
     manifest = {writer_mod.TEST_SLICE_KEY: _marker()}
-    ctx = _ctx(_Conn(lel=revised, manifest=manifest, pinned={"horizon_basis": pinned}), birth_params=BIRTH_PARAMS)
-    assert ctx.config["chart_id"] == writer_mod.PINNED_CHART_ID
+    ctx = _ctx(_Conn(manifest=manifest, pinned={"horizon_basis": pinned}), birth_params=BIRTH_PARAMS, horizon=changed)
     with pytest.raises(writer_mod.HorizonBasisHorizonChanged, match="horizon_basis_horizon_changed") as e:
-        writer_mod._test_slice(ctx)                                    # the first thing every later substep does
-    assert "2007-01-01" in str(e.value) and "1998-01-01" in str(e.value) and "u-1998" in str(e.value)
-    assert not isinstance(e.value, hz.HorizonDerivationDisagreesWithRuling)
+        writer_mod._test_slice(ctx)
+    assert "2007-01-01" in str(e.value) and "1998-01-01" in str(e.value)
     with pytest.raises(writer_mod.HorizonBasisHorizonChanged):
-        writer_mod._live_basis_for_check(ctx, _slice(), {"horizon_basis": pinned})                       # and the check itself, with the same token
+        writer_mod._live_basis_for_check(ctx, _slice(), {"horizon_basis": pinned})
 
 
 def test_the_ruling_guard_is_not_what_a_pinned_run_meets_and_an_unchanged_pinned_horizon_passes():
@@ -282,14 +268,12 @@ def test_the_ruling_guard_is_not_what_a_pinned_run_meets_and_an_unchanged_pinned
     assert writer_mod._test_slice(_ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS)).run == "all_classes_full"                  # nothing pinned: ruling guard, passes
 
 
-def test_the_ruling_guard_refuses_the_pinned_chart_whose_log_derives_another_pair_at_plan_time():
-    revised = [r for r in LEL_ROWS if r[5] != "EVT.1998.02.16.01"]
+def test_the_ruling_guard_refuses_a_different_configured_pair_at_plan_time():
     manifest = {writer_mod.TEST_SLICE_KEY: _marker()}
-    ctx = _ctx(_Conn(lel=revised, manifest=manifest), birth_params=BIRTH_PARAMS)
+    ctx = _ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS, horizon=(datetime(2007, 1, 1, tzinfo=UTC), FULL[1]))
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
         writer_mod.GocharaV5Writer().plan_substeps(ctx)
-    ok = _ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS)
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(ok)) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS))) == 298
 
 
 def test_verify_live_and_verify_replay_carry_the_stored_basis_unless_the_caller_gives_one():
@@ -326,13 +310,12 @@ def test_the_run_time_outer_bound_is_the_derived_horizon_so_a_full_marker_for_an
     assert writer_mod._validate_test_slice(_marker(horizon=derived), derived).horizon == derived
 
 
-def test_a_full_marker_is_checked_against_the_database_derivation_when_the_run_carries_birth_parameters():
+def test_a_full_marker_is_checked_against_the_chart_birth_centenary():
     manifest = {writer_mod.TEST_SLICE_KEY: _marker()}
-    ok = _ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS)
-    assert writer_mod._test_slice(ok).run == "all_classes_full"
-    revised = [LEL_ROWS[0], _lel("u-1999", "EVT.1999.03.03.01", date(1999, 3, 3))]
+    assert writer_mod._test_slice(_ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS)).run == "all_classes_full"
+    birth = {**BIRTH_PARAMS, "datetime_iso": "1983-02-05T10:43:00"}
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
-        writer_mod._test_slice(_ctx(_Conn(lel=revised, manifest=manifest), birth_params=BIRTH_PARAMS))     # the ruled pair guards the pinned chart before any marker is compared
+        writer_mod._test_slice(_ctx(_Conn(manifest=manifest), birth_params=birth))
 
 
 def test_the_all_classes_full_plan_is_the_whole_default_plan():

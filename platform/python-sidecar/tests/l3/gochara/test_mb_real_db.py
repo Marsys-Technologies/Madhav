@@ -1,11 +1,8 @@
-"""The measuring-build PR on a REAL database (the a55 template + the real orchestrator tables + the real `life_events` DDL). Every test here is the `all_classes_full`
-shape (the ONLY one that reads the log) except where it says otherwise: ordinary builds and the two older slice shapes keep DEFAULT_HORIZON and never read it.
+"""Measuring build on the real migration/runner fixtures.
 
-  (a) the derivation reads the real `life_events` table, every raw row, and the build date from the real `build_runs.created_at`: the pinned chart resolves to
-      [1998-01-01, 2084-02-05) with the first dated event EVT.1998.02.16.01, and the manifest PINS the basis beside the horizon;
-  (b) a later substep that re-derives a DIFFERENT basis (the log was revised mid-build) is refused by name, nothing continues;
-  (c) the state guard against the real `asset_throughput`: refuses a present non-building row by name and writes nothing, passes `building`, skips an absent row;
-  (d) EMPIRICAL (steward TIMEOUT-RULING 2): the REAL runner with a tiny registry cap. What a fired cap does to the run and the rows, observed and recorded here.
+The field uses ruled scope without outcome-table reads. Scope drift and the
+state guard still refuse before writing; deleting/changing outcomes leaves
+scope and input verification invariant. The real runner fired-cap proof remains.
 """
 from __future__ import annotations
 
@@ -111,106 +108,81 @@ def test_an_ordinary_build_and_the_two_older_slice_shapes_need_no_life_events_ta
 
 # ── (a) the derivation from the real table ────────────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_pinned_chart_horizon_is_derived_from_the_real_life_events_table_and_the_build_run(mworld):
+def test_the_pinned_scope_uses_birth_and_build_date_with_no_outcome_rows(mworld):
     w = mworld
     h = writer_mod._derive_horizon(_ctx(w))
-    assert h.bounds == FULL == tuple(writer_mod.MEASURING_HORIZON) and h.basis == "first_dated_event"
-    assert (len(h.consumed_rows), h.excluded_not_fully_dated) == (5, 2) and h.birth_row.provenance_lel_id == "EVT.1984.02.05.01" and h.birth_row.domain == "other/birth"
-    assert h.first_event.event_id == rw.lel_event_uuid("EVT.1998.02.16.01") and h.first_event.provenance_lel_id == "EVT.1998.02.16.01"
-    assert set(h.flag_exact_but_id_undated) == {rw.lel_event_uuid("EVT.1995.XX.XX.01"), rw.lel_event_uuid("EVT.2001.03.XX.01")}, "457's default exact on proxy-dated rows: excluded and listed"
-    assert rw.lel_event_uuid("EVT.1990.01.01.01") not in [r["event_id"] for r in h.consumed_rows], "another chart's row is never read: the chart filter (migration 423)"
+    assert h.bounds == FULL and h.basis == "ruled_horizon"
+    assert h.consumed_rows == () and h.first_event is None and h.birth_row is None
     created = _row(w, "SELECT created_at FROM public.build_runs WHERE id = %s", w.run_id)[0]
     assert h.build_date == created.astimezone(UTC).date()
-    assert tuple(writer_mod._test_slice(_ctx(w)).horizon) == FULL                           # the marker is validated against this derivation
-    assert tuple(writer_mod._effective_horizon(_ctx(w), None)) == tuple(writer_mod.DEFAULT_HORIZON), "an ordinary (marker-less) build keeps DEFAULT_HORIZON"
+    assert writer_mod._test_slice(_ctx(w)).horizon == FULL
+    assert writer_mod._effective_horizon(_ctx(w), None) == writer_mod.DEFAULT_HORIZON
 
 
-def test_the_manifest_pins_the_horizon_and_its_basis_and_a_slice_marker_for_the_full_horizon_is_validated_against_the_database_derivation(mworld):
+def test_the_manifest_pins_ruled_scope_without_outcome_provenance(mworld):
     w = mworld
-    ctx = _ctx(w)
     with w.conn.transaction():
-        writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+        writer_mod.GocharaV5Writer().run_substep(_ctx(w), SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
     horizon = _row(w, "SELECT lower(horizon), upper(horizon) FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = '5.0'", CHART_ID)
     vector = _row(w, "SELECT input_generation_vector FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = '5.0'", CHART_ID)[0]
     assert tuple(horizon) == FULL
     basis = vector["horizon_basis"]
-    assert basis["schema"] == "horizon_basis/1" and basis["basis"] == "first_dated_event" and basis["chart_id"] == CHART_ID
-    assert basis["chosen"] == {"event_id": rw.lel_event_uuid("EVT.1998.02.16.01"), "lel_id": "EVT.1998.02.16.01", "event_date": "1998-02-16", "date_confidence": "exact", "shape": "point"}
+    assert basis["schema"] == "horizon_basis/1" and basis["basis"] == "ruled_horizon" and basis["chart_id"] == CHART_ID
+    assert basis["consumed_rows"] == [] and basis["chosen"] is None and basis["birth_row"] is None
     assert basis["build_date"] == _row(w, "SELECT (created_at AT TIME ZONE 'UTC')::date FROM public.build_runs WHERE id = %s", w.run_id)[0].isoformat()
-    assert basis["birth_row"]["lel_id"] == "EVT.1984.02.05.01" and basis["birth_row"]["domain"] == "other/birth" and basis["birth_row"]["column_used"] == "domain"
-    assert basis["excluded_not_fully_dated"] == 2 and basis["rows_total"] == 5 and len(basis["flag_exact_but_id_undated"]) == 2 and basis["rows_without_lel_id"] == []
-    assert [r["provenance_lel_id"] for r in basis["consumed_rows"]] == [r[0] for r in rw.PINNED_LEL_ROWS], "EVERY consumed row of the chart is pinned, sorted by (event_date, event_id)"
-    assert basis["fully_dated_readings"] == {"rule_F_start": "1995-01-01", "rule_I_start": "1998-01-01", "conjunction_start": "1998-01-01"}
-    assert vector["stored_scope"] == "test_slice" and vector["test_slice"]["horizon"] == [FULL[0].isoformat(), FULL[1].isoformat()]
+    assert vector["stored_scope"] == "test_slice" and vector["test_slice"]["horizon"] == [x.isoformat() for x in FULL]
 
 
 # ── (b) a revised log mid-build (steward ruling 3 on MB-1.4) ──────────────────────────────────────────────────────────────────────────────
 
-def test_a_log_edit_that_changes_the_derived_horizon_refuses_the_next_substep_by_name_and_writes_nothing(mworld):
-    """Codex blocker 6, on the PINNED chart (the real writer refuses any other): the manifest pins the 1998 basis, the first event is then deleted so 2007 becomes
-    first, and the next substep refuses `horizon_basis_horizon_changed` (the pinned basis is compared FIRST), not the ruling guard's token."""
+def test_a_configured_scope_change_refuses_the_next_substep_and_writes_nothing(mworld):
     w = mworld
-    assert str(CHART_ID) == writer_mod.PINNED_CHART_ID
-    ctx = _ctx(w)
     with w.conn.transaction():
-        writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
-    w.conn.execute("DELETE FROM public.life_events WHERE provenance->>'lel_id' = 'EVT.1998.02.16.01' AND chart_id = %s", (CHART_ID,))          # the first dated event is now 2007
-    with pytest.raises(writer_mod.HorizonBasisHorizonChanged, match="horizon_basis_horizon_changed") as e:
+        writer_mod.GocharaV5Writer().run_substep(_ctx(w), SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+    changed = (datetime(2007, 1, 1, tzinfo=UTC), FULL[1])
+    with pytest.raises(writer_mod.HorizonBasisHorizonChanged, match="horizon_basis_horizon_changed"):
         with w.conn.transaction():
-            writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.SNAPSHOT_SUBSTEP, label="snapshot"))
-    assert "2007-01-01" in str(e.value) and not isinstance(e.value, hz.HorizonDerivationDisagreesWithRuling)
+            writer_mod.GocharaV5Writer().run_substep(_ctx(w, horizon=changed), SubStep(key=writer_mod.SNAPSHOT_SUBSTEP, label="snapshot"))
     assert _row(w, "SELECT count(*) FROM public.ka_gochara_search_inventory WHERE chart_id = %s", CHART_ID)[0] == 0
 
 
-def test_the_ruling_guard_still_refuses_at_plan_time_before_anything_is_pinned(mworld):
+def test_the_ruling_guard_refuses_a_different_configured_scope_before_publication(mworld):
     w = mworld
-    w.conn.execute("DELETE FROM public.life_events WHERE provenance->>'lel_id' = 'EVT.1998.02.16.01' AND chart_id = %s", (CHART_ID,))
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
-        writer_mod.GocharaV5Writer().plan_substeps(_ctx(w))
+        writer_mod.GocharaV5Writer().plan_substeps(_ctx(w, horizon=(datetime(2007, 1, 1, tzinfo=UTC), FULL[1])))
     assert _row(w, "SELECT count(*) FROM public.kala_gochara_publication WHERE chart_id = %s", CHART_ID)[0] == 0
 
 
-def test_a_flag_edit_that_makes_the_first_event_no_longer_fully_dated_moves_the_start_and_refuses_by_name(mworld):
+def test_an_outcome_date_flag_edit_leaves_the_pinned_scope_and_live_check_unchanged(mworld):
     w = mworld
-    ctx = _ctx(w)
     with w.conn.transaction():
-        writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+        writer_mod.GocharaV5Writer().run_substep(_ctx(w), SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+    before = writer_mod._horizon_basis(_ctx(w), writer_mod._test_slice(_ctx(w)))
     w.conn.execute("UPDATE public.life_events SET date_confidence = 'month_known' WHERE provenance->>'lel_id' = 'EVT.1998.02.16.01' AND chart_id = %s", (CHART_ID,))
-    with pytest.raises(writer_mod.HorizonBasisHorizonChanged, match="horizon_basis_horizon_changed"):
-        with w.conn.transaction():
-            writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.SNAPSHOT_SUBSTEP, label="snapshot"))
+    writer_mod._verify_live_inputs(_ctx(w), CHART_ID)
+    assert writer_mod._horizon_basis(_ctx(w), writer_mod._test_slice(_ctx(w))) == before
 
 
-def test_a_log_edit_that_does_not_change_the_horizon_is_a_report_line_with_the_changed_row_ids_and_never_a_refusal(mworld, caplog):
+def test_deleting_the_first_dated_outcome_leaves_field_scope_and_inputs_unchanged(mworld):
     w = mworld
-    ctx = _ctx(w)
     with w.conn.transaction():
-        writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
-    w.conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, event_type, domain, description, chart_state, source_section, build_id, provenance,"
-                   " date_confidence) VALUES (%s, %s, '2010-01-01', 'other', 'other', 'other/other', 'revision', '{}'::jsonb, 'test', 'test', "
-                   "'{\"lel_id\": \"EVT.2010.01.01.01\"}'::jsonb, 'exact')", (CHART_ID, rw.lel_event_uuid("EVT.2010.01.01.01")))
-    with caplog.at_level("WARNING"):
-        with w.conn.transaction():
-            writer_mod._verify_live_inputs(ctx, CHART_ID)                                    # no InputDrift: the horizon did not change
-    assert any("horizon_basis_rows_changed" in r.message and rw.lel_event_uuid("EVT.2010.01.01.01") in r.message for r in caplog.records)
+        writer_mod.GocharaV5Writer().run_substep(_ctx(w), SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+    before = writer_mod._horizon_basis(_ctx(w), writer_mod._test_slice(_ctx(w)))
+    w.conn.execute("DELETE FROM public.life_events WHERE provenance->>'lel_id' = 'EVT.1998.02.16.01' AND chart_id = %s", (CHART_ID,))
+    writer_mod._verify_live_inputs(_ctx(w), CHART_ID)
+    assert writer_mod._horizon_basis(_ctx(w), writer_mod._test_slice(_ctx(w))) == before
 
 
 # ── R-LEL: the real log's first eight rows, read through the real table ─────────────────────────────────────────────────────────────────
 
-def test_the_real_logs_first_eight_rows_through_the_real_table_derive_1998_and_report_the_exclusions(mworld):
-    """Steward R-LEL (production read of 5 Oct 2026): the eight earliest rows in their real shapes — an interval arc dated ON the birth date with NO lel_id, the other/birth row,
-    four rows flagged exact with undated ids, a year_only interval — derive [1998-01-01, 2084-02-05); the rows with no lel_id and with undated ids are excluded and REPORTED."""
+def test_the_measuring_writer_runs_when_the_outcome_table_is_absent(mworld):
     w = mworld
-    w.conn.execute("DELETE FROM public.life_events WHERE chart_id = %s", (CHART_ID,))
-    rw.insert_life_events(w.conn, rw.R_LEL_FIRST_EIGHT)
-    h = writer_mod._derive_horizon(_ctx(w))
-    assert h.bounds == FULL and h.first_event.provenance_lel_id == "EVT.1998.02.16.01" and h.birth_row.provenance_lel_id == "EVT.1984.02.05.01"
-    basis = h.basis_record()
-    assert basis["rows_without_lel_id"] == [{"event_id": rw.lel_event_uuid("row1"), "event_date": "1984-02-05"}]
-    assert set(basis["flag_exact_but_id_undated"]) == {rw.lel_event_uuid(i) for i in ("EVT.1993.XX.XX.01", "EVT.1995.XX.XX.02", "EVT.1998.XX.XX.02", "EVT.2000.XX.XX.01")}
-    assert basis["excluded_not_fully_dated"] == 6 and basis["rows_total"] == 8
-    arc = next(r for r in basis["consumed_rows"] if r["event_id"] == rw.lel_event_uuid("row1"))            # (sorted by (event_date, event_id): the arc and the birth row share a date)
-    assert arc["shape"] == "interval" and arc["interval_end"] == "2026-07-19" and arc["date_tightened_at"] and arc["provenance_lel_id"] is None
+    w.conn.execute("DROP TABLE public.life_events")
+    assert writer_mod._derive_horizon(_ctx(w)).bounds == FULL
+    with w.conn.transaction():
+        result = writer_mod.GocharaV5Writer().run_substep(_ctx(w), SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
+    assert result.asset_id == writer_mod.ASSET_ID
+    writer_mod._verify_live_inputs(_ctx(w), CHART_ID)
 
 
 # ── (c) the state guard on the real table ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -41,8 +41,8 @@ def _files(number: int) -> list[str]:
 
 
 def apply_orchestrator_schema(conn, life_events: bool = False) -> None:
-    """`life_events=True` adds the real `public.life_events` table and rows (`apply_life_events`): ONLY the measuring shape (`all_classes_full`) reads it; every other
-    run of the real runner must work WITHOUT the table (steward MB-CODEX-1 ruling 1), so it is not applied by default."""
+    """`life_events=True` adds real outcome rows for circularity-invariance tests.
+    Every writer shape must work without this table; it is absent by default."""
     # the birth columns FIRST: migration 596 puts a trigger on charts that names them
     for column, ddl in (("chart_id", "uuid"), ("name", "text"), ("subject_name", "text"), ("preferred_name", "text"),
                         ("birth_date", "date"), ("birth_time", "time"), ("birth_lat", "numeric"), ("birth_lng", "numeric"),
@@ -69,7 +69,7 @@ def apply_orchestrator_schema(conn, life_events: bool = False) -> None:
                  " birth_time = EXCLUDED.birth_time, birth_lat = EXCLUDED.birth_lat, birth_lng = EXCLUDED.birth_lng,"
                  " birth_place = EXCLUDED.birth_place, timezone_id = EXCLUDED.timezone_id", (CHART, CHART))
     if life_events:
-        apply_life_events(conn)     # the measuring shape DERIVES its horizon from the chart's life-event-log rows (MEASURING_BUILD_CONTRACT MB-1): only that run needs the table
+        apply_life_events(conn)     # outcomes exist only to prove the writer does not consume them
 
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
@@ -149,7 +149,7 @@ def substep_events(stdout: str) -> list[dict]:
     return out
 
 
-#: the life-event-log rows of the pinned chart the horizon derivation reads (LEL id, date, confidence, domain), stored as the INTAKE stores them: a uuid5 `event_id`, the
+#: the outcome rows used by the circularity tests (LEL id, date, confidence, domain), stored as the INTAKE stores them: a uuid5 `event_id`, the
 #: canonical `EVT.YYYY.MM.DD.NN` id in `provenance->>'lel_id'`, domain `<event_type>/<subcategory>`; the proxy-dated rows carry 457's default `exact`.
 PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact", "other/birth"), ("EVT.1995.XX.XX.01", "1995-07-01", "exact", "other/other"),
                    ("EVT.1998.02.16.01", "1998-02-16", "exact", "other/other"), ("EVT.2001.03.XX.01", "2001-03-01", "exact", "other/other"),
@@ -165,7 +165,7 @@ def lel_event_uuid(lel_id: str) -> str:
 def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
     """`public.life_events` from the REAL DDL: the baseline's CREATE TABLE, migration 457's shape columns and checks, and migration 423's per-chart key (`chart_id uuid NOT NULL
     REFERENCES charts(id)`, unique with event_id). `rows` (event_id, event_date, date_confidence, category) are inserted for the pinned chart, plus ONE row of another chart that the
-    chart filter must never read. The horizon derivation reads every raw row of its chart."""
+    writer must never read. Outcome mutations must leave the field unchanged."""
     import re
     baseline = (REPO / "platform" / "migrations" / "001_baseline.sql").read_text(encoding="utf-8")
     ddl = re.search(r"CREATE TABLE IF NOT EXISTS public\.life_events \(.*?\n\);", baseline, re.S)

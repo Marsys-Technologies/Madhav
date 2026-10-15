@@ -92,6 +92,9 @@ def capture(template_db, raw: dict | None = None) -> dict:
     `raw`, when given, receives each substep's unsummarised statement list (HEAD's comparison removes the state guard's statement before summarising)."""
     w = _World(template_db)
     try:
+        # The immutable main capture used this session zone. PostgreSQL renders
+        # timestamptz refusals and convention JSON in the session zone.
+        w.conn.execute("SET TIME ZONE 'Asia/Kolkata'")
         # the orchestrator's `asset_throughput` row of a healthy run (`building`); main never reads it, HEAD's state guard does
         w.conn.execute("CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text, state text, last_built_at timestamptz, rows_written integer, last_error text)")
         w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s::uuid, %s, 'building', now(), 0, NULL)", (CHART_ID, writer_mod.ASSET_ID))
