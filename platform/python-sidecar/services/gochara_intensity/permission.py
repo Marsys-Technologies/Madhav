@@ -254,6 +254,9 @@ def compute_permission(
     # the LIVE-VERIFIED system_id list (see module docstring correction),
     # not G-2's dasha_data.DASHA_SYSTEMS default.
     if dasha_periods is not None:
+        if conn is not None:
+            from services.gochara_kernel.dasha_read import validate_live_dasha_periods
+            validate_live_dasha_periods(chart_id, dasha_periods, ayanamsha_id)
         periods = dasha_periods
     else:
         with savepoint_scope(conn, "dasha_periods"):

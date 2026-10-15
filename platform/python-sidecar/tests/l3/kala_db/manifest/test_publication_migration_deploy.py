@@ -7,7 +7,7 @@ import pytest
 
 PLATFORM = Path(__file__).resolve().parents[5]
 PREREQUISITE = "1330_kala_layer_manifest_candidates.sql"
-GRANTS = "1386_kala_layer_operation_verifier_reads.sql"
+GRANTS = "1390_kala_layer_operation_verifier_reads.sql"
 
 
 @pytest.fixture

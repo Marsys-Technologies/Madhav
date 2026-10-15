@@ -175,7 +175,7 @@ def test_verifier_role_uses_narrow_grants_and_records_only_matching_inputs(db):
     db.execute('GRANT SELECT ON kala_layer_candidate_grain TO verifier_principal')
     db.execute('GRANT INSERT ON kala_layer_verification TO verifier_principal')
     db.execute('GRANT SELECT(chart_id,generation) ON kala_layer_verification TO verifier_principal')
-    db.execute((root/'1386_kala_layer_operation_verifier_reads.sql').read_text().replace('public.',''))
+    db.execute((root/'1390_kala_layer_operation_verifier_reads.sql').read_text().replace('public.',''))
     with db.transaction():
         db.execute('SET LOCAL ROLE verifier_principal')
         with pytest.raises(ValueError,match='digest'):

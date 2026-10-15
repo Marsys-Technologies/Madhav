@@ -1,4 +1,4 @@
--- Migration 1386: narrow reads for the separate whole-layer verifier operation.
+-- Migration 1390: narrow reads for the separate whole-layer verifier operation.
 -- Created: 2026-10-16. K9-23 pre-build, SR-A4-01; no production application.
 -- Number checked against origin/main and all remote kalayantra/* heads (max 1385).
 -- Idempotent grants only: no schema privileges, writes, or ownership changes.

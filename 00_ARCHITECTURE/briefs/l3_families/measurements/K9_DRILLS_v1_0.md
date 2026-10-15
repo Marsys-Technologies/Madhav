@@ -64,12 +64,11 @@ full-layer semantic rehearsal for the executor's pre-acceptance.
 `KY_LAYER_VERIFIER_DATABASE_URL` into the child's `DATABASE_URL`. It never
 falls back to builder/owner credentials. Alternative: bind the verifier to the
 builder capability, which cannot establish the separate-principal boundary. The child checks `current_user` is
-`verifier_principal`. Migration 1386 grants column-scoped candidate/build-run
+`verifier_principal`. Migration 1390 grants column-scoped candidate/build-run
 reads only, in addition to the existing grain-read and receipt-insert grants.
-No schema creation privilege or head write is granted. Migration numbering was
-checked against origin/main (1382), every remote `kalayantra/*` head (1385),
-both migration trees and the protected list (1382). Recheck the allocation at
-landing. No migration was applied to production.
+No schema creation privilege or head write is granted. Migration 1390 is centrally allocated to K9-23 by
+`/Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json`
+(R-2026-10-16-01); 1386 is allocated to L0-M. No migration was applied to production.
 
 ## Local database oracles
 
