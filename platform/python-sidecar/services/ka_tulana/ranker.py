@@ -150,6 +150,57 @@ def _pair(a_id, b_id, a, b, horizon):
     return {"A": a_id, "B": b_id, "axes": axes, "relation": relation, "reason": reason}
 
 
+def _dominance_cycles(identities, comparisons):
+    """Return nontrivial strongly connected components, without recursion.
+
+    Pairwise tolerance ties need not be transitive. Preserve the actual pair
+    verdicts, and disclose every cyclic group rather than choosing a winner.
+    Two graph walks take O(V + E) beyond the existing pair comparisons.
+    """
+    edges = {identity: [] for identity in sorted(identities)}
+    reverse = {identity: [] for identity in edges}
+    for pair in comparisons:
+        if pair["relation"] == "A_dominates":
+            winner, loser = pair["A"], pair["B"]
+        elif pair["relation"] == "B_dominates":
+            winner, loser = pair["B"], pair["A"]
+        else:
+            continue
+        edges[winner].append(loser)
+        reverse[loser].append(winner)
+    visited, finished = set(), []
+    for root in edges:
+        if root in visited:
+            continue
+        visited.add(root)
+        stack = [(root, iter(edges[root]))]
+        while stack:
+            node, children = stack[-1]
+            child = next(children, None)
+            if child is None:
+                finished.append(node)
+                stack.pop()
+            elif child not in visited:
+                visited.add(child)
+                stack.append((child, iter(edges[child])))
+    visited, cycles = set(), []
+    for root in reversed(finished):
+        if root in visited:
+            continue
+        component, pending = [], [root]
+        visited.add(root)
+        while pending:
+            node = pending.pop()
+            component.append(node)
+            for parent in reverse[node]:
+                if parent not in visited:
+                    visited.add(parent)
+                    pending.append(parent)
+        if len(component) > 1:
+            cycles.append(sorted(component))
+    return sorted(cycles)
+
+
 class KaTulanaService:
     def compare_windows(self, windows, *, date_from=None, date_to=None, question_frame=None, preference=None):
         ref = date.fromisoformat(date_from) if isinstance(date_from, str) else date_from or date.today()
@@ -185,6 +236,12 @@ class KaTulanaService:
         comparisons = [_pair(a,b,evidence[a],evidence[b],horizon) for a,b in combinations(sorted(evidence),2)]
         dominated = {p["B"] if p["relation"] == "A_dominates" else p["A"]
                      for p in comparisons if p["relation"] in {"A_dominates","B_dominates"}}
+        cycles = _dominance_cycles(evidence, comparisons)
+        # (I) INTERPRETATION K7-B1: front = undominated OR cycle member.
+        # Even an externally dominated cycle retains all of its alternatives;
+        # pairwise evidence and caller presentation preferences remain intact.
+        cycle_members = {identity for cycle in cycles for identity in cycle}
+        front = sorted((set(evidence) - dominated) | cycle_members)
         def order_key(identity):
             key = []
             for axis in policy:
@@ -192,12 +249,13 @@ class KaTulanaService:
                 key.extend([value is None, 0 if value is None else value if axis == "nearest" else -value])
             return (*key, identity)
         return copy.deepcopy({"contract_version": VERSION, "evidence": evidence, "comparisons": comparisons,
-            "front": sorted(set(evidence)-dominated), "ordered": sorted(evidence, key=order_key),
+            "front": front, "dominance_cycles": cycles, "front_rule": "undominated_or_cycle_member",
+            "ordered": sorted(evidence, key=order_key),
             "rejected": sorted(rejected, key=lambda r: r["window_id"]), "order_policy": policy,
             "question_frame": question_frame, "entity_not_evaluated": bool(question_frame and "entity" in question_frame),
             "tolerances": {"nearest_days":1, "most_robust":0, "best_suited":0.3/horizon,
                            "strongest":"per_pair_anchor_days"},
-            "empty_reason": None if evidence else "no_candidate_windows"})
+            "empty_reason": None if front else "no_candidate_windows" if not evidence else "dominance_front_unresolved"})
 
     def compare(self, window_a, window_b, reference_date=None, **kwargs):
         """Compatibility entry name: now returns a dominance table, never a fabricated winner."""

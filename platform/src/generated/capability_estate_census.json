@@ -22686,7 +22686,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "65a47bc32d140ba3ca73751fbda2121429fe55a04b335e340765280486f42575"
+            "sha256": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
@@ -22854,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b6a399c52ba61c0248babc60d7f19c134c12f9f81d3eec03c1ffd10e1e0a67e4"
+        "sha256": "8caa015056c842d7cccfe0d5fe962efbafe53952703dc91bbd9a738e6d4d57e2"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23764,7 +23764,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "885df4c7011a584ae83b05d60bb7bc7ef5443d5d50f25625aa2de8c718e700b6"
+        "sha256": "9db90ba52cd30ca3430c34f5e6b0d26c02abc173c4469981eb409777f19ba932"
       }
     ]
   },

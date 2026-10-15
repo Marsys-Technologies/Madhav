@@ -168,6 +168,45 @@ def _load():
     return golden
 
 
+def test_b4_baseline_preserves_final_main_settlement_amendments():
+    """Keep final J-4p's outcomes and transcript alongside B4's baseline.
+
+    B4 deliberately removes one positive-bounds SQL predicate; B5's additional
+    guard is counted separately below. No other main SQL shape may change.
+    """
+    main = json.loads(GOLDEN.with_name("mb_ordinary_golden_main.json").read_text())
+    b4 = _load()
+    assert [s["key"] for s in b4["substeps"]] == [s["key"] for s in main["substeps"]]
+    for got, want in zip(b4["substeps"], main["substeps"]):
+        assert got["outcome"] == want["outcome"], want["key"]
+        assert got["counts"] == want["counts"], want["key"]
+        if want["key"] == "inventory:marriage":
+            shapes = want["statements"]["shapes"]
+            assert sum(n for sql, n in shapes.items()
+                       if "AND start_iso < end_iso AND" in sql) == 1
+            assert got["statements"]["shapes"] == {
+                sql.replace("AND start_iso < end_iso AND", "AND"): n
+                for sql, n in shapes.items()
+            }
+            assert got["statements"]["count"] == want["statements"]["count"]
+        else:
+            assert got["statements"] == want["statements"], want["key"]
+    assert b4["manifest_vector"]["implementation"]["window"] == (
+        "beaa23107518458b89bb8fe498a8b3682ffe67fb08951196a69c7b18db123aa4")
+    # The two immutable captures used different local Swiss library builds;
+    # their corpus, version and numerical probe must still agree exactly.
+    for key, value in main["manifest_vector"].items():
+        if key == "implementation":
+            continue
+        if key == "ephemeris":
+            value = {k: v for k, v in value.items() if k != "library_sha256"}
+            actual = {k: v for k, v in b4["manifest_vector"][key].items()
+                      if k != "library_sha256"}
+        else:
+            actual = b4["manifest_vector"][key]
+        assert actual == value, key
+
+
 @pytest.fixture(scope="module")
 def head(template):
     raw: dict = {}
