@@ -1,10 +1,10 @@
 """KV3-B-EXECUTOR-TABLE (relaunch plan v2.7 §2, §5, §6 EXECUTE, §14 B-1): the executor table and the executor's git handle.
 
 What this proves, and what it deliberately does not touch:
-  · the table: every `enabled_by` is a plan-model item; exactly four kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; the five P10 entries are present and disabled; `enabled` is the first
-    key of each entry; each of the five model detector patterns (read from the model, not retyped) misses the table and
-    hits a copy with that one entry flipped;
+  · the table: every `enabled_by` is a plan-model item; the four bootstrap and six Wave 4 kinds are enabled; every field equals the table at the
+    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; the four later-phase P10 entries are present and disabled; `enabled` is the first
+    key of each entry; typed model completion stays separate from table enablement, and the legacy first-key format
+    still detects each disabled future kind flipped in a copy;
   · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
     functions and constants are byte-identical;
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
@@ -42,9 +42,11 @@ SH_GIT_OLD = 'GIT="$KY_ROOT/wt/campaign"'
 SH_GIT_NEW = 'GIT="${KY_SOURCE_REPO:-' + DEFAULT_SOURCE_REPO + '}"'
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+W4_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun", "smalltest_dispatch",
+            "smalltest_teardown_dryrun", "smalltest_teardown"}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | W4_KINDS
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
-P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
+P10 = {"J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
@@ -101,7 +103,7 @@ def test_every_enabled_by_is_a_model_item():
     assert not bad, f"enabled_by names an id that is not in the plan model: {bad}"
 
 
-def test_enabled_set_is_exactly_the_four_kinds():
+def test_enabled_set_is_exactly_bootstrap_plus_wave4():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     assert {k for k, e in ops.items() if enabled_state(k, e)} == ENABLED_KINDS
 
@@ -131,6 +133,14 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+    for kind in W4_KINDS:
+        expected[kind]["enabled"] = True
+    for kind, operation in [("backup_snapshot", "snapshot"), ("backup_restore_verify", "restore-verify")]:
+        expected[kind].update(needs="owner", script="platform/scripts/backup_v5_small_test_job.py",
+                              fixed_args=["--operation", operation, "--execute"])
+    for kind in ["smalltest_teardown_dryrun", "smalltest_teardown"]:
+        expected[kind].update(script="platform/scripts/teardown_v5_small_test_job.py", allowed_args=[],
+                              fixed_args=["--dry-run"] if kind.endswith("_dryrun") else ["--execute", "--i-am-steward"])
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
@@ -176,15 +186,16 @@ def test_doc_states_what_it_serves_and_assumes_no_enablement_path():
 
 
 @pytest.mark.parametrize("item,kind", sorted(P10.items()))
-def test_model_detector_misses_the_table_and_hits_one_flipped_entry(item, kind):
-    pattern = detector_pattern(item)
+def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
+    # The reconciled model uses packet/rehearsal evidence, not enabled-string
+    # completion. Preserve the legacy first-key format without inventing a detector.
+    det = model_items()[item]["detector"]
+    assert det["type"] in {"pr_merged", "branch_merged", "file_exists"}
+    assert det.get("pr") or det.get("ref") or det.get("path")
+    pattern = re.compile(r'"' + re.escape(kind) + r'"\s*:\s*\{\s*"enabled"\s*:\s*true')
     text = OPS_FILE.read_text()
-    assert not pattern.search(text), f"{item}'s detector already matches the table"
-    flipped = flip(text, kind)
-    assert pattern.search(flipped), f"{item}'s detector does not read the flipped {kind} entry"
-    for other_item, other_kind in P10.items():
-        if other_item != item:
-            assert not detector_pattern(other_item).search(flipped), f"flipping {kind} also trips {other_item}"
+    assert not pattern.search(text)
+    assert pattern.search(flip(text, kind))
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -425,8 +436,9 @@ def simple_request(kind, by="adhikarin", **over):
 
 
 def copy_with(text, kind, **fields):
-    """A copy of the table text with `kind` enabled and `fields` set — the only way an entry is ever enabled in these tests."""
-    ops = json.loads(flip(text, kind))
+    """An independent fixture table with `kind` enabled and `fields` set."""
+    ops = json.loads(text)
+    ops["ops"][kind]["enabled"] = True
     ops["ops"][kind].update(fields)
     return json.dumps(ops)
 
@@ -441,8 +453,8 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["smalltest_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head",
-                                  "measuring_dispatch", "layer_verify", "orchestrator_rebuild", "backup_snapshot"])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head",
+                                  "measuring_dispatch", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
