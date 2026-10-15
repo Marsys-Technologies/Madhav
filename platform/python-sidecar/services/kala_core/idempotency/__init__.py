@@ -33,6 +33,8 @@ class PublishCandidate:
 # Literal table names are intentional: the Idem detector needs to see each
 # writer-owned DELETE, and a caller must not turn this into arbitrary SQL.
 _DELETE_CANDIDATE = {
+    "kala_vedha_gochara_candidate": "DELETE FROM kala_vedha_gochara_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_vedha_gochara_interval": "DELETE FROM kala_vedha_gochara_interval WHERE chart_id = %s AND generation = %s",
     "kala_activation_candidate": "DELETE FROM kala_activation_candidate WHERE chart_id = %s AND generation = %s",
     "kala_darshana_candidate": "DELETE FROM kala_darshana_candidate WHERE chart_id = %s AND generation = %s",
     "kala_jivana_parva_candidate": "DELETE FROM kala_jivana_parva_candidate WHERE chart_id = %s AND generation = %s",
