@@ -26,7 +26,7 @@
     "routing_reason": {"type": "string", "minLength": 1},
     "needs_chart_data": {"type": "boolean"},
     "max_loops": {
-      "description": "Plan default is 3; the default is NOT applied or enforced here, the field is required and must be an integer 1-5.",
+      "description": "Fleet default is 2 (owner Amendment A2 D-17 §2.6, superseding plan §8); the default is NOT applied or enforced here, the field is required and must be an integer 1-5.",
       "type": "integer",
       "minimum": 1,
       "maximum": 5
