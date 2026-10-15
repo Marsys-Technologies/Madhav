@@ -7,7 +7,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
-from tests.l3.ka_vedha_gochara.conftest import CHART, NATAL, BUILD, MIGRATION
+from tests.l3.kala_db.ka_vedha_gochara.conftest import CHART, NATAL, BUILD, MIGRATION
 from tests.l3.ka_vedha_gochara.test_overlays import bundle, residence, A, B, C, D
 
 
@@ -161,20 +161,21 @@ def test_direct_header_mutations_cannot_bypass_natal_or_identity_guard(conn,patc
         conn.execute('UPDATE kala_vedha_gochara_candidate SET '+patch)
 
 
-def test_writer_keeps_candidate_row_locked_against_concurrent_publication(conn):
+def test_writer_keeps_candidate_row_locked_against_concurrent_publication(conn, kala_db_dsn):
     # Fixture setup is committed solely to expose this disposable schema to a
     # second session. Neither the writer nor the provider commits anything.
     conn.commit()
     schema=conn.execute('SELECT current_schema()').fetchone()[0]
     store(conn,active_bundle())
-    with psycopg.connect(conn.info.dsn) as other:
+    # ConnectionInfo.dsn omits passwords; reuse the guarded fixture DSN in CI.
+    with psycopg.connect(kala_db_dsn) as other:
         other.execute(f'SET search_path TO "{schema}", public')
         other.execute("SET LOCAL lock_timeout='100ms'")
         with pytest.raises(psycopg.errors.LockNotAvailable),other.transaction():
             other.execute("UPDATE kala_layer_candidate SET state='published' WHERE generation='candidate-1'")
         other.rollback()
     conn.rollback()
-    with psycopg.connect(conn.info.dsn) as other:
+    with psycopg.connect(kala_db_dsn) as other:
         other.execute(f'SET search_path TO "{schema}", public')
         other.execute("UPDATE kala_layer_candidate SET state='published' WHERE generation='candidate-1'")
     with pytest.raises(ValueError,match='building|mutable'):

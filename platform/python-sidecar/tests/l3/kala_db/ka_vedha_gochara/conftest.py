@@ -5,12 +5,11 @@ import uuid
 import psycopg
 import pytest
 
-from tests.l3.kala_db.conftest import kala_db_dsn
 
 CHART='00000000-0000-0000-0000-000000000001'
 NATAL='00000000-0000-0000-0000-000000000002'
 BUILD='00000000-0000-0000-0000-000000000003'
-MIGRATION=Path(__file__).resolve().parents[4]/'migrations/1383_ka_3a_vedha_candidate_intervals.sql'
+MIGRATION=Path(__file__).resolve().parents[5]/'migrations/1383_ka_3a_vedha_candidate_intervals.sql'
 
 
 @pytest.fixture

@@ -140,9 +140,10 @@ def test_ci_collects_canary_and_entire_db_directory():
     # Additional explicit test targets must not invalidate directory discovery.
     steps = yaml.safe_load(workflow)["jobs"]["kala-db-tests"]["steps"]
     commands = [shlex.split(step["run"]) for step in steps if "run" in step]
+    # -B is an interpreter flag and does not change pytest directory discovery.
     assert any(
-        command[:3] == ["python", "-m", "pytest"]
-        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command[3:])
+        [token for token in command[:4] if token != "-B"][:3] == ["python", "-m", "pytest"]
+        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command)
         for command in commands
     )
 
