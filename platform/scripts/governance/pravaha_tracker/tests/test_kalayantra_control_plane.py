@@ -944,22 +944,13 @@ class VelocityAmendmentCases(unittest.TestCase):
         with self.assertRaisesRegex(CompletionError, "post-deploy"):
             guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
 
-    def _git(self, cwd, *args):
-        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t",
-               "GIT_COMMITTER_EMAIL": "t@x"}
-        return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
-
     def test_verdict_survives_merge_only_push_but_not_a_new_commit(self):
         """Rewritten for the shared reviewed-patch predicate (plan §6): the tracker asks `kyverdicts.inherits`
         and nothing else; ancestry alone, a missing predicate or any answer other than True inherits nothing."""
         with tempfile.TemporaryDirectory() as repo:
-            g = lambda *a: self._git(repo, *a)
-            g("init", "-q", "-b", "main"); pathlib_write(repo, "base.txt", "0"); g("add", "."); g("commit", "-qm", "base")
-            g("checkout", "-qb", "feature"); pathlib_write(repo, "f.txt", "1"); g("add", "."); g("commit", "-qm", "work")
-            h1 = g("rev-parse", "HEAD")
-            g("checkout", "-q", "main"); pathlib_write(repo, "m.txt", "2"); g("add", "."); g("commit", "-qm", "main moves")
-            g("checkout", "-q", "feature"); g("merge", "-q", "--no-edit", "main"); h2 = g("rev-parse", "HEAD")
-            pathlib_write(repo, "f.txt", "3"); g("add", "."); g("commit", "-qm", "more work"); h3 = g("rev-parse", "HEAD")
+            # Inheritance is decided exclusively by the injected shared predicate.
+            # Real git commits add no coverage here and require write access to git.
+            h1, h2, h3 = "a" * 40, "d" * 40, "e" * 40
             verdict = {**self.verdict, "head": h1}
             calls = []
             with predicate(True, calls):

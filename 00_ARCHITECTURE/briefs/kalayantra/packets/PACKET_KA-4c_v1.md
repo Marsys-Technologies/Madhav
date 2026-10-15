@@ -9,7 +9,7 @@ P=spec_sources path; short basenames resolve to listed reads. Definition U:19,21
 Prerequisite facts: KA-4 accepted head/squash in base (U:19; P:330-337); F/FROZEN_PATHS.txt; pins/tests/slot/template (B:13-14). Parallel fixtures allowed; real acceptance needs L0-M grammar/rows/receipt, not only 1332 (U:13,23; P:538-540).
 Read Owns and Y/services/ka_muhurta_seva/service.py:38-61; Y/services/kala_core/sky/ephemeris.py:88-111,171-201,236-309; Y/services/kala_core/sky/coverage.py:42-100; Y/brahmagyan/dignity_oracle.py:92-148; Y/brahmagyan/l0_formula_constants.py:28-44; Y/ga_writers/ga_vargas_writer.py:475-513; Y/ga_writers/ga_condition_writer.py:64-69,183-276,350-419; Y/routers/transit_search.py:25-55; Y/main.py:29-34,90-93; Y/routers/yoga_formation_band.py:610-624; platform/supabase/migrations/544_bg_parihara_rules.sql:63-80; platform/migrations/1332_l0_muhurta_parihara_scope_prepare.sql:13-24. Caller: platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:126-152; reference Y/pipeline/orchestrator/writers/bg_muhurta_lattice.py:72-74.
 ## 2. Owns
-Owns (Y-relative): services/ka_muhurta_seva/parihara_eval.py; routers/parihara_evaluate.py; main.py (import/one guarded include); tests/l3/ka_muhurta_seva/test_parihara_eval.py; tests/l3/ka_muhurta_seva/test_parihara_evaluate.py; tests/l3/ka_muhurta_seva/test_parihara_db.py; tests/l3/ka_muhurta_seva/parihara_predicates.json. U:19 allocations; shared L0-M grammar fixtures. No generators/exports; KA-4b consumer.
+Owns (Y-relative): services/ka_muhurta_seva/parihara_eval.py; routers/parihara_evaluate.py; main.py (import/one guarded include); tests/l3/ka_muhurta_seva/test_parihara_eval.py; tests/l3/ka_muhurta_seva/test_parihara_evaluate.py; tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py; tests/l3/ka_muhurta_seva/parihara_predicates.json. U:19 allocations; shared L0-M grammar fixtures. No generators/exports; KA-4b consumer.
 ## 3. Excerpt
 P:538, pin above:
 ```excerpt
@@ -55,7 +55,7 @@ Tests first; each negative kills its scratch mutant:
 - EmptyResidual: applies/all false/false+unknown/empty/never_cancelled/conflicting applies matrix.
 - LostSource: all rule metadata/ids round-trip, never changes applicability.
 - StubbedDB: L0-M scoped round-trip; DB/schema error refuses; writes rejected.
-cwd Y: `python3 -B -m pytest tests/l3/ka_muhurta_seva -p no:cacheprovider --basetemp="$JOB_SCRATCH/pytest"`
+cwd Y: `python3 -B -m pytest tests/l3/ka_muhurta_seva tests/l3/kala_db/ka_muhurta_seva -p no:cacheprovider --basetemp="$JOB_SCRATCH/pytest"`
 cwd repo: `KY_ITEM=KA-4c bash /Users/Dev/kalayantra/fleet_live/precheck.sh --item`
 TESTS=three newline-delimited test paths from Owns (P:494-495). Exit 0/no skips/all mutants killed. Accepted L0-M loopback slot; guards Y/tests/_disposable_guard.py:20-57. Foreground Python/process/loopback DB; offline unit/TestClient; no external network. Pin committed red/base/digests; already-green needs review (P:544-551). CI/Kāla DB Tests/exact-head review (P:146-151,381); route/grammar/state/sky/DB detectors.
 ## 7. Evidence
