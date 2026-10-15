@@ -79,28 +79,16 @@ _GRAHA_SANCARA_SPEC = {
 }
 
 _TULANA_SPEC = {
-    "probe_type": "tulana_ranking_forensic",
-    "forensic_reference_date": "2026-01-01",
-    "forensic_window_a": {
-        "window_id": "test-window-a",
-        "mode": "A",
-        "peak_date": "2026-01-01",
-        "convergence_score": 0.8,
-        "confidence_label": "high",
-        "rarity_years": 15.0,
-    },
-    "forensic_window_b": {
-        "window_id": "test-window-b",
-        "mode": "A",
-        "peak_date": "2026-06-01",
-        "convergence_score": 0.5,
-        "confidence_label": "moderate",
-        "rarity_years": 5.0,
-    },
-    "forensic_expected_composite_a": 0.795,
-    "forensic_expected_composite_b": 0.4234,
-    "forensic_expected_winner_window_id": "test-window-a",
-    "forensic_expected_decisive_factor": "proximity_factor",
+    "probe_type": "tulana_ranking_forensic", "contract_version": "k7-4:pareto:v1",
+    "date_from": "2026-10-13", "date_to": "2027-01-11",
+    "windows": [
+        {"chart_id": "fixture", "window_id": "A", "field_snapshot_id": "fixture",
+         "window_start": "2026-10-20", "window_end": "2026-11-30", "confidence_tier": "structural_prior"},
+        {"chart_id": "fixture", "window_id": "B", "field_snapshot_id": "fixture",
+         "window_start": "2026-11-02", "window_end": "2026-11-30", "confidence_tier": "concurrent"}],
+    "expected_order": ["B", "A"], "expected_front": ["A", "B"],
+    "expected_relation": "incomparable", "expected_reason": "unavailable",
+    "expected_axes": {"nearest": "A_better", "strongest": "unavailable", "most_robust": "B_better"},
 }
 
 _DASHA_KALA_SPEC = {
@@ -456,42 +444,22 @@ def test_tulana_probe_fails_closed_on_missing_registry_contract_fields():
     assert _check(res, "probe_config_valid")["passed"] is False
 
 
-def test_tulana_probe_fails_on_wrong_expected_composite():
-    """CAN-FAIL proof: a wrong pinned composite score must not be swallowed."""
-    wrong = dict(_TULANA_SPEC, forensic_expected_composite_a=0.5)
-    res = sp.run_health_probe("ka_tulana", wrong)
+@pytest.mark.parametrize("field,value,check", [
+    ("expected_order", ["A", "B"], "forensic_front_and_order"),
+    ("expected_relation", "tie", "forensic_compare_verdict"),
+    ("expected_reason", "tradeoff", "forensic_compare_verdict"),
+    ("expected_front", ["B"], "forensic_front_and_order"),
+])
+def test_tulana_probe_false_expectation(field, value, check):
+    res = sp.run_health_probe("ka_tulana", dict(_TULANA_SPEC, **{field: value}))
     assert res["status"] != "GREEN"
-    assert _check(res, "forensic_composite_and_rank_order")["passed"] is False
-
-
-def test_tulana_probe_fails_on_wrong_expected_winner():
-    """CAN-FAIL proof: window-b is a valid window_id (passes config
-    validation) but is not the real winner — must fail at the verdict check,
-    not be silently accepted."""
-    wrong = dict(_TULANA_SPEC, forensic_expected_winner_window_id="test-window-b")
-    res = sp.run_health_probe("ka_tulana", wrong)
-    assert res["status"] != "GREEN"
-    assert _check(res, "probe_config_valid")["passed"] is True
-    assert _check(res, "forensic_compare_verdict")["passed"] is False
-
-
-def test_tulana_probe_fails_on_wrong_expected_decisive_factor():
-    """CAN-FAIL proof: compare()'s decisive_factor is independently checked
-    from rank_windows()'s composite scores — a wrong pin here must not be
-    swallowed even when the composite/rank-order check above passes."""
-    wrong = dict(_TULANA_SPEC, forensic_expected_decisive_factor="rarity_years")
-    res = sp.run_health_probe("ka_tulana", wrong)
-    assert res["status"] != "GREEN"
-    assert _check(res, "forensic_composite_and_rank_order")["passed"] is True
-    assert _check(res, "forensic_compare_verdict")["passed"] is False
+    assert _check(res, check)["passed"] is False
 
 
 def test_tulana_probe_rejects_a_malformed_window():
-    wrong = dict(_TULANA_SPEC)
-    wrong["forensic_window_a"] = {"window_id": "test-window-a"}  # missing fields
+    wrong = dict(_TULANA_SPEC, windows=[{"window_id": "A"}, _TULANA_SPEC["windows"][1]])
     res = sp.run_health_probe("ka_tulana", wrong)
-    assert res["status"] == "down"
-    assert _check(res, "probe_config_valid")["passed"] is False
+    assert res["status"] != "GREEN"
 
 
 # ── ka_dasha_kala probe (D-CND-34 ruling, #2071 — F-L3-15's fourth slice) ────
@@ -527,29 +495,19 @@ def test_dasha_kala_probe_rejects_duplicate_expected_systems():
     assert _check(res, "probe_config_valid")["passed"] is False
 
 
-def test_tulana_probe_detects_a_broken_composite_formula(monkeypatch):
-    """The 'un-floor' contract for this probe: if the I-11 weighted-sum
-    formula ever regressed to an unweighted average (or any other wrong
-    formula), the pinned composite scores would stop matching — this proves
-    the check actually re-derives the math rather than trusting whatever
-    rank_windows() returns."""
+def test_tulana_probe_detects_bad_relation_in_both_checks(monkeypatch):
     import services.ka_tulana.ranker as ranker_module
-
-    def broken_composite(w, reference_date):
-        # Unweighted average instead of the real I-11 weighted sum.
-        fb = ranker_module._composite(w, reference_date)
-        n = 4
-        avg = (fb.convergence_score + fb.rarity_norm + fb.confidence_score + fb.proximity_factor) / n
-        return ranker_module.FactorBreakdown(
-            convergence_score=fb.convergence_score, rarity_norm=fb.rarity_norm,
-            confidence_score=fb.confidence_score, proximity_factor=fb.proximity_factor,
-            composite=round(avg, 4),
-        )
-
-    monkeypatch.setattr(ranker_module, "_composite", broken_composite)
+    method = getattr(ranker_module.KaTulanaService, "compare_windows", None)
+    assert callable(method), "K7-4 Pareto comparator missing"
+    def broken(*args, **kw):
+        result = method(*args, **kw)
+        result["comparisons"][0]["relation"] = "tie"
+        return result
+    monkeypatch.setattr(ranker_module.KaTulanaService, "compare_windows", broken)
     res = sp.run_health_probe("ka_tulana", _TULANA_SPEC)
     assert res["status"] != "GREEN"
-    assert _check(res, "forensic_composite_and_rank_order")["passed"] is False
+    assert _check(res, "forensic_front_and_order")["passed"] is False
+    assert _check(res, "forensic_compare_verdict")["passed"] is False
 
 
 def test_dasha_kala_probe_fails_on_a_missing_system():
