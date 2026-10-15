@@ -26,6 +26,9 @@ BA-P5A Step 3. DAG: ka_avadhi → ka_taranga.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import json
 import logging
 from datetime import date, timedelta
@@ -88,15 +91,10 @@ class KaTarangaWriter(WriterBase):
 
         # 1. All MD dasha rows (system=vimshottari for primary dasha contribution)
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(
-                """
-                SELECT lord_graha, start_date AS ds, end_date AS de
-                FROM chart_dashas
-                WHERE chart_id = %s AND level_n = 1 AND system_id = 'vimshottari'
-                ORDER BY start_date
-                """,
+            execute_governed_dasha_query(
+                ctx.db_conn, chart_id, dasha_query('taranga_writer_md'),
                 (chart_id,),
-            )
+             ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             vimsh_md = cur.fetchall()
 
         if not vimsh_md:

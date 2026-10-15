@@ -353,3 +353,12 @@ def test_writer_uses_convergence_peak_when_present():
     assert row[7] == "2013-06-08"   # peak - 7 (YOGA)
     assert row[9] == "2013-06-15"   # peak
     assert "src=convergence" in row[12]
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """These domain fixtures supply projection rows; settlement guards have their own SQL tests."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_temporal.date_resolver'),
+                        "execute_governed_dasha_query", emulated_projection)
