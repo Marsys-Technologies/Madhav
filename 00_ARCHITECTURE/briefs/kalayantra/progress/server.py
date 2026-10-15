@@ -15,13 +15,13 @@ from urllib.request import urlopen
 
 UTC = timezone.utc
 ROOT = Path(__file__).resolve().parent
-STATUSES = {'done', 'not_applicable', 'running', 'review', 'ready', 'waiting', 'blocked', 'parked'}
+STATUSES = {'done', 'not_applicable', 'running', 'review', 'ready', 'waiting', 'blocked', 'parked', 'unknown'}
 GROUPS = {'done': 'done', 'not_applicable': 'done', 'running': 'in_progress',
           'review': 'in_progress', 'ready': 'ready', 'waiting': 'waiting',
-          'blocked': 'stuck', 'parked': 'stuck'}
+          'blocked': 'stuck', 'parked': 'stuck', 'unknown': 'waiting'}
 LABELS = {'done': 'Done', 'not_applicable': 'Not needed', 'running': 'In progress',
           'review': 'Being checked', 'ready': 'Ready to start', 'waiting': 'Waiting on earlier work',
-          'blocked': 'Stuck', 'parked': 'Set aside'}
+          'blocked': 'Stuck', 'parked': 'Set aside', 'unknown': 'Not yet measured'}
 # (I) INTERPRETATION: presentation-only summaries of the tracker titles; never used for counts.
 TITLES = dict(line.split('|', 1) for line in '''B-0|Check the campaign specifications
 B-4|Record the campaign opening and coordination
@@ -298,7 +298,7 @@ def compute_summary(state, first_done, now, first_complete=None, effort=None, sc
     metrics = {'total': len(items), 'done': counts['done'], 'not_applicable': counts['not_applicable'],
                'complete': completed, 'percent': round(completed * 100 / len(items), 1) if items else None,
                'in_progress': counts['running'] + counts['review'], 'ready': counts['ready'],
-               'waiting': counts['waiting'], 'stuck': counts['blocked'] + counts['parked'],
+               'waiting': counts['waiting'] + counts['unknown'], 'stuck': counts['blocked'] + counts['parked'],
                'completed_24h': None, 'completed_7d': None, 'pace_per_day': None, 'projected_finish': None}
     metrics.update(closures_24h=None, closures_7d=None,
                    agent_hours_24h=effort['agent_hours_24h'] if effort is not None else None,
