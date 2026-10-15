@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-10-12T17:07:09.816Z
+ * generated_at: 2026-10-12T20:35:24.582Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-12T17:07:09.816Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-10-12T20:35:24.582Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -2515,6 +2515,10 @@ export const MCP_SURFACE_PROFILES: {
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [
@@ -4801,6 +4805,10 @@ export const MCP_SURFACE_PROFILES: {
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [

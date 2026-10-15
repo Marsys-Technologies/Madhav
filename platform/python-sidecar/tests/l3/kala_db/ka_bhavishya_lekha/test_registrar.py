@@ -41,15 +41,16 @@ def database(kala_db_dsn):
     return kala_db_dsn
 
 
-@pytest.fixture
-def ctx(database):
+@pytest.fixture(params=['registrar_fixture_inputs', 'registrar_inputs'])
+def ctx(database, request):
     with psycopg.connect(database) as conn:
         conn.execute('INSERT INTO kala_layer_candidate '
                      '(chart_id,generation,build_id,state,model_digest,rule_registry_version,conventions) '
                      "VALUES (%s,'fixture:v1',%s,'complete','fixture:model:1','fixture:rules:1',%s)",
                      (CHART, BUILD, Jsonb({'fixture': True, 'registrar': PINS})))
         yield SimpleNamespace(db_conn=conn, build_id=str(BUILD),
-                              config={'chart_id': str(CHART)}, dry_run=False)
+                              config={'chart_id': str(CHART)}, dry_run=False,
+                              registrar_input_key=request.param)
         conn.rollback()
 
 
@@ -73,7 +74,7 @@ def request(ctx, **changes):
 
 
 def run(ctx, value):
-    ctx.config['registrar_fixture_inputs'] = (value,)
+    ctx.config[ctx.registrar_input_key] = (value,)
     return registrar.KaBhavishyaLekhaWriter().run(ctx)
 
 

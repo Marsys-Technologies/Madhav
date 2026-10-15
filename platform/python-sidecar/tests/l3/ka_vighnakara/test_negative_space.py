@@ -11,6 +11,17 @@ import pytest
 
 ROOT = Path(__file__).parents[3]
 
+# Independent regression floor, never the lint's source of table ownership.
+# ka_kshetra/writer.py:_OWNED_TABLES; ka_bhavishya_lekha.py's SQL targets.
+EXPECTED_FORECASTER_TABLES = {
+    'kala_field_provenance', 'kala_field_salience', 'kala_insights',
+    'kala_timeline_spec', 'kala_field_windows', 'kala_field_null', 'kala_field',
+    'kala_field_snapshots', 'kala_field_primitives', 'kala_field_boundaries',
+    'kala_field_clocks', 'kala_field_routes', 'kala_field_promise_edges',
+    'kala_field_promise_nodes', 'kala_field_kinematics', 'kala_bhavishya',
+    'issued_forecast',
+}
+
 
 def api():
     assert importlib.util.find_spec('services.ka_vighnakara.model') is not None, 'K3 typed model missing'
@@ -176,12 +187,131 @@ def test_contract_survivors_are_not_invented():
     assert artifact['live_bindings']['trigger_mechanisms']['survivors'] is None
 
 
+def _writer_lint_nodes(tree, legacy):
+    """Keep legacy exemptions only for bodies unreachable from the new path."""
+    definitions = {node.name: node for node in tree.body
+                   if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))}
+    classes = {name: node for name, node in definitions.items() if isinstance(node, ast.ClassDef)}
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = node
+
+    def method_targets(owner, name, seen=None):
+        seen = set() if seen is None else seen
+        if owner in seen or owner not in classes:
+            return
+        seen.add(owner)
+        for member in classes[owner].body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == name:
+                yield member
+        # (I) INTERPRETATION: inspect all matching ancestor implementations,
+        # including overrides; this lint conservatively over-approximates dispatch.
+        for base in classes[owner].bases:
+            if isinstance(base, ast.Name):
+                yield from method_targets(base.id, name, seen)
+
+    writer = classes['KaVighnakaraWriter']
+    run = next(node for node in writer.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
+    fallback = run.body[-1]
+    authorized_fallback = ast.dump(ast.parse('return super().run(ctx)').body[0])
+    pending = [(node, writer.name) for node in writer.body]
+    visited, reachable, methods = set(), set(), set()
+    while pending:
+        node, owner = pending.pop()
+        key = (id(node), owner)
+        if key in visited:
+            continue
+        visited.add(key)
+        if node is fallback and ast.dump(node) == authorized_fallback:
+            continue
+        if isinstance(node, ast.ClassDef):
+            pending.extend((child, node.name) for child in node.body)
+            continue
+        if isinstance(node, ast.Name) and node.id in definitions and node.id not in reachable:
+            reachable.add(node.id)
+            pending.append((definitions[node.id], None))
+        if isinstance(node, ast.Attribute):
+            receiver = node.value
+            if isinstance(receiver, ast.Name) and receiver.id in {'self', 'cls'} and owner:
+                owners = [owner]
+            elif isinstance(receiver, ast.Name) and receiver.id in classes:
+                owners = [receiver.id]
+            elif isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name) and receiver.func.id == 'super' and owner:
+                owners = [base.id for base in classes[owner].bases if isinstance(base, ast.Name)]
+            else:
+                # (I) INTERPRETATION: an untyped receiver may be any local helper
+                # class; do not silently omit inherited storage/helper methods.
+                owners = classes
+            for receiver_owner in owners:
+                for method in method_targets(receiver_owner, node.attr):
+                    methods.add(method)
+                    pending.append((method, receiver_owner))
+            # A named base.method reference reaches that method, not the whole
+            # compatibility class (whose unrelated methods remain exempt).
+            if isinstance(receiver, ast.Name) and receiver.id in classes:
+                continue
+        pending.extend((child, owner) for child in ast.iter_child_nodes(node))
+    return [node for node in tree.body
+            if not isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+            or node.name not in legacy or node.name in reachable] + list(methods)
+
+
+def _forecaster_output_tables():
+    """Read ownership as data, without importing/registering downstream writers."""
+    tree = ast.parse((ROOT/'services/ka_kshetra/writer.py').read_text())
+    inventories = {}
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.target.id in {'_OWNED_TABLES', '_HASHED_TABLES'}:
+                inventories[node.target.id] = ast.literal_eval(node.value)
+    tables = {table for table, _ in inventories['_OWNED_TABLES']}
+    assert tables and set(inventories['_HASHED_TABLES']) <= tables, 'field ownership inventory drift'
+
+    declarations = json.loads((ROOT.parent/'scripts/governance/asset_declarations.json').read_text())
+    family = re.compile(r'(?:^|_)(?:forecaster|bhavishya|insights?|timeline)(?:_|$)')
+    for asset_id, declaration in declarations['assets'].items():
+        if not asset_id.startswith('ka_') or not (asset_id == 'ka_kshetra' or family.search(asset_id)):
+            continue
+        # (I) INTERPRETATION: the registrar and any declared insight/timeline
+        # family are downstream too; a shared output table is forbidden whole.
+        if declaration.get('read_table'):
+            tables.add(declaration['read_table'])
+        writer = ROOT/f'pipeline/orchestrator/writers/{asset_id}.py'
+        if not writer.is_file():
+            assert declaration.get('read_table'), f'{asset_id}: no output ownership evidence'
+            continue
+        for node in ast.walk(ast.parse(writer.read_text())):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                # Writer SQL declares targets absent from the serving inventory.
+                tables.update(re.findall(r'\bINSERT\s+INTO\s+([a-z_][a-z_0-9]*)',
+                                         node.value, re.IGNORECASE))
+            if (isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute))
+                    and (node.func.id if isinstance(node.func, ast.Name) else node.func.attr)
+                    in {'insert_immutable_checked', 'replace_candidate_partition'}):
+                # Both helpers' actual contract has table at positional index 1.
+                assert len(node.args) > 1, f'{asset_id}: output target must be explicit'
+                table = ast.literal_eval(node.args[1])
+                assert isinstance(table, str), f'{asset_id}: output target must be a literal table'
+                tables.add(table)
+    assert all(re.fullmatch(r'[a-z_][a-z_0-9]*', table) for table in tables)
+    return tables
+
+
+def test_derived_inventory_covers_every_current_forecaster_output():
+    assert EXPECTED_FORECASTER_TABLES <= _forecaster_output_tables()
+
+
 def test_no_downstream_reads_or_multiplier_in_new_path():
     api()
     paths=list((ROOT/'services/ka_vighnakara').rglob('*.py'))+[
         ROOT/'services/kala_trigger/negative_space.py',
         ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py']
-    prohibited=re.compile(r'\b(?:kala_field\w*|ka_kshetra\w*|kala_convergence|compose_with_ka_sangam)\b')
+    table_names = '|'.join(re.escape(table) for table in sorted(_forecaster_output_tables()))
+    prohibited=re.compile(r'\b(?:'+table_names+r'|kala_field\w*|ka_kshetra\w*|kala_convergence|compose_with_ka_sangam)\b',
+                          re.IGNORECASE)
     weights={'severity_score','override_score','weight','multiplier'}
     for path in paths:
         tree=ast.parse(path.read_text())
@@ -195,25 +325,7 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
                 '_lon_to_sign', '_jd_from_date', '_detect_all', '_check_malefic_transit',
                 '_check_panchanga_obstruction', '_check_gandanta', '_check_papakartari',
                 '_check_combustion', '_detect_obstructions'}
-            definitions = {node.name:node for node in tree.body
-                           if isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))}
-            for node in tree.body:
-                if isinstance(node,(ast.Assign,ast.AnnAssign)):
-                    targets = node.targets if isinstance(node,ast.Assign) else [node.target]
-                    for target in targets:
-                        if isinstance(target,ast.Name):
-                            definitions[target.id] = node
-            pending = list(definitions['KaVighnakaraWriter'].body)
-            reachable = set()
-            while pending:
-                for node in ast.walk(pending.pop()):
-                    if (isinstance(node,ast.Name) and node.id in definitions
-                            and node.id not in reachable):
-                        reachable.add(node.id)
-                        pending.append(definitions[node.id])
-            tree.body = [node for node in tree.body
-                         if not isinstance(node,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef))
-                         or node.name not in legacy or node.name in reachable]
+            tree.body = _writer_lint_nodes(tree, legacy)
         for node in ast.walk(tree):
             if isinstance(node,ast.Constant) and isinstance(node.value,str):
                 assert not prohibited.search(node.value), (path,node.lineno)
@@ -227,6 +339,63 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
                 assert (path == ROOT/'services/ka_vighnakara/storage.py'
                         and node.arg in {'severity_score','override_score'}
                         and isinstance(node.value,ast.Constant) and node.value.value == 0), (path,node.lineno)
+
+
+@pytest.mark.parametrize('table', sorted(EXPECTED_FORECASTER_TABLES))
+def test_every_forecaster_output_read_is_rejected(monkeypatch, table):
+    """Execute the reviewer's real storage mutant before requiring rejection."""
+    from services.ka_vighnakara import storage
+    from tests.l3.ka_vighnakara.test_storage_unit import CandidateCursor
+
+    sql = f'SELECT * FROM {table}'
+    if table == 'kala_insights':
+        sql += ' WHERE lel_derived = FALSE'
+    target = ROOT/'services/ka_vighnakara/storage.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "    chart = str(ctx.config['chart_id'])"
+    assert source.count(marker) == 1
+    mutated = source.replace(marker, '    ctx.db_conn.execute('+repr(sql)+')\n'+marker)
+    namespace = dict(vars(storage))
+    namespace['replace_candidate_partition'] = lambda *args: 0
+    exec(compile(mutated, '<forecaster output read mutant>', 'exec'), namespace)
+    observed = []
+    ctx = SimpleNamespace(dry_run=False, config={'chart_id':str(finding().chart_id)},
+        build_id='fixture:build', db_conn=SimpleNamespace(
+            execute=observed.append, cursor=lambda **kwargs: CandidateCursor()))
+    assert namespace['write_fixture_candidate'](ctx, []) == 0
+    assert observed == [sql]
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('inventory', ['owned', 'declaration', 'immutable_target'])
+def test_new_forecaster_output_automatically_becomes_forbidden(monkeypatch, inventory):
+    """An output outside every old naming family must still trip the lint."""
+    table = 'new_prediction_output'
+    original = Path.read_text
+    if inventory == 'owned':
+        target = ROOT/'services/ka_kshetra/writer.py'
+        tree = ast.parse(original(target))
+        owned = next(node for node in tree.body
+                     if isinstance(node, ast.AnnAssign) and node.target.id == '_OWNED_TABLES')
+        owned.value.elts.append(ast.parse(repr((table, None)), mode='eval').body)
+        mutated = ast.unparse(ast.fix_missing_locations(tree))
+    elif inventory == 'declaration':
+        target = ROOT.parent/'scripts/governance/asset_declarations.json'
+        declarations = json.loads(original(target))
+        declarations['assets']['ka_forecaster_future'] = {'read_table': table}
+        mutated = json.dumps(declarations)
+    else:
+        target = ROOT/'pipeline/orchestrator/writers/ka_bhavishya_lekha.py'
+        mutated = original(target) + f'\ninsert_immutable_checked(None, {table!r}, {{}}, {{}})\n'
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    # Baseline is clean; rejection below must be for the actual new read.
+    test_no_downstream_reads_or_multiplier_in_new_path()
+    test_every_forecaster_output_read_is_rejected(monkeypatch, table)
 
 
 @pytest.mark.parametrize('exposure',['outside_risk_set','method_inapplicable'])
@@ -393,5 +562,154 @@ def test_reachable_transitive_or_legacy_helper_cannot_escape_lint(monkeypatch, c
             source = source.replace(marker, marker+'\n            '+call) + helper
         return source
     monkeypatch.setattr(Path, 'read_text', mutated)
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('dispatch', ['inherited', 'transitive', 'super_attribute'])
+def test_inherited_reachable_helper_cannot_escape_lint(monkeypatch, dispatch):
+    """K3-B5 reviewer oracle: execute the read, then require lint rejection."""
+    from pipeline.orchestrator.writers import WriterResult
+    from services.ka_vighnakara import storage
+
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    call = ('super()._fetch_combustion_orbs(ctx.db_conn)'
+            if dispatch == 'super_attribute' else 'self._fetch_combustion_orbs(ctx.db_conn)')
+    tree = ast.parse(source.replace(marker, marker+'\n            '+call))
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    helper = next(node for node in legacy.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_fetch_combustion_orbs')
+    read = ast.parse('return conn.execute("SELECT * FROM kala_field")').body
+    methods = [helper]
+    if dispatch == 'transitive':
+        helper.body = ast.parse('return self._review_inner(conn)').body
+        inner = ast.parse('def _review_inner(self, conn):\n    pass').body[0]
+        inner.body = read
+        legacy.body.append(inner)
+        methods.append(inner)
+    else:
+        helper.body = read
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+
+    # Run the real fixture branch with only candidate storage replaced and a
+    # recording connection; neither this helper nor its transitive call is mocked.
+    registered = next(node for node in tree.body
+                      if isinstance(node, ast.ClassDef) and node.name == 'KaVighnakaraWriter')
+    registered.decorator_list = []
+    test_legacy = ast.ClassDef(name='_LegacyKaVighnakaraWriter', bases=[], keywords=[],
+                              body=methods, decorator_list=[])
+    executable = ast.fix_missing_locations(ast.Module(body=[test_legacy, registered], type_ignores=[]))
+    namespace = {'WriterResult': WriterResult}
+    exec(compile(executable, '<inherited fixture mutant>', 'exec'), namespace)
+    calls = []
+    monkeypatch.setattr(storage, 'write_fixture_candidate', lambda ctx, inputs: 0)
+    ctx = SimpleNamespace(dry_run=False, db_conn=SimpleNamespace(execute=calls.append),
+                          config={'negative_space_fixture_inputs': []})
+    assert namespace['KaVighnakaraWriter']().run(ctx).rows_inserted == 0
+    assert calls == ['SELECT * FROM kala_field']
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('call', [
+    'self._fetch_combustion_orbs(ctx.db_conn)',
+    'super()._fetch_combustion_orbs(ctx.db_conn)',
+    '_LegacyKaVighnakaraWriter._fetch_combustion_orbs(self, ctx.db_conn)',
+])
+def test_clean_inherited_helper_keeps_unrelated_legacy_methods_exempt(monkeypatch, call):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    tree = ast.parse(source.replace(marker, marker+'\n            '+call))
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    helper = next(node for node in legacy.body
+                  if isinstance(node, ast.FunctionDef) and node.name == '_fetch_combustion_orbs')
+    helper.body = ast.parse('return {}').body
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('call', [
+    '_review_storage(ctx)',
+    '_review_storage_callback(ctx)',
+])
+def test_storage_helper_hierarchy_and_bound_method_are_inspected(monkeypatch, call):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    # The read lives two bases away in the second inheritance branch; the
+    # intermediate inherited method uses self to reach an exempt global helper.
+    source = source.replace(marker, marker+'\n            '+call) + '''
+
+class _ReviewEmpty:
+    pass
+
+class _ReviewStorageAncestor(_LegacyKaVighnakaraWriter):
+    def prepare(self, ctx):
+        return self._review_read(ctx)
+
+class _ReviewStorageMiddle(_ReviewStorageAncestor):
+    pass
+
+class _ReviewStorage(_ReviewEmpty, _ReviewStorageMiddle):
+    pass
+
+def _review_storage(ctx):
+    helper = _ReviewStorage()
+    return helper.prepare(ctx)
+
+def _review_storage_callback(ctx):
+    callback = _ReviewStorage().prepare
+    return callback(ctx)
+'''
+    tree = ast.parse(source)
+    legacy = next(node for node in tree.body
+                  if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaVighnakaraWriter')
+    legacy.body.append(ast.parse('def _review_read(self, ctx):\n    return _detect_obstructions(ctx)').body[0])
+    detector = next(node for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == '_detect_obstructions')
+    detector.body = ast.parse('return peak_date.db_conn.execute("SELECT * FROM kala_field")').body
+    mutated = ast.unparse(ast.fix_missing_locations(tree))
+    classes = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name.startswith('_Review')]
+    test_legacy = ast.ClassDef(name='_LegacyKaVighnakaraWriter', bases=[], keywords=[],
+                              body=[legacy.body[-1]], decorator_list=[])
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name in {'_review_storage', '_review_storage_callback'}]
+    namespace = {}
+    executable = ast.fix_missing_locations(ast.Module(body=[detector, test_legacy]+classes+functions,
+                                                       type_ignores=[]))
+    exec(compile(executable, '<storage helper mutant>', 'exec'), namespace)
+    calls = []
+    namespace[call.split('(')[0]](SimpleNamespace(db_conn=SimpleNamespace(execute=calls.append)))
+    assert calls == ['SELECT * FROM kala_field']
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+def test_only_final_legacy_fallback_is_exempt(monkeypatch):
+    target = ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "        if 'negative_space_fixture_inputs' in ctx.config:"
+    assert source.count(marker) == 1
+    mutated = source.replace(marker, marker+'\n            super().run(ctx)')
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
     with pytest.raises(AssertionError):
         test_no_downstream_reads_or_multiplier_in_new_path()
