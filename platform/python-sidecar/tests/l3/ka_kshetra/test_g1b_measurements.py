@@ -1,4 +1,6 @@
 """Scientific verdicts measure declared endpoints; test success is not K1 PASS."""
+import pytest
+
 from services.kala_core.measure import Verdict
 
 
@@ -32,16 +34,46 @@ def test_four_way_evidence_and_prospective_reliability_gate():
     assert measure_forecaster(evidence)['K6']['verdict']==Verdict.NOT_EVALUABLE
 
 
-def test_reliability_requires_real_prospective_exposure_protocol():
+@pytest.mark.parametrize('forecasts', [
+    # Each group misses by .9, although their signed errors cancel exactly.
+    [(.9, 0)] * 100 + [(.1, 1)] * 100,
+    # Calibrated groups also need the missing detector and scorekeeper binding.
+    [(.9, 1)] * 90 + [(.9, 0)] * 10 + [(.1, 1)] * 10 + [(.1, 0)] * 90,
+    # An unambiguously bad single group cannot earn a measured verdict either.
+    [(.9, 0)] * 200,
+], ids=['opposing-errors', 'calibrated-groups', 'single-bad-group'])
+def test_k2_requires_conditional_reliability_detector_and_samiksha_binding(forecasts):
     from services.kala_core.measure.forecaster_oracles import measure_forecaster
-    evidence={'K2':{'endpoint':'prospective frequency error minus declared tolerance',
-        'minimum_n':2,'prospective_issued':True,'observation_mask_verified':True,
-        'censoring_accounted':True,'tolerance':.1,'resolved_forecasts':[(.5,1),(.5,0)]}}
-    assert measure_forecaster(evidence)['K2']['verdict']==Verdict.PASS
-    evidence['K2']['resolved_forecasts']=[(.9,0),(.9,0)]
-    assert measure_forecaster(evidence)['K2']['verdict']==Verdict.FAIL
-    evidence['K2']['prospective_issued']=False
-    assert measure_forecaster(evidence)['K2']['verdict']==Verdict.NOT_EVALUABLE
+    evidence = {'K2': {
+        'endpoint': 'stated probabilities match prospective frequencies',
+        'minimum_n': 200, 'prospective_issued': True,
+        'observation_mask_verified': True, 'censoring_accounted': True,
+        'tolerance': .1, 'resolved_forecasts': forecasts,
+    }}
+    result = measure_forecaster(evidence)['K2']
+    assert result['verdict'] == Verdict.NOT_EVALUABLE
+    assert result['value'] is None
+    assert result['reason'] == 'conditional_reliability_and_samiksha_scoring_required'
+    assert result['endpoint'] == evidence['K2']['endpoint']
+    assert result['n'] == 200
+
+
+@pytest.mark.parametrize('missing_gate', [
+    'prospective_issued', 'observation_mask_verified', 'censoring_accounted',
+])
+def test_reliability_requires_real_prospective_exposure_protocol(missing_gate):
+    from services.kala_core.measure.forecaster_oracles import measure_forecaster
+    protocol = {
+        'endpoint': 'prospective probability-conditional reliability',
+        'minimum_n': 2, 'prospective_issued': True,
+        'observation_mask_verified': True, 'censoring_accounted': True,
+        'tolerance': .1, 'resolved_forecasts': [(.5, 1), (.5, 0)],
+    }
+    protocol[missing_gate] = False
+    result = measure_forecaster({'K2': protocol})['K2']
+    assert result['verdict'] == Verdict.NOT_EVALUABLE
+    assert result['value'] is None
+    assert result['reason'] == 'prospective_issued_exposure_non_events_and_censoring_required'
 
 
 def test_interval_score_penalizes_misses_and_width_and_invalid_inputs_are_null():

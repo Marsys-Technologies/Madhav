@@ -4,6 +4,11 @@
 comparisons report their sample size and no inferential significance. No test
 fixture is a scientific result; production starts with not_evaluable.
 K4/K5 are structural correctness oracles, deliberately outside this report.
+
+(I) INTERPRETATION: K2 remains not_evaluable until a predeclared
+probability-conditional reliability detector is bound to Samiksha's Brier
+eligibility predicate. Pooled signed bias cannot establish reliability, and
+prospective/exposure/censoring declarations alone do not supply that detector.
 """
 import math
 from statistics import fmean
@@ -42,7 +47,11 @@ def _measure(key, row):
         pairs = row.get('resolved_forecasts', [])
         if any(not 0 <= p <= 1 or type(y) is not int or y not in (0,1) for p,y in pairs):
             raise ValueError('probability and resolved event indicator required')
-        values = [p-y for p,y in pairs]
+        return _result(
+            Verdict.NOT_EVALUABLE,
+            'conditional_reliability_and_samiksha_scoring_required',
+            n=len(pairs), endpoint=endpoint,
+        )
     elif key == 'K3':
         alpha = row.get('alpha')
         values = [interval_score(lo,hi,y,alpha) - interval_score(blo,bhi,y,alpha)
@@ -62,7 +71,7 @@ def _measure(key, row):
         raise ValueError('non-finite measurement')
     if len(values) < minimum:
         return _result(Verdict.INSUFFICIENT_EVIDENCE, 'below_predeclared_minimum_n', len(values), endpoint=endpoint)
-    value = abs(fmean(values)) - tolerance if key == 'K2' else fmean(values)
+    value = fmean(values)
     return _result(Verdict.PASS if value < 0 else Verdict.FAIL, None, len(values), value, endpoint)
 
 
