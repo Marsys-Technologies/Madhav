@@ -22834,11 +22834,11 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
-            "sha256": "40efd0025c2e8fdc50322099226c1feae17f78e79837a27e570ad2f73d7b730e"
+            "sha256": "bcf30fbab670391962c848b00af9872eed6a441806c43bb0a4a8ab8ab28f270b"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
-            "sha256": "b034e41e92450004a6510936d31298d4a3ff7bfab8b278dd176215a3515f44bd"
+            "sha256": "01af2c97d6bd7f774b4e800f83aa26c2811379d26bef4de968cc904d39beed51"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/remedy_tools.ts",
@@ -22854,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b6a399c52ba61c0248babc60d7f19c134c12f9f81d3eec03c1ffd10e1e0a67e4"
+        "sha256": "7881e4de31fb8ba9caa16b927ff843c77b6edb84c7d09d364a48a941b84f69e5"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23764,7 +23764,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c647c39de54ede190c20f32e9520ce2657e38b5ad74583643187d049a374a57b"
+        "sha256": "847cb36e7f1b12f3cc7cef38181117e3edfd4a3d2fc7630b0bd62879aebf4c7e"
       }
     ]
   },
