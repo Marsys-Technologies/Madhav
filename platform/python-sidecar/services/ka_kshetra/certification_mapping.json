@@ -6,8 +6,8 @@
   "kind": "data",
   "carriage": {
     "nature": "derivation",
-    "served_surface": null,
-    "evidence": "G1 candidate tables are private; ordinary writer dispatch is inactive (writer.py:plan_substeps)"
+    "served_surface": "Private candidate tables only; no served surface; ordinary dispatch is inactive",
+    "evidence": "platform/python-sidecar/services/ka_kshetra/writer.py:279"
   },
   "ldgr_source": {
     "column": "kala_field_provenance_candidate.source_fact_id",

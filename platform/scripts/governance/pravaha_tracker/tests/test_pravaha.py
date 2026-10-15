@@ -6,12 +6,12 @@ import datetime as dt
 import json
 import os
 import socket
-import subprocess
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -252,15 +252,18 @@ class TestDetectors(unittest.TestCase):
         self.assertEqual(self.det.results["k"].status, "error")
 
     def test_branch_file_contains(self):
-        subprocess.run(["git", "init", "-q", "-b", "main", self.tmp], check=True)
-        with open(os.path.join(self.tmp, "r.md"), "w") as f:
-            f.write("| ADK-0029 | x |\n")
-        subprocess.run(["git", "-C", self.tmp, "add", "r.md"], check=True)
-        subprocess.run(["git", "-C", self.tmp, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "c"], check=True)
-        r = self.det.d_branch_file_contains({"ref": "main", "path": "r.md", "pattern": r"^\| ADK-0029 \|"})
-        self.assertEqual(r.status, "done")
-        act = D.git_activity(self.tmp)
-        self.assertEqual((act["branch"], act["subject"]), ("main", "c"))
+        # This is a parser/detector test; no repository mutation or git identity is needed.
+        replies = {
+            ("git", "show", "main:r.md"): (0, "| ADK-0029 | x |\n"),
+            ("git", "log", "-1", "--format=%ct|%h|%s"): (0, "1700000000|abc123|c\n"),
+            ("git", "rev-parse", "--abbrev-ref", "HEAD"): (0, "main\n"),
+            ("git", "status", "--porcelain", "--untracked-files=no"): (0, ""),
+        }
+        with patch.object(D, "_run", side_effect=lambda cmd, **kw: replies[tuple(cmd)]):
+            r = self.det.d_branch_file_contains({"ref": "main", "path": "r.md", "pattern": r"^\| ADK-0029 \|"})
+            self.assertEqual(r.status, "done")
+            act = D.git_activity(self.tmp)
+            self.assertEqual((act["branch"], act["subject"]), ("main", "c"))
 
 
 def free_port() -> int:

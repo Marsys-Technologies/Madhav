@@ -50,6 +50,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID, StoredAyanamshaId
+from services.gochara_kernel.dasha_read import DashaBuildRefused
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar import resonance_map as RM
 from services.gochara_intensity.enrichment import enrich_targets
@@ -214,6 +215,11 @@ def post_permission_curve(req: PermissionCurveRequest) -> dict[str, Any]:
             "notes": notes,
             "source": "live",
         }
+    except DashaBuildRefused as exc:
+        raise HTTPException(status_code=503, detail={
+            "state": "unavailable", "code": exc.code,
+            "reason": "governed daśā operands unavailable",
+        }) from exc
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001 -- loud, never a silent empty curve (B.10 / model_interface.ts's own NotImplementedModelError discipline)

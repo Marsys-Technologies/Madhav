@@ -10,7 +10,9 @@ def test_mapping_tracks_all_current_detectors_and_rejects_stale_copy(tmp_path):
     assert validate_mapping(root)==[]
     mapping=json.loads((root/MAPPING_PATH).read_text())
     assert mapping['production_certification'] is None
-    paths=[MAPPING_PATH,Path('platform/scripts/governance/asset_census.py')]
+    paths=[MAPPING_PATH,Path('platform/scripts/governance/asset_census.py'),
+           Path('platform/src/generated/nirmana-writer-digests.json'),
+           Path(mapping['carriage']['evidence'].rsplit(':',1)[0])]
     paths += [Path('platform/python-sidecar')/ref.split('::')[0] for ref in mapping['fidelity_tests']]
     for rel in paths:
         target=tmp_path/rel;target.parent.mkdir(parents=True,exist_ok=True)
