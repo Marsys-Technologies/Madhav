@@ -4,6 +4,7 @@ import importlib
 import json
 import ast
 from datetime import date
+from itertools import permutations
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -103,6 +104,61 @@ def test_ParetoWin_TradeoffFront():
     a["confidence_tier"] = "concurrent"; b["confidence_tier"] = "structural_prior"
     assert run(a,b)["front"] == ["A"]
     assert pair(a,b)["relation"] == "A_dominates"
+
+
+def cycle_windows():
+    """Binding review K7-B1: each of three different axes supplies one edge."""
+    rows = [window("A", FROM, dw=0.0, anchor=25),
+            window("B", "2026-10-15", dw=0.03, anchor=25),
+            window("C", "2026-10-14", dw=0.06, anchor=25)]
+    for row, end in zip(rows, ("2027-01-01", "2027-01-17", "2027-01-20")):
+        row["window_end"] = end
+    return rows
+
+
+@pytest.mark.parametrize("extra", ["none", "dominated", "dominator", "both"])
+def test_tolerance_cycle_keeps_alternatives_in_every_input_order(extra):
+    rows = cycle_windows()
+    expected_front = ["A", "B", "C"]
+    if extra in {"dominated", "both"}:
+        rows.append(window("D", "2026-11-01", tier="structural_prior", dw=-0.3, anchor=25))
+    if extra in {"dominator", "both"}:
+        superior = window("X", FROM, tier="calibrated", dw=0.8, anchor=25)
+        superior["window_end"] = "2027-01-10"
+        rows.append(superior)
+        expected_front.append("X")
+    baseline = None
+    for ordering in permutations(rows):
+        result = run(*ordering, frame={"domain": "career"})
+        assert result["front"] == expected_front, "K7-B1: tolerance cycle lost alternatives"
+        assert result["dominance_cycles"] == [["A", "B", "C"]]
+        assert result["front_rule"] == "undominated_or_cycle_member"
+        assert result["empty_reason"] is None
+        assert set(result["ordered"]) == set(result["evidence"])
+        assert result == (baseline or result), "input permutation must not change the verdict"
+        baseline = result
+    relations = {(p["A"], p["B"]): p["relation"] for p in baseline["comparisons"]}
+    assert relations[("A", "B")] == "A_dominates"
+    assert relations[("B", "C")] == "A_dominates"
+    assert relations[("A", "C")] == "B_dominates"
+    # Presentation preferences cannot change the graph or protected alternatives.
+    preferred = run(*rows, frame={"domain": "career"}, preference=["nearest"])
+    for field in ("front", "dominance_cycles", "comparisons", "evidence"):
+        assert preferred[field] == baseline[field]
+
+
+def test_acyclic_multi_candidate_front_and_empty_reason():
+    rows = [window("A", FROM, tier="calibrated", dw=0.8),
+            window("B", "2026-11-01", tier="concurrent", dw=0.4),
+            window("C", "2026-11-10", tier="structural_prior", dw=0.0)]
+    for ordering in permutations(rows):
+        result = run(*ordering)
+        assert result["front"] == ["A"]
+        assert result["dominance_cycles"] == []
+    for rows in ([], [dict(window(), window_end="2026-10-12", window_start="2026-10-01")]):
+        result = run(*rows)
+        assert result["front"] == []
+        assert result["empty_reason"] == "no_candidate_windows"
 
 
 def test_Swap():
@@ -306,7 +362,7 @@ def test_allocated_probe_migration_is_the_same_independent_oracle():
     assert run_health_probe("ka_tulana", spec)["status"] != "GREEN"
 
 
-def test_immutable_849_contract_still_validates_but_cannot_green_the_new_service():
+def test_immutable_849_contract_runs_a_scoped_nonweighted_compatibility_detector():
     root = Path(__file__).resolve().parents[4]
     source = (root / "platform/migrations/849_nirmana_l3_w3_tulana_health_probe.sql").read_text()
     historical = json.loads(source.split("$hp$")[1])
@@ -314,7 +370,11 @@ def test_immutable_849_contract_still_validates_but_cannot_green_the_new_service
     validator = getattr(service_probes, "_validated_tulana_probe_config", None)
     assert callable(validator), "immutable migration's historical shape validator must remain available"
     validator(historical)
-    assert service_probes.run_health_probe("ka_tulana", historical)["status"] != "GREEN"
+    result = service_probes.run_health_probe("ka_tulana", historical)
+    assert result["status"] == "GREEN"
+    assert result["stored_contract_version"] == "849:unversioned"
+    assert result["retired_expectations_measured"] is False
+    assert "compatibility" in result["scope"]
 
 
 def test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse():

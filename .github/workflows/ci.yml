@@ -338,7 +338,12 @@ jobs:
         env:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           KALA_REQUIRE_DB: '1'
+        # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
+        # dispatch and broken-detector negatives in both migration states.
         run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py -q -rs
+      - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
+        working-directory: platform/python-sidecar
+        run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
 
   db-integration-tests:
     needs: changes
