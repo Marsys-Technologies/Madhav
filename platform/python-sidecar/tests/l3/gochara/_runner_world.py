@@ -40,7 +40,9 @@ def _files(number: int) -> list[str]:
                   + glob.glob(str(REPO / f"platform/migrations/{number}_*.sql")))
 
 
-def apply_orchestrator_schema(conn) -> None:
+def apply_orchestrator_schema(conn, life_events: bool = False) -> None:
+    """`life_events=True` adds real outcome rows for circularity-invariance tests.
+    Every writer shape must work without this table; it is absent by default."""
     # the birth columns FIRST: migration 596 puts a trigger on charts that names them
     for column, ddl in (("chart_id", "uuid"), ("name", "text"), ("subject_name", "text"), ("preferred_name", "text"),
                         ("birth_date", "date"), ("birth_time", "time"), ("birth_lat", "numeric"), ("birth_lng", "numeric"),
@@ -66,6 +68,8 @@ def apply_orchestrator_schema(conn) -> None:
                  " ON CONFLICT (id) DO UPDATE SET chart_id = EXCLUDED.chart_id, name = EXCLUDED.name, birth_date = EXCLUDED.birth_date,"
                  " birth_time = EXCLUDED.birth_time, birth_lat = EXCLUDED.birth_lat, birth_lng = EXCLUDED.birth_lng,"
                  " birth_place = EXCLUDED.birth_place, timezone_id = EXCLUDED.timezone_id", (CHART, CHART))
+    if life_events:
+        apply_life_events(conn)     # outcomes exist only to prove the writer does not consume them
 
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
@@ -120,7 +124,8 @@ def run_real_entry_point(dsn: str, run_id: str, *, ephe_env: str | None, timeout
     """`python -m pipeline.orchestrator.main --run-id <id>` as a SUBPROCESS: the real entry point, the real runner, the real asset_runner.
     Nothing is patched; ctx.config is whatever the runner builds. `ephe_env` sets (or, when None, REMOVES) SE_EPHE_PATH and SWE_EPHE_PATH."""
     env = {k: v for k, v in os.environ.items() if k not in ("SE_EPHE_PATH", "SWE_EPHE_PATH", "NIRMANA_FORCE_EXECUTE")}
-    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1", "PYTHONPATH": str(SIDECAR),
+    env.update({"DATABASE_URL": dsn, "PUBSUB_DISABLED": "1", "ORCHESTRATOR_WORKER_LIMIT": "1",
+                "PYTHONPATH": str(SIDECAR),
                 "PYTHONUNBUFFERED": "1"})
     if ephe_env is not None:
         env["SE_EPHE_PATH"] = ephe_env
@@ -142,3 +147,68 @@ def substep_events(stdout: str) -> list[dict]:
             except ValueError:
                 pass
     return out
+
+
+#: the outcome rows used by the circularity tests (LEL id, date, confidence, domain), stored as the INTAKE stores them: a uuid5 `event_id`, the
+#: canonical `EVT.YYYY.MM.DD.NN` id in `provenance->>'lel_id'`, domain `<event_type>/<subcategory>`; the proxy-dated rows carry 457's default `exact`.
+PINNED_LEL_ROWS = (("EVT.1984.02.05.01", "1984-02-05", "exact", "other/birth"), ("EVT.1995.XX.XX.01", "1995-07-01", "exact", "other/other"),
+                   ("EVT.1998.02.16.01", "1998-02-16", "exact", "other/other"), ("EVT.2001.03.XX.01", "2001-03-01", "exact", "other/other"),
+                   ("EVT.2007.06.10.01", "2007-06-10", "exact", "other/other"))
+OTHER_CHART = "11111111-2222-4333-8444-555555555555"
+
+
+def lel_event_uuid(lel_id: str) -> str:
+    import uuid
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, "BRAHMA-MI-5-1:" + lel_id))
+
+
+def apply_life_events(conn, rows=PINNED_LEL_ROWS) -> None:
+    """`public.life_events` from the REAL DDL: the baseline's CREATE TABLE, migration 457's shape columns and checks, and migration 423's per-chart key (`chart_id uuid NOT NULL
+    REFERENCES charts(id)`, unique with event_id). `rows` (event_id, event_date, date_confidence, category) are inserted for the pinned chart, plus ONE row of another chart that the
+    writer must never read. Outcome mutations must leave the field unchanged."""
+    import re
+    baseline = (REPO / "platform" / "migrations" / "001_baseline.sql").read_text(encoding="utf-8")
+    ddl = re.search(r"CREATE TABLE IF NOT EXISTS public\.life_events \(.*?\n\);", baseline, re.S)
+    assert ddl, "the baseline CREATE TABLE for life_events was not found"
+    conn.execute(ddl.group(0))
+    for f in _files(457):
+        conn.execute(Path(f).read_text(encoding="utf-8"))
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS chart_id uuid REFERENCES public.charts(id)")        # migration 423 (empty table at that point: no backfill)
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS event_type text")                                    # SM/0001_brahma_baseline.sql (the intake's columns)
+    conn.execute("ALTER TABLE public.life_events ADD COLUMN IF NOT EXISTS domain text")
+    conn.execute("INSERT INTO public.charts (id, chart_id, name) VALUES (%s, %s, 'other') ON CONFLICT (id) DO NOTHING", (OTHER_CHART, OTHER_CHART))
+    conn.execute("ALTER TABLE public.life_events DROP CONSTRAINT IF EXISTS life_events_event_id_key")
+    insert_life_events(conn, rows)
+    insert_life_events(conn, (("EVT.1990.01.01.01", "1990-01-01", "exact", "other/other"),), chart=OTHER_CHART)                    # another chart's row: must never be read
+    conn.execute("ALTER TABLE public.life_events ALTER COLUMN chart_id SET NOT NULL")
+    conn.execute("ALTER TABLE public.life_events ADD CONSTRAINT life_events_chart_event_uq UNIQUE (chart_id, event_id)")
+
+
+def insert_life_events(conn, rows, chart: str = CHART) -> None:
+    """Insert rows for `chart`. A row is `(lel_id, event_date, confidence, domain)`, or a dict with those keys plus the optional `shape`, `interval_start`, `interval_end`,
+    `tightened` and `key` (the uuid5 seed when `lel_id` is None: a row with NO provenance lel_id carries `provenance = {}`)."""
+    for row in rows:
+        r = dict(zip(("lel_id", "event_date", "confidence", "domain"), row)) if not isinstance(row, dict) else dict(row)
+        lel_id = r["lel_id"]
+        provenance = {} if lel_id is None else {"lel_id": lel_id}
+        conn.execute("INSERT INTO public.life_events (chart_id, event_id, event_date, category, event_type, domain, description, chart_state, source_section, build_id, provenance,"
+                     " date_confidence, shape, interval_start, interval_end, date_tightened_at) VALUES (%s, %s, %s, 'other', 'other', %s, 'test row', '{}'::jsonb, 'test', 'test',"
+                     " %s::jsonb, %s, %s, %s, %s, %s)",
+                     (chart, lel_event_uuid(lel_id or r["key"]), r["event_date"], r["domain"], json.dumps(provenance), r["confidence"], r.get("shape", "point"),
+                      r.get("interval_start"), r.get("interval_end"), r.get("tightened")))
+
+
+#: the real log's eight earliest rows as the production read of 5 Oct 2026 reported them (steward R-LEL: /Users/Dev/pravaha/run/R_LEL_READBACK_20261005.txt): dates, domains, lel
+#: ids, shapes and confidence flags exactly; row 1 has NO lel_id and is dated on the birth date (an interval arc).
+R_LEL_FIRST_EIGHT = (
+    {"lel_id": None, "key": "row1", "event_date": "1984-02-05", "confidence": "exact", "domain": "psychological/speech_pattern_arc", "shape": "interval",
+     "interval_start": "1984-02-05", "interval_end": "2026-07-19", "tightened": "2026-01-01T00:00:00+00:00"},
+    {"lel_id": "EVT.1984.02.05.01", "event_date": "1984-02-05", "confidence": "exact", "domain": "other/birth"},
+    {"lel_id": "EVT.1993.XX.XX.01", "event_date": "1993-07-01", "confidence": "exact", "domain": "creative/award"},
+    {"lel_id": "EVT.1995.XX.XX.02", "event_date": "1995-07-01", "confidence": "exact", "domain": "psychological/speech_pattern_arc"},
+    {"lel_id": "EVT.1995.XX.XX.01", "event_date": "1995-07-01", "confidence": "year_only", "domain": "health/chronic_onset", "shape": "interval",
+     "interval_start": "1995-01-01", "interval_end": "2010-12-31"},
+    {"lel_id": "EVT.1998.02.16.01", "event_date": "1998-02-16", "confidence": "exact", "domain": "relationship/romantic_long_term_started"},
+    {"lel_id": "EVT.1998.XX.XX.02", "event_date": "1998-07-01", "confidence": "exact", "domain": "spiritual/transmission"},
+    {"lel_id": "EVT.2000.XX.XX.01", "event_date": "2000-06-01", "confidence": "exact", "domain": "education/advanced_course_partial"},
+)
