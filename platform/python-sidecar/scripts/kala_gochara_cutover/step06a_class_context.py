@@ -65,9 +65,6 @@ nothing is written to the database.
 """
 from __future__ import annotations
 
-from services.gochara_kernel.dasha_read import (
-    DashaBuildRefused)
-
 import json
 import logging
 import sys
@@ -91,6 +88,7 @@ from services.gochara_intensity import permission as perm  # noqa: E402
 from services.gochara_intensity._dbutil import savepoint_scope  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
 from services.gochara_kernel import dasha_read as _dasha_read  # noqa: E402
+from services.gochara_kernel.dasha_read import DashaBuildRefused  # noqa: E402
 
 CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
                   "over MD/AD/PD periods; union over t_exact instants kept as "

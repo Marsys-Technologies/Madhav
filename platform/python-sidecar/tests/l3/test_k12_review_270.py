@@ -119,7 +119,13 @@ def test_named_missing_root_defeat_actual_writer_keeps_target_reason_and_ids():
     assert state['effective_reason']['missing_fact_ids']==['f:missing']
     assert state['defeats'][0]['fact_ids']==['f:missing','f:moon']
 
-def test_relationship_readset_drift_refuses_before_replacement():
+def test_relationship_readset_drift_refuses_before_replacement(monkeypatch):
+    # This SQL transport models the already-admitted projection readset;
+    # settlement population checks are exercised with real SQL elsewhere.
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_gochara_resonance.relationship_storage'),
+                        'execute_governed_dasha_query', emulated_projection)
     from services.ka_gochara_resonance.relationship_storage import build_candidate_projection
     conn=MemorySQL(); conn.signals=[]
     build_candidate_projection(context(conn))

@@ -88,7 +88,13 @@ def test_contact_storage_overrides_a_supplied_verified_label():
     assert bound_rows(c, 'kala_gochara_contacts')[0].get('verification_pass_status') == (UNVERIFIED_DEFAULT if Capture.has_tier else None)
 
 
-def test_jivana_persists_single_for_chapters_without_source_verification():
+def test_jivana_persists_single_for_chapters_without_source_verification(monkeypatch):
+    # Input SELECTs are fixture-controlled in both this unit test and the
+    # deploy-safe SQL harness that invokes it; only output DML is qualified.
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('pipeline.orchestrator.writers.ka_jivana_parva'),
+                        'execute_governed_dasha_query', emulated_projection)
     from pipeline.orchestrator.writers.ka_jivana_parva import KaJivanaParvaWriter
     c = Capture([dict(lord_graha='Saturn', start_date=date(2020,1,1), end_date=date(2030,1,1),level_n=1)])
     KaJivanaParvaWriter().run(SimpleNamespace(db_conn=c, build_id='build', config={'chart_id':'chart', 'birth_params':{'datetime_iso':'2000-01-01T00:00:00Z'}}))

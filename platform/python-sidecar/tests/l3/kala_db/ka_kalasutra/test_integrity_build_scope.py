@@ -98,7 +98,13 @@ def test_writer_pins_are_local_to_the_writer_transaction(db, asset):
 
 
 @pytest.mark.parametrize('asset', ASSETS)
-def test_legacy_writer_binds_its_build_and_preserves_legacy_detector(db, asset):
+def test_legacy_writer_binds_its_build_and_preserves_legacy_detector(db, asset, monkeypatch):
+    # This oracle qualifies output integrity binding; its empty input tables
+    # are projections, not a settled daśā population.
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('pipeline.orchestrator.writers.ka_jivana_parva'),
+                        'execute_governed_dasha_query', emulated_projection)
     # Empty real upstream relations take each default writer's no-input path.
     db.execute('''CREATE TABLE kala_activation_predicates(chart_id uuid,signal_id uuid,
         ayanamsha_id text,signature_class text,dasha_eligibility_rule_jsonb jsonb,

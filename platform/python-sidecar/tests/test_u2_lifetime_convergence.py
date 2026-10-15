@@ -335,3 +335,12 @@ class TestLifetimeFallback:
         store['parvas'] = []
         _, _, tiers = _run(store)
         assert tiers.count('lifetime') > 0  # fallback span still produces windows
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Convergence fixtures supply projected timelines; settlement is tested separately."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('pipeline.orchestrator.writers.ka_sangam'),
+                        "execute_governed_dasha_query", emulated_projection)

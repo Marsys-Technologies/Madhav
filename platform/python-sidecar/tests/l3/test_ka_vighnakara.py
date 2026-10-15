@@ -387,3 +387,12 @@ def test_dasha_anchor_peaks_predicate_query_has_total_order_by_signal_id():
     # tie-break clause bolted onto some other ordering — assert it is the ONLY
     # ORDER BY clause on this query (a total order, not a partial one).
     assert sql.count("ORDER BY") == 1
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; J4P tests retain real settlement/refusal coverage."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_temporal.date_resolver'),
+                        "execute_governed_dasha_query", emulated_projection)
