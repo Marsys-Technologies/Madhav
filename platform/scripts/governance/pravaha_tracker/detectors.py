@@ -26,6 +26,7 @@ import json
 import os
 import re
 import socket
+import signal
 import subprocess
 import threading
 import time
@@ -58,11 +59,30 @@ class Config:
     home: str              # PRAVAHA_HOME
 
 
-def _run(cmd, cwd: str | None = None, timeout: int = 60, shell: bool = False) -> tuple[int, str]:
+def _run(cmd, cwd: str | None = None, timeout: float = 60, shell: bool = False) -> tuple[int, str]:
     env = dict(os.environ)
     env["PATH"] = env.get("PATH", "") + ":" + ENV_PATH
-    p = subprocess.run(cmd, cwd=cwd, timeout=timeout, shell=shell, capture_output=True, text=True, env=env)
-    return p.returncode, (p.stdout if p.returncode == 0 else (p.stderr or p.stdout))
+    env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
+    # A git/psql shell can leave helpers holding its output pipes. Killing only the
+    # immediate child neither stops those helpers nor bounds a subsequent pipe drain.
+    p = subprocess.Popen(cmd, cwd=cwd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         stdin=subprocess.DEVNULL, text=True, env=env, start_new_session=True)
+    try:
+        out, err = p.communicate(timeout=timeout)
+    except BaseException:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            p.communicate(timeout=1)
+        except subprocess.TimeoutExpired:
+            # Even a helper that deliberately escaped the group cannot hold us here.
+            p.stdout.close()
+            p.stderr.close()
+            p.wait(timeout=1)
+        raise
+    return p.returncode, (out if p.returncode == 0 else (err or out))
 
 
 class Detectors:

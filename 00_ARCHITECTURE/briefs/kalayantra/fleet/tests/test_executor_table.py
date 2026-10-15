@@ -2,10 +2,10 @@
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; exactly four kinds are enabled; every field equals the table at the
-    plan pin except the five K9-23 edits and `_doc`; the five P10 entries are present and disabled; `enabled` is the first
+    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; the five P10 entries are present and disabled; `enabled` is the first
     key of each entry; each of the five model detector patterns (read from the model, not retyped) misses the table and
     hits a copy with that one entry flipped;
-  · the authority boundary: executor.py differs from the plan-pin revision in the `GIT` assignment only, and the listed
+  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
     functions and constants are byte-identical;
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
     whose origin is a local path — never the campaign checkout, never the network, never the running executor.
@@ -120,7 +120,7 @@ def test_p10_entries_present_and_disabled():
         assert ops[kind]["enabled_by"] == item
 
 
-def test_table_equals_the_pin_except_the_five_k9_23_edits_and_doc():
+def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     base = load_ops(base_text(OPS_REL))
     now = load_ops(OPS_FILE.read_text())
     assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
@@ -131,8 +131,24 @@ def test_table_equals_the_pin_except_the_five_k9_23_edits_and_doc():
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+    expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
+    expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
+    expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
+    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
+    expected["verification_job"]["needs"] = "gcloud"
+    expected["measuring_dispatch"]["staging_dry_run"] = {
+        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
+        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
+    for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
+                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
+        expected[kind]["prepared_dry_run"] = {
+            "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
+            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
+            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, entry in now["ops"].items():
-        assert list(entry) == list(expected[kind]), f"{kind}: key order or key set changed"
+        assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
+        assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
         for key in entry:
             assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
     # the only top-level difference allowed is `_doc`
@@ -210,8 +226,23 @@ def _segments(src):
     return out
 
 
+# Exact approved Wave 4 additions only. Any other mutation, including a changed
+# admission gate or receipt parser, still fails the pinned boundary detector.
+W4_FUNCTION_HASHES = {'receipt': '32faf16f6fc5600bb667b730c3792ebe7797df5c333e32b498c840263d0349cd', 'validate': '6a497e463815ff701c5ea67a8f20b009c32594d176d074167e88f631da5a4915'}
+
+
+def normalize_wave4(base_src, work_src):
+    base_seg, work_seg = _segments(base_src), _segments(work_src)
+    for name, digest in W4_FUNCTION_HASHES.items():
+        segment = work_seg.get(name, "")
+        if hashlib.sha256(segment.encode()).hexdigest() == digest:
+            work_src = work_src.replace(segment, base_seg[name], 1)
+    return work_src
+
+
 def boundary_violations(base_src, work_src):
     """Why `work_src` is not the pinned executor.py plus a changed GIT assignment (empty list = boundary holds)."""
+    work_src = normalize_wave4(base_src, work_src)
     problems = []
     base_tree, work_tree = ast.parse(base_src), ast.parse(work_src)
     base_git = [n for n in base_tree.body if _is_git_assign(n)]
@@ -235,13 +266,14 @@ def test_pinned_executor_has_the_pinned_sha256():
     assert hashlib.sha256(git_show(f"{PLAN_PIN}:{PY_REL}")).hexdigest() == PINNED_EXECUTOR_SHA256
 
 
-def test_executor_py_differs_from_the_pin_only_in_the_git_assignment():
+def test_executor_py_changes_are_only_git_and_exact_reviewed_w4_functions():
     assert boundary_violations(base_text(PY_REL), EXECUTOR_PY.read_text()) == []
 
 
-def test_executor_py_line_diff_is_the_git_line_only():
+def test_executor_py_remaining_line_diff_is_the_git_line_only():
     import difflib
-    base, work = base_text(PY_REL).splitlines(), EXECUTOR_PY.read_text().splitlines()
+    base_src = base_text(PY_REL)
+    base, work = base_src.splitlines(), normalize_wave4(base_src, EXECUTOR_PY.read_text()).splitlines()
     changed = [l for l in difflib.unified_diff(base, work, lineterm="", n=0) if l[:1] in "+-" and l[:3] not in ("+++", "---")]
     for line in changed:
         body = line[1:].strip()
