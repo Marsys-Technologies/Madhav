@@ -38,6 +38,7 @@ def database(kala_db_dsn):
         conn.execute(ddl.split('-- A separately dispatched verifier')[0])
         conn.execute((ROOT / 'migrations/1351_issued_forecast_lifecycle.sql').read_text())
         conn.execute((ROOT / 'migrations/1352_issued_forecast_finite_intervals.sql').read_text())
+        conn.execute((ROOT / 'migrations/1380_issued_forecast_immutability_guard.sql').read_text())
     return kala_db_dsn
 
 
@@ -249,3 +250,56 @@ def test_non_boolean_delivery_version_is_required(ctx):
     value = request(ctx)
     run(ctx, replace(value, delivery=replace(value.delivery, version=True)))
     assert count(ctx) == 0
+
+
+@pytest.mark.parametrize('field,other', [
+    ('episode', 'career:2'), ('phase', 'onset'), ('affected_person', 'partner'),
+])
+def test_full_supplied_episode_identity_is_preserved_and_clusters_outcomes(ctx, field, other):
+    """Catch episode->event_class and phase->unspecified identity coarsening."""
+    first = request(ctx)
+    second = replace(first, **{field: other, 'issue_id': BUILD,
+                               'delivery': replace(first.delivery, issue_id=BUILD)})
+    for value in (first, replace(first, version=2, delivery=replace(first.delivery, version=2)), second):
+        run(ctx, value)
+    stored = ctx.db_conn.execute(
+        'SELECT chart_id,event_class,phase,affected_person,episode FROM issued_forecast '
+        'ORDER BY issue_id,version').fetchall()
+    base = (CHART, 'career_change', 'fruition', 'native', 'career:1')
+    distinct = {
+        'episode': (CHART, 'career_change', 'fruition', 'native', 'career:2'),
+        'phase': (CHART, 'career_change', 'onset', 'native', 'career:1'),
+        'affected_person': (CHART, 'career_change', 'fruition', 'partner', 'career:1'),
+    }[field]
+    assert stored == [distinct, base, base]
+    ctx.db_conn.execute('INSERT INTO issued_forecast_outcome '
+                        '(outcome_id,issue_id,version,observed_at,recorded_at,observation) '
+                        "SELECT gen_random_uuid(),issue_id,version,%s,%s,'{\"occurred\":true}' FROM issued_forecast",
+                        (AT, AT))
+    assert ctx.db_conn.execute(
+        'SELECT event_class,phase,affected_person,episode,count(*) FROM issued_forecast '
+        'JOIN issued_forecast_outcome USING(issue_id,version) '
+        'GROUP BY event_class,phase,affected_person,episode ORDER BY count(*)').fetchall() == [
+            (*distinct[1:], 1), (*base[1:], 2)]
+
+
+@pytest.mark.parametrize('invalid', ['missing', 'wrong_class', 'unknown_domain', 'blank_locator', 'blank_predicate'])
+def test_invalid_ontology_is_refused_even_when_manifest_pins_match(ctx, invalid):
+    """Isolate ontology validation from the later equality-to-manifest check."""
+    value = request(ctx)
+    ontology = {
+        'missing': None,
+        'wrong_class': replace(value.ontology, event_class='marriage'),
+        'unknown_domain': replace(value.ontology, domain='invented_domain'),
+        'blank_locator': replace(value.ontology, locator=' '),
+        'blank_predicate': replace(value.ontology, predicate=' '),
+    }[invalid]
+    if ontology is not None:
+        class_pins = {**PINS['classes']['career_change'], 'ontology_locator': ontology.locator,
+                      'domain': ontology.domain, 'observation_predicate': ontology.predicate}
+        ctx.db_conn.execute('UPDATE kala_layer_candidate SET conventions=%s',
+                            (Jsonb({'fixture': True, 'registrar': {
+                                **PINS, 'classes': {'career_change': class_pins}}}),))
+    result = run(ctx, replace(value, ontology=ontology))
+    assert count(ctx) == 0
+    assert 'information_unavailable:ontology_observation_predicate_missing' in result.notes
