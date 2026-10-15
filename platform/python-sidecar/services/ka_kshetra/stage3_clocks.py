@@ -155,6 +155,9 @@ read-only, and only writes `kala_field_clocks` / `kala_field_boundaries`
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -403,10 +406,10 @@ def fetch_degree_in_sign_by_graha(
 
 
 def _chart_dashas_row_count(chart_id: str, system_id: str, conn: Any) -> int:
-    row = conn.execute(
-        "SELECT COUNT(*) AS n FROM chart_dashas WHERE chart_id = %s AND system_id = %s",
+    row = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_row_count'),
         [chart_id, system_id],
-    ).fetchone()
+     ayanamsha_id="lahiri_chitrapaksha").fetchone()
     if row is None:
         return 0
     n = row["n"] if isinstance(row, dict) else row[0]
@@ -416,28 +419,18 @@ def _chart_dashas_row_count(chart_id: str, system_id: str, conn: Any) -> int:
 def _chart_dashas_covers_instant(
     chart_id: str, system_id: str, level_n: int, at_dt: datetime, conn: Any,
 ) -> bool:
-    row = conn.execute(
-        """
-        SELECT 1 FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n = %s
-          AND start_iso <= %s AND end_iso > %s
-        LIMIT 1
-        """,
+    row = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_covers_instant'),
         [chart_id, system_id, level_n, at_dt, at_dt],
-    ).fetchone()
+     ayanamsha_id="lahiri_chitrapaksha").fetchone()
     return row is not None
 
 
 def _chart_dashas_level1_rows(chart_id: str, system_id: str, conn: Any) -> list[dict]:
-    rows = conn.execute(
-        """
-        SELECT dasha_row_id, lord_graha, lord_sign, start_iso, end_iso, duration_days
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n = 1
-        ORDER BY start_iso ASC
-        """,
+    rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_level1_rows'),
         [chart_id, system_id],
-    ).fetchall()
+     ayanamsha_id="lahiri_chitrapaksha").fetchall()
     return _rows_as_dicts(
         rows, ["dasha_row_id", "lord_graha", "lord_sign", "start_iso", "end_iso", "duration_days"]
     )
@@ -509,31 +502,13 @@ def kp_window_redundancy(
         birth_dt = birth_dt.replace(tzinfo=timezone.utc)
     horizon_end = birth_dt + timedelta(days=FIELD_HORIZON_DAYS)
 
-    rows = conn.execute(
-        """
-        SELECT kp.level_n AS level_n,
-               (EXISTS (
-                   SELECT 1 FROM chart_dashas v
-                    WHERE v.chart_id = kp.chart_id
-                      AND v.ayanamsha_id = kp.ayanamsha_id
-                      AND v.system_id = %s
-                      AND v.level_n = kp.level_n
-                      AND v.lord_graha IS NOT DISTINCT FROM kp.lord_graha
-                      AND abs(extract(epoch FROM (v.start_iso - kp.start_iso))) <= %s
-                      AND abs(extract(epoch FROM (v.end_iso   - kp.end_iso)))   <= %s
-               )) AS has_twin
-          FROM chart_dashas kp
-         WHERE kp.chart_id = %s
-           AND kp.ayanamsha_id = %s
-           AND kp.system_id = %s
-           AND kp.start_iso >= %s
-           AND kp.end_iso   <= %s
-        """,
+    rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_kp_twins'),
         [
             KP_PARENT_SYSTEM_ID, tolerance_seconds, tolerance_seconds,
             chart_id, ayanamsha_id, KP_SYSTEM_ID, birth_dt, horizon_end,
         ],
-    ).fetchall()
+     ayanamsha_id=ayanamsha_id).fetchall()
     dict_rows = _rows_as_dicts(rows, ["level_n", "has_twin"])
 
     total = len(dict_rows)
@@ -1021,16 +996,10 @@ def compute_boundaries_for_system(
         sigma_t_birth_days=sigma_t_birth_days, sigma_t_source=sigma_t_source,
     )
 
-    all_rows = conn.execute(
-        """
-        SELECT dasha_row_id, level_n, lord_graha, lord_sign, parent_row_id,
-               start_iso, duration_days
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n BETWEEN 1 AND 4
-        ORDER BY level_n ASC, start_iso ASC
-        """,
+    all_rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_boundaries'),
         [chart_id, system_id],
-    ).fetchall()
+     ayanamsha_id=ayanamsha_id).fetchall()
     dict_rows = _rows_as_dicts(
         all_rows,
         ["dasha_row_id", "level_n", "lord_graha", "lord_sign", "parent_row_id", "start_iso", "duration_days"],
@@ -1176,15 +1145,10 @@ def lord_stack_at(chart_id: str, system_id: str, t_days: float, conn: Any) -> di
 
     out: dict[str, str] = {}
     for level, level_n in ((lv, n) for n, lv in LEVEL_TEXT_BY_N.items() if lv in supported_levels):
-        row = conn.execute(
-            """
-            SELECT lord_graha, lord_sign FROM chart_dashas
-            WHERE chart_id = %s AND system_id = %s AND level_n = %s
-              AND start_iso <= %s AND end_iso > %s
-            ORDER BY start_iso DESC LIMIT 1
-            """,
+        row = execute_governed_dasha_query(
+            conn, chart_id, dasha_query('kshetra_lord_at'),
             [chart_id, system_id, level_n, at_dt, at_dt],
-        ).fetchone()
+         ayanamsha_id="lahiri_chitrapaksha").fetchone()
         if row is None:
             continue
         row_d = row if isinstance(row, dict) else {"lord_graha": row[0], "lord_sign": row[1]}

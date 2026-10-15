@@ -75,6 +75,9 @@ and `ph_nimitta` before it.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -199,22 +202,10 @@ def _fetch_vimshottari_spine(
     already used by pipeline/orchestrator/writers/bo_upaya.py's dasha-timing
     lookup and services/ka_dasha_kala/tree_walk.py's level-1 fetch (same
     table, same query shape — not a new query pattern)."""
-    sql = """
-        SELECT md.dasha_row_id, md.start_date, md.end_date,
-               ad.dasha_row_id, ad.start_date, ad.end_date
-        FROM chart_dashas md
-        JOIN chart_dashas ad ON ad.parent_row_id = md.dasha_row_id
-        WHERE md.chart_id = %s AND md.ayanamsha_id = %s
-          AND md.system_id = 'vimshottari' AND md.level_n = 1
-          AND md.lord_graha = %s
-          AND ad.level_n = 2 AND ad.lord_graha = %s
-          AND md.start_date <= %s AND md.end_date > %s
-          AND ad.start_date <= %s AND ad.end_date > %s
-        LIMIT 1
-    """
-    row = conn.execute(
-        sql, [chart_id, ayanamsha_id, md_lord, ad_lord, as_of, as_of, as_of, as_of],
-    ).fetchone()
+    sql = dasha_query('permission_spine')
+    row = execute_governed_dasha_query(
+        conn, chart_id, sql, [chart_id, ayanamsha_id, md_lord, ad_lord, as_of, as_of, as_of, as_of],
+     ayanamsha_id=ayanamsha_id).fetchone()
 
     if row is None:
         logger.info(

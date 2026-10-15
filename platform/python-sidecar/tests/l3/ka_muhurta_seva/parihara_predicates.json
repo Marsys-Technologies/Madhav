@@ -31,7 +31,8 @@
     "conjunction_reading": "tika",
     "tika_extension": false,
     "priority_rank": null,
-    "net_standing": "cancellable_by_condition"
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
   },
   {
     "id": 202,
@@ -45,7 +46,8 @@
     "conjunction_reading": "tika",
     "tika_extension": false,
     "priority_rank": null,
-    "net_standing": "cancellable_by_condition"
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
   },
   {
     "id": 203,
@@ -84,7 +86,8 @@
     "conjunction_reading": "tika",
     "tika_extension": false,
     "priority_rank": null,
-    "net_standing": "cancellable_by_condition"
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
   },
   {
     "id": 204,
@@ -105,7 +108,8 @@
     "conjunction_reading": "mula",
     "tika_extension": false,
     "priority_rank": null,
-    "net_standing": "cancellable_by_condition"
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
   },
   {
     "id": 205,
@@ -119,6 +123,7 @@
     "conjunction_reading": "mula",
     "tika_extension": false,
     "priority_rank": null,
-    "net_standing": "never_cancelled"
+    "net_standing": "never_cancelled",
+    "source_verse": 69
   }
 ]
