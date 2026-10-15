@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+w4-reconcile-20261015",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -22215,35 +22215,40 @@
       "depends_on": [
         "B-7",
         "K0-SV",
-        "KV3-SCHEMA-1",
+        "D-KCERT-EXISTING-STATUS-20261015",
         "J-4d-pr3145"
       ],
-      "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+      "title": "bg_gochara_citation_resolution Dens.served: independently assessed MET from the existing stored status column; bounded structural artifact under SR-A2-11",
       "detector": {
-        "type": "branch_merged",
-        "ref": "origin/kalayantra/k-cert-tier"
+        "type": "file_contains",
+        "path": "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md",
+        "pattern": "^\\*\\*K-CERT: MET — bounded structural Dens\\.served\\.\\*\\*",
+        "measures": "The independent assessment’s explicit bounded structural MET verdict; guarded completion additionally requires acceptance at the artifact SHA-256, never file presence alone."
       },
       "brief": {
         "spec": [
-          "Suvarṇa FINAL/strict FIX_LIST: bg_gochara_citation_resolution Dens.served PARTIAL",
-          "CLAUDE.md §N.6 Serving Density Principle",
-          "owner approval of the compressed certification plan (SS N-431), relayed 2026-10-10"
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16 (SR-A2-11, 2026-10-15T10:16:20.753617+00:00)",
+          "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md:9–13,15–34,38–48",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:544–551 (already-satisfied assessment uses ARTIFACT)",
+          "CLAUDE.md §N.6–§N.8 (density, narration fidelity and earned signals)"
         ],
-        "owns": [
-          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
-          "its test file",
-          "platform/src/generated/capability_estate_census.json (canonical regeneration only)"
-        ],
+        "owns": [],
         "tests": [
-          "a test that fails on base (no tier column in the served select) and passes after",
-          "Dens.served for bg_gochara_citation_resolution reads PASS on the census of the branch"
+          "the file_contains detector matches the assessment’s explicit K-CERT MET verdict and refuses a missing, NOT MET or unrelated verdict",
+          "independent artifact acceptance binds the exact assessment SHA-256 and assessment job evidence: stored status selected/projected/disclosed, real density scanner PASS, selection-removal negative controls fail",
+          "recorded decision retires KV3-SCHEMA-1 only as this structural prerequisite; K-CERT completion does not claim a new migration, computed-value/prose verification or production certification"
         ],
-        "compat": "additive response field only; no migration; no other file",
-        "notes": "Branch work during the Kāla merge hold. The PR is labelled DO NOT MERGE; Suvarṇa's Engine reviews it and SS arms it in the Suvarṇa window. Completion = branch merged by Suvarṇa."
+        "compat": "Already-satisfied structural assessment only; no runtime implementation, migration or deployment action.",
+        "notes": [
+          "Artifact: /Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md; executing assessment evidence: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess. Follow the J-0m artifact declaration and independent digest-bound acceptance route. The detector is evidence, not an automatic terminal transition.",
+          "SR-A2-11 explicitly supersedes Q2 only as K-CERT’s structural prerequisite. Existing status represents citation resolution; it is not a synthesized verification tier. K-CERT-2’s #3435 linkage and separate obligations remain unchanged.",
+          "(I) INTERPRETATION: retain K-CERT’s existing K owner/producer and all prerequisites other than KV3-SCHEMA-1; replace the code reviewer rule with the existing artifact-digest rule required by artifact completion. This declaration writes no tracker event and assumes no live completion."
+        ]
       },
-      "completion_kind": "code",
+      "completion_kind": "artifact",
       "producer": "K",
-      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a"
       }
@@ -22393,7 +22398,8 @@
       "owner": "K",
       "depends_on": [
         "B-7",
-        "K0-SV"
+        "K0-SV",
+        "D-KCERT-EXISTING-STATUS-20261015"
       ],
       "mandatory": true,
       "detector": {
@@ -22405,7 +22411,9 @@
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 3, §8 (schema-prerequisite packets: admitted existing schema + intended additive contract)",
           "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150",
           "CLAUDE.md §N.6 Serving Density Principle; §N.4 surgical migrations, verified",
-          "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)"
+          "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)",
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16 (SR-A2-11, 2026-10-15T10:16:20.753617+00:00)",
+          "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md:9–13,42–48"
         ],
         "owns": [
           "platform/migrations/<allocated>_gochara_citation_resolution_tier.sql (additive; the number is allocated at job start, never written in the packet)",
@@ -22418,13 +22426,19 @@
         ],
         "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
         "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
-        "notes": "BLOCKED CONTRACT INPUT. The column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (bg_* tables are outside the Kāla partition, CAMPAIGN_COORDINATION §3a); none is defined here (CLAUDE.md B.10, §N.7 rule 6). The conductor requests the contract through the coordination §6 log, as KYD-150 directs. Until it is recorded this item is blocked and K-CERT waits. If the custodian adds the column in its own estate, this item is closed by a recorded decision naming that change, never silently."
+        "notes": "RETIRED by SR-A2-11 through D-KCERT-EXISTING-STATUS-20261015. Historical migration packet scope/tests are preserved for audit, not dispatch authority or a claim of a delivered column. A refused decision makes this item not_applicable through requires_outcome, matching the existing B-K-INBOX retirement mechanism. The prior blocked-contract requirement is superseded only for K-CERT structural Dens.served; any independent verification-tier obligation needs a new explicit decision and custodian contract."
       },
       "completion_kind": "code",
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-KCERT-EXISTING-STATUS-20261015",
+        "reason": "SR-A2-11 retires the technically unnecessary K-CERT structural prerequisite; no migration was delivered.",
+        "re_entry": "Only a new explicit custodian/owner decision establishing a separate verification-authority requirement and its admitted schema/value/backfill contract may re-enter this work; structural status selection alone does not reopen it."
+      },
+      "requires_outcome": {
+        "D-KCERT-EXISTING-STATUS-20261015": "approved"
       }
     },
     {
@@ -26771,6 +26785,163 @@
           }
         }
       }
+    },
+    {
+      "id": "KA4B-NB-01",
+      "track": "K",
+      "lane": "K · KA adapters and services",
+      "title": "v.88 disagreement depends on display-citation syntax",
+      "owner": "K",
+      "depends_on": [
+        "KA-4b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ka4b-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: carry every non-severe finding as a child; independent review and per-finding fail-on-revert proof)",
+          "/Users/Dev/kalayantra/run/reviews/KA-4b_REVIEW.md:15–21 (KA4B-NB-01; parihara_eval.py:243, regex :38)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py",
+          "platform/python-sidecar/tests/l3/ka_muhurta_seva/ (review-named evaluator regressions)"
+        ],
+        "tests": [
+          "equivalent explicit verse-88 locators with identical chunk/context identity preserve cancellation_unassessed/readings_disagree for the conflicting applies/does_not_apply pair",
+          "retain the cross-verse control: the shared commentary chunk also contains vv.89–91; chunk identity alone cannot classify every row as verse 88",
+          "per-finding fail-on-revert proof: the child acceptance check fails on a job-local copy with its fix reverted and passes with the fix (Amendment A2 §2.4)"
+        ],
+        "compat": "Bind explicit verse identity or validate a canonical locator format before evaluation; preserve the U11 conflict policy, per-rule provenance and cross-verse isolation.",
+        "notes": [
+          "D-17 carries this finding forward without reopening the accepted packet or making its parent depend on this child. Registration does not claim the finding fixed.",
+          "(I) INTERPRETATION: mirror J-4p-B4 without adding steps or a stored status; depends_on derives waiting/ready, and the existing code reviewer rule remains unchanged.",
+          "The accepted evaluator preparation is distinct from full KA-4b consumer completion, L0-M source admission and production readback (KA-4b_REVIEW.md:11,50). This child does not waive those gates."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "KA4B-NB-02",
+      "track": "K",
+      "lane": "K · KA adapters and services",
+      "title": "acharya dispute: unconditional Mars-in-eighth cancellation",
+      "owner": "K",
+      "depends_on": [
+        "KA-4b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ka4b-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: carry every non-severe finding as a child; independent review and per-finding fail-on-revert proof)",
+          "/Users/Dev/kalayantra/run/reviews/KA-4b_REVIEW.md:23–29 (KA4B-NB-02; fixture 201 at parihara_predicates.json:24)",
+          "platform/scripts/corpus/data/muhurta_chintamani_translations.json:2238,2250 (distinct reconstruction/commentary Mars readings)",
+          "00_ARCHITECTURE/briefs/l3_families/KALA_ASSET_ALGORITHM_ELEVATIONS_v1_1.md:374 (governed literal reading)"
+        ],
+        "owns": [
+          "platform/python-sidecar/tests/l3/ka_muhurta_seva/parihara_predicates.json (qualification of fixture 201 only)",
+          "00_ARCHITECTURE/briefs/l3_families/KALA_ASSET_ALGORITHM_ELEVATIONS_v1_1.md (source/doctrine qualification only)"
+        ],
+        "tests": [
+          "record the two source readings with exact locators; a non-debilitated, non-combust Mars in the eighth exposes the difference instead of silently selecting one reading",
+          "source admission reconciles or separately labels the readings; retain the governed literal preparation until qualified source admission",
+          "per-finding fail-on-revert proof: the child acceptance check fails on a job-local copy with its fix reverted and passes with the fix (Amendment A2 §2.4)"
+        ],
+        "compat": "Source/doctrine qualification only: do not silently rewrite the evaluator, invent a reading from memory, or edit the foreign L0-M estate. Real-row admission remains its custodian’s obligation.",
+        "notes": [
+          "D-17 carries this finding forward without reopening the accepted packet or making its parent depend on this child. Registration does not claim the finding fixed.",
+          "(I) INTERPRETATION: mirror J-4p-B4 without adding steps or a stored status; depends_on derives waiting/ready, and the existing code reviewer rule remains unchanged.",
+          "(I) INTERPRETATION: scope this child to qualification of the existing governed algorithm text and review-named fixture; any L0-M real-row changes require their own custodian admission. KA-4b_REVIEW.md:29 retains the literal reading during preparation."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "P06-N1",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "1308 migration historical comments describe the superseded 1307 ordering and an occurrence-kind column",
+      "owner": "K",
+      "depends_on": [
+        "J-4c"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/p06-n1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: carry every non-severe finding as a child; independent review and per-finding fail-on-revert proof)",
+          "/Users/Dev/kalayantra/run/reviews/W4_P06_FINAL_REVIEW_adc6b81ea.md:39–43 (N1; historical comments in platform/migrations/1308_gochara_near_miss_storage.sql:4,54,57)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261014T174428Z-wave4-packets/WAVE4_PACKET_PLAN.md:278–280 (P06 aggregate target: J-4c)",
+          "CLAUDE.md:114 (§N.4: never edit a migration file after it has been applied)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/ (documentation note only; cockpit binds the exact note destination before claim)"
+        ],
+        "tests": [
+          "a documentation note identifies N1 and reconciles the historical 1307 ordering and occurrence-kind comments against the accepted answer-18 contract",
+          "the applied 1308 migration remains byte-identical; no SQL, schema or executable behavior changes",
+          "per-finding fail-on-revert proof: the child acceptance check fails on a job-local copy with its fix reverted and passes with the fix (Amendment A2 §2.4)"
+        ],
+        "compat": "Comment-only reconciliation through a documentation note. Never edit an applied migration, including 1308; the accepted executable behavior is unchanged.",
+        "notes": [
+          "D-17 carries this finding forward without reopening the accepted packet or making its parent depend on this child. Registration does not claim the finding fixed.",
+          "(I) INTERPRETATION: mirror J-4p-B4 without adding steps or a stored status; depends_on derives waiting/ready, and the existing code reviewer rule remains unchanged.",
+          "(I) INTERPRETATION: J-W4-P06 is absent from this model; use the existing P06 aggregate J-4c named by WAVE4_PACKET_PLAN.md:280. Keep the J-4p-B4 code reviewer rule, also used by P06 code children such as J-4c-pr2907; J-4c itself has an artifact reviewer rule for its phase proofs.",
+          "(I) INTERPRETATION: the fix is a documentation note even if an unapplied copy exists. The cockpit must bind its exact destination under the existing campaign brief directory before claim; no new path or migration edit is presumed."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "D-KCERT-EXISTING-STATUS-20261015",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Supersede owner-decisions Q2 only as the K-CERT structural prerequisite; retire KV3-SCHEMA-1",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16 (SR-A2-11, 2026-10-15T10:16:20.753617+00:00)",
+          "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md:9–13,38–48",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md:61–67 (Q2, superseded only as this structural prerequisite)",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:544–551,760–763"
+        ],
+        "notes": "The steward records ky decide D-KCERT-EXISTING-STATUS-20261015 --as steward --outcome refused with SR-A2-11 and the independent assessment evidence. As with D-RETIRE-B-K-INBOX, refused retires the old implementation obligation: KV3-SCHEMA-1 requires approved and becomes not_applicable. K-CERT depends on this decision without requiring approved, then uses independent digest-bound artifact acceptance. No decision event is written by this model edit; no migration was delivered. Supersession is limited to structural Dens.served using the existing stored status column; it grants no computed-value/prose verification or production certification and does not rewrite the historical owner-decisions file."
+      },
+      "done_by": "decision",
+      "decision": "D-KCERT-EXISTING-STATUS-20261015",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "KV3-SCHEMA-1"
+      }
     }
   ],
   "decisions": [
@@ -26875,6 +27046,12 @@
       "title": "Retire B-CLAIM-RECOVERY (tracker repair of checkpoint identity across released and expired claims)",
       "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
       "default": "refused (staged) — v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet."
+    },
+    {
+      "id": "D-KCERT-EXISTING-STATUS-20261015",
+      "title": "Supersede owner-decisions Q2 only as the K-CERT structural prerequisite; retire KV3-SCHEMA-1",
+      "owner": "ADHIKĀRIN (N); steward records SR-A2-11 under owner full-authority delegation 2026-10-14",
+      "default": "refused — retire KV3-SCHEMA-1 as this structural prerequisite, never as a delivered migration; adopt the independently assessed existing-status K-CERT artifact (SR-A2-11)"
     }
   ],
   "coordination": {

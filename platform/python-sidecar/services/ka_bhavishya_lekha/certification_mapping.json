@@ -1,6 +1,6 @@
 {
-  "version": "K6-5/v2",
-  "registry_revision": 26,
+  "version": "K6-5/v3",
+  "registry_revision": 30,
   "asset": "ka_bhavishya_lekha",
   "scope": "Default append-only registrar dispatch and K6-5a reference protection; live source admission remains pending",
   "kind": "data",
@@ -40,8 +40,8 @@
         "Build.contract": 2,
         "Build.target": 2,
         "Build.dag": 4,
-        "Build.count_integrity": 3,
-        "Build.completion": 6,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
         "Build.exercised": 3,
         "Build.history": 3,
         "Build.dep_liveness": 3
@@ -50,7 +50,7 @@
     },
     "Idem": {
       "revisions": {
-        "Idem.pattern": 4
+        "Idem.pattern": 5
       },
       "expected_reading": "FAIL under current Idem.pattern detector for insert_immutable_checked; reviewed immutable-insertion detector treatment routed to PLAN section7/R-10. Never delete issued history. Repeat and changed-retry SQL oracles pass; no production certificate"
     },
@@ -63,8 +63,8 @@
     },
     "Vocab": {
       "revisions": {
-        "Vocab.identity": 2,
-        "Vocab.alias": 8
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
       },
       "expected_reading": "Explicit issue/version and full episode identity; canonical domain comes from pinned ontology, never keyword matching; live aliases unproved"
     },
@@ -82,17 +82,17 @@
     },
     "Narr": {
       "revisions": {
-        "Narr.agree": 7,
-        "Narr.checkable": 6,
-        "Narr.fidelity_test": 6,
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
         "Narr.lint": 7
       },
       "expected_reading": "Delivered statement preserved verbatim; no prose composed in registrar; SQL fidelity oracle; legacy prose declarations retained"
     },
     "Null": {
       "revisions": {
-        "Null.schema_default": 9,
-        "Null.blank_rows": 9
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
       },
       "expected_reading": "Missing delivery yields no issue; unavailable bindings have named reasons; probability_target null unless calibrated and allowed; whole-table live grading unmeasured"
     },
