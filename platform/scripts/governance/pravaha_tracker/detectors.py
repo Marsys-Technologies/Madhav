@@ -32,7 +32,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 from .events import now_iso
@@ -98,7 +98,11 @@ class Detectors:
         self._lock = threading.Lock()
         self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="detector")
         self._fetched: dict[str, float] = {}
+        # This lock protects bookkeeping only; remote I/O never holds it.
         self._fetch_lock = threading.Lock()
+        self._fetching: dict[str, Future] = {}
+        self._live = threading.local()
+        self._verifying = 0
 
     @staticmethod
     def key(spec: dict) -> str:
@@ -110,7 +114,7 @@ class Detectors:
         for spec in specs:
             k = self.key(spec)
             with self._lock:
-                if k in self._inflight or self._due.get(k, 0) > now:
+                if self._verifying or k in self._inflight or self._due.get(k, 0) > now:
                     continue
                 self._inflight.add(k)
             self._pool.submit(self._run_one, k, spec)
@@ -139,11 +143,20 @@ class Detectors:
     def verify(self, spec: dict) -> DetectorResult:
         """Measure once for a guarded completion, bypassing dashboard cache."""
         typ = spec.get("type", "?")
+        with self._lock:
+            self._verifying += 1
+        previous = getattr(self._live, "verify", False)
+        self._live.verify = True
         try:
+            # Run on the request thread, never behind the dashboard worker pool.
             return getattr(self, "d_" + typ)(spec)
         except Exception as exc:
             return DetectorResult("error", f"{typ}: {type(exc).__name__}: {exc}"[:300],
                                   now_iso(), f"detector:{typ}")
+        finally:
+            self._live.verify = previous
+            with self._lock:
+                self._verifying -= 1
 
     def force(self) -> None:
         """Expire every cached result (used when an event arrives, so evidence is re-checked promptly)."""
@@ -153,10 +166,31 @@ class Detectors:
     # -- helpers ------------------------------------------------------------------------------
     def _fetch(self, remote_branch: str) -> None:
         with self._fetch_lock:
-            if time.time() - self._fetched.get(remote_branch, 0) < 60:
-                return
-            _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
-            self._fetched[remote_branch] = time.time()
+            flight = self._fetching.get(remote_branch)
+            owner = flight is None
+            if owner:
+                # Only dashboard polling may reuse a completed fetch's TTL.
+                if not getattr(self._live, "verify", False) and time.time() - self._fetched.get(remote_branch, 0) < 60:
+                    return
+                flight = self._fetching[remote_branch] = Future()
+        if not owner:
+            # Same-ref callers share this measurement, including its failure.
+            flight.result()
+            return
+        try:
+            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
+            if rc != 0:
+                raise RuntimeError(f"git fetch {remote_branch}: {out.strip()[:160]}")
+        except BaseException as exc:
+            with self._fetch_lock:
+                flight.set_exception(exc)
+                del self._fetching[remote_branch]
+            raise
+        else:
+            with self._fetch_lock:
+                self._fetched[remote_branch] = time.time()
+                flight.set_result(None)
+                del self._fetching[remote_branch]
 
     def _resolve_ref(self, ref: str) -> str:
         if ref.startswith("origin/"):

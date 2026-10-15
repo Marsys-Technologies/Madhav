@@ -2156,6 +2156,18 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+      - name: pytest — tracker guarded completion and concurrency (required)
+        if: matrix.shard == 1
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
+        run: >-
+          python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
+          platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
+          -q --no-header -p no:cacheprovider
+
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
