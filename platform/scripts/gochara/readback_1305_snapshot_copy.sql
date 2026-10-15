@@ -2,6 +2,7 @@
 -- Every fact the post-apply check of 1305 relies on, read back from the live catalog. Nothing here writes. Expected values are in the comments; any
 -- difference is a reason to stop and report, not to repair by hand (never edit an applied migration).
 BEGIN READ ONLY;
+SELECT current_setting('server_version_num') AS server_version_num;
 
 -- 1. the four additive columns on the snapshot. expected: 4 rows (consumed_fact_rows jsonb, consumed_dasha_rows jsonb, l1_facts_metadata_digest text,
 --    dasha_metadata_digest text), all nullable.

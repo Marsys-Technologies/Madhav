@@ -270,7 +270,18 @@ def test_the_junction_field_is_stored_and_says_what_is_not_known(built_on):
 
 # ── NONINTERFERENCE: the scored output is byte-identical with the layer on and off ──────────────────────────────────────────
 
-def test_on_a_horizon_WITH_the_near_miss_every_scored_table_is_byte_identical_with_the_layer_on_and_off(off, built_on):
+def _pin_same_layer_identity(monkeypatch):
+    # (I) INTERPRETATION, FB-8/29: compare the layer switch under ONE manifest
+    # identity. The schema-off control is intentionally unsealable, but its scored
+    # outputs must equal the schema-on world; do not drop any input/digest column.
+    from services.gochara_kernel import input_vector as iv
+    original = iv.build_input_vector
+    monkeypatch.setattr(iv, "build_input_vector", lambda *a, **kw:
+                        original(*a, **{**kw, "near_miss_layer_version": 1}))
+
+
+def test_on_a_horizon_WITH_the_near_miss_every_scored_table_is_byte_identical_with_the_layer_on_and_off(off, built_on, monkeypatch):
+    _pin_same_layer_identity(monkeypatch)
     w, _notes, _verify = built_on
     _records_and_windows(off, NEAR)                   # the layer-off build cannot verify (refused above); verify writes none of these tables
     a, b = _scored(off), _scored(w)
@@ -282,7 +293,8 @@ def test_on_a_horizon_WITH_the_near_miss_every_scored_table_is_byte_identical_wi
     assert len(a["ka_gochara_eval_window"]) > 0 and len(a["ka_gochara_contact"]) > 0
 
 
-def test_on_a_horizon_WITHOUT_a_near_miss_everything_is_byte_identical_and_nothing_is_stored(off, on):
+def test_on_a_horizon_WITHOUT_a_near_miss_everything_is_byte_identical_and_nothing_is_stored(off, on, monkeypatch):
+    _pin_same_layer_identity(monkeypatch)
     _notes_off, verify_off = _build(off, FULLL)
     _notes_on, verify_on = _build(on, FULLL)
     a, b = _scored(off), _scored(on)

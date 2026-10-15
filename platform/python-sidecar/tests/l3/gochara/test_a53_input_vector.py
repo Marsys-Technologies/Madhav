@@ -99,7 +99,7 @@ def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     assert v["node"]["model"] == "mean" and v["ephemeris"]["backend"] == "swieph"
     assert set(v["ephemeris"]["files"]) == {"sepl_18.se1", "semo_18.se1", "seas_18.se1"}
     assert set(v["implementation"]) == {"geometry", "evaluation", "window"}
-    assert v["registry"]["census"] == [[p, "1.0.0"] for p, _ in REFS]
+    assert v["registry"]["census"] == sorted([[p, "1.0.0"] for p in ("P1", "P2", "P3", "P4", "P5")] + [[p, "1.2.0"] for p in ("P1", "P3", "P4")])
     assert v["orb_policy"]["activity"] == {"1.0.0": "undeclared"}   # today: no ratified activity orb anywhere
     assert _vector(db, ephe, l0_consumed=("bg_transit_rules",)) == v      # deterministic
 

@@ -256,6 +256,9 @@ jobs:
         run: npm run guard:migration-numbers
 
 
+      - name: P06b — protected migration readback ordering (REQUIRED)
+        run: npx vitest run scripts/__tests__/p06b_readbacks.test.ts --no-cache --reporter=verbose
+
       - name: AI Console — failed/aborted prepare recovery attempt window (P06 R1)
         # Also collected by npm test; keep the 15-minute failure/abort regression
         # explicit in the required Unit Tests job.
@@ -1613,9 +1616,9 @@ jobs:
     # See the split note on gochara-a55-replace-chain.
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
+    name: Gochara P06/P06b - final rules, near-miss verifier and seal (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: platform
@@ -1655,7 +1658,7 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
-          python -m pytest tests/l3/gochara/test_g8_class_census.py tests/l3/gochara/test_nd_h_builder_registry_pg.py tests/l3/gochara/test_nd_h_density_extract.py tests/l3/gochara/test_d1_near_miss_storage.py tests/l3/gochara/test_p06_final_rule_verification.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a25_v41_candidate_writer_pg.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_p06b_near_miss_integration.py tests/l3/gochara/test_g8_class_census.py tests/l3/gochara/test_nd_h_builder_registry_pg.py tests/l3/gochara/test_nd_h_density_extract.py tests/l3/gochara/test_d1_near_miss_storage.py tests/l3/gochara/test_p06_final_rule_verification.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a25_v41_candidate_writer_pg.py -q --tb=short -rs -p no:cacheprovider
           python ../scripts/gochara/mutation_check_verifier_side.py
 
   gochara-a55-p06-legacy:

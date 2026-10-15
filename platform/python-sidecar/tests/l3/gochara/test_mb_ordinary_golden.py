@@ -13,8 +13,9 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except (a) `implementation.*` (the code changed; the digests MUST move, and exactly the two stages that gained a module do) and (b) ONE extra
+HEAD must equal it except (a) `implementation.*` (the code changed; the digests MUST move, and exactly the three governed stages changed by P03/P06b do) and (b) ONE extra
 read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
+P06b also permits exactly one layer-catalogue probe on the new manifest substep and moves the governed window-stage identity; the saved golden bytes are unchanged.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs.
 """
@@ -42,6 +43,9 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
 
 
 class _Rec:
@@ -163,14 +167,18 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from main's"
         assert g["counts"] == m["counts"], f"{key}: the table row counts differ from main's"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
-        rest = [s for s in raw[key] if s != [GUARD_SELECT, 2]]
+        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
+        # P06b adds only this catalogue probe while creating a NEW manifest. Replay
+        # restates the stored pin without probing; all output/row/digest assertions stay.
+        assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
+        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [LAYER_SELECT, 0])]
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the state guard's differ from main's"
+        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the two authorized read-only probes differ from main's"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
     """Every component of the stored vector of a markerless run equals the golden from main's, except `implementation.*`: those MUST differ (the code changed), and the
-    differing stages are exactly the two that gained a module and whose sources were edited. No `horizon_basis` and no `test_slice` component."""
+    differing stages are exactly the three whose governed sources were edited. No `horizon_basis` and no `test_slice` component."""
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
 
@@ -186,5 +194,4 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert comparable(got) == comparable(want), "every component except the implementation identity (and, on another host, the host library's own identity) equals main's"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation", "geometry"], differing
-    assert got["implementation"]["window"] == want["implementation"]["window"]
+    assert differing == ["evaluation", "geometry", "window"], differing

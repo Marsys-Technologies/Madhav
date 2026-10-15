@@ -26,3 +26,4 @@
 1375_k6_integrity_chart_build_binding.sql
 1376_k7_stage_verification_status.sql
 1379_gochara_sealed_authority.sql
+1381_gochara_near_miss_seal_integration.sql
