@@ -268,8 +268,8 @@ class LatchedCliInstallationError extends AiConsoleError {
 }
 
 /** Prepare-time revalidation of a latched CLI: at most once per installation
- * per interval (the row's own last_checked_at — every validateCli write, success
- * or failure, refreshes it), with a short bounded timeout. */
+ * per interval (the row's own last_checked_at, including thrown/aborted
+ * recovery attempts), with a short bounded timeout. */
 const PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES = 15
 const PREPARE_CLI_REVALIDATION_TIMEOUT_MS = 20_000
 
@@ -282,11 +282,20 @@ async function attemptPrepareCliRevalidation(userId: string, cliId: string): Pro
   if (checkedAt && Date.now() - checkedAt.getTime() < PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES * 60_000) {
     return false                                                   // rate-limited: one attempt per interval
   }
+  const attemptedAt = new Date()
   try {
     const { validateCli } = await import('./cli/validation')
     const result = await validateCli(userId, cliId, AbortSignal.timeout(PREPARE_CLI_REVALIDATION_TIMEOUT_MS))
     return result.state === 'reachable'
   } catch {
+    // Aborted validation restores its previous row, including last_checked_at.
+    // Retain this attempt's window without changing the restored visible state
+    // or moving a newer validation's timestamp backwards.
+    try {
+      await query(`UPDATE ai_cli_installations
+        SET last_checked_at=GREATEST(last_checked_at,$2::timestamptz),updated_at=clock_timestamp()
+        WHERE cli_id=$1`, [cliId, attemptedAt])
+    } catch { /* Preserve the caller's safe terminal error if the database is unavailable. */ }
     return false                                                   // the caller rethrows today's code
   }
 }

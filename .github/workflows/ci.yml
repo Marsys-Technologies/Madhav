@@ -256,6 +256,11 @@ jobs:
         run: npm run guard:migration-numbers
 
 
+      - name: AI Console — failed/aborted prepare recovery attempt window (P06 R1)
+        # Also collected by npm test; keep the 15-minute failure/abort regression
+        # explicit in the required Unit Tests job.
+        run: npx vitest run src/lib/ai-console/__tests__/cli-prepare-revalidation.test.ts --reporter=verbose
+
       - run: npm test -- --reporter=verbose
 
       - name: WP-1.7 — MCP surgical whitelist resolution invariant (LCA-1/LCA-13)
