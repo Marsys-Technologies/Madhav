@@ -130,7 +130,14 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
-        expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+        expected[kind]["script"] = "platform/python-sidecar/services/kala_core/publication.py"
+        expected[kind]["cwd"] = "platform/python-sidecar"
+        expected[kind]["python_module"] = "services.kala_core.publication"
+        expected[kind]["fixed_args"] = [{"orchestrator_rebuild_dryrun": "rebuild-dryrun",
+            "orchestrator_rebuild": "rebuild", "layer_verify": "verify", "layer_publish": "publish",
+            "layer_rollback": "rollback"}[kind]]
+    expected["layer_verify"]["needs"] = "layer_verifier"
+    expected["layer_verify"]["allowed_args"] = ["run-id", "generation", "independently-derived-digest"]
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
@@ -155,11 +162,12 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_prebuilt_bindings_name_k9_23_and_remain_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for kind in K9_KINDS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
+        assert ops[kind]["script"] == "platform/python-sidecar/services/kala_core/publication.py", kind
+        assert ops[kind]["enabled"] is False
         assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
@@ -231,9 +239,13 @@ def _segments(src):
 W4_FUNCTION_HASHES = {'receipt': '32faf16f6fc5600bb667b730c3792ebe7797df5c333e32b498c840263d0349cd', 'validate': '6a497e463815ff701c5ea67a8f20b009c32594d176d074167e88f631da5a4915'}
 
 
+# Exact K9-23 additions: a distinct verifier capability and one-connection injection.
+K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': '40eb38466820b546f985f223e520161fa8fee4c6c2f48fcd8d4c440965126648'}
+
+
 def normalize_wave4(base_src, work_src):
     base_seg, work_seg = _segments(base_src), _segments(work_src)
-    for name, digest in W4_FUNCTION_HASHES.items():
+    for name, digest in (W4_FUNCTION_HASHES | K9_FUNCTION_HASHES).items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
             work_src = work_src.replace(segment, base_seg[name], 1)
@@ -349,7 +361,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 
 
 def _git(cwd, *args):
@@ -452,7 +464,7 @@ def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind)
 @pytest.mark.parametrize("kind", K9_KINDS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"

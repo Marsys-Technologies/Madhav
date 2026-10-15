@@ -340,7 +340,7 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
         # dispatch and broken-detector negatives in both migration states.
-        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py -q -rs
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -2156,6 +2156,10 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+      - name: K9-23 disabled layer bindings and credential isolation
+        if: ${{ matrix.shard == 1 }}
+        run: python -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication_bindings.py -q -p no:cacheprovider
+
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
@@ -2192,7 +2196,7 @@ jobs:
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard, governance-readback-tests]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2204,8 +2208,12 @@ jobs:
         env:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Kāla DB Tests must pass for code changes (got '$KALA_DB_RESULT')"; exit 1
+          fi
           if [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards and readbacks passed"; exit 0; fi
           if [ "$SHARDS_RESULT" = "skipped" ] && [ "$READBACK_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards and readbacks skipped by design"; exit 0; fi
           echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
