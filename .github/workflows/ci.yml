@@ -2325,12 +2325,8 @@ jobs:
           # contract data and contradictory Idem PASS) are mandatory here.
           if [ "${{ matrix.shard }}" = "1" ]; then
             python -m pytest tests/l3/test_certification_validation.py \
-              -k 'empty_contract_data or idem_reading' \
-              -q -p no:cacheprovider
-            python -m pytest tests/l3/test_certification_validation.py \
               tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
               tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
-              -k 'not empty_contract_data and not idem_reading' \
               -q -p no:cacheprovider
           fi
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
