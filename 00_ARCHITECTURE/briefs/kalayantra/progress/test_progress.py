@@ -517,3 +517,12 @@ def test_d21_page_has_no_competing_done_over_total_metric():
     assert '6 / 8' not in visible  # six done omits the not-needed completion
     assert '7 / 8' in visible
     assert visible.count('%') == 1
+
+
+def test_tracker_unknown_status_is_accepted_and_shown_as_not_yet_measured():
+    """The live tracker reports 'unknown' for items whose detector has not been measured yet; the whole
+    feed must not be rejected (that blanked the dashboard on 2026-10-15) and the item counts as waiting."""
+    import server
+    assert 'unknown' in server.STATUSES
+    assert server.GROUPS['unknown'] == 'waiting'
+    assert server.LABELS['unknown'] == 'Not yet measured'
