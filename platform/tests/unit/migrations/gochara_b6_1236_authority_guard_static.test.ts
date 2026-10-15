@@ -32,7 +32,7 @@ describe('migration 1236 — static contract', () => {
   })
 })
 
-// The writer allow-list: the serving pointer is written ONLY by operator-run flip/rollback scripts and one guarded primitive (six today, listed below; test fixtures excepted). NOTE: flip_authority.py takes the generation as an argument — before 1236 nothing stopped it naming '5.0'. A new writer anywhere is a
+// The writer allow-list: the serving pointer is written ONLY by operator-run flip/rollback scripts (five today, listed below; test fixtures excepted). NOTE: flip_authority.py takes the generation as an argument — before 1236 nothing stopped it naming '5.0'. A new writer anywhere is a
 // governance event, not a drive-by change — this gate fails until the allow-list is amended in review.
 describe('kala_gochara_authority writers — allow-list gate', () => {
   const ALLOWED = new Set([
@@ -41,10 +41,6 @@ describe('kala_gochara_authority writers — allow-list gate', () => {
     'platform/scripts/gochara/rollback_authority.py',                                            // its rollback (DELETE the row)
     'platform/scripts/dispatch_utkarsha_w63_authority_flip_abhinandan.py',                       // one-off W6.3 flip (historical, operator-run)
     'platform/scripts/dispatch_utkarsha_w63_rollback_abhinandan.py',                             // its rollback
-    // P09 (J-6m/J-6r preparation): compare-and-switch publish/rollback primitive for the governed executor ops publish_head /
-    // rollback_head — no caller, no CLI, caller-owned transaction, those ops disabled; it refuses non-published, test-slice or
-    // unsealed targets. Admitting it is the reviewed governance event this gate demands; the flip itself stays D-FLIP (the native's).
-    'platform/python-sidecar/services/gochara_kernel/authority_head.py',
   ])
   function walk(dir: string, out: string[]): void {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
