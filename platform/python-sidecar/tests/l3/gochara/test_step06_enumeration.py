@@ -569,7 +569,7 @@ def test_coverage_rows_shape_and_invariants():
 
 # ── disposable-DB end-to-end ─────────────────────────────────────────────────
 
-E2E_CHART = "22222222-3333-4444-5555-666666666666"
+from tests.l3._settled_dasha_fixture import CHART_ID as E2E_CHART, DASHA_DDL, seed_default_periods
 
 MIGRATION_1082 = (
     Path(__file__).resolve().parents[4]
@@ -644,6 +644,8 @@ def wp6_enum_schema():
     conn.execute(_WP9_BASE_DDL)
     conn.execute(MIGRATION_1082.read_text())
     conn.execute(E2E_EXTRA_DDL)
+    conn.execute(DASHA_DDL)
+    seed_default_periods(conn)
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())

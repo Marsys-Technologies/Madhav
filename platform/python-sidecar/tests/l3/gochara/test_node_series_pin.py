@@ -25,6 +25,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import psycopg
+from brahmagyan.l0_ephemeris import _tropical_to_jd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -231,7 +232,8 @@ NODE_RATE = -0.053   # deg/day (retrograde)
 
 
 def _true_series():
-    return [(DAY0 + timedelta(days=i), 300.0 + NODE_RATE * (date_to_jd(DAY0 + timedelta(days=i)) - TRUE_CROSSING_JD))
+    # ephemeris_daily samples use L0's noon UT epoch.
+    return [(DAY0 + timedelta(days=i), 300.0 + NODE_RATE * (_tropical_to_jd(DAY0 + timedelta(days=i)) - TRUE_CROSSING_JD))
             for i in range(12)]
 
 
@@ -267,7 +269,7 @@ def test_a_true_series_root_is_kept_unrefined_and_recorded_not_a_lost_bracket(mo
 
 
 def test_non_node_bodies_are_still_swiss_refined_beside_a_mismatched_node(monkeypatch):
-    jd0 = date_to_jd(DAY0)
+    jd0 = _tropical_to_jd(DAY0)
 
     def _calc(body, jd, ephe_path):
         if body == "Sun":
@@ -289,7 +291,7 @@ def test_the_refinement_still_loses_its_bracket_if_a_true_root_is_refined_agains
     monkeypatch.setattr(kernel_contacts, "calc_sidereal_lon", _MeanSwiss())
     from services.gochara_kernel import arcs as kernel_arcs
     series = _true_series()
-    jds = [date_to_jd(d) for d, _ in series]
+    jds = [_tropical_to_jd(d) for d, _ in series]
     arc_index = kernel_arcs.build_arc_index("Rahu", jds, [lon for _, lon in series])
     with pytest.raises(ValueError, match="lost its bracket"):
         kernel_contacts.find_boundary_roots(arc_index, "Rahu", "sign_ingress", refine=True)

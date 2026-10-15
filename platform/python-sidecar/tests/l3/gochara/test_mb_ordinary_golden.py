@@ -1,9 +1,14 @@
-"""Codex round 3 (steward MB-CODEX-3): an ORDINARY (markerless) build is observably identical to MAIN's, proven against a golden GENERATED FROM THE UNMODIFIED MAIN TREE.
+"""An ordinary (markerless) build preserves the pre-B4 J-4p observations.
 
-The golden (`fixtures/mb_ordinary_golden_main.json`) was produced by running THIS file's capture, byte for byte the same code, on commit 75eeda4c9 (main when the
-measuring build merged it; its `services/` and `pipeline/` differ from this branch only in the measuring build's own files):
-
-    MB_GOLDEN_OUT=<path> python -m pytest tests/l3/gochara/test_mb_ordinary_golden.py -k capture
+The historical measuring-build golden, `fixtures/mb_ordinary_golden_main.json`
+at 75eeda4c9, remains unchanged. It predates J-4p's governed reads and settled
+build identity. Both comparisons already fail on the unmodified pre-B4 head.
+(I) INTERPRETATION I6: use the pre-B4 J-4p head as the valid-data baseline.
+The active golden, `fixtures/mb_ordinary_golden_j4p.json`, was captured from
+unmodified production sources at 2d75833d3963a61544deaa4c36cc8322cb2cdcb5.
+Its provenance records the source hashes and the only SQL adaptation for B4:
+remove the governed CTE's positive-bounds pre-filter. All other ordered SQL,
+parameter counts, outcomes, row counts and manifest components remain pinned.
 
 It holds, for a markerless run driven through the writer's REAL substeps on the real migration chain (the a55 template), with the real runner's config keys
 (`chart_id`, `birth_params`) and an explicit rehearsal horizon:
@@ -11,8 +16,9 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except (a) `implementation.*` (the code changed; the digests MUST move, and exactly the two stages that gained a module do) and (b) ONE extra
-read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
+HEAD must equal it except the evaluation implementation identity. Geometry and
+window identities must remain equal. Exactly one state-guard SELECT is checked
+per non-dry-run substep and excluded from both SQL summaries.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs. Two captures on main agree exactly after that."""
 from __future__ import annotations
@@ -32,8 +38,8 @@ from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
-GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_main.json"
-GOLDEN_COMMIT = "75eeda4c9"
+GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
+GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -136,11 +142,17 @@ def test_capture_the_markerless_run(template):
     assert got["substeps"] and "manifest_vector" in got
 
 
-# ── the comparison (HEAD against the golden from main) ──────────────────────────────────────────────────────────────────────────
+# ── the comparison (HEAD against the pre-B4 J-4p golden) ───────────────────────────────────────────────────────────────────────
 
 def _load():
-    assert GOLDEN.exists(), f"the golden from main ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
-    return json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert GOLDEN.exists(), f"the pre-B4 golden ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert golden["golden_commit"] == GOLDEN_COMMIT
+    assert golden["provenance"]["sql_adaptations"] == {
+        "state_guard_selects_removed": 12,
+        "b4_cte_positive_bounds_predicates_removed": 1,
+    }
+    return golden
 
 
 @pytest.fixture(scope="module")
@@ -157,17 +169,19 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
         key = m["key"]
-        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from main's"
-        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from main's"
+        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the pre-B4 baseline"
+        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the pre-B4 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
         rest = [s for s in raw[key] if s != [GUARD_SELECT, 2]]
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the state guard's differ from main's"
+        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the state guard's differ from the pre-B4 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Every component of the stored vector of a markerless run equals the golden from main's, except `implementation.*`: those MUST differ (the code changed), and the
-    differing stages are exactly the two that gained a module and whose sources were edited. No `horizon_basis` and no `test_slice` component."""
+    """Preserve valid-data inputs; only B4's evaluation implementation changes.
+
+    No `horizon_basis` or `test_slice` component may appear in an ordinary run.
+    """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
 
@@ -180,8 +194,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
         out = {k: x for k, x in v.items() if k != "implementation"}
         out["ephemeris"] = {k: x for k, x in v["ephemeris"].items() if k not in host_bound}
         return out
-    assert comparable(got) == comparable(want), "every component except the implementation identity (and, on another host, the host library's own identity) equals main's"
+    assert comparable(got) == comparable(want), "non-implementation components equal the pre-B4 baseline (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation", "geometry"], differing
+    assert differing == ["evaluation"], differing
+    assert got["implementation"]["geometry"] == want["implementation"]["geometry"]
     assert got["implementation"]["window"] == want["implementation"]["window"]

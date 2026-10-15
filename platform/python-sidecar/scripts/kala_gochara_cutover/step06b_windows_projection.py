@@ -178,6 +178,7 @@ import json
 import sys
 import time
 import uuid as _uuid
+from contextlib import redirect_stdout
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -2493,15 +2494,18 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
     try:
-        out = project_windows_core(
-            conn, chart_id=args.chart_id, generation=args.generation,
-            baseline_generation=args.baseline_generation,
-            horizon_jd=horizon_jd,
-            horizon_start=args.horizon_start, horizon_end=args.horizon_end,
-            orb_deg=args.orb_deg, min_lambda=args.min_lambda,
-            coarse_step_days=args.coarse_step_days,
-            class_contexts=class_contexts, context_source=context_source,
-            rehearse_synthetic=args.rehearse_synthetic)
+        # Preserve stdout for the JSON report even when a lazily loaded
+        # specialist library emits import-time diagnostics.
+        with redirect_stdout(sys.stderr):
+            out = project_windows_core(
+                conn, chart_id=args.chart_id, generation=args.generation,
+                baseline_generation=args.baseline_generation,
+                horizon_jd=horizon_jd,
+                horizon_start=args.horizon_start, horizon_end=args.horizon_end,
+                orb_deg=args.orb_deg, min_lambda=args.min_lambda,
+                coarse_step_days=args.coarse_step_days,
+                class_contexts=class_contexts, context_source=context_source,
+                rehearse_synthetic=args.rehearse_synthetic)
         conn.commit()
     except StaleOverlayError as exc:
         conn.rollback()

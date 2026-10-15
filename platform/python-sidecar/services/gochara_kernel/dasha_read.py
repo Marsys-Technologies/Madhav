@@ -503,11 +503,15 @@ def execute_governed_dasha_query(
     projected = re.sub(r"\b(?:public\.)?chart_dashas\b", "governed_chart_dashas", sql, flags=re.I)
     if projected == sql or not re.match(r"\s*SELECT\b", projected, re.I):
         raise DashaBuildRefused("read_contract_mismatch", "unregistered daśā projection")
+    # Do not filter by interval shape here: F2 must see malformed ordinary
+    # periods and refuse, rather than return successful partial evidence.
+    # The contract's scope_cap sentinel is excluded by the named period-system
+    # allowlist and governed ayanamsha, never by a generic bounds predicate.
     prefix = """WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
         WHERE chart_id = %s AND ayanamsha_id = %s AND build_id = %s
           AND system_id = ANY(%s) AND level_n BETWEEN 1 AND 4
-          AND start_iso < end_iso AND (verification_pass_status = %s
+          AND (verification_pass_status = %s
     """
     bound = [chart_id, ayanamsha_id, contract["build_id"], list(DD.DASHA_SYSTEMS),
              clock_tier if clock_tier is not None else DD.READ_CONTRACT_TIER]

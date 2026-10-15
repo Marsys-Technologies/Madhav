@@ -34,6 +34,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import psycopg  # noqa: E402
+from ._real_swiss_daily import real_ephemeris_rows
 
 from tests.l3.gochara.test_wp9_stamp_columns import (  # noqa: E402
     BASE_DDL,
@@ -205,6 +206,15 @@ def _seed_ephemeris(conn, lon_fn, back=HORIZON_BACK_DAYS, forward=HORIZON_FORWAR
     return horizon_start
 
 
+def _seed_real_ephemeris(conn, start=None, end=None):
+    start = start or date.today() - timedelta(days=HORIZON_BACK_DAYS)
+    end = end or date.today() + timedelta(days=HORIZON_FORWARD_DAYS)
+    with conn.cursor() as cur:
+        cur.executemany(EPHEMERIS_INSERT_SQL,
+                        real_ephemeris_rows(start, (end - start).days + 1))
+    return start
+
+
 def _seed_moorti_table(conn):
     moorti_names = {1: "swarna", 2: "rajata", 3: "tamra", 4: "loha"}
     with conn.cursor() as cur:
@@ -224,13 +234,10 @@ def _run_moorti(chart_id, extra_config=None):
     config = {"chart_id": chart_id}
     config.update(extra_config or {})
     ctx = SimpleNamespace(db_conn=conn, config=config, dry_run=False)
-    orig = moorti_writer._compute_ayanamsha_offset
-    moorti_writer._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         result = moorti_writer.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
-        moorti_writer._compute_ayanamsha_offset = orig
         conn.close()
     return result
 
@@ -239,7 +246,7 @@ def _fetch_moorti_rows(chart_id):
     with psycopg.connect(WP6_DSN) as c:
         return c.execute(
             "SELECT graha, window_start, window_end, moorti_computed, precision_regime, "
-            "moon_nakshatra_idx_at_ingress, nakshatra_offset, moorti_name "
+            "moon_nakshatra_idx_at_ingress, nakshatra_offset, moorti_name, target_sign_idx "
             "FROM kala_moorti_nirnaya WHERE chart_id = %s ORDER BY graha, window_start",
             (chart_id,),
         ).fetchall()
@@ -376,71 +383,52 @@ class TestVedhaIndependenceGroup:
 
 # ── Moorti at the true kernel ingress instant ────────────────────────────────
 
-def _instant_lon(body: str, off: int) -> float:
-    """Engineered for a day-grade misclassification: Sun steps sign 0 → sign 1
-    at day 70 (spline ingress ≈ day 69.667); the Moon (20°/day) crosses a
-    nakshatra boundary BETWEEN that instant and the day-70 daily value, so
-    day-grade and instant-grade disagree on this run. Saturn steps sign 0 →
-    sign 1 at day 150 — a second computed run. Everything else is parked."""
-    if body == "Sun":
-        return 10.0 if off < 70 else 40.0
-    if body == "Saturn":
-        return 5.0 if off < 150 else 35.0
-    if body == "Moon":
-        return (20.0 * off + 0.5) % 360.0
-    if body == "Mars":
-        return 190.0
-    if body == "Mercury":
-        return 40.0
-    if body == "Jupiter":
-        return 100.0
-    if body == "Venus":
-        return 310.0
-    if body == "Rahu":
-        return 305.0
-    return 125.0  # Ketu
+@pytest.fixture(scope="class")
+def real_moorti(wp9_kernel_schema):
+    """A real April 2026 ingress; no invented track is sent to Swiss refinement."""
+    start, end = date(2026, 4, 1), date(2026, 5, 1)
+    with psycopg.connect(WP6_DSN, autocommit=True) as conn:
+        _wipe_global(conn)
+        _seed_chart_fact(conn, INSTANT_CHART_ID, janma_lon=5.0)
+        _seed_real_ephemeris(conn, start, end)
+        _seed_moorti_table(conn)
+    result = _run_moorti(INSTANT_CHART_ID,
+                         {"horizon_start": start, "horizon_end": end})
+    return result, _fetch_moorti_rows(INSTANT_CHART_ID)
 
 
 class TestMoortiKernelIngress:
-    def test_instant_grading_and_misclassification_rate(self, wp9_kernel_schema, capsys):
-        conn = psycopg.connect(WP6_DSN, autocommit=True)
-        _wipe_global(conn)
-        _seed_chart_fact(conn, INSTANT_CHART_ID, janma_lon=5.0)
-        _seed_ephemeris(conn, _instant_lon)
-        _seed_moorti_table(conn)
-        conn.close()
-
-        result = _run_moorti(INSTANT_CHART_ID)
-        rows = _fetch_moorti_rows(INSTANT_CHART_ID)
+    def test_instant_grading_and_misclassification_rate(self, real_moorti, capsys):
+        result, rows = real_moorti
         computed = [r for r in rows if r[3]]
-        assert len(computed) == 2, f"expected the Sun + Saturn runs; got {computed}"
+        assert computed, "the real horizon must include computed ingress rows"
         for r in computed:
             assert r[4] == "instant_grain", f"{r[0]} run not graded at the instant"
 
-        sun = next(r for r in computed if r[0] == "Sun")
-        # Ingress ≈ day 69.667: Moon there is nak 23 (instant-grade); the
-        # day-70 daily Moon is nak 24 (day-grade). janma nak 0 → offsets
-        # 24 ('loha') vs 25 ('swarna'): the day-grade row is a MISCLASSIFICATION.
+        sun = next(r for r in computed if r[0] == "Sun" and r[8] == 0)
+        # Independent direct-Swiss bisection on the pinned corpus: Sun reaches
+        # 0° Lahiri at 2026-04-14T04:02:39Z; Moon is nak 23. The noon daily
+        # Moon is nak 24. Janma nak 0 therefore gives offset 24 ('loha') at
+        # the ingress, whereas grading the daily sample would be wrong.
         assert sun[5] == 23, f"Sun instant-grade moon nak: {sun}"
         assert sun[7] == "loha", f"Sun moorti at instant: {sun}"
 
         notes = result.notes
-        assert "kernel_instant_graded=2" in notes
+        assert f"kernel_instant_graded={len(computed)};" in notes
         assert "day_grade_misclassified=" in notes
         misclassified = int(notes.split("day_grade_misclassified=")[1].split(";")[0])
         assert misclassified >= 1
         rate = float(notes.split("day_grade_misclassification_rate=")[1])
         print(
             "\nWP9 5.3 moorti error-rate fixture: "
-            f"instant_graded=2, day_grade_misclassified={misclassified}, "
-            f"rate={rate:.4f} (engineered synthetic layout — the real-ephemeris "
-            "rate stays [U] NOT_RUN until measured on the production build)"
+            f"instant_graded={len(computed)}, day_grade_misclassified={misclassified}, "
+            f"rate={rate:.4f} (real pinned ephemeris, controlled chart/horizon)"
         )
         with capsys.disabled():
             pass  # keep the printed line in the test log for the report
 
-    def test_uncomputed_runs_stay_date_grain(self, wp9_kernel_schema):
-        rows = _fetch_moorti_rows(INSTANT_CHART_ID)
+    def test_uncomputed_runs_stay_date_grain(self, real_moorti):
+        _, rows = real_moorti
         uncomputed = [r for r in rows if not r[3]]
         assert uncomputed
         for r in uncomputed:
@@ -454,7 +442,7 @@ class TestRequestedHorizon:
         conn = psycopg.connect(WP6_DSN, autocommit=True)
         _wipe_global(conn)
         _seed_chart_fact(conn, HORIZON_CHART_ID)
-        seed_start = _seed_ephemeris(conn, _instant_lon)
+        seed_start = _seed_real_ephemeris(conn)
         _seed_moorti_table(conn)
         conn.close()
 
@@ -471,8 +459,8 @@ class TestRequestedHorizon:
             assert r[1] >= req_start and r[2] <= req_end, (
                 f"row window {r[1]}..{r[2]} escapes the requested horizon"
             )
-        # The Sun ingress (day 70 of the seed) is inside the requested window
-        # and still graded at the instant.
+        # A real Sun ingress inside the requested window is still graded at
+        # the instant.
         sun = next(r for r in rows if r[0] == "Sun" and r[3])
         assert sun[4] == "instant_grain"
 
@@ -480,7 +468,7 @@ class TestRequestedHorizon:
         conn = psycopg.connect(WP6_DSN, autocommit=True)
         _wipe_global(conn)
         _seed_chart_fact(conn, HORIZON_CHART_ID)
-        _seed_ephemeris(conn, _instant_lon)
+        _seed_real_ephemeris(conn)
         _seed_moorti_table(conn)
         conn.close()
         today = date.today()

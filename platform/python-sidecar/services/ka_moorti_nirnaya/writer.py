@@ -217,6 +217,7 @@ def _build_kernel_arcs(
     from services.gochara_kernel import arcs as kernel_arcs
     from services.gochara_kernel.contacts import find_boundary_roots
     from services.gochara_kernel.knots import EphemerisBackendError
+    from brahmagyan.l0_ephemeris import _tropical_to_jd
 
     index_by_body: dict[str, Any] = {}
     roots_by_body: dict[str, list[Any]] = {}
@@ -225,7 +226,9 @@ def _build_kernel_arcs(
         daily = daily_by_body.get(body) or []
         if len(daily) < 4:
             continue
-        jds = [_date_to_jd(d) for d, _lon in daily]
+        # L0 ephemeris_daily values are sampled at noon UT. The overlay's
+        # DATE-to-midnight seam describes window bounds, not sample instants.
+        jds = [_tropical_to_jd(d) for d, _lon in daily]
         lons = [lon for _d, lon in daily]
         try:
             idx = kernel_arcs.build_arc_index(body, jds, lons)

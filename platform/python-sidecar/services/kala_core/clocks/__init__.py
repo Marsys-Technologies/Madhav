@@ -118,16 +118,22 @@ def validate_clock_rows(rows, *, build_id, tier):
             continue
         normalized = dict(row)
         start, end = normalized.get("start_iso"), normalized.get("end_iso")
-        if isinstance(start, str):
-            start = datetime.fromisoformat(start)
-        if isinstance(end, str):
-            end = datetime.fromisoformat(end)
+        try:
+            if isinstance(start, str):
+                start = datetime.fromisoformat(start)
+            if isinstance(end, str):
+                end = datetime.fromisoformat(end)
+        except ValueError as exc:
+            raise ClockUnavailable("pinned chart_dashas row has no datetime boundary") from exc
         if not isinstance(start, datetime) or not isinstance(end, datetime):
-            raise RuntimeError("pinned chart_dashas row has no datetime boundary")
-        normalized["start_iso"] = _as_utc(start)
-        normalized["end_iso"] = _as_utc(end)
+            raise ClockUnavailable("pinned chart_dashas row has no datetime boundary")
+        try:
+            normalized["start_iso"] = _as_utc(start)
+            normalized["end_iso"] = _as_utc(end)
+        except ValueError as exc:
+            raise ClockUnavailable("pinned chart_dashas boundaries must be timezone-aware") from exc
         if normalized["end_iso"] <= normalized["start_iso"]:
-            raise RuntimeError("pinned chart_dashas row has a non-positive period")
+            raise ClockUnavailable("pinned chart_dashas row has a non-positive period")
         result.append(normalized)
     if not result:
         raise ClockUnavailable("tier_unavailable")
@@ -137,7 +143,7 @@ def validate_clock_rows(rows, *, build_id, tier):
 def _lord(row: dict[str, Any]) -> str:
     lord = row.get("lord_graha")
     if not lord:
-        raise RuntimeError(f"pinned chart_dashas row {row.get('dasha_row_id')!r} has no lord")
+        raise ClockUnavailable(f"pinned chart_dashas row {row.get('dasha_row_id')!r} has no lord")
     return str(lord)
 
 
