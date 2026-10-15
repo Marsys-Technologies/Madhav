@@ -24,7 +24,7 @@ The existing query_obstruction_periods.ts:69 filters `generation IS NULL`.
 
 **(I) INTERPRETATION I1:** implement the separately required live-storage
 prerequisite with this pre-build under owner A3, rather than label a real
-producer `fixture_only`. Migration 1386 adds a v2-only CHECK and private natural-key index to the existing
+producer `fixture_only`. Migration 1388 adds a v2-only CHECK and private natural-key index to the existing
 candidate columns and is on the protected list. It changes neither migration
 1349 nor the v1 model/storage contract. The writer requires the validated v2
 CHECK and unique index before deletion. This migration still needs a protected application and

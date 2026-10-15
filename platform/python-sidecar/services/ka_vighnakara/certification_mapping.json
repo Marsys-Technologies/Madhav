@@ -34,7 +34,7 @@
     "outputs": "Stable candidate assertion identities and exact typed state/provenance/interval keys; no date.today or current-generation inference"
   },
   "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_vighnakara",
-  "disposition": "Explicit sealed-candidate dispatch, fixture and legacy compatibility retained. Migration 1386 is pre-built on the protected list. Real seal/export/correspondence and publication prerequisites remain separate.",
+  "disposition": "Explicit sealed-candidate dispatch, fixture and legacy compatibility retained. Migration 1388 is pre-built on the protected list. Real seal/export/correspondence and publication prerequisites remain separate.",
   "production_certification": null,
   "gates": {
     "Build": {

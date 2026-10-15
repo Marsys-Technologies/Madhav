@@ -13,7 +13,7 @@ from tests.l3.ka_vighnakara.test_sealed import CHART,BUILD,GEN,data,clock,export
 from tests.l3.kala_db.ka_vighnakara.test_negative_space_storage import database, conn
 
 ROOT=Path(__file__).parents[4]
-MIGRATION=ROOT.parent/'migrations/1386_k3_2_sealed_negative_space.sql'
+MIGRATION=ROOT.parent/'migrations/1388_k3_2_sealed_negative_space.sql'
 
 
 def api():
