@@ -1,6 +1,6 @@
-"""Codex round 3 (steward MB-CODEX-3): an ORDINARY (markerless) build is observably identical to MAIN's, proven against a golden GENERATED FROM THE UNMODIFIED MAIN TREE.
+"""Codex round 3 (steward MB-CODEX-3): an ORDINARY (markerless) build matches MAIN's captured baseline with the documented J-4p amendments below.
 
-The golden (`fixtures/mb_ordinary_golden_main.json`) was produced by running THIS file's capture, byte for byte the same code, on commit 75eeda4c9 (main when the
+The original golden (`fixtures/mb_ordinary_golden_main.json`) was produced by running THIS file's capture, byte for byte the same code, on commit 75eeda4c9 (main when the
 measuring build merged it; its `services/` and `pipeline/` differ from this branch only in the measuring build's own files):
 
     MB_GOLDEN_OUT=<path> python -m pytest tests/l3/gochara/test_mb_ordinary_golden.py -k capture
@@ -11,8 +11,12 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except (a) `implementation.*` (the code changed; the digests MUST move, and exactly the two stages that gained a module do) and (b) ONE extra
+HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window inherited P05's grants-provenance correction, pinned below) and (b) ONE extra
 read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
+J-4p/J4P-B1 also amends the golden's snapshot note to name the settled build, and pins the exact settlement-enforcement SQL transcripts for inventory:marriage
+and verify:marriage. See 00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_J-4p_v1.md:25-29, platform/python-sidecar/services/gochara_kernel/dasha_read.py:95,482 (settled-build selection and governed projection),
+and platform/python-sidecar/services/gochara_kernel/inventory_verifier.py:791-833 (independent settlement guard). These three sections alone are amended; every other captured field retains main's value.
+The settlement reads are intentional: reverting them would bypass J-4p's governed reader and independent verifier. No SQL comparison or normalisation is relaxed.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs. Two captures on main agree exactly after that."""
 from __future__ import annotations
@@ -167,7 +171,7 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
     """Every component of the stored vector of a markerless run equals the golden from main's, except `implementation.*`: those MUST differ (the code changed), and the
-    differing stages are exactly the two that gained a module and whose sources were edited. No `horizon_basis` and no `test_slice` component."""
+    differing stages are geometry/evaluation (measuring modules) and window (P05's grants provenance). No `horizon_basis` and no `test_slice` component."""
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
 
@@ -183,5 +187,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert comparable(got) == comparable(want), "every component except the implementation identity (and, on another host, the host library's own identity) equals main's"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation", "geometry"], differing
-    assert got["implementation"]["window"] == want["implementation"]["window"]
+    assert differing == ["evaluation", "geometry", "window"], differing
+    # P05 d9ba4934f (#3508), already present at P03's merge e5bdc641f, changed
+    # services/gochara_kernel/seal_brief.py's LEDGER_MIGRATIONS from 1241 to
+    # 1378 and verification_job.py's matching comments/privilege diagnostic.
+    # Both modules are hashed in IMPLEMENTATION_MODULES["window"]. Ordinary
+    # inputs/outcomes above still equal the original golden; pin this reviewed
+    # source identity exactly so another window-code change requires review.
+    assert got["implementation"]["window"] == "beaa23107518458b89bb8fe498a8b3682ffe67fb08951196a69c7b18db123aa4"

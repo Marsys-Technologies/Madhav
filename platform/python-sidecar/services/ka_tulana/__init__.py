@@ -7,7 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from services.kala_core.certification import read_detector_registry
+from services.kala_core.certification import validate_detector_bindings, validate_view_bindings
 
 from .ranker import KaTulanaService, WindowInput, KNOWN_DOMAINS
 
@@ -44,6 +44,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
       "best_suited_if_frame"
     ],
     "dominance": "all active axes available; tie-or-better everywhere; one strict win",
+    "front": "undominated_or_cycle_member; all cyclic SCC members retained and disclosed in dominance_cycles",
     "ordering": "declared caller lexicographic preference, remaining defaults appended",
     "live_jury_binding": "unadmitted",
     "fixed_weights": false
@@ -352,11 +353,11 @@ CERTIFICATION_MAPPING = json.loads(r'''
     }
   },
   "hashes": {
-    "platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts": "b9b213125dc47fd3c937f0ed2152ff4ad0c6c0ef152cf719b913edbcb9ab5f16",
-    "platform-mcp/src/tools/kala_views/priority.ts": "65a47bc32d140ba3ca73751fbda2121429fe55a04b335e340765280486f42575",
+    "platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts": "2e3fde81dc47666e7aca58e9498f9be9fef1173a4d0f7d945fc14a9838855f96",
+    "platform-mcp/src/tools/kala_views/priority.ts": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9",
     "platform-mcp/src/tools/register_p1_aliases.ts": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128",
     "platform/migrations/1377_k7_4_tulana_pareto_health_probe.sql": "b978e1b088631aadad198cc8080576575d06f706d3a8ffb50e36979dbfa39e76",
-    "platform/python-sidecar/services/ka_tulana/ranker.py": "b1335f803b18a29e99fd763a851e59a10c579c9d030c86df1541f1a37198f853",
+    "platform/python-sidecar/services/ka_tulana/ranker.py": "656aa4902d38168773a109202db62d3f700b6d4ac3da7c076d839c01f32703f0",
     "platform/python-sidecar/services/ka_tulana/writer.py": "06688590c72dcac9000545f02ba7b49bb85b01c3fd032208a07320e973b1a620",
     "platform/src/lib/retrieval/registry/layers/L3_kala/__tests__/f131_priority_ranking_glossary.test.ts": "75805a1b3c77cde0cf5ff9ab634d8a1befe9d92159d2e3ad9a537f52af917d62",
     "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635",
@@ -377,7 +378,9 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "(I) INTERPRETATION I2: DATE window_end is inclusive for relevance; date_to is the half-open horizon end; default H=90 days.",
     "(I) INTERPRETATION I3: This packet-local mapping pins seven view declarations, stored tier SELECT, narration goldens, detector revisions and file hashes; it does not award census PASS.",
     "(I) INTERPRETATION I4: existing field_snapshot_id scopes legacy forecaster windows; mixed snapshots refuse. Future-start windows beyond date_to are excluded; elapsed candidates inside the fetched set are explicitly rejected.",
-    "(I) INTERPRETATION I5: the probe freshness declaration uses the conservative 24-hour limit of the current registry rule; Tulana remains a registered writer service, with no cockpit no-writer-probe admission claimed."
+    "(I) INTERPRETATION I5: the probe freshness declaration uses the conservative 24-hour limit of the current registry rule; Tulana remains a registered writer service, with no cockpit no-writer-probe admission claimed.",
+    "(I) INTERPRETATION K7-B1: extend front to undominated OR cycle member, including externally dominated cycles; retain pairwise relations/tolerances and disclose every cyclic group. Cockpit contract disposition required.",
+    "(I) INTERPRETATION K7-B2: absent stored version selects the 849 compatibility detector over a synthetic single-day date/identity projection; historical weighted scores/winner/decisive factor are explicitly not measured. Explicit unknown versions refuse; 1377 retains its Pareto oracle."
   ]
 }
 ''')
@@ -405,6 +408,10 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
     if set(mapping.get("views", {})) != required_views:
         errors.append("seven view identities required")
     for name, view in mapping.get("views", {}).items():
+        try:
+            errors.extend(validate_view_bindings(root, name, view))
+        except (OSError, ValueError, TypeError, AttributeError, SyntaxError) as exc:
+            errors.append(f"view evidence unavailable: {name}: {exc}")
         if not view.get("tier_select") or not view.get("fidelity_tests") or not view.get("sources"):
             errors.append(f"missing tier/golden/source binding: {name}")
         if view.get("public_uri") != f"marsys://tool/L3/kala_{name}_get" or view.get("stage_uri") != f"marsys://tool/L3/{name}_read":
@@ -429,18 +436,7 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
         digest = hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         if digest != mapping.get("declaration_sha256"):
             errors.append("stale ka_tulana declaration")
-        revision, criteria = read_detector_registry(root / mapping["registry_path"])
-        if revision != mapping.get("registry_revision"):
-            errors.append("stale detector registry revision")
-        if set(mapping.get("detectors", {})) != set(CERTIFICATION_MAPPING["detectors"]):
-            errors.append("missing detector binding")
-        for key, evidence in mapping.get("detectors", {}).items():
-            criterion = criteria.get(key, {})
-            if any(evidence.get(field) != criterion.get(field) for field in ("revision", "detector")):
-                errors.append(f"stale detector: {key}")
-            expected = "NO_DETECTOR" if criterion.get("detector") == "NONE" else "UNMEASURED"
-            if evidence.get("verdict") != expected:
-                errors.append(f"unearned verdict: {key}")
-    except (OSError, ValueError, KeyError, StopIteration) as exc:
+        errors.extend(validate_detector_bindings(root, mapping))
+    except (OSError, ValueError, KeyError, StopIteration, TypeError, AttributeError, SyntaxError) as exc:
         errors.append(f"mapping source unavailable: {exc}")
     return errors

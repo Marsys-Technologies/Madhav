@@ -154,6 +154,36 @@ def last_activity(cfg, sid):
     return max(dt.datetime.fromtimestamp(os.path.getmtime(p), UTC) for p in paths)
 
 
+def answered_after(cfg, sid, when, tail_bytes=4 * 1024 * 1024):
+    """True when the cockpit's transcript holds an ASSISTANT message timestamped after `when`.
+
+    The wake itself appends the wake prompt (a user message) to the transcript, so the file's modification
+    time alone would call every wake "answered" even when the session died at once (found on re-review,
+    2026-10-15). Only the model replying counts. Reads the tail of the transcript; a parse problem is "no"."""
+    for path in glob.glob(os.path.join(cfg.projects_dir, "*", sid + ".jsonl")):
+        try:
+            with open(path, "rb") as fh:
+                fh.seek(0, os.SEEK_END)
+                size = fh.tell()
+                fh.seek(max(0, size - tail_bytes))
+                chunk = fh.read()
+        except OSError:
+            continue
+        for line in chunk.split(b"\n")[1:] if size > tail_bytes else chunk.split(b"\n"):
+            if b'"assistant"' not in line:
+                continue
+            try:
+                event = json.loads(line)
+                if (event.get("message") or {}).get("role") != "assistant":
+                    continue
+                ts = dt.datetime.fromisoformat(str(event.get("timestamp")).replace("Z", "+00:00"))
+            except Exception:
+                continue
+            if ts > when:
+                return True
+    return False
+
+
 def pending_work(cfg, since, now):
     """Reasons work is pending (list of strings); empty list = nothing pending."""
     reasons = []
@@ -263,7 +293,7 @@ def tick(cfg, now=None, ps_start=proc_start, waker=wake):
     last_wake = state.get("last_wake")
     if last_wake:
         lw = dt.datetime.fromisoformat(last_wake["ts"])
-        if seen and seen > lw:
+        if answered_after(cfg, sid, lw):
             state["failed_wakes"] = 0
             state["last_wake"] = None
         elif (now - lw).total_seconds() / 60 >= cfg.verify_min and not last_wake.get("counted"):

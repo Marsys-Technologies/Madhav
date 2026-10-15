@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from services.kala_core.certification import (
-    REGISTRY_PATH, read_detector_registry, test_reference_exists,
+    validate_detector_bindings, validate_fidelity_bindings,
 )
 
 MAPPING_PATH = Path('platform/python-sidecar/services/ka_bhavishya_lekha/certification_mapping.json')
@@ -33,31 +33,11 @@ def validate_certification_mapping(root: Path) -> list[str]:
             errors.append('wrong registrar identity/kind')
         if 'production_certification' not in mapping or mapping['production_certification'] is not None:
             errors.append('production certification must be explicitly null')
-        revision, criteria = read_detector_registry(root / REGISTRY_PATH)
-        if mapping.get('registry_revision') != revision:
-            errors.append('stale detector registry revision')
-        gates = mapping.get('gates', {})
-        if set(gates) != GATES:
-            errors.append('nine active gates required')
-        for gate in GATES:
-            evidence = gates.get(gate, {})
-            expected = {key: value['revision'] for key, value in criteria.items()
-                        if key.split('.')[0] == gate}
-            if not expected or evidence.get('revisions') != expected:
-                errors.append(f'missing/stale detector binding: {gate}')
-            if not evidence.get('expected_reading'):
-                errors.append(f'missing expected reading: {gate}')
-            none = {key for key in expected if criteria[key]['detector'] == 'NONE'}
-            if set(evidence.get('detector_none', [])) != none:
-                errors.append(f'wrong NO_DETECTOR binding: {gate}')
-            if none and ('NO_DETECTOR' not in evidence.get('expected_reading', '')
-                         or not evidence.get('detector_dependency')):
-                errors.append(f'missing NO_DETECTOR dependency: {gate}')
-        if not mapping.get('fidelity_tests'):
-            errors.append('fidelity evidence required')
-        for reference in mapping.get('fidelity_tests', []):
-            if not test_reference_exists(root / 'platform/python-sidecar', reference):
-                errors.append(f'missing fidelity test: {reference}')
+        errors.extend(validate_detector_bindings(root, mapping, gates=GATES))
+        errors.extend(validate_fidelity_bindings(root, mapping.get('fidelity_tests'), required={
+            'tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py::'
+            'test_disconnected_intervals_and_verbatim_statement_survive',
+        }))
     except (OSError, ValueError, KeyError, StopIteration, TypeError, AttributeError, SyntaxError) as exc:
         errors.append(f'mapping source unavailable: {exc}')
     return errors

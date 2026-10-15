@@ -1,7 +1,7 @@
 ---
 version: "1.0"
 status: CURRENT
-changelog: "2026-10-15: initial wake-only cockpit watchdog (Amendment A2, D-19)."
+changelog: "2026-10-15: initial wake-only cockpit watchdog (Amendment A2, D-19). Same day: an answered wake requires an assistant reply, not just a transcript write."
 ---
 
 # Cockpit watchdog (wake-only)
@@ -16,7 +16,7 @@ On 2026-10-14 the cockpit session ended at 21:06Z and nothing moved until the ow
 4. **Stops** unless the session has been silent for 20 minutes or more.
 5. **Wakes** with `claude --bg --resume <session-id> "<fixed instruction>"`.
 
-Limits: a wake not followed by session activity within 10 minutes counts as unanswered; after **3** unanswered wakes, or **12** wakes in 24 hours, it stops waking and posts a macOS notification. A live but idle session with finished jobs unread for 45 minutes gets a notification, never a wake.
+Limits: a wake not followed by a reply from the model (an assistant message in the transcript) within 10 minutes counts as unanswered; after **3** unanswered wakes, or **12** wakes in 24 hours, it stops waking and posts a macOS notification. A live but idle session with finished jobs unread for 45 minutes gets a notification, never a wake.
 
 **Why no other flags on the wake.** Resuming with any flag (for example `--permission-mode`) makes Claude Code start a *copy* of the session instead of continuing it. Verified on 2026-10-15 with Claude Code 2.1.296 on throwaway sessions: no flags continued the same session id, both for a background session and for a normal one; with a flag, a copy started and the watchdog's output check flagged it (`copy_started`). The session keeps its own saved options; the owner's global default permission mode applies.
 
@@ -52,4 +52,4 @@ python3 -B -m pytest -p no:cacheprovider --basetemp "$JOB_SCRATCH/pytest" \
   00_ARCHITECTURE/briefs/kalayantra/watchdog/test_watchdog.py
 ```
 
-They cover every stop condition, the pid-reuse case, an unknown process start, pending-work detection, the unanswered-wake count and its reset, the daily ceiling, dry run and logging. A mutation check (liveness forced to "absent") fails two of them.
+They cover every stop condition, the pid-reuse case, an unknown process start, the UTC-versus-local start-time match, pending-work detection, the unanswered-wake count and its reset, the rule that the wake prompt alone is not an answer, the daily ceiling, dry run and logging. A mutation check (liveness forced to "absent") fails two of them.
