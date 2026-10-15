@@ -7,7 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from services.kala_core.certification import read_detector_registry
+from services.kala_core.certification import validate_detector_bindings, validate_view_bindings
 
 from .ranker import KaTulanaService, WindowInput, KNOWN_DOMAINS
 
@@ -408,6 +408,10 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
     if set(mapping.get("views", {})) != required_views:
         errors.append("seven view identities required")
     for name, view in mapping.get("views", {}).items():
+        try:
+            errors.extend(validate_view_bindings(root, name, view))
+        except (OSError, ValueError, TypeError, AttributeError, SyntaxError) as exc:
+            errors.append(f"view evidence unavailable: {name}: {exc}")
         if not view.get("tier_select") or not view.get("fidelity_tests") or not view.get("sources"):
             errors.append(f"missing tier/golden/source binding: {name}")
         if view.get("public_uri") != f"marsys://tool/L3/kala_{name}_get" or view.get("stage_uri") != f"marsys://tool/L3/{name}_read":
@@ -432,18 +436,7 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
         digest = hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         if digest != mapping.get("declaration_sha256"):
             errors.append("stale ka_tulana declaration")
-        revision, criteria = read_detector_registry(root / mapping["registry_path"])
-        if revision != mapping.get("registry_revision"):
-            errors.append("stale detector registry revision")
-        if set(mapping.get("detectors", {})) != set(CERTIFICATION_MAPPING["detectors"]):
-            errors.append("missing detector binding")
-        for key, evidence in mapping.get("detectors", {}).items():
-            criterion = criteria.get(key, {})
-            if any(evidence.get(field) != criterion.get(field) for field in ("revision", "detector")):
-                errors.append(f"stale detector: {key}")
-            expected = "NO_DETECTOR" if criterion.get("detector") == "NONE" else "UNMEASURED"
-            if evidence.get("verdict") != expected:
-                errors.append(f"unearned verdict: {key}")
-    except (OSError, ValueError, KeyError, StopIteration) as exc:
+        errors.extend(validate_detector_bindings(root, mapping))
+    except (OSError, ValueError, KeyError, StopIteration, TypeError, AttributeError, SyntaxError) as exc:
         errors.append(f"mapping source unavailable: {exc}")
     return errors
