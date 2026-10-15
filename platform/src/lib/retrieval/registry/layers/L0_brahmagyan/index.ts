@@ -5,7 +5,7 @@
  * Call registerL0Capabilities() at app startup (or import this module).
  *
  * L0FR Stream A — 5 foundation capabilities (resolve_entity, list_entities, asset_registry_all/l0, intent_classify)
- * L0FR Stream B — 6 ephemeris capabilities (planet_position, planet_transit, aspects_at_time, retrograde_periods, ephemeris_cache_year/native-lifetime)
+ * L0FR Stream B — 5 ephemeris capabilities (planet_position, planet_transit, aspects_at_time, retrograde_periods, ephemeris_cache_year; ephemeris_cache_native_lifetime retired SS N-373)
  * Wave 3 R2 — 4 corpus query tools (yoga/dosha/remedy/classical texts)
  */
 import { registerCapability } from '../../index'
@@ -27,7 +27,6 @@ import { queryCurrentTransitSnapshotCapability } from './query_current_transit_s
 import { queryAspectsAtTimeCapability } from './query_aspects_at_time'
 import { queryRetrogradePeriodsCapability } from './query_retrograde_periods'
 import { ephemerisCacheYearCapability } from './ephemeris_cache_year'
-import { ephemerisCacheNativeLifetimeCapability } from './ephemeris_cache_native_lifetime'
 // W4-loop-1 (E-6): rāśi→medical reference (bg_sign_medical)
 import { querySignMedicalCapability } from './query_sign_medical'
 // W2 dark-set wiring: naisargika friendship + combustion-orb reference tables
@@ -98,7 +97,6 @@ export const L0_CAPABILITIES = [
   queryAspectsAtTimeCapability,
   queryRetrogradePeriodsCapability,
   ephemerisCacheYearCapability,
-  ephemerisCacheNativeLifetimeCapability,
   // W4-loop-1 (E-6): rāśi→medical reference
   querySignMedicalCapability,
   // W2 dark-set wiring: naisargika friendship + combustion-orb reference
@@ -171,7 +169,6 @@ export {
   queryAspectsAtTimeCapability,
   queryRetrogradePeriodsCapability,
   ephemerisCacheYearCapability,
-  ephemerisCacheNativeLifetimeCapability,
   querySignMedicalCapability,
   queryGrahaNaisargikaFriendshipCapability,
   queryCombustionOrbsCapability,

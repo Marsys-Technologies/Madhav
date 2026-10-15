@@ -203,6 +203,23 @@ class TestRelevance:
         assert pos == pytest.approx(math.tanh(1.0 * 0.60))
         assert neg == pytest.approx(math.tanh(-1.0 * 0.30))
 
+    def test_relevant_active_lord_changes_the_clock_but_irrelevant_lord_does_not(self):
+        relevant = hazard.relevance(
+            [('MD', 'Jupiter')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        irrelevant = hazard.relevance(
+            [('MD', 'Venus')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+        )
+        assert relevant > 0.0
+        assert irrelevant == 0.0
+
+    def test_chara_sign_lord_uses_the_canonical_vocabulary_route(self):
+        relevant = hazard.relevance(
+            [('MD', 'Sagittarius')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS,
+            system_id='chara_karaka',
+        )
+        assert relevant > 0.0
+
     def test_deeper_levels_weigh_less_than_shallower_ones(self):
         md = hazard.relevance([('MD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
         prd = hazard.relevance([('PrD', 'Ju')], self._routes(), hazard.DEFAULT_DEPTH_WEIGHTS)
@@ -309,6 +326,41 @@ def _std_inputs(**over):
 
 
 class TestHazardEvaluation:
+    def test_cara_seed_alias_preserves_only_the_governed_491_prior(self):
+        """1331 maps 491's declared Cara prior to Stage-3's canonical id.
+
+        This source-content oracle protects declared provenance; the executable
+        migration oracles live in tests/l3/kala_db/ka_kshetra and use the
+        dedicated disposable-database fixture.
+        """
+        migration = (
+            Path(__file__).resolve().parents[4]
+            / 'supabase/migrations/1331_kala_field_weight_canonical_system_keys.sql'
+        ).read_text()
+        seed_values = (
+            migration.split('INSERT INTO kala_field_weights', 1)[1]
+            .split('VALUES', 1)[1]
+            .split('ON CONFLICT', 1)[0]
+        )
+        assert "'w_s:chara_karaka', 0.60, 0.60, 0, FALSE" in seed_values
+        assert "'w_s:ashtottari'" not in seed_values
+        assert "'w_s:vimshottari_kp'" not in seed_values
+
+    def test_cara_uses_its_canonical_weight_key(self):
+        inputs = _std_inputs(
+            clocks=[_clock('chara_karaka', 1.0)],
+            lord_stacks={'chara_karaka': [('MD', 'Sagittarius')]},
+            weights={**_std_inputs()['weights'], 'w_s:chara_karaka': 0.60},
+        )
+        corrected = hazard.evaluate(**inputs)
+        missing_key = hazard.evaluate(**{
+            **inputs,
+            'weights': {key: value for key, value in inputs['weights'].items()
+                        if key != 'w_s:chara_karaka'},
+        })
+        assert corrected.clock_term > 1.0
+        assert missing_key.clock_term == pytest.approx(1.0)
+
     def test_ln_lambda_equals_sum_of_provenance_log_contributions(self):
         # THE RECONCILIATION INVARIANT (§5.4) at its source. If this ever fails,
         # every provenance edge downstream is decorative rather than earned.

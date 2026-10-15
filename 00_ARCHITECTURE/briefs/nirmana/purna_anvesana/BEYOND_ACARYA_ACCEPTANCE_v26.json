@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v26",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "KALAYANTRA-K7-1A-OSR-009",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v25.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:f8382015b7de8a314cf984bada267e56903657b91f4dde68324542e7360f61c4",
+        "report_hash": "sha256:fb722f208488bfb3d928938a6a4bb05bdd1669c7119b4ce1ec70c84fb13cf14d"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "67afae086018d53abcd2248f54f08a15baf7aeb2",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:3b79f04547ebbd4989644e1ef5f92c238d5aace2858838fe36c0121e99af36f0",
+        "capability_content_hash": "sha256:feda7ac45b23b88b4645a447d5223a56e3e0a306c554c8d6de95551a13b147f6",
+        "source_catalog_fingerprint": "sha256:8f57223f4a9d531f34a343c6c5de944c20209ce027a5887222b1c03071e916d0",
+        "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
+        "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
+    },
+    "capability_content_hash": "sha256:feda7ac45b23b88b4645a447d5223a56e3e0a306c554c8d6de95551a13b147f6",
+    "report_hash": "sha256:0596e9e00f64c24d4613b40512455c40cd6115abcf1cd9b6fecf7b2d2b98dcc6",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "OSR-009 / KYD-156: K7-1a PR3333 adds fourteen L3 view capabilities (seven stored-stage composites and seven legacy compatibility descriptors); source_catalog_fingerprint moves solely for those additive entries. Compared with v25, semantic_review_fingerprint and producer_contract_fingerprint are unchanged. The branch merges origin/main 67afae086018d53abcd2248f54f08a15baf7aeb2 without history rewrite; named incoming commits include #3379 convergence core, #3272 gate-table documentation and #3385 convergence writer (67afae086018d53abcd2248f54f08a15baf7aeb2). The latter moves the census writer-digest inventory hash, while the measured producer_contract_fingerprint remains unchanged. Canonical aggregate regeneration preserves generated_at 2026-10-02T02:18:40.000Z and all 181 existing snapshot SCU entries against merged main; exactly fourteen SCUs are added and zero removed. Evaluator-derived capability_content_hash, snapshot file sha256 and report_hash therefore move with catalog provenance. Every v25 corpus metric is byte-equivalent as a JSON value: routes34/34, omission0/25, edges9/9, novel13/13, long-inquiry1/1 and abstention3/3. v2-v25 artifacts remain byte-identical, with v25 preserved at sha256:6b657095c3e5407a06d0ce97225ce8a483b4ce93de50611318748fc2f5ef84da. No evaluator, corpus, metric assertion or candidate/live denominator is changed. This successor is synthetic source-local evidence only: SOURCE_ONLY_NOT_LIVE, candidate_validation NOT_RUN, deployed_route_validation NOT_RUN, production_validation NOT_RUN, empirical_answer_quality NOT_RUN and the existing claim ceiling are retained. Independent non-Kala review and required CI remain due."
+}

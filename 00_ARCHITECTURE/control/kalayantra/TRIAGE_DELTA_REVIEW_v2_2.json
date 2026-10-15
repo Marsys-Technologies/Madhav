@@ -1,0 +1,133 @@
+{
+  "artifact": "TRIAGE_DELTA_REVIEW",
+  "content_version": "2.2",
+  "what": "independent review of the expected triage delta (relaunch plan v2.2 §0 step 5; owner decision 2026-10-11 item 5)",
+  "verdict": "ACCEPTED",
+  "reviewer_session_id": "7a6f5b1b-acd5-43e6-a3aa-5f5de7ee6b75",
+  "reviewer": "Claude Code headless session, model claude-opus-5-5, effort high, read-only (permission mode default; Edit/Write/NotebookEdit/Agent disallowed; Bash limited to python3, shasum, git show/diff/log, wc, ls; no MCP servers)",
+  "reviewer_is_not": [
+    "the planner (sessions local_ec1c912e-e039-4666-abc3-a815f9c4a2d1, local_ef70d1f5-345a-4255-847f-212971af5951)",
+    "an author job"
+  ],
+  "launched_by": "planner session local_ef70d1f5-345a-4255-847f-212971af5951, supervised directly",
+  "program": "/Users/Dev/.antigravity-ide/extensions/anthropic.claude-code-2.1.296-darwin-arm64/resources/native-binary/claude (2.1.296) — the pinned CLAUDE_BIN (2.1.239) refuses claude-opus-5-5; see KALAYANTRA_RELAUNCH_PLAN_v2_3_PROPOSED.md P-2",
+  "started_at": "2026-10-11T15:49:56Z",
+  "duration_ms": 321358,
+  "turns": 28,
+  "permission_denials": 0,
+  "after_exit_checks": {
+    "git_status_changed_tracked_files": 0,
+    "input_hashes_unchanged": true
+  },
+  "inputs": {
+    "expected_delta": "ae527f0a6696d89524b074cc6036386c4dca3877af85b86bc6a699a690056000",
+    "model": "cd2d0c462977f7bf4e73a13e3bd267c4a3529563c0954cb1aa20690d58179ce5",
+    "roots": "6e2c0c6604c1a054a975ee0bf73d9d2a6816237bdea6311a92ac11dd84c95546",
+    "closure": "e7f28d0e458b43a240f7d05b2eea4a86a1111460858866a799486ce8b25ac03b",
+    "kyclosure": "0b52a7a02afade89b7e857d888a1944f4df1ec2c529ecd7c5c914b37064c169f",
+    "declarations": "ba6de1b229a6eb612007ebe951e025ee627101cc38811986d3c98abddc3fc69f",
+    "staged_actions": "bf9e9b94f1e9cc183fa0a163b0fb5170629a153797a764068de8145b30e29f29",
+    "schema_receipt": "570c6cc2fc2c7a7d5f83b6c166efb6de142aa49b1b0f093ecf925f09429535f9",
+    "capture": "98067bc9cff36b5e014823628016156dbf6614c248a5b132b2f9f785a7ac6fe7",
+    "base_model_fixture": "63426c79a6a3ec54936b0b9e5b9224afed0433d8616fa88438dbd5a17bd03e17",
+    "prompt": "49efc74fe8fd44667c3deed708f22c5df44eec91b86dd4bcdec6060a42b305d9"
+  },
+  "prompt_given": "inputs with hashes, the plan sections, the tracker source and the owner's settled decisions — not the planner's triage report or conclusions",
+  "transcript": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/triage-delta-r1/stdout.jsonl (scratch; removed with the session's scratch once this record is merged)",
+  "carried_obligations": {
+    "B-2 packet": [
+      "NB-1: publish the staged KV3-SCHEMA-1 block in the same action that loads the reconciled model, before any dispatcher runs",
+      "F-1: render the refusals' authority from the owner decision record (commit c35a316ae), not the approved-source commit",
+      "NB-4: the finalizer's reviewer for C-3/C-4 must act in the V stream"
+    ],
+    "B-4 packets": [
+      "NB-3: every unfinished item with steps needs its step detectors named before it can complete",
+      "NB-6: K-CERT's brief is revised (it still says 'no migration') once the custodian's contract is recorded"
+    ],
+    "reader notes": [
+      "NB-2: the D-GOCHARA-TIMEOUT park has no status effect (it stays waiting on its deferred decision)",
+      "NB-7: the detector map is reduced to status and time",
+      "NB-8: the stream worktree replacement is proven by the path-only test, not shown in the delta"
+    ]
+  },
+  "review": {
+    "verdict": "ACCEPTED",
+    "blocking": [],
+    "non_blocking": [
+      {
+        "id": "NB-1",
+        "where": "delta readiness / staged_effects: KV3-SCHEMA-1",
+        "note": "\"unknown\" is correct only for the captured detector map, which has no entry for the new item. Once the live tracker measures the detector, a non-existent branch reads \"pending\" and the item (B-7 and K0-SV are done) will show READY until the staged block is published. B-2 must publish the block in the same action that loads the model, before any dispatcher runs; otherwise a K job could be dispatched to build a column whose contract is undefined."
+      },
+      {
+        "id": "NB-2",
+        "where": "STAGED_MODEL_ACTIONS parks: D-GOCHARA-TIMEOUT",
+        "note": "The park has no status effect: a decision item whose recorded outcome is \"deferred\" stays \"waiting\". The delta is accurate in omitting it from staged effects, but a reader may assume all 8 deferred items end \"parked\". In fact 6 change, B-DB-BASELINE is already parked and this one stays waiting (never counted closed)."
+      },
+      {
+        "id": "NB-3",
+        "where": "declarations: step_evidence, 51 items with steps",
+        "note": "All step detectors are null (0 named). This is honest under §N.8. But completion.py refuses completion while steps are open, and the declared rule forbids recording a step whose detector is null, so every unfinished item with steps cannot complete until its packet names step detectors. That is a liveness obligation for Wave B packets, not a defect in the delta."
+      },
+      {
+        "id": "NB-4",
+        "where": "declarations: C-3",
+        "note": "C-3's brief declares op [\"finalize\"] but its kind is \"artifact\", by a declared override citing plan §12. This is consistent with completion.py (the artifact path needs a digest plus a V-stream verdict). The \"finalizer\" reviewer must still be a V-stream actor or the guard will refuse."
+      },
+      {
+        "id": "NB-5",
+        "where": "declarations: J-4a; J-1a, J-4b, J-4d, J-6m, J-6r",
+        "note": "J-4a is \"artifact\" by override, with a branch_file_contains detector on another campaign's coordination branch. The five J items are \"code\" with a file_contains detector on executor_ops.json rather than a merge detector. Both are defensible because the typed guard checks the live PR or digest independently; no kind is clearly wrong."
+      },
+      {
+        "id": "NB-6",
+        "where": "K-CERT brief",
+        "note": "The brief still says \"no migration\" while K-CERT now depends on a migration item. KYD-150 asks for a reviewed brief revision; that remains owed once the custodian's contract is recorded."
+      },
+      {
+        "id": "NB-7",
+        "where": "capture.json detector_results",
+        "note": "The detector map is reconstructed from a snapshot (status and checked_at only; detail empty), not captured directly. It replays the 148 captured item states exactly, so it is adequate for status and dependency comparisons, but not for detail text."
+      },
+      {
+        "id": "NB-8",
+        "where": "delta topology.streams",
+        "note": "The delta is relative to the path-migrated model, so the wholesale replacement of stream worktree lists (12 lanes to one checkout per item) appears only in the path-only test. I checked it separately: each list is the campaign checkout plus exactly that stream's executable items (V: all 132), with no duplicates or unknown names, and item states are identical."
+      }
+    ],
+    "flags_on_owner_settled_items": [
+      {
+        "id": "F-1",
+        "item": "owner decision 5",
+        "note": "The staged refusal's authority string cites \"approved by the owner at source commit 3323430f\". That commit's subject is the Astra v2.2 review (PROCEED-WITH-FIXES), not an owner approval record. Suggest citing the owner decision record (commit c35a316ae) when B-2 renders the event."
+      },
+      {
+        "id": "F-2",
+        "item": "owner decision 5",
+        "note": "Until B-2 publishes, both D-RETIRE decisions show as READY and sit in the owner's pending-decision queue, and B-K-INBOX reads \"waiting\" instead of \"running\". This is correctly shown in the delta."
+      },
+      {
+        "id": "F-3",
+        "item": "owner decisions 1 and 4",
+        "note": "Roots V-K9, V-J6 and K9-5 accept not-applicable inputs, and roots K9-4a, J-6 and K7-4 hinge on D-FLIP or D-R6 being approved. A refusal would skip them. This is not silent: every class-a item is a direct JOIN-ALL member, so the skip surfaces as a gap, and the closure lists 37 skip-capable members."
+      }
+    ],
+    "checks_performed": [
+      "sha256 of all 10 inputs; gunzipped base equals the git blob at 4a7f80a9c; events prefix (5,063,668 bytes, 12,192 lines) matches the captured hash",
+      "own structural diff of base vs reconciled model after the path map: every non-path difference appears in the delta and nothing else (3 items, 2 decisions, 4 dependency edits, JOIN-ALL and C-1 text, control_plane, coverage, documents, model_version, branch patterns)",
+      "items_added equal the model rows exactly; dispositions equal model triage for all 151; counts 126/5/8/2/6/2/2",
+      "own traversal of depends_on and requires_outcome from the 23 roots gives 126 items, identical to class a; kyclosure --check reproduces the closure hash; v2_1 and v2_2 copies are byte-identical",
+      "no retained item depends on a class-b item; retired items feed only JOIN-ALL; done_outside items feed only JOIN-ALL and deferred L0-K",
+      "ran the tracker's build_snapshot (before, path-migrated, after) on the events prefix, detector map and clock: status counts match, the readiness set is exactly the delta's 8 entries, and all dependency counts match (JOIN-ALL 82→79, strict 93→92)",
+      "46 done items identical before and after (39 guarded, 1 join, 6 decisions); evidence, source, detail and timestamp unchanged; all 46 evidence hashes reproduced",
+      "JOIN-ALL members equal everything except class b and the close chain (138); added and removed lists exact; K4-2a and KA-1e were existing class-a items missing from the old join; C-chain unchanged",
+      "simulated the staged decisions, parks and block: the 12 staged effects match exactly; retired items become not_applicable with the correct origin; no D-RETIRE or KV3 events exist in the log",
+      "check_model on the reconciled model returns no problems",
+      "schema receipt lists 9 columns for bg_gochara_citation_resolution with no tier column; KYD-150 read and it supports an additive prerequisite; KV3-SCHEMA-1 defines no column name or values",
+      "132 executable items all declared; producer equals owner; the 39 earned kinds equal the recorded completion types; the post-deploy rule tracks migration/op briefs; packet kinds are all V- items with VERDICT detectors",
+      "read tracker events/cli/detectors for park-on-decision and branch_merged behaviour",
+      "did not run the author's test suite; did not rely on kyreconcile output"
+    ],
+    "input_hashes_verified": true
+  }
+}

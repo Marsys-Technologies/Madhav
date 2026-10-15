@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.bootstrap_launch_input/1",
+  "title": "KĀLA-YANTRA v3 bootstrap launch input (relaunch plan v2.7 §7 bootstrap launches and launch qualification, §14 B-0c / B-1)",
+  "description": "Everything the planner must have prepared and recorded before it launches one Wave B bootstrap job directly (no kyjob.sh, no dispatcher). A missing field refuses launch. This schema checks shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: the bootstrap manifest and its review receipt and the supervisor's own reviewed bytes (first: nothing else is examined when they fail); a job id short enough for its action ids; every path absolute and normalised; the worktree (never the shared checkout, always beneath the worktree root), its branch (never main or suvarna*) and base_sha; the four sha256 values (each is the SHA-256 of the named file's bytes - packet_sha256 here is the file digest, not the front-matter field of the same name); that the prompt holds the exact bytes of the card and of the packet; the empty MCP configuration; the scratch and state locations; the environment allowlist with JOB_SCRATCH and KY_SCRATCH; the forbidden launch flags; effort and turn cap per kind; the deadline; that card_path and mcp_config are manifest components; the qualification receipt of role and model and everything it binds; the program's version against claude_min_version (run only for the program that receipt binds); the item lock. A schema-valid launch input is therefore not a launchable one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "job_id", "item", "kind", "role", "worktree", "branch", "base_sha", "claude_bin", "claude_min_version",
+    "model", "effort", "permission_mode", "max_turns", "mcp_config", "mcp_config_sha256", "prompt_path",
+    "prompt_sha256", "card_path", "card_sha256", "packet_path", "packet_sha256", "job_scratch", "stdout_path",
+    "stderr_path", "tmp_path", "state_path", "env", "extra_lean_flags", "disallowed_tools", "deadline",
+    "plan_version", "approved_source_commit"
+  ],
+  "properties": {
+    "schema": {"const": "ky.bootstrap_launch_input/1"},
+    "job_id": {
+      "description": "One safe path component: it names <KY_SCRATCH>/jobs/<job_id> and <KY_RUN>/jobs/<job_id>. Its action ids ACT-launch-<job_id> and ACT-submit-<job_id> must fit the 160 characters of an action id (schemas/action.json); kyboot.py refuses a job id whose action ids would not.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "item": {"type": "string", "pattern": "^KV3-B-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "kind": {
+      "description": "The job kind; it sets the turn cap kyboot.py enforces (plan §7): BUILD 150, REWORK 100, VERIFY 60, ARTIFACT 60, PRE-ACCEPT 40, RULING 30, SURROGATE 30 (the owner surrogate's ruling job), PLAN 300.",
+      "enum": ["BUILD", "REWORK", "ARTIFACT", "VERIFY", "PRE-ACCEPT", "RULING", "SURROGATE", "PLAN"]
+    },
+    "role": {
+      "description": "The launch configuration's role: it names the qualification receipt <KY_RUN>/QUALIFICATIONS/<role>-<model>.json that must be PASS and must bind this launch (plan §7, KV-06).",
+      "enum": ["bootstrap-builder", "bootstrap-reviewer", "surrogate", "planner"]
+    },
+    "worktree": {"$ref": "#/$defs/text"},
+    "branch": {"$ref": "#/$defs/text"},
+    "base_sha": {"$ref": "#/$defs/commit"},
+    "claude_bin": {"$ref": "#/$defs/text"},
+    "claude_min_version": {"const": "2.1.296"},
+    "model": {"enum": ["claude-opus-5-5", "claude-sonnet-5-5"]},
+    "effort": {"enum": ["high", "xhigh"]},
+    "permission_mode": {
+      "description": "Always explicit, never inherited (the host's user settings would default it).",
+      "enum": ["bypassPermissions", "acceptEdits", "default", "plan"]
+    },
+    "max_turns": {"type": "integer", "minimum": 1},
+    "mcp_config": {"$ref": "#/$defs/text"},
+    "mcp_config_sha256": {"$ref": "#/$defs/sha256"},
+    "prompt_path": {"$ref": "#/$defs/text"},
+    "prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "card_path": {"$ref": "#/$defs/text"},
+    "card_sha256": {"$ref": "#/$defs/sha256"},
+    "packet_path": {"$ref": "#/$defs/text"},
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "job_scratch": {"$ref": "#/$defs/text"},
+    "stdout_path": {"$ref": "#/$defs/text"},
+    "stderr_path": {"$ref": "#/$defs/text"},
+    "tmp_path": {"$ref": "#/$defs/text"},
+    "state_path": {"$ref": "#/$defs/text"},
+    "env": {
+      "description": "The job's whole environment (env -i semantics). Names and values are checked by kyboot.py against the plan §7 allowlist; JOB_SCRATCH (= job_scratch) and KY_SCRATCH (= the supervisor's resolved campaign scratch folder) are required there. This schema cannot type an open map.",
+      "type": "object"
+    },
+    "extra_lean_flags": {
+      "description": "Flags only, each '--name' or '--name=value'; a bare word would become the prompt.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^--[a-z][a-z0-9-]*(=[A-Za-z0-9_.,:/@+-]+)?$"}
+    },
+    "disallowed_tools": {
+      "description": "Tool rules passed after --disallowedTools; none may look like an option.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Za-z][^\\x00-\\x1f]*$"}
+    },
+    "deadline": {"type": "string", "minLength": 1},
+    "plan_version": {"const": "2.7"},
+    "approved_source_commit": {"$ref": "#/$defs/commit"}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+  }
+}

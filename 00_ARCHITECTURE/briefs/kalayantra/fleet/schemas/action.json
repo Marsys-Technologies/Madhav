@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.action/1",
+  "title": "KĀLA-YANTRA v3 action record, run/actions/<action_id>.json (relaunch plan v2.7 §4a.1, §4a.6)",
+  "description": "Written by kyaction.py before a side effect (state INTENDED: inputs, target identity, intended transition) and completed with the OBSERVED result after it (DONE or FAILED). A record is never overwritten by a second begin; a FAILED attempt reopened by retry is kept in attempts[]; every reconciliation of an unfinished record against real evidence is kept in reconciliations[]. A model job records its own side effects through `kyaction.py begin|complete|fail` as a job actor {role, holder_kind: job, controller_id, run_id}, only under ids JOB-<run_id>-<slug>; nobody else writes an id of that form. `process` is the pid and start identity of the process that began the record (null for a job's record and when it could not be read): it is what a second begin judges 'in_progress' from. Shape only: that the result was really observed, that inputs/target identify the action, that action_id equals the file name and that a job's id carries its own run id is not checked by this schema. Timestamps are UTC ISO-8601 ('Z' or '+00:00').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "action_id", "kind", "actor", "inputs", "target", "intended_transition", "created_at", "state",
+    "result", "completed_at"
+  ],
+  "properties": {
+    "schema": {"const": "ky.action/1"},
+    "action_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$"},
+    "kind": {"type": "string", "minLength": 1},
+    "actor": {"$ref": "#/$defs/actor"},
+    "inputs": {"type": "object"},
+    "target": {"type": "object"},
+    "intended_transition": {"type": "string", "minLength": 1},
+    "created_at": {"$ref": "#/$defs/utc"},
+    "state": {"enum": ["INTENDED", "DONE", "FAILED"]},
+    "result": {"type": ["object", "null"]},
+    "completed_at": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "process": {
+      "description": "Who began (or, after a retry, reopened) the record. Optional: records written before B-0c rework 1, and by other writers, carry none.",
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pid", "process_start"],
+          "properties": {
+            "pid": {"type": "integer", "minimum": 1},
+            "process_start": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "retried_at": {"$ref": "#/$defs/utc"},
+    "attempts": {
+      "description": "Earlier FAILED attempts, oldest first (written by retry).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["n", "actor", "started_at", "state", "result", "completed_at"],
+        "properties": {
+          "n": {"type": "integer", "minimum": 1},
+          "actor": {"$ref": "#/$defs/actor"},
+          "started_at": {"$ref": "#/$defs/utc"},
+          "state": {"const": "FAILED"},
+          "result": {"type": "object"},
+          "completed_at": {"$ref": "#/$defs/utc"}
+        }
+      }
+    },
+    "reconciliations": {
+      "description": "What real evidence said about an unfinished record. 'unknown' never completes it and never permits a retry; identical consecutive answers are counted, not repeated.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "outcome", "detail", "count"],
+        "properties": {
+          "at": {"$ref": "#/$defs/utc"},
+          "outcome": {"enum": ["done", "not_done", "unknown"]},
+          "detail": {"description": "The observer's evidence; any JSON value (an object when the outcome is done)."},
+          "count": {"type": "integer", "minimum": 1},
+          "last_at": {"$ref": "#/$defs/utc"},
+          "by": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"state": {"const": "INTENDED"}}, "required": ["state"]},
+      "then": {"properties": {"result": {"type": "null"}, "completed_at": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"state": {"enum": ["DONE", "FAILED"]}}, "required": ["state"]},
+      "then": {"properties": {"result": {"type": "object"}, "completed_at": {"type": "string"}}}
+    },
+    {
+      "$comment": "The JOB- namespace belongs to job actors, and a job actor writes nothing outside it.",
+      "if": {
+        "properties": {"actor": {"properties": {"holder_kind": {"const": "job"}}, "required": ["holder_kind"]}},
+        "required": ["actor"]
+      },
+      "then": {
+        "properties": {
+          "action_id": {"pattern": "^JOB-[A-Za-z0-9][A-Za-z0-9._-]{0,95}-[a-z][a-z0-9._-]{0,47}$"},
+          "process": {"type": "null"}
+        }
+      },
+      "else": {"properties": {"action_id": {"not": {"pattern": "^JOB-"}}}}
+    }
+  ],
+  "$defs": {
+    "utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "actor": {
+      "description": "Who acts: the role, the kind of holder, and the holder's identity. Controller identity and provider-session identity are separate fields; at least one is present. A job actor is exactly {role, holder_kind: job, controller_id, run_id}: the controller that launched the job and the run the job belongs to.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "holder_kind"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1},
+        "holder_kind": {"enum": ["cockpit", "controller", "supervisor", "job"]},
+        "session_id": {"type": "string", "minLength": 1},
+        "controller_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$"}
+      },
+      "anyOf": [{"required": ["session_id"]}, {"required": ["controller_id"]}],
+      "if": {"properties": {"holder_kind": {"const": "job"}}, "required": ["holder_kind"]},
+      "then": {"required": ["controller_id", "run_id"], "not": {"required": ["session_id"]}},
+      "else": {"not": {"required": ["run_id"]}}
+    }
+  }
+}

@@ -50,7 +50,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
 import {
   compositeGenerationFence,
@@ -69,6 +69,8 @@ import { getYogaDoshaCapability } from '../L1_ganita/get_yoga_dosha'
 import { getDashasCapability } from '../L1_ganita/get_dashas'
 import { querySignalsCapability } from './query_signals'
 import { traverseChartGraphCapability } from './traverse_chart_graph'
+import { IDENTITY_CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchPositionsCrossCheck } from '../../../ayanamsha_cross_check_reads'
 
 const OPERATIVE_VARGAS = ['D1', 'D9', 'D10', 'D60'] as const
 
@@ -181,6 +183,13 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
       description: 'Which vargas to call out as "operative" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless.',
       items: { type: 'string' },
     },
+    include_cross_check: {
+      type: 'boolean',
+      description: 'Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under ' +
+        'the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the reading"; categorical equality only, degrees ' +
+        'shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is ' +
+        'served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:"all".',
+    },
     include: {
       type: 'array',
       description: 'Subset of sections to compute (default: all). One or more of: position, dignity, ' +
@@ -268,6 +277,22 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
           .filter(r => subjectMatchesGraha(r['fact_subject'] as string, grahaCode, grahaName))
         sections['position'] = { rows, count: rows.length }
       } catch (e) { sectionFailed('position', e) }
+    }
+
+    // ── identity cross-check (SS N-360) ──────────────────────────────────────
+    // ONE shared block, the same builder as get_positions' opt-in form, restricted to THIS graha's sign and
+    // nakshatra: always for the Moon (the identity facts Moon sign + Moon nakshatra), for any other graha only
+    // when the caller passes include_cross_check:true. It rides with the position section (same served-generation
+    // fence, never read without one) and is never merged with it. A failed read never fails the portrait.
+    let identityCrossCheck: Awaited<ReturnType<typeof fetchPositionsCrossCheck>> | undefined
+    const isMoon = grahaCode === 'MOON'
+    if (serve('position') && fence.fenced && (isMoon || args['include_cross_check'] === true)
+      && (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(ayanamsha_id)) {
+      identityCrossCheck = await fetchPositionsCrossCheck(chart_id, ayanamsha_id, {
+        subjects: [grahaCode], identityOnly: false, buildIds: fence.build_ids,
+        mode: args['include_cross_check'] === true ? 'full' : 'compact',
+        scope: isMoon ? 'identity_facts' : 'requested_facts',
+      })
     }
 
     // ── dignity (across all vargas; operative_vargas highlighted) + functional nature ──
@@ -444,6 +469,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         graha: grahaName,
         graha_code: grahaCode,
         ayanamsha_id,
+        ...(identityCrossCheck ? { [IDENTITY_CROSS_CHECK_KEY]: identityCrossCheck } : {}),
         ...sections,
         completeness,
         notes,

@@ -63,18 +63,18 @@ MSR_CLASSES = {
 
 # (file, line, substring the line must contain): every cite the evidence text carries as `<basename>:<line>`
 _QS = _L + "L2_bodha/query_signals.ts"
-MSR_SERVED = [(_QS, 142, "'signal_type_class'"), (_QS, 143, "'signal_summary_text', 'signal_headline_text'"),
-              (_QS, 451, "m.signal_type_class = "), (_QS, 509, "FROM bodha_msr_signals m")]
+MSR_SERVED = [(_QS, 143, "'signal_type_class'"), (_QS, 144, "'signal_summary_text', 'signal_headline_text'"),
+              (_QS, 478, "m.signal_type_class = "), (_QS, 546, "FROM bodha_msr_signals m")]
 
 KEPT = {
     "bo_arudha": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_arudha.py", emitter=_BW + "arudha_emitter.py", cites=MSR_SERVED + [
         (_WR + "bo_arudha.py", 163, "rows = build_signal_rows("), (_WR + "bo_arudha.py", 182, "conn.execute(_INSERT_SQL, row)"),
         (_WR + "bo_arudha.py", 189, "INSERT INTO public.bodha_msr_signals"),
         (_WR + "bo_arudha.py", 222, "%(signal_summary_text)s, %(signal_headline_text)s"),
-        (_BW + "arudha_emitter.py", 139, '"signal_summary_text": summary'), (_BW + "arudha_emitter.py", 140, '"signal_headline_text": headline'),
-        (_BW + "arudha_emitter.py", 242, 'summary=f"category=arudha'), (_BW + "arudha_emitter.py", 243, 'headline=f"Arudha Lagna'),
-        (_BW + "arudha_emitter.py", 265, 'summary=f"category=arudha'), (_BW + "arudha_emitter.py", 266, 'headline=f"{graha_display} conjunct'),
-        (_BW + "arudha_emitter.py", 306, 'summary=(f"category=arudha'), (_BW + "arudha_emitter.py", 308, 'headline=(f"{pada_label}')]),
+        (_BW + "arudha_emitter.py", 148, '"signal_summary_text": summary'), (_BW + "arudha_emitter.py", 149, '"signal_headline_text": headline'),
+        (_BW + "arudha_emitter.py", 252, 'summary=f"category=arudha'), (_BW + "arudha_emitter.py", 253, 'headline=f"Arudha Lagna'),
+        (_BW + "arudha_emitter.py", 275, 'summary=f"category=arudha'), (_BW + "arudha_emitter.py", 276, 'headline=f"{graha_display} conjunct'),
+        (_BW + "arudha_emitter.py", 332, 'summary=(f"category=arudha'), (_BW + "arudha_emitter.py", 334, 'headline=f"{pada_label}')]),
     "bo_nakshatra_semantic": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_nakshatra_semantic.py",
                                   emitter=_BW + "nakshatra_semantic_emitter.py", cites=MSR_SERVED + [
         (_WR + "bo_nakshatra_semantic.py", 141, "row = build_signal_row("), (_WR + "bo_nakshatra_semantic.py", 168, "conn.execute(_INSERT_SQL, row)"),
@@ -104,7 +104,7 @@ KEPT = {
         (_WR + "bo_vargottama_dhana.py", 206, "%(signal_summary_text)s, %(signal_headline_text)s"),
         (_BW + "vargottama_dhana_emitter.py", 162, '"signal_summary_text": summary'), (_BW + "vargottama_dhana_emitter.py", 163, '"signal_headline_text": headline'),
         (_BW + "vargottama_dhana_emitter.py", 284, 'summary=f"category=vargottama_amplification'), (_BW + "vargottama_dhana_emitter.py", 286, 'headline=f"{graha_display} is VARGOTTAMA'),
-        (_BW + "vargottama_dhana_emitter.py", 381, "summary = ("), (_BW + "vargottama_dhana_emitter.py", 386, "headline = (")]),
+        (_BW + "vargottama_dhana_emitter.py", 398, 'summary = "".join(summary_parts)'), (_BW + "vargottama_dhana_emitter.py", 407, 'headline = f"{label}')]),
     "bo_laksana": dict(table=MSR, cols=MSR_COLS, writer=_WR + "bo_laksana.py", emitter=_WR + "bo_laksana.py", cites=MSR_SERVED + [
         (_WR + "bo_laksana.py", 795, 'return " | ".join(parts)'), (_WR + "bo_laksana.py", 829, 'return f"{lead}: {body}'),
         (_WR + "bo_laksana.py", 830, 'return f"{body} [{source_l1_asset}]"'),
@@ -120,20 +120,20 @@ KEPT = {
                          writer=_WR + "bo_anveshana.py", emitter=_WR + "bo_anveshana.py", cites=[
         (_WR + "bo_anveshana.py", 57, "INSERT INTO public.bodha_discoveries"), (_WR + "bo_anveshana.py", 70, "%(why_an_acharya_misses_it)s"),
         (_WR + "bo_anveshana.py", 73, "%(surface_reading)s, %(depth_reading)s, %(surface_depth_delta)s"),
-        (_WR + "bo_anveshana.py", 417, '"why_an_acharya_misses_it": why_misses'), (_WR + "bo_anveshana.py", 434, '"surface_reading": surface'),
-        (_WR + "bo_anveshana.py", 435, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 436, '"surface_depth_delta": delta'),
-        (_WR + "bo_anveshana.py", 520, 'why_misses=f"Low surface salience'), (_WR + "bo_anveshana.py", 522, 'surface=f"Signal {cand'),
-        (_WR + "bo_anveshana.py", 523, 'depth=f"Structurally consequential'), (_WR + "bo_anveshana.py", 524, 'delta=f"Surface hides depth'),
-        (_WR + "bo_anveshana.py", 596, 'why_misses=f"Semantically unusual'), (_WR + "bo_anveshana.py", 598, 'surface=f"Signal {sig_info'),
-        (_WR + "bo_anveshana.py", 599, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 600, 'delta=f"Semantic uniqueness'),
-        (_WR + "bo_anveshana.py", 659, 'why_misses=f"Statistically extreme'), (_WR + "bo_anveshana.py", 661, 'surface=f"Appears as one of many'),
-        (_WR + "bo_anveshana.py", 662, 'depth=f"Stands {anom'), (_WR + "bo_anveshana.py", 663, 'delta=f"σ-deviation'),
-        (_WR + "bo_anveshana.py", 743, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 745, 'surface=f"{subject} as an individual'),
-        (_WR + "bo_anveshana.py", 746, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 747, 'delta=f"Broker role'),
-        (_WR + "bo_anveshana.py", 840, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
-        (_L + "L2_bodha/query_discoveries.ts", 122, "surface_reading, depth_reading, surface_depth_delta"),
-        (_L + "L2_bodha/query_discoveries.ts", 123, "hypothesis_text, why_an_acharya_misses_it"),
-        (_L + "L2_bodha/query_discoveries.ts", 126, "FROM bodha_discoveries")]),
+        (_WR + "bo_anveshana.py", 422, '"why_an_acharya_misses_it": why_misses'), (_WR + "bo_anveshana.py", 439, '"surface_reading": surface'),
+        (_WR + "bo_anveshana.py", 440, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 441, '"surface_depth_delta": delta'),
+        (_WR + "bo_anveshana.py", 525, 'why_misses=f"Low surface salience'), (_WR + "bo_anveshana.py", 527, 'surface=f"Signal {cand'),
+        (_WR + "bo_anveshana.py", 528, 'depth=f"Structurally consequential'), (_WR + "bo_anveshana.py", 529, 'delta=f"Surface hides depth'),
+        (_WR + "bo_anveshana.py", 601, 'why_misses=f"Semantically unusual'), (_WR + "bo_anveshana.py", 603, 'surface=f"Signal {sig_info'),
+        (_WR + "bo_anveshana.py", 604, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 605, 'delta=f"Semantic uniqueness'),
+        (_WR + "bo_anveshana.py", 664, 'why_misses=f"Statistically extreme'), (_WR + "bo_anveshana.py", 666, 'surface=f"Appears as one of many'),
+        (_WR + "bo_anveshana.py", 667, 'depth=f"Stands {anom'), (_WR + "bo_anveshana.py", 668, 'delta=f"σ-deviation'),
+        (_WR + "bo_anveshana.py", 751, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 753, 'surface=f"{subject} as an individual'),
+        (_WR + "bo_anveshana.py", 754, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 755, 'delta=f"Broker role'),
+        (_WR + "bo_anveshana.py", 848, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
+        (_L + "L2_bodha/query_discoveries.ts", 137, "surface_reading, depth_reading, surface_depth_delta"),
+        (_L + "L2_bodha/query_discoveries.ts", 138, "hypothesis_text, why_an_acharya_misses_it"),
+        (_L + "L2_bodha/query_discoveries.ts", 141, "FROM bodha_discoveries")]),
     "mi_darshana": dict(table="mimamsa_insight_units", cols=["statement"], writer=_WR + "mi_darshana.py", emitter=None, cites=[
         (_WR + "mi_darshana.py", 230, "statement = ("), (_WR + "mi_darshana.py", 296, "statement = ("), (_WR + "mi_darshana.py", 303, "statement = ("),
         (_WR + "mi_darshana.py", 308, "statement = ("), (_WR + "mi_darshana.py", 370, 'r["statement"],'), (_WR + "mi_darshana.py", 400, "statement = ("),
@@ -245,7 +245,13 @@ def test_the_producer_column_exists_and_is_dark_in_the_served_projection_while_t
     assert re.search(r"ADD COLUMN IF NOT EXISTS producer_asset_id text", mig)
     assert "'bo_laksana','bo_arudha','bo_special_lagna','bo_sudarshana'" in mig and "'bo_vargottama_dhana','bo_nakshatra_semantic'" in mig
     ts = _read(_QS)
-    assert "producer_asset_id" not in ts                      # not projectable, not filterable: dark in every projection
+    # not projectable: dark in every projection (not a MSR_SIGNAL_COLUMNS / DEFAULT_SERVE_COLUMNS entry, so never in a served row).
+    # DENS-F: it IS filterable now, through the one `producer_asset_id` input (a bind-parameter WHERE filter, never selected): the exact
+    # attribution of bo_laksana's rows of the shared table, which has no finite signal_type_class list.
+    msr_cols = re.search(r"const MSR_SIGNAL_COLUMNS[^=]*=\s*\[(.*?)\n\]", ts, re.S).group(1)
+    assert "producer_asset_id" not in msr_cols
+    assert "m.producer_asset_id = $${p++}" in ts
+    assert not re.search(r"SELECT[^`]*producer_asset_id", ts)
     default = re.search(r"const DEFAULT_SERVE_COLUMNS[^=]*=\s*\[(.*?)\n\]", ts, re.S).group(1)
     assert "'signal_type_class'" in default and "'signal_summary_text'" in default and "'signal_headline_text'" in default
     assert "m.signal_type_class = $${p++}" in ts              # the served facet (the per-asset Narr filter)

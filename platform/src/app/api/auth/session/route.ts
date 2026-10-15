@@ -1,7 +1,20 @@
 import { NextResponse } from 'next/server'
 import { createSessionCookie, adminAuth, getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { res } from '@/lib/errors'
+import { res, errorResponse } from '@/lib/errors'
+
+// Sign-in refusals the login page must tell apart. Same envelope as every other
+// route (`error.code` + `error.message`); the snake_case marker the login page
+// branches on travels in `error.detail`.
+function refuse(marker: 'email_not_verified' | 'account_pending' | 'account_inactive') {
+  const spec = {
+    email_not_verified: ['AUTH_EMAIL_NOT_VERIFIED', 'Please verify your email address first.'],
+    account_pending: ['AUTH_ACCOUNT_PENDING', 'Your account is waiting for approval.'],
+    account_inactive: ['AUTH_ACCOUNT_INACTIVE', 'Your account is not active.'],
+  } as const
+  const [code, message] = spec[marker]
+  return errorResponse(code, message, 403, { detail: marker, retry: false })
+}
 
 const SESSION_DURATION_MS = 60 * 60 * 24 * 14 * 1000 // 14 days
 
@@ -17,7 +30,7 @@ export async function POST(request: Request) {
 
   let decoded
   try {
-    decoded = await adminAuth.verifyIdToken(idToken)
+    decoded = await adminAuth.verifyIdToken(idToken, true)
   } catch {
     return res.unauthenticated()
   }
@@ -35,22 +48,36 @@ export async function POST(request: Request) {
 
   if (profile) {
     if (profile.status !== 'active') {
-      return res.forbidden()
+      return refuse(profile.status === 'pending' ? 'account_pending' : 'account_inactive')
     }
   } else {
-    const role =
-      decoded.email && decoded.email === process.env.SUPER_ADMIN_EMAIL
-        ? 'super_admin'
-        : 'guest'
+    // No profile yet. Nothing below may run for an unverified or email-less
+    // identity: no row is created and no role is elevated.
+    const tokenEmail = typeof decoded.email === 'string' ? decoded.email.trim() : ''
+    if (decoded.email_verified !== true || !tokenEmail) {
+      return refuse('email_not_verified')
+    }
+    // Disaster-recovery path only (the seeded super admin already has a
+    // profile). An unset/blank SUPER_ADMIN_EMAIL never matches anything.
+    const adminEmail = (process.env.SUPER_ADMIN_EMAIL ?? '').trim().toLowerCase()
+    const isSuperAdmin = adminEmail !== '' && tokenEmail.toLowerCase() === adminEmail
+    const role = isSuperAdmin ? 'super_admin' : 'guest'
+    const status = isSuperAdmin ? 'active' : 'pending'
     try {
       await query(
         'INSERT INTO profiles (id, role, status, name, email) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',
-        [decoded.uid, role, 'active', decoded.name ?? null, decoded.email ?? null]
+        [decoded.uid, role, status, decoded.name ?? null, tokenEmail]
       )
     } catch (insertErr) {
+      // 23505: another profile already owns this email (lower(email) unique
+      // index). The person is known but this sign-in is not approved.
+      if ((insertErr as { code?: string } | null)?.code === '23505') {
+        return refuse('account_pending')
+      }
       console.error('[session] profile insert failed', insertErr)
       return res.internal('profile sync failed')
     }
+    if (!isSuperAdmin) return refuse('account_pending')
   }
 
   let sessionCookie: string

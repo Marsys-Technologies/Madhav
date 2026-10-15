@@ -9,6 +9,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 
@@ -28,7 +29,7 @@ export const queryRmResonancesCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     graha:        { type: 'string', description: 'Filter by graha. Omit for all.' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
     offset:       { type: 'number', description: 'Pagination offset (default 0).' },
@@ -47,22 +48,37 @@ export const queryRmResonancesCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 45, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): bounded by `limit` with a disclosed `total_matching` / `more_available`, filterable by the
+  // facets below; an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'graha'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const graha = args['graha'] ? String(args['graha']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
     const offset = Math.max(Number(args['offset'] ?? 0), 0)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     if (graha)        { filters.push(`graha = $${p++}`);        params.push(graha) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const sql = `
       SELECT resonance_id, ayanamsha_id, graha, resonance_score, weakness_score,
@@ -73,7 +89,7 @@ export const queryRmResonancesCapability: CapabilityDescriptor = {
              to_char(computed_at, 'YYYY-MM-DD') AS computed_date
       FROM bodha_rm_resonances
       WHERE ${where}
-      ORDER BY resonance_score DESC NULLS LAST, weakness_score DESC NULLS LAST
+      ORDER BY resonance_score DESC NULLS LAST, weakness_score DESC NULLS LAST, ${ayanamshaServeOrderBy()}
       LIMIT $${p} OFFSET $${p + 1}`
 
     try {
@@ -85,11 +101,15 @@ export const queryRmResonancesCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
           filters: { ayanamsha_id, graha, limit, offset },
+          ...(rowsRes.rows.length === 0
+            ? { empty_reason: `No remedial-matrix resonance rows matched for this chart (ayanamsha_id=${ayanamsha_id ?? 'any'}, graha=${graha ?? 'any'}).` }
+            : {}),
           provenance: { tables: ['bodha_rm_resonances'], source: 'L2 Bodha Remedial Matrix resonances; served chart-scoped, budgeted.' },
         },
         is_error: false,

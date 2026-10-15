@@ -81,4 +81,50 @@ describe('cross-ayanamsha agreement engine (EL-27 + EL-56)', () => {
       JSON.stringify(computeAyanamshaAgreement('MARS', reads)),
     );
   });
+
+  // ── Lahiri-primary PR-3 (SS N-342): the divergence is anchored on LAHIRI, not the modal reading ──
+  const read = (a: (typeof REAL_AYANAMSHAS)[number], sign: string): AyanamshaRead => ({
+    ayanamsha: a, dignity_state: null, house: null, sign, vargottama: null,
+  });
+
+  it('anchors on Lahiri: in a 2-2-1 split Lahiri is NEVER named divergent from itself (the modal reading could)', () => {
+    // krishnamurti+raman = Pisces (first-appearing modal tie in alphabetical input), lahiri+true_chitra = Aquarius, SS = Aries.
+    const reads: AyanamshaRead[] = [
+      read('krishnamurti', 'Pisces'), read('raman', 'Pisces'),
+      read('lahiri_chitrapaksha', 'Aquarius'), read('true_chitra', 'Aquarius'),
+      read('surya_siddhanta_classical', 'Aries'),
+    ];
+    const v = computeAyanamshaAgreement('MOON', reads, 'sign');
+    expect(v.anchor_ayanamsha).toBe('lahiri_chitrapaksha');
+    expect(v.anchor_basis).toBe('anchor_read');
+    expect(v.divergent_ayanamshas).not.toContain('lahiri_chitrapaksha');
+    expect(v.divergent_ayanamshas).toEqual(['krishnamurti', 'raman', 'surya_siddhanta_classical']);
+    expect(v.ayanamsha_agreement).toBe('2/5'); // Lahiri + true_chitra
+  });
+
+  it('the divergent list is in SERVE ORDER whatever the input order', () => {
+    const reads: AyanamshaRead[] = [
+      read('surya_siddhanta_classical', 'Aries'), read('raman', 'Pisces'), read('lahiri_chitrapaksha', 'Aquarius'),
+      read('krishnamurti', 'Pisces'), read('true_chitra', 'Taurus'),
+    ];
+    const v = computeAyanamshaAgreement('MOON', reads, 'sign');
+    expect(v.divergent_ayanamshas).toEqual(['true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical']);
+    const reversed = computeAyanamshaAgreement('MOON', [...reads].reverse(), 'sign');
+    expect(JSON.stringify(reversed)).toBe(JSON.stringify(v));
+  });
+
+  it('an explicit anchor measures against that ayanamsha instead', () => {
+    const reads: AyanamshaRead[] = REAL_AYANAMSHAS.map((a) => read(a, a === 'raman' ? 'Pisces' : 'Aquarius'));
+    const v = computeAyanamshaAgreement('MOON', reads, 'sign', 'raman');
+    expect(v.anchor_ayanamsha).toBe('raman');
+    expect(v.divergent_ayanamshas).toEqual(['lahiri_chitrapaksha', 'true_chitra', 'krishnamurti', 'surya_siddhanta_classical']);
+  });
+
+  it('with no Lahiri read it falls back to the modal reading and SAYS so (never silently)', () => {
+    const reads: AyanamshaRead[] = REAL_AYANAMSHAS.filter((a) => a !== 'lahiri_chitrapaksha').map((a) => read(a, a === 'raman' ? 'Pisces' : 'Aquarius'));
+    const v = computeAyanamshaAgreement('MOON', reads, 'sign');
+    expect(v.anchor_ayanamsha).toBeNull();
+    expect(v.anchor_basis).toBe('modal_no_anchor_read');
+    expect(v.divergent_ayanamshas).toEqual(['raman']);
+  });
 });

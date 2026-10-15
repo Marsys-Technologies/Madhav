@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VALID_AYANAMSHAS } from '@/lib/ayanamsha'
+import { toShortAyanamshaId, VALID_AYANAMSHAS } from '@/lib/ayanamsha'
 
 /**
  * Chart-update request contract, normalisation and authoritative change
@@ -26,7 +26,13 @@ export const ChartUpdateInputSchema = z.strictObject({
   lon: z.number().finite().min(-180).max(180),
   timezone_id: z.string().trim().min(1).max(100),
   tz_offset: z.number().finite().min(-14).max(14),
-  ayanamshas: z.array(z.enum(VALID_AYANAMSHAS)).min(1),
+  /**
+   * Optional: an omitted list means "leave the stored ayanamshas alone", so a
+   * form that did not touch the selection never counts as an ayanamsha edit.
+   */
+  ayanamshas: z.array(z.enum(VALID_AYANAMSHAS)).min(1).optional(),
+  /** Acknowledgement of the destructive effect; only read under the `warn` edit policy. */
+  confirm_destructive: z.boolean().optional(),
 })
 
 export type ChartUpdateInput = z.infer<typeof ChartUpdateInputSchema>
@@ -50,6 +56,9 @@ export type NormalizedChartUpdate = NormalizedChartInputs & {
   birth_lng: number
   timezone_id: string
   effective_tz_offset_minutes: number
+  /** True when the request carried no `ayanamshas`; `ayanamshas` is then `[]` and must be replaced by the stored list. */
+  ayanamshas_omitted: boolean
+  confirm_destructive: boolean
 }
 
 export type ChartChangeField = keyof NormalizedChartInputs
@@ -93,7 +102,9 @@ function roundCoordinate(value: number | null): number | null {
 }
 
 function normalizeAyanamshas(values: readonly string[]): string[] {
-  return [...new Set(values.map((v) => v.trim()).filter(Boolean))].sort()
+  // Short and long spellings of one frame (`lahiri` / `lahiri_chitrapaksha`)
+  // are the same selection: compare them in the short form the forms use.
+  return [...new Set(values.map(toShortAyanamshaId).filter(Boolean))].sort()
 }
 
 function zoneOffsetMinutesAt(instantMs: number, timeZone: string): number {
@@ -189,8 +200,10 @@ export function normalizeChartUpdate(
       birth_lat: roundCoordinate(data.lat)!,
       birth_lng: roundCoordinate(data.lon)!,
       timezone_id: data.timezone_id,
-      ayanamshas: normalizeAyanamshas(data.ayanamshas),
+      ayanamshas: normalizeAyanamshas(data.ayanamshas ?? []),
       effective_tz_offset_minutes: effective,
+      ayanamshas_omitted: data.ayanamshas === undefined,
+      confirm_destructive: data.confirm_destructive === true,
     },
   }
 }

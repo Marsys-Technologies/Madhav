@@ -50,6 +50,8 @@ import { query } from '@/lib/db/client'
  */
 export const LIFETIME_COUNT_FACT_KIND = 'lifetime_count_per_100y'
 
+const MAX_ROWS = 200
+
 export const queryClassPriorsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_class_priors',
   type:  'tool',
@@ -88,9 +90,16 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 10, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): a LIMIT-bounded read (MAX_ROWS) whose bound and truncation the response discloses (`limit`, `truncated`): `paginated` in this contract's sense, not an offset / cursor pager; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: true,        // bounded by a fixed LIMIT with the truncation DISCLOSED in the response (`truncated`, `limit`); no offset: a caller narrows by the facets below
+    facets: ['prior_version', 'signal_type_class', 'source_subsystem'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
-    const priorVersion = args['prior_version'] ? String(args['prior_version']) : null
+    const prior_version = args['prior_version'] ? String(args['prior_version']) : null
     const signalClass  = args['signal_type_class'] ? String(args['signal_type_class']) : null
     const subsystem    = args['source_subsystem'] ? String(args['source_subsystem']) : null
 
@@ -101,18 +110,17 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
     const filters: string[] = [`fact_kind <> '${LIFETIME_COUNT_FACT_KIND}'`]
     const params: unknown[] = []
     let p = 1
-    if (priorVersion) { filters.push(`prior_version = $${p++}`); params.push(priorVersion) }
+    if (prior_version) { filters.push(`prior_version = $${p++}`); params.push(prior_version) }
     if (signalClass)  { filters.push(`signal_type_class = $${p++}`); params.push(signalClass) }
     if (subsystem)    { filters.push(`source_subsystem = $${p++}`); params.push(subsystem) }
-    const where = filters.join(' AND ')
 
     const sql = `
       SELECT prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition,
              class_prior, varga_weights, contested, citation, ratified_by
       FROM brahma_class_priors
-      WHERE ${where}
+      WHERE ${filters.join(' AND ')}
       ORDER BY prior_version, signal_type_class, source_subsystem
-      LIMIT 200`
+      LIMIT ${MAX_ROWS}`
 
     try {
       const result = await query<Record<string, unknown>>(sql, params)
@@ -120,7 +128,13 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
         content: {
           rows: result.rows,
           count: result.rows.length,
-          filters: { prior_version: priorVersion, signal_type_class: signalClass, source_subsystem: subsystem },
+          limit: MAX_ROWS,
+          truncated: result.rows.length >= MAX_ROWS,
+          // DENS-F (CLAUDE.md §N.6): the row's authority layer is its `contested` flag (a contested prior is a disputed
+          // classical weight, not a settled one); it is counted here on top of being served on every row, so a caller
+          // cannot read the row count as "N settled priors". Rows are never dropped (B.10).
+          contested_rows_in_page: result.rows.filter(r => r['contested'] === true).length,
+          filters: { prior_version, signal_type_class: signalClass, source_subsystem: subsystem },
           // Named, machine-readable disclosure of the scope narrowing — so a caller
           // can see WHAT was left out and where it lives, rather than inferring a
           // clean full-table read from a count that silently excludes rows.
@@ -133,7 +147,7 @@ export const queryClassPriorsCapability: CapabilityDescriptor = {
             'with their own source_ref/prior_basis provenance through the Kāla Kṣetra ' +
             'temporal-field surfaces.',
           ...(result.rows.length === 0
-            ? { empty_reason: `No class-prior rows matched (prior_version=${priorVersion ?? 'any'}, signal_type_class=${signalClass ?? 'any'}, source_subsystem=${subsystem ?? 'any'}).` }
+            ? { empty_reason: `No class-prior rows matched (prior_version=${prior_version ?? 'any'}, signal_type_class=${signalClass ?? 'any'}, source_subsystem=${subsystem ?? 'any'}).` }
             : {}),
           disclaimer: 'Versioned ranking-weight reference — same values the internal composite ranker reads, exposed here for audit/citation.',
           provenance: { tables: ['brahma_class_priors'] },

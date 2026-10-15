@@ -68,8 +68,9 @@ def test_these_five_assets_read_pass_on_the_writer_scan(aid):
 def test_the_ga_vargas_d81_sentinel_is_no_longer_a_constant_write():
     res = _scan("ga_vargas")
     assert not [p for p in res["problems"] if p["kind"] == "constant_write"]
-    # what remains is the scan's own limit: 33 sites build the row through a non-literal subscript store
-    assert any("dynamic row construction" in u for u in res["unresolved"])
+    # FORM-GAP (SS N-191, detector limits): the 33 sites that build the row through a non-literal subscript store used to stay opaque because the key name appeared once as a READ (`row.get("citation_human", "")`)
+    # in the narration linter; a read cannot make a key appear in a row, so the scan no longer treats it as a supplier and finds nothing unresolved (test_formgap_scan_limits.py pins the mutation)
+    assert not res["unresolved"]
 
 
 def test_the_remedy_loader_has_no_blank_string_default_left_on_a_nullable_text_column():

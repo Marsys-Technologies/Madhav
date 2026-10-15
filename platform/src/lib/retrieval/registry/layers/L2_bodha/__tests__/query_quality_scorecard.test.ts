@@ -85,4 +85,14 @@ describe('query_quality_scorecard — handler contract', () => {
     expect(content['scorecard']).toBeNull()
     expect(content['no_data']).toBe(true)
   })
+
+  it('DENS-SERVED: declares its contract and names an absent scorecard with empty_reason (no facets: nothing filters the row)', async () => {
+    expect(queryQualityScorecardCapability.density_contract).toEqual({ paginated: false, facets: [], empty_reason: true })
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+    const result = await queryQualityScorecardCapability.handler({ chart_id: CHART_A }, undefined)
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    expect(content['no_data']).toBe(true)
+    expect(String(content['empty_reason'])).toMatch(/No synthesis_quality_scorecard row/)
+  })
 })

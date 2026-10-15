@@ -17,6 +17,10 @@ class _RecordingCursor:
     def execute(self, sql, params=None):
         self.calls.append((sql, params))
 
+    def fetchone(self):
+        # WFIX-A: the writer reads COUNT(*) of vidhi_primitives after the upsert
+        return {"n": len(PRIMITIVE_ROWS)}
+
 
 class _Connection:
     def __init__(self) -> None:

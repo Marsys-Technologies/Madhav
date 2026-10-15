@@ -1,7 +1,7 @@
 """
 pipeline/orchestrator/writers/ka_gochara_resonance.py
 Orchestrator registration shim for ka_gochara_resonance (L3 Kāla — D-5 Lane G-1
-Resonance Map).
+Resonance Map; explicit candidate_generation dispatches weight-free F1).
 
 The @register('ka_gochara_resonance') decorator fires on import of this
 module, which discover_all() triggers when iterating

@@ -1,0 +1,6 @@
+#!/bin/bash
+# Test double for /usr/bin/osascript (B-0c kynotify tests): shows nothing. Records one argv
+# element per line in $FAKE_OSASCRIPT_LOG and exits with $FAKE_OSASCRIPT_RC (default 0).
+set -u
+printf '%s\n' "$@" > "${FAKE_OSASCRIPT_LOG:?}"
+exit "${FAKE_OSASCRIPT_RC:-0}"

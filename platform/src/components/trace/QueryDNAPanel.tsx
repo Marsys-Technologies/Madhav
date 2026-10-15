@@ -21,6 +21,7 @@ import type { TraceStep, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/t
 // in @/lib/db/client → `server-only` and poisons the client bundle; see
 // graha_labels.ts's own header for the full defect-class explanation).
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/graha_labels'
+import { ordinal } from '@/lib/format/ordinal'
 
 interface Props {
   steps: TraceStep[]
@@ -62,7 +63,7 @@ function humanizeSeedNode(seed: string): string {
   }
   if (seed.startsWith('HSE.')) {
     const n = seed.slice(4)
-    const ord = n === '1' ? '1st' : n === '2' ? '2nd' : n === '3' ? '3rd' : `${n}th`
+    const ord = Number.isInteger(Number(n)) && n !== '' ? ordinal(Number(n)) : n
     return `${ord} house`
   }
   if (seed.startsWith('YOG.')) {

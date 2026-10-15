@@ -23,17 +23,16 @@ WHAT IT COSTS THE ANCHOR CHART
   start (the plan prints this, with the expected duration). The tool refuses to plan or commit while ANY run of the anchor chart
   is planned / running / paused (ANCHOR_CHART_BUSY).
 
-OPERATOR COMMANDS  (DATABASE_URL in the environment; the tool never reads a credential file and never calls gcloud in plan mode)
+OPERATOR COMMANDS  (DATABASE_URL in the environment; the tool never reads a credential file and its only gcloud call before the dispatch is the read-only `run jobs describe` of the live job image)
   1. PLAN (default; INSERT build_runs + build_run_assets, then ROLLBACK; writes the receipt with committed=false):
        python3 platform/scripts/governance/suvarna_global_asset_dispatch.py \\
            --assets bg_phaladeepika_latta --anchor-chart 482012f1-710e-4a25-994a-93821f5871aa \\
-           --deployed-sha <commit whose writer inventory = the deployed image's> --deployed-job-sha <live job image sha> \\
            --receipt /path/outside/the/repo/latta_global_dispatch_receipt.json
      Read the impact statement, the pre fingerprint, the force-support result and the anchor-chart cost, then copy the
      CONFIRM TOKEN (`GLOBAL1ASSET_<12 hex>_FORCE_GLOBAL_REBUILD`).
   2. COMMIT (one forced dispatch, then it waits and verifies; the verification is mandatory, there is no flag):
        python3 platform/scripts/governance/suvarna_global_asset_dispatch.py <the same arguments> \\
-           --job-sha-file /path/to/the/operators/job-sha-file --commit --confirm <token>
+           --commit --confirm <token>      (the live job image is READ by the tool at plan, before the INSERT and before the dispatch)
      Exit 0 only when the forced run completed, the force took effect (disposition 'build', NOT skip_no_delta), the asset's global
      throughput row carries a duration (last_built_at == the run's ended_at) and the post fingerprint equals the pre fingerprint.
   3. Interrupted or timed-out wait (the run exists, nothing is re-dispatched): verify the run later with
@@ -63,7 +62,7 @@ REFUSAL CODES (exit 4, JSON `refusals`; fail closed; nothing inserted)
   FINGERPRINT_UNREADABLE, DECLARATIONS_INVALID, EXPECTED_CHANGE_INVALID (file unreadable / malformed / another asset / a placeholder reason /
   declares no change), CHANGED_OUTPUT_NOT_ACCEPTED, RECEIPT_EXPECTED_CHANGE_MISMATCH, IMPACT_CHANGED, CONFIRM_TOKEN_MISMATCH, RECEIPT_PATH_INVALID, and every gate of the
   wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE, FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY,
-  REGISTRY_ROW_CHANGED, FAMILY_*, FORCE_FAMILY_ASSET, DEPLOYED_JOB_SHA_REQUIRED, ...).
+  REGISTRY_ROW_CHANGED, FAMILY_*, FORCE_FAMILY_ASSET, LIVE_JOB_IMAGE_UNREADABLE, LIVE_JOB_IMAGE_DIFFERS, ...).
 
 EXIT CODES  0 ok | 1 DATABASE_URL missing | 2 bad input | 3 dispatch failed after the run was committed (terminalised or warned) |
   4 a gate refused (the receipt path is validated, clobber guard included, and probe-written BEFORE the INSERT) |
@@ -1313,7 +1312,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="suvarna_global_asset_dispatch.py", formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Forced single GLOBAL-asset dispatch with an impact statement and pre/post semantic fingerprints. Reads "
-                    "DATABASE_URL from the environment; never reads credential files; plan mode never touches gcloud.",
+                    "DATABASE_URL from the environment; never reads credential files; plan mode only reads the live job image (read-only gcloud describe).",
         epilog="Default is a PLAN: INSERT build_runs + build_run_assets, ROLLBACK, print the confirm token. --commit --confirm "
                "<token> dispatches ONE forced run (NIRMANA_FORCE_EXECUTE=1 is implied and always on), waits for it and verifies "
                "it (mandatory). A second dispatch for the same asset is refused unless --allow-redispatch names every prior run. "
@@ -1324,10 +1323,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--anchor-chart", required=True, help="a REAL chart id, used only as the run's declared anchor (never synthetic)")
     p.add_argument("--receipt", required=True, help="path of the impact receipt JSON (outside the repo unless --receipt-in-repo)")
     p.add_argument("--receipt-in-repo", action="store_true", help="allow the receipt path inside --repo")
-    p.add_argument("--deployed-sha", help="commit whose committed writer digests are the deployed image's")
-    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's head_sha)")
-    p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding exactly the live job sha (40 hex); required with "
-                   "--commit; re-read right before the INSERT and right before the dispatch (JOB_SHA_CHANGED)")
+    p.add_argument("--deployed-sha", help="OPTIONAL cross-check: the commit whose committed writer digests are the deployed image's "
+                   "(default: the commit the tool READS from the live job image); if given and not the live image: JOB_SHA_MISMATCH")
+    p.add_argument("--deployed-job-sha", help="OPTIONAL cross-check only: the tool READS the live job image itself (read-only gcloud "
+                   "describe) at plan time and again right before the INSERT and the dispatch (JOB_SHA_CHANGED); a value that differs "
+                   "from the live image refuses (LIVE_JOB_IMAGE_DIFFERS)")
     p.add_argument("--repo", default=str(slw.REPO_ROOT))
     p.add_argument("--family-ref", default="origin/main")
     p.add_argument("--declarations", default=str(fd.DEFAULT_DECLARATIONS))
@@ -1366,14 +1366,15 @@ def _psycopg_fp_connect_factory(database_url: str):
 
 def run_cli(args: argparse.Namespace, *, connect, fp_connect=None, git=slw._git, out=None, sleep=time.sleep, monotonic=time.monotonic,
             dispatch=None, now: Callable[[], datetime] | None = None, decls=None, fp_reader=fd.unit_fingerprints,
-            empty_fn=fd.empty_table_fingerprint) -> int:
+            empty_fn=fd.empty_table_fingerprint, live_reader=None) -> int:
     """The whole command with every outside contact injected (database, git, gcloud, the clock, the fingerprint reader)."""
     out = out or sys.stdout
     now = now or (lambda: datetime.now(timezone.utc))
     committed: list[dict] = []
     try:
         return _run_cli(args, connect=connect, fp_connect=fp_connect or connect, git=git, out=out, sleep=sleep, monotonic=monotonic,
-                        dispatch=dispatch, now=now, decls=decls, fp_reader=fp_reader, empty_fn=empty_fn, committed=committed)
+                        dispatch=dispatch, now=now, decls=decls, fp_reader=fp_reader, empty_fn=empty_fn, committed=committed,
+                        live_reader=live_reader or slw.live_reader_for(args))
     except slw.LevelWaveRefusal as exc:
         _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed)
         return REFUSAL_EXIT_CODE
@@ -1402,7 +1403,7 @@ def run_cli(args: argparse.Namespace, *, connect, fp_connect=None, git=slw._git,
         return EXIT_UNEXPECTED
 
 
-def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch, now, decls, fp_reader, empty_fn, committed) -> int:
+def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch, now, decls, fp_reader, empty_fn, committed, live_reader) -> int:
     emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
     asset = parse_single_asset(args.assets)
     anchor = validate_anchor_format(args.anchor_chart)
@@ -1419,11 +1420,6 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
         return _verify_run_mode(args, asset=asset, anchor=anchor, receipt_path=receipt_path, connect=connect, fp_connect=fp_connect,
                                 out=out, sleep=sleep, monotonic=monotonic, now=now, decls=decls, fp_reader=fp_reader,
                                 expected=expected, expected_sha=expected_sha)
-    if commit and not args.job_sha_file:
-        raise slw.LevelWaveError("--commit requires --job-sha-file (re-read right before the INSERT and before the dispatch)")
-    if not args.deployed_job_sha or not args.deployed_sha:
-        raise _refuse("DEPLOYED_JOB_SHA_REQUIRED", "--deployed-sha and --deployed-job-sha (the live deployed job image sha read at "
-                      "launch) are both required")
 
     # 1. the wave's own gates: family, force (one asset, never a family asset), job sha binding, force support, image skew
     ref_status = slw.family_ref_status(args.repo, args.family_ref, git=git)
@@ -1432,16 +1428,15 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
                 + slw.force_refusals([asset], family))
     if refusals:
         raise slw.LevelWaveRefusal(refusals)
-    binding = slw.check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
+    live = live_reader()                       # READ by the tool, never asserted by hand (the flags are only cross-checks)
+    binding = slw.bind_live_job_sha(args.repo, live_sha=live, asserted_job_sha=args.deployed_job_sha, deployed_sha=args.deployed_sha, git=git)
     pinned = binding["deployed_job_sha"]
     slw.check_image_supports_force(args.repo, pinned, git=git)
     check_image_records_duration(args.repo, pinned, git=git)
     force_support = {"checked_at_job_sha": pinned, "result": "supported", "markers": [m[2] for m in slw._FORCE_MARKERS],
                      "duration_write_markers": [m[2] for m in DURATION_MARKERS]}
-    if args.job_sha_file:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     local = slw.load_local_writer_digests(args.repo)
-    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, git=git)
+    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=binding["inventory_sha"], git=git)
     slw.check_image_skew([asset], local, deployed)
     frozen = slw._load_frozen_dispatcher() if commit else None       # before any insert: a load failure strands nothing
 
@@ -1545,6 +1540,8 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
             raise ReceiptNotWritten(r["run_id"], anchor, exc, term) from exc
         emit("run_committed", **rec)
 
+    if commit:
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # immediately before the INSERT / COMMIT
     run = insert_global_run(connect, asset=asset, anchor_chart=anchor, manifest=manifest, digest=digest, row_digests=row_digests,
                             external=external, impact_reader=impact_of, impact_sha256=impact_sha, triggered_by=triggered_by,
                             allow_redispatch=allow_redispatch, token=token, confirm=args.confirm if commit else None, commit=commit,
@@ -1562,7 +1559,7 @@ def _run_cli(args, *, connect, fp_connect, git, out, sleep, monotonic, dispatch,
         run_id=run_id, project=args.project, region=args.region, job=args.job, force_execute=True,
         run_command=lambda *a, **k: subprocess.run(*a, **k)))
     try:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # a redeploy since the INSERT: the live image is READ again
         execution = send(run["run_id"])
     except Exception as exc:  # noqa: BLE001
         term = terminalise_planned_run(connect, run["run_id"], anchor, str(exc), frozen)      # the frozen statement prefixes 'dispatch failed:'

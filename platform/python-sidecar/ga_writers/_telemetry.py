@@ -64,10 +64,10 @@ def _duration_columns_present(conn: Any) -> bool:
     once-per-process cached probe (`asset_runner._duration_columns_present`), reused
     rather than re-implemented so the two write paths can never disagree about the
     schema. Imported lazily to keep this module import-light."""
-    from pipeline.orchestrator import asset_runner
+    from pipeline.orchestrator import writer_runtime_support
 
     with conn.cursor() as cur:
-        return asset_runner._duration_columns_present(cur)
+        return writer_runtime_support._duration_columns_present(cur)
 
 
 def _compute_duration_and_rate(

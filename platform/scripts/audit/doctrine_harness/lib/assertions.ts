@@ -523,7 +523,7 @@ const k2_12: AssertionDef = {
 // ── A5 — two-chart divergence (Lane A-γ) ──────────────────────────────────
 const a5: AssertionDef = {
   id: 'A5',
-  title: 'Abhinandan (1c826d5a) tara-bala/sade-sati/panchanga currents MUST differ from Abhisek (482012f1)',
+  title: 'Abhinandan (1c826d5a) tara-bala/sade-sati/panchanga currents MUST differ from the primary chart (482012f1)',
   register_row: 'CR-87 verification',
   async run(ctx) {
     const [chart1, chart2] = await Promise.all([
@@ -545,7 +545,7 @@ const a5: AssertionDef = {
       id: a5.id,
       title: a5.title,
       status,
-      evidence: `sade_sati payload differs across charts: ${sadeSatiDiffers}. Moon-position payload differs across charts: ${moonDiffers}. (Abhisek=${ctx.chartId}, Abhinandan=${ctx.secondChartId})`,
+      evidence: `sade_sati payload differs across charts: ${sadeSatiDiffers}. Moon-position payload differs across charts: ${moonDiffers}. (primary=${ctx.chartId}, Abhinandan=${ctx.secondChartId})`,
       register_row: a5.register_row,
     }
   },

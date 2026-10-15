@@ -67,6 +67,14 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
     },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): ONE latest scorecard row per chart (LIMIT 1, no paging) and no row filter (`ayanamsha_id` is only echoed back,
+  // see the input_schema), so there are no facets; an absent scorecard carries `empty_reason` next to `no_data`.
+  density_contract: {
+    paginated: false,
+    facets: [],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id = args['chart_id'] as string
     if (!chart_id) {
@@ -113,6 +121,7 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
           ayanamsha_id,
           scorecard: scorecard ?? null,
           no_data: !scorecard,
+          ...(scorecard ? {} : { empty_reason: `No synthesis_quality_scorecard row exists for chart ${chart_id}: the Bodha synthesis build has not written a scorecard for it (defect_001 below is still derived live).` }),
           // Structured, live-derived — read this, not the stored scorecard field.
           defect_001: defect001,
           // Legacy field retained (additive) for callers of the prior wave's shape; text

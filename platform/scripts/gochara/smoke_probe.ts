@@ -57,7 +57,7 @@ const ALWAYS_FAIL_MODE = false
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** The canonical Abhisek Mohanty chart — primary test fixture. */
+/** The canonical native chart — primary test fixture. */
 const PRIMARY_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
 /** Abhinandan Mohanty — cross-check chart used by W1 and the gochara build. */

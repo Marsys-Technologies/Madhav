@@ -70,7 +70,7 @@ def test_the_three_rules_are_declared_with_n156_and_every_cause_is_registered():
 
 
 def test_d3_is_a_real_detector_d2_stays_none():
-    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()" and ac.CRITERION_REGISTRY["Carr.D3"]["revision"] == 3          # N-169: rev 3, the build-recorded form
+    assert ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "asset_census.py:measure()" and ac.CRITERION_REGISTRY["Carr.D3"]["revision"] == 4          # N-283: rev 4 (the table-less release text); N-169: rev 3, the build-recorded form
     assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"          # no asset stores per-witness values: D2 is only ever N/A by declaration
 
 

@@ -73,9 +73,20 @@ export type CensusCheckpoint = {
  * rather than a pair-conformance probe). Returns null when a required field cannot be safely
  * fabricated — the caller records SKIPPED, never guesses.
  */
+export type CensusBirthParams = {
+  /** ISO-8601 birth datetime with offset (the chart's `charts` row). */
+  datetimeIso: string
+  latitude: number
+  longitude: number
+}
+
 export function synthesizeCensusArgs(
   tool: McpToolDescriptor,
-  chartId: string
+  chartId: string,
+  // Birth details are never embedded in this harness: a tool that requires a birth datetime or
+  // coordinates is probed only when the caller supplies them (read from the chart's `charts`
+  // row); otherwise the probe is SKIPPED (null), never guessed.
+  birth?: CensusBirthParams
 ): Record<string, unknown> | null {
   const schema = (tool.inputSchema ?? {}) as { properties?: Record<string, { type?: string }>; required?: string[] }
   const required = schema.required ?? []
@@ -94,11 +105,14 @@ export function synthesizeCensusArgs(
     } else if (/domain/i.test(field)) {
       args[field] = 'wealth'
     } else if (/latitude/i.test(field)) {
-      args[field] = 20.2961
+      if (!birth) return null
+      args[field] = birth.latitude
     } else if (/longitude/i.test(field)) {
-      args[field] = 85.8245
+      if (!birth) return null
+      args[field] = birth.longitude
     } else if (/datetime_iso|^dob$/i.test(field)) {
-      args[field] = '1984-02-05T10:43:00+05:30'
+      if (!birth) return null
+      args[field] = birth.datetimeIso
     } else if (propType === 'string') {
       return null // unknown required string field — cannot safely fabricate
     } else if (propType === 'number' || propType === 'integer') {
@@ -163,6 +177,9 @@ export type CensusOptions = {
   interBatchMs?: number
   checkpointPath: string
   chartId: string
+  /** Birth params of the chart under test (from its `charts` row). Optional: without them a tool
+   *  that requires a birth datetime/coordinates is SKIPPED, never probed with a guessed value. */
+  birth?: CensusBirthParams
   /** When true, an existing checkpoint for a DIFFERENT target is discarded rather than reused
    *  (prevents silently mixing two different connectors' results under one checkpoint file). */
   target: string
@@ -201,7 +218,7 @@ export async function runCensusSweep(
   for (let i = 0; i < remaining.length; i += batchSize) {
     const batch = remaining.slice(i, i + batchSize)
     for (const tool of batch) {
-      const result = await probeOneTool(client, tool, opts.chartId)
+      const result = await probeOneTool(client, tool, opts.chartId, opts.birth)
       cp.results[tool.name] = result
     }
     cp.updated_at = new Date().toISOString()
@@ -217,8 +234,8 @@ export async function runCensusSweep(
   return { results: Object.values(cp.results), checkpoint: cp, resumed }
 }
 
-async function probeOneTool(client: McpClient, tool: McpToolDescriptor, chartId: string): Promise<CensusToolResult> {
-  const args = synthesizeCensusArgs(tool, chartId)
+async function probeOneTool(client: McpClient, tool: McpToolDescriptor, chartId: string, birth?: CensusBirthParams): Promise<CensusToolResult> {
+  const args = synthesizeCensusArgs(tool, chartId, birth)
   if (args === null) {
     return { tool: tool.name, status: 'SKIPPED', bytes: null, detail: 'required argument set could not be safely synthesized' }
   }

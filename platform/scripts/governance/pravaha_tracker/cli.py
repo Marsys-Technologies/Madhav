@@ -8,7 +8,8 @@ work FROM the tracker, the tracker cannot fall behind the work.
   pravaha next      --stream A                 what A may start now (and what is running/blocked)
   pravaha status   [--stream A]                one-screen summary
   pravaha start     A2.1 --stream A [--detail ..]
-  pravaha step      A2.1 aspect_direction --stream A [--evidence ..]
+  pravaha step      A2.1 aspect_direction --stream A [--evidence ..]   (a declaring model: --evidence <file>,
+                                                                        recorded only once the step's detector passed)
   pravaha progress  A2.1 0.4 --stream A [--detail ..]
   pravaha review    A2.1 --stream A --detail "K3 review requested"
   pravaha done      A2.1 --stream A --evidence "PR #2760"
@@ -90,6 +91,38 @@ def actor_for(a) -> str:
     if not s:
         raise SystemExit("error: give --stream A|B (or set PRAVAHA_STREAM)")
     return f"stream-{s}"
+
+
+def observe_containment(repo: str, merge: str) -> dict:
+    """Find a SUCCESSFUL `Deploy to Cloud Run` run on main whose deployed sha contains `merge`.
+
+    Only runs triggered by `workflow_run` are trusted: for them DEPLOY_SHA equals the run's head sha (deploy.yml);
+    a `workflow_dispatch` run may deploy a different sha than its head (Trap 103) and is ignored here.
+    """
+    out = {"deployed_sha": None, "run_id": None, "contains_merge": False}
+    try:
+        subprocess.run(["git", "fetch", "-q", "origin", "main"], cwd=repo, capture_output=True, timeout=60, check=False)
+        proc = subprocess.run(["gh", "run", "list", "--workflow", "Deploy to Cloud Run", "--branch", "main",
+                               "--status", "success", "--limit", "15", "--json", "databaseId,headSha,event,createdAt"],
+                              cwd=repo, capture_output=True, text=True, timeout=60, check=False)
+        if proc.returncode:
+            return out
+        try:
+            runs = json.loads(proc.stdout or "[]")
+        except ValueError:
+            return out
+        for run in (runs if isinstance(runs, list) else []):
+            if not isinstance(run, dict) or run.get("event") != "workflow_run":
+                continue
+            sha = run.get("headSha") or ""
+            anc = subprocess.run(["git", "merge-base", "--is-ancestor", merge, sha], cwd=repo,
+                                 capture_output=True, text=True, timeout=30, check=False)
+            if anc.returncode == 0:
+                return {"deployed_sha": sha, "run_id": run.get("databaseId"), "contains_merge": True,
+                        "deployed_at": run.get("createdAt")}
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return out
+    return out
 
 
 def cmd_claim_lifecycle(a) -> int:
@@ -202,7 +235,11 @@ def cmd_guarded_done(a, actor: str) -> int:
                                   capture_output=True, text=True, timeout=30, check=False)
             if proc.returncode:
                 raise CompletionError("GitHub PR observation failed")
-            proof = {"type": "code", "reviewed_head": a.reviewed_head, "pr": json.loads(proc.stdout)}
+            repo = os.environ.get("PRAVAHA_REPO", REPO_ROOT)
+            proof = {"type": "code", "reviewed_head": a.reviewed_head, "pr": json.loads(proc.stdout), "repo": repo}
+            merge = ((proof["pr"].get("mergeCommit") or {}).get("oid") or "")
+            if merge:
+                proof["deploy"] = observe_containment(repo, merge)
         elif a.artifact_path:
             declared = item.get("detector", {}).get("path")
             if os.path.realpath(a.artifact_path) != os.path.realpath(declared or ""):
@@ -251,6 +288,98 @@ def cmd_guarded_done(a, actor: str) -> int:
             subprocess.TimeoutExpired) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
+
+
+def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str) -> None:
+    """Bind a file_contains step to the canonical receipt and its source evidence."""
+    declared_path = spec.get("path")
+    if (not isinstance(declared_path, str) or not declared_path
+            or os.path.realpath(path) != os.path.realpath(declared_path)):
+        raise CompletionError("step evidence path does not match the declared receipt")
+    receipt = json.loads(raw)
+    if not isinstance(receipt, dict):
+        raise CompletionError("step receipt must be a canonical JSON object")
+    canonical = json.dumps(receipt, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    if raw not in (canonical, canonical + b"\n"):
+        raise CompletionError("step receipt must use canonical JSON (sorted keys, no spaces or duplicate fields)")
+    if receipt.get("item") != item or receipt.get("step") != step:
+        raise CompletionError("step receipt item/step does not match the command")
+
+    artifact_bound = False
+    if "artifact_sha256" in receipt:
+        artifact = receipt.get("artifact_path")
+        if not isinstance(artifact, str) or not artifact:
+            raise CompletionError("step receipt artifact_sha256 needs an artifact_path")
+        if not os.path.isabs(artifact):
+            artifact = os.path.join(os.path.dirname(os.path.realpath(path)), artifact)
+        with open(artifact, "rb") as handle:
+            digest = hashlib.file_digest(handle, "sha256").hexdigest()
+        if receipt["artifact_sha256"] != digest:
+            raise CompletionError("step receipt artifact_sha256 does not match its artifact")
+        artifact_bound = True
+
+    if "review_job" in receipt:
+        job = receipt["review_job"]
+        if (not isinstance(job, str) or not job or job in (".", "..")
+                or "/" in job or "\\" in job):
+            raise CompletionError("step receipt review_job must name a single job directory")
+        jobs = os.path.realpath(os.environ.get(
+            "PRAVAHA_REVIEW_JOBS", "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs"))
+        result_path = os.path.realpath(os.path.join(jobs, job, "result.json"))
+        if os.path.commonpath((jobs, result_path)) != jobs:
+            raise CompletionError("step receipt review_job result escapes the jobs directory")
+        with open(result_path, encoding="utf-8") as handle:
+            result = json.load(handle)
+        if not isinstance(result, dict) or result.get("item") != item:
+            raise CompletionError("step receipt review result does not match the item")
+        steps = result.get("steps")
+        matching = ([row for row in steps if isinstance(row, dict) and row.get("step") == step]
+                    if isinstance(steps, list) else [])
+        if not artifact_bound and (len(matching) != 1 or matching[0].get("verdict") != "MET"):
+            raise CompletionError("step receipt review result does not say MET for this step")
+
+
+def cmd_step(a, actor: str) -> int:
+    """Record a step. In a model that declares its items (relaunch plan v2.7 §6 STEP) only after the step's own
+    named detector passed in the live tracker, with the evidence file's absolute path and SHA-256."""
+    try:
+        model = load_model()
+    except (OSError, ValueError) as exc:
+        print(f"refused: cannot read the plan model ({exc})", file=sys.stderr)
+        return 2
+    if not isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
+                      "detail": a.detail, "evidence": a.evidence or f"step {a.step_name} reported by {actor}"})
+    try:
+        item = next((row for row in model.get("items", []) if row["id"] == a.item), None)
+        if item is None or a.step_name not in item.get("steps", []):
+            raise CompletionError(f"{a.item} declares no step {a.step_name!r}")
+        declared = item.get("step_evidence", {}).get(a.step_name)
+        spec = declared.get("detector") if isinstance(declared, dict) else None
+        if not isinstance(spec, dict) or not spec:
+            raise CompletionError(f"step {a.step_name} has no named detector; it cannot be recorded")
+        if not a.evidence or not os.path.isfile(a.evidence):
+            raise CompletionError("step evidence must be an existing file (--evidence <path>)")
+        observed, via = get("/api/verify?id=" + quote(a.item, safe="") + "&step=" + quote(a.step_name, safe=""),
+                            timeout=90)
+        if (via != "live" or not isinstance(observed, dict) or observed.get("item") != a.item
+                or observed.get("step") != a.step_name or observed.get("spec") != spec):
+            raise CompletionError("live verification of the step detector is unavailable")
+        if (observed.get("detector") or {}).get("status") != "done":
+            raise CompletionError(f"the detector of step {a.step_name} has not passed")
+        path = os.path.abspath(a.evidence)
+        with open(path, "rb") as handle:
+            if spec.get("type") == "file_contains":
+                raw = handle.read()
+                _check_step_receipt(raw, path, spec, a.item, a.step_name)
+                digest = hashlib.sha256(raw).hexdigest()
+            else:
+                digest = hashlib.file_digest(handle, "sha256").hexdigest()
+    except (CompletionError, OSError, ValueError, AttributeError) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+    return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
+                  "detail": a.detail, "evidence": path, "evidence_sha256": digest})
 
 
 def _items_from(res) -> list[dict]:
@@ -381,7 +510,8 @@ def cmd_audit(a) -> int:
         else:
             since = dt.datetime.fromisoformat(a.since.replace("Z", "+00:00"))
         model = load_model()
-        findings = audit(model, events, os.path.dirname(EVENTS), since=since)
+        findings = audit(model, events, os.path.dirname(EVENTS), since=since,
+                         repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
         snapshot = build_snapshot(model, events, {}, {}, {})
     except (OSError, KeyError, ValueError) as exc:
         print(f"audit unavailable: {exc}", file=sys.stderr)
@@ -548,8 +678,7 @@ def main(argv=None) -> int:
         return write({"kind": "item", "actor": actor, "item": a.item, "state": state_of[a.cmd],
                       "detail": a.detail, "evidence": getattr(a, "evidence", None)})
     if a.cmd == "step":
-        return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
-                      "detail": a.detail, "evidence": a.evidence or f"step {a.step_name} reported by {actor}"})
+        return cmd_step(a, actor)
     if a.cmd == "progress":
         return write({"kind": "item", "actor": actor, "item": a.item, "state": "running",
                       "progress": max(0.0, min(1.0, float(a.value))), "detail": a.detail})

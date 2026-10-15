@@ -32,6 +32,15 @@ describe('POST /api/cockpit/runs/[id]/resume', () => {
     expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1')
   })
 
+  it('FIX2: a resumed Rebuild is dispatched with forceExecute (a clear may have preceded it)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'run-1', action: 'rebuild' }] })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+    const { POST } = await import('../route')
+    const res = await POST(request, context)
+    expect(res.status).toBe(200)
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1', { forceExecute: true })
+  })
+
   it('claims paused work, invokes its job, and does not report it resumed when dispatch fails', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: 'run-1', state: 'planned' }] })

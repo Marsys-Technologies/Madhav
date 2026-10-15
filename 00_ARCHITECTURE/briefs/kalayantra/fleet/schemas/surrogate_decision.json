@@ -1,0 +1,302 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "ky.surrogate_decision/2",
+ "title": "KĀLA-YANTRA v3 owner-surrogate decision, one line of run/DECISIONS_SURROGATE.jsonl (relaunch plan v2.7 §4a.3; .claude/agents/kalayantra-owner-surrogate.md, Record format)",
+ "description": "One decision record of the owner surrogate on one awaiting item, in one of the states PROPOSED → EFFECTIVE → EXECUTED (routine classes) or PROPOSED → PENDING_VETO → EFFECTIVE → EXECUTED | VETOED | FAILED (veto classes). A veto-class record carries its veto_deadline and may be EFFECTIVE or EXECUTED only with an effective_at time (the veto controller, 'kyveto', publishes at expiry; nothing is published at proposal; a veto decision cannot have been executed without having become effective). A routine record carries no veto_deadline and is never PENDING_VETO or VETOED. A hard_stop record is owner-only: it stays PROPOSED and is never published as a delegated decision. Shape only: that 'awaiting' names an existing awaiting item, that the target is unchanged at expiry, that the authority binding is the active bundle's, that effective_at is not before veto_deadline, that the state history is a legal sequence, that the class is the charter's classification and that the notification was really submitted is not checked by this schema. veto_deadline and effective_at are UTC ISO-8601 ('Z' or '+00:00').",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "id",
+  "awaiting",
+  "class",
+  "state",
+  "decision",
+  "rationale",
+  "evidence",
+  "target",
+  "authority",
+  "notification",
+  "veto_deadline",
+  "effective_at",
+  "by",
+  "session"
+ ],
+ "properties": {
+  "id": {
+   "description": "SD-<UTC yyyymmddThhmmssZ>-<n>",
+   "type": "string",
+   "pattern": "^SD-[0-9]{8}T[0-9]{6}Z-[0-9]+$"
+  },
+  "awaiting": {
+   "description": "The id of the awaiting item this decides.",
+   "type": "string",
+   "pattern": "^AW-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+$"
+  },
+  "class": {
+   "enum": [
+    "routine",
+    "veto",
+    "hard_stop"
+   ]
+  },
+  "state": {
+   "enum": [
+    "PROPOSED",
+    "PENDING_VETO",
+    "EFFECTIVE",
+    "EXECUTED",
+    "VETOED",
+    "FAILED"
+   ]
+  },
+  "decision": {
+   "type": "string",
+   "minLength": 1
+  },
+  "rationale": {
+   "type": "string",
+   "minLength": 1
+  },
+  "evidence": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "target": {
+   "description": "The immutable parameters the decision applies to; contents are not typed here.",
+   "type": "object"
+  },
+  "authority": {
+   "description": "The authorised source commit and the digest of the verified entrypoint binding the surrogate ruled under.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "source_commit",
+    "entrypoints_digest"
+   ],
+   "properties": {
+    "source_commit": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{40}$"
+    },
+    "entrypoints_digest": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    }
+   }
+  },
+  "notification": {
+   "description": "The submission result of the owner notification; submission is never evidence that the owner read it.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "submitted",
+    "ts"
+   ],
+   "properties": {
+    "submitted": {
+     "type": "boolean"
+    },
+    "ts": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   }
+  },
+  "veto_deadline": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+  },
+  "effective_at": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+  },
+  "reason": {
+   "description": "Optional: why the record is in its state (for example why it FAILED or was VETOED).",
+   "type": "string"
+  },
+  "by": {
+   "enum": [
+    "kalayantra-owner-surrogate",
+    "kyveto"
+   ]
+  },
+  "session": {
+   "type": "string",
+   "minLength": 1
+  },
+  "at": {
+   "description": "When the veto handler appended this transition line (UTC).",
+   "type": "string",
+   "minLength": 1
+  },
+  "detail": {
+   "description": "Free-form detail the veto handler attaches to a transition (object or string).",
+   "type": [
+    "object",
+    "string"
+   ]
+  }
+ },
+ "allOf": [
+  {
+   "$comment": "veto class: a veto deadline, always.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "veto"
+     }
+    },
+    "required": [
+     "class"
+    ]
+   },
+   "then": {
+    "properties": {
+     "veto_deadline": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "$comment": "veto class: EFFECTIVE only with an effective_at time.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "veto"
+     },
+     "state": {
+      "const": "EFFECTIVE"
+     }
+    },
+    "required": [
+     "class",
+     "state"
+    ]
+   },
+   "then": {
+    "properties": {
+     "effective_at": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "$comment": "routine class: no veto deadline, and never PENDING_VETO or VETOED.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "routine"
+     }
+    },
+    "required": [
+     "class"
+    ]
+   },
+   "then": {
+    "properties": {
+     "veto_deadline": {
+      "type": "null"
+     },
+     "state": {
+      "enum": [
+       "PROPOSED",
+       "EFFECTIVE",
+       "EXECUTED",
+       "FAILED"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "$comment": "hard_stop: owner-only; recorded as PROPOSED, never published.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "hard_stop"
+     }
+    },
+    "required": [
+     "class"
+    ]
+   },
+   "then": {
+    "properties": {
+     "state": {
+      "const": "PROPOSED"
+     }
+    }
+   }
+  },
+  {
+   "$comment": "veto class: the target is bound — a kind the veto handler knows how to recheck and the fingerprint computed at proposal (kyveto.py fingerprint).",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "veto"
+     }
+    },
+    "required": [
+     "class"
+    ]
+   },
+   "then": {
+    "properties": {
+     "target": {
+      "type": "object",
+      "required": [
+       "kind",
+       "fingerprint"
+      ],
+      "properties": {
+       "kind": {
+        "type": "string",
+        "minLength": 1
+       },
+       "fingerprint": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "$comment": "veto class: EXECUTED only with the effective_at time it became effective at.",
+   "if": {
+    "properties": {
+     "class": {
+      "const": "veto"
+     },
+     "state": {
+      "const": "EXECUTED"
+     }
+    },
+    "required": [
+     "class",
+     "state"
+    ]
+   },
+   "then": {
+    "properties": {
+     "effective_at": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ ]
+}

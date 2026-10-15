@@ -1,0 +1,603 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.qualification/1",
+  "title": "KĀLA-YANTRA v3 launch qualification receipt, run/QUALIFICATIONS/<role>-<model>.json, written by fleet/kyqualify.py (relaunch plan v2.7 §7 KV-06, §13 'probe PASS', §14 B-0c)",
+  "description": "What one launch configuration was observed to do, bound to the exact program, argv, permissions, working directory, environment names, prompt/MCP hashes, the worktree's project settings, the fleet's ZDOTDIR files and the harness itself (binds). Shape only. Not checked by this schema, and recomputed by `kyqualify.py check`: result is PASS only when every required check is 'pass' and every simulated negative probe is 'pass' (a failing one makes it FAIL, anything else 'unknown'; only the keychain probe — listed in `exemptions` — and the denied-tools probe of a configuration that denies nothing may be 'not_simulated'); binds equal the binds recomputed from the launch configuration and the files on disk; a launchd context is backed by its launchd receipt, earned with /bin/launchctl; the tools and commands covered equal the ones the configuration declares. binds carries extra_flags and disallowed_tools only when non-empty; add_dirs (when non-empty), user_claude_md_sha256 and user_settings_hooks_sha256 never for the loop roles planner/conductor, whose key set kyloop.py fixes. evidence.files maps every evidence file, relative to evidence.dir, to its SHA-256; `check --verify-evidence` re-judges every verdict from those files. `boundary` says what a PASS is not. A schema-valid receipt is therefore not a qualifying one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "role",
+    "model",
+    "context",
+    "result",
+    "boundary",
+    "binds",
+    "harness",
+    "offered_tools",
+    "checks",
+    "negative_probes",
+    "observations",
+    "exemptions",
+    "evidence",
+    "launchd_receipt",
+    "generated_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.qualification/1"
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$"
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+    },
+    "context": {
+      "description": "Where the canaries really ran; a shell run is never labelled launchd.",
+      "enum": [
+        "launchd",
+        "shell"
+      ]
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "unknown"
+      ]
+    },
+    "boundary": {
+      "description": "What this receipt is: evidence about a configuration, not a sandbox (rework ruling R7).",
+      "const": "configuration and controller after-exit checks; not sandboxed — the enforced verifier boundary is a B-1 deliverable"
+    },
+    "binds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claude_bin",
+        "claude_bin_sha256",
+        "claude_version",
+        "argv",
+        "model",
+        "effort",
+        "permission_mode",
+        "max_turns",
+        "deadline_seconds",
+        "worktree",
+        "env_names",
+        "child_path",
+        "prompt_sha256",
+        "mcp_config_sha256",
+        "project_settings_sha256",
+        "zdotdir_sha256",
+        "harness_sha256"
+      ],
+      "properties": {
+        "claude_bin": {
+          "$ref": "#/$defs/path"
+        },
+        "claude_bin_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "claude_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+        },
+        "effort": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "permission_mode": {
+          "enum": [
+            "default",
+            "acceptEdits",
+            "plan",
+            "bypassPermissions"
+          ]
+        },
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deadline_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "worktree": {
+          "$ref": "#/$defs/path"
+        },
+        "env_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "child_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "mcp_config_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "extra_flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "disallowed_tools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "add_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "project_settings_sha256": {
+          "description": "sha256 of <worktree>/.claude/settings.json, or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "zdotdir_sha256": {
+          "description": "sha256 over name then content of every regular file directly under $KY_ROOT/zdotdir, names sorted; or \"absent\".",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "harness_sha256": {
+          "description": "sha256 of kyqualify.py itself.",
+          "$ref": "#/$defs/sha256"
+        },
+        "user_claude_md_sha256": {
+          "description": "sha256 of $HOME/.claude/CLAUDE.md, or \"absent\". Not for the loop roles.",
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "user_settings_hooks_sha256": {
+          "description": "sha256 over the hook event names and matcher strings of $HOME/.claude/settings.json only, or \"unreadable\". Not for the loop roles.",
+          "type": "string",
+          "pattern": "^([0-9a-f]{64}|unreadable)$"
+        }
+      }
+    },
+    "harness": {
+      "description": "The two files whose code judged this qualification; `check` refuses when either differs from the files it runs from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kyqualify_sha256",
+        "kyprobe_sha256"
+      ],
+      "properties": {
+        "kyqualify_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "kyprobe_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "offered_tools": {
+      "description": "The tool list the program itself reported (init.tools) in the base run, sorted: what the configuration really exposes. null when the base run reported none. `kyqualify.py check --verify-evidence` recomputes it from the evidence.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sign_in",
+        "model_identity",
+        "permission_mode_observed",
+        "intended_tools",
+        "denied_tools",
+        "denied_bash",
+        "no_tty_prompt",
+        "project_claude_md_visible",
+        "excluded_user_plugins",
+        "excluded_user_skills",
+        "excluded_user_hooks",
+        "excluded_user_shell_profile",
+        "mcp_none",
+        "input_overhead_worktree"
+      ],
+      "properties": {
+        "sign_in": {
+          "$ref": "#/$defs/check"
+        },
+        "model_identity": {
+          "$ref": "#/$defs/check"
+        },
+        "permission_mode_observed": {
+          "$ref": "#/$defs/check"
+        },
+        "intended_tools": {
+          "$ref": "#/$defs/check"
+        },
+        "denied_tools": {
+          "$ref": "#/$defs/check"
+        },
+        "denied_bash": {
+          "$ref": "#/$defs/check"
+        },
+        "no_tty_prompt": {
+          "$ref": "#/$defs/check"
+        },
+        "project_claude_md_visible": {
+          "$ref": "#/$defs/check"
+        },
+        "excluded_user_plugins": {
+          "$ref": "#/$defs/check"
+        },
+        "excluded_user_skills": {
+          "$ref": "#/$defs/check"
+        },
+        "excluded_user_hooks": {
+          "$ref": "#/$defs/check"
+        },
+        "excluded_user_shell_profile": {
+          "$ref": "#/$defs/check"
+        },
+        "mcp_none": {
+          "$ref": "#/$defs/check"
+        },
+        "input_overhead_worktree": {
+          "$ref": "#/$defs/check"
+        },
+        "launchd_context": {
+          "$ref": "#/$defs/check"
+        }
+      }
+    },
+    "negative_probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missing_authentication",
+        "inaccessible_keychain",
+        "denied_tools",
+        "invalid_settings",
+        "timeout",
+        "termination",
+        "restart"
+      ],
+      "properties": {
+        "missing_authentication": {
+          "$ref": "#/$defs/probe"
+        },
+        "inaccessible_keychain": {
+          "$ref": "#/$defs/probe"
+        },
+        "denied_tools": {
+          "$ref": "#/$defs/probe"
+        },
+        "invalid_settings": {
+          "$ref": "#/$defs/probe"
+        },
+        "timeout": {
+          "$ref": "#/$defs/probe"
+        },
+        "termination": {
+          "$ref": "#/$defs/probe"
+        },
+        "restart": {
+          "$ref": "#/$defs/probe"
+        }
+      }
+    },
+    "observations": {
+      "description": "Reported, never required: what else reaches the job (plan §7 asks for no exclusion here) and how the project settings were put in force.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_claude_md_in_context",
+        "user_claude_md_sha256",
+        "auto_memory_path_present",
+        "offered_tools_without_canary",
+        "project_settings",
+        "meaning"
+      ],
+      "properties": {
+        "user_claude_md_in_context": {
+          "enum": [
+            true,
+            false,
+            "unknown"
+          ]
+        },
+        "user_claude_md_sha256": {
+          "$ref": "#/$defs/sha256_or_absent"
+        },
+        "auto_memory_path_present": {
+          "enum": [
+            true,
+            false,
+            "unknown"
+          ]
+        },
+        "offered_tools_without_canary": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "project_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "canary_projects",
+            "copies_intact",
+            "in_force",
+            "note"
+          ],
+          "properties": {
+            "sha256": {
+              "$ref": "#/$defs/sha256_or_absent"
+            },
+            "canary_projects": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "copies_intact": {
+              "type": "boolean"
+            },
+            "in_force": {
+              "description": "null: this harness has no detector for it.",
+              "type": "null"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "meaning": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "exemptions": {
+      "description": "Every plan-listed negative probe this receipt does not show and the result does not count, with the reason it may be left out. inaccessible_keychain is exempt by a recorded cockpit note (note = {path, sha256} of the file given with --exemption-note, or null), not by an observation.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "probe",
+          "result",
+          "reason",
+          "basis",
+          "note"
+        ],
+        "properties": {
+          "probe": {
+            "enum": [
+              "inaccessible_keychain",
+              "denied_tools"
+            ]
+          },
+          "result": {
+            "const": "not_simulated"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "files"
+      ],
+      "properties": {
+        "dir": {
+          "$ref": "#/$defs/path"
+        },
+        "files": {
+          "description": "An open map {relative path: sha256}; this schema cannot type its values.",
+          "type": "object"
+        }
+      }
+    },
+    "launchd_receipt": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "context": {
+            "const": "launchd"
+          }
+        },
+        "required": [
+          "context"
+        ]
+      },
+      "then": {
+        "properties": {
+          "launchd_receipt": {
+            "type": "object",
+            "required": [
+              "label",
+              "domain",
+              "plist",
+              "plist_sha256",
+              "launchctl",
+              "test_override",
+              "bootstrap_exit",
+              "loaded_after_bootstrap",
+              "finished",
+              "inner",
+              "bootout_exit",
+              "absent_after_bootout"
+            ]
+          },
+          "checks": {
+            "required": [
+              "launchd_context"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "launchd_receipt": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "path": {
+      "type": "string",
+      "pattern": "^/[^\\n]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "result",
+        "observed",
+        "evidence"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "observed": {
+          "description": "What the detector saw; any JSON value."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected",
+        "observed",
+        "result",
+        "why"
+      ],
+      "properties": {
+        "expected": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed": {
+          "description": "What the detector saw; any JSON value."
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_simulated"
+          ]
+        },
+        "why": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "sha256_or_absent": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64}|absent)$"
+    }
+  }
+}

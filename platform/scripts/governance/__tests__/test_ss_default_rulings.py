@@ -102,8 +102,8 @@ def test_the_class_priors_and_lifetime_counts_keep_no_carriage_nature_and_declar
     # source) goes with them (that part stands: no carriage nature). SS N-177 (2026-10-07) then gives rows with no traceable source an honest, CHECKED label instead of a FAIL: bg_class_priors declares the
     # closed-list residual UNSOURCED_DECLARED (source_ref is never bound by its writer); bg_class_lifetime_counts' rows DO carry a six-element citation in source_ref (its writer refuses a row without one),
     # so it declares that K1 source as sourced and is measured: the label is never taken by rows that carry a source.
-    for aid in ("bg_class_priors", "bg_class_lifetime_counts"):
-        assert not DECL[aid]["carriage"].get("nature"), aid
+    for aid in ("bg_class_priors", "bg_class_lifetime_counts"):      # N-235 (b) supersedes "no carriage nature": both declare ratified_judgment under SS ruling N-235 (test_n233_carriage_declarations)
+        assert DECL[aid]["carriage"]["nature"] == "ratified_judgment" and DECL[aid]["carriage"]["ruling"] == "N-235", aid
     pri, life = DECL["bg_class_priors"]["source"], DECL["bg_class_lifetime_counts"]["source"]
     assert pri["residual"] == "UNSOURCED_DECLARED" and pri["citation_state"] == "unsourced" and pri["columns"][0]["column"] == "source_ref" and ac.source_declaration_problem(pri) is None
     assert "residual" not in life and life["citation_state"] == "sourced" and life["columns"][0]["column"] == "source_ref" and ac.source_declaration_problem(life) is None
@@ -150,9 +150,9 @@ def _block(**kw):
     return ac.no_table_block(base.pop("entry"), base.pop("asset_kind"), base.pop("registry_has_writer"), base.pop("target_table"), base.pop("count_tables"), base.pop("register_files"), base.pop("register_mentions"))
 
 
-def test_the_agreeing_block_releases_exactly_the_seven_checks():
+def test_the_agreeing_block_releases_exactly_the_ten_checks():
     recs = ac.no_table_records("bg_x", SVC, _block())
-    assert sorted(recs) == sorted(ac.NO_TABLE_CRITERIA) and len(recs) == 7
+    assert sorted(recs) == sorted(ac.NO_TABLE_CRITERIA) and len(recs) == 10      # N-283: the seven prose / identity checks plus Carr.D1/D2/D3
     assert all(r["v"] == NA and r["cause"] == "no-table-no-prose" and r["no_table"]["declared"] is True for r in recs.values())
     assert ac.no_table_records("bg_x", {}, _block()) == {}
 
@@ -178,19 +178,19 @@ def test_the_rollup_honours_only_a_record_that_carries_the_agreeing_block():
         assert chk(crit, forged)["v"] == ND, crit
         assert chk(crit, dict(rec, no_table=None))["v"] == ND, crit
         assert ac.no_table_na_problem(crit, forged) and ac.no_table_na_problem(crit, rec) is None
-    assert ac.no_table_na_problem("Dens.served", dict(v=NA, cause="no-table-no-prose")) is None          # the cause is registered only for the seven
+    assert ac.no_table_na_problem("Dens.served", dict(v=NA, cause="no-table-no-prose")) is None          # the cause is registered only for the ten
 
 
-def test_the_rule_rows_and_causes_exist_for_the_seven_and_only_the_seven():
+def test_the_rule_rows_and_causes_exist_for_the_ten_and_only_the_ten():
     for crit in ac.NO_TABLE_CRITERIA:
         assert "no-table-no-prose" in ac.NA_CAUSES[crit]
-        assert ac.NA_RULE_DECISIONS[f"{crit}#measured:no-table-no-prose"].startswith("SS 2026-10-05 no-table-no-prose")
+        assert ac.NA_RULE_DECISIONS[f"{crit}#measured:no-table-no-prose"].startswith("SS N-283" if crit.startswith("Carr.") else "SS 2026-10-05 no-table-no-prose")
     assert sorted(c for c, v in ac.NA_CAUSES.items() if "no-table-no-prose" in v) == sorted(ac.NO_TABLE_CRITERIA)
     ac.validate_na_rule_decisions()
 
 
 def test_dens_and_the_other_gates_of_a_service_are_untouched():
-    assert "Dens.served" not in ac.NO_TABLE_CRITERIA and not any(c.startswith(("Build", "Carr", "Ldgr", "Earn")) for c in ac.NO_TABLE_CRITERIA)
+    assert "Dens.served" not in ac.NO_TABLE_CRITERIA and not any(c.startswith(("Build", "Ldgr", "Earn")) for c in ac.NO_TABLE_CRITERIA) and [c for c in ac.NO_TABLE_CRITERIA if c.startswith("Carr")] == ["Carr.D1", "Carr.D2", "Carr.D3"]
 
 
 def test_the_real_services_agree_with_the_registry_facts_and_the_scan():
@@ -209,8 +209,9 @@ def test_a_table_owning_asset_that_declares_no_table_is_contradicted_not_release
 
 def test_the_cap_is_80_and_the_two_large_seed_assets_no_longer_declare_their_entries():
     assert ac.PROSE_NONE_MAX_TRANSCRIPTIONS == 80 and ac.PROSE_NONE_MAX_IDENTIFIERS == 32
-    for aid in ("bg_nakshatra", "bg_reference"):                                          # SS audit 2026-10-06: their 51 / 60 entries covered composed f-string cross-products and could not be shown true
-        assert DECL[aid].get("prose_none") is None and DECL[aid]["prose_fields"] is None, aid
+    for aid in ("bg_nakshatra", "bg_reference"):                                          # SS audit 2026-10-06 withdrew their 51 / 60 transcription entries (composed f-string cross-products, not shown true); SS N-191 / N-192 (FORM-GAP): both are back, declared through CHECKED forms instead
+        pn_ = DECL[aid]["prose_none"]
+        assert DECL[aid]["prose_fields"] == [] and "transcription_columns" not in pn_ and ac.prose_none_problem(DECL[aid]) is None, aid
     pn = DECL["bg_prashna_rules"]["prose_none"]
     assert len(pn["transcription_columns"]) == 24 and ac.prose_none_problem(DECL["bg_prashna_rules"]) is None
     big = copy.deepcopy(DECL["bg_prashna_rules"])
@@ -262,8 +263,8 @@ def test_no_carriage_evidence_pointer_cites_a_decorator_a_docstring_a_comment_a_
         path, line = ev.rsplit(":", 1)
         f = ac.ROOT / path
         text = f.read_text(encoding="utf-8").splitlines()[int(line) - 1].strip()
-        if path.endswith(".ts"):
-            if re.match(r"asset_id:", text) or text.startswith(("//", "*")):
+        if path.endswith((".ts", ".sql")):                                  # N-233: a migration line is checked like a .ts line (it exists and is not a comment); it is not Python
+            if re.match(r"asset_id:", text) or text.startswith(("//", "*", "--")):
                 bad.append((a, ev, text[:60]))
             continue
         if text.startswith(("@register", "#", "logger.")) or "@register" in text and text.startswith(("*", "-", "Thin")):

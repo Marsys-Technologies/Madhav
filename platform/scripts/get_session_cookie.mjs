@@ -9,6 +9,7 @@
  *
  * Prints the raw cookie value to stdout.
  * All credentials read from .env.local (dotenv).
+ * SUPER_ADMIN_EMAIL is REQUIRED (env or .env.local): there is no default account.
  */
 
 import { readFileSync } from 'fs'
@@ -37,9 +38,13 @@ loadEnv(resolve(__dirname, '../.env.local'))
 
 const FIREBASE_ADMIN_CREDENTIALS = process.env.FIREBASE_ADMIN_CREDENTIALS
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL ?? 'mail.abhisek.mohanty@gmail.com'
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL
 const SESSION_DURATION_MS = 60 * 60 * 24 * 14 * 1000
 
+if (!SUPER_ADMIN_EMAIL) {
+  console.error('SUPER_ADMIN_EMAIL not set (env or .env.local): it is required, there is no default account')
+  process.exit(1)
+}
 if (!FIREBASE_ADMIN_CREDENTIALS) {
   console.error('FIREBASE_ADMIN_CREDENTIALS not set in .env.local')
   process.exit(1)

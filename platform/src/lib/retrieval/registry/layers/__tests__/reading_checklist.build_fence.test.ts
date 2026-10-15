@@ -65,7 +65,8 @@ describe('reading-checklist selected-build fence', () => {
     expect(String(sql)).not.toContain('build_id = $4::text')
     expect(params).toEqual([
       CHART_ID,
-      AYANAMSHA,
+      // SS N-356: the KP chain is read at Krishnamurti whatever (Lahiri) id the caller passes.
+      'krishnamurti',
       ['cusp_kp_lords', 'kp_cuspal_significators', 'bhava_cusps', 'kp_ruling_planets_natal'],
       [BUILD_ID],
     ])

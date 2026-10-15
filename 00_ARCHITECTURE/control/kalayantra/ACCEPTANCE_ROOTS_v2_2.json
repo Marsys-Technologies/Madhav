@@ -1,0 +1,392 @@
+{
+ "artifact": "ACCEPTANCE_ROOTS",
+ "content_version": "2.2",
+ "plan_version": "2.2",
+ "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 (closure procedure step 1; retained acceptance set, owner decision §15.4)",
+ "canonical_path": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_1.json",
+ "compatibility_copy": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_2.json (identical bytes; Astra review v2.2 KU-03)",
+ "model": "00_ARCHITECTURE/control/kalayantra/plan_model.json (151 items; every brief_spec and detector below is copied from it and re-checked by fleet/kyclosure.py)",
+ "acceptances": [
+  {
+   "id": "i",
+   "statement": "Kāla serves chart 482012f1 end-to-end: every published Kāla read model answers for that chart from a rebuilt layer",
+   "charter": "CHARTER §0 line 3; model coverage.definition_of_done line 3 = K9-4a, K9-4b, K9-6",
+   "roots": [
+    {
+     "item": "K9-4a",
+     "role": "the production rebuild for the canonical chart is dispatched through the orchestrator under the production gates",
+     "step": null,
+     "title": "Production Kāla rebuild for the canonical chart dispatched through the orchestrator: lease held, backup taken and its restore verified, dry run, one slot",
+     "brief_spec": [
+      "PLAN §6.4",
+      "SURROGATE G8",
+      "PLAN §7 governance rule 2 (N-154)"
+     ],
+     "detector": {
+      "type": "file_exists",
+      "path": "/Users/Dev/kalayantra/run/ops/receipts/K9-4a.dispatch.json",
+      "min_bytes": 200
+     }
+    },
+    {
+     "item": "K9-4b",
+     "role": "the rebuild is read back per writer, verified, and the new head published and read back",
+     "step": null,
+     "title": "Production rebuild read back per writer, verification job run, the new head published by compare-and-swap, and the publication read back",
+     "brief_spec": [
+      "PLAN §4.4 steps 3–5",
+      "CHARTER §10 production gates"
+     ],
+     "detector": {
+      "type": "file_exists",
+      "path": "/Users/Dev/kalayantra/run/ops/receipts/K9-4b.published.json",
+      "min_bytes": 200
+     }
+    },
+    {
+     "item": "K9-6",
+     "role": "live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head",
+     "step": null,
+     "title": "Live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head; kala_now_get serves the negative-space sentinel distinction; the arrival line renders the honest state",
+     "brief_spec": [
+      "CHARTER §0 line 3",
+      "PLAN §5",
+      "PLAN §10 Serving"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k9-6"
+     }
+    },
+    {
+     "item": "K-AVADHI-C",
+     "role": "ka_avadhi builds clean on 482012f1, so the rebuild does not error on a served Kāla asset (added live for the certification window)",
+     "step": null,
+     "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
+     "brief_spec": [
+      "Suvarṇa SS N-450 item (3)",
+      "production asset_throughput ka_avadhi: state=error since 2026-09-10T19:10Z, 'post-write integrity check failed: integrity_check_sql → False' (conjunct (c) lord_condition_fact_refs)",
+      "asset_registry.integrity_check_sql for ka_avadhi; W2 M4 ruling on lord_condition_fact_refs",
+      "CLAUDE.md §N.5 (L1 is the authority; fact refs must resolve), §N.7.6 (honest null over invented value), §N.8 (a check must measure what it claims)"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+     }
+    },
+    {
+     "item": "V-K9",
+     "role": "independent acceptance of the rebuilt layer against the plan's exit criteria (no acceptance without an independent verdict)",
+     "step": null,
+     "title": "Final packet review (Astra): the rebuilt layer against the plan's exit criteria",
+     "brief_spec": [
+      "CHARTER §10"
+     ],
+     "detector": {
+      "type": "file_contains",
+      "path": "/Users/Dev/kalayantra/run/reviews/K9.VERDICT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+     }
+    }
+   ]
+  },
+  {
+   "id": "ii",
+   "statement": "The Gochara 5.0 flip is sealed",
+   "charter": "CHARTER §0 line 2 (the sealing, flip and live-readback members; legacy retirement and the Pravāha close are triaged, not rooted)",
+   "roots": [
+    {
+     "item": "J-5q",
+     "role": "qualification: the A5.7 engineering gates and co-primary measures run and recorded for the full build",
+     "step": null,
+     "title": "Phase 10 — qualification: the A5.7 engineering gates and every co-primary endpoint of the evaluation protocol v2.3 run on the built generation; results recorded as they read",
+     "brief_spec": [
+      "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_3.md",
+      "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_5.md",
+      "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md (A5.7)",
+      "SURROGATE G6"
+     ],
+     "detector": {
+      "type": "file_exists",
+      "path": "/Users/Dev/kalayantra/run/J5Q_RESULT.json",
+      "min_bytes": 500
+     }
+    },
+    {
+     "item": "J-5s",
+     "role": "the generation '5.0' is sealed by the separately dispatched independent verification job",
+     "step": null,
+     "title": "Phase 10 — independent verification job dispatched under the verifier principal; generation '5.0' sealed (every included grain verified)",
+     "brief_spec": [
+      "ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0",
+      "PLAN §4.4 steps 3–4",
+      "ALGO 3.21 (verification separated from the builder)"
+     ],
+     "detector": {
+      "type": "db_query",
+      "sql": "SELECT p.generation FROM public.kala_gochara_publication AS p WHERE p.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p.generation = '5.0' AND public.ka_gochara_generation_is_sealed(p.chart_id, p.generation)",
+      "expect": "nonempty"
+     }
+    },
+    {
+     "item": "J-6",
+     "role": "the flip executed on the governed path (authority switch, previous head retained)",
+     "step": null,
+     "title": "Phase 12 — the flip executed on the governed path (authority switch, previous head retained)",
+     "brief_spec": [
+      "SURROGATE G6, G8"
+     ],
+     "detector": {
+      "type": "db_query",
+      "sql": "SELECT p.generation FROM public.kala_gochara_publication AS p JOIN public.kala_gochara_authority AS a ON a.chart_id = p.chart_id AND a.authoritative_generation = p.generation WHERE p.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p.generation = '5.0' AND p.status = 'published' AND public.ka_gochara_generation_is_sealed(p.chart_id, p.generation)",
+      "expect": "nonempty"
+     }
+    },
+    {
+     "item": "J-6l",
+     "role": "live readback: a served response answers from '5.0'; soak recorded",
+     "step": null,
+     "title": "Phase 12 — live readback (a served response answers from '5.0', identifying the deployed image and migration set) and the soak recorded",
+     "brief_spec": [
+      "SURROGATE G6",
+      "CHARTER §10 production gates"
+     ],
+     "detector": {
+      "type": "file_exists",
+      "path": "/Users/Dev/kalayantra/run/J6L_LIVE.json",
+      "min_bytes": 200
+     }
+    },
+    {
+     "item": "V-J6",
+     "role": "independent flip-packet review: seal evidence, protocol run, reader behaviour, authority switch, rollback rehearsal",
+     "step": null,
+     "title": "Flip packet review (Astra): seal evidence, protocol run, reader behaviour, authority switch, rollback rehearsal",
+     "brief_spec": [
+      "CHARTER §10"
+     ],
+     "detector": {
+      "type": "file_contains",
+      "path": "/Users/Dev/kalayantra/run/reviews/J6.VERDICT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\""
+     }
+    }
+   ]
+  },
+  {
+   "id": "iii",
+   "statement": "Certification mappings exist for every served Kāla asset",
+   "charter": "CHARTER §0 line 4; model coverage.definition_of_done line 4 (its K8-K0a…K8-K7 ids were folded by the v2.0 regroup into the carrier items named here)",
+   "roots": [
+    {
+     "item": "K8-R26",
+     "role": "the gate table every mapping uses, reconciled with the live criterion registry revision",
+     "step": null,
+     "title": "Plan §7's gate table reconciled with the criterion registry revision live on main (26 since PR 3176; the plan was written against 25): per gate, the detector revision, what it reads, and the verdict each Kāla mechanism can earn — the table every K8 mapping uses",
+     "brief_spec": [
+      "PLAN §7",
+      "platform/scripts/governance/asset_census.py CRITERION_REGISTRY",
+      "platform/scripts/governance/nikasha_certify.py",
+      "owner decision N-152 (certificate ledger dropped)"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k8-r26"
+     }
+    },
+    {
+     "item": "K0a-4",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K0a: kala_core-backed pieces)",
+     "step": "certification_mapping",
+     "title": "Assertion envelope (shared fields + the negative-space payload) and ONE assertion carried end-to-end on the lane database: fixture judge window → kala_obstruction effective-state columns → kala_darshana read-model row → registry capability returns it; deliberate mutations fail",
+     "brief_spec": [
+      "PLAN §4.2 envelope",
+      "PLAN §4.3 read-model template",
+      "PLAN §9 K0a exit",
+      "PLAN §3.2 row assertion"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k0a-4"
+     }
+    },
+    {
+     "item": "K2-2",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K12: ka_dasha_kala, ka_avadhi, ka_yojaka, resonance)",
+     "step": "certification_mapping",
+     "title": "Typed relationship resolver (ka_gochara_resonance folded into F1): frame resolved before rule matching; resonance corrections R-1…R-6; the writer kept until the judge reads F1",
+     "brief_spec": [
+      "ALGO 3.11",
+      "PLAN §8 row ka_gochara_resonance",
+      "PLAN §8.1 resonance fixes"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k2-2"
+     }
+    },
+    {
+     "item": "K3-2",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K3: ka_vighnakara)",
+     "step": "certification_mapping",
+     "title": "Negative space wired to the real judge records of the sealed '5.0' generation (vedha states, evidence_against, coverage), replacing fixtures",
+     "brief_spec": [
+      "PLAN §9 row K3 (fixtures until '5.0')",
+      "ALGO 3.4, 3.21"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k3-2"
+     }
+    },
+    {
+     "item": "K4-3",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K4: ka_sangam)",
+     "step": "certification_mapping",
+     "title": "Canonical claim attachment (reading claims → jury assertions); no double credit",
+     "brief_spec": [
+      "ALGO 3.19 (attachment)",
+      "PLAN §3.2 row assertion (attach)"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k4-3"
+     }
+    },
+    {
+     "item": "K5-G1b",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K5: ka_kshetra)",
+     "step": "certification_mapping",
+     "title": "G1 (f) and the measurement side: insight detectors given working thresholds or removed; the forecaster's class-specific field-maximum null hosted on kala_core.measure with its own estimand; snapshot → manifest. The G1 baseline is FROZEN at this item's merged head",
+     "brief_spec": [
+      "ALGO 3.20 G1 (f), null and uncertainty",
+      "PLAN §6.2 items 5, 8",
+      "PLAN §8.1 E2, ruling 5",
+      "ALGO 3.20 oracles",
+      "/Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §6.6 (K1–K6 table; not on main)"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k5-g1b"
+     }
+    },
+    {
+     "item": "K6-5",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K6: the four read models and the registrar)",
+     "step": "certification_mapping",
+     "title": "ka_bhavishya_lekha as the registrar: episode key + immutable issue key + delivery linkage; insert_immutable_checked; an issue exists only on delivery; no probability while uncalibrated",
+     "brief_spec": [
+      "ALGO 3.8",
+      "PLAN §4.1 row 8",
+      "PLAN §7 Idem row (registrar reads FAIL under the current detector — routed, never a delete)",
+      "PLAN §10 Registrar"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k6-5"
+     }
+    },
+    {
+     "item": "K7-4",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-K7: the seven views)",
+     "step": "certification_mapping",
+     "title": "Tulana comparator (Pareto front, declared incomparability) wired into PRIORITY over jury D(W) and forecaster axes; fixed weights deleted",
+     "brief_spec": [
+      "ALGO 3.10",
+      "PLAN §8 row ka_tulana",
+      "D-R6"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k7-4"
+     }
+    },
+    {
+     "item": "KA-4b",
+     "role": "carries the certification mapping (plan §7) for its assets as its `certification_mapping` step (K8-KA: the five adapters, the three services, ka_gochara_v5)",
+     "step": "certification_mapping",
+     "title": "Election view on scoped parihāra: reads `cancelled` with citation for in-scope undertakings (marriage, upanayana, general) and `cancellation_unassessed` otherwise",
+     "brief_spec": [
+      "ALGO 3.17 step 3",
+      "PLAN §9 row L0-M exit"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/ka-4b"
+     }
+    },
+    {
+     "item": "K8-REG",
+     "role": "registry truth for the re-shaped assets (depends_on, count_sql, integrity_check_sql, lifecycle fields)",
+     "step": null,
+     "title": "Registry-truth migration: depends_on equal to the tables actually read; has_substeps, count_sql, integrity_check_sql (engine form) and produced_tables per re-shaped asset; lifecycle fields (is_active, superseded_by, data_disposition) for superseded and historical assets; writer-digest entries; the first L3 fingerprint declarations",
+     "brief_spec": [
+      "PLAN §9 row K8",
+      "PLAN §7 Build row",
+      "PLAN §8 vocabulary paragraph (no registry row deleted)",
+      "PLAN §8.1 V-1, K-1, PCD-2",
+      "CLAUDE §N.4 cockpit truth"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k8-reg"
+     }
+    },
+    {
+     "item": "K9-5",
+     "role": "rehearsal census over the Kāla assets: the expected verdict per gate, honest NO_DETECTOR included",
+     "step": null,
+     "title": "Rehearsal Suvarṇa census over the Kāla assets: the expected verdict per gate recorded, honest NO_DETECTOR included",
+     "brief_spec": [
+      "PLAN §7",
+      "PLAN §9 row K8 exit"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k9-5"
+     }
+    },
+    {
+     "item": "K-CERT",
+     "role": "certification support in the Suvarṇa window: the served citation-resolution select carries the tier column its density_contract names (plan §14 Wave 3)",
+     "step": null,
+     "title": "bg_gochara_citation_resolution Dens.served: the served select in platform-mcp/src/tools/retrieval/register_gochara_windows.ts carries the tier column its density_contract names (Suvarṇa FIX_LIST, FINAL/strict); merged by Suvarṇa in its certification window",
+     "brief_spec": [
+      "Suvarṇa FINAL/strict FIX_LIST: bg_gochara_citation_resolution Dens.served PARTIAL",
+      "CLAUDE.md §N.6 Serving Density Principle",
+      "owner approval of the compressed certification plan (SS N-431), relayed 2026-10-10"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k-cert-tier"
+     }
+    },
+    {
+     "item": "K-CERT-2",
+     "role": "certification support in the Suvarṇa window: bg_gochara_citation_resolution gets a registered writer and a correct count_sql (plan §14 Wave 0)",
+     "step": null,
+     "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
+     "brief_spec": [
+      "Suvarṇa SS N-443",
+      "PR #3055 (branch suvarna/land/TI-l0data-20-001, head 0dd4b6e59): the bg_gochara_citation_resolution half only",
+      "CLAUDE.md §N.2 frozen WriterBase contract, §N.3 L0 idempotency, §N.4 cockpit truth (count_sql)"
+     ],
+     "detector": {
+      "type": "branch_merged",
+      "ref": "origin/kalayantra/k-cert-citation-resolution"
+     }
+    }
+   ]
+  }
+ ],
+ "mechanical_close_chain": {
+  "note": "Acceptance (iv), a guarded close, is not a scope root (plan §0 step 1). The old JOIN-ALL and the C-chain are regenerated from the retained set after triage.",
+  "items": [
+   "JOIN-ALL",
+   "C-1",
+   "C-2",
+   "C-3",
+   "C-4"
+  ]
+ }
+}

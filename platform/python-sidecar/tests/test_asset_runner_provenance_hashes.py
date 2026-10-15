@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from pipeline.orchestrator import asset_runner as ar
+from pipeline.orchestrator import writer_runtime_support as wrs
 
 
 class _Cursor:
@@ -163,7 +164,7 @@ def test_writer_source_hash_is_content_based_and_order_independent(monkeypatch, 
     second = tmp_path / "b_helper.py"
     first.write_text("VALUE = 'one'\n")
     second.write_text("VALUE = 'two'\n")
-    monkeypatch.setattr(ar, "_writer_source_paths", lambda _: [str(tmp_path)])
+    monkeypatch.setattr(wrs, "_writer_source_paths", lambda _: [str(tmp_path)])
 
     initial = ar.get_writer_source_hash("fixture.writer")
     assert len(initial) == 64
@@ -174,7 +175,7 @@ def test_writer_source_hash_is_content_based_and_order_independent(monkeypatch, 
 
 
 def test_writer_source_hash_rejects_missing_source(monkeypatch, tmp_path):
-    monkeypatch.setattr(ar, "_writer_source_paths", lambda _: [str(tmp_path / "missing.py")])
+    monkeypatch.setattr(wrs, "_writer_source_paths", lambda _: [str(tmp_path / "missing.py")])
 
     with pytest.raises(RuntimeError, match="unavailable"):
         ar.get_writer_source_hash("fixture.writer")

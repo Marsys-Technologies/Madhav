@@ -135,7 +135,7 @@ describe('LayerPanel — L0 ClearIconButton gate', () => {
     expect(screen.queryByTitle(/clear/i)).toBeNull()
   })
 
-  it('shows ClearIconButton for brahmagyan layer when super_admin', () => {
+  it('FIX2: hides ClearIconButton for brahmagyan layer even for super_admin (L0 tables are shared by every chart)', () => {
     mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
     render(
       <LayerPanel
@@ -147,8 +147,7 @@ describe('LayerPanel — L0 ClearIconButton gate', () => {
         onRunStarted={() => {}}
       />
     )
-    // ClearIconButton renders a button with title containing "Clear"
-    expect(screen.getByTitle(/clear/i)).toBeTruthy()
+    expect(screen.queryByTitle(/clear/i)).toBeNull()
   })
 
   it('shows ClearIconButton for non-brahmagyan layer regardless of role', () => {

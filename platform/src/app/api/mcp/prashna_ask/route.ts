@@ -376,8 +376,8 @@ async function executeMeteredRequest(request: Request) {
     }
   } else {
     // ── Per-call chart-access authorization (same brain as the primitives route) ─
-    role = await resolveMcpPrincipalRole(userUid)
-    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    const resolvedRole = await resolveMcpPrincipalRole(userUid)
+    const perm = await authorizeChartAccess({ principal: { uid: userUid, role: resolvedRole }, chartId, db: { query } })
     chartPermission = perm
     if (perm === 'deny') {
       return NextResponse.json(
@@ -385,6 +385,9 @@ async function executeMeteredRequest(request: Request) {
         { status: 401 },
       )
     }
+    // An 'inactive' principal (disabled / pending / missing profile) always resolves to 'deny'
+    // above, so only a real role reaches this line; the ternary keeps the type honest.
+    role = resolvedRole === 'super_admin' ? 'super_admin' : 'guest'
   }
 
   // ── Shared chart readiness gate (Jātaka Phase-A2) ─────────────────────────────

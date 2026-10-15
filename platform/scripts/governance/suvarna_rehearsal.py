@@ -1813,7 +1813,8 @@ def measure_family_refusal() -> dict:
         argv = ["--chart-id", str(uuid.uuid5(SYNTH_NS, "chart-a")), "--assets", assets, "--repo", str(repo),
                 "--family-ref", "main"] + (["--commit", "--mode", "single-run"] if commit else [])
         out = io.StringIO()
-        code = slw.run_cli(slw.build_parser().parse_args(argv), connect=connect, git=_git_with_env, out=out, dispatch=dispatch)
+        code = slw.run_cli(slw.build_parser().parse_args(argv), connect=connect, git=_git_with_env, out=out, dispatch=dispatch,
+                           live_reader=lambda: "0" * 40)       # injected: a rehearsal never calls gcloud
         last = [json.loads(ln) for ln in out.getvalue().splitlines() if ln.strip().startswith("{")][-1]
         return code, [dict(r) for r in last.get("refusals", [])]
 

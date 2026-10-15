@@ -7,6 +7,7 @@ import {
   readJobInvokerEnv,
   jobPath,
   invokeBuildJob,
+  invokeRunJob,
   type JobInvokerEnv,
   type JobTransport,
 } from '../jobInvoker'
@@ -82,5 +83,32 @@ describe('invokeBuildJob', () => {
     expect(seen.envOverrides?.MARSYS_BUILD_ID).toBe('build-1')
     expect(seen.envOverrides?.MARSYS_BUILD_CHART_ID).toBe('chart-abc')
     expect(seen.envOverrides?.MARSYS_BUILD_AYANAMSHA_ROLE).toBe('jh_true_chitra')
+  })
+})
+
+describe('invokeRunJob force flag (FIX2: a clear must never be followed by a delta-skip)', () => {
+  function capture() {
+    const seen: { envOverrides?: Record<string, string>; containerArgs?: string[] } = {}
+    const transport: JobTransport = {
+      async runJob({ containerArgs, envOverrides }) {
+        seen.containerArgs = containerArgs
+        seen.envOverrides = envOverrides
+        return { executionName: 'exec-1' }
+      },
+    }
+    return { seen, transport }
+  }
+
+  it('does NOT set NIRMANA_FORCE_EXECUTE by default', async () => {
+    const { seen, transport } = capture()
+    await invokeRunJob('run-1', { env: ENV, transport })
+    expect(seen.containerArgs).toEqual(['--run-id', 'run-1'])
+    expect(seen.envOverrides).toEqual({ MARSYS_RUN_ID: 'run-1' })
+  })
+
+  it('sets NIRMANA_FORCE_EXECUTE=1 on that one execution when forceExecute is true', async () => {
+    const { seen, transport } = capture()
+    await invokeRunJob('run-1', { env: ENV, transport, forceExecute: true })
+    expect(seen.envOverrides).toEqual({ MARSYS_RUN_ID: 'run-1', NIRMANA_FORCE_EXECUTE: '1' })
   })
 })

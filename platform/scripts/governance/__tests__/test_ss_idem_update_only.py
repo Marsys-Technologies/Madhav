@@ -31,7 +31,7 @@ def _crit(aid):
 def test_the_cause_the_rule_row_and_the_revision_are_registered():
     assert "update-only-by-intent" in ac.NA_CAUSES["Idem.pattern"]
     assert ac.NA_RULE_DECISIONS["Idem.pattern#measured:update-only-by-intent"].startswith("SS 2026-10-05 Idem update-only")
-    assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 4 and "update_only" in ac.CRITERION_REGISTRY["Idem.pattern"]["applicability"]
+    assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 5 and "update_only" in ac.CRITERION_REGISTRY["Idem.pattern"]["applicability"]      # 4: SS 2026-10-05 update-only; 5: registry revision 28 (ONE bump)
 
 
 # ───────────────────────── the declaration shape ─────────────────────────

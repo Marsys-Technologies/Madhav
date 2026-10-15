@@ -12,7 +12,7 @@ Public API:
 
 CLI:
     python3 platform/scripts/temporal/compute_transits.py \\
-        --birth 1984-02-05T10:43:00+05:30 \\
+        --birth <ISO8601 birth datetime of the chart, e.g. 2000-01-01T06:00:00+05:30> \\
         --date 2026-05-01 \\
         --output 05_TEMPORAL_ENGINES/transit/sample_2026_05_01.json
 """
@@ -99,12 +99,8 @@ def _decompose(lon_deg: float) -> dict:
     }
 
 
-# Native Moon sign — FORENSIC v8.0 §3.3 (PLN.MOON: Aquarius). Used by Sade Sati.
-NATAL_MOON_SIGN_FALLBACK = "Aquarius"
-
-
 def _natal_moon_sign(birth_dt: datetime) -> str:
-    """Compute the native's natal Moon sign from birth_dt."""
+    """Compute the natal Moon sign from birth_dt (the chart's own birth datetime)."""
     _set_lahiri()
     if birth_dt.tzinfo is None:
         raise ValueError("birth_dt must be timezone-aware")
@@ -120,8 +116,8 @@ def _natal_moon_sign(birth_dt: datetime) -> str:
 def _sade_sati_state(saturn_sign: str, natal_moon_sign: str) -> dict:
     """
     Sade Sati: Saturn in 12th, 1st, or 2nd from natal Moon.
-    For natal Moon = Aquarius (idx 10 0-based):
-      12th = Capricorn (9), 1st = Aquarius (10), 2nd = Pisces (11).
+    Worked example (illustrative, not a chart value): for natal Moon = Aquarius
+    (idx 10 0-based): 12th = Capricorn (9), 1st = Aquarius (10), 2nd = Pisces (11).
     """
     moon_idx = SIGNS.index(natal_moon_sign)
     sat_idx = SIGNS.index(saturn_sign)
@@ -170,7 +166,7 @@ def get_transit_states(
           "query_date": "YYYY-MM-DD",
           "ayanamsha": "lahiri",
           "computed_by": "pyswisseph",
-          "natal_moon_sign": "Aquarius",
+          "natal_moon_sign": "<sign of the natal Moon, or null when unavailable>",
           "planets": { "Sun": {...}, "Moon": {...}, ..., "Rahu": {...}, "Ketu": {...} },
           "sade_sati": { "active": bool, "phase": str|None, "saturn_sign": str },
           "eclipse_proximity": [ {"planet":..., "nearest_node":..., ...}, ... ],
@@ -204,10 +200,20 @@ def get_transit_states(
         try:
             natal_moon_sign = _natal_moon_sign(birth_dt)
         except Exception:
-            natal_moon_sign = NATAL_MOON_SIGN_FALLBACK
+            # No chart-specific default is ever substituted (CLAUDE.md B.10 / N.7.6): when the
+            # natal Moon sign cannot be computed from birth_dt, Sade Sati is reported as null.
+            natal_moon_sign = None
 
     saturn_sign = planet_states["Saturn"]["sign"]
-    sade = _sade_sati_state(saturn_sign, natal_moon_sign)
+    if natal_moon_sign is None:
+        sade = {
+            "active": None,
+            "phase": None,
+            "saturn_sign": saturn_sign,
+            "reason": "natal_moon_sign_unavailable",
+        }
+    else:
+        sade = _sade_sati_state(saturn_sign, natal_moon_sign)
     eclipse_prox = _eclipse_proximity(planet_states)
 
     return {
@@ -225,8 +231,9 @@ def get_transit_states(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
-        "--birth", default="1984-02-05T10:43:00+05:30",
-        help="ISO8601 birth datetime (timezone-aware).",
+        "--birth", required=True,
+        help="ISO8601 birth datetime of the chart under test (timezone-aware), taken from "
+             "its `charts` row. REQUIRED: no birth datetime is embedded in this script.",
     )
     parser.add_argument(
         "--date", default=date.today().isoformat(),

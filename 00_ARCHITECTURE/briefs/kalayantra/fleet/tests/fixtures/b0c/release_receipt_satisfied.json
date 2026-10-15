@@ -1,0 +1,69 @@
+{
+ "release_id": "REL-20261011-01",
+ "schema_version": "ky.release_receipt/1",
+ "digest": "3333333333333333333333333333333333333333333333333333333333333333",
+ "conditions": {
+  "certification": {
+   "status": "SATISFIED",
+   "release_id": "REL-20261011-01",
+   "evidence": {
+    "coordination_commit": "1111111111111111111111111111111111111111",
+    "record_id": "SS-CERT-0042"
+   }
+  },
+  "pins": {
+   "status": "SATISFIED",
+   "release_id": "REL-20261011-01",
+   "evidence": {
+    "rebuild_producer": "ri02 rebuild",
+    "rebuild_run": "run-20261011T0900Z"
+   }
+  },
+  "regeneration": {
+   "status": "SATISFIED",
+   "release_id": "REL-20261011-01",
+   "evidence": {
+    "main_commit": "2222222222222222222222222222222222222222",
+    "generator_version": "gen-3.2",
+    "output_digest": "4444444444444444444444444444444444444444444444444444444444444444"
+   }
+  },
+  "pr_dispositions": {
+   "status": "SATISFIED",
+   "release_id": "REL-20261011-01",
+   "evidence": {
+    "traversal_exhausted": true,
+    "prs": [
+     {
+      "pr": 3379,
+      "disposition": "merged",
+      "owner": "K",
+      "re_entry": null
+     },
+     {
+      "pr": 3272,
+      "disposition": "parked",
+      "owner": "S",
+      "re_entry": "after K7-3 is repacketed"
+     },
+     {
+      "pr": 3283,
+      "disposition": "closed",
+      "owner": "N",
+      "re_entry": null
+     }
+    ]
+   }
+  },
+  "coordinator_closure": {
+   "status": "SATISFIED",
+   "release_id": "REL-20261011-01",
+   "evidence": {
+    "handoff_records": [
+     "SS-HANDOFF-0007",
+     "SS-HANDOFF-0008"
+    ]
+   }
+  }
+ }
+}

@@ -95,6 +95,7 @@ import {
   AddressResolutionError,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
@@ -232,7 +233,7 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+      description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT,
     },
     snapshot_type: {
       type: 'string',
@@ -294,6 +295,17 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED, SS N-212): bounded reads whose bound the response discloses (paths: LIMIT 5, `max_paths` / `paths_truncated`; convergence: `top_k`;
+  // neighbours: `depth_requested`), never offset-paged: `paginated` in this contract's sense (a disclosed bound, no pager); the facets are the real filters of its inputs; EVERY mode returns
+  // `empty_reason` on an empty result; every served node row of the neighbours mode carries its own `verification_pass_status` (the CTE's final SELECT lists it).
+  density_contract: {
+    max_verdict_bytes: 14_080, // the measured 55 KB digest budget of this tool (descriptor_defaults MEASURED_BUDGET_KB_URIS) and its 1:4 verdict ceiling, kept now that the contract is explicit
+    max_digest_bytes: 56_320,
+    paginated: true,
+    facets: ['mode', 'ayanamsha_id', 'snapshot_type', 'edge_types', 'valence_filter', 'cross_subsystem_only', 'direction', 'min_strength', 'subgraph_type'],
+    empty_reason: true,
+  },
+
   async handler(args, _ctx) {
     const chart_id = args['chart_id'] as string
     if (!chart_id) {
@@ -321,7 +333,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
         is_error: true,
       }
     }
-    const ayanamsha_id = args['ayanamsha_id'] as string | undefined
+    // PR-2 (N-339/N-342): omitted -> Lahiri (so the seed-node lookup, topology summary and edge
+    // filters all read ONE ayanamsha's graph instead of an arbitrary heap-order pick);
+    // "all" -> the old pooled graph, explicitly asked for, marked ayanamsha_scope:'all'.
+    const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id })
+    if (!ayaTry.ok) return ayaTry.result
+    const aya = ayaTry.aya
+    const ayanamsha_id: string | undefined = aya.id ?? undefined
     const snapshot_type = args['snapshot_type'] as string | undefined
     const edge_types = args['edge_types'] as string[] | undefined
     const rawValenceFilter = args['valence_filter'] as string | undefined
@@ -333,6 +351,7 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     const min_strength = args['min_strength'] !== undefined ? Number(args['min_strength']) : undefined
 
     try {
+      const dispatch = async (): Promise<ToolResult> => {
       switch (mode) {
         case 'neighbors':
           return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth, direction, min_strength, buildIds)
@@ -355,6 +374,8 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
             is_error: true,
           }
       }
+      }
+      return stampAyanamshaScope(await dispatch(), aya)
     } catch (err) {
       return {
         content: { error: String(err), chart_id, mode },
@@ -362,6 +383,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
       }
     }
   },
+}
+
+/** Echo the resolved ayanamsha scope on a successful result (`ayanamsha_scope:'all'` or the served id). */
+function stampAyanamshaScope(result: ToolResult, aya: HandlerAyanamsha): ToolResult {
+  const c = result.content
+  if (result.is_error || c === null || typeof c !== 'object' || Array.isArray(c)) return result
+  return { ...result, content: { ...ayanamshaScopeEcho(aya), ...(c as Record<string, unknown>) } }
 }
 
 // ── §27.2 address-resolver bridge — maps a resolved entity to bodha_cgm_nodes row(s) ────────
@@ -420,7 +448,9 @@ async function _resolveAboutToNodeIds(
     params.push(...subjects)
 
     const res = await query<{ node_id: string }>(
-      `SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')} LIMIT ${subjects.length}`,
+      `SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')}
+       ORDER BY ${ayanamshaServeOrderBy()}, node_subject, node_id
+       LIMIT ${subjects.length}`,
       params
     )
     if (res.rows.length === 0) {
@@ -606,7 +636,8 @@ async function _neighborsMode(
       n.dignity_state,
       n.source_subsystem,
       n.cluster_membership_array,
-      n.present_in_traditions_array
+      n.present_in_traditions_array,
+      n.verification_pass_status
     FROM bodha_cgm_nodes n
     JOIN visited v ON n.node_id = v.node_id
     ${buildIds ? `WHERE n.build_id = ANY($${buildParamIdx}::uuid[])` : ''}
@@ -634,6 +665,9 @@ async function _neighborsMode(
       edges,
       node_count: nodesResult.rows.length,
       edge_count: edges.length,
+      ...(nodesResult.rows.length === 0
+        ? { empty_reason: `No CGM node is reachable from the ${seedNodeIds.length} seed node(s) within depth ${depth} (direction=${direction}, min_strength=${minStrength ?? 'none'}, ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}).` }
+        : {}),
       provenance: {
         tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],
         schema_version: 'mig_325',
@@ -807,6 +841,11 @@ async function _pathsMode(
       paths: pathResult.rows,
       path_count: pathResult.rows.length,
       path_found: pathResult.rows.length > 0,
+      max_paths: 5,                                       // the shortest-path search is LIMIT 5: disclosed
+      paths_truncated: pathResult.rows.length >= 5,
+      ...(pathResult.rows.length === 0
+        ? { empty_reason: `No path from ${fromNodeId} to ${toNodeId} within 5 hops (direction=${direction}, min_strength=${minStrength ?? 'none'}, ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}).` }
+        : {}),
       nodes,
       edges,
       provenance: {
@@ -878,6 +917,7 @@ async function _convergenceMode(
               graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
        FROM bodha_cgm_chart_topology_summary
        WHERE ${tc.join(' AND ')}
+       ORDER BY ${ayanamshaServeOrderBy()}, snapshot_type, summary_id
        LIMIT 1`,
       tp
     )
@@ -895,6 +935,9 @@ async function _convergenceMode(
       top_k: topK,
       hub_nodes: hubResult.rows,
       hub_count: hubResult.rows.length,
+      ...(hubResult.rows.length === 0
+        ? { empty_reason: `No hub node matched for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}, snapshot_type=${snapshotType ?? 'any'}); top_k=${topK}.` }
+        : {}),
       hub_edges: edges,
       topology_summary: topologyRow,
       provenance: {
@@ -988,6 +1031,9 @@ async function _contradictionsMode(
       mode: 'contradictions',
       contradictions: contraResult.rows,
       contradiction_count: contraResult.rows.length,
+      ...(contraResult.rows.length === 0
+        ? { empty_reason: `No contradiction row for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}).` }
+        : {}),
       participant_signals: participantSignals,
       signal_id_refs: Array.from(participantIds),
       provenance: {
@@ -1088,6 +1134,9 @@ async function _subGraphsMode(
       mode: 'sub_graphs',
       sub_graphs: subgraphResult.rows,
       sub_graph_count: subgraphResult.rows.length,
+      ...(subgraphResult.rows.length === 0
+        ? { empty_reason: `No CGM sub-graph for chart ${chartId} (ayanamsha_id=${ayanamshaId ?? 'any'}).` }
+        : {}),
       member_nodes: memberNodes,
       provenance: {
         tables: ['bodha_cgm_sub_graphs', 'bodha_cgm_nodes'],

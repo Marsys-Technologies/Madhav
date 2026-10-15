@@ -37,7 +37,7 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { resolveHandlerAyanamsha, PRIMARY_AYANAMSHA, type HandlerAyanamsha } from '../../handler_ayanamsha'
 import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, collapseSignalFamilies } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
@@ -337,19 +337,40 @@ export const queryUcdCapability: CapabilityDescriptor = {
     },
   },
 
+  // DENS-F (CLAUDE.md §N.6): the orient digest is a bounded top-K read, not a pager: `top_k_signals` / `top_k_entities` bound it and
+  // the response discloses the bound and the true size behind it (`signals_page`: returned / available / truncated). Every
+  // facet is a real input. A digest with no entity profile, no signal and no digest row carries `empty_reason`.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'signal_class', 'min_salience', 'response_format'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     // L-6: chart_id null guard
     if (!args.chart_id) {
       return { content: { error: 'chart_id is required for query_ucd' }, is_error: true }
     }
     const chart_id       = String(args.chart_id)
-    const ayanamsha_id   = String(args.ayanamsha_id  ?? DEFAULT_AYANAMSHA)
+    // SS N-339/N-342 (PR-2): Lahiri-primary (omitted => lahiri_chitrapaksha); short ids normalise; an unknown
+    // id is an is_error result. query_ucd is a SINGLE-ayanamsha orientation digest (one vw_chart_digest row, one
+    // L1 context, one Shadbala read, entity profiles aggregated per graha) — pooling five ayanamshas would
+    // multiply every count and blend contexts, so the explicit 'all' opt-out is NOT served pooled: it is served
+    // at the primary ayanamsha and says so (`ayanamsha_scope_requested` + note) rather than claiming 'all'.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id   = aya.id ?? PRIMARY_AYANAMSHA
+    const allRequested   = aya.all
 
     const response_format = (['digest', 'summary', 'full'].includes(String(args.response_format))
       ? String(args.response_format) : 'summary') as 'digest' | 'summary' | 'full'
 
     // H-11: cache check
-    const _cacheKey = cacheKey('query_ucd', { chart_id, ayanamsha_id,
+    const _cacheKey = cacheKey('query_ucd', { chart_id, ayanamsha_id, all_requested: allRequested,
       top_k_signals: args.top_k_signals, top_k_entities: args.top_k_entities,
       signal_class: args.signal_class, min_salience: args.min_salience,
       response_format, priors_version: PRIORS_VERSION })
@@ -543,6 +564,12 @@ export const queryUcdCapability: CapabilityDescriptor = {
         content: {
           chart_id,
           ayanamsha_id,
+          ...(allRequested
+            ? {
+                ayanamsha_scope_requested: 'all',
+                ayanamsha_scope_note: `query_ucd is a single-ayanamsha orientation digest and cannot be pooled across ayanamshas; served at '${ayanamsha_id}'. Call it once per ayanamsha_id for a cross-ayanamsha comparison.`,
+              }
+            : {}),
           response_format,
           digest: {
             msr_signal_count:     digest.msr_signal_count,
@@ -563,6 +590,16 @@ export const queryUcdCapability: CapabilityDescriptor = {
           attribution,
           ranking_basis,
           filters: { top_k, top_k_entities, signal_class, min_salience },
+          // DENS-F: the disclosed bound of the atomic top_signals page -- `available` is the family-collapsed pool BEFORE the top_k cut.
+          signals_page: {
+            returned: atomicSignals.length,
+            available: familyCollapsed.length,
+            top_k,
+            truncated: response_format !== 'digest' && familyCollapsed.length > top_k,
+          },
+          ...(scoredAll.length === 0 && entity_profiles.length === 0 && convResult.rows.length === 0 && Object.keys(digest).length === 0
+            ? { empty_reason: `No Bodha synthesis for chart ${chart_id} at ayanamsha '${ayanamsha_id}': no vw_chart_digest row, no MSR signal${signal_class ? ` of class '${signal_class}'` : ''}${min_salience > 0 ? ` at salience >= ${min_salience}` : ''}, and no static_natal convergence row.` }
+            : {}),
           provenance: {
             tables: ['vw_chart_digest', 'bodha_msr_signals', 'bodha_convergence'],
             ranking_note: `E-6: entity_profiles + top_signals both composite-ranked ` +

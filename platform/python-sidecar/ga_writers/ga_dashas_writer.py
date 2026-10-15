@@ -374,13 +374,13 @@ def _get_moon_nakshatra_lord(moon_sid_lon: float) -> tuple[int, str, str]:
     Returns (nak_idx_1based, nak_name, lord).
     Nak 25 = Purva Bhadrapada → lord = Jupiter (FORENSIC anchor).
     """
-    from pyjhora_adapter._names import NAKSHATRA_NAMES
+    from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES  # SS N-548: emit the lexicon's spelling (Mrigasira/Moola/Dhanishtha); pyjhora_adapter._names stays byte-identical
     nak_span = 360.0 / 27
     nak_idx_0 = int(moon_sid_lon / nak_span)
     nak_idx_1 = nak_idx_0 + 1  # 1-based
     if nak_idx_1 > 27:
         nak_idx_1 = 27
-    nak_name = NAKSHATRA_NAMES[nak_idx_1] if nak_idx_1 < len(NAKSHATRA_NAMES) else f"Nak{nak_idx_1}"
+    nak_name = CANONICAL_NAKSHATRA_NAMES[nak_idx_1 - 1] if 1 <= nak_idx_1 <= 27 else f"Nak{nak_idx_1}"
     lord = _NAKSHATRA_LORDS_1BASED[nak_idx_1] if nak_idx_1 < len(_NAKSHATRA_LORDS_1BASED) else "Unknown"
     return nak_idx_1, nak_name, lord
 

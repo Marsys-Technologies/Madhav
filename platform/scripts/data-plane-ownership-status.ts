@@ -40,6 +40,18 @@ const LIFECYCLE_FUNCTIONS = [
   'rollback_l2_data_plane_generation',
 ] as const
 
+/**
+ * Production tripwire (SS N-336). The evaluation copy (a restored clone of production) carries a marker schema
+ * `evalcopy` with a one-row table `evalcopy.marker`; production must never have it. Exact, case-sensitive match on
+ * the schema name only (`evalcopy_old`, `evalcopy2`, `EvalCopy` do not count). Runs before the early 'unmarked'
+ * return so it also fires on a not-yet-migrated database.
+ */
+export const EVALCOPY_MARKER_SCHEMA = 'evalcopy'
+export const EVALCOPY_MARKER_MESSAGE =
+  `An evaluation-copy marker schema (${EVALCOPY_MARKER_SCHEMA}) exists on production. `
+  + "The evaluation copy's marker must never be written to production. "
+  + `Drop schema ${EVALCOPY_MARKER_SCHEMA} on production only after confirming it was written there by mistake, then re-run.`
+
 export async function readDataPlaneOwnershipStatus(
   database: string | Readonly<PoolConfig> | undefined = process.env.DATABASE_URL,
 ): Promise<DataPlaneOwnershipStatus> {
@@ -48,6 +60,9 @@ export async function readDataPlaneOwnershipStatus(
     ? { connectionString: database, max: 1 }
     : { ...database, max: 1 })
   try {
+    const schemas = await pool.query<{ nspname: string }>('SELECT nspname FROM pg_catalog.pg_namespace')
+    if (schemas.rows.some((row) => row.nspname === EVALCOPY_MARKER_SCHEMA)) throw new Error(EVALCOPY_MARKER_MESSAGE)
+
     const marker = await pool.query<{ count: string }>(
       'SELECT count(DISTINCT filename)::text AS count FROM public._migrations_applied WHERE filename = ANY($1::text[])',
       [[...FILES]],
@@ -507,6 +522,11 @@ export async function readDataPlaneOwnershipStatus(
         -- Suvarṇa D6 (native, 2026-09-29): USAGE only, and only once the role exists.
         SELECT 'suvarna_reader','USAGE'
          WHERE to_regrole('suvarna_reader') IS NOT NULL
+        UNION ALL
+        -- Kāla verifier_principal (native-approved 2026-10-09; kala-provision-verifier-role.sh): NOLOGIN, USAGE only,
+        -- and only once the role exists. CREATE stays forbidden: an extra (verifier_principal, CREATE) row is still drift.
+        SELECT 'verifier_principal','USAGE'
+         WHERE to_regrole('verifier_principal') IS NOT NULL
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
                      WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe

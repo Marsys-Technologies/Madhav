@@ -1,0 +1,3272 @@
+{
+ "acceptances": {
+  "i": {
+   "closure": [
+    "B-0",
+    "B-1",
+    "B-1a",
+    "B-1b",
+    "B-1c",
+    "B-1p",
+    "B-1v",
+    "B-2",
+    "B-3",
+    "B-3b",
+    "B-4",
+    "B-5",
+    "B-6",
+    "B-7",
+    "D-CLOUD",
+    "D-COMPACT",
+    "D-FLIP",
+    "D-G2",
+    "D-G9",
+    "D-KR",
+    "D-R11",
+    "D-R6",
+    "D-R8",
+    "D-TEARDOWN",
+    "D-VC",
+    "J-0",
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d",
+    "J-0m",
+    "J-1a",
+    "J-2a",
+    "J-2b",
+    "J-2c",
+    "J-2d",
+    "J-3a",
+    "J-3b",
+    "J-3c",
+    "J-3d",
+    "J-4a",
+    "J-4b",
+    "J-4c",
+    "J-4d",
+    "J-4e",
+    "J-4f",
+    "J-4p",
+    "J-5q",
+    "J-5s",
+    "J-6",
+    "J-6a",
+    "J-6l",
+    "J-6m",
+    "J-6r",
+    "K-AVADHI-C",
+    "K0-SV",
+    "K0a-0",
+    "K0a-1",
+    "K0a-1a",
+    "K0a-1b",
+    "K0a-1c",
+    "K0a-2",
+    "K0a-3",
+    "K0a-4",
+    "K1-1a",
+    "K1-1b",
+    "K1-2",
+    "K2-1a",
+    "K2-1b",
+    "K2-2",
+    "K3-1",
+    "K3-2",
+    "K4-1",
+    "K4-2a",
+    "K4-2aw",
+    "K4-2b",
+    "K4-3",
+    "K5-2",
+    "K5-2b",
+    "K5-3",
+    "K5-G1a",
+    "K5-G1b",
+    "K6-123",
+    "K6-4",
+    "K6-5",
+    "K6-5a",
+    "K7-1a",
+    "K7-1b",
+    "K7-2",
+    "K7-3",
+    "K7-4",
+    "K8-REG",
+    "K9-1",
+    "K9-23",
+    "K9-4a",
+    "K9-4b",
+    "K9-5",
+    "K9-6",
+    "KA-1e",
+    "KA-1w",
+    "KA-2",
+    "KA-3a",
+    "KA-3b",
+    "KA-4",
+    "KA-4b",
+    "KR-1",
+    "KR-2",
+    "L0-M",
+    "V-J6",
+    "V-K0a",
+    "V-K12",
+    "V-K3",
+    "V-K3b",
+    "V-K4",
+    "V-K5",
+    "V-K6",
+    "V-K7",
+    "V-K9",
+    "V-KA",
+    "V-VC",
+    "VC-1",
+    "VC-2"
+   ],
+   "closure_count": 122,
+   "gap_candidates": [
+    {
+     "absorbed_by": "K9-5",
+     "input": "K9-4b",
+     "reasons": [
+      "input:K9-4a"
+     ]
+    },
+    {
+     "absorbed_by": "K9-5",
+     "input": "KR-1",
+     "reasons": [
+      "input:K9-6"
+     ]
+    },
+    {
+     "absorbed_by": "K9-5",
+     "input": "KR-2",
+     "reasons": [
+      "decision:D-KR=approved",
+      "input:K9-6"
+     ]
+    },
+    {
+     "absorbed_by": "V-J6",
+     "input": "J-6l",
+     "reasons": [
+      "input:J-6"
+     ]
+    },
+    {
+     "absorbed_by": "V-K3b",
+     "input": "K3-2",
+     "reasons": [
+      "input:J-5s"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "D-G2",
+     "reasons": [
+      "decision:D-VC=approved",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "K5-2b",
+     "reasons": [
+      "decision:D-COMPACT=approved",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "K5-3",
+     "reasons": [
+      "decision:D-G2=approved",
+      "input:D-G2",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K7",
+     "input": "K7-4",
+     "reasons": [
+      "decision:D-R6=approved"
+     ]
+    },
+    {
+     "absorbed_by": "V-K9",
+     "input": "K9-6",
+     "reasons": [
+      "input:K9-4b"
+     ]
+    },
+    {
+     "absorbed_by": "V-K9",
+     "input": "KR-1",
+     "reasons": [
+      "input:K9-6"
+     ]
+    },
+    {
+     "absorbed_by": "V-K9",
+     "input": "KR-2",
+     "reasons": [
+      "decision:D-KR=approved",
+      "input:K9-6"
+     ]
+    }
+   ],
+   "roots": [
+    "K-AVADHI-C",
+    "K9-4a",
+    "K9-4b",
+    "K9-6",
+    "V-K9"
+   ],
+   "skip_capable_roots": {
+    "K9-4a": [
+     "decision:D-FLIP=approved",
+     "input:D-FLIP",
+     "input:J-6l",
+     "input:K9-23"
+    ],
+    "K9-4b": [
+     "input:K9-4a"
+    ],
+    "K9-6": [
+     "input:K9-4b"
+    ]
+   }
+  },
+  "ii": {
+   "closure": [
+    "B-0",
+    "B-1",
+    "B-1a",
+    "B-1b",
+    "B-1c",
+    "B-1p",
+    "B-1v",
+    "B-2",
+    "B-3",
+    "B-3b",
+    "B-4",
+    "B-5",
+    "B-6",
+    "B-7",
+    "D-CLOUD",
+    "D-FLIP",
+    "D-G9",
+    "D-TEARDOWN",
+    "J-0",
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d",
+    "J-0m",
+    "J-1a",
+    "J-2a",
+    "J-2b",
+    "J-2c",
+    "J-2d",
+    "J-3a",
+    "J-3b",
+    "J-3c",
+    "J-3d",
+    "J-4a",
+    "J-4b",
+    "J-4c",
+    "J-4d",
+    "J-4e",
+    "J-4f",
+    "J-4p",
+    "J-5q",
+    "J-5s",
+    "J-6",
+    "J-6a",
+    "J-6l",
+    "J-6m",
+    "J-6r",
+    "K0-SV",
+    "V-J6"
+   ],
+   "closure_count": 49,
+   "gap_candidates": [
+    {
+     "absorbed_by": "V-J6",
+     "input": "J-6l",
+     "reasons": [
+      "input:J-6"
+     ]
+    }
+   ],
+   "roots": [
+    "J-5q",
+    "J-5s",
+    "J-6",
+    "J-6l",
+    "V-J6"
+   ],
+   "skip_capable_roots": {
+    "J-5q": [
+     "input:J-4f"
+    ],
+    "J-5s": [
+     "input:J-5q"
+    ],
+    "J-6": [
+     "decision:D-FLIP=approved",
+     "input:D-FLIP"
+    ],
+    "J-6l": [
+     "input:J-6"
+    ]
+   }
+  },
+  "iii": {
+   "closure": [
+    "B-0",
+    "B-1",
+    "B-1a",
+    "B-1b",
+    "B-1c",
+    "B-1p",
+    "B-1v",
+    "B-2",
+    "B-3",
+    "B-3b",
+    "B-4",
+    "B-5",
+    "B-6",
+    "B-7",
+    "D-CLOUD",
+    "D-COMPACT",
+    "D-FLIP",
+    "D-G2",
+    "D-G9",
+    "D-KR",
+    "D-R11",
+    "D-R6",
+    "D-R8",
+    "D-TEARDOWN",
+    "D-VC",
+    "J-0",
+    "J-0a",
+    "J-0b",
+    "J-0c",
+    "J-0d",
+    "J-0m",
+    "J-1a",
+    "J-2a",
+    "J-2b",
+    "J-2c",
+    "J-2d",
+    "J-3a",
+    "J-3b",
+    "J-3c",
+    "J-3d",
+    "J-4a",
+    "J-4b",
+    "J-4c",
+    "J-4d",
+    "J-4e",
+    "J-4f",
+    "J-4p",
+    "J-5q",
+    "J-5s",
+    "J-6",
+    "J-6a",
+    "J-6l",
+    "J-6m",
+    "J-6r",
+    "K-CERT",
+    "K-CERT-2",
+    "K0-SV",
+    "K0a-0",
+    "K0a-1",
+    "K0a-1a",
+    "K0a-1b",
+    "K0a-1c",
+    "K0a-2",
+    "K0a-3",
+    "K0a-4",
+    "K1-1a",
+    "K1-1b",
+    "K1-2",
+    "K2-1a",
+    "K2-1b",
+    "K2-2",
+    "K3-1",
+    "K3-2",
+    "K4-1",
+    "K4-2a",
+    "K4-2aw",
+    "K4-2b",
+    "K4-3",
+    "K5-2",
+    "K5-2b",
+    "K5-3",
+    "K5-G1a",
+    "K5-G1b",
+    "K6-123",
+    "K6-4",
+    "K6-5",
+    "K6-5a",
+    "K7-1a",
+    "K7-1b",
+    "K7-2",
+    "K7-3",
+    "K7-4",
+    "K8-R26",
+    "K8-REG",
+    "K9-1",
+    "K9-23",
+    "K9-4a",
+    "K9-4b",
+    "K9-5",
+    "K9-6",
+    "KA-1e",
+    "KA-1w",
+    "KA-2",
+    "KA-3a",
+    "KA-3b",
+    "KA-4",
+    "KA-4b",
+    "KR-1",
+    "KR-2",
+    "KV3-SCHEMA-1",
+    "L0-M",
+    "V-J6",
+    "V-K0a",
+    "V-K12",
+    "V-K3",
+    "V-K3b",
+    "V-K4",
+    "V-K5",
+    "V-K6",
+    "V-K7",
+    "V-KA",
+    "V-VC",
+    "VC-1",
+    "VC-2"
+   ],
+   "closure_count": 124,
+   "gap_candidates": [
+    {
+     "absorbed_by": "K9-5",
+     "input": "K9-4b",
+     "reasons": [
+      "input:K9-4a"
+     ]
+    },
+    {
+     "absorbed_by": "K9-5",
+     "input": "KR-1",
+     "reasons": [
+      "input:K9-6"
+     ]
+    },
+    {
+     "absorbed_by": "K9-5",
+     "input": "KR-2",
+     "reasons": [
+      "decision:D-KR=approved",
+      "input:K9-6"
+     ]
+    },
+    {
+     "absorbed_by": "V-J6",
+     "input": "J-6l",
+     "reasons": [
+      "input:J-6"
+     ]
+    },
+    {
+     "absorbed_by": "V-K3b",
+     "input": "K3-2",
+     "reasons": [
+      "input:J-5s"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "D-G2",
+     "reasons": [
+      "decision:D-VC=approved",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "K5-2b",
+     "reasons": [
+      "decision:D-COMPACT=approved",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K5",
+     "input": "K5-3",
+     "reasons": [
+      "decision:D-G2=approved",
+      "input:D-G2",
+      "optional"
+     ]
+    },
+    {
+     "absorbed_by": "V-K7",
+     "input": "K7-4",
+     "reasons": [
+      "decision:D-R6=approved"
+     ]
+    }
+   ],
+   "roots": [
+    "K-CERT",
+    "K-CERT-2",
+    "K0a-4",
+    "K2-2",
+    "K3-2",
+    "K4-3",
+    "K5-G1b",
+    "K6-5",
+    "K7-4",
+    "K8-R26",
+    "K8-REG",
+    "K9-5",
+    "KA-4b"
+   ],
+   "skip_capable_roots": {
+    "K3-2": [
+     "input:J-5s"
+    ],
+    "K7-4": [
+     "decision:D-R6=approved"
+    ],
+    "K8-REG": [
+     "input:K3-2",
+     "input:K7-4"
+    ]
+   }
+  }
+ },
+ "closure": [
+  "B-0",
+  "B-1",
+  "B-1a",
+  "B-1b",
+  "B-1c",
+  "B-1p",
+  "B-1v",
+  "B-2",
+  "B-3",
+  "B-3b",
+  "B-4",
+  "B-5",
+  "B-6",
+  "B-7",
+  "D-CLOUD",
+  "D-COMPACT",
+  "D-FLIP",
+  "D-G2",
+  "D-G9",
+  "D-KR",
+  "D-R11",
+  "D-R6",
+  "D-R8",
+  "D-TEARDOWN",
+  "D-VC",
+  "J-0",
+  "J-0a",
+  "J-0b",
+  "J-0c",
+  "J-0d",
+  "J-0m",
+  "J-1a",
+  "J-2a",
+  "J-2b",
+  "J-2c",
+  "J-2d",
+  "J-3a",
+  "J-3b",
+  "J-3c",
+  "J-3d",
+  "J-4a",
+  "J-4b",
+  "J-4c",
+  "J-4d",
+  "J-4e",
+  "J-4f",
+  "J-4p",
+  "J-5q",
+  "J-5s",
+  "J-6",
+  "J-6a",
+  "J-6l",
+  "J-6m",
+  "J-6r",
+  "K-AVADHI-C",
+  "K-CERT",
+  "K-CERT-2",
+  "K0-SV",
+  "K0a-0",
+  "K0a-1",
+  "K0a-1a",
+  "K0a-1b",
+  "K0a-1c",
+  "K0a-2",
+  "K0a-3",
+  "K0a-4",
+  "K1-1a",
+  "K1-1b",
+  "K1-2",
+  "K2-1a",
+  "K2-1b",
+  "K2-2",
+  "K3-1",
+  "K3-2",
+  "K4-1",
+  "K4-2a",
+  "K4-2aw",
+  "K4-2b",
+  "K4-3",
+  "K5-2",
+  "K5-2b",
+  "K5-3",
+  "K5-G1a",
+  "K5-G1b",
+  "K6-123",
+  "K6-4",
+  "K6-5",
+  "K6-5a",
+  "K7-1a",
+  "K7-1b",
+  "K7-2",
+  "K7-3",
+  "K7-4",
+  "K8-R26",
+  "K8-REG",
+  "K9-1",
+  "K9-23",
+  "K9-4a",
+  "K9-4b",
+  "K9-5",
+  "K9-6",
+  "KA-1e",
+  "KA-1w",
+  "KA-2",
+  "KA-3a",
+  "KA-3b",
+  "KA-4",
+  "KA-4b",
+  "KR-1",
+  "KR-2",
+  "KV3-SCHEMA-1",
+  "L0-M",
+  "V-J6",
+  "V-K0a",
+  "V-K12",
+  "V-K3",
+  "V-K3b",
+  "V-K4",
+  "V-K5",
+  "V-K6",
+  "V-K7",
+  "V-K9",
+  "V-KA",
+  "V-VC",
+  "VC-1",
+  "VC-2"
+ ],
+ "closure_count": 126,
+ "closure_sha256": "697be104c803c5d5d2c62979f4a73b1f40007850700caccde3c912b0dd281f30",
+ "inputs": {
+  "model_canonical_sha256": "8d93ca5be3ab0f11f60253b8b509b622440d092706477328d2c10e26d95eaf5e",
+  "model_items": 151,
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011",
+  "roots_canonical_sha256": "46ae5d177ce2320c17dd0e444512cdb130f27ba7a58af993e43409512ada53dd"
+ },
+ "mechanical_close_chain_excluded_as_roots": [
+  "C-1",
+  "C-2",
+  "C-3",
+  "C-4",
+  "JOIN-ALL"
+ ],
+ "members": {
+  "B-0": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {},
+   "required_by": [
+    "B-1a",
+    "B-3b",
+    "B-4",
+    "B-5",
+    "B-6",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-1": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1v": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-2",
+    "B-6",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-1a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1b"
+   ],
+   "skip_capable": []
+  },
+  "B-1b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1a": [
+     "item"
+    ],
+    "B-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1c"
+   ],
+   "skip_capable": []
+  },
+  "B-1c": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1p"
+   ],
+   "skip_capable": []
+  },
+  "B-1p": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1c": [
+     "item"
+    ],
+    "B-3b": [
+     "item"
+    ],
+    "B-4": [
+     "item"
+    ],
+    "B-5": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1v"
+   ],
+   "skip_capable": []
+  },
+  "B-1v": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1p": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-2": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-3",
+    "B-7",
+    "D-KR",
+    "D-R11",
+    "D-R6",
+    "D-R8"
+   ],
+   "skip_capable": []
+  },
+  "B-3": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-2": [
+     "item"
+    ],
+    "B-3b": [
+     "item"
+    ],
+    "B-6": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-3b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ],
+    "B-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1p",
+    "B-3",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-4": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1b",
+    "B-1p",
+    "B-3b",
+    "B-5",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-5": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ],
+    "B-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-1p",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-6": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ],
+    "B-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "B-3",
+    "B-7"
+   ],
+   "skip_capable": []
+  },
+  "B-7": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-0": [
+     "item"
+    ],
+    "B-1": [
+     "item"
+    ],
+    "B-1v": [
+     "item"
+    ],
+    "B-2": [
+     "item"
+    ],
+    "B-3": [
+     "item"
+    ],
+    "B-3b": [
+     "item"
+    ],
+    "B-4": [
+     "item"
+    ],
+    "B-5": [
+     "item"
+    ],
+    "B-6": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0a",
+    "J-0b",
+    "K-AVADHI-C",
+    "K-CERT",
+    "K-CERT-2",
+    "K0-SV",
+    "K0a-0",
+    "K0a-1a",
+    "K0a-1b",
+    "K8-R26",
+    "KV3-SCHEMA-1",
+    "L0-M"
+   ],
+   "skip_capable": []
+  },
+  "D-CLOUD": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-4d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4e"
+   ],
+   "skip_capable": [
+    "input:J-4d"
+   ]
+  },
+  "D-COMPACT": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K5-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-2b",
+    "K9-1",
+    "V-K5"
+   ],
+   "skip_capable": []
+  },
+  "D-FLIP": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-5q": [
+     "item"
+    ],
+    "J-5s": [
+     "item"
+    ],
+    "J-6r": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-6",
+    "K9-4a"
+   ],
+   "skip_capable": [
+    "input:J-5q",
+    "input:J-5s",
+    "input:J-6r"
+   ]
+  },
+  "D-G2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-VC": [
+     "decision",
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-3",
+    "K9-1",
+    "V-K5"
+   ],
+   "skip_capable": [
+    "decision:D-VC=approved",
+    "optional"
+   ]
+  },
+  "D-G9": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-3d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4d"
+   ],
+   "skip_capable": [
+    "input:J-3d"
+   ]
+  },
+  "D-KR": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "KR-2"
+   ],
+   "skip_capable": []
+  },
+  "D-R11": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K6-5a"
+   ],
+   "skip_capable": []
+  },
+  "D-R6": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-4"
+   ],
+   "skip_capable": []
+  },
+  "D-R8": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "KA-3b"
+   ],
+   "skip_capable": []
+  },
+  "D-TEARDOWN": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-2a"
+   ],
+   "skip_capable": []
+  },
+  "D-VC": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "VC-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-G2",
+    "K5-2",
+    "V-VC"
+   ],
+   "skip_capable": []
+  },
+  "J-0": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0a": [
+     "item"
+    ],
+    "J-0b": [
+     "item"
+    ],
+    "J-0c": [
+     "item"
+    ],
+    "J-0d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0m"
+   ],
+   "skip_capable": []
+  },
+  "J-0a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0",
+    "J-0c"
+   ],
+   "skip_capable": []
+  },
+  "J-0b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0",
+    "J-0c"
+   ],
+   "skip_capable": []
+  },
+  "J-0c": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0a": [
+     "item"
+    ],
+    "J-0b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0",
+    "J-0d"
+   ],
+   "skip_capable": []
+  },
+  "J-0d": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0c": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-0"
+   ],
+   "skip_capable": []
+  },
+  "J-0m": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-1a",
+    "J-4p",
+    "KA-3a",
+    "KA-3b"
+   ],
+   "skip_capable": []
+  },
+  "J-1a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0m": [
+     "item"
+    ],
+    "J-4p": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-TEARDOWN",
+    "J-2a"
+   ],
+   "skip_capable": []
+  },
+  "J-2a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-TEARDOWN": [
+     "decision",
+     "item"
+    ],
+    "J-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-2b"
+   ],
+   "skip_capable": [
+    "decision:D-TEARDOWN=approved"
+   ]
+  },
+  "J-2b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-2a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-2c"
+   ],
+   "skip_capable": [
+    "input:J-2a"
+   ]
+  },
+  "J-2c": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-2b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-2d"
+   ],
+   "skip_capable": [
+    "input:J-2b"
+   ]
+  },
+  "J-2d": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-2c": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-3a",
+    "J-3b"
+   ],
+   "skip_capable": [
+    "input:J-2c"
+   ]
+  },
+  "J-3a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-2d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-3c"
+   ],
+   "skip_capable": [
+    "input:J-2d"
+   ]
+  },
+  "J-3b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-2d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-3c"
+   ],
+   "skip_capable": [
+    "input:J-2d"
+   ]
+  },
+  "J-3c": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-3a": [
+     "item"
+    ],
+    "J-3b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-3d"
+   ],
+   "skip_capable": [
+    "input:J-3a",
+    "input:J-3b"
+   ]
+  },
+  "J-3d": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-3c": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-G9",
+    "J-4a"
+   ],
+   "skip_capable": [
+    "input:J-3c"
+   ]
+  },
+  "J-4a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-3d": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4b"
+   ],
+   "skip_capable": [
+    "input:J-3d"
+   ]
+  },
+  "J-4b": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-4a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4c"
+   ],
+   "skip_capable": [
+    "input:J-4a"
+   ]
+  },
+  "J-4c": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-4b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4d"
+   ],
+   "skip_capable": [
+    "input:J-4b"
+   ]
+  },
+  "J-4d": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-G9": [
+     "item"
+    ],
+    "J-4c": [
+     "item"
+    ],
+    "J-4p": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-CLOUD"
+   ],
+   "skip_capable": [
+    "input:D-G9",
+    "input:J-4c"
+   ]
+  },
+  "J-4e": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-CLOUD": [
+     "decision",
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4f"
+   ],
+   "skip_capable": [
+    "decision:D-CLOUD=approved",
+    "input:D-CLOUD"
+   ]
+  },
+  "J-4f": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-4e": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-5q"
+   ],
+   "skip_capable": [
+    "input:J-4e"
+   ]
+  },
+  "J-4p": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0m": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-1a",
+    "J-4d"
+   ],
+   "skip_capable": []
+  },
+  "J-5q": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-4f": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-FLIP",
+    "J-5s"
+   ],
+   "skip_capable": [
+    "input:J-4f"
+   ]
+  },
+  "J-5s": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-5q": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-FLIP",
+    "J-6a",
+    "K3-2"
+   ],
+   "skip_capable": [
+    "input:J-5q"
+   ]
+  },
+  "J-6": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-FLIP": [
+     "decision",
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-6l"
+   ],
+   "skip_capable": [
+    "decision:D-FLIP=approved",
+    "input:D-FLIP"
+   ]
+  },
+  "J-6a": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-5s": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-6m"
+   ],
+   "skip_capable": [
+    "input:J-5s"
+   ]
+  },
+  "J-6l": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-6": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a",
+    "V-J6"
+   ],
+   "skip_capable": [
+    "input:J-6"
+   ]
+  },
+  "J-6m": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-6a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-6r"
+   ],
+   "skip_capable": [
+    "input:J-6a"
+   ]
+  },
+  "J-6r": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-6m": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-FLIP"
+   ],
+   "skip_capable": [
+    "input:J-6m"
+   ]
+  },
+  "K-AVADHI-C": {
+   "acceptances": [
+    "i"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [],
+   "skip_capable": []
+  },
+  "K-CERT": {
+   "acceptances": [
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ],
+    "KV3-SCHEMA-1": [
+     "item"
+    ]
+   },
+   "required_by": [],
+   "skip_capable": []
+  },
+  "K-CERT-2": {
+   "acceptances": [
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [],
+   "skip_capable": []
+  },
+  "K0-SV": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "J-4p",
+    "K-AVADHI-C",
+    "K-CERT",
+    "K-CERT-2",
+    "K1-1a",
+    "K8-R26",
+    "KV3-SCHEMA-1"
+   ],
+   "skip_capable": []
+  },
+  "K0a-0": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-1a",
+    "V-K0a"
+   ],
+   "skip_capable": []
+  },
+  "K0a-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1a": [
+     "item"
+    ],
+    "K0a-1b": [
+     "item"
+    ],
+    "K0a-1c": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K1-1a",
+    "K2-1a",
+    "K4-1",
+    "KA-1e",
+    "KA-2",
+    "KA-4"
+   ],
+   "skip_capable": []
+  },
+  "K0a-1a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K0a-1",
+    "K0a-1c",
+    "K0a-2",
+    "K0a-3"
+   ],
+   "skip_capable": []
+  },
+  "K0a-1b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K0a-1",
+    "K0a-3"
+   ],
+   "skip_capable": []
+  },
+  "K0a-1c": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K0a-1"
+   ],
+   "skip_capable": []
+  },
+  "K0a-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-G1a",
+    "K7-1a",
+    "V-K0a"
+   ],
+   "skip_capable": []
+  },
+  "K0a-3": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1a": [
+     "item"
+    ],
+    "K0a-1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K0a-4"
+   ],
+   "skip_capable": []
+  },
+  "K0a-4": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-3": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K1-2",
+    "K2-2",
+    "K3-1",
+    "K4-2a",
+    "K4-2aw",
+    "K5-G1a",
+    "K6-123",
+    "K6-4",
+    "K6-5",
+    "K7-1a",
+    "K8-REG",
+    "KA-3a",
+    "V-K0a"
+   ],
+   "skip_capable": []
+  },
+  "K1-1a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0-SV": [
+     "item"
+    ],
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K1-1b"
+   ],
+   "skip_capable": []
+  },
+  "K1-1b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K1-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K1-2",
+    "K3-1",
+    "K4-2a"
+   ],
+   "skip_capable": []
+  },
+  "K1-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K1-1b": [
+     "item"
+    ],
+    "K2-1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "V-K12"
+   ],
+   "skip_capable": []
+  },
+  "K2-1a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K2-1b"
+   ],
+   "skip_capable": []
+  },
+  "K2-1b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K2-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K1-2",
+    "K2-2"
+   ],
+   "skip_capable": []
+  },
+  "K2-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K2-1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K3-1",
+    "K8-REG",
+    "V-K12"
+   ],
+   "skip_capable": []
+  },
+  "K3-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K1-1b": [
+     "item"
+    ],
+    "K2-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K3-2",
+    "K4-2a",
+    "V-K3"
+   ],
+   "skip_capable": []
+  },
+  "K3-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-5s": [
+     "item"
+    ],
+    "K3-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K8-REG",
+    "K9-1",
+    "V-K3b"
+   ],
+   "skip_capable": [
+    "input:J-5s"
+   ]
+  },
+  "K4-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K4-2a"
+   ],
+   "skip_capable": []
+  },
+  "K4-2a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K1-1b": [
+     "item"
+    ],
+    "K3-1": [
+     "item"
+    ],
+    "K4-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K4-2aw"
+   ],
+   "skip_capable": []
+  },
+  "K4-2aw": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K4-2a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K4-2b"
+   ],
+   "skip_capable": []
+  },
+  "K4-2b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K4-2aw": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K4-3",
+    "K7-4"
+   ],
+   "skip_capable": []
+  },
+  "K4-3": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K4-2b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-G1a",
+    "K6-123",
+    "K6-5a",
+    "K8-REG",
+    "V-K4"
+   ],
+   "skip_capable": []
+  },
+  "K5-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-VC": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-COMPACT",
+    "K9-1",
+    "V-K5"
+   ],
+   "skip_capable": []
+  },
+  "K5-2b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-COMPACT": [
+     "decision",
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "V-K5"
+   ],
+   "skip_capable": [
+    "decision:D-COMPACT=approved",
+    "optional"
+   ]
+  },
+  "K5-3": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-G2": [
+     "decision",
+     "item"
+    ],
+    "K5-G1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "V-K5"
+   ],
+   "skip_capable": [
+    "decision:D-G2=approved",
+    "input:D-G2",
+    "optional"
+   ]
+  },
+  "K5-G1a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-2": [
+     "item"
+    ],
+    "K0a-4": [
+     "item"
+    ],
+    "K4-3": [
+     "item"
+    ],
+    "KA-3a": [
+     "item"
+    ],
+    "KA-3b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-G1b"
+   ],
+   "skip_capable": []
+  },
+  "K5-G1b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K5-G1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-3",
+    "K6-4",
+    "K8-REG",
+    "K9-1",
+    "V-K5",
+    "VC-1"
+   ],
+   "skip_capable": []
+  },
+  "K6-123": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K4-3": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "V-K6"
+   ],
+   "skip_capable": []
+  },
+  "K6-4": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K5-G1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "V-K6"
+   ],
+   "skip_capable": []
+  },
+  "K6-5": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K6-5a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K8-REG",
+    "K9-1",
+    "V-K6"
+   ],
+   "skip_capable": []
+  },
+  "K6-5a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-R11": [
+     "item"
+    ],
+    "K4-3": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K6-5"
+   ],
+   "skip_capable": []
+  },
+  "K7-1a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-0": [
+     "item"
+    ],
+    "K0a-2": [
+     "item"
+    ],
+    "K0a-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-1b"
+   ],
+   "skip_capable": []
+  },
+  "K7-1b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K7-1a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-2",
+    "KA-4b"
+   ],
+   "skip_capable": []
+  },
+  "K7-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K7-1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-3"
+   ],
+   "skip_capable": []
+  },
+  "K7-3": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K7-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K7-4",
+    "K9-1",
+    "V-K7"
+   ],
+   "skip_capable": []
+  },
+  "K7-4": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-R6": [
+     "decision",
+     "item"
+    ],
+    "K4-2b": [
+     "item"
+    ],
+    "K7-3": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K8-REG",
+    "K9-1",
+    "V-K7"
+   ],
+   "skip_capable": [
+    "decision:D-R6=approved"
+   ]
+  },
+  "K8-R26": {
+   "acceptances": [
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [],
+   "skip_capable": []
+  },
+  "K8-REG": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-4": [
+     "item"
+    ],
+    "K2-2": [
+     "item"
+    ],
+    "K3-2": [
+     "item"
+    ],
+    "K4-3": [
+     "item"
+    ],
+    "K5-G1b": [
+     "item"
+    ],
+    "K6-5": [
+     "item"
+    ],
+    "K7-4": [
+     "item"
+    ],
+    "KA-4b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1"
+   ],
+   "skip_capable": [
+    "input:K3-2",
+    "input:K7-4"
+   ]
+  },
+  "K9-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-COMPACT": [
+     "item"
+    ],
+    "D-G2": [
+     "item"
+    ],
+    "K3-2": [
+     "item"
+    ],
+    "K5-2": [
+     "item"
+    ],
+    "K5-2b": [
+     "item"
+    ],
+    "K5-3": [
+     "item"
+    ],
+    "K5-G1b": [
+     "item"
+    ],
+    "K6-123": [
+     "item"
+    ],
+    "K6-4": [
+     "item"
+    ],
+    "K6-5": [
+     "item"
+    ],
+    "K7-3": [
+     "item"
+    ],
+    "K7-4": [
+     "item"
+    ],
+    "K8-REG": [
+     "item"
+    ],
+    "KA-1w": [
+     "item"
+    ],
+    "KA-2": [
+     "item"
+    ],
+    "KA-3a": [
+     "item"
+    ],
+    "KA-3b": [
+     "item"
+    ],
+    "KA-4": [
+     "item"
+    ],
+    "KA-4b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-23"
+   ],
+   "skip_capable": [
+    "input:D-G2",
+    "input:K3-2",
+    "input:K5-2b",
+    "input:K5-3",
+    "input:K7-4",
+    "input:K8-REG"
+   ]
+  },
+  "K9-23": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K9-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": [
+    "input:K9-1"
+   ]
+  },
+  "K9-4a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-FLIP": [
+     "decision",
+     "item"
+    ],
+    "J-6l": [
+     "item"
+    ],
+    "K9-23": [
+     "item"
+    ],
+    "V-J6": [
+     "item"
+    ],
+    "V-K0a": [
+     "item"
+    ],
+    "V-K12": [
+     "item"
+    ],
+    "V-K3": [
+     "item"
+    ],
+    "V-K3b": [
+     "item"
+    ],
+    "V-K4": [
+     "item"
+    ],
+    "V-K5": [
+     "item"
+    ],
+    "V-K6": [
+     "item"
+    ],
+    "V-K7": [
+     "item"
+    ],
+    "V-KA": [
+     "item"
+    ],
+    "V-VC": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4b"
+   ],
+   "skip_capable": [
+    "decision:D-FLIP=approved",
+    "input:D-FLIP",
+    "input:J-6l",
+    "input:K9-23"
+   ]
+  },
+  "K9-4b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K9-4a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-5",
+    "K9-6"
+   ],
+   "skip_capable": [
+    "input:K9-4a"
+   ]
+  },
+  "K9-5": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K9-4b": [
+     "item"
+    ],
+    "KR-1": [
+     "item"
+    ],
+    "KR-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "V-K9"
+   ],
+   "skip_capable": []
+  },
+  "K9-6": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K9-4b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "KR-1",
+    "KR-2",
+    "V-K9"
+   ],
+   "skip_capable": [
+    "input:K9-4b"
+   ]
+  },
+  "KA-1e": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "KA-1w"
+   ],
+   "skip_capable": []
+  },
+  "KA-1w": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "KA-1e": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "KA-3a",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KA-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "KA-3a",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KA-3a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-0m": [
+     "item"
+    ],
+    "K0a-4": [
+     "item"
+    ],
+    "KA-1w": [
+     "item"
+    ],
+    "KA-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-G1a",
+    "K9-1",
+    "KA-3b",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KA-3b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-R8": [
+     "item"
+    ],
+    "J-0m": [
+     "item"
+    ],
+    "KA-3a": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K5-G1a",
+    "K9-1",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KA-4": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-1",
+    "KA-4b",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KA-4b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K7-1b": [
+     "item"
+    ],
+    "KA-4": [
+     "item"
+    ],
+    "L0-M": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K8-REG",
+    "K9-1",
+    "V-KA"
+   ],
+   "skip_capable": []
+  },
+  "KR-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K9-6": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-5",
+    "V-K9"
+   ],
+   "skip_capable": [
+    "input:K9-6"
+   ]
+  },
+  "KR-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-KR": [
+     "decision",
+     "item"
+    ],
+    "K9-6": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-5",
+    "V-K9"
+   ],
+   "skip_capable": [
+    "decision:D-KR=approved",
+    "input:K9-6"
+   ]
+  },
+  "KV3-SCHEMA-1": {
+   "acceptances": [
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ],
+    "K0-SV": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K-CERT"
+   ],
+   "skip_capable": []
+  },
+  "L0-M": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "B-7": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "KA-4b"
+   ],
+   "skip_capable": []
+  },
+  "V-J6": {
+   "acceptances": [
+    "i",
+    "ii",
+    "iii"
+   ],
+   "prerequisites": {
+    "J-6l": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K0a": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K0a-0": [
+     "item"
+    ],
+    "K0a-2": [
+     "item"
+    ],
+    "K0a-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K12": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K1-2": [
+     "item"
+    ],
+    "K2-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K3": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K3-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K3b": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K3-2": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K4": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K4-3": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K5": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-COMPACT": [
+     "item"
+    ],
+    "D-G2": [
+     "item"
+    ],
+    "K5-2": [
+     "item"
+    ],
+    "K5-2b": [
+     "item"
+    ],
+    "K5-3": [
+     "item"
+    ],
+    "K5-G1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K6": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K6-123": [
+     "item"
+    ],
+    "K6-4": [
+     "item"
+    ],
+    "K6-5": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K7": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K7-3": [
+     "item"
+    ],
+    "K7-4": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-K9": {
+   "acceptances": [
+    "i"
+   ],
+   "prerequisites": {
+    "K9-5": [
+     "item"
+    ],
+    "K9-6": [
+     "item"
+    ],
+    "KR-1": [
+     "item"
+    ],
+    "KR-2": [
+     "item"
+    ]
+   },
+   "required_by": [],
+   "skip_capable": []
+  },
+  "V-KA": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "KA-1w": [
+     "item"
+    ],
+    "KA-2": [
+     "item"
+    ],
+    "KA-3a": [
+     "item"
+    ],
+    "KA-3b": [
+     "item"
+    ],
+    "KA-4": [
+     "item"
+    ],
+    "KA-4b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "V-VC": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "D-VC": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "K9-4a"
+   ],
+   "skip_capable": []
+  },
+  "VC-1": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "K5-G1b": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "VC-2"
+   ],
+   "skip_capable": []
+  },
+  "VC-2": {
+   "acceptances": [
+    "i",
+    "iii"
+   ],
+   "prerequisites": {
+    "VC-1": [
+     "item"
+    ]
+   },
+   "required_by": [
+    "D-VC"
+   ],
+   "skip_capable": []
+  }
+ },
+ "outside": [
+  "B-6r",
+  "B-8",
+  "B-CLAIM-RECOVERY",
+  "B-DB-BASELINE",
+  "B-DEPLOY-DIAG",
+  "B-K-INBOX",
+  "C-1",
+  "C-2",
+  "C-3",
+  "C-4",
+  "D-GOCHARA-TIMEOUT",
+  "D-R5",
+  "D-R9",
+  "D-RETIRE-B-CLAIM-RECOVERY",
+  "D-RETIRE-B-K-INBOX",
+  "D-T2",
+  "J-7",
+  "J-7a",
+  "J-7b",
+  "J-8",
+  "J-8a",
+  "J-GOCHARA-TIMEOUT",
+  "JOIN-ALL",
+  "L0-K",
+  "L0-K-RUNNER"
+ ],
+ "outside_count": 25,
+ "plan_version": "2.2",
+ "schema": "kalayantra.closure/1"
+}

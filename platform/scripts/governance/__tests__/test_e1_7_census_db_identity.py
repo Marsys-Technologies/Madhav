@@ -28,6 +28,14 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_evaluation_copy_marker(monkeypatch):
+    """SS N-327: census_stamp now LOOKS for the evaluation-copy marker. These tests fake the database wholesale (every query gets an arbitrary answer), so the lookup is answered 'no marker' here;
+    test_n317_evaluation_copy.py covers the lookup itself (fakes and a real PostgreSQL)."""
+    monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(checked=True, marker_present=False))
+    monkeypatch.setenv("SUVARNA_CENSUS_TARGET", "disposable")       # SS N-332: a census must state its target; these tests fake the database, which is what "disposable" says (calling it production would be a false declaration)
 import test_e1_9_assets_scope as e19  # noqa: E402
 from _disposable_pg import disposable_pg, point_psql_at  # noqa: E402,F401  (the session fixture)
 
@@ -63,7 +71,7 @@ def test_the_head_carries_the_database_name_and_the_hashed_system_identifier(mon
     ident = ac.census_stamp()["db_identity"]
     assert ident == dict(schema="nikasha_db_identity/1", database="postgres", system_id_sha256=_sha(SYSID))
     assert re.fullmatch(r"[0-9a-f]{64}", ident["system_id_sha256"]) and SYSID not in json.dumps(ident)       # the raw identifier is never stored
-    assert len(asked) == 2 and all(q.lstrip().upper().startswith("SELECT") for q in asked)                    # two read-only SELECTs, nothing else
+    assert len(asked) == 2 and all(q.lstrip().upper().startswith("SELECT") for q in asked)                    # two read-only SELECTs, nothing else (the evaluation-copy marker lookup is a third, stubbed away above; test_n317 covers it)
 
 
 def test_two_clusters_give_two_identities_and_one_cluster_gives_one(monkeypatch):
@@ -77,7 +85,7 @@ def test_two_clusters_give_two_identities_and_one_cluster_gives_one(monkeypatch)
 
 def test_a_denied_system_identifier_keeps_the_name_and_says_why_in_fixed_words(monkeypatch):
     _fake(monkeypatch, sysid_error=ac.Unknown('ERROR:  permission denied for function pg_control_system  at host "db.internal.example" (10.1.2.3)'))
-    ident = ac.census_stamp()["db_identity"]
+    ident = ac._db_identity()["db_identity"]
     assert ident["database"] == "postgres" and ident["system_id_sha256"] is None
     assert ident["unavailable"] == "the system identifier could not be read by this role (pg_control_system())"
     assert "db.internal.example" not in json.dumps(ident) and "10.1.2.3" not in json.dumps(ident)             # a psql error line is never echoed
@@ -101,7 +109,7 @@ def test_any_failure_to_ask_is_swallowed(monkeypatch, exc):
 @pytest.mark.parametrize("name", ["", "has space", "quo'te", 'dq"', "semi;colon", "x" * 64, "ünïcode", "a\nb", "host=db user=u"])
 def test_a_database_name_outside_the_identifier_shape_is_refused_not_echoed(monkeypatch, name):
     _fake(monkeypatch, name=name)
-    ident = ac.census_stamp()["db_identity"]
+    ident = ac._db_identity()["db_identity"]
     assert ident["database"] is None and ident["unavailable"].startswith("the database could not be read")
     assert name == "" or name not in json.dumps(ident)
 
@@ -109,7 +117,7 @@ def test_a_database_name_outside_the_identifier_shape_is_refused_not_echoed(monk
 @pytest.mark.parametrize("sysid", ["", "abc", "12 34", "-5", "1" * 31, "0x1f", _SCHEME + "://u:p@h/db"])
 def test_a_system_identifier_that_is_not_a_plain_integer_is_refused(monkeypatch, sysid):
     _fake(monkeypatch, sysid=sysid)
-    ident = ac.census_stamp()["db_identity"]
+    ident = ac._db_identity()["db_identity"]
     assert ident["database"] == "postgres" and ident["system_id_sha256"] is None and "unavailable" in ident
     assert sysid == "" or sysid not in json.dumps(ident)
 
@@ -194,7 +202,7 @@ def test_REAL_a_role_without_execute_on_pg_control_system_keeps_the_name_and_say
         disposable_pg.psql("REVOKE EXECUTE ON FUNCTION pg_control_system() FROM PUBLIC", db="nt_ident_denied")
         monkeypatch.setenv("PGDATABASE", "nt_ident_denied")
         monkeypatch.setenv("PGUSER", "nt_ident_ro")
-        ident = ac.census_stamp()["db_identity"]
+        ident = ac._db_identity()["db_identity"]
     finally:
         disposable_pg.psql("DROP DATABASE IF EXISTS nt_ident_denied", db="postgres")
         disposable_pg.psql("DROP ROLE IF EXISTS nt_ident_ro", db="postgres")

@@ -51,7 +51,9 @@ VOCAB_ASSETS = {          # asset -> (vocab_column, table)
     "bg_kp_sublord_division": ("star_lord", "bg_kp_sublord_division"),
 }
 EMPTY_ASSETS = ("bg_transit_engine", "bg_kp_sublord_division")
-HELD_NARR = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it
+HELD_NARR_N94 = ("bg_transit_rules", "bg_dignity_reference", "bg_vastu_directions")      # N-94 general: hand-typed classical-claim text, no detector behind it (the batch-2 sentence names all three)
+FORMGAP_RELEASED = ("bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference")      # SS N-191 / N-192 (declarations 1.46.0 on): the checked forms (per-key seed vocabularies, curated_corpus) now stand behind the sentences: declared, no longer held
+HELD_NARR = tuple(a for a in HELD_NARR_N94 if a not in FORMGAP_RELEASED)
 PENDING = "bg_transit_rules"
 EARLIER_EMPTY = ("bg_doshas", "bg_ontology", "bg_phaladeepika_latta", "bg_yogas", "bo_laksana_rerank")
 
@@ -104,7 +106,7 @@ def test_the_file_version_is_well_formed_and_the_validator_accepts_every_entry()
     for aid in VOCAB_ASSETS:
         assert aid in sentence, aid
     assert "N-94 is general" in sentence and "No other asset or structure changed" in sentence
-    for aid in HELD_NARR:
+    for aid in HELD_NARR_N94:
         assert aid in sentence
     for word in ("verbatim", "accurate", "exact"):               # the latta tests pin this vocabulary out of every later sentence
         assert word not in sentence.lower()
@@ -114,19 +116,20 @@ L0_FILL_NO_ALIAS_CLASS = ["bg_kota_chakra_rings", "bg_texts", "bg_vedha_malefic_
 
 
 RESIDUAL_NO_ALIAS = ["bg_ephemeris_engine", "bg_panchanga"]      # residual declaration batch (POST-#3176 item 2)
+FORMGAP_PROSE_NONE = ["ga_dashas", "ga_transit_anchors", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"]      # FORM-GAP (SS N-191, declarations 1.40.0 / 1.41.0); bg_sarvatobhadra_grid left it in declarations 1.74.0 (retired by #3414 / migration 1360: no declaration for an inactive asset)
 RESIDUAL_PROSE_NONE = ["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"]      # residual declaration batch (POST-#3176 item 1); bg_dasha_systems, bg_nakshatra and bg_reference left it in the SS audit of 2026-10-06 (their prose_none could not be shown true)
 
 
 def test_exactly_these_assets_declare_vocab_alias_and_prose_empty_and_nothing_else_of_the_s3_s1_s2_family_moves():
     assert sorted(a for a, e in ASSETS.items() if e.get("vocab_alias")) == sorted(["bg_phaladeepika_latta", *VOCAB_ASSETS, *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_NO_ALIAS, "bo_upaya"])   # + bo_upaya: planet identity-only form (E5.7 L2 fill)
-    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar"])   # + prose batch 2 (the six literal names above) + bo_samvada: checked prose_none (E5.7 L2 fill)
+    assert sorted(a for a, e in ASSETS.items() if e.get("prose_fields") == []) == sorted([*EARLIER_EMPTY, *EMPTY_ASSETS, "bg_ephemeris", "bg_gochara_arcs", *RESIDUAL_PROSE_NONE, "bo_samvada", "bo_drishti", "ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar", *FORMGAP_PROSE_NONE])   # + bo_samvada: checked prose_none (E5.7 L2 fill); + prose batch 2 (the six literal names above) + the FORM-GAP declarations (N-191)
     for aid in VOCAB_ASSETS:                                      # no Ldgr / Null / Carr / coupling declaration is added for these five
         e = ASSETS[aid]
         for key in ("ldgr_source", "null_convention", "prose_coupling"):
             assert key not in e, (aid, key)
         car = e.get("carriage") or {}
         assert car.get("nature") in (None, *ac.CEILING_NATURES) and car.get("spec") is None, aid          # N-156: a declared ceiling (D1 unverified transcription / D3 single derivation) is the only carriage these may declare, never a spec
-    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in ASSETS.items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     assert [a for a, e in ASSETS.items() if "null_convention" in e] == ["bg_phaladeepika_latta"]
     assert [a for a, e in ASSETS.items() if "prose_coupling" in e] == ["bg_phaladeepika_latta"]
 
@@ -153,11 +156,14 @@ def test_the_prose_empty_entry_is_a_writer_evidenced_positive_claim(aid):
     assert "prose_coupling" not in e                              # none of the four declares a carriage: nothing to couple to
 
 
-@pytest.mark.parametrize("aid", HELD_NARR)
-def test_the_held_narr_assets_keep_prose_fields_undeclared(aid):
+@pytest.mark.parametrize("aid", HELD_NARR_N94)
+def test_the_held_narr_assets_keep_prose_fields_undeclared_unless_the_checked_forms_released_them(aid):
     e = ASSETS[aid]
-    assert e["prose_fields"] is None and e["evidence"]["prose_fields"] is None and e.get("evidence_kind") is None
-    assert e["vocab_alias"]["vocab_column"] == VOCAB_ASSETS[aid][0]            # its Vocab cell is declared; its Narr cell is not
+    assert e["vocab_alias"]["vocab_column"] == VOCAB_ASSETS[aid][0]            # its Vocab cell is declared either way
+    if aid in FORMGAP_RELEASED:
+        assert e["prose_fields"] == [] and ac.prose_none_problem(e) is None and e.get("evidence_kind") == "writer"          # released: declared through the checked prose_none forms (SS N-191 / N-192)
+    else:
+        assert e["prose_fields"] is None and e["evidence"]["prose_fields"] is None and e.get("evidence_kind") is None
 
 
 # ───────────────────────── Part 2: every cited line really holds what the declaration says ─────────────────────────
@@ -454,8 +460,11 @@ def test_mutation_an_unreadable_or_empty_write_scan_reads_no_detector_never_na(a
     assert all(out[c]["v"] == NO_DET for c in ac.NARR_CHECKS + ac.NULL_CHECKS)
 
 
-@pytest.mark.parametrize("aid", HELD_NARR)
+@pytest.mark.parametrize("aid", HELD_NARR_N94)
 def test_a_held_narr_asset_is_not_released_while_prose_fields_is_undeclared(aid):
+    if aid in FORMGAP_RELEASED:
+        assert ASSETS[aid]["prose_fields"] == []                                 # released by the checked forms: its cells are judged by the FORM-GAP tests, not held here
+        return
     out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid))
     assert all(out[c]["v"] == NO_DET and "undeclared" in out[c]["measured"] for c in ac.NARR_CHECKS + ac.NULL_CHECKS)
 
@@ -905,7 +914,10 @@ def engine_guard_problems(l0_src: str, writer_src: str) -> list:
     """bg_transit_engine: the engine half of the shared transit seeder builds no stored text."""
     l0, wr = ast.parse(l0_src), ast.parse(writer_src)
     problems = _statement_problems(l0, "bg_transit_engine", "pct_s") + _statement_problems(wr, "bg_transit_engine", "pct_s", 0)
-    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany") for n in ast.walk(wr)):
+    # WFIX-A: the one statement the writer may run itself is its literal rows-present COUNT (a ROWS_PRESENT_SQL* constant); it writes nothing
+    if any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("execute", "executemany")
+           and not (n.func.attr == "execute" and len(n.args) == 1 and isinstance(n.args[0], ast.Name) and n.args[0].id.startswith("ROWS_PRESENT_SQL"))
+           for n in ast.walk(wr)):
         problems.append("the writer module executes SQL itself (it must only call the seeder)")
     fn = _func(l0, "seed_transit_rules")
     if fn is None:
@@ -1090,7 +1102,7 @@ def test_the_reverse_leg_uses_the_global_declared_prose_vocabulary_so_another_la
     If another lane declares a column that these writers also write (here the hypothetical `classical_citation`), Narr.agree for bg_transit_engine / bg_kp_sublord_division reads
     FAIL, not N/A, until the overlap is decided. The names declared today do not overlap what they write (test_the_writer_scope_is_readable...)."""
     vocab = ac.prose_vocabulary(ASSETS)
-    assert len(vocab) == 44 + 2   # prose batch 1 added 3 (44); + value_text and source_citation (ga_vichara, prose batch 2): a literal pin;      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
+    assert len(vocab) == 44 + 2 + 1   # + predicate_jsonb (bg_rules, SS N-457: the composed predicate_jsonb.$.description declared as prose beside corpus_derived); prose batch 1 added 3 (44); + value_text and source_citation (ga_vichara, prose batch 2): a literal pin;      # E5.7 L1/L2 fill: bo_cgm_paths adds path_label_human; the L2 fill adds embedding_input_summary (bo_samskara), derivation_chain / grounding_evidence_jsonb (bo_grounding) and the nine bo_chart_gestalt jsonb columns, notes (bo_pramana_mapa); bg_vedha_malefic_scale adds effect_description (SS 2026-10-05)
     for aid, col in (("bg_transit_engine", "classical_citation"), ("bg_kp_sublord_division", "source_citation")):
         out = ac.prose_checks(aid, ASSETS[aid], _ctx(aid, vocabulary=vocab | {col}))
         assert out["Narr.agree"]["v"] == FAIL and col in out["Narr.agree"]["measured"], aid
@@ -1107,10 +1119,10 @@ def test_the_transit_rules_case_split_is_stated_with_its_counts_consumers_and_ow
     mig = Counter(r[1] for r in _mixed_case_rows())
     assert mig == {"Jupiter": 5, "Saturn": 2}
     for needle in ("69 writer rows", "jupiter x7", "saturn x6", "Jupiter x5", "Saturn x2", "canonical lowercase", "case-insensitively",
-                   "register_p1_reference.ts:637", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
+                   "register_p1_reference.ts:663", "l0_transit.py:990-997", "Track I", "graha of this table only", "on purpose"):
         assert needle in why, needle
     assert "canonical lowercase graha name" in _line("platform/migrations/266_bg_transit_tables.sql:41")
-    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:637")
+    assert "LOWER(graha) = LOWER(" in _line("platform-mcp/src/tools/register_p1_reference.ts:663")
     lines = _src(BG + "l0_transit.py").splitlines()
     assert "case-sensitive" in " ".join(lines[989:997]) and lines[989].lstrip().startswith("# that")
     ident = ASSETS["bg_transit_rules"]["vocab_alias"]["identity_only_why"]

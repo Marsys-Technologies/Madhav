@@ -1,0 +1,32 @@
+{
+ "release_id": "REL-20261011-01",
+ "schema_version": "ky.release_receipt/1",
+ "digest": "3333333333333333333333333333333333333333333333333333333333333333",
+ "conditions": {
+  "certification": {
+   "status": "WAIT",
+   "release_id": "REL-20261011-01",
+   "evidence": {}
+  },
+  "pins": {
+   "status": "WAIT",
+   "release_id": "REL-20261011-01",
+   "evidence": {}
+  },
+  "regeneration": {
+   "status": "WAIT",
+   "release_id": "REL-20261011-01",
+   "evidence": {}
+  },
+  "pr_dispositions": {
+   "status": "WAIT",
+   "release_id": "REL-20261011-01",
+   "evidence": {}
+  },
+  "coordinator_closure": {
+   "status": "WAIT",
+   "release_id": "REL-20261011-01",
+   "evidence": {}
+  }
+ }
+}

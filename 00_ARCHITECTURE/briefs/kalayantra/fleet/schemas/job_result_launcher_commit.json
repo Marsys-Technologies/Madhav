@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.job_result/1#launcher-commit",
+  "title": "KĀLA-YANTRA v3 job result of a commit_mode \"launcher\" job, <JOB_SCRATCH>/result.json (cockpit ruling E7: a Codex builder)",
+  "description": "What a Codex builder reports when it ends. It has no write access to any git directory and no network, so it does not commit, push or open a pull request: it leaves its changes in the item's working copy and proposes a commit message here. There is therefore no branch, head_sha or pr_number from the job — any of them refuses the document. The supervisor (kyboot.py) never commits or pushes either: for a valid result with status 'done' and unchanged guards it records awaiting_launcher_commit true in state.json, and the launcher — outside the sandbox — checks the guards, stages, commits with commit_message (passed by file, never through a shell), pushes the item branch, opens or updates the pull request and writes head_sha and pr_number into the job record. Shape only; job_id and item are compared with the launching job by the supervisor. status 'done' is the job's own claim, never acceptance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "job_id",
+    "item",
+    "status",
+    "tests",
+    "commit_message",
+    "blocked_reason",
+    "notes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.job_result/1"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "item": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "done",
+        "blocked",
+        "failed"
+      ]
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cmd",
+          "exit",
+          "summary"
+        ],
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exit": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "commit_message": {
+      "description": "The commit message the job proposes for its changes; null only when there is nothing to commit (blocked or failed).",
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "blocked_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "blocked"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "blocked_reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "done"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "commit_message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

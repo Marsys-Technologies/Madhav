@@ -45,6 +45,13 @@ export const queryDashaSystemsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): the whole matching set is returned (small closed reference table), not paged; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: false,
+    facets: ['canonical_id', 'school'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const canonicalId = args['canonical_id'] ? String(args['canonical_id']) : null

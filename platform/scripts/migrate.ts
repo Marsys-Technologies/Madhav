@@ -28,6 +28,10 @@
  * - --dry-run flag: lists what would be applied; no writes. Still performs the hash comparison
  *   above so an operator finds out about drift from a preview, not only from a real run.
  * - --target <filename> flag: stops after that migration
+ * - --only <a,b,...>: the protected-window path (deploy.yml "Apply Protected Public-Schema Migrations").
+ *   An already-applied file in the list is a harmless skip (hash-checked like any applied file).
+ * - Kāla protected files (scripts/kala_protected_migrations.txt) are SKIPPED with a ::warning:: by the
+ *   routine path, never thrown on — see KALA_SCHEMA_WINDOW_DISPATCH below.
  *
  * Connection: DATABASE_URL env var (Cloud SQL Auth Proxy in CI via WIF).
  */
@@ -164,6 +168,83 @@ export function assertGeneralRunnerMayApplyPublicSchema(filename: string, viaOnl
   }
 }
 
+/**
+ * Kāla protected public-schema window (2026-10-08 outage: migration 1330 — CREATE TABLE in schema
+ * public — merged and made EVERY production deploy fail at "Apply Routine DB Migrations", because
+ * the routine role has USAGE but not CREATE on public).
+ *
+ * The exact file set lives in ONE list file, `platform/scripts/kala_protected_migrations.txt`, read
+ * by both this runner and deploy.yml's protected job (`kala_schema_migration=true`). Unlike the
+ * Gochara/AI sets above (which THROW in the routine path), a pending Kāla-listed file is SKIPPED by
+ * the routine runner with a loud `::warning::` naming the dispatch to run, and later routine files
+ * still apply — so a merged Kāla migration can never again block other campaigns' deploys.
+ *
+ * Throwaway databases (CI service containers, fleet lane rehearsal DBs — superuser) opt in with
+ * MIGRATE_APPLY_PROTECTED=1, honoured ONLY when DATABASE_URL's host is loopback.
+ */
+export const KALA_SCHEMA_WINDOW_DISPATCH = 'gh workflow run deploy.yml -f kala_schema_migration=true'
+
+export function defaultKalaProtectedListPath(): string {
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname)
+  return path.join(scriptDir, 'kala_protected_migrations.txt')
+}
+
+/**
+ * Parse the list-file format: one filename per line, `#` starts a comment, blank lines ignored.
+ * Every entry must be a numbered `.sql` filename and the list must be strictly ascending — the
+ * window applies in this order and a malformed list must fail loudly, never half-protect.
+ */
+export function parseProtectedMigrationList(text: string, source = 'kala_protected_migrations.txt'): string[] {
+  const names: string[] = []
+  let previous = -1
+  for (const raw of text.split(/\r?\n/)) {
+    const name = raw.replace(/#.*$/, '').trim()
+    if (name === '') continue
+    const match = name.match(/^(\d+)_[A-Za-z0-9_]+\.sql$/)
+    if (!match) throw new Error(`${source}: "${name}" is not a numbered migration filename (NNNN_name.sql)`)
+    const number = Number(match[1])
+    if (number <= previous) throw new Error(`${source}: "${name}" is out of order — entries must be strictly ascending by number`)
+    previous = number
+    names.push(name)
+  }
+  return names
+}
+
+/** Load the Kāla protected list. A missing list is an error, not an empty set (fail closed). */
+export function loadKalaProtectedMigrations(filePath: string = defaultKalaProtectedListPath()): Set<string> {
+  return new Set(parseProtectedMigrationList(fs.readFileSync(filePath, 'utf8'), path.basename(filePath)))
+}
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+
+/**
+ * MIGRATE_APPLY_PROTECTED=1 lets the ROUTINE path apply Kāla-listed files — but only against a
+ * loopback DATABASE_URL (a throwaway database). Set anywhere else, it is ignored with a warning.
+ */
+export function protectedOverrideActive(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.MIGRATE_APPLY_PROTECTED !== '1') return false
+  let host = ''
+  try {
+    host = new URL(env.DATABASE_URL ?? '').hostname.toLowerCase()
+  } catch {
+    host = ''
+  }
+  if (LOOPBACK_HOSTS.has(host)) return true
+  console.warn(
+    '::warning::MIGRATE_APPLY_PROTECTED=1 is IGNORED: DATABASE_URL host is not localhost/127.0.0.1 ' +
+    `(got "${host || 'unparseable'}"). Protected Kāla migrations apply only through ${KALA_SCHEMA_WINDOW_DISPATCH}.`
+  )
+  return false
+}
+
+function warnKalaSkipped(filename: string): void {
+  console.warn(
+    `::warning::Kāla protected public-schema migration "${filename}" is pending and was SKIPPED by the ` +
+    'routine runner (the routine role cannot CREATE in schema public); later routine migrations still apply. ' +
+    `Apply it through the Kāla protected window: ${KALA_SCHEMA_WINDOW_DISPATCH}`
+  )
+}
+
 export interface RunOptions {
   dryRun?: boolean
   target?: string
@@ -182,6 +263,10 @@ export interface RunOptions {
    * (including an empty one) so the renumber guard is exercised deterministically.
    */
   renumberDisclosures?: Map<string, DisclosedRenumber>
+  /** Kāla protected filenames. Defaults to loading `scripts/kala_protected_migrations.txt`. */
+  kalaProtected?: Set<string>
+  /** Routine path applies Kāla-listed files. Defaults to protectedOverrideActive(process.env). */
+  applyProtectedOverride?: boolean
 }
 
 /**
@@ -740,6 +825,10 @@ export async function runMigrations(
   // (including `new Map()`) so disclosure behavior is exercised deterministically.
   const disclosures = options.disclosures ?? loadHashDisclosures()
   const renumbers = options.renumberDisclosures ?? loadRenumberDisclosures()
+  const kalaProtected = options.kalaProtected ?? loadKalaProtectedMigrations()
+  // Only the ROUTINE path skips Kāla-listed files; `--only` (the protected window) applies them.
+  const skipKala = only === undefined && !(options.applyProtectedOverride ?? protectedOverrideActive())
+  const isSkippedKala = (filename: string): boolean => skipKala && kalaProtected.has(filename)
 
   await ensureMigrationTracker(client)
   await client.query(TRACKER_IDENTITY_DDL)
@@ -774,13 +863,17 @@ export async function runMigrations(
         assertAppliedHashMatches(file, applied, readMigrationSql(file), disclosures)
         continue
       }
+      if (isSkippedKala(file.name)) {
+        warnKalaSkipped(file.name)
+        continue
+      }
       assertGeneralRunnerMayApply(file.name)
       assertGeneralRunnerMayApplyPublicSchema(file.name, only !== undefined)
       // Surface a renumbered re-apply from the PREVIEW too, not only from a real run —
       // same reasoning as the dry-run hash check above it.
       assertNotRenumberedReapply(file, readMigrationSql(file), applied, renumbers)
     }
-    return files.filter(f => !applied.has(f.name)).map(f => f.name)
+    return files.filter(f => !applied.has(f.name) && !isSkippedKala(f.name)).map(f => f.name)
   }
 
   // Fill in sql_identity for pre-existing rows we can prove the content of, so the renumber
@@ -802,6 +895,14 @@ export async function runMigrations(
       // Never auto-re-apply, never silently continue past a mismatch (unless disclosed —
       // see assertAppliedHashMatches's own docstring for the exact, pinned exception).
       assertAppliedHashMatches(file, applied, sql, disclosures)
+      continue
+    }
+
+    if (isSkippedKala(file.name)) {
+      // Never fail the routine deploy over a Kāla window file: warn, skip, keep applying the rest.
+      // (The routine path has no predecessor rule; only `--only` refuses to jump a pending file.)
+      warnKalaSkipped(file.name)
+      if (target && file.name === target) break
       continue
     }
 

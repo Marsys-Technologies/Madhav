@@ -1,7 +1,7 @@
 """
 rebuild_d1_5a_wave.py — D-1.5a scope-limited rebuild (cascade-aware)
 
-Rebuilds Abhisek's chart (482012f1) ONLY, scoped to every asset the A7 aspect-
+Rebuilds the native's chart (482012f1) ONLY, scoped to every asset the A7 aspect-
 calculation fix (ga_structural_writer.py) and the A1/A2 valence fixes cascade
 into — NOT full L1->L5, since most of L1 (bg_*/other ga_* writers) is untouched
 and still 'lit'. A7 changes _graha_aspects_house, a shared-substrate computation

@@ -1,0 +1,76 @@
+#!/opt/homebrew/bin/python3 -IB
+# KĀLA-YANTRA campaign CLI (second instance of the Pravāha tracker). Stream from KY_STREAM or --stream. See: ky --help
+# Static file: installation is a byte copy into <root>/bin/, mode 0755. A fixture job's validated PRAVAHA_* set is
+# passed on unchanged; a set that is neither the live defaults nor a valid fixture set is refused (exit 78).
+import os
+import re
+import sys
+
+PROG = "ky"
+PY = "/opt/homebrew/bin/python3"
+
+# --- mode decision: begin (the same text in ky and kybrief; test_kywrappers.py compares the two copies) ---
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))    # the real directory above this file's bin/
+CAMPAIGN = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
+LIVE_PORT = "8767"
+DEFAULTS = {
+    "PRAVAHA_HOME": ROOT,
+    "PRAVAHA_EVENTS": ROOT + "/run/EVENTS.jsonl",
+    "PRAVAHA_PLAN_MODEL": CAMPAIGN + "/00_ARCHITECTURE/control/kalayantra/plan_model.json",
+    "PRAVAHA_REPO": CAMPAIGN,
+    "PRAVAHA_HOLD": ROOT + "/HOLD",
+    "PRAVAHA_TRACKER_PORT": LIVE_PORT,
+    "PRAVAHA_URL": "http://127.0.0.1:" + LIVE_PORT,
+}
+PATH_NAMES = ("PRAVAHA_HOME", "PRAVAHA_EVENTS", "PRAVAHA_PLAN_MODEL", "PRAVAHA_REPO", "PRAVAHA_HOLD")
+
+
+def refuse(name, reason):
+    """One line, a name and a reason, never a value; nothing has been started or written."""
+    sys.stderr.write(PROG + ": REFUSED override: " + name + ": " + reason + "\n")
+    sys.exit(78)
+
+
+def decide(env):
+    """('live' | 'fixture', the seven values). LIVE: none of the seven set, or all seven equal to the defaults.
+    FIXTURE: all seven set and valid (cards FB-02 / FV-02), passed on unchanged. Anything else is refused: a partial
+    or mixed set is never completed from the defaults."""
+    given = {n: env[n] for n in DEFAULTS if n in env}
+    if not given:
+        return "live", dict(DEFAULTS)
+    if given == DEFAULTS:
+        return "live", given
+    for n in DEFAULTS:
+        if n not in given:
+            refuse(n, "not set")
+        if given[n] == "":
+            refuse(n, "empty")
+    scratch = env.get("KY_SCRATCH", "")
+    if scratch == "":
+        refuse("KY_SCRATCH", "not set")
+    if not scratch.startswith("/"):
+        refuse("KY_SCRATCH", "not an absolute path")
+    port = given["PRAVAHA_TRACKER_PORT"]
+    if not re.fullmatch(r"[1-9][0-9]{0,8}", port):
+        refuse("PRAVAHA_TRACKER_PORT", "not an integer")
+    if port == LIVE_PORT:
+        refuse("PRAVAHA_TRACKER_PORT", "the live tracker port")
+    if not 1024 <= int(port) <= 65535:
+        refuse("PRAVAHA_TRACKER_PORT", "outside 1024-65535")
+    if given["PRAVAHA_URL"] != "http://127.0.0.1:" + port:
+        refuse("PRAVAHA_URL", "not the loopback URL on PRAVAHA_TRACKER_PORT")
+    fixture = os.path.join(os.path.realpath(scratch), "fixture") + "/"
+    for n in PATH_NAMES:
+        if not given[n].startswith("/"):
+            refuse(n, "not an absolute path")
+        if not (os.path.realpath(given[n]) + "/").startswith(fixture):
+            refuse(n, "outside the fixture directory of KY_SCRATCH")
+    return "fixture", given
+# --- mode decision: end ---
+
+env = dict(os.environ)
+env.update(decide(env)[1])
+env["PRAVAHA_STREAM"] = env.get("KY_STREAM") or env.get("PRAVAHA_STREAM") or ""
+env["KY_WORKER"] = env.get("KY_LANE") or ""
+env["PYTHONPATH"] = ROOT + "/tracker_live:" + ROOT + "/fleet_live"
+os.execve(PY, [PY, "-m", "pravaha_tracker.cli"] + sys.argv[1:], env)

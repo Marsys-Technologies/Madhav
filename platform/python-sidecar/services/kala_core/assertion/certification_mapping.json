@@ -1,0 +1,102 @@
+{
+  "version": "K0a-4/v1",
+  "registry_revision": 26,
+  "assets": [
+    "ka_vighnakara",
+    "ka_kala_darshana"
+  ],
+  "schema": [
+    "1330_kala_layer_manifest_candidates.sql",
+    "1338_kala_assertion_vertical_slice.sql"
+  ],
+  "scope": "Implemented K0a manifest, obstruction axes and Darshana candidate columns; rehearsal evidence only.",
+  "oracles": [
+    "tests/l3/kala_core/e2e/test_assertion.py",
+    "tests/l3/kala_db/e2e/test_slice.py",
+    "src/lib/retrieval/registry/layers/L3_kala/query_assertion_fixture.test.ts"
+  ],
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 3,
+        "Build.completion": 6,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "mechanism": "Registered Darshana writer fixture dispatch on ky_<lane>; no-candidate path and repeat build are tested.",
+      "expected_reading": "Registry and runtime count/integrity completion remain existing contracts; fixture is not production completion."
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 4
+      },
+      "mechanism": "Explicit chart/generation replacement; published or legacy partitions are retained.",
+      "expected_reading": "Structural pattern plus repeat-build oracle; no production verdict claimed."
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "mechanism": "WriterResult from an actual fixture dispatch, no-candidate dispatch returns zero.",
+      "expected_reading": "NO_DETECTOR for real build_record until an orchestrated production attempt is measured."
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 2,
+        "Vocab.alias": 8
+      },
+      "mechanism": "Common envelope validates role and grain, references carry identities rather than L1 values.",
+      "expected_reading": "No natural-key or alias certification claimed; no candidate index or key change."
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "mechanism": "Source ids resolve to candidate judge windows; Darshana carries obstruction assertion ids.",
+      "expected_reading": "Source presence can be measured; fixture locators do not establish classical sourcing."
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "mechanism": "Explicit fixture flag and pinned generation; complete single-assertion payload and references returned.",
+      "expected_reading": "No tier column in this slice; no Dens PASS claimed. Full serving enrichment belongs to K7."
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 7,
+        "Narr.checkable": 6,
+        "Narr.fidelity_test": 6,
+        "Narr.lint": 7
+      },
+      "mechanism": "Candidate paths write no narrative; typed payload carries states only. Legacy prose declarations remain intact.",
+      "expected_reading": "Candidate no-prose does not establish no-prose for mixed legacy tables; no Narr PASS claimed."
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 9,
+        "Null.blank_rows": 9
+      },
+      "mechanism": "Typed unavailable/silent/cancelled states and tagged unknown release; nullable candidate columns preserve legacy rows.",
+      "expected_reading": "No full-table Null PASS claimed; both graders and live declarations must be checked."
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 4,
+        "Carr.D2": 2,
+        "Carr.D3": 3
+      },
+      "mechanism": "Projection SQL carries the candidate assertion unchanged; no rule or numeric score is computed by the read model.",
+      "expected_reading": "Carr.D2 has no detector; fixture conclusions do not establish a classical transcription or independent D3.",
+      "detector_none": [
+        "Carr.D2"
+      ]
+    }
+  }
+}

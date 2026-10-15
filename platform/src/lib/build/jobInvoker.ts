@@ -132,7 +132,7 @@ export async function invokeBuildJob(
  *      immediate process death within 200ms, rather than resolving blindly.
  * M-6: stderr is piped so Python import errors and tracebacks reach the logs.
  */
-async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> {
+async function invokeRunJobLocally(runId: string, forceExecute = false): Promise<JobInvocationResult> {
   const { spawn } = await import('child_process')
   const nodePath = await import('path')
   const repoRoot = process.env.MARSYS_REPO_ROOT ?? nodePath.resolve(process.cwd(), '..')
@@ -143,7 +143,7 @@ async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> 
   const proc = spawn(
     pythonPath,
     args,
-    { cwd: sidecarDir, env: { ...process.env }, detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
+    { cwd: sidecarDir, env: forceExecute ? { ...process.env, NIRMANA_FORCE_EXECUTE: '1' } : { ...process.env }, detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
   )
 
   // Capture stderr so Python import errors and tracebacks reach the logs (M-6)
@@ -172,19 +172,31 @@ async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> 
   return { executionName: `local-pid-${proc.pid ?? 0}` }
 }
 
-/** New orchestrator: invoke with --run-id only. */
+/**
+ * New orchestrator: invoke with --run-id only.
+ *
+ * `forceExecute` sets NIRMANA_FORCE_EXECUTE=1 on THIS job execution only (the runner
+ * reads it per run, runner.py ~1169, and documents that a dispatcher sets it as a
+ * job-execution override). It bypasses the pre-execution delta-skip for every asset of
+ * the run. The portal sets it for any run that follows a clear: after a clear the
+ * receipts still match the inputs, so an unforced run would delta-skip and return the
+ * asset to 'lit' with an empty table. No runner change is involved.
+ */
 export async function invokeRunJob(
   runId: string,
-  opts: { env?: JobInvokerEnv; transport?: JobTransport } = {},
+  opts: { env?: JobInvokerEnv; transport?: JobTransport; forceExecute?: boolean } = {},
 ): Promise<JobInvocationResult> {
   if (process.env.BUILD_EXECUTOR === 'local') {
-    return invokeRunJobLocally(runId)
+    return invokeRunJobLocally(runId, opts.forceExecute === true)
   }
   const env = opts.env ?? readJobInvokerEnv()
   const transport = opts.transport ?? (await defaultTransport())
   return transport.runJob({
     jobName: jobPath(env),
     containerArgs: ['--run-id', runId],
-    envOverrides: { MARSYS_RUN_ID: runId },
+    envOverrides: {
+      MARSYS_RUN_ID: runId,
+      ...(opts.forceExecute === true ? { NIRMANA_FORCE_EXECUTE: '1' } : {}),
+    },
   })
 }

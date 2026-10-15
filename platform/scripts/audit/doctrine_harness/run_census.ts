@@ -21,12 +21,12 @@
  * 2 = usage/config/credential error.
  */
 import { McpClient } from './lib/mcp_client'
-import { runCensusSweep, summarizeCensus, DEFAULT_BATCH_SIZE, DEFAULT_INTER_BATCH_MS, type CensusToolResult } from './lib/census'
+import { runCensusSweep, summarizeCensus, DEFAULT_BATCH_SIZE, DEFAULT_INTER_BATCH_MS, type CensusToolResult, type CensusBirthParams } from './lib/census'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const DEFAULT_TARGET = 'https://amjis-mcp-qm256lasva-el.a.run.app/mcp'
 // Default checkpoint lives OUTSIDE the repo (os.tmpdir()) — a census checkpoint is a run-scoped
 // resumption artifact, never a committed file; --checkpoint overrides for CI/gate-runner use
@@ -39,6 +39,7 @@ type Args = {
   batchSize: number
   interBatchMs: number
   baselinePath?: string
+  birth?: CensusBirthParams
 }
 
 function parseArgs(argv: string[]): Args {
@@ -47,6 +48,10 @@ function parseArgs(argv: string[]): Args {
   let batchSize = DEFAULT_BATCH_SIZE
   let interBatchMs = DEFAULT_INTER_BATCH_MS
   let baselinePath: string | undefined
+  // Optional birth params of the chart under test (its `charts` row). Never embedded here.
+  let birthDatetime = process.env.CENSUS_BIRTH_DATETIME_ISO
+  let birthLat = process.env.CENSUS_BIRTH_LAT
+  let birthLon = process.env.CENSUS_BIRTH_LON
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--target') target = argv[++i]
@@ -54,8 +59,15 @@ function parseArgs(argv: string[]): Args {
     else if (arg === '--batch-size') batchSize = Number(argv[++i])
     else if (arg === '--inter-batch-ms') interBatchMs = Number(argv[++i])
     else if (arg === '--baseline') baselinePath = argv[++i]
+    else if (arg === '--birth-datetime-iso') birthDatetime = argv[++i]
+    else if (arg === '--birth-lat') birthLat = argv[++i]
+    else if (arg === '--birth-lon') birthLon = argv[++i]
   }
-  return { target, checkpointPath, batchSize, interBatchMs, baselinePath }
+  const birth =
+    birthDatetime && birthLat !== undefined && birthLon !== undefined
+      ? { datetimeIso: birthDatetime, latitude: Number(birthLat), longitude: Number(birthLon) }
+      : undefined
+  return { target, checkpointPath, batchSize, interBatchMs, baselinePath, birth }
 }
 
 function resolveClient(target: string): McpClient {
@@ -95,7 +107,8 @@ async function main() {
   const tools = await client.listTools()
   const { results, resumed } = await runCensusSweep(client, tools, {
     checkpointPath: args.checkpointPath,
-    chartId: ABHISEK_CHART_ID,
+    chartId: CANONICAL_CHART_ID,
+    birth: args.birth,
     target: args.target,
     batchSize: args.batchSize,
     interBatchMs: args.interBatchMs,
@@ -112,7 +125,7 @@ async function main() {
     harness: 'doctrine_harness/census',
     wave: 'D-2',
     target: args.target,
-    chart_id: ABHISEK_CHART_ID,
+    chart_id: CANONICAL_CHART_ID,
     run_at: new Date().toISOString(),
     resumed_from_checkpoint: resumed,
     tool_count: tools.length,

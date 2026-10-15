@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 Tests for ka_dasha_kala — Dasa-Eligibility Service (L3 Kala K1).
 
 Acceptance criteria covered:
@@ -653,20 +658,11 @@ class TestCrossDashaAgreement:
 # Integration tests — PROD DB required
 # ---------------------------------------------------------------------------
 
-_DB_DSN = os.environ.get("DB_DSN", "")
 _NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 
 def _get_prod_conn():
-    """Return a psycopg2 connection to PROD (or skip if unavailable)."""
-    try:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(_DB_DSN, cursor_factory=psycopg2.extras.RealDictCursor)
-        conn.autocommit = False
-        return conn
-    except Exception as exc:
-        pytest.skip(f"PROD DB not available: {exc}")
+    pytest.skip('K0A-R1 NOT_RUN: requires an authenticated isolated native chart_dashas fixture with seven systems and sublevels; production access is forbidden and no native periods are fabricated (B.10).')
 
 
 @pytest.fixture(scope="module")
@@ -763,46 +759,7 @@ class TestProdDB:
             assert not w.is_prana_computed, "No level-5 rows expected"
 
     def test_ac5_prana_no_db_writes(self, prod_conn):
-        """AC5: prana_grain=True triggers in-memory computation; DB stays clean."""
-        from services.ka_dasha_kala.service import KaDashaKalaService
-
-        # Use a fresh conn so we can check its state
-        import psycopg2
-        import psycopg2.extras
-        test_conn = psycopg2.connect(
-            _DB_DSN, cursor_factory=psycopg2.extras.RealDictCursor
-        )
-        test_conn.autocommit = False
-
-        adapter = _PsycopgConnAdapter(test_conn)
-        svc = KaDashaKalaService(db_conn=adapter)
-
-        result = svc.query(
-            chart_id=_NATIVE_CHART_ID,
-            ayanamsha_id="lahiri",
-            target_lords={"Saturn"},
-            related_lords={"Mercury"},
-            date_start=date(2020, 1, 1),
-            date_end=date(2021, 6, 30),
-            max_level=4,
-            prana_grain=True,
-        )
-
-        # Prana rows should be level-5 (in-memory)
-        prana_rows = [w for w in result.windows if w.is_prana_computed]
-
-        # Verify level-5 rows are NOT in DB
-        cur = test_conn.cursor()
-        cur.execute(
-            "SELECT COUNT(*) FROM chart_dashas WHERE chart_id=%s AND level_n=5",
-            (_NATIVE_CHART_ID,),
-        )
-        count_row = cur.fetchone()
-        level5_in_db = list(count_row.values())[0] if isinstance(count_row, dict) else count_row[0]
-        assert level5_in_db == 0, f"Level-5 rows found in DB: {level5_in_db}"
-
-        test_conn.rollback()
-        test_conn.close()
+        pytest.skip('K0A-R1 NOT_RUN: requires the same authenticated native chart_dashas fixture for the prana write oracle; production access is forbidden (B.10).')
 
     def test_kp_sublevel_on_vimshottari(self, prod_conn):
         """KP is a Vimshottari sub-level (kp_sublevel column), not a standalone system."""
@@ -868,3 +825,14 @@ class TestNoCommitRollback:
             f"Found actual commit/rollback calls in ka_dasha_kala:\n"
             + "\n".join(actual_code_violations)
         )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.tree_walk'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.service'),
+                        "execute_governed_dasha_query", emulated_projection)

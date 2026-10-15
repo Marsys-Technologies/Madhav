@@ -34,6 +34,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import type { JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
@@ -64,6 +65,10 @@ interface DashaLordRow {
   warning_score: number
   warning_reasons: string[]
   fact_ids: string[]
+  // §N.6 (DENS-A): the distinct chart_dashas.verification_pass_status values of this lord's
+  // Vimshottari level-1 periods (the dasha row tier the lord was read from); [] when the stored
+  // rows carry no status (an honest gap, visible as the empty list), never a defaulted tier.
+  dasha_verification_pass_status: string[]
 }
 
 // House classes ga_vichara_writer.py's classify_actor() can return (DUSTHANA_HOUSES/
@@ -128,7 +133,9 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
     'is a stored karaka for — null, honestly, when the lord is karaka for no domain), and',
     'warning_tier (none/watch/elevated/high — a deterministic, zero-new-computation composite',
     'of the above four signals; see get_dasha_lord_capability.ts WARNING_TIER_WEIGHTS for the',
-    'exact formula and citations). Computed serving-layer aggregation over chart_dashas +',
+    'exact formula and citations), and dasha_verification_pass_status (the distinct stored',
+    'chart_dashas.verification_pass_status of the lord\'s level-1 periods; [] when none is stored).',
+    'Computed serving-layer aggregation over chart_dashas +',
     'chart_facts + chart_vichara — no new astronomical computation (B.10); every value traces',
     'to an existing L1/L1-sibling fact via fact_id_refs.',
   ].join(' '),
@@ -166,12 +173,15 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
     try {
       const chartId = args.chart_id as string
       if (!chartId) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamshaId = (args.ayanamsha_id as string | undefined) ?? 'lahiri_chitrapaksha'
+      const ayaTry = tryResolveHandlerAyanamsha(args, { chart_id: chartId })
+      if (!ayaTry.ok) return ayaTry.result
+      // Single-ayanamsha surface: normalised; "all" serves the primary reading (echoed in the response).
+      const ayanamshaId = ayaTry.aya.id ?? PRIMARY_AYANAMSHA
 
       const [dashaLordsRes, shadbalaRes, vicharaRes, ratificationRes] = await Promise.all([
         // ── chart_dashas (ga_dashas): every graha that carries a Vimśottarī MD on this chart ──
-        query<{ lord_graha: string }>(
-          `SELECT DISTINCT lord_graha FROM chart_dashas
+        query<{ lord_graha: string; verification_pass_status: string | null }>(
+          `SELECT DISTINCT lord_graha, verification_pass_status FROM chart_dashas
            WHERE chart_id = $1 AND ayanamsha_id = $2 AND system_id = 'vimshottari' AND level_n = 1`,
           [chartId, ayanamshaId],
         ),
@@ -213,7 +223,16 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
       const rows: DashaLordRow[] = []
       const judgment_flags: JudgmentFlagEntry[] = []
 
-      for (const { lord_graha } of dashaLordsRes.rows) {
+      // One row per lord: the DISTINCT read above yields one row per (lord, status), so a lord whose
+      // periods carry more than one status is collapsed to the set of its statuses (never one picked).
+      const tiersByLord = new Map<string, Set<string>>()
+      for (const { lord_graha, verification_pass_status } of dashaLordsRes.rows) {
+        const set = tiersByLord.get(lord_graha) ?? new Set<string>()
+        if (typeof verification_pass_status === 'string' && verification_pass_status !== '') set.add(verification_pass_status)
+        tiersByLord.set(lord_graha, set)
+      }
+
+      for (const [lord_graha, dashaTiers] of tiersByLord) {
         const subject = GRAHA_TO_SUBJECT[lord_graha]
         if (!subject) {
           judgment_flags.push(judgmentFlag('unmapped_lord_graha', `'${lord_graha}' has no known subject-code mapping — row skipped, not fabricated.`))
@@ -252,6 +271,7 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
           warning_score: score,
           warning_reasons: reasons,
           fact_ids: Array.from(new Set(fact_ids)),
+          dasha_verification_pass_status: Array.from(dashaTiers).sort(),
         })
 
         if (house_class === null) {
@@ -272,6 +292,9 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
           ayanamsha_id: ayanamshaId,
           rows,
           total: rows.length,
+          ...(rows.length === 0
+            ? { empty_reason: `No Vimśottarī level-1 Mahādaśā lords were returned for chart ${chartId} at ayanamsha '${ayanamshaId}' (none stored, or none mapped to a known graha subject; see judgment_flags).` }
+            : {}),
           judgment_flags,
           formula_note:
             'warning_tier is a DETERMINISTIC composite (never an LLM judgment, never a calibrated ' +

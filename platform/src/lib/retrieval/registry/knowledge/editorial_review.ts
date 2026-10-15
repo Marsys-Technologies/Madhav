@@ -577,7 +577,7 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
     'read_sutravali_rule',
   ],
   planetary_state: [
-    'call_ephemeris_at_t', 'ephemeris_cache_native_lifetime', 'ephemeris_cache_year',
+    'call_ephemeris_at_t', 'ephemeris_cache_year',
     'get_eclipse_flags', 'get_kp_cusps', 'get_nakshatra', 'get_positions',
     'get_sensitive_degrees', 'get_sensitive_points', 'graha_portrait',
     'query_aspects_at_time', 'query_combustion_orbs', 'query_graha_dik',

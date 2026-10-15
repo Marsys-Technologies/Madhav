@@ -227,9 +227,9 @@ export const NON_VACUITY_FIXTURES: Record<string, { a: ReadingSample; b: Reading
   generic_name_swap_pair: {
     a: {
       chart_id: 'fixture-aaaa-1111',
-      text: 'For Abhisek, the current Saturn dasha (7.2 years remaining) demands discipline; Abhisek should expect career consolidation through 2028.',
+      text: 'For Asha, the current Saturn dasha (7.2 years remaining) demands discipline; Asha should expect career consolidation through 2028.',
       fact_ids: ['fx:a1'],
-      aliases: ['Abhisek'],
+      aliases: ['Asha'],
     },
     b: {
       chart_id: 'fixture-bbbb-2222',
@@ -249,9 +249,9 @@ export const NON_VACUITY_FIXTURES: Record<string, { a: ReadingSample; b: Reading
   chart_specific_pair: {
     a: {
       chart_id: 'fixture-aaaa-1111',
-      text: 'Aries lagna with Saturn in the tenth: Sade Sati third phase compresses career risk into Q3; the Capricorn stellium answers with structure.',
+      text: 'Taurus lagna with Saturn in the tenth: Sade Sati third phase compresses career risk into Q3; the Virgo stellium answers with structure.',
       fact_ids: ['fx:a1', 'fx:a2'],
-      aliases: ['Abhisek'],
+      aliases: ['Asha'],
     },
     b: {
       chart_id: 'fixture-bbbb-2222',

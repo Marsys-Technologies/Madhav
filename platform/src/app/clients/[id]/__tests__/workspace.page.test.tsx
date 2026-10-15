@@ -10,7 +10,7 @@ import { cleanup, render } from '@testing-library/react'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess, mockRedirect, mockReadinessMap, mockWorkspaceSummary, mockGetForensicSnapshot } =
+const { mockQuery, mockResolveAccess, mockRedirect, mockReadinessMap, mockWorkspaceSummary } =
   vi.hoisted(() => ({
     mockQuery: vi.fn(),
     mockResolveAccess: vi.fn(),
@@ -19,7 +19,6 @@ const { mockQuery, mockResolveAccess, mockRedirect, mockReadinessMap, mockWorksp
     }),
     mockReadinessMap: vi.fn(),
     mockWorkspaceSummary: vi.fn(),
-    mockGetForensicSnapshot: vi.fn(),
   }))
 
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
@@ -28,7 +27,6 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }))
-vi.mock('@/lib/forensic/snapshot', () => ({ getForensicSnapshot: mockGetForensicSnapshot }))
 vi.mock('@/lib/charts/readiness', () => ({
   getChartReadinessMap: mockReadinessMap,
   emptyChartReadiness: () => readinessFixture('not-built'),
@@ -124,7 +122,6 @@ beforeEach(() => {
   mockRedirect.mockClear()
   mockReadinessMap.mockReset()
   mockWorkspaceSummary.mockReset()
-  mockGetForensicSnapshot.mockReset()
   mockWorkspaceSummary.mockResolvedValue(EMPTY_SUMMARY)
   setReadiness('ready', 'lit')
   setQueries()
@@ -175,7 +172,6 @@ describe('clients/[id] workspace — composition', () => {
   it('renders D1 from this chart’s own summary — never the canonical snapshot', async () => {
     setAccess('all')
     const { doc } = await renderPage()
-    expect(mockGetForensicSnapshot).not.toHaveBeenCalled()
     expect(mockWorkspaceSummary).toHaveBeenCalledWith(TEST_CHART_ID, 'lahiri_chitrapaksha')
     expect(byTestId(doc, 'varga-chart')).not.toBeNull()
   })

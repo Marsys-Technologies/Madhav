@@ -3,7 +3,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { computeDownstreamClosure, PROTECTED_ASSET_MESSAGE, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
-import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
+import { resolveChartScopedClear } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 
@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN_CHART' }, { status: 403 })
   }
 
-  const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
 
   // Authorization: non-super-admin cannot clear L0 layer or global assets
   if (!isSuperAdmin) {
@@ -178,7 +177,13 @@ export async function POST(req: NextRequest) {
   )
 
   // Determine scope assets — respect role-based allowed scopes
-  const rawScopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
+  // FIX2: a clear from a chart page only ever touches per-chart data. Preview and execute
+  // MUST resolve this identically (same helper) or the preview hash never matches.
+  const chartClear = resolveChartScopedClear(registry, scope, scope_target)
+  if (!chartClear.ok) {
+    return NextResponse.json({ error: chartClear.error, code: chartClear.code }, { status: chartClear.status })
+  }
+  const rawScopeAssets = chartClear.assets as RegistryRow[]
 
   // Withhold protected (asset_id, chart_id) pairs BEFORE any clear-spec resolution or
   // counting — a protected asset is never counted, never marked clearable, and never

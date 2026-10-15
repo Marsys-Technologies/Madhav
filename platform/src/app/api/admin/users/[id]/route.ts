@@ -26,13 +26,22 @@ export async function PATCH(
 
   // Verify the user exists and capture current role before attempting any update.
   let currentRole: string | undefined
+  let currentStatus: string | undefined
+  let currentApprovedAt: string | Date | null = null
   try {
-    const { rows: existing } = await query<{ id: string; role: string }>(
-      'SELECT id, role FROM profiles WHERE id=$1',
+    const { rows: existing } = await query<{
+      id: string
+      role: string
+      status: string
+      approved_at: string | Date | null
+    }>(
+      'SELECT id, role, status, approved_at FROM profiles WHERE id=$1',
       [id]
     )
     if (existing.length === 0) return res.notFound('user')
     currentRole = existing[0].role
+    currentStatus = existing[0].status
+    currentApprovedAt = existing[0].approved_at ?? null
   } catch (err) {
     console.error('[admin/users/[id]] PATCH existence-check failed', err)
     return res.dbError()
@@ -61,6 +70,17 @@ export async function PATCH(
   if (statusChanged) {
     setClauses.push(`status=$${idx++}`)
     values.push(body.status)
+  }
+
+  // A never-approved account (approved_at IS NULL) becoming active IS the
+  // approval: stamp who and when. Re-enabling a previously approved account
+  // keeps its original stamps.
+  const approving =
+    body.status === 'active' && currentStatus !== 'active' && currentApprovedAt == null
+  if (approving) {
+    setClauses.push('approved_at=now()')
+    setClauses.push(`approved_by=$${idx++}`)
+    values.push(auth.user.uid)
   }
 
   const newRole = body.role === 'super_admin' || body.role === 'guest' ? body.role : undefined
@@ -112,7 +132,7 @@ export async function PATCH(
       console.error('[admin/users/[id]] PATCH: DB committed but Firebase sync failed', err)
     }
     const action = body.status === 'disabled' ? 'disable_user' : 'enable_user'
-    await writeAuditLog(auth.user.uid, action, id)
+    await writeAuditLog(auth.user.uid, action, id, approving ? { approved_from: currentStatus } : undefined)
   }
 
   if (typeof body.username === 'string') {

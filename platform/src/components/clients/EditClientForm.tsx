@@ -6,6 +6,12 @@ import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { EditRebuildConfirmDialog, type ChangedField } from '@/components/dialogs/EditRebuildConfirmDialog'
+import { AyanamshaEditConfirmDialog } from '@/components/dialogs/AyanamshaEditConfirmDialog'
+import { toShortAyanamshaId } from '@/lib/ayanamsha'
+import {
+  AYANAMSHA_EDIT_BLOCKED_MESSAGE,
+  type AyanamshaEditPolicy,
+} from '@/lib/charts/ayanamshaEditGuard'
 import { isKnownTimeZone, resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/date'
@@ -19,6 +25,14 @@ import { isGoogleMapsKeyConfigured, type PlacesResult } from './usePlacesAutocom
  * The computation hint here only chooses the button copy and whether to
  * confirm; `PATCH /api/charts/[id]` classifies authoritatively. The effective
  * offset shown is computed with the same resolver the server verifies against.
+ *
+ * Ayanāṃśa edits on an existing chart follow the server's edit policy
+ * (`CHART_AYANAMSHA_EDIT_POLICY`, SS N-319): `block_all` shows the selection
+ * read-only with a plain message, `warn` asks for a strong confirmation and
+ * sends `confirm_destructive: true`, `off` is the original behaviour. The
+ * server enforces the policy; this only shapes the UI. The ayanāṃśa list is
+ * sent only when the user changed it, so saving another field never counts as
+ * an ayanāṃśa edit.
  */
 
 export interface EditableChart {
@@ -144,7 +158,26 @@ function Group({ legend, children }: { legend: string; children: React.ReactNode
   )
 }
 
-export function EditClientForm({ chart }: { chart: EditableChart }) {
+/**
+ * Stored ids as the form's selectable ids: long/legacy spellings fold to the
+ * short ids; ids the form cannot offer are returned separately (never silently
+ * dropped from view) as `legacy`.
+ */
+export function splitStoredAyanamshas(stored: readonly string[]): { selectable: AyanamshaId[]; legacy: string[] } {
+  const selectable: AyanamshaId[] = []
+  const legacy: string[] = []
+  for (const raw of stored) {
+    const id = toShortAyanamshaId(raw)
+    if (AYANAMSHA_OPTIONS.some((o) => o.id === id)) {
+      if (!selectable.includes(id as AyanamshaId)) selectable.push(id as AyanamshaId)
+    } else if (id && !legacy.includes(id)) {
+      legacy.push(id)
+    }
+  }
+  return { selectable, legacy }
+}
+
+export function EditClientForm({ chart, ayanamshaEditPolicy }: { chart: EditableChart; ayanamshaEditPolicy: AyanamshaEditPolicy }) {
   const router = useRouter()
   const submitRef = useRef<HTMLButtonElement>(null)
 
@@ -159,10 +192,12 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
       latitude: chart.birth_lat != null ? String(chart.birth_lat) : '',
       longitude: chart.birth_lng != null ? String(chart.birth_lng) : '',
       timezone_id: chart.timezone_id ?? '',
-      ayanamshas: chart.ayanamshas.filter((a): a is AyanamshaId => AYANAMSHA_OPTIONS.some((o) => o.id === a)),
+      ayanamshas: splitStoredAyanamshas(chart.ayanamshas).selectable,
     }),
     [chart],
   )
+  const legacyAyanamshas = useMemo(() => splitStoredAyanamshas(chart.ayanamshas).legacy, [chart])
+  const ayanamshasReadOnly = ayanamshaEditPolicy === 'block_all'
 
   const [form, setForm] = useState<FormState>(initial)
   const [errors, setErrors] = useState<FormErrors>(
@@ -172,10 +207,12 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
   )
   const [loading, setLoading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [ayanamshaConfirmOpen, setAyanamshaConfirmOpen] = useState(false)
   const [placesUnavailable, setPlacesUnavailable] = useState(false)
 
   const changed = (key: FieldKey) => comparable(key, initial[key]) !== comparable(key, form[key])
   const requiresRecompute = COMPUTATION_KEYS.some(changed)
+  const ayanamshasChanged = changed('ayanamshas')
   const changes: ChangedField[] = [...DISPLAY_KEYS, ...COMPUTATION_KEYS].filter(changed).map((key) => ({
     key: key === 'full_name' ? 'name' : key,
     label: FIELD_LABELS[key],
@@ -198,6 +235,7 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
   }
 
   function toggleAyanamsha(id: AyanamshaId) {
+    if (ayanamshasReadOnly) return
     setField(
       'ayanamshas',
       form.ayanamshas.includes(id) ? form.ayanamshas.filter((a) => a !== id) : [...form.ayanamshas, id],
@@ -228,7 +266,7 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
     if (!form.timezone_id || offsetMinutes === null) {
       errs.timezone_id = 'Choose the birth timezone before saving — it is missing or unrecognised.'
     }
-    if (form.ayanamshas.length === 0) errs.ayanamshas = 'Select at least one ayanāṃśa.'
+    if (ayanamshasChanged && form.ayanamshas.length === 0) errs.ayanamshas = 'Select at least one ayanāṃśa.'
     if (locationIncomplete) {
       errs.birth_place = 'The birth place changed but its coordinates did not — reselect the new place so its latitude, longitude and timezone update together.'
       errs.latitude ??= 'Enter the latitude of the new place.'
@@ -237,7 +275,7 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
     return errs
   }
 
-  async function submit() {
+  async function submit(confirmDestructive = false) {
     setLoading(true)
     try {
       const response = await fetch(`/api/charts/${chart.id}`, {
@@ -254,7 +292,9 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
           lon: Number(form.longitude),
           timezone_id: form.timezone_id,
           tz_offset: (offsetMinutes ?? 0) / 60,
-          ayanamshas: [...form.ayanamshas].sort(),
+          // Sent only when the user changed the selection; omitted means "unchanged".
+          ...(ayanamshasChanged && !ayanamshasReadOnly ? { ayanamshas: [...form.ayanamshas].sort() } : {}),
+          ...(ayanamshasChanged && !ayanamshasReadOnly && confirmDestructive ? { confirm_destructive: true } : {}),
         }),
       })
       const body = await response.json().catch(() => ({}))
@@ -267,6 +307,11 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
         return
       }
       if (!response.ok) {
+        // Policy refusals carry their own plain message; show it as-is.
+        if (typeof body?.code === 'string' && body.code.startsWith('AYANAMSHA_EDIT_')) {
+          setErrors({ api: body.error ?? AYANAMSHA_EDIT_BLOCKED_MESSAGE })
+          return
+        }
         if (response.status === 409) {
           setErrors({ api: 'A build is in progress for this chart. Your changes are kept — save again when it finishes.' })
           return
@@ -296,7 +341,8 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
       setErrors(validation)
       return
     }
-    if (requiresRecompute) setConfirmOpen(true)
+    if (ayanamshaEditPolicy === 'warn' && ayanamshasChanged) setAyanamshaConfirmOpen(true)
+    else if (requiresRecompute) setConfirmOpen(true)
     else void submit()
   }
 
@@ -422,30 +468,60 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
           </Group>
 
           <Group legend="Computation frame">
-            <div className="flex flex-wrap gap-2">
-              {AYANAMSHA_OPTIONS.map((option) => {
-                const checked = form.ayanamshas.includes(option.id)
-                return (
-                  <label
-                    key={option.id}
-                    className={cn(
-                      'jw-control jw-touch flex min-h-11 cursor-pointer items-center gap-2 border px-3 text-sm',
-                      checked ? 'border-[var(--jw-gold)] bg-[var(--jw-tint)] text-[var(--jw-ink)]' : 'border-[var(--jw-rule)] text-[var(--jw-ink-dim)]',
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleAyanamsha(option.id)}
-                      aria-label={option.label}
-                      className="h-4 w-4 accent-[#c9a24c]"
-                    />
-                    <span aria-hidden="true">{option.label}</span>
-                    <span aria-hidden="true" className="font-mono text-[10px] text-[var(--jw-gold-dim)]">{option.sub}</span>
-                  </label>
-                )
-              })}
-            </div>
+            {ayanamshasReadOnly ? (
+              <>
+                <ul className="flex flex-wrap gap-2" aria-label="Ayanāṃśas (read-only)" data-testid="ayanamshas-readonly">
+                  {[...form.ayanamshas.map((id) => AYANAMSHA_OPTIONS.find((o) => o.id === id)?.label ?? id), ...legacyAyanamshas].map((label) => (
+                    <li
+                      key={label}
+                      className="jw-control flex min-h-11 items-center gap-2 border border-[var(--jw-rule)] px-3 text-sm text-[var(--jw-ink-dim)]"
+                    >
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+                <p role="note" className="text-sm text-[var(--jw-ink-dim)]" data-testid="ayanamshas-blocked-note">
+                  {AYANAMSHA_EDIT_BLOCKED_MESSAGE}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {AYANAMSHA_OPTIONS.map((option) => {
+                    const checked = form.ayanamshas.includes(option.id)
+                    return (
+                      <label
+                        key={option.id}
+                        className={cn(
+                          'jw-control jw-touch flex min-h-11 cursor-pointer items-center gap-2 border px-3 text-sm',
+                          checked ? 'border-[var(--jw-gold)] bg-[var(--jw-tint)] text-[var(--jw-ink)]' : 'border-[var(--jw-rule)] text-[var(--jw-ink-dim)]',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleAyanamsha(option.id)}
+                          aria-label={option.label}
+                          className="h-4 w-4 accent-[#c9a24c]"
+                        />
+                        <span aria-hidden="true">{option.label}</span>
+                        <span aria-hidden="true" className="font-mono text-[10px] text-[var(--jw-gold-dim)]">{option.sub}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                {legacyAyanamshas.length > 0 && (
+                  <p role="note" className="text-xs text-[var(--jw-ink-dim)]">
+                    Also stored, not selectable here: {legacyAyanamshas.join(', ')}. Left as is unless you change the selection above.
+                  </p>
+                )}
+                {ayanamshaEditPolicy === 'warn' && (
+                  <p role="note" className="text-sm text-amber-200/80" data-testid="ayanamshas-warn-note">
+                    Changing the ayanamsha erases all built results for this chart and archives its conversations. You will be asked to confirm.
+                  </p>
+                )}
+              </>
+            )}
             <FieldError id="ayanamshas-error" msg={errors.ayanamshas} />
           </Group>
 
@@ -479,6 +555,22 @@ export function EditClientForm({ chart }: { chart: EditableChart }) {
           </div>
         </form>
       </div>
+
+      <AyanamshaEditConfirmDialog
+        chartName={chart.name}
+        open={ayanamshaConfirmOpen}
+        before={describe('ayanamshas', initial.ayanamshas)}
+        after={describe('ayanamshas', form.ayanamshas)}
+        onCancel={() => {
+          setAyanamshaConfirmOpen(false)
+          submitRef.current?.focus()
+          requestAnimationFrame(() => submitRef.current?.focus())
+        }}
+        onConfirm={() => {
+          setAyanamshaConfirmOpen(false)
+          void submit(true)
+        }}
+      />
 
       <EditRebuildConfirmDialog
         chartName={chart.name}

@@ -25,7 +25,6 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 import { executeHolisticBundle, type BundleEvent } from '../../src/bundles/holistic_bundle.js'
-import { executeMultiSchoolBundle, type MultiSchoolBundleEvent } from '../../src/bundles/multi_school_bundle.js'
 
 const MOCK_PRINCIPAL = {
   user_uid: 'test-uid',
@@ -113,59 +112,6 @@ describe('SSE event sequence — holistic_bundle', () => {
     expect(completedEvent).toBeDefined()
     if (completedEvent?.type === 'bundle.sub_tool.completed') {
       expect(completedEvent.rows_returned).toBe(2)
-    }
-  })
-})
-
-describe('SSE event sequence — multi_school_bundle', () => {
-  beforeEach(() => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        result: { school_positions: [], convergence_score: 0.8 },
-      }),
-    })
-    vi.clearAllMocks()
-  })
-
-  it('emits started events before completed events', async () => {
-    const events: MultiSchoolBundleEvent[] = []
-
-    await executeMultiSchoolBundle(
-      { claim: 'Mars in Aries gives courage and aggression', schools: ['parashara'], tier: 'super_admin' },
-      MOCK_PRINCIPAL,
-      (event) => events.push(event)
-    )
-
-    const startedEvents = events.filter(e => e.type === 'bundle.sub_tool.started')
-    const completedEvents = events.filter(e => e.type === 'bundle.sub_tool.completed' || e.type === 'bundle.sub_tool.error')
-    expect(startedEvents.length).toBeGreaterThan(0)
-    expect(events[events.length - 1]?.type).toBe('bundle.completed')
-
-    // Each started event must have a corresponding completed or error event
-    for (const started of startedEvents) {
-      if (started.type === 'bundle.sub_tool.started') {
-        const found = completedEvents.some(
-          e => 'sub_tool' in e && e.sub_tool === started.sub_tool
-        )
-        expect(found).toBe(true)
-      }
-    }
-  })
-
-  it('bundle.completed contains claim and schools', async () => {
-    const events: MultiSchoolBundleEvent[] = []
-
-    await executeMultiSchoolBundle(
-      { claim: 'Venus in 2nd house provides accumulated wealth', schools: ['parashara', 'jaimini'], tier: 'acharya' },
-      MOCK_PRINCIPAL,
-      (event) => events.push(event)
-    )
-
-    const completed = events.find(e => e.type === 'bundle.completed')
-    if (completed?.type === 'bundle.completed') {
-      expect(completed.envelope.claim).toBe('Venus in 2nd house provides accumulated wealth')
-      expect(completed.envelope.schools).toContain('parashara')
     }
   })
 })

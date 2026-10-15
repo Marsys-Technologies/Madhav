@@ -1,0 +1,32 @@
+{
+ "schema": "ky.job_result/1",
+ "job_id": "J-20261012T090000Z-r1",
+ "item": "KV3-B-KYLOCK",
+ "status": "done",
+ "branch": "kalayantra/kv3-b-kylock",
+ "head_sha": null,
+ "pr_number": null,
+ "tests": [
+  {
+   "cmd": "python3 -B -m pytest -q tests",
+   "exit": 0,
+   "summary": "41 passed"
+  }
+ ],
+ "blocked_reason": null,
+ "notes": "read-only review; the tests were not run (no writable root)",
+ "proposed_verdict": {
+  "verdict": "REJECTED",
+  "head": "1111111111111111111111111111111111111111",
+  "findings": [
+   {
+    "id": "F-01",
+    "blocking": true,
+    "file": "kyboot.py",
+    "line": 101,
+    "defect": "a flag nothing can turn false",
+    "required_change": "a detector"
+   }
+  ]
+ }
+}

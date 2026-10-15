@@ -1,0 +1,4947 @@
+{
+ "schema": "ky.dispatch_cases/1",
+ "note": "Cases of test_kydispatch.py (packet KV3-B-KYDISPATCH v1). $RUN $ROOT $REPO $FLEET $SCRATCH $WT are the world's paths, $CTL the controller a --dry reads the run directory as, $HEAD the synthetic repository head reply, $Ha…$Hf 40-hex heads. `dry` and `ticks` are the checked-in job lists: [{kind, item, pool, decision}] in order.",
+ "defaults": {
+  "model": [
+   {
+    "id": "K-1",
+    "owner": "K",
+    "completion_kind": "code",
+    "depends_on": [],
+    "brief": {},
+    "step_evidence": {
+     "tests": {
+      "type": "file_exists"
+     },
+     "docs": null
+    }
+   },
+   {
+    "id": "K-2",
+    "owner": "K",
+    "completion_kind": "code",
+    "depends_on": [],
+    "brief": {}
+   },
+   {
+    "id": "KV3-B-X",
+    "owner": "K",
+    "completion_kind": "code",
+    "depends_on": [],
+    "brief": {}
+   },
+   {
+    "id": "R-1",
+    "owner": "K",
+    "completion_kind": "code",
+    "depends_on": [],
+    "brief": {
+     "regen": {
+      "outputs": [
+       "gen/out.json"
+      ],
+      "generator": {},
+      "tests": []
+     }
+    }
+   },
+   {
+    "id": "A-1",
+    "owner": "K",
+    "completion_kind": "artifact",
+    "depends_on": [],
+    "brief": {},
+    "detector": {
+     "type": "file_exists",
+     "path": "/nonexistent/a1.md"
+    }
+   },
+   {
+    "id": "S-1",
+    "owner": "S",
+    "completion_kind": "artifact",
+    "depends_on": [],
+    "brief": {}
+   },
+   {
+    "id": "N-OP-1",
+    "owner": "N",
+    "completion_kind": "operation",
+    "depends_on": [],
+    "brief": {
+     "op": [
+      "readback_sql"
+     ]
+    }
+   },
+   {
+    "id": "N-RB-1",
+    "owner": "N",
+    "completion_kind": "operation",
+    "depends_on": [],
+    "brief": {
+     "op": [
+      "readback_sql"
+     ]
+    }
+   },
+   {
+    "id": "N-PUB-1",
+    "owner": "N",
+    "completion_kind": "operation",
+    "depends_on": [],
+    "brief": {
+     "op": [
+      "layer_publish"
+     ]
+    }
+   }
+  ],
+  "packets": {
+   "K-1": {},
+   "K-2": {},
+   "KV3-B-X": {
+    "kind": "bootstrap"
+   },
+   "A-1": {
+    "build_tier": "opus"
+   }
+  }
+ },
+ "covered_elsewhere": {
+  "duplicate instance refusal": "test_a_second_instance_exits_75_and_changes_nothing",
+  "second instance": "test_a_second_instance_exits_75_and_changes_nothing"
+ },
+ "cases": [
+  {
+   "name": "build_ready_item_is_launched_and_ends_done",
+   "covers": [
+    "BUILD",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/local_db/b1.json": null
+      },
+      "jobs": {
+       "K-1": {
+        "do": "review",
+        "pr": 7,
+        "head": "$Ha"
+       }
+      }
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "ky next --json",
+     "git -C $REPO fetch",
+     "git -C $REPO merge --ff-only",
+     "kygate.sh",
+     "local_db.sh up --session CTL-dispatcher-",
+     "local_db.sh db b1 --session CTL-dispatcher-",
+     "local_db.sh check b1",
+     "ky claim K-1 --worker b1 --lease 10800",
+     "kyjob.sh J-",
+     "ky release",
+     "local_db.sh close --session CTL-dispatcher-"
+    ],
+    "call_counts": {
+     "ky claim": 1,
+     "ky release": 1,
+     "kyjob.sh": 1,
+     "local_db.sh db": 1
+    },
+    "jobs": [
+     {
+      "kind": "BUILD",
+      "item": "K-1",
+      "slot": "b1",
+      "stream": "K",
+      "role": "build",
+      "phase": "ended",
+      "outcome": "done",
+      "failure_fp": null,
+      "model": "claude-sonnet-5-5",
+      "attempt": 1,
+      "claim_id": "CL-0001",
+      "exit_code": 0,
+      "loop": 1,
+      "max_loops": 3,
+      "locks": [
+       "item.K-1"
+      ],
+      "branch": "kalayantra/k-1",
+      "worktree": "$WT/kalayantra-k-1",
+      "base_sha": "$HEAD"
+     }
+    ],
+    "files": {
+     "$RUN/claims/b1.json": {
+      "state": "released"
+     },
+     "$RUN/locks/item.K-1": false,
+     "$RUN/locks/slot.b1": false,
+     "$WT/kalayantra-k-1": true
+    },
+    "journal": [
+     "[gate change]"
+    ],
+    "notify": [
+     "gate change"
+    ],
+    "lock": false,
+    "loop": {
+     "waiting": null
+    }
+   }
+  },
+  {
+   "name": "build_job_that_blocks_its_item_ends_blocked",
+   "covers": [
+    "BUILD",
+    "blocked"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "jobs": {
+     "K-1": {
+      "do": "block",
+      "detail": "freeze: x"
+     }
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "kind": "BUILD",
+      "phase": "ended",
+      "outcome": "blocked"
+     },
+     {
+      "kind": "BUILD",
+      "phase": "live"
+     }
+    ],
+    "call_counts": {
+     "ky release": 1
+    },
+    "lock": true
+   },
+   "note": "the fixture tracker goes on showing K-1 ready, so the engine intends it again: the tracker's `blocked` row is what ends that"
+  },
+  {
+   "name": "item_detector_success_is_not_a_verified_step",
+   "covers": [
+    "STEP"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": [],
+       "steps": [
+        {
+         "name": "tests",
+         "done": false
+        },
+        {
+         "name": "docs",
+         "done": false
+        }
+       ]
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "verify": {
+     "K-1/tests": "done",
+     "K-1/docs": "done"
+    }
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky step"
+    ],
+    "jobs": [],
+    "lock": false,
+    "journal": [
+     "step detector unknown"
+    ]
+   },
+   "note": "Actual server.py /api/verify returns an item detector with no step identity. STEP remains unknown until its producer supports a named step detector; no invented step response earns done."
+  },
+  {
+   "name": "step_is_never_taken_on_an_unverified_detector",
+   "covers": [
+    "STEP"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": [],
+       "steps": [
+        {
+         "name": "tests",
+         "done": false
+        },
+        {
+         "name": "docs",
+         "done": false
+        }
+       ]
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "verify": {
+     "K-1/tests": "pending"
+    }
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "mutate": {
+      "verify": {
+       "K-1/tests": "no_echo"
+      }
+     }
+    },
+    {
+     "dry": []
+    },
+    {
+     "mutate": {
+      "verify": {}
+     }
+    },
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky step"
+    ]
+   },
+   "note": "Actual producer returns an item detector (pending/done) or 404. None is evidence for the requested step."
+  },
+  {
+   "name": "verify_of_a_registered_green_head_runs_and_publishes",
+   "covers": [
+    "VERIFY",
+    "done",
+    "HOLD_MERGES"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "diff",
+       "7"
+      ],
+      "out": "diff --git a/x b/x\n"
+     }
+    ],
+    "slots": [
+     "v1"
+    ],
+    "hold_merges": true
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "VERIFY",
+       "item": "K-1",
+       "pool": "verifier",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/local_db/v1.json": null
+      },
+      "jobs": {
+       "K-1": {
+        "do": "exit",
+        "rc": 0
+       }
+      }
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "VERIFY",
+        "item": "K-1",
+        "pool": "verifier",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "VERIFY",
+        "item": "K-1",
+        "pool": "verifier",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "park"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "gh pr view 7 --json number,headRefOid,baseRefName,title,state,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,files,autoMergeRequest",
+     "kyroute.py diff --repo $REPO --base $Hf --head $Ha --built-tier sonnet",
+     "local_db.sh db v1",
+     "gh pr diff 7",
+     "kyverdicts.py snapshot --worktree $WT/kalayantra-k-1",
+     "kyjob.sh J-",
+     "kyboundary.sh check J-",
+     "--phase pre_merge --head $Ha --vslot v1 --author-id stream-K:b2 --reviewer-id stream-V:v1",
+     "kyboundary.sh release J-"
+    ],
+    "no_calls": [
+     "ky claim",
+     "gh pr merge",
+     "--ff-only"
+    ],
+    "jobs": [
+     {
+      "kind": "VERIFY",
+      "item": "K-1",
+      "slot": "v1",
+      "phase": "ended",
+      "outcome": "done",
+      "boundary": "verifier",
+      "claim_id": null,
+      "head": "$Ha",
+      "verdict_phase": "pre_merge",
+      "pr": 7,
+      "registered_head": "$Ha",
+      "model": "claude-opus-5-5"
+     }
+    ],
+    "files": {
+     "$RUN/merge_requests/K-1.json": {
+      "schema": "ky.merge_request/1",
+      "item": "K-1",
+      "pr": 7,
+      "registered_head": "$Ha"
+     }
+    },
+    "lock": false
+   },
+   "note": "under HOLD_MERGES the accepted head is parked, never submitted, and the campaign checkout is not fast-forwarded"
+  },
+  {
+   "name": "rework_follows_a_rejected_head",
+   "covers": [
+    "REWORK"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "REJECTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ],
+    "slots": [
+     "b1"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "REWORK",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "replies": [
+       {
+        "cmd": "git",
+        "args": [
+         "merge-base",
+         "origin/main"
+        ],
+        "out": "$Hf\n"
+       },
+       {
+        "cmd": "kyroute.py",
+        "args": [
+         "escalate"
+        ],
+        "out": {
+         "decision": "BLOCK"
+        }
+       }
+      ],
+      "prs": [
+       {
+        "number": 7,
+        "head": "$Ha",
+        "checks": {
+         "Kāla DB Tests": "SUCCESS",
+         "lint": "SUCCESS"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "REWORK",
+       "item": "K-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    }
+   ],
+   "note": "escalation BLOCK turns the REWORK into the script job that runs ky block"
+  },
+  {
+   "name": "artifact_registration_gets_an_independent_reviewer",
+   "covers": [
+    "ARTIFACT"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "A-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "v1",
+     "v2"
+    ],
+    "files": {
+     "$RUN/artifacts/a1.md": "artifact\n"
+    },
+    "events": [
+     {
+      "kind": "item",
+      "item": "A-1",
+      "state": "review",
+      "actor": "stream-K:v1",
+      "evidence": "$RUN/artifacts/a1.md",
+      "detail": "registered sha256 5b3513f580c8397212ff2c8f459c199efc0c90e4354a5f3533adf0a3fff3a530"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "ARTIFACT",
+       "item": "A-1",
+       "pool": "verifier",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/local_db/v2.json": null
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "ARTIFACT",
+       "item": "A-1",
+       "pool": "verifier",
+       "decision": "wait:slot"
+      }
+     ]
+    }
+   ],
+   "note": "the author's slot (v1) is never the reviewer's: with only v1 ready the job waits for a slot"
+  },
+  {
+   "name": "merge_of_the_accepted_registered_head_is_queued",
+   "covers": [
+    "MERGE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      },
+      "auto_merge": true,
+      "after": "gh pr merge 7"
+     },
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7"
+      ],
+      "rc": 0
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "MERGE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "git -C $REPO fetch",
+     "git -C $REPO merge --ff-only",
+     "gh pr merge 7 --auto --squash --match-head-commit $Ha"
+    ],
+    "call_counts": {
+     "gh pr merge": 1
+    },
+    "jobs": [
+     {
+      "kind": "MERGE",
+      "item": "K-1",
+      "phase": "ended",
+      "outcome": "done",
+      "slot": null,
+      "head": "$Ha"
+     }
+    ],
+    "files": {
+     "$RUN/merge_requests/queued/K-1.json": {
+      "schema": "ky.merge_queued/1",
+      "pr": 7,
+      "queued_head": "$Ha"
+     }
+    },
+    "lock": false
+   }
+  },
+  {
+   "name": "hold_merges_parks_every_queue_submission",
+   "covers": [
+    "HOLD_MERGES",
+    "MERGE",
+    "hold precedence"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ],
+    "hold_merges": true
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "MERGE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "park"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "park"
+       }
+      ],
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "park"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "gh pr merge",
+     "--ff-only"
+    ],
+    "jobs": [],
+    "files": {
+     "$RUN/merge_requests/K-1.json": {
+      "schema": "ky.merge_request/1",
+      "pr": 7,
+      "registered_head": "$Ha"
+     },
+     "$RUN/merge_requests/queued/K-1.json": false
+    }
+   }
+  },
+  {
+   "name": "an_acceptance_is_inherited_only_through_the_shared_predicate",
+   "covers": [
+    "inheritance predicate",
+    "head-match guard",
+    "MERGE",
+    "VERIFY"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     },
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Hb",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Hb",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ],
+    "slots": [
+     "v1"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "VERIFY",
+       "item": "K-1",
+       "pool": "verifier",
+       "decision": "launch"
+      }
+     ],
+     "expect": {
+      "calls": [
+       "kyverdicts.py inherit --repo $REPO --old-head $Ha --new-head $Hb"
+      ]
+     }
+    },
+    {
+     "mutate": {
+      "prs": [
+       {
+        "number": 7,
+        "head": "$Hb",
+        "checks": {
+         "Kāla DB Tests": "SUCCESS",
+         "lint": "SUCCESS"
+        }
+       }
+      ],
+      "replies": [
+       {
+        "cmd": "git",
+        "args": [
+         "merge-base",
+         "origin/main"
+        ],
+        "out": "$Hf\n"
+       },
+       {
+        "cmd": "kyverdicts.py",
+        "args": [
+         "inherit"
+        ],
+        "rc": 0
+       }
+      ]
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "MERGE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "prs": [
+       {
+        "number": 7,
+        "head": "$Hb",
+        "checks": {
+         "Kāla DB Tests": "SUCCESS",
+         "lint": "SUCCESS"
+        }
+       }
+      ],
+      "replies": [
+       {
+        "cmd": "git",
+        "args": [
+         "merge-base",
+         "origin/main"
+        ],
+        "out": "$Hf\n"
+       },
+       {
+        "cmd": "kyverdicts.py",
+        "args": [
+         "inherit"
+        ],
+        "rc": 2
+       }
+      ]
+     }
+    },
+    {
+     "dry": []
+    },
+    {
+     "mutate": {
+      "prs": [
+       {
+        "number": 7,
+        "head": "$Hc",
+        "checks": {
+         "Kāla DB Tests": "SUCCESS",
+         "lint": "SUCCESS"
+        }
+       }
+      ],
+      "replies": [
+       {
+        "cmd": "git",
+        "args": [
+         "merge-base",
+         "origin/main"
+        ],
+        "out": "$Hf\n"
+       },
+       {
+        "cmd": "kyverdicts.py",
+        "args": [
+         "inherit"
+        ],
+        "rc": 0
+       }
+      ]
+     }
+    },
+    {
+     "dry": []
+    }
+   ],
+   "note": "exit 1 (a substantive resolution) → the new head is reviewed; exit 0 → it inherits and may merge; any other exit is unknown → neither; a PR head that is not the registered head is never submitted (the head-match guard)"
+  },
+  {
+   "name": "a_head_that_moved_after_queueing_is_cancelled_and_its_acceptance_invalidated",
+   "covers": [
+    "MERGE",
+    "head-match guard",
+    "failed"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
+     "$RUN/merge_requests/queued/K-1.json": {
+      "schema": "ky.merge_queued/1",
+      "item": "K-1",
+      "pr": 7,
+      "queued_head": "$Ha"
+     }
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Hb",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      },
+      "after": "gh pr merge 7 --disable-auto"
+     },
+     {
+      "number": 7,
+      "head": "$Hb",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      },
+      "auto_merge": true
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7",
+       "--disable-auto"
+      ],
+      "rc": 0
+     }
+    ],
+    "hold_merges": true
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "MERGE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "gh pr merge 7 --disable-auto",
+     "kyverdicts.py inherit --repo $REPO --old-head $Ha --new-head $Hb",
+     "kyverdicts.py invalidate --item K-1 --phase pre_merge --head $Ha --vslot v1"
+    ],
+    "jobs": [
+     {
+      "kind": "MERGE",
+      "phase": "ended",
+      "outcome": "done"
+     }
+    ],
+    "journal": [
+     "[verdict invalidation] K-1"
+    ],
+    "notify": [
+     "verdict invalidation"
+    ]
+   },
+   "note": "a cancel submits nothing, so HOLD_MERGES does not park it"
+  },
+  {
+   "name": "complete_follows_the_merged_pull_request",
+   "covers": [
+    "COMPLETE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      },
+      "state": "MERGED",
+      "merge_commit": "$Hc"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "COMPLETE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "COMPLETE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "ky done K-1 --pr 7 --reviewed-head $Ha"
+    ],
+    "jobs": [
+     {
+      "kind": "COMPLETE",
+      "outcome": "done",
+      "stream": "K"
+     }
+    ]
+   }
+  },
+  {
+   "name": "regen_of_a_conflict_confined_to_generated_outputs",
+   "covers": [
+    "REGEN",
+    "refused"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "R-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "R-1",
+      "state": "review",
+      "detail": "PR #9 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 9,
+      "head": "$Ha",
+      "checks": {},
+      "mergeable": "CONFLICTING",
+      "merge_state": "DIRTY"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-tree",
+       "--write-tree",
+       "--name-only",
+       "origin/main",
+       "$Ha"
+      ],
+      "rc": 1,
+      "out": "$Hd\ngen/out.json\n\nCONFLICT (content): gen/out.json\n"
+     },
+     {
+      "cmd": "kyregen.sh",
+      "rc": 9,
+      "err": "not this time"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "REGEN",
+       "item": "R-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "REGEN",
+        "item": "R-1",
+        "pool": null,
+        "decision": "refused:start"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "kyregen.sh J-"
+    ],
+    "jobs": [
+     {
+      "kind": "REGEN",
+      "item": "R-1",
+      "phase": "ended",
+      "outcome": "refused",
+      "failure_fp": "regen_exit_9",
+      "base_sha": "$HEAD",
+      "pr": 9,
+      "registered_head": "$Ha",
+      "queue_authorised": false,
+      "locks": [
+       "item.R-1"
+      ],
+      "regen": {
+       "outputs": [
+        "gen/out.json"
+       ],
+       "generator": {},
+       "tests": []
+      }
+     }
+    ],
+    "files": {
+     "$RUN/locks/item.R-1": false
+    }
+   },
+   "note": "kyregen.sh's own exit decides: an exit it does not name is refused; the item lock is free afterwards"
+  },
+  {
+   "name": "request_prep_of_a_ready_operation",
+   "covers": [
+    "REQUEST-PREP"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "N-OP-1",
+       "owner": "N",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "REQUEST-PREP",
+       "item": "N-OP-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pre_accept_of_a_prepared_production_request",
+   "covers": [
+    "PRE-ACCEPT"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "slots": [
+     "v1"
+    ],
+    "prepared": [
+     {
+      "request": {
+       "operation_id": "OP-N-PUB-1",
+       "kind": "layer_publish",
+       "item_id": "N-PUB-1",
+       "idempotency_key": "OP-N-PUB-1",
+       "requested_by": "adhikarin",
+       "kyd": "KYD-PUB-1",
+       "args": {
+        "run-id": "R1",
+        "generation": "G1"
+       },
+       "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+       "lease_id": "LEASE-1",
+       "reviewed_commit": "3333333333333333333333333333333333333333",
+       "expires_at": "2026-10-13T00:00:00Z"
+      },
+      "slot": "b1"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "PRE-ACCEPT",
+       "item": "N-PUB-1",
+       "pool": "verifier",
+       "decision": "launch"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "execute_submits_a_prepared_read_only_request",
+   "covers": [
+    "EXECUTE",
+    "done"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "prepared": [
+     {
+      "request": {
+       "operation_id": "OP-N-RB-1",
+       "kind": "readback_sql",
+       "item_id": "N-RB-1",
+       "idempotency_key": "OP-N-RB-1",
+       "requested_by": "adhikarin",
+       "kyd": "KYD-RB-1",
+       "args": {
+        "sql_file": "/nonexistent/rb1.sql"
+       }
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "EXECUTE",
+       "item": "N-RB-1",
+       "pool": null,
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "EXECUTE",
+        "item": "N-RB-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "kind": "EXECUTE",
+      "item": "N-RB-1",
+      "phase": "ended",
+      "outcome": "done",
+      "stream": "N"
+     }
+    ],
+    "files": {
+     "$RUN/ops/requests/OP-N-RB-1.json": {
+      "operation_id": "OP-N-RB-1",
+      "kind": "readback_sql"
+     }
+    },
+    "no_calls": [
+     "executor.py",
+     "executor.sh"
+    ]
+   }
+  },
+  {
+   "name": "post_readback_of_a_receipted_operation",
+   "covers": [
+    "POST-READBACK"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "slots": [
+     "v1"
+    ],
+    "prepared": [
+     {
+      "request": {
+       "operation_id": "OP-N-RB-1",
+       "kind": "readback_sql",
+       "item_id": "N-RB-1",
+       "idempotency_key": "OP-N-RB-1",
+       "requested_by": "adhikarin",
+       "kyd": "KYD-RB-1",
+       "args": {
+        "sql_file": "/nonexistent/rb1.sql"
+       }
+      },
+      "receipt": "COMPLETED"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "POST-READBACK",
+       "item": "N-RB-1",
+       "pool": "verifier",
+       "decision": "launch"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "model_work_of_the_s_stream",
+   "covers": [
+    "MODEL"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "S-1",
+       "owner": "S",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "MODEL",
+       "item": "S-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ruling_for_an_unread_message",
+   "covers": [
+    "RULING"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "inbox": [
+     {
+      "msg_id": "M-1",
+      "kind": "message",
+      "to": "N",
+      "body": "a question"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "RULING",
+       "item": "msg.M-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "surrogate_decides_an_owner_wait_first",
+   "covers": [
+    "SURROGATE",
+    "done"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "awaiting": [
+     {
+      "id": "AW-20261012T100000Z-check",
+      "question": "Is the thing put right?"
+     }
+    ],
+    "jobs": {
+     "SURROGATE": {
+      "do": "decide"
+     }
+    }
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-check",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/local_db/b1.json": null
+      }
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "kind": "SURROGATE",
+      "item": "AW-20261012T100000Z-check",
+      "slot": "b1",
+      "phase": "ended",
+      "outcome": "done",
+      "stream": "steward",
+      "model": "claude-fable-5-1",
+      "locks": [
+       "awaiting.AW-20261012T100000Z-check"
+      ]
+     }
+    ],
+    "files": {
+     "$RUN/handled/awaiting.AW-20261012T100000Z-check.json": {
+      "kind": "awaiting",
+      "decision_id": "SD-20261012T000000Z-1",
+      "class": "routine"
+     }
+    },
+    "call_counts": {
+     "kyjob.sh": 1
+    },
+    "journal": [
+     "[surrogate decision] AW-20261012T100000Z-check"
+    ],
+    "notify": [
+     "surrogate decision"
+    ],
+    "notify_counts": {
+     "surrogate decision": 1
+    },
+    "no_calls": [
+     "ky decide",
+     "ky claim"
+    ],
+    "lock": false
+   }
+  },
+  {
+   "name": "a_hard_stop_decision_is_notified_at_its_own_level",
+   "covers": [
+    "SURROGATE",
+    "messaging"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "awaiting": [
+     {
+      "id": "AW-20261012T100000Z-check",
+      "question": "May the production window open?"
+     }
+    ],
+    "jobs": {
+     "SURROGATE": {
+      "do": "decide",
+      "class": "hard_stop",
+      "state": "PROPOSED",
+      "decision": "owner-only"
+     }
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "kind": "SURROGATE",
+      "outcome": "done"
+     }
+    ],
+    "call_counts": {
+     "kyjob.sh": 1
+    },
+    "journal": [
+     "[hard stop] owner-only decision SD-20261012T000000Z-1",
+     "[surrogate decision] AW-20261012T100000Z-check"
+    ],
+    "notify": [
+     "\"--level\", \"hard_stop\"",
+     "\"--level\", \"decision\""
+    ],
+    "notify_counts": {
+     "hard stop": 1
+    },
+    "files": {
+     "$RUN/awaiting/AW-20261012T100000Z-check.json": true
+    },
+    "no_calls": [
+     "ky decide"
+    ]
+   },
+   "note": "the item stays open for the owner; no second SURROGATE job is launched on unchanged evidence"
+  },
+  {
+   "name": "plan_at_a_repacket_request_and_at_the_wave_boundary",
+   "covers": [
+    "PLAN"
+   ],
+   "setup": {
+    "next": {},
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "files": {
+     "$RUN/REPACKET.txt": "repacket K-9\n"
+    }
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "PLAN",
+       "item": "REPACKET",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/REPACKET.txt": null
+      },
+      "next": {
+       "blocked": [
+        {
+         "id": "K-1",
+         "owner": "K",
+         "status": "blocked",
+         "deps_open": [],
+         "deps_open_strict": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "PLAN",
+       "item": "WAVE-BOUNDARY",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "PLAN",
+        "item": "WAVE-BOUNDARY",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "kyjob.sh"
+    ],
+    "no_journal": [
+     "[wave complete]"
+    ]
+   },
+   "note": "A boundary PLAN intent while K-1 is blocked is not a detector of wave completion."
+  },
+  {
+   "name": "stop_dispatcher_ends_the_tick_before_anything",
+   "covers": [
+    "STOP_dispatcher",
+    "hold precedence"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1",
+     "b2"
+    ],
+    "stop": true,
+    "hold": true,
+    "hold_merges": true
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "once": 0
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky ",
+     "gh ",
+     "git ",
+     "kygate.sh",
+     "kyjob.sh",
+     "local_db.sh up",
+     "local_db.sh db"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "enabled": true
+    }
+   }
+  },
+  {
+   "name": "a_loop_that_is_not_enabled_does_nothing",
+   "covers": [
+    "hold precedence"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1",
+     "b2"
+    ],
+    "enabled": false
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "once": 0
+    },
+    {
+     "mutate": {
+      "loop": {
+       "enabled": null
+      }
+     }
+    },
+    {
+     "dry": []
+    },
+    {
+     "once": 0
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky ",
+     "gh ",
+     "git ",
+     "kygate.sh",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "lock": false
+   }
+  },
+  {
+   "name": "global_hold_admits_nothing_bootstrap_included",
+   "covers": [
+    "global HOLD",
+    "hold precedence"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1",
+     "b2"
+    ],
+    "hold": true
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [],
+      []
+     ],
+     "expect": {
+      "no_calls": [
+       "ky ",
+       "kyjob.sh",
+       "local_db.sh up",
+       "local_db.sh db",
+       "git ",
+       "gh ",
+       "kygate.sh"
+      ]
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "wait:hold"
+      },
+      {
+       "kind": "BUILD",
+       "item": "KV3-B-X",
+       "pool": "builder",
+       "decision": "wait:hold"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "local_db.sh up",
+     "local_db.sh db",
+     "fetch"
+    ],
+    "jobs": [],
+    "loop": {
+     "waiting": "hold"
+    },
+    "lock": false
+   },
+   "note": "the live tick ends at the hold; --dry still shows what waits behind it"
+  },
+  {
+   "name": "an_owner_pause_or_an_unreadable_command_queue_holds_like_the_global_hold",
+   "covers": [
+    "hold precedence"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1",
+     "b2"
+    ],
+    "pause_applied": true
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ],
+     "expect": {
+      "no_calls": [
+       "ky ",
+       "git ",
+       "gh ",
+       "kygate.sh"
+      ]
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "wait:hold"
+      },
+      {
+       "kind": "BUILD",
+       "item": "KV3-B-X",
+       "pool": "builder",
+       "decision": "wait:hold"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/commands/20261013T000000Z-zz.json": "not json"
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "wait:hold"
+      },
+      {
+       "kind": "BUILD",
+       "item": "KV3-B-X",
+       "pool": "builder",
+       "decision": "wait:hold"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "gate_wait_admits_only_bootstrap_items",
+   "covers": [
+    "gate WAIT",
+    "gate WAIT with bootstrap exemption"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ],
+     "running": [
+      {
+       "id": "K-2",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "WAIT",
+    "slots": [
+     "b1",
+     "b2"
+    ],
+    "jobs": {
+     "KV3-B-X": {
+      "do": "review",
+      "pr": 7,
+      "head": "$Ha"
+     }
+    },
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-2",
+      "state": "review",
+      "detail": "PR #8 @ $Hb",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-2",
+      "phase": "pre_merge",
+      "head": "$Hb",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "prs": [
+     {
+      "number": 8,
+      "head": "$Hb",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "MERGE",
+       "item": "K-2",
+       "pool": null,
+       "decision": "wait:gate"
+      },
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "wait:gate"
+      },
+      {
+       "kind": "BUILD",
+       "item": "KV3-B-X",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/local_db/b1.json": null,
+       "$RUN/local_db/b2.json": null
+      }
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-2",
+        "pool": null,
+        "decision": "wait:gate"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:gate"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-2",
+        "pool": null,
+        "decision": "wait:gate"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:gate"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "MERGE",
+        "item": "K-2",
+        "pool": null,
+        "decision": "wait:gate"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:gate"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "kygate.sh",
+     "ky claim KV3-B-X --worker b1"
+    ],
+    "no_calls": [
+     "ky claim K-1",
+     "gh pr merge"
+    ],
+    "jobs": [
+     {
+      "kind": "BUILD",
+      "item": "KV3-B-X",
+      "outcome": "done"
+     }
+    ],
+    "loop": {
+     "waiting": "gate"
+    },
+    "journal": [
+     "[gate change]"
+    ],
+    "notify_counts": {
+     "gate change": 1
+    }
+   }
+  },
+  {
+   "name": "a_worktree_above_the_ceiling_is_refused",
+   "covers": [
+    "ceiling refusal",
+    "refused"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "worktrees": 16
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "refused:ceiling"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:ceiling"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:ceiling"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "journal": [
+     "[ceiling hit] BUILD K-1"
+    ],
+    "notify_counts": {
+     "ceiling hit": 1
+    },
+    "files": {
+     "$WT/kalayantra-k-1": false
+    }
+   },
+   "patched": true,
+   "note": "limits.copies = 16: a seventeenth own copy is refused; the condition is announced once, not every tick"
+  },
+  {
+   "name": "pool_sizes_come_from_the_pool_files",
+   "covers": [
+    "capacity"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "K-2",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
+     "$RUN/KY_WORKERS": "1\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1",
+     "b2"
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      },
+      {
+       "kind": "BUILD",
+       "item": "K-2",
+       "pool": "builder",
+       "decision": "wait:slot"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/KY_WORKERS": "many\n"
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "wait:slot"
+      },
+      {
+       "kind": "BUILD",
+       "item": "K-2",
+       "pool": "builder",
+       "decision": "wait:slot"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/KY_WORKERS": null
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      },
+      {
+       "kind": "BUILD",
+       "item": "K-2",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "files": {
+       "$RUN/KY_WORKERS": "1\n",
+       "$RUN/local_db/b1.json": null,
+       "$RUN/local_db/b2.json": null
+      }
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-2",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "awaiting": {
+     "capacity-above-max": 1
+    },
+    "call_counts": {
+     "local_db.sh db": 1
+    }
+   },
+   "note": "absent → 6 builders; unreadable → none; ready work above the maximum raises ONE owner-wait for the surrogate"
+  },
+  {
+   "name": "a_snapshot_fallback_of_ky_next_admits_nothing",
+   "covers": [
+    "stale-snapshot refusal",
+    "snapshot fallback"
+   ],
+   "setup": {
+    "next": {
+     "snapshot": true,
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "awaiting": [
+     {
+      "id": "AW-20261012T100000Z-check",
+      "question": "Is the thing put right?"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-check",
+       "pool": "builder",
+       "decision": "wait:stale"
+      }
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "wait:stale"
+       }
+      ],
+      [
+       {
+        "kind": "SURROGATE",
+        "item": "AW-20261012T100000Z-check",
+        "pool": "builder",
+        "decision": "wait:stale"
+       }
+      ]
+     ]
+    },
+    {
+     "mutate": {
+      "next": null
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-check",
+       "pool": "builder",
+       "decision": "wait:stale"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "local_db.sh db"
+    ],
+    "jobs": [],
+    "loop": {
+     "waiting": "stale",
+     "tracker": null
+    }
+   },
+   "note": "the snapshot fallback carries no version: nothing is derived from it and nothing is admitted on top of it"
+  },
+  {
+   "name": "a_version_that_did_not_advance_over_changed_events_is_stale",
+   "covers": [
+    "stale-snapshot refusal"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "loop": {
+     "tracker": {
+      "version": 5,
+      "events_size": 0,
+      "events_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+     }
+    }
+   },
+   "steps": [
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "events": [
+       {
+        "kind": "note",
+        "item": "K-9",
+        "detail": "something the tracker has not read yet",
+        "actor": "steward"
+       }
+      ]
+     }
+    },
+    {
+     "dry": []
+    },
+    {
+     "mutate": {
+      "next": {
+       "version": 6,
+       "ready": [
+        {
+         "id": "K-1",
+         "owner": "K",
+         "status": "ready",
+         "deps_open": [],
+         "deps_open_strict": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "dry": [
+      {
+       "kind": "BUILD",
+       "item": "K-1",
+       "pool": "builder",
+       "decision": "launch"
+      }
+     ]
+    },
+    {
+     "mutate": {
+      "next": {
+       "version": 4,
+       "ready": [
+        {
+         "id": "K-1",
+         "owner": "K",
+         "status": "ready",
+         "deps_open": [],
+         "deps_open_strict": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "dry": []
+    }
+   ]
+  },
+  {
+   "name": "an_unknown_pull_request_or_event_log_intends_nothing",
+   "covers": [
+    "BUILD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "mutate": {
+      "events_raw": "this line is not an event\n",
+      "next": {
+       "ready": [
+        {
+         "id": "K-2",
+         "owner": "K",
+         "status": "ready",
+         "deps_open": [],
+         "deps_open_strict": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "dry": []
+    }
+   ],
+   "note": "gh has no answer for PR 7 → unknown, not `no PR`; an event line that cannot be read may be anybody's review"
+  },
+  {
+   "name": "a_job_whose_process_is_gone_is_interrupted_and_requeued_once",
+   "covers": [
+    "recovery",
+    "interrupted"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "jobs": {
+     "K-1": {
+      "do": "exit",
+      "rc": 0,
+      "result": false
+     }
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "crash"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ]
+     ],
+     "expect": {
+      "jobs": [
+       {
+        "phase": "live",
+        "slot": "b1",
+        "claim_id": "CL-0001"
+       }
+      ],
+      "lock": true
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "crash"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ]
+     ],
+     "expect": {
+      "jobs": [
+       {
+        "phase": "ended",
+        "outcome": "interrupted",
+        "requeued": true,
+        "slot": "b1"
+       },
+       {
+        "phase": "live",
+        "slot": "b2",
+        "claim_id": "CL-0002",
+        "attempt": 1
+       }
+      ]
+     }
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:attempts"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:attempts"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "phase": "ended",
+      "outcome": "interrupted",
+      "requeued": true
+     },
+     {
+      "phase": "ended",
+      "outcome": "interrupted",
+      "requeued": false
+     }
+    ],
+    "call_counts": {
+     "ky claim K-1": 2,
+     "ky release": 2,
+     "kyjob.sh": 2
+    },
+    "files": {
+     "$RUN/claims/b1.json": {
+      "state": "released"
+     },
+     "$RUN/claims/b2.json": {
+      "state": "released"
+     }
+    },
+    "lock": false
+   },
+   "note": "each session is a new controller: the earlier one's slot database is another session's, so the next slot is provisioned"
+  },
+  {
+   "name": "a_job_that_still_runs_is_adopted_not_restarted",
+   "covers": [
+    "recovery"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "jobs": {
+     "K-1": {
+      "do": "sleep",
+      "s": 90
+     }
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "crash"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ]
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:open"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:open"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "phase": "live",
+      "outcome": null,
+      "slot": "b1"
+     }
+    ],
+    "adopted": true,
+    "call_counts": {
+     "ky claim": 1,
+     "kyjob.sh": 1,
+     "ky release": 0
+    },
+    "lock": true
+   },
+   "note": "a stop with a job live keeps the instance lock: the next controller takes it over and adopts the job"
+  },
+  {
+   "name": "a_job_past_its_deadline_is_reaped_and_released",
+   "covers": [
+    "timeout reaping",
+    "timed_out"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "deadline_seconds": 1,
+    "jobs": {
+     "K-1": [
+      {
+       "do": "sleep",
+       "s": 90
+      },
+      {
+       "do": "review",
+       "pr": 7,
+       "head": "$Ha"
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "sleep": 2.5
+      },
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "phase": "ended",
+      "outcome": "timed_out",
+      "slot": "b1",
+      "exit_code": -15
+     },
+     {
+      "phase": "ended",
+      "outcome": "done",
+      "slot": "b1"
+     }
+    ],
+    "call_counts": {
+     "ky release": 2,
+     "ky claim": 2
+    },
+    "lock": false
+   }
+  },
+  {
+   "name": "a_refusal_after_open_closes_the_job_refused_and_frees_the_slot",
+   "covers": [
+    "refusal after J.open",
+    "refused"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "K-2",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
+     "$RUN/KY_WORKERS": "2\n"
+    },
+    "gate": "OPEN",
+    "slots": [],
+    "plain_dirs": [
+     "$WT/kalayantra-k-1"
+    ],
+    "jobs": {
+     "K-2": {
+      "do": "review",
+      "pr": 7,
+      "head": "$Ha"
+     }
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-2",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:worktree"
+       },
+       {
+        "kind": "BUILD",
+        "item": "K-2",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "refused:worktree"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "calls": [
+     "ky claim K-1 --worker b1",
+     "ky release",
+     "ky claim K-2 --worker b1",
+     "kyjob.sh",
+     "ky release",
+     "ky claim K-1 --worker b1",
+     "ky release"
+    ],
+    "jobs": [
+     {
+      "item": "K-1",
+      "phase": "ended",
+      "outcome": "refused",
+      "slot": "b1",
+      "pid": null,
+      "claim_id": "CL-0001"
+     },
+     {
+      "item": "K-2",
+      "phase": "ended",
+      "outcome": "done",
+      "slot": "b1"
+     },
+     {
+      "item": "K-1",
+      "phase": "ended",
+      "outcome": "refused",
+      "slot": "b1",
+      "pid": null
+     }
+    ],
+    "call_counts": {
+     "kyjob.sh": 1,
+     "local_db.sh db": 1
+    },
+    "files": {
+     "$RUN/locks/item.K-1": false,
+     "$RUN/locks/slot.b1": false,
+     "$RUN/local_db/b2.json": false,
+     "$RUN/jobs/failures.json": {
+      "K-1": {
+       "admit_worktree": {
+        "count": 2
+       }
+      }
+     }
+    },
+    "lock": false
+   },
+   "patched": true,
+   "note": "K-1's worktree path exists and is no registered worktree: kyd_admit.admit refuses after kyd_jobs.open claimed; the claim is released and K-2 gets the same slot in the same tick. Two intents needed a slot database in the first tick and one was provisioned (one slot a tick)"
+  },
+  {
+   "name": "a_subscription_refusal_backs_off_and_resumes",
+   "covers": [
+    "failed",
+    "quota backoff"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "jobs": {
+     "K-1": [
+      {
+       "do": "quota"
+      },
+      {
+       "do": "quota"
+      },
+      {
+       "do": "review",
+       "pr": 7,
+       "head": "$Ha"
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "tick",
+      {
+       "clock": 301
+      },
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      {
+       "clock": 301
+      },
+      "tick",
+      {
+       "clock": 301
+      },
+      "tick",
+      {
+       "wait_jobs": 120
+      },
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:backoff"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:backoff"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:backoff"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:backoff"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "launch"
+       }
+      ],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "outcome": "interrupted",
+      "failure_fp": "quota",
+      "requeued": null
+     },
+     {
+      "outcome": "interrupted",
+      "failure_fp": "quota",
+      "requeued": null
+     },
+     {
+      "outcome": "done",
+      "failure_fp": null
+     }
+    ],
+    "journal": [
+     "[quota backoff] ",
+     "5 min",
+     "10 min",
+     "[quota backoff] ended"
+    ],
+    "notify": [
+     "quota backoff"
+    ],
+    "loop": {
+     "backoff": {
+      "level": 0,
+      "until": null,
+      "job": null
+     }
+    },
+    "files": {
+     "$RUN/jobs/failures.json": false
+    }
+   },
+   "note": "5 → 10 → 20 → 30 min; a quota refusal is never counted as a failure of the item, and a model job that ends without one resets the backoff"
+  },
+  {
+   "name": "the_third_identical_failure_blocks_automatic_attempts_across_a_restart",
+   "covers": [
+    "failure fingerprint persistence",
+    "failed",
+    "COMPLETE"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "SUCCESS"
+      },
+      "state": "MERGED",
+      "merge_commit": "$Hc"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "ky",
+      "args": [
+       "done",
+       "K-1"
+      ],
+      "rc": 3,
+      "err": "tracker: internal error"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "crash"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "COMPLETE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "COMPLETE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ]
+     ]
+    },
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "COMPLETE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "launch"
+       }
+      ],
+      [
+       {
+        "kind": "COMPLETE",
+        "item": "K-1",
+        "pool": null,
+        "decision": "refused:attempts"
+       }
+      ]
+     ]
+    },
+    {
+     "dry": [
+      {
+       "kind": "COMPLETE",
+       "item": "K-1",
+       "pool": null,
+       "decision": "refused:attempts"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "jobs": [
+     {
+      "outcome": "failed",
+      "failure_fp": "done_exit_3",
+      "attempt": 1
+     },
+     {
+      "outcome": "failed",
+      "failure_fp": "done_exit_3",
+      "attempt": 2
+     },
+     {
+      "outcome": "failed",
+      "failure_fp": "done_exit_3",
+      "attempt": 3
+     }
+    ],
+    "call_counts": {
+     "ky done K-1": 3
+    },
+    "files": {
+     "$RUN/jobs/failures.json": {
+      "K-1": {
+       "done_exit_3": {
+        "count": 3,
+        "evidence_fp": "6443dcf2003f3c91de8710eca58d4400d366486f21cce55caf2a4c48f3e55467"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "owner_commands_are_applied_in_order_by_the_lock_holder",
+   "covers": [
+    "commands",
+    "capacity"
+   ],
+   "setup": {
+    "next": {},
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "commands": [
+     {
+      "command": "builders",
+      "args": {
+       "n": 3
+      }
+     },
+     {
+      "command": "verifiers",
+      "args": {
+       "n": 2
+      }
+     },
+     {
+      "command": "priority",
+      "args": {
+       "item": "K-2"
+      }
+     },
+     {
+      "command": "status"
+     },
+     {
+      "command": "builders",
+      "args": {
+       "n": 9
+      }
+     },
+     {
+      "command": "handoff"
+     },
+     {
+      "command": "loops",
+      "args": {
+       "op": "stop",
+       "loop": "planner"
+      }
+     },
+     {
+      "command": "priority",
+      "args": {
+       "item": "K-1"
+      }
+     }
+    ]
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ],
+     "expect": {
+      "files": {
+       "$RUN/KY_WORKERS": "3",
+       "$RUN/KY_VERIFIERS": "2",
+       "$RUN/STOP_dispatcher": false
+      },
+      "loop": {
+       "priority": [
+        "K-1",
+        "K-2"
+       ],
+       "enabled": true
+      },
+      "command_states": [
+       "APPLIED",
+       "APPLIED",
+       "APPLIED",
+       "APPLIED",
+       "REJECTED",
+       "REJECTED",
+       "REJECTED",
+       "APPLIED"
+      ]
+     }
+    },
+    {
+     "mutate": {
+      "commands": [
+       {
+        "command": "loops",
+        "args": {
+         "op": "stop",
+         "loop": "dispatcher"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "once": 0
+    },
+    {
+     "once": 0
+    }
+   ],
+   "expect": {
+    "files": {
+     "$RUN/STOP_dispatcher": true
+    },
+    "loop": {
+     "enabled": false
+    },
+    "command_states": [
+     "APPLIED",
+     "APPLIED",
+     "APPLIED",
+     "APPLIED",
+     "REJECTED",
+     "REJECTED",
+     "REJECTED",
+     "APPLIED",
+     "APPLIED"
+    ],
+    "lock": false,
+    "call_counts": {
+     "ky next": 1
+    }
+   },
+   "note": "`loops stop dispatcher` ends the tick it is applied in; the next start finds STOP_dispatcher and exits 0"
+  },
+  {
+   "name": "an_unclassifiable_ci_failure_is_reported_once",
+   "covers": [
+    "messaging"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     }
+    ],
+    "prs": [
+     {
+      "number": 7,
+      "head": "$Ha",
+      "checks": {
+       "Kāla DB Tests": "SUCCESS",
+       "lint": "CANCELLED"
+      }
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [],
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "journal": [
+     "[unclassifiable CI failure] K-1 PR #7"
+    ],
+    "notify_counts": {
+     "unclassifiable CI failure": 1
+    },
+    "jobs": []
+   }
+  },
+  {
+   "name": "a_tick_that_raises_is_caught_and_journalled",
+   "covers": [
+    "messaging"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n",
+     "$RUN/jobs": "not a directory"
+    },
+    "gate": "OPEN"
+   },
+   "steps": [
+    {
+     "once": 0
+    }
+   ],
+   "expect": {
+    "journal": [
+     "[dispatcher error] JobsUnreadable"
+    ],
+    "notify": [
+     "dispatcher error"
+    ],
+    "no_calls": [
+     "ky claim"
+    ],
+    "lock": true
+   },
+   "note": "Aggregate jobs-directory failure is fatal; individual foreign or unreadable job folders are quarantined in memory."
+  },
+  {
+   "name": "hold_appears_while_the_gate_is_running",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "replies": [
+     {
+      "cmd": "kygate.sh",
+      "sleep": 0.05,
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "rc": 0,
+      "out": "OPEN\n"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "stop_dispatcher_appears_while_the_gate_is_running",
+   "covers": [
+    "hold precedence",
+    "STOP_dispatcher"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "slots": [
+     "b1"
+    ],
+    "replies": [
+     {
+      "cmd": "kygate.sh",
+      "sleep": 0.05,
+      "write_files": {
+       "$RUN/STOP_dispatcher": "owner stop\n"
+      },
+      "rc": 0,
+      "out": "OPEN\n"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "hold_appears_during_provisioning",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "replies": [
+     {
+      "cmd": "local_db.sh",
+      "args": [
+       "db"
+      ],
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "builtin": true,
+      "once": true
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "ky claim",
+     "kyjob.sh",
+     "worktree add"
+    ],
+    "jobs": [],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    }
+   }
+  },
+  {
+   "name": "hold_appears_after_open_before_launch",
+   "covers": [
+    "hold precedence",
+    "global HOLD"
+   ],
+   "setup": {
+    "next": {
+     "ready": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      },
+      {
+       "id": "KV3-B-X",
+       "owner": "K",
+       "status": "ready",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "gate": "OPEN",
+    "replies": [
+     {
+      "cmd": "git",
+      "args": [
+       "worktree",
+       "list",
+       "--porcelain"
+      ],
+      "write_files": {
+       "$ROOT/HOLD": "owner stop\n"
+      },
+      "builtin": true,
+      "once": true,
+      "after": "worktree add"
+     }
+    ],
+    "files": {
+     "$RUN/PRIORITY.txt": "K-1\nKV3-B-X\n"
+    }
+   },
+   "steps": [
+    {
+     "session": [
+      "tick",
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:slot"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:slot"
+       }
+      ],
+      [
+       {
+        "kind": "BUILD",
+        "item": "K-1",
+        "pool": "builder",
+        "decision": "wait:hold"
+       },
+       {
+        "kind": "BUILD",
+        "item": "KV3-B-X",
+        "pool": "builder",
+        "decision": "wait:hold"
+       }
+      ]
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "kyjob.sh"
+    ],
+    "jobs": [
+     {
+      "kind": "BUILD",
+      "item": "K-1",
+      "phase": "ended",
+      "outcome": "refused",
+      "failure_fp": "hold"
+     }
+    ],
+    "lock": false,
+    "loop": {
+     "waiting": "hold"
+    },
+    "call_counts": {
+     "ky claim": 1,
+     "ky release": 1,
+     "kyjob.sh": 0
+    },
+    "files": {
+     "$RUN/locks/slot.b1": false,
+     "$RUN/locks/item.K-1": false,
+     "$RUN/claims/b1.json": {
+      "state": "released"
+     }
+    }
+   }
+  },
+  {
+   "name": "duplicate_check_failure_then_success_never_queues",
+   "covers": [
+    "MERGE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "view",
+       "7"
+      ],
+      "out": {
+       "number": 7,
+       "headRefOid": "$Ha",
+       "state": "OPEN",
+       "baseRefName": "main",
+       "title": "fixture",
+       "statusCheckRollup": [
+        {
+         "__typename": "CheckRun",
+         "name": "Kāla DB Tests (throwaway Postgres)",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": ""
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/1/job/9"
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/2/job/9"
+        }
+       ],
+       "files": []
+      }
+     },
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7"
+      ],
+      "rc": 0
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "gh pr merge",
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "journal": [
+     "PR unknown"
+    ]
+   }
+  },
+  {
+   "name": "duplicate_check_success_then_failure_never_queues",
+   "covers": [
+    "MERGE",
+    "done"
+   ],
+   "setup": {
+    "next": {
+     "running": [
+      {
+       "id": "K-1",
+       "owner": "K",
+       "status": "review",
+       "deps_open": [],
+       "deps_open_strict": []
+      }
+     ]
+    },
+    "files": {
+     "$RUN/PRIORITY.txt": "# owner order\nK-1\nK-2\nKV3-B-X\n"
+    },
+    "gate": "OPEN",
+    "events": [
+     {
+      "kind": "item",
+      "item": "K-1",
+      "state": "review",
+      "detail": "PR #7 @ $Ha",
+      "actor": "stream-K:b2"
+     },
+     {
+      "kind": "verdict",
+      "item": "K-1",
+      "phase": "pre_merge",
+      "head": "$Ha",
+      "artifact_digest": null,
+      "result": "ACCEPTED",
+      "actor": "stream-V:v1",
+      "detail": "fixture measured review"
+     }
+    ],
+    "replies": [
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "view",
+       "7"
+      ],
+      "out": {
+       "number": 7,
+       "headRefOid": "$Ha",
+       "state": "OPEN",
+       "baseRefName": "main",
+       "title": "fixture",
+       "statusCheckRollup": [
+        {
+         "__typename": "CheckRun",
+         "name": "Kāla DB Tests (throwaway Postgres)",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": ""
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/2/job/9"
+        },
+        {
+         "__typename": "CheckRun",
+         "name": "test",
+         "status": "COMPLETED",
+         "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/1/job/9"
+        }
+       ],
+       "files": []
+      }
+     },
+     {
+      "cmd": "git",
+      "args": [
+       "merge-base",
+       "origin/main"
+      ],
+      "out": "$Hf\n"
+     },
+     {
+      "cmd": "gh",
+      "args": [
+       "pr",
+       "merge",
+       "7"
+      ],
+      "rc": 0
+     }
+    ]
+   },
+   "steps": [
+    {
+     "dry": []
+    },
+    {
+     "session": [
+      "tick",
+      "stop"
+     ],
+     "ticks": [
+      []
+     ]
+    }
+   ],
+   "expect": {
+    "no_calls": [
+     "gh pr merge",
+     "ky claim",
+     "kyjob.sh"
+    ],
+    "jobs": [],
+    "journal": [
+     "PR unknown"
+    ]
+   }
+  }
+ ]
+}

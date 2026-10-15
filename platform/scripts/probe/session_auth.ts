@@ -1,3 +1,4 @@
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 import { execSync } from 'node:child_process'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'

@@ -102,7 +102,7 @@ def _run(signal):
         db_conn=conn,
         config={"chart_id": "chart-1"},
     )
-    result = KaYojakaWriter().run(ctx)
+    result = KaYojakaWriter().legacy_testimony_fixture(ctx)
     assert result.rows_inserted == 1
     row = conn.inserted[0]
     return {

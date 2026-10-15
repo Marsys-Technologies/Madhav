@@ -46,7 +46,7 @@ def _row(i, level, lord, a, b):
 DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 L0_VEDHA_ROWS = [tuple(r) for r in json.loads(
     (Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json").read_text())]
-PINNED_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"      # the frozen §4.0 contract build
+PINNED_BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"      # governed settlement; synthetic period fixtures below
 
 
 # Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level
@@ -215,7 +215,7 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             # Stream B's record replace/finalise grants (draft PR #2940) — replaced my stand-in fixture
                             "1242_gochara_builder_record_replace_finalise_grants.sql",
                             # Stream B's verifier/sealer grants (draft PR #2949) — the faithful mirror's verifier/sealer set
-                            "1241_gochara_verifier_sealer_inventory_grants.sql")
+                            M1241_NAME)
 
 
 def create_am5_database(tag="am5", faithful=False, apply_1240=True):
@@ -303,11 +303,10 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True):
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
                 ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + (
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
-                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []):
+                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or f != M1241_NAME] if faithful else []):
             if fname == M1241_NAME:
-                # 1241 is Stream B's (PR #2949). While it is not in platform/migrations on this branch
-                # (protected-window rule) the mirror applies the byte-exact, sha-pinned v7 fixture;
-                # when the real file is present the mirror applies it (same sha pin). See _migration_1241.py.
+                # PR #2949 lands as 1378. The loader pins the landing separately from
+                # the archived 1241 v7 fixture and permits only the migration renumber.
                 cur.execute(migration_1241_sql(MIGRATIONS))
             elif not (MIGRATIONS / fname).exists():
                 pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies the REAL migrations")
@@ -544,9 +543,9 @@ def test_the_verifier_imports_nothing_from_the_builder():
     bad = {m for m in imported if any(f in m.replace("inventory_verifier", "") for f in forbidden)}
     assert not bad, f"the verifier must be independent of the builder: {bad}"
     # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
-    # manifest's stored_scope)
+    # manifest's stored_scope; re/pathlib/uuid validate the reviewed settlement independently)
     # + `brahmagyan.verification_vocab`: the SANCTIONED tier vocabulary (TAP-6 forbids the literal outside it) — a constant, no builder logic
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "brahmagyan.verification_vocab"}, imported
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "re", "pathlib", "uuid", "brahmagyan.verification_vocab"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

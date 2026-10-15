@@ -58,7 +58,7 @@ def good_measured(case_id: str) -> dict:
         "family_dispatch_refused": {
             "intersecting_assets": ["ka_x", "ka_gochara_y"], "refused_assets": ["ka_gochara_y", "ka_x"],
             "refused_via": ["family_set", "name_pattern"], "exit_code": 4, "refusal_codes": ["FAMILY_ASSET"], "connect_calls": 0,
-            "dispatch_calls": 0, "control_exit_code": 4, "control_refusal_codes": ["DEPLOYED_JOB_SHA_REQUIRED"],
+            "dispatch_calls": 0, "control_exit_code": 4, "control_refusal_codes": ["JOB_SHA_UNRESOLVABLE"],
             "control_connect_calls": 0, "missing_file_committing_codes": ["FAMILY_FILE_MISSING"]},
         "hold_refuses_dispatch": {
             "hold_guard_sha256": H, "command": "python3 x/suvarna_level_wave.py --assets a", "blocked_with_hold": True,

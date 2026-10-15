@@ -46,6 +46,13 @@ export const queryVastuDirectionsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 15, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-A): the whole classical table (8 rows) is returned, no LIMIT / offset (paginated false);
+  // filters are the facets below; an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: false,
+    facets: ['direction', 'ruling_graha'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const direction    = args['direction'] ? String(args['direction']) : null

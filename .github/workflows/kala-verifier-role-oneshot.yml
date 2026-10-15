@@ -1,0 +1,81 @@
+# KĀLA-YANTRA verifier role — ONE-SHOT, owner-approved 2026-10-08 (owner: "approved", Kāla conductor session).
+# Creates exactly one role: verifier_principal, NOLOGIN, no password, no membership — so the grants in Kāla migrations
+# 1330/1334 (applied later by the Kāla protected window) have a grantee. It refuses if the role already exists, and prints
+# only non-secret facts. workflow_dispatch ONLY; remove this file in a follow-up PR after use.
+name: Kāla verifier role provisioning (one-shot, owner-approved)
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'create-role (verifier_principal NOLOGIN) or grant-usage (USAGE on schema public for verifier_principal)'
+        required: true
+        type: choice
+        options: [create-role, grant-usage]
+      confirm:
+        description: 'Type exactly: PROVISION-KALA-VERIFIER-ROLE'
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: kala-verifier-role-provisioning
+  cancel-in-progress: false
+
+env:
+  WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+  WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+
+jobs:
+  provision:
+    name: Provision verifier_principal
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'PROVISION-KALA-VERIFIER-ROLE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # the existing governed environment that holds the ownership-admin secret (deployment branches: protected only)
+    environment: data-plane-production-cutover
+    steps:
+      - name: Checkout the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy
+          echo "276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy" | sha256sum -c -         # pinned (Fable): the v2.10.1 linux/amd64 binary as served on 2026-10-02
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_pid" 2>/dev/null && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            exit 1
+          fi
+
+      - name: Install the PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Install the PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Run the reviewed provisioning script (prints non-secret facts only)
+        env:
+          ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
+          STAGE: ${{ inputs.stage }}
+          MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: bash platform/scripts/kala-provision-verifier-role.sh

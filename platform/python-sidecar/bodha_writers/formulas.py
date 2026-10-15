@@ -208,11 +208,16 @@ class LinkageInputs:
     # Each signal dict: {salience: float, in_contradiction: bool}
     high_convergence_count: int = 0       # signals with cross_ayanamsha_consistency_score >= 0.8
     shared_factor_count: int = 0
-    cross_ayanamsha_stability_score: float = 1.0
+    # None = NOT MEASURED (SS N-341/N-347): the stability factor is then not applied and the result says so. The former default of 1.0 read as "perfectly stable across
+    # ayanamshas" though no caller measured it (bo_sangati never passes one): a plausible default standing in for a measurement (§N.8 / §N.7 item 6).
+    cross_ayanamsha_stability_score: float | None = None
 
 
-def linkage_formula_v1(cell: LinkageInputs) -> dict[str, float]:
-    """A11 §3 linkage formula v1.0."""
+def linkage_formula_v1(cell: LinkageInputs) -> dict[str, float | bool]:
+    """A11 §3 linkage formula v1.0.
+
+    `cross_ayanamsha_stability_score` None means not measured: the stability factor is not applied (the arithmetic is the neutral factor 1.0, so the numbers
+    equal the old default's) and `stability_factor_applied` is False; a measured score (including 0.0) is applied and reported True."""
     positive = sum(
         s["salience"] for s in cell.shared_signals if not s.get("in_contradiction", False)
     )
@@ -224,7 +229,8 @@ def linkage_formula_v1(cell: LinkageInputs) -> dict[str, float]:
     signal_count = max(len(cell.shared_signals), 1)
     high_convergence_bonus = (cell.high_convergence_count / signal_count) * 0.3
     factor_density_bonus = math.log(1 + cell.shared_factor_count) * 0.1
-    stability_factor = max(cell.cross_ayanamsha_stability_score, 0.0)
+    stability_applied = cell.cross_ayanamsha_stability_score is not None
+    stability_factor = max(cell.cross_ayanamsha_stability_score, 0.0) if stability_applied else 1.0
 
     computed_linkage = (
         net
@@ -239,6 +245,7 @@ def linkage_formula_v1(cell: LinkageInputs) -> dict[str, float]:
         "net_linkage_strength": round(net, 6),
         "computed_linkage_strength": round(computed_linkage, 6),
         "linkage_formula_version": VERSION_LINKAGE_FORMULA,
+        "stability_factor_applied": stability_applied,
     }
 
 

@@ -76,8 +76,9 @@ def test_the_closed_list_holds_exactly_unsourced_declared_and_its_ceiling_label_
     (dict(residual="SOMETHING_ELSE"), "residual must be null or one of"),
     (dict(citation_state="sourced"), "stands only on citation_state 'unsourced'"),
     (dict(level="table", kind="K1", citation="BPHS", locus="3.12", columns=None), "row-level declaration"),
-    (dict(columns=[dict(column="a", kinds=["K1"]), dict(column="b", kinds=["K1"])]), "ONE row-level K1 source column"),
-    (dict(columns=[dict(column="a", kinds=["K2"])]), "ONE row-level K1 source column"),
+    (dict(columns=[dict(column=c, kinds=["K1"]) for c in "abcde"]), "one to 4 entries"),          # N-235: a declared SET of up to 4 columns, no more
+    (dict(columns=[dict(column="a", kinds=["K2"])]), "row-level source column(s)"),
+    (dict(columns=[dict(column="a", kinds=["K1"]), dict(column="b", kinds=["K1"])], untraced_marker="NOT YET traced to a primary text"), "takes no untraced_marker"),
     (dict(untraced_marker="tbd"), "untraced_marker"),
     (dict(untraced_marker="x" * 201), "untraced_marker"),
 ])
@@ -302,4 +303,4 @@ def test_the_three_assets_declare_what_their_rows_are_and_validate():
 
 def test_no_other_asset_declares_the_residual():
     d = ac.load_asset_declarations()
-    assert sorted(a for a, e in d.items() if isinstance(e.get("source"), dict) and e["source"].get("residual")) == ["bg_class_priors", "bg_kota_chakra_rings"]
+    assert sorted(a for a, e in d.items() if isinstance(e.get("source"), dict) and e["source"].get("residual")) == ["bg_class_priors", "bg_kota_chakra_rings", "bo_pratijna"]      # N-235 (3): bo_pratijna, over its two ledger columns (test_n233b_decl2)

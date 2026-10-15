@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 /**
  * cutover:stage1-smoke — Phase 11A end-to-end smoke test.
  *
@@ -79,27 +80,27 @@ const SMOKE_QUERIES: SmokeQuery[] = [
   {
     queryClass: 'factual',
     source: 'SQ.006',
-    text: 'What planet lords Abhisek\'s 7th house?',
+    text: 'What planet lords the native\'s 7th house?',
   },
   {
     queryClass: 'interpretive',
     source: 'SQ.002',
-    text: 'What is the core psychological tension that runs through Abhisek\'s natal chart, and how does it shape his lived experience across domains?',
+    text: 'What is the core psychological tension that runs through the native\'s natal chart, and how does it shape his lived experience across domains?',
   },
   {
     queryClass: 'predictive',
     source: 'SQ.004',
-    text: 'When and how will the career themes in Abhisek\'s chart crystallize in the upcoming dasha sequence, and what are the timing indicators?',
+    text: 'When and how will the career themes in the native\'s chart crystallize in the upcoming dasha sequence, and what are the timing indicators?',
   },
   {
     queryClass: 'cross_domain',
     source: 'SQ.001',
-    text: 'How do career and wealth domains interact in Abhisek\'s chart, and what planetary configurations bridge these two domains?',
+    text: 'How do career and wealth domains interact in the native\'s chart, and what planetary configurations bridge these two domains?',
   },
   {
     queryClass: 'holistic',
     source: 'SQ.005',
-    text: 'What is the spiritual and dharmic mission encoded in Abhisek\'s chart, and how do the planetary combinations support or challenge it?',
+    text: 'What is the spiritual and dharmic mission encoded in the native\'s chart, and how do the planetary combinations support or challenge it?',
   },
   {
     queryClass: 'discovery',
@@ -109,12 +110,12 @@ const SMOKE_QUERIES: SmokeQuery[] = [
   {
     queryClass: 'remedial',
     source: 'SUPP.1',
-    text: 'What remedial measures would help Abhisek navigate the challenges indicated by his Rahu mahadasha, and which remedies have the strongest shastric basis for his ascendant?',
+    text: 'What remedial measures would help the native navigate the challenges indicated by a Rahu mahadasha, and which remedies have the strongest shastric basis for the ascendant?',
   },
   {
     queryClass: 'cross_native',
     source: 'SUPP.2',
-    text: 'What patterns in Abhisek\'s chart — particularly around Saturn placement and its aspects — are characteristically shared by individuals with strong Saturn configurations in Aquarius?',
+    text: 'What patterns in the native\'s chart — particularly around Saturn placement and its aspects — are characteristically shared by individuals with strong Saturn configurations in Aquarius?',
   },
 ]
 

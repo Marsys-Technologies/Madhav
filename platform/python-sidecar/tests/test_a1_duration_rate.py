@@ -65,6 +65,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from pipeline.orchestrator import asset_runner as ar  # noqa: E402
+from pipeline.orchestrator import writer_runtime_support as wrs  # noqa: E402
 from pipeline.orchestrator.writers import WriterBase, WriterResult  # noqa: E402
 
 
@@ -116,13 +117,14 @@ def _run_with_writer(
     dedicated degraded-path test below passes False to prove the other branch."""
     errors: list[str] = []
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: None)
     monkeypatch.setattr(ar, 'discover_all', lambda: None)
     monkeypatch.setattr(ar, 'get_writer', lambda aid: writer_cls)
     monkeypatch.setattr(ar, 'fetch_birth_params', lambda conn, cid: {'chart_id': cid})
     monkeypatch.setattr(ar, 'compute_upstream_hash', lambda cur, aid, cid: 'hash-upstream')
     monkeypatch.setattr(ar, 'get_writer_source_hash', lambda aid: 'hash-writer')
     monkeypatch.setattr(ar, 'compute_downstream_closure', lambda cur, aid: [])
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', duration_columns_present)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', duration_columns_present)
     monkeypatch.setattr(
         ar, 'mark_asset_error',
         lambda conn, cur, run_id, chart_id, asset_id, error: errors.append(error),
@@ -255,6 +257,7 @@ def test_real_mark_asset_error_sql_never_names_duration_or_rate(monkeypatch):
     path never reaches the completion-write site; this proves the failure-path
     function itself was not edited to add these columns."""
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: None)
     conn, cur = FakeConn(), FakeCursor()
     ar.mark_asset_error(conn, cur, 'run-1', 'chart-abc', '_test_a1_direct_error', 'boom')
     assert not any('duration_seconds' in s for s in cur.sqls())
@@ -303,7 +306,7 @@ def test_legacy_telemetry_no_duration_arg_writes_null_exactly_as_before(monkeypa
 
     # The telemetry upsert probes for migration 1200's columns via the orchestrator's
     # cached helper; reset the process cache so the probe runs against the fake.
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     captured: list[tuple[str, list]] = []
 
     class _FakeConnCtx:
@@ -344,7 +347,7 @@ def test_legacy_telemetry_with_duration_computes_real_rate(monkeypatch):
 
     # The telemetry upsert probes for migration 1200's columns via the orchestrator's
     # cached helper; reset the process cache so the probe runs against the fake.
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     captured: list[tuple[str, list]] = []
 
     class _FakeConnCtx:
@@ -413,7 +416,7 @@ def test_duration_columns_present_probes_information_schema_once_and_caches(monk
     """C2: the presence probe must be cached once per process, never re-run per
     write. Simulates the column being present (a truthy fetchone) and asserts a
     second call does not issue a second information_schema query."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
 
     class _ProbeCursor:
         def __init__(self):
@@ -435,7 +438,7 @@ def test_duration_columns_present_probes_information_schema_once_and_caches(monk
 def test_duration_columns_absent_detected_and_cached(monkeypatch):
     """The absent-column branch of the same cache: fetchone() returning None (no
     matching information_schema row) must cache False, not crash or re-probe."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
 
     class _ProbeCursor:
         def __init__(self):
@@ -463,8 +466,9 @@ def test_duration_columns_absent_logs_warning_once(monkeypatch, caplog):
     layer up). Asserts the warning fires exactly once, matching the probe's own
     once-per-process cardinality (a second call must not re-log), and names both the
     missing column and the migration so an operator knows what to do."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: None)
 
     class _ProbeCursor:
         def execute(self, sql, params=None):
@@ -487,8 +491,9 @@ def test_duration_columns_absent_logs_warning_once(monkeypatch, caplog):
 def test_duration_columns_present_logs_no_warning(monkeypatch, caplog):
     """The mirror case: when the column IS present, nothing about a measurement
     outage should be logged at all — a healthy environment must stay silent."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: None)
 
     class _ProbeCursor:
         def execute(self, sql, params=None):
@@ -510,9 +515,10 @@ def test_duration_columns_absent_emits_event(monkeypatch):
     (for whatever sink is listening — stdout/Pub/Sub, per events.py), exactly once,
     with a message that identifies the missing column and the migration. Present
     branch must emit nothing (mirrors the no-warning assertion above)."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     emitted: list[dict] = []
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: emitted.append(e))
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: emitted.append(e))
 
     class _AbsentProbeCursor:
         def execute(self, sql, params=None):
@@ -529,7 +535,7 @@ def test_duration_columns_absent_emits_event(monkeypatch):
     assert 'duration_seconds' in emitted[0]['message']
     assert '1200' in emitted[0]['message']
 
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     emitted.clear()
 
     class _PresentProbeCursor:
@@ -550,8 +556,9 @@ def test_duration_columns_probe_is_schema_qualified(monkeypatch):
     produce a false positive here (which would make the completion UPDATE name a
     column that doesn't exist in THIS asset_throughput, raise, and reintroduce the
     exact build-fatal hazard C2/the cache exists to prevent)."""
-    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
+    monkeypatch.setattr(wrs, '_DURATION_COLUMNS_PRESENT', None)
     monkeypatch.setattr(ar, 'emit_event', lambda e, cur=None: None)
+    monkeypatch.setattr(wrs, 'emit_event', lambda e, cur=None: None)
 
     class _ProbeCursor:
         def __init__(self):

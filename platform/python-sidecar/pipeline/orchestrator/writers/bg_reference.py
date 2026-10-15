@@ -43,9 +43,30 @@ class ReferenceWriter(WriterBase):
             conn.row_factory = prior_row_factory
         # counts is a dict like {'reference_planets': N, 'reference_nakshatras': N, ...}
         total_inserted = sum(counts.values()) if isinstance(counts, dict) else int(counts or 0)
+        # WFIX-A: rows PRESENT across the eleven reference tables after the seed, not the seeder's
+        # newly-inserted sum (0 on a converged rerun against 1,242 live rows). A dry run writes nothing.
+        present = total_inserted
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL)
+                present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total_inserted,
+            rows_inserted=present,
             duration_seconds=time.time() - t0,
-            notes=f'5 reference tables: {counts}',
+            notes=f'reference tables: {counts}; newly_inserted={total_inserted}',
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: the eleven tables of the registry count_sql.
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs)"
+    " + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas)"
+    " + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems)"
+    " + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas)"
+    " + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags)"
+    " + (SELECT count(*) FROM reference_glossary) AS n"
+)

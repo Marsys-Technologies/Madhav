@@ -1,0 +1,32 @@
+# native_literal_allowlist.txt - the explicit allowlist for assert_no_native_literal.sh (PART 2 ratchet).
+# Format: <path relative to platform/scripts><TAB><reason>. One entry per file; a reason is mandatory.
+# An entry whose file no longer carries a native token is STALE and fails the gate: delete it (the list only shrinks).
+# Do NOT add an entry to land a new literal: read the value from chart_facts / charts or use a synthetic chart.
+
+# --- A. The two known-answer oracles (SS ruling: keep, do not change) ---
+governance/flip_detector.py	ORACLE: ANCHORS is the FORENSIC 7-anchor known-answer oracle of the flip detector (CLAUDE.md section B); changing it would rotate its probe fingerprints for no gain
+seed/asset_registry_seed.ts	ORACLE: health_probe forensic_instant plus expected panchanga is the known-answer probe written into asset_registry.health_probe; changing it would rotate the probe fingerprints
+
+# --- B. Coupled to the oracles or to a sealed writer; cannot be switched to a synthetic chart ---
+audit/forensic_check_elev_beta_d.py	ORACLE COPY: standalone FORENSIC 7/7 gate that compares live chart_facts to the frozen anchors; owner-later: dedupe into one shared constant with governance/flip_detector.py ANCHORS
+governance/__tests__/test_flip_detector.py	ORACLE-COUPLED: builds the model state that must satisfy flip_detector.py ANCHORS (birth tithi and karana rows); changes in lockstep with the oracle
+governance/__tests__/test_flip_detector_fa2_hook.py	ORACLE-COUPLED: same anchor rows as test_flip_detector.py for the F-A2 hook cases; changes in lockstep with the oracle
+governance/__tests__/test_formgap_decl_l1.py	WRITER-COUPLED: drives the real ga_dashas writer, whose FORENSIC anchor assertion (Moon nakshatra) needs the canonical birth params; synthetic params make the writer raise (measured in SS N-380)
+governance/__tests__/fixtures/c1_3_ga_positions_writer_rows_moshier.json	SEALED GOLDEN: the ga_positions writer row set for the canonical chart (about 12k lines) pinned by test_c1_3_carriage_d3.py; cannot be repointed without regenerating the golden under SS control
+governance/asset_declarations.json	DECLARATION PROSE: a prose_fields entry quotes one computed bodha_cgm_nodes citation value verbatim (a derived instant on the birth date); declarations are fingerprint-pinned, editing rotates the pins; owner-later with the next declaration regeneration
+governance/__tests__/test_suvarna_global_asset_dispatch.py	PHANTOM-GUARD TEST: asserts the dispatcher refuses the real dead phantom id as an anchor chart; the full id is the test input
+
+# --- C. Historical records that carry the phantom NOTE as line 1 (SS ruling: never rewritten) ---
+SYNTH_INTEGRATION_EVAL_LOG.md	HISTORICAL: GANGA-P3 eval log run against the dead phantom chart id; NOTE line prepended, body untouched
+audit/B6_gcs.md	HISTORICAL: B.6 GCS drift audit of the dead phantom chart prefix; NOTE line prepended, body untouched
+cutover/phase13_verify_report.md	HISTORICAL: phase 13 verify report using the dead phantom chart id; NOTE line prepended, body untouched
+cutover/stage1_diagnosis.md	HISTORICAL: stage 1 diagnosis using the dead phantom chart id; NOTE line prepended, body untouched
+cutover/stage1_restart_report.md	HISTORICAL: stage 1 restart report using the dead phantom chart id; NOTE line prepended, body untouched
+eval/answer_eval_gemini_baseline_20260511.log	HISTORICAL: retired Gemini baseline run log against the dead phantom chart id; NOTE line prepended, body untouched
+
+# --- D. Eval harness inputs (operator harness, gold answers are about the canonical chart) ---
+eval/eval_prompt_v1_0.txt	EVAL INPUT: system prompt of the operator eval harness states the canonical chart; cannot be synthetic without new gold answers; owner-later: parameterise with the harness
+eval/fixtures.json	EVAL INPUT: ground-truth queries and gold answers for the canonical chart; cannot be synthetic without new gold answers; owner-later: parameterise with the harness
+
+# --- E. Not ours to change in this PR ---
+ai-cli-bridge/marsys-ai-cli-bridge.service	OWNER-LATER: the OS user is derived from the native's personal email; deploy.yml references this file (SS ruling: do not touch in SS N-380)

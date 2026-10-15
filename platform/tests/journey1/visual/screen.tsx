@@ -84,7 +84,7 @@ createRoot(document.getElementById("root")!).render(
     {screen === "new" ? (
       <NewClientForm />
     ) : screen === "edit" ? (
-      <EditClientForm chart={chart} />
+      <EditClientForm chart={chart} ayanamshaEditPolicy="block_all" />
     ) : (
       <div className="j1-container">
         <section className="j1-chart-hero">

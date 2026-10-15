@@ -60,14 +60,15 @@ describe('query_signals — projection facet (WP-1.3(g) / LCA-7)', () => {
     expect(sig).not.toHaveProperty('dignity_score')
   })
 
-  it('projection: [subset] serves ONLY the requested columns', async () => {
+  it('projection: [subset] serves ONLY the requested columns (plus the always-served verification tier)', async () => {
     vi.mocked(mockQuery).mockClear()
     const result = await querySignalsCapability.handler(
       { chart_id: CHART_A, projection: ['signal_id', 'valence', 'orb_tightness', 'dignity_score'] }, {},
     )
     expect(result.is_error).toBe(false)
     const sig = servedSignal(result)
-    expect(Object.keys(sig).sort()).toEqual(['dignity_score', 'orb_tightness', 'signal_id', 'valence'])
+    // SS N-212 (M2): the row's verification tier is part of EVERY served row, whatever the projection
+    expect(Object.keys(sig).sort()).toEqual(['dignity_score', 'orb_tightness', 'signal_id', 'valence', 'verification_pass_status'])
   })
 
   it("projection: ['*'] makes the full column set reachable", async () => {
@@ -117,7 +118,7 @@ describe('query_signals — projection facet (WP-1.3(g) / LCA-7)', () => {
     expect(signalSelect).toContain('computed_salience')
     expect(signalSelect).toContain('signal_headline_text')
     // served row is projected down to the requested single column
-    expect(Object.keys(servedSignal(result))).toEqual(['signal_headline_text'])
+    expect(Object.keys(servedSignal(result)).sort()).toEqual(['signal_headline_text', 'verification_pass_status'])      // SS N-212 M2: the tier is always served
   })
 
   it('fences page/count SQL and partitions the response cache by build_id', async () => {

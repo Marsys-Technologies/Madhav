@@ -1,7 +1,7 @@
 """
 rebuild_d1_5a_bo_laksana.py — D-1.5a targeted rebuild for the missing-dependency fix
 
-Rebuilds bo_laksana for Abhisek's chart (482012f1) ONLY. Migration 437 added
+Rebuilds bo_laksana for the native's chart (482012f1) ONLY. Migration 437 added
 ga_vichara as a declared dependency (was missing, deferred since migration 367);
 bo_laksana's last build (22:05:07 UTC) predates ga_vichara's own corrected data
 (23:10:50 UTC) and must be re-run now that both the dependency edge exists and

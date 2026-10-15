@@ -155,6 +155,9 @@ read-only, and only writes `kala_field_clocks` / `kala_field_boundaries`
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -163,6 +166,7 @@ from typing import Any
 from panchang_engine.swiss_state import serialized_swiss_state
 
 from brahmagyan.graha_vocabulary import norm_graha
+from services.kala_core.vocab import GrahaId, LordKind, SignId, graha_node_id, lord_node_id, period_lord
 from . import uncertainty as U
 from .contracts import ClockApplicability
 
@@ -191,12 +195,16 @@ LEVEL_TEXT_BY_N: dict[int, str] = {1: "MD", 2: "AD", 3: "PD", 4: "SD", 5: "PrD"}
 LEVEL_DEPTH_WEIGHT: dict[str, float] = {"MD": 1.0, "AD": 0.7, "PD": 0.5, "SD": 0.3, "PrD": 0.15}
 LEVEL_ORDER: tuple[str, ...] = ("MD", "AD", "PD", "SD", "PrD")
 
-#: Standard Parashari sign-lordship table (see module docstring #5).
-SIGN_LORDS: dict[str, str] = {
-    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer": "Moon",
-    "Leo": "Sun", "Virgo": "Mercury", "Libra": "Venus", "Scorpio": "Mars",
-    "Sagittarius": "Jupiter", "Capricorn": "Saturn", "Aquarius": "Saturn",
-    "Pisces": "Jupiter",
+# Cara periods are rashi-valued in L1; route nodes remain graha-valued. The
+# typed period identity is resolved first, then this declared classical mapping
+# supplies the route's graha endpoint.
+SIGN_LORDS: dict[SignId, GrahaId] = {
+    SignId.ARIES: GrahaId.MARS, SignId.TAURUS: GrahaId.VENUS,
+    SignId.GEMINI: GrahaId.MERCURY, SignId.CANCER: GrahaId.MOON,
+    SignId.LEO: GrahaId.SUN, SignId.VIRGO: GrahaId.MERCURY,
+    SignId.LIBRA: GrahaId.VENUS, SignId.SCORPIO: GrahaId.MARS,
+    SignId.SAGITTARIUS: GrahaId.JUPITER, SignId.CAPRICORN: GrahaId.SATURN,
+    SignId.AQUARIUS: GrahaId.SATURN, SignId.PISCES: GrahaId.JUPITER,
 }
 
 #: The classical seven-graha chara-karaka candidate set (Sapta Chara
@@ -398,10 +406,10 @@ def fetch_degree_in_sign_by_graha(
 
 
 def _chart_dashas_row_count(chart_id: str, system_id: str, conn: Any) -> int:
-    row = conn.execute(
-        "SELECT COUNT(*) AS n FROM chart_dashas WHERE chart_id = %s AND system_id = %s",
+    row = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_row_count'),
         [chart_id, system_id],
-    ).fetchone()
+     ayanamsha_id="lahiri_chitrapaksha").fetchone()
     if row is None:
         return 0
     n = row["n"] if isinstance(row, dict) else row[0]
@@ -411,28 +419,18 @@ def _chart_dashas_row_count(chart_id: str, system_id: str, conn: Any) -> int:
 def _chart_dashas_covers_instant(
     chart_id: str, system_id: str, level_n: int, at_dt: datetime, conn: Any,
 ) -> bool:
-    row = conn.execute(
-        """
-        SELECT 1 FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n = %s
-          AND start_iso <= %s AND end_iso > %s
-        LIMIT 1
-        """,
+    row = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_covers_instant'),
         [chart_id, system_id, level_n, at_dt, at_dt],
-    ).fetchone()
+     ayanamsha_id="lahiri_chitrapaksha").fetchone()
     return row is not None
 
 
 def _chart_dashas_level1_rows(chart_id: str, system_id: str, conn: Any) -> list[dict]:
-    rows = conn.execute(
-        """
-        SELECT dasha_row_id, lord_graha, lord_sign, start_iso, end_iso, duration_days
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n = 1
-        ORDER BY start_iso ASC
-        """,
+    rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_level1_rows'),
         [chart_id, system_id],
-    ).fetchall()
+     ayanamsha_id="lahiri_chitrapaksha").fetchall()
     return _rows_as_dicts(
         rows, ["dasha_row_id", "lord_graha", "lord_sign", "start_iso", "end_iso", "duration_days"]
     )
@@ -504,31 +502,13 @@ def kp_window_redundancy(
         birth_dt = birth_dt.replace(tzinfo=timezone.utc)
     horizon_end = birth_dt + timedelta(days=FIELD_HORIZON_DAYS)
 
-    rows = conn.execute(
-        """
-        SELECT kp.level_n AS level_n,
-               (EXISTS (
-                   SELECT 1 FROM chart_dashas v
-                    WHERE v.chart_id = kp.chart_id
-                      AND v.ayanamsha_id = kp.ayanamsha_id
-                      AND v.system_id = %s
-                      AND v.level_n = kp.level_n
-                      AND v.lord_graha IS NOT DISTINCT FROM kp.lord_graha
-                      AND abs(extract(epoch FROM (v.start_iso - kp.start_iso))) <= %s
-                      AND abs(extract(epoch FROM (v.end_iso   - kp.end_iso)))   <= %s
-               )) AS has_twin
-          FROM chart_dashas kp
-         WHERE kp.chart_id = %s
-           AND kp.ayanamsha_id = %s
-           AND kp.system_id = %s
-           AND kp.start_iso >= %s
-           AND kp.end_iso   <= %s
-        """,
+    rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_kp_twins'),
         [
             KP_PARENT_SYSTEM_ID, tolerance_seconds, tolerance_seconds,
             chart_id, ayanamsha_id, KP_SYSTEM_ID, birth_dt, horizon_end,
         ],
-    ).fetchall()
+     ayanamsha_id=ayanamsha_id).fetchall()
     dict_rows = _rows_as_dicts(rows, ["level_n", "has_twin"])
 
     total = len(dict_rows)
@@ -1016,16 +996,10 @@ def compute_boundaries_for_system(
         sigma_t_birth_days=sigma_t_birth_days, sigma_t_source=sigma_t_source,
     )
 
-    all_rows = conn.execute(
-        """
-        SELECT dasha_row_id, level_n, lord_graha, lord_sign, parent_row_id,
-               start_iso, duration_days
-        FROM chart_dashas
-        WHERE chart_id = %s AND system_id = %s AND level_n BETWEEN 1 AND 4
-        ORDER BY level_n ASC, start_iso ASC
-        """,
+    all_rows = execute_governed_dasha_query(
+        conn, chart_id, dasha_query('kshetra_boundaries'),
         [chart_id, system_id],
-    ).fetchall()
+     ayanamsha_id=ayanamsha_id).fetchall()
     dict_rows = _rows_as_dicts(
         all_rows,
         ["dasha_row_id", "level_n", "lord_graha", "lord_sign", "parent_row_id", "start_iso", "duration_days"],
@@ -1171,15 +1145,10 @@ def lord_stack_at(chart_id: str, system_id: str, t_days: float, conn: Any) -> di
 
     out: dict[str, str] = {}
     for level, level_n in ((lv, n) for n, lv in LEVEL_TEXT_BY_N.items() if lv in supported_levels):
-        row = conn.execute(
-            """
-            SELECT lord_graha, lord_sign FROM chart_dashas
-            WHERE chart_id = %s AND system_id = %s AND level_n = %s
-              AND start_iso <= %s AND end_iso > %s
-            ORDER BY start_iso DESC LIMIT 1
-            """,
+        row = execute_governed_dasha_query(
+            conn, chart_id, dasha_query('kshetra_lord_at'),
             [chart_id, system_id, level_n, at_dt, at_dt],
-        ).fetchone()
+         ayanamsha_id="lahiri_chitrapaksha").fetchone()
         if row is None:
             continue
         row_d = row if isinstance(row, dict) else {"lord_graha": row[0], "lord_sign": row[1]}
@@ -1189,15 +1158,8 @@ def lord_stack_at(chart_id: str, system_id: str, t_days: float, conn: Any) -> di
     return out
 
 
-def _lord_to_graha(lord_identity: str) -> str:
-    """Translate a running-lord identity to a graha id for the promise
-    graph's `'graha:<...>'` node convention (module docstring #5): a sign
-    name maps through its classical ruler; a graha name passes through."""
-    return SIGN_LORDS.get(lord_identity, lord_identity)
-
-
 def _route_gain_and_sign_for_lord(
-    chart_id: str, event_class: str, graha: str, conn: Any,
+    chart_id: str, event_class: str, node_id: str, conn: Any,
 ) -> tuple[float, int]:
     """g_ell and sign_ell for one lord (§5.1 C-3): g = max route_gain over
     routes containing node 'graha:<lord>' for this event_class (0 if
@@ -1206,7 +1168,6 @@ def _route_gain_and_sign_for_lord(
     This builder's literal reading of "sign_ell = +1 if the lord's role in
     that route is supportive, -1 if the route row lists it in
     suppressed_by" -- see module docstring for the exact citation."""
-    node_id = f"graha:{graha}"
     rows = conn.execute(
         """
         SELECT route_gain, suppressed_by FROM kala_field_routes
@@ -1222,6 +1183,14 @@ def _route_gain_and_sign_for_lord(
     suppressed = best.get("suppressed_by") or []
     sign = -1 if len(suppressed) > 0 else 1
     return g, sign
+
+
+def _clock_route_node(system_id: str, lord_identity: str) -> str:
+    """Resolve a typed period lord to the graph's established graha endpoint."""
+    typed_lord = period_lord(system_id, lord_identity)
+    if typed_lord.kind is LordKind.SIGN:
+        return graha_node_id(SIGN_LORDS[typed_lord.value])
+    return lord_node_id(typed_lord)
 
 
 def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, conn: Any) -> float:
@@ -1245,8 +1214,8 @@ def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, 
     total = 0.0
     for level, lord in stack.items():
         depth_weight = LEVEL_DEPTH_WEIGHT[level]
-        graha = _lord_to_graha(lord)
-        g, sign = _route_gain_and_sign_for_lord(chart_id, event_class, graha, conn)
+        node_id = _clock_route_node(system_id, lord)
+        g, sign = _route_gain_and_sign_for_lord(chart_id, event_class, node_id, conn)
         total += depth_weight * sign * g
 
     r = math.tanh(total)

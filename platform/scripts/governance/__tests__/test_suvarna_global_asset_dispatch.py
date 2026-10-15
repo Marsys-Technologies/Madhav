@@ -263,6 +263,21 @@ class FakeGit:
         raise AssertionError(f"unexpected git call {args}")
 
 
+class FakeLive:
+    """The injected, read-only reader of the LIVE job image sha (what `gcloud run jobs describe` would answer). `queue` changes the answer
+    from the next read on (a redeploy); `error` makes it unreadable."""
+    def __init__(self, sha):
+        self.sha, self.error, self.queue, self.calls = sha, None, [], 0
+
+    def __call__(self):
+        self.calls += 1
+        if self.queue:
+            self.sha = self.queue.pop(0)
+        if self.error:
+            raise slw.LevelWaveRefusal([{"code": "LIVE_JOB_IMAGE_UNREADABLE", "detail": self.error}])
+        return self.sha
+
+
 class Dispatch:
     def __init__(self, fail=False):
         self.calls, self.fail = [], fail
@@ -333,29 +348,25 @@ def env(tmp_path):
     (nested / "__init__.py").write_text("@register('bg_nested_writer')\nclass N:\n    pass\n")
     outdir = tmp_path / "out"
     outdir.mkdir()
-    jobfile = tmp_path / "job-sha"
-    jobfile.write_text(sha_of("deadbeef") + "\n")
-    return {"repo": str(repo), "receipt": str(outdir / "receipt.json"), "jobfile": str(jobfile), "digests": digests, "tmp": tmp_path}
+    return {"repo": str(repo), "receipt": str(outdir / "receipt.json"), "live": FakeLive(sha_of("deadbeef")), "digests": digests, "tmp": tmp_path}
 
 
-def argv_for(env, *extra, asset=ASSET, anchor=CHART, commit=False, confirm=None, jobfile=True):
+def argv_for(env, *extra, asset=ASSET, anchor=CHART, commit=False, confirm=None):
     argv = ["--assets", asset, "--anchor-chart", anchor, "--receipt", env["receipt"], "--repo", env["repo"],
             "--deployed-sha", "deadbeef", "--deployed-job-sha", "deadbeef"]
-    if jobfile:
-        argv += ["--job-sha-file", env["jobfile"]]
     if commit:
         argv += ["--commit", "--confirm", confirm or "x"]
     return gad.build_parser().parse_args(argv + list(extra))
 
 
-def run(env, args, db=None, fp=None, git=None, dispatch=None, decls=DECLS, monotonic=None):
+def run(env, args, db=None, fp=None, git=None, dispatch=None, decls=DECLS, monotonic=None, live=None):
     db = db or FakeDB()
     fp = fp or FakeFp()
     git = git or FakeGit(deployed=env["digests"])
     out = Stream()
     mono = monotonic or (lambda: 0.0)
     code = gad.run_cli(args, connect=db.connect, fp_connect=fp.connect, git=git, out=out, sleep=lambda s: None, monotonic=mono,
-                       dispatch=dispatch, now=lambda: T0, decls=decls, fp_reader=fp.reader)
+                       dispatch=dispatch, now=lambda: T0, decls=decls, fp_reader=fp.reader, live_reader=live or env["live"])
     return code, [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
 
 
@@ -717,23 +728,41 @@ def test_image_skew_is_refused(env):
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["IMAGE_SKEW"]
 
 
-def test_the_deployed_shas_are_required_and_must_bind(env):
-    args = gad.build_parser().parse_args(["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"]])
-    code, ev = run(env, args)
-    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["DEPLOYED_JOB_SHA_REQUIRED"]
-    args = gad.build_parser().parse_args(["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"],
-                                          "--deployed-sha", "deadbeef", "--deployed-job-sha", "cafe"])
-    code, ev = run(env, args)
+def _bare_args(env, *extra, commit=False, confirm=None):
+    """No --deployed-sha / --deployed-job-sha at all: nothing is asserted by hand, the live image is the only source."""
+    argv = ["--assets", ASSET, "--anchor-chart", CHART, "--receipt", env["receipt"], "--repo", env["repo"]]
+    if commit:
+        argv += ["--commit", "--confirm", confirm or "x"]
+    return gad.build_parser().parse_args(argv + list(extra))
+
+
+def test_nothing_is_asserted_by_hand_and_a_stale_or_mismatched_assertion_refuses(env):
+    code, ev = run(env, _bare_args(env))
+    assert code == 0 and last(ev)["deployed_job_sha"] == sha_of("deadbeef")
+    env["live"].sha = sha_of("bb143edf2")
+    code, ev = run(env, argv_for(env))                                 # still asserting deadbeef: stale
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["LIVE_JOB_IMAGE_DIFFERS"]
+    code, ev = run(env, _bare_args(env, "--deployed-sha", "cafe"))
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["JOB_SHA_MISMATCH"]
 
 
-def test_commit_needs_the_job_sha_file_and_refuses_a_redeploy(env):
+def test_an_unreadable_live_image_refuses_fail_closed(env):
+    env["live"].error = "gcloud timed out"
+    code, ev = run(env, _bare_args(env))
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["LIVE_JOB_IMAGE_UNREADABLE"]
+    code, ev = run(env, _bare_args(env, commit=True, confirm="x"), db=FakeDB(), dispatch=Dispatch())
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["LIVE_JOB_IMAGE_UNREADABLE"]
+
+
+def test_a_redeploy_between_plan_and_commit_refuses_before_the_insert(env):
     token = plan_token(env)
-    code, ev = run(env, argv_for(env, commit=True, confirm=token, jobfile=False))
-    assert code == slw.EXIT_BAD_INPUT
-    pathlib.Path(env["jobfile"]).write_text(sha_of("a newer deploy") + "\n")
+    env["live"].queue = [sha_of("a newer deploy")]
     db = FakeDB()
     code, ev = run(env, argv_for(env, commit=True, confirm=token), db=db, dispatch=Dispatch())
+    assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["LIVE_JOB_IMAGE_DIFFERS"] and db.inserts("build_runs") == []
+    env["live"].sha = sha_of("deadbeef")
+    env["live"].queue = [sha_of("deadbeef"), sha_of("a newer deploy")]        # changes between the gates and the INSERT
+    code, ev = run(env, _bare_args(env, commit=True, confirm=token), db=db, dispatch=Dispatch())
     assert code == slw.REFUSAL_EXIT_CODE and codes_of(ev) == ["JOB_SHA_CHANGED"] and db.inserts("build_runs") == []
 
 
@@ -1212,8 +1241,9 @@ def test_the_duration_column_must_exist_in_plan_and_commit_mode(env):
 
 
 def test_the_duration_probe_is_the_runners_own_and_the_marker_is_in_the_real_asset_runner():
-    runner = " ".join((REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text().split())
-    assert " ".join(gad.DURATION_COLUMN_SQL.split()) in runner
+    # freeze exception 1/2: the probe (_duration_columns_present) now lives in writer_runtime_support; the completion UPDATE stays in asset_runner
+    probe_src = " ".join((REPO / "platform/python-sidecar/pipeline/orchestrator/writer_runtime_support.py").read_text().split())
+    assert " ".join(gad.DURATION_COLUMN_SQL.split()) in probe_src
     real = (REPO / "platform/python-sidecar/pipeline/orchestrator/asset_runner.py").read_text()
     for _rel, pattern, _what in gad.DURATION_MARKERS:
         assert any(pattern.search(t) for t in gad.duration_write_strings(real))          # the REAL write, matched as code
@@ -1268,7 +1298,7 @@ def test_a_redeploy_between_the_insert_and_the_dispatch_never_dispatches(env):
 
     def respond(sql, params):
         if sql.startswith("INSERT INTO build_runs"):
-            pathlib.Path(env["jobfile"]).write_text(sha_of("a newer deploy") + "\n")        # the redeploy lands right after the INSERT
+            env["live"].queue.append(sha_of("a newer deploy"))        # the redeploy lands right after the INSERT
         return orig(sql, params)
 
     db.respond = respond

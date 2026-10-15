@@ -11,11 +11,13 @@
  *   bodha_msr_signals → signal metadata (score, domain, signal_id, signal_name)
  *   school_signal_coverage → per-signal per-school classification (populated by Task A.0)
  *
- * NEVER writes to any table. Never references ABHISEK_CHART for real charts.
- * defaultSignals in the engines is the FALLBACK-OF-LAST-RESORT (guarded + warns).
+ * NEVER writes to any table. No chart is hardcoded anywhere in this package.
+ * The engines have no default signals: an empty result here makes the school not available.
  */
 import 'server-only'
 import { query } from '../db/client'
+import { PRIMARY_AYANAMSHA, normalizeAyanamshaId } from '../retrieval/chart_facts_helpers'
+import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '../retrieval/kp_frame'
 import type {
   ChartData,
   PlanetPosition,
@@ -63,12 +65,20 @@ const _toTypesSign = (factSign: string): string => factSign.toLowerCase()
 /**
  * Build a real ChartData for any chartId from L1 (chart_facts + chart_dashas).
  * Returns a ChartData with live planet positions, dasha state, and yogini state.
- * Does NOT reference ABHISEK_CHART or any hardcoded constant.
+ * Does NOT reference any hardcoded chart constant.
  */
 export async function buildChartData(
   chartId: string,
-  ayanamshaId: string = 'lahiri',
+  ayanamshaIdArg: string = PRIMARY_AYANAMSHA,
 ): Promise<ChartData> {
+  // Lahiri-primary (N-339): the default is the STORED id `lahiri_chitrapaksha` (the old
+  // short default 'lahiri' matched zero chart_facts rows). Any spelling is normalised by the
+  // PR-1 helper; an unknown id throws InvalidAyanamshaError, never a silent zero-row query.
+  // The school engines read ONE ayanamsha, so the raw-access "all" opt-out is not valid here.
+  const ayanamshaId = normalizeAyanamshaId(ayanamshaIdArg)
+  if (ayanamshaId === null) {
+    throw new Error('buildChartData reads one ayanamsha; "all" is not valid here')
+  }
   // 1. Planet positions from chart_facts
   const planetsResult = await query<{
     graha_name: string
@@ -215,7 +225,9 @@ export async function buildChartData(
     }
   }
 
-  // 6. KP sub-lords from chart_facts
+  // 6. KP sub-lords from chart_facts. KP has ONE frame by doctrine (SS N-342 / N-359): this read
+  //    is pinned to the Krishnamurti ayanamsha whatever ayanamsha the rest of the ChartData is
+  //    built in (the Lahiri primary), and the result says so (`kpSubLordsFrame`).
   const kpResult = await query<{
     bhava_or_planet: string
     sub_lord: string
@@ -225,7 +237,7 @@ export async function buildChartData(
      WHERE chart_id = $1
        AND ayanamsha_id = $2
        AND fact_type = 'kp_sub_lord'`,
-    [chartId, ayanamshaId],
+    [chartId, KP_FRAME_AYANAMSHA],
   )
 
   const kpSubLords: Record<string, string> = {}
@@ -246,6 +258,7 @@ export async function buildChartData(
     yoginiDasha,
     charaPadas: Object.keys(charaPadas).length > 0 ? charaPadas : undefined,
     kpSubLords: Object.keys(kpSubLords).length > 0 ? kpSubLords : undefined,
+    kpSubLordsFrame: Object.keys(kpSubLords).length > 0 ? KP_FRAME_LABEL : undefined,
     pendingFlags: [],   // Tājika + BNN flags resolved via Task B; adapter clears them
   }
 }
@@ -258,7 +271,7 @@ export async function buildChartData(
  *
  * coverageTypes defaults to ['primary'] for own-tradition signals.
  * Falls through to an empty array if school_signal_coverage is not yet populated
- * (Task A.0 prerequisite) — engines' defaultSignals then acts as guarded fallback.
+ * (Task A.0 prerequisite) — the school is then reported not available (no default signals).
  */
 export async function buildSchoolSignals(
   chartId: string,

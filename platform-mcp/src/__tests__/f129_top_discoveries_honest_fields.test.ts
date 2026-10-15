@@ -24,15 +24,16 @@ describe('F-129 exit — top_discoveries query fields', () => {
   })
 
   it('selects hypothesis_text in the discResult query block', () => {
+    // PR-4 (SS N-342): the query is now primary-only + family-collapsed (LIMIT is the 3rd bind).
     // Anchor: the `const discLimit` block is F-129's query (not F-135's ranked_themes,
     // which is built from a different query/table entirely).
-    const discBlock = src.match(/const discLimit[\s\S]{0,1000}LIMIT \$2[\s\S]{0,60}`, \[chart_id/)
+    const discBlock = src.match(/const discLimit[\s\S]{0,3500}LIMIT \$3[\s\S]{0,60}`, \[chart_id/)
     expect(discBlock).not.toBeNull()
     expect(discBlock![0]).toMatch(/hypothesis_text/)
   })
 
   it('selects depth_reading and why_an_acharya_misses_it alongside hypothesis_text', () => {
-    const discBlock = src.match(/const discLimit[\s\S]{0,1000}LIMIT \$2[\s\S]{0,60}`, \[chart_id/)
+    const discBlock = src.match(/const discLimit[\s\S]{0,3500}LIMIT \$3[\s\S]{0,60}`, \[chart_id/)
     expect(discBlock).not.toBeNull()
     expect(discBlock![0]).toMatch(/depth_reading/)
     expect(discBlock![0]).toMatch(/why_an_acharya_misses_it/)

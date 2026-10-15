@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.bootstrap_launch_input/1#codex",
+  "title": "KĀLA-YANTRA v3 bootstrap launch input of the OpenAI Codex CLI engine (relaunch plan v2.7 §7 bootstrap launches and launch qualification, §14 B-0c / B-1)",
+  "description": "A bootstrap launch input with \"engine\": \"codex\": everything bootstrap_launch_input.json requires of a Claude Code launch except its Claude-only fields (claude_bin, claude_min_version, permission_mode, max_turns, mcp_config, mcp_config_sha256, extra_lean_flags, disallowed_tools — any of them refuses), plus codex_bin, codex_min_version, sandbox, network, writable_dirs and, optionally: output_schema with output_schema_sha256; work_root (\"job\" for a reviewer) with item_worktree. Shape only. Not checked by this schema, and checked by fleet/kyboot.py check before any launch: every rule listed for a Claude launch input that applies (manifest and supervisor first; paths; worktree and branch policy; hashes; card and packet in the prompt; scratch and state locations; environment allowlist; effort per kind; deadline; card_path and output_schema as manifest components; the item lock) and, for Codex: writable dirs exist; read-only has none and no network; no writable root holds or lies in the worktree's common git directory; a builder says commit_mode \"launcher\" and network false, and its result.json is a job_result_launcher_commit document; the receipt <role>-<model> says engine codex and binds program path, sha256 and version, model, effort, sandbox, network, writable_dirs, disabled features, --ignore-user-config / --ignore-rules, output schema hash, AGENTS.md / ~/.codex/AGENTS.md / ~/.codex/hooks.json hashes, environment names, child PATH, zdotdir, harness and the launch line flag for flag; the program's version against codex_min_version (run only for the program that receipt binds). After every Codex job kyboot.py reads the common git directory's config and hooks again (and, for a job-rooted run, the item working copy's HEAD and status): any change fails the job. There is no turn cap: Codex has no turn limit, so the deadline is the only one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "engine",
+    "job_id",
+    "item",
+    "kind",
+    "role",
+    "worktree",
+    "branch",
+    "base_sha",
+    "codex_bin",
+    "codex_min_version",
+    "model",
+    "effort",
+    "sandbox",
+    "network",
+    "writable_dirs",
+    "prompt_path",
+    "prompt_sha256",
+    "card_path",
+    "card_sha256",
+    "packet_path",
+    "packet_sha256",
+    "job_scratch",
+    "stdout_path",
+    "stderr_path",
+    "tmp_path",
+    "state_path",
+    "env",
+    "deadline",
+    "plan_version",
+    "approved_source_commit"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.bootstrap_launch_input/1"
+    },
+    "engine": {
+      "const": "codex"
+    },
+    "job_id": {
+      "description": "One safe path component: it names <KY_SCRATCH>/jobs/<job_id> and <KY_RUN>/jobs/<job_id>. Its action ids ACT-launch-<job_id> and ACT-submit-<job_id> must fit the 160 characters of an action id (schemas/action.json); kyboot.py refuses a job id whose action ids would not.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "item": {
+      "type": "string",
+      "pattern": "^KV3-B-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "kind": {
+      "description": "The job kind; it sets the turn cap kyboot.py enforces (plan §7): BUILD 150, REWORK 100, VERIFY 60, ARTIFACT 60, PRE-ACCEPT 40, RULING 30, SURROGATE 30 (the owner surrogate's ruling job), PLAN 300.",
+      "enum": [
+        "BUILD",
+        "REWORK",
+        "ARTIFACT",
+        "VERIFY",
+        "PRE-ACCEPT",
+        "RULING",
+        "SURROGATE",
+        "PLAN"
+      ]
+    },
+    "role": {
+      "description": "The launch configuration's role: it names the qualification receipt <KY_RUN>/QUALIFICATIONS/<role>-<model>.json, which must be PASS, say engine codex and bind this launch. The planner is Claude Code only (kyloop.py fixes its launch line).",
+      "enum": [
+        "bootstrap-builder",
+        "bootstrap-reviewer",
+        "surrogate"
+      ]
+    },
+    "worktree": {
+      "$ref": "#/$defs/text"
+    },
+    "branch": {
+      "$ref": "#/$defs/text"
+    },
+    "base_sha": {
+      "$ref": "#/$defs/commit"
+    },
+    "codex_bin": {
+      "$ref": "#/$defs/text"
+    },
+    "codex_min_version": {
+      "description": "The lowest `codex --version` (X.Y.Z; a pre-release suffix is not compared) this launch accepts; the receipt's codex_version must equal the program's whole.",
+      "const": "0.162.0"
+    },
+    "model": {
+      "description": "The OpenAI model of the Codex roster: gpt-6.1-sol for every Codex agent (owner decision 2026-10-12). Another model needs a schema change (reviewed), as a Claude model does.",
+      "enum": [
+        "gpt-6.1-sol"
+      ]
+    },
+    "effort": {
+      "enum": [
+        "high",
+        "xhigh"
+      ],
+      "description": "high (xhigh for PLAN, which Codex does not run). Never ultra (sub-agents) nor persistent (persistent mode)."
+    },
+    "sandbox": {
+      "description": "-s: read-only (reviewers) or workspace-write (builders). danger-full-access never.",
+      "enum": [
+        "read-only",
+        "workspace-write"
+      ]
+    },
+    "network": {
+      "description": "sandbox_workspace_write.network_access. false for a builder (the launcher pushes for it) and for read-only; a job-rooted run's own choice (the reviewers: false).",
+      "type": "boolean"
+    },
+    "work_root": {
+      "description": "Where -C points (default \"worktree\"). \"job\": the job_scratch is -C and, with its TMPDIR, all the job may write (/tmp is excluded on every line) (workspace-write, no writable_dirs, --skip-git-repo-check); the item's working copy is read by absolute path, named by item_worktree and in the prompt as a line ITEM_WORKTREE=<item_worktree>, and its HEAD and git status must be the same after the job (cockpit ruling E1: the reviewers).",
+      "enum": [
+        "worktree",
+        "job"
+      ]
+    },
+    "commit_mode": {
+      "description": "Required of a Codex builder (worktree-rooted, workspace-write), and only there (cockpit ruling E7): \"launcher\" — the job has no write access to any git directory and no network; it leaves its changes in the working copy and a proposed commit_message in result.json (schemas/job_result_launcher_commit.json); the launcher commits and pushes outside the sandbox.",
+      "enum": [
+        "launcher"
+      ]
+    },
+    "item_worktree": {
+      "description": "work_root \"job\" only, and then required: the item's working copy, read by absolute path — the same directory as worktree, which the branch, base and policy checks hold to.",
+      "$ref": "#/$defs/text"
+    },
+    "writable_dirs": {
+      "description": "Extra writable roots (--add-dir) besides -C and, for a builder, the job's own folder; empty for read-only and for a job-rooted run. Never a git directory, a path inside one or a folder that holds the worktree's common git directory (derived with git and checked): a Codex job writes no git directory.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^/[^\\n]*$"
+      }
+    },
+    "prompt_path": {
+      "$ref": "#/$defs/text"
+    },
+    "prompt_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "card_path": {
+      "$ref": "#/$defs/text"
+    },
+    "card_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "packet_path": {
+      "$ref": "#/$defs/text"
+    },
+    "packet_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "job_scratch": {
+      "$ref": "#/$defs/text"
+    },
+    "stdout_path": {
+      "$ref": "#/$defs/text"
+    },
+    "stderr_path": {
+      "$ref": "#/$defs/text"
+    },
+    "tmp_path": {
+      "$ref": "#/$defs/text"
+    },
+    "state_path": {
+      "$ref": "#/$defs/text"
+    },
+    "env": {
+      "description": "The job's whole environment (env -i semantics). Names and values are checked by kyboot.py against the plan §7 allowlist; JOB_SCRATCH (= job_scratch) and KY_SCRATCH (= the supervisor's resolved campaign scratch folder) are required there. This schema cannot type an open map.",
+      "type": "object"
+    },
+    "deadline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_version": {
+      "const": "2.7"
+    },
+    "approved_source_commit": {
+      "$ref": "#/$defs/commit"
+    },
+    "output_schema": {
+      "description": "Optional --output-schema: the JSON schema of the job's final message; a manifest component, hashed. A job with one that leaves no result.json is judged on final_message.txt.",
+      "$ref": "#/$defs/text"
+    },
+    "output_schema_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "sandbox": {
+            "const": "read-only"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      },
+      "then": {
+        "properties": {
+          "network": {
+            "const": false
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "output_schema"
+        ]
+      },
+      "then": {
+        "required": [
+          "output_schema_sha256"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "output_schema_sha256"
+        ]
+      },
+      "then": {
+        "required": [
+          "output_schema"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "work_root": {
+            "const": "job"
+          }
+        },
+        "required": [
+          "work_root"
+        ]
+      },
+      "then": {
+        "required": [
+          "item_worktree"
+        ],
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "writable_dirs": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "item_worktree"
+        ]
+      },
+      "then": {
+        "required": [
+          "work_root"
+        ],
+        "properties": {
+          "work_root": {
+            "const": "job"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "work_root": {
+            "const": "worktree"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      },
+      "then": {
+        "required": [
+          "commit_mode"
+        ],
+        "properties": {
+          "network": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "commit_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "sandbox": {
+            "const": "workspace-write"
+          },
+          "work_root": {
+            "const": "worktree"
+          }
+        },
+        "required": [
+          "sandbox"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}

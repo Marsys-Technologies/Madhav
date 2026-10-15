@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v18",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "DENS-SERVED-N212-DENSITY-CONTRACTS-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v17.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:d84fd0ab6305e135aa1805b3c93a388171b5f395d9085d0a7bb85b37e2002bbe",
+        "report_hash": "sha256:e35350a1205ea310be1d686d1832c3fbc78e771b54f7145b426b31550df4ddbd"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "915fe924f4a3819bfdc803812dc41ae9e1adff7f",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:24add1c259558f4ef1435fc51206ab2b472c6209f3e8b1c097198a322ee1d317",
+        "capability_content_hash": "sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6",
+        "source_catalog_fingerprint": "sha256:6cb6a46675a178cdf8cf77b358da991cfa2bbc1c0a459c6d39b13d72e3e887ca",
+        "semantic_review_fingerprint": "sha256:4c74135b2e38cf9dbbfff4119a8ef0603e175a76b1944436c41c0c57289c7dc4",
+        "producer_contract_fingerprint": "sha256:f366341d04a6c8593141b53527d43aff55072a60468cef85d70f164649b25fe8"
+    },
+    "capability_content_hash": "sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6",
+    "report_hash": "sha256:0e631feaf231cfdbdb5c546017ceabd7857696293778deb7c86050c3ba6a09f4",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "Dens.served workstream (SS N-211 / N-212, branch suvarna/dens-served, review rounds 1-3, merged with origin/main 745f5c5e1 after the per-asset served fence #3236): density_contract declarations, empty_reason and paginated disclosure were added to L0/L1/L2 query capabilities and traverse_chart_graph's tier column, so the capability estate census and the knowledge snapshot were regenerated (source_catalog_fingerprint sha256:a44390a -> sha256:6cb6a46, snapshot file sha256:d1bd325 -> sha256:24add1c, capability_content_hash sha256:d84fd0a -> sha256:90d63b9, report_hash sha256:e35350a -> sha256:0e631fe). semantic_review_fingerprint and producer_contract_fingerprint coincide with v17's; no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v17; no acceptance logic or criterion changed. The snapshot was regenerated with its committed generated_at (182 SCUs) and the census with its committed generated_at. Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}

@@ -254,6 +254,9 @@ def compute_permission(
     # the LIVE-VERIFIED system_id list (see module docstring correction),
     # not G-2's dasha_data.DASHA_SYSTEMS default.
     if dasha_periods is not None:
+        if conn is not None:
+            from services.gochara_kernel.dasha_read import validate_live_dasha_periods
+            validate_live_dasha_periods(chart_id, dasha_periods, ayanamsha_id)
         periods = dasha_periods
     else:
         with savepoint_scope(conn, "dasha_periods"):
@@ -275,10 +278,22 @@ def compute_permission(
     # context, not per-target geometry).
     sade_sati_active = False
     sade_sati_detail: dict = {}
-    if targets:
+    # SS N-412 (6): "not active" is only a finding when the ayanamsha's sade-sati facts were actually read. An empty read
+    # (no rows for this ayanamsha, no connection, no target, a failed read) is NO DATA, and says so with an explicit
+    # `empty_reason` (§N.6.4 density contract): it must never read as a silent "not active".
+    sade_sati_empty_reason: Optional[str] = None
+    if not targets:
+        sade_sati_empty_reason = "sade_sati not evaluated: no resonance target was supplied (the check needs one for event_class context)"
+    else:
         try:
             with savepoint_scope(conn, "sade_sati_permission"):
-                sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn)
+                sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn, ayanamsha_id=ayanamsha_id)
+                if not sentences:
+                    sade_sati_empty_reason = (
+                        f"no sade_sati_cycle/sade_sati_phase facts were read for chart {chart_id} at ayanamsha_id={ayanamsha_id} "
+                        "(no database connection, an unbuilt chart, or no ga_sade_sati build for this ayanamsha): "
+                        "'not active' is NOT asserted, the state is unknown"
+                    )
                 for s in sentences:
                     start_iso = s.detail.get("phase_start_iso")
                     end_iso = s.detail.get("phase_end_iso")
@@ -292,8 +307,14 @@ def compute_permission(
                         break
         except Exception as exc:  # noqa: BLE001 -- honest degrade, never crash PERMISSION
             logger.info("[permission] sade_sati_phase check failed: %s", exc)
-    systems.append({"system_id": "sade_sati", "active": sade_sati_active,
-                     "weight": SYSTEM_WEIGHTS["sade_sati"], "detail": sade_sati_detail})
+            sade_sati_empty_reason = f"sade_sati_phase read failed ({type(exc).__name__}): 'not active' is NOT asserted, the state is unknown"
+    sade_sati_entry: dict = {"system_id": "sade_sati", "active": sade_sati_active,
+                             "weight": SYSTEM_WEIGHTS["sade_sati"], "detail": sade_sati_detail}
+    if sade_sati_empty_reason is not None and not sade_sati_active:
+        sade_sati_entry["state"] = "no_data"
+        sade_sati_entry["empty_reason"] = sade_sati_empty_reason
+        sade_sati_entry["detail"] = {"empty_reason": sade_sati_empty_reason}
+    systems.append(sade_sati_entry)
 
     # 9: Guru-Sani double transit (Jupiter+Saturn only, per module docstring).
     #

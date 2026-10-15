@@ -137,6 +137,10 @@ describe('Protected public-schema migration workflow contract', () => {
     expect(job.if).toContain('inputs.ai_metering_schema_migration == true')
     expect(job.if).toContain('inputs.gochara_schema_migration == true')
     expect(job.if).toContain('inputs.gochara_contracts_schema_migration == true')
+    expect(workflow.on.workflow_dispatch.inputs.kala_schema_migration).toBeTruthy()
+    expect(job.if).toContain('inputs.kala_schema_migration == true')
+    const apply = (job.steps ?? []).find((step) => step.name === 'Apply exact protected public-schema migrations')
+    expect(apply?.env?.APPLY_KALA_SCHEMA_MIGRATION).toContain('inputs.kala_schema_migration')
   })
 
   it('Pravāha A5.1: the Gochara contract migrations 1153-1157 apply ONLY through the window, in order', () => {

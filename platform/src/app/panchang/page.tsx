@@ -16,6 +16,7 @@ import { Suspense } from 'react'
 import { format } from 'date-fns'
 import { PanchangClientView } from './components/PanchangClientView'
 import { mapSidecarResponse } from '@/lib/panchang/sidecar_mapper'
+import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
 import type { SearchParams } from 'next/dist/server/request/search-params'
 
 // Default location: Bhubaneswar (per brief D1 decisions + query_panchanga.ts constants)
@@ -54,6 +55,12 @@ async function fetchPanchangSSR(
 }
 
 export default async function PanchangPage({ searchParams }: PanchangPageProps) {
+  // SS N-398: the page verifies the login itself, BEFORE the sidecar fetch.
+  // panchang/layout.tsx checks too, but a crafted RSC request can skip a layout
+  // (see clients/[id]/layout.tsx), and proxy.ts only checks the cookie's shape.
+  // Plain /login: only /share/ and /clients/ are allowed to carry `?next=`.
+  await requireActiveUserPage()
+
   const params = await searchParams
   const today = format(new Date(), 'yyyy-MM-dd')
 

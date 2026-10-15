@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Test double for git (B-0c control tests: kyveto's owner-decisions blob comparison). It writes nothing.
+
+Understands exactly two read-only forms:
+  git -C <repo> rev-parse --verify --quiet <commit>:<path>   the blob id from <repo>/blobs.json
+                                                             ({"<commit>:<path>": "<blob id>"}); an unknown
+                                                             revision exits 1 with no output, as git does
+  git -C <repo> rev-parse --show-toplevel                    <repo> when <repo>/.git exists, else exit 128
+                                                             ("not a git repository"), as git does
+Any other invocation exits 64 so that an unexpected call fails loudly.
+"""
+import json
+import os
+import sys
+
+a = sys.argv[1:]
+if len(a) == 4 and a[0] == "-C" and a[2:] == ["rev-parse", "--show-toplevel"]:
+    if not os.path.lexists(os.path.join(a[1], ".git")):
+        sys.exit(128)
+    print(os.path.realpath(a[1]))
+    sys.exit(0)
+if len(a) != 6 or a[0] != "-C" or a[2:5] != ["rev-parse", "--verify", "--quiet"]:
+    sys.exit(64)
+try:
+    table = json.load(open(os.path.join(a[1], "blobs.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(128)
+blob = table.get(a[5])
+if blob is None:
+    sys.exit(1)
+print(blob)

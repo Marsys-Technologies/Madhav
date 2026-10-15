@@ -93,12 +93,20 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       key_hash: string
       user_uid: string
       model_family: string | null
+      owner_status: string | null
+      owner_role: string | null
     }>(
       // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28).
       // model_family added (M6 migration 384 2026-07-01).
-      `SELECT key_id, key_hash, user_uid, model_family
-       FROM mcp_api_keys
-       WHERE key_id = $1 AND revoked_at IS NULL
+      // The key OWNER's profile is read in the same round trip (LEFT JOIN on the
+      // primary key): a key is only usable while its owner is 'active'. The check is
+      // done below in code so it applies to a missing profile row too (fail closed).
+      // The key row itself is never altered, so re-enabling the user restores it.
+      `SELECT k.key_id, k.key_hash, k.user_uid, k.model_family,
+              p.status AS owner_status, p.role AS owner_role
+       FROM mcp_api_keys k
+       LEFT JOIN profiles p ON p.id = k.user_uid
+       WHERE k.key_id = $1 AND k.revoked_at IS NULL
        LIMIT 1`,
       [key_id]
     )
@@ -113,6 +121,10 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
     const valid = verifyKeyTail(tail, row.key_hash)
     if (!valid) return null
 
+    // Owner must be active. Same denial shape as a revoked key (null), and no
+    // last_used_at touch for a key that was refused.
+    if (row.owner_status !== 'active') return null
+
     // Update last_used_at — fire-and-forget (non-fatal on failure).
     void query(
       `UPDATE mcp_api_keys SET last_used_at = now() WHERE key_id = $1`,
@@ -121,7 +133,9 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       console.error('[mcp:auth] last_used_at update failed', err)
     })
 
-    const role = await resolveMcpPrincipalRole(row.user_uid)
+    // Role comes from the profile row joined above (no extra round trip). Same
+    // mapping as resolveMcpPrincipalRole: anything but 'super_admin' is 'guest'.
+    const role: 'guest' | 'super_admin' = row.owner_role === 'super_admin' ? 'super_admin' : 'guest'
 
     return {
       user_uid: row.user_uid,
@@ -152,23 +166,38 @@ export function sanitizeModelFamily(
 }
 
 /**
- * Resolve the Firebase role for a given user UID.
- * Reads from the profiles table; defaults to 'guest' if no row found.
+ * Resolve the Firebase role for a given user UID, refusing inactive principals.
+ *
+ * Reads the profiles table. A profile whose status is not 'active' (pending or
+ * disabled) AND a missing profile row both resolve to 'inactive'; so does a failed
+ * lookup (fail closed). 'inactive' is not a privilege level: `authorizeChartAccess`
+ * maps it to 'deny', so every route that feeds this role into the chart-access brain
+ * refuses a disabled owner without any per-route change.
  * Used by both the Bearer-key path and the OAuth path.
  */
 export async function resolveMcpPrincipalRole(
   userUid: string
-): Promise<'guest' | 'super_admin'> {
+): Promise<'guest' | 'super_admin' | 'inactive'> {
   try {
-    const { rows } = await query<{ role: string }>(
-      `SELECT role FROM profiles WHERE id = $1 LIMIT 1`,
+    const { rows } = await query<{ role: string; status: string | null }>(
+      `SELECT role, status FROM profiles WHERE id = $1 LIMIT 1`,
       [userUid]
     )
-    const r = rows[0]?.role
-    return r === 'super_admin' ? 'super_admin' : 'guest'
+    const row = rows[0]
+    if (!row || row.status !== 'active') return 'inactive'
+    return row.role === 'super_admin' ? 'super_admin' : 'guest'
   } catch {
-    return 'guest'
+    return 'inactive'
   }
+}
+
+/**
+ * True only when `userUid` has a profile row with status 'active'. For the OAuth
+ * principal paths (token issue / session-to-code), which need a yes/no and not a role.
+ * Fails closed on a missing row or a DB error.
+ */
+export async function isMcpOwnerActive(userUid: string): Promise<boolean> {
+  return (await resolveMcpPrincipalRole(userUid)) !== 'inactive'
 }
 
 /**

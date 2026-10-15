@@ -10,6 +10,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SS_CATEGORIES = [
   'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
@@ -36,7 +38,9 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
     'Covers 15 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    // Plain literal on purpose: this is a platform-mcp codegen PILOT descriptor (registry_manifest.ts), whose input_schema must be
+    // statically evaluable. Equality with KP_AWARE_AYANAMSHA_ID_TEXT is pinned by __tests__/kp_descriptor_text.test.ts.
+    ayanamsha_id: { type: 'string', description: 'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.' },
     categories:   { type: 'array',  description: 'Subset of Sade Sati categories.', items: { type: 'string' } },
     all: {
       type: 'boolean',
@@ -68,13 +72,13 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
   },
   // F-D18 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6 pt.4): was undeclared despite already
   // implementing the substance (window filter with disclosed periods_dropped_outside_window
-  // + window_note + drill_uri, per B.10 — never a silent drop). empty_reason: false is an
-  // honest gap, not a violation — there is no zero-row empty_reason field in the handler
-  // below (only the always-on window-drop disclosure, a distinct mechanism).
+  // + window_note + drill_uri, per B.10 — never a silent drop). DENS-SERVED (SS N-212 M3): the handler
+  // now also returns `empty_reason` on a zero-row page (it was declared false while this capability
+  // earned a Dens PASS), distinct from the window-drop disclosure.
   density_contract: {
     paginated: true,
     facets: ['ayanamsha_id', 'categories', 'all'],
-    empty_reason: false,
+    empty_reason: true,
   },
   async handler(args, _ctx) {
     try {
@@ -96,28 +100,30 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, categories, fetchLimit, fetchOffset]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
       // F-D20 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `fact_category, ayanamsha_id,
       // fact_key` alone (all:true path) — a non-total order. Confirmed live: 48 rows share
       // this exact sort key for several (category, ayanamsha, key) combinations on the
       // canonical chart (e.g. sade_sati_phase_quarter/krishnamurti/quarter_end_iso), so
       // LIMIT/OFFSET pagination across them was undefined/unstable order. Adding
       // fact_subject, fact_id (the table's own PK) makes this a genuine total order.
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, fact_id LIMIT $3 OFFSET $4`
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, fact_subject, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rawRows = result.rows ?? []
+      const rawRows = kp.label(normalizeNarrationRows(result.rows))
 
       if (all) {
         return {
-          content: { chart_id: chartId, categories, rows: rawRows, total: rawRows.length, all: true },
+          content: {
+            chart_id: chartId, ...kp.echo(rawRows), categories, rows: rawRows, total: rawRows.length, all: true,
+            ...(rawRows.length === 0 ? { empty_reason: `No Sade Sati / Saturn-period facts for chart ${chartId} in ${categories.length} categories${kp.aya.id ? ` at ayanamsha '${kp.aya.id}'` : ''} (all:true).` } : {}),
+          },
           is_error: false,
         }
       }
@@ -127,9 +133,12 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories,
+          chart_id: chartId, ...kp.echo(pageRows), categories,
           rows: pageRows,
           total: pageRows.length,
+          ...(pageRows.length === 0
+            ? { empty_reason: `No Sade Sati / Saturn-period fact in the current+adjacent window for chart ${chartId} (${categories.length} categories${kp.aya.id ? `, ayanamsha '${kp.aya.id}'` : ''}); ${groupsDropped} period(s) fell outside it (pass all:true).` }
+            : {}),
           total_before_window_filter: totalBeforeFilter,
           total_after_window_filter: filteredRows.length,
           periods_dropped_outside_window: groupsDropped,

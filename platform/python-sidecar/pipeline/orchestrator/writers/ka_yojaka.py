@@ -1,10 +1,14 @@
 """
-ka_yojaka writer — activation-predicate bridge (L3 K3)
+ka_yojaka writer — candidate F1 promise graph, class-grained (K2-1b)
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
-NEVER writes to any bodha_* table
+NEVER writes to L0, L1 or bodha_* source tables. The production entry point
+builds sourced L1 formations/conclusions, typed cancellations and L2 testimony.
+Unknown bindings and targets remain explicit nulls. The template implementation
+below is retained as legacy_testimony_fixture for historical regression oracles;
+it is not dispatched by run()/run_substep().
 
-D6 (Kāla completeness v2): reads bodha_cgm_nodes pagerank centrality and
+D6 (historical template fixture): reads bodha_cgm_nodes pagerank centrality and
 bodha_cdlm_cells domain-link strength to enrich each predicate's
 dasha_eligibility_rule with a cgm_centrality_weight field. This allows
 ka_sangam to prioritize predicates whose primary graha is a graph hub.
@@ -38,6 +42,11 @@ from brahmagyan.graha_vocabulary import to_title
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
+from services.ka_yojaka.promise_adapter import build_bundle
+from services.kala_core.ontology import CLASS_ROSTER
+from services.kala_core.promise.candidate import building_candidate, natal_pin, pin_input_vector
+from pipeline.orchestrator.writers import SubStep
+import psycopg.rows
 from services.ka_temporal import (
     extract_lords_from_config,
     extract_lords_from_text,
@@ -61,10 +70,115 @@ DISTRIBUTION_YOGA_MIN_GRAHAS = 6
 @register('ka_yojaka')
 class KaYojakaWriter(WriterBase):
     asset_id = 'ka_yojaka'
+    has_substeps = True
 
     def run(self, ctx) -> WriterResult:
+        if ctx.dry_run:
+            return WriterResult(self.asset_id, 0, notes='dry_run=True')
+        return super().run(ctx)
+
+    def plan_substeps(self, ctx):
+        # Pure planning: no DELETE, upstream SELECT, or mutation of ctx/config.
+        # The null-class grain retains formations with no sourced event binding.
+        return [SubStep(f'class:{c}') for c in (*CLASS_ROSTER, 'unqualified')]
+
+    def run_substep(self, ctx, step) -> WriterResult:
+        if step.key not in {s.key for s in self.plan_substeps(ctx)}:
+            raise ValueError('unknown promise class substep')
+        if ctx.dry_run:
+            return WriterResult(self.asset_id, 0, notes='dry_run=True')
+        chart_id = ctx.config['chart_id']
+        generation = str(ctx.config.get('candidate_generation') or f'candidate:{ctx.build_id}')
+        if not generation.startswith('candidate:') or not generation.removeprefix('candidate:'):
+            raise ValueError('promise writer requires an unpublished candidate: generation')
+        # Checking the actual head prevents a formerly published candidate from
+        # being overwritten. A prefix alone cannot establish publication state.
+        conn = ctx.db_conn
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            pin = natal_pin(building_candidate(cur, chart_id, generation, ctx.build_id))
+            source_params = (chart_id, pin['build_id'], pin['ayanamsha_id'])
+            cur.execute('''SELECT fact_id, ayanamsha_id, fact_category, fact_subject,
+                          fact_key, fact_value_num, fact_value_text, fact_value_jsonb,
+                          citation_ref, verification_pass_status, unit FROM chart_facts
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            facts = cur.fetchall()
+            # Exact locator resolution, never citation text or engine-ref syntax.
+            refs = sorted({f['citation_ref'] for f in facts if f.get('citation_ref')})
+            served_locators = []
+            if refs:
+                cur.execute('''SELECT DISTINCT text_id || ':' || verse_ref AS locator
+                    FROM classical_text_chunks WHERE text_id || ':' || verse_ref = ANY(%s)''', (refs,))
+                served_locators = [r['locator'] for r in cur.fetchall()]
+            cur.execute('''SELECT f.id, f.ayanamsha_id, f.yoga_canonical_id, f.fired,
+                          to_jsonb(f)->>'verification_pass_status' AS verification_pass_status,
+                          f.constituent_fact_ids, f.constituent_planets, f.bhanga_active,
+                          f.bhanga_rule_fired, f.grounds_jsonb, c.formation_rule_jsonb,
+                          c.classical_citations, c.bhanga_rules_jsonb
+                          FROM ga_yoga_firings f LEFT JOIN brahma_yoga_catalog c
+                          ON c.canonical_id = f.yoga_canonical_id WHERE f.chart_id = %s
+                          AND f.build_id = %s AND f.ayanamsha_id = %s''', source_params)
+            firings = cur.fetchall()
+            cur.execute('''SELECT signal_id, ayanamsha_id, constituent_facts_array,
+                          configuration_jsonb FROM bodha_msr_signals WHERE chart_id = %s
+                          AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            signals = cur.fetchall()
+            cur.execute('''SELECT edge_id, ayanamsha_id, edge_properties_jsonb FROM bodha_cgm_edges
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            cgm = cur.fetchall()
+            cur.execute('''SELECT pratijna_id, ayanamsha_id, event_class_id, derivation FROM bodha_pratijna
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            pratijna = cur.fetchall()
+            input_vector = pin_input_vector(cur, chart_id, generation, 'ka_yojaka:inputs', pin,
+                chart_facts=facts, ga_yoga_firings=firings, bodha_msr_signals=signals,
+                bodha_cgm_edges=cgm, bodha_pratijna=pratijna, served_locators=served_locators)
+        event_class = step.key.removeprefix('class:')
+        if event_class == 'unqualified':
+            event_class = None
+        bundle = [r for r in build_bundle(facts, firings, signals, cgm=cgm, pratijna=pratijna,
+                                        served_locators=served_locators)
+                  if r['event_class_id'] == event_class]
+        rows = []
+        for row in bundle:
+            row['input_vector'] = input_vector
+            row['source_natal_pin'] = pin
+            target = row['target']
+            trigger = ({'target_identity': target['identity'], 'target_fact_id': target['fact_id'],
+                        'target_longitude_deg': target['longitude_deg']} if target else
+                       {'target_identity': None, 'target_longitude_deg': None, 'null_reason': 'target_unresolved'})
+            # F1 is descriptive. No salience, dignity scalar, prior, transit
+            # trigger template or timing score is invented for this stage.
+            dasha = {'constituent_lords': row['constituent_planets'], 'event_class_id': event_class,
+                     'mechanism_id': row['mechanism_id'], 'effective_state': row['effective_state']}
+            rows.append((chart_id, row['ayanamsha_id'], None, 'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
+                         json.dumps(dasha), json.dumps(trigger), '{}', json.dumps(row), generation,
+                         row['route'], json.dumps({k: row[k] for k in ('conclusion_id', 'formation_state',
+                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}
+                         | ({'null_reason': row['null_reason'], 'effective_reason': row['effective_reason']}
+                            if row.get('effective_reason') else {})),
+                         row['mechanism_id'], event_class))
+        with conn.cursor() as cur:
+            cur.execute('''DELETE FROM kala_activation_predicates WHERE chart_id = %s
+                           AND generation = %s AND event_class_id IS NOT DISTINCT FROM %s''',
+                        (chart_id, generation, event_class))
+            if rows:
+                cur.executemany('''INSERT INTO kala_activation_predicates
+                    (chart_id, ayanamsha_id, signal_id, signature_class, dasha_eligibility_rule_jsonb,
+                     transit_trigger_jsonb, strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                     generation, mechanism_route, conclusion_state_jsonb, mechanism_id, event_class_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''', rows)
+        return WriterResult(self.asset_id, len(rows), notes=f'{step.key}: candidate promise graph')
+
+    def legacy_testimony_fixture(self, ctx) -> WriterResult:
+        """Historical template oracles only; no production dispatch uses this path."""
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
+        # K2-1b: a writer only replaces its own candidate partition.  A
+        # published/legacy partition is never a side effect of an F1 rebuild.
+        candidate_generation = str(
+            ctx.config.get('candidate_generation') or f"candidate:{ctx.build_id}"
+        )
+        if candidate_generation == 'legacy':
+            raise ValueError('candidate_generation must not target the legacy partition')
 
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
@@ -418,6 +532,17 @@ class KaYojakaWriter(WriterBase):
                 json.dumps(pred['transit_trigger']),
                 json.dumps(pred['strength_affliction_hook']),
                 json.dumps(pred['derivation_ledger']),
+                candidate_generation,
+                # This writer currently carries L2 signal-originated bindings;
+                # the admitted L1 mechanism builder is a separate route.  The
+                # route is explicit so testimony can never silently score.
+                'testimony',
+                json.dumps({
+                    'candidate_state': 'present',
+                    'effective_state': 'unresolved',
+                    'defeats': [],
+                    'excepts': [],
+                }),
             ))
 
         # Step 4: batch insert (1000 rows per batch)
@@ -426,8 +551,9 @@ class KaYojakaWriter(WriterBase):
             INSERT INTO kala_activation_predicates
                 (chart_id, ayanamsha_id, signal_id, signature_class,
                  dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                 strength_affliction_hook_jsonb, derivation_ledger_jsonb)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                 strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                 generation, mechanism_route, conclusion_state_jsonb)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """
 
@@ -442,8 +568,8 @@ class KaYojakaWriter(WriterBase):
         # missing upstream data from committing an empty chart partition.
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
-                (chart_id,),
+                "DELETE FROM kala_activation_predicates WHERE chart_id = %s AND generation = %s",
+                (chart_id, candidate_generation),
             )
         with conn.cursor() as cur:
             for i in range(0, len(rows), 1000):
@@ -519,8 +645,8 @@ class KaYojakaWriter(WriterBase):
 
     def _fetch_cgm_pagerank(self, conn, chart_id: str) -> dict[str, float]:
         """
-        Fetch CGM node pagerank scores keyed by node_subject (graha name / bhava label).
-        Normalizes scores to [0, 1] relative to the chart's max pagerank.
+        Fetch graha CGM node pagerank scores keyed by node_subject.
+        Normalizes scores to [0, 1] relative to the chart's max graha pagerank.
         Returns empty dict on failure (soft dependency — CGM may not be built yet).
         """
         result: dict[str, float] = {}
@@ -536,7 +662,8 @@ class KaYojakaWriter(WriterBase):
                     """
                     SELECT node_subject, COALESCE(pagerank_score::float, 0.5) AS pgr
                     FROM bodha_cgm_nodes
-                    WHERE chart_id = %s AND pagerank_score IS NOT NULL
+                    WHERE chart_id = %s AND node_type = 'graha'
+                      AND pagerank_score IS NOT NULL
                     ORDER BY pagerank_score DESC
                     """,
                     (chart_id,),

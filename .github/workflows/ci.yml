@@ -177,7 +177,7 @@ jobs:
     # disposable service to that production major/minor contract.
     services:
       postgres:
-        image: postgres:15.18
+        image: mirror.gcr.io/library/postgres:15.18
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -200,6 +200,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
+        # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
+        # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged
+        # with the name the tests use.
+        run: |
+          docker pull mirror.gcr.io/library/postgres:16
+          docker tag mirror.gcr.io/library/postgres:16 postgres:16
 
       - name: Nirmāṇa elevation — required dedicated writer handoff contract
         # Local throwaway DB only: the test rejects a non-test DB name and
@@ -308,6 +315,61 @@ jobs:
   # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
   # and the provision step back onto `unit-tests` and delete this job.
   # ─────────────────────────────────────────────────────────────────────────────
+  kala-db-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Kāla DB Tests (throwaway Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar CI dependencies
+        run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Download and verify pinned ephemeris
+        run: |
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          echo "SE_EPHE_PATH=$se1_dir" >> "$GITHUB_ENV"
+      - name: Run every Kāla database test; skips fail
+        working-directory: platform/python-sidecar
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
+        # dispatch and broken-detector negatives in both migration states.
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py -q -rs
+      - name: Run scoped parihara evaluator contract and route tests
+        working-directory: platform/python-sidecar
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        run: python -m pytest tests/l3/ka_muhurta_seva -q -rs
+      - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
+        working-directory: platform/python-sidecar
+        run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
+
   db-integration-tests:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
@@ -327,7 +389,7 @@ jobs:
       SAMIKSHA_E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/samiksha_e2e
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -402,7 +464,7 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE gochara_a51_test;"
 
-      - name: Pravāha F-1 — migration 1206 / 1232 / 1233 live-DB suites (REQUIRED, never skipped) + reproducible mutation evidence
+      - name: Pravāha F-1 — migration 1204 / 1206 / 1232 / 1233 live-DB suites (REQUIRED, never skipped) + reproducible mutation evidence
         # GOCHARA_REQUIRE_DB=1 turns a missing/blank URL into a FAILING test instead of the
         # suite's usual silent skip (Codex v1.0 R5). The mutation harness neuters each 1206
         # guard in turn and requires every mutation to be caught by >=1 failing test.
@@ -410,7 +472,7 @@ jobs:
           GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
           GOCHARA_REQUIRE_DB: '1'
         run: |
-          npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
+          npx vitest run tests/integration/gochara_b6_v15_migrations.db.test.ts tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
           python3 scripts/gochara/mutation_check_1206.py
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
@@ -440,9 +502,14 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
+
+      - name: K7-3 — stage readers before and after protected migration 1376
+        env:
+          KALA_VIEW_DB_TESTS: '1'
+        run: npx vitest run src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts --reporter=verbose
 
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained
@@ -1198,7 +1265,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1243,7 +1310,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1289,7 +1356,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1335,7 +1402,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1381,7 +1448,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1412,7 +1479,61 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round3.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round3.py tests/l3/gochara/test_c38_teardown_lit_over_error.py -q --tb=short -rs -p no:cacheprovider
+
+  gochara-a55-measuring-build:
+    # Measuring-build PR (steward MEASURING-BUILD, MB-ADDITIONS, TIMEOUT-RULING): the horizon derivation, the manifest basis, the state guard and the fired cap
+    # observed through the REAL runner, on a real database (the real life_events DDL); about 5 minutes.
+    # See the split note on gochara-a55-replace-chain.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Gochara measuring build - horizon, basis, state guard, fired cap (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        # The dump guard verifies the actual server address; a mounted local
+        # socket answers NULL rather than the service bridge address.
+        volumes:
+          - /var/run/postgresql:/var/run/postgresql
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measuring build - real-database suite (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_EVAL_TEST_ADMIN_DSN: postgresql://postgres:postgres@/postgres?host=/var/run/postgresql
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python -m pytest tests/l3/gochara/test_mb_real_db.py tests/l3/gochara/test_mb_ordinary_golden.py tests/l3/gochara_eval/test_dump_extract_pg.py -q --tb=short -rs -p no:cacheprovider
+          cd ..
+          python scripts/gochara/mutation_check_measuring_build.py
 
   gochara-a55-dispatch:
     # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
@@ -1427,7 +1548,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1458,7 +1579,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py tests/l3/gochara/test_w4_launch_bridge.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
@@ -1472,7 +1593,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1517,7 +1638,7 @@ jobs:
         working-directory: platform
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -1584,7 +1705,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratijna_v4_fixture
     services:
       postgres:
-        image: postgres:16
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -2054,14 +2175,43 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+  governance-readback-tests:
+    # P05-B02: both ported readback suites, including all five real-cluster cases.
+    # The helper owns and cleans up its loopback-only cluster. Missing binaries,
+    # unavailable helpers, or any other skipped oracle fail the required aggregate.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: Governance Gochara readback tests (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pytest and disposable PostgreSQL server binaries
+        run: |
+          python -m pip install pytest
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+      - name: pytest — all ported Gochara readback oracles; skips fail
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+        run: |
+          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
+          python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
+
   governance-tool-tests:
-    # The ORIGINAL job name, kept as ONE check: green only when every shard above is green (a cancelled or failed shard is not green; a
+    # The ORIGINAL job name, kept as ONE check: green only when every shard and the ported readbacks above are green (a cancelled or failed shard is not green; a
     # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
     # `ci_job_passed` detectors name this job, so they keep meaning "the whole governance test directory passed". (It IS the
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2069,25 +2219,165 @@ jobs:
       contents: read
 
     steps:
-      - name: Every shard passed (or was skipped on a docs-only change)
+      - name: Every shard and readback suite passed (or was skipped on a docs-only change)
         env:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
+          READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
-          if [ "$SHARDS_RESULT" = "success" ]; then echo "all governance test shards passed"; exit 0; fi
-          if [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards skipped by design"; exit 0; fi
-          echo "::error::governance test shards finished '$SHARDS_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
+          if [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards and readbacks passed"; exit 0; fi
+          if [ "$SHARDS_RESULT" = "skipped" ] && [ "$READBACK_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; then echo "docs-only change: governance test shards and readbacks skipped by design"; exit 0; fi
+          echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
-  governance-gates:
+  governance-gates-py-sidecar-shard:
+    # SHARDED 2026-10-08 (owner-approved CI change): the python-sidecar pytest step of `Governance Gates` was ONE serial call that took
+    # 21.5-24.9 of the check's 22-26 minutes. It now runs as 4 parallel shards; the aggregate `governance-gates` job below keeps the
+    # original required name and is green only when this matrix AND the static gates job are green. Same pattern as the five-shard
+    # `Governance Tool Tests` (shard matrix + aggregate). Like the job it was split from, it NEVER skips (no `changes` dependency): a
+    # docs-only pull request, a push, a merge_group run all run every shard. Each shard has the original job's environment: full-depth
+    # checkout, Python 3.11 with the pip cache, pyyaml + pytest, then the original step's requirements / corpus / env / provenance check.
+    # Partition: deterministic and size-balanced by test FILE (never inside one, so module fixtures still build once); every shard
+    # verifies the whole 4-way partition against its real full collection before running anything (sidecar_shard.py).
+    name: Governance Gates py-sidecar shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    # One shard measured ~1/4 of the 21.5-24.9 min serial run; 20 min leaves >2x headroom and still surfaces a runner stall.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          # CI efficiency audit (2026-07-31): the sidecar install below was 145s of
+          # this job's 435s, uncached on every run. Caching keyed on both requirement
+          # files so a change to either invalidates correctly.
+          cache: 'pip'
+          cache-dependency-path: |
+            platform/python-sidecar/requirements-ci.txt
+
+      - name: Install Python dependencies
+        run: pip install pyyaml pytest
+
+      - name: pytest — pyjhora_adapter + pipeline (shard ${{ matrix.shard }}/4)
+        # SHARDED 2026-10-08 (see the job comment above): the command below is the unsharded job's command, unchanged, plus
+        # `-p sidecar_shard --ci-shard I/4` (platform/scripts/governance/pytest_plugins/sidecar_shard.py), which keeps the test files of
+        # shard I after the full collection and FAILS (exit 4, nothing runs) unless the 4 shards together are that collection exactly once.
+        # Everything else in this step — the requirements, the SHA-pinned corpus, SE_EPHE_PATH / GOCHARA_SE1_REQUIRE, the provenance
+        # inventory check, the paths, the --ignore list and the -m expression — is exactly what every shard ran before the split.
+        # Hard gate. All tests here are self-contained (conn=None dry-run or
+        # @pytest.mark.skipif(not DATABASE_URL) for integration tests).
+        # test_a3_schema_smoke.py uses pytestmark to skip when DATABASE_URL
+        # is absent — CI has no DB, so those 6 tests skip cleanly.
+        # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
+        # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
+        # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
+        # TEARDOWN-EXCLUDED (Layer-0 rebuild arc, 2026-06-02):
+        #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
+        #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
+        #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
+        #   tests/test_l0_remedy_corpus.py — tests target _get_conn/_in_memory_query/query_remedy
+        #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
+        #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
+        #   Re-enable when L0 engine rebuild re-populates these modules.
+        # D15b-F2 (D-1.6 Lane S-6, 2026-07-16): bodha_writers/__tests__/ (74 tests, DB-free,
+        # 0.06s) lives OUTSIDE tests/ and was never collected by this command — `pytest tests/`
+        # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
+        # invisible to CI. Added as a second positional arg; verified green standalone and in
+        # combination with tests/ before landing here.
+        #
+        # CI efficiency audit (2026-07-31) — two changes, both count-verified:
+        #   1. requirements.txt → requirements-ci.txt. The runtime file pulls
+        #      sentence-transformers (→ torch), ragas, google-cloud-aiplatform, openai,
+        #      anthropic and tiktoken, none of which this suite imports; the install was
+        #      145s. The CI file is the verified subset (10s). See its header before
+        #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
+        #      imports them internally, and httpx is required by starlette.testclient.
+        #   2. NO pytest-xdist — tried, then reverted as UNPROVEN (not as disproven).
+        #      `-n 4 --dist loadfile` was 2.9x faster locally (226s -> 78s). Three CI
+        #      samples of the identical suite (4647 passed / 12 skipped every time):
+        #          285.77s  serial, full reqs   (run 30587431953)
+        #          323.49s  xdist -n 4          (run 30594499554)
+        #          422.22s  serial, slim reqs   (run 30595102066)
+        #      Serial alone spans 285s..422s, and the xdist sample sits INSIDE that
+        #      range — so this runner's variance is larger than the effect being
+        #      measured, and n=1 per arm proves nothing either way. Reverted because
+        #      unproven complexity is not worth carrying, NOT because xdist is slower.
+        #      To settle it, run each arm several times and compare medians; do not
+        #      re-add (or re-reject) on a single sample.
+        # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
+        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
+        run: |
+          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          # Swiss .se1 corpus (SS ruling N-28 / TI-ephemeris-fix-001): the sidecar's
+          # ephemeris helper fails closed without it (no silent Moshier fallback), so
+          # the suite runs on the same SHA-pinned files as Dockerfile.pipeline.
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
+          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
+          # absent corpus into a hard failure instead of a silent skip (§N.8).
+          export GOCHARA_SE1_REQUIRE=1
+          sidecar_shard_plugin_dir="$GITHUB_WORKSPACE/platform/scripts/governance/pytest_plugins"
+          cd platform/python-sidecar
+          # Nirmana F0: this checked-in artefact is the web planner's source of
+          # sidecar-owned writer hashes. Any Python writer change must regenerate
+          # it; otherwise old receipts could survive a code deployment as fresh.
+          python -m pipeline.orchestrator.provenance_inventory --check
+          # Required Governance Gates: both mappings use the shared production
+          # validator; missing semantic evidence must fail without a DB or skips.
+          # K6-5 / SR-A4-03: the seven independent-review survivors (empty
+          # contract data and contradictory Idem PASS) are mandatory here.
+          if [ "${{ matrix.shard }}" = "1" ]; then
+            python -m pytest tests/l3/test_certification_validation.py \
+              tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
+              tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
+              -q -p no:cacheprovider
+          fi
+          # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
+          # the writer digest inventory check above stays (it keeps generated writer hashes honest).
+          PYTHONPATH="$sidecar_shard_plugin_dir" pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
+            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
+            --ignore=tests/test_pyjhora_adapter \
+            --ignore=tests/test_dasha_chain.py \
+            --ignore=tests/extractors/test_cgm_extractor.py \
+            --ignore=tests/test_l0_remedy_corpus.py \
+            -m "not integration" \
+            -p sidecar_shard --ci-shard ${{ matrix.shard }}/4 \
+            -q -rs --tb=short --no-header
+
+  governance-gates-static:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
     # v1.2 patch §R5). Each step is non-blocking on the existing baseline
     # (exit-code-3 known_residuals whitelist) but blocks NEW regressions.
-    name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
+    # SHARDED 2026-10-08: every step of the original `Governance Gates` job EXCEPT the python-sidecar pytest step (now
+    # `governance-gates-py-sidecar-shard`) runs here, in the original order, in parallel with the shards. The aggregate
+    # `governance-gates` job below carries the original required name. NEVER skips (no `changes` dependency), as before.
+    name: Governance Gates static checks (drift / schema / edge / native-literal / Nirmāṇa probe)
     runs-on: ubuntu-latest
-    # The Python suite has historical healthy variance in the low single-digit
-    # minutes. A finite ceiling turns an otherwise silent hosted-runner stall into
-    # a visible, retryable protected-check outcome.
     timeout-minutes: 30
     permissions:
       contents: read
@@ -2222,10 +2512,29 @@ jobs:
         # in this job) — see 00_ARCHITECTURE/briefs/pariprashna_build/PB_SCHEMA_HASH_PIN_v1_0.md.
         run: python platform/scripts/governance/schema_pin_mimamsa_predictions.py --self-test
 
+      - name: public-schema migration privilege guard — self-test + repo scan (Kāla outage 2026-10-08)
+        # Hard gate. Migration 1330 CREATEd tables in schema public as a ROUTINE migration; the routine
+        # production migrator has USAGE but not CREATE on public, so every production deploy failed at
+        # "Apply Routine DB Migrations" — and no CI database (all superuser) could see it. This fails a
+        # routine migration (not on kala_protected_migrations.txt / migrate.ts's protected sets) that
+        # creates TABLE/INDEX/FUNCTION/TYPE/TRIGGER/VIEW/SEQUENCE in public or GRANTs ON SCHEMA.
+        # Scope: files numbered above the pinned production baseline, plus migration files changed
+        # against origin/main (this job checks out with fetch-depth 0). --self-test proves the detector
+        # by mutation first. Tests: platform/scripts/governance/__tests__/test_check_public_schema_migration_privilege.py
+        run: |
+          python platform/scripts/governance/check_public_schema_migration_privilege.py --self-test
+          python platform/scripts/governance/check_public_schema_migration_privilege.py --base origin/main
+
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.
-        run: bash platform/scripts/governance/assert_no_native_literal.sh
+        # SS N-384 (PR-S6): the second command is the python-sidecar ratchet (routers/services/
+        # brahmagyan): self-test, then a repo scan against native_literal_sidecar_allowlist.json
+        # (per-file counts that can only shrink; stale entries fail). Kept inside this step so
+        # the job's step list (pinned by test_ci_sidecar_shard.py) is unchanged.
+        run: |
+          bash platform/scripts/governance/assert_no_native_literal.sh
+          bash platform/scripts/governance/assert_no_native_literal_sidecar.sh
 
       - name: dag_edge_guard — self-test (§N.8 / SAMĀPTI F-02)
         # Hard gate. Before this step existed, dag_edge_guard's docstring claimed it ran
@@ -2264,87 +2573,9 @@ jobs:
         # live HTTPS LB and is a deploy-time check, not a CI check.
         run: bash platform/scripts/governance/edge_security_smoke.sh --ci-only
 
-      - name: pytest — pyjhora_adapter + pipeline
-        # Hard gate. All tests here are self-contained (conn=None dry-run or
-        # @pytest.mark.skipif(not DATABASE_URL) for integration tests).
-        # test_a3_schema_smoke.py uses pytestmark to skip when DATABASE_URL
-        # is absent — CI has no DB, so those 6 tests skip cleanly.
-        # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
-        # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
-        # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
-        # TEARDOWN-EXCLUDED (Layer-0 rebuild arc, 2026-06-02):
-        #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
-        #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
-        #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
-        #   tests/test_l0_remedy_corpus.py — tests target _get_conn/_in_memory_query/query_remedy
-        #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
-        #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
-        #   Re-enable when L0 engine rebuild re-populates these modules.
-        # D15b-F2 (D-1.6 Lane S-6, 2026-07-16): bodha_writers/__tests__/ (74 tests, DB-free,
-        # 0.06s) lives OUTSIDE tests/ and was never collected by this command — `pytest tests/`
-        # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
-        # invisible to CI. Added as a second positional arg; verified green standalone and in
-        # combination with tests/ before landing here.
-        #
-        # CI efficiency audit (2026-07-31) — two changes, both count-verified:
-        #   1. requirements.txt → requirements-ci.txt. The runtime file pulls
-        #      sentence-transformers (→ torch), ragas, google-cloud-aiplatform, openai,
-        #      anthropic and tiktoken, none of which this suite imports; the install was
-        #      145s. The CI file is the verified subset (10s). See its header before
-        #      editing — geopy/geocoder/timezonefinder/pytz are NOT dead entries, PyJHora
-        #      imports them internally, and httpx is required by starlette.testclient.
-        #   2. NO pytest-xdist — tried, then reverted as UNPROVEN (not as disproven).
-        #      `-n 4 --dist loadfile` was 2.9x faster locally (226s -> 78s). Three CI
-        #      samples of the identical suite (4647 passed / 12 skipped every time):
-        #          285.77s  serial, full reqs   (run 30587431953)
-        #          323.49s  xdist -n 4          (run 30594499554)
-        #          422.22s  serial, slim reqs   (run 30595102066)
-        #      Serial alone spans 285s..422s, and the xdist sample sits INSIDE that
-        #      range — so this runner's variance is larger than the effect being
-        #      measured, and n=1 per arm proves nothing either way. Reverted because
-        #      unproven complexity is not worth carrying, NOT because xdist is slower.
-        #      To settle it, run each arm several times and compare medians; do not
-        #      re-add (or re-reject) on a single sample.
-        # Verified in a clean venv against the slim file: 4647 passed, 12 skipped,
-        # 7 subtests passed — identical to the pre-change run. Any drift is a regression.
-        run: |
-          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
-          # Swiss .se1 corpus (SS ruling N-28 / TI-ephemeris-fix-001): the sidecar's
-          # ephemeris helper fails closed without it (no silent Moshier fallback), so
-          # the suite runs on the same SHA-pinned files as Dockerfile.pipeline.
-          se1_dir="$(mktemp -d)"
-          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
-            curl --fail --silent --show-error --location --retry 2 \
-              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
-              --output "$se1_dir/$se1_file"
-          done
-          (cd "$se1_dir" && printf '%s\n' \
-            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
-            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
-            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
-            | sha256sum -c -)
-          export SE_EPHE_PATH="$se1_dir"
-          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
-          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
-          # absent corpus into a hard failure instead of a silent skip (§N.8).
-          export GOCHARA_SE1_REQUIRE=1
-          cd platform/python-sidecar
-          # Nirmana F0: this checked-in artefact is the web planner's source of
-          # sidecar-owned writer hashes. Any Python writer change must regenerate
-          # it; otherwise old receipts could survive a code deployment as fresh.
-          python -m pipeline.orchestrator.provenance_inventory --check
-          # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
-          # the writer digest inventory check above stays (it keeps generated writer hashes honest).
-          pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
-            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
-            --ignore=tests/test_pyjhora_adapter \
-            --ignore=tests/test_dasha_chain.py \
-            --ignore=tests/extractors/test_cgm_extractor.py \
-            --ignore=tests/test_l0_remedy_corpus.py \
-            -m "not integration" \
-            -q -rs --tb=short --no-header
+      - name: Install python-sidecar dependencies (for the Nirmāṇa probe)
+        # Before the split, the probe below ran after the sidecar pytest step, which had already installed these. Same file, same cache.
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
@@ -2364,6 +2595,28 @@ jobs:
           # it proves the .se1 backend fails closed, survives the PyJHora import and
           # holds under threads (SS ruling N-28 / TI-ephemeris-fix-001).
           SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
+
+  governance-gates:
+    # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
+    # py-sidecar)`; no per-shard context is required, so the shard count can change without touching the ruleset). Green only when the
+    # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
+    # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
+    name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
+    needs: [governance-gates-static, governance-gates-py-sidecar-shard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: The static gates and every py-sidecar shard passed
+        env:
+          STATIC_RESULT: ${{ needs.governance-gates-static.result }}
+          SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
+        run: |
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates and all py-sidecar shards passed"; exit 0; fi
+          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:
     needs: changes

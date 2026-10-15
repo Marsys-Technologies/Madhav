@@ -27,6 +27,14 @@ REFUSALS (exit 4, JSON `refusals`, one entry per id where it concerns an id; fai
   SERVICE_ASSET, SCOPE_NOT_ALLOWED, DOMAIN_SCOPE_MISMATCH, LAYER_NOT_ALLOWED, FAMILY_ASSET, SPLITS_FAMILY, PROTECTED_ASSET (build_protected_assets
   for the anchor chart), FORCE_BYPASSED_BY_PROBE (rebuild_on_probe_fail=true: a green probe skips the writer even under force),
   ACCEPT_EXCLUDED_NOT_NEEDED (an id that passes every check cannot be waved away), ACCEPT_EXCLUDED_NOT_REQUESTED.
+  FAMILY OVERRIDE (--allow-family-assets <ids>, SS N-443 D3; OUR tool only, the frozen orchestrator and FAMILY_ASSETS.json are untouched): waives
+  EXACTLY FAMILY_ASSET and SPLITS_FAMILY, ONLY for the ids named, each of which must be in the request and be a family member (name pattern or
+  FAMILY_ASSETS.json family_set). Everything else still refuses for a named id (NOT_ACTIVE, NO_WRITER, SERVICE_ASSET, PROTECTED_ASSET,
+  FORCE_BYPASSED_BY_PROBE, LAYER_NOT_ALLOWED, ...): the layer allow-list stays --allowed-layers. A named id that is not requested
+  (ACCEPT_FAMILY_NOT_REQUESTED), not a family member (ACCEPT_FAMILY_NOT_FAMILY) or also in --accept-excluded (ACCEPT_FAMILY_ALSO_EXCLUDED) refuses.
+  The sorted list is bound into the confirm token, written to the receipt (`family_override`, `inputs.allow_family`), put in the run_committed /
+  run_dispatched events and the plan summary, and logged as `family-override: <ids>`. --dispatch-existing takes it from the receipt. With the flag
+  absent the token, the summary, the receipt and the events are byte-for-byte what they were before the flag existed.
   An id that fails is NEVER dropped silently: the run is refused unless the id is named in --accept-excluded (then it is dropped, listed in the
   plan, and bound into the confirm token).
   cross-chart impact (the 33 global assets): CROSS_CHART_IMPACT_NOT_ACCEPTED / CROSS_CHART_COUNT_MISMATCH / ACCEPT_CROSS_CHART_UNMATCHED -- every OTHER
@@ -35,11 +43,11 @@ REFUSALS (exit 4, JSON `refusals`, one entry per id where it concerns an id; fai
   bound into the token and re-read inside the INSERT transaction (IMPACT_CHANGED).
   run level: EMPTY_PLAN, ANCHOR_CHART_INVALID, ANCHOR_CHART_BUSY, GLOBAL_LOCK_HELD, CONFLICTING_ACTIVE_RUN, ALREADY_DISPATCHED (a prior run of
   this tool exists: name each with --allow-redispatch <run_id>), WORKER_LIMIT_INVALID, CONNECTION_HEADROOM_LOW, CONFIRM_TOKEN_MISMATCH,
-  RECEIPT_PATH_INVALID, DEPLOYED_JOB_SHA_REQUIRED, and every gate of the wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE,
+  RECEIPT_PATH_INVALID, LIVE_JOB_IMAGE_UNREADABLE, LIVE_JOB_IMAGE_DIFFERS, and every gate of the wave (IMAGE_SKEW, CODE_DIGEST_UNAVAILABLE,
   FORCE_NOT_SUPPORTED_BY_IMAGE, JOB_SHA_MISMATCH, JOB_SHA_CHANGED, DEPENDENCY_NOT_READY, REGISTRY_ROW_CHANGED, FAMILY_FILE_*, FAMILY_REF_*).
 
 RECOVERY MODES (the run was committed 'planned' but the process died before the execute; it blocks the anchor chart)
-  --dispatch-existing <RUN_ID> --commit --confirm <the receipt's token> --job-sha-file F   re-plans from the receipt's inputs, requires the same
+  --dispatch-existing <RUN_ID> --commit --confirm <the receipt's token> re-plans from the receipt's inputs, requires the same
       manifest digest AND token, the run still 'planned' and ours, no execution in the receipt, then executes once (no INSERT).
   --terminalise-run <RUN_ID> [--commit --confirm TERMINALISE_<run8>_NO_EXECUTION_STARTED]   cancels a still-'planned' run of this tool (the UPDATE
       matches state='planned' only). Check `gcloud run jobs executions list` for an execution with that --run-id first.
@@ -47,8 +55,8 @@ RECOVERY MODES (the run was committed 'planned' but the process died before the 
   execution is recorded, and --terminalise-run refuses (EXECUTION_RECORDED_IN_RECEIPT) when an execution or the marker is recorded; in both, `--allow-redispatch <RUN_ID>`
   asserts "the executions list was checked: no live execution of this run exists". After an unknown COMMIT outcome (exit 6) the receipt is rewritten with the run id
   (committed "unknown"); the database row (chart + triggered_by + manifest digest + state planned) is the real binding. One mutating process per receipt (flock on <receipt>.lock).
-  Gates that stay in the operator runbook (they need gh / gcloud, which this tool deliberately never calls except the one execute): no deploy
-  workflow open, watchdog-reaper paused, backup / PITR point recorded, the live job image sha behind --deployed-job-sha.
+  Gates that stay in the operator runbook (they need gh / gcloud, which this tool deliberately never calls except the one execute and the read-only live-image `describe`): no deploy
+  workflow open, watchdog-reaper paused, backup / PITR point recorded, (the live job image sha is read by the tool itself: gcloud run jobs describe, read-only, at plan / before INSERT / before execute).
 
 EXIT CODES  0 ok (plan done / dispatched; verified when --wait / --verify-run) | 1 DATABASE_URL missing | 2 bad input |
   3 dispatch failed after the run was committed (terminalised, or a warning names it) | 4 a gate refused | 6 unexpected / COMMIT outcome
@@ -93,6 +101,7 @@ WORKER_LIMIT_MIN, WORKER_LIMIT_MAX = 1, 6
 MIN_HEADROOM_CONNECTIONS = 10                           # refuse a run that would leave fewer than this many connections free
 RUNNER_DEFAULT_WORKER_LIMIT = 4                         # runner.py `_WORKER_LIMIT` default when the job env does not set it
 
+FAMILY_WAIVED_CODES = ("FAMILY_ASSET", "SPLITS_FAMILY")   # the ONLY refusals --allow-family-assets can waive
 DEFAULT_ALLOWED_LAYERS = ("brahmagyan", "ganita", "bodha")
 ALLOWED_SCOPES = ("per_chart", "global")
 # runner._WRITER_SUBASSET_IDS: registered writers with no own registry writer row; built as a side effect of the parent.
@@ -220,9 +229,12 @@ def validate_worker_limit(value: int | None) -> int | None:
 # ───────────────────────── per-id validation ─────────────────────────
 
 def classify_assets(ids: Sequence[str], rows: Sequence[Mapping[str, Any]], family: Mapping[str, Any], *,
-                    allowed_layers: Sequence[str] = DEFAULT_ALLOWED_LAYERS, protected: Sequence[str] = ()) -> list[dict]:
+                    allowed_layers: Sequence[str] = DEFAULT_ALLOWED_LAYERS, protected: Sequence[str] = (),
+                    allow_family: Sequence[str] = ()) -> list[dict]:
     """Every problem of every requested id, as {asset, code, detail}, all reported together (sorted by id, then code). Empty = every
-    id is a plannable asset. Pure."""
+    id is a plannable asset. Pure. `allow_family` (the token-bound --allow-family-assets list) waives FAMILY_ASSET and SPLITS_FAMILY for
+    exactly those ids and nothing else; its names are checked by validate_allow_family, not here."""
+    waived = frozenset(allow_family)
     by_id: dict[str, dict] = {}
     findings: list[dict] = []
     for r in rows:
@@ -266,11 +278,36 @@ def classify_assets(ids: Sequence[str], rows: Sequence[Mapping[str, Any]], famil
             findings.append({"asset": a, "code": "LAYER_NOT_ALLOWED", "detail": f"{a} is layer {r.get('layer')!r}; allowed {list(allowed_layers)}"})
     for f in slw.family_refusals(list(ids), family, committing=False):
         if f["code"] == "FAMILY_ASSET":
-            findings.append({"asset": f["asset"], "code": "FAMILY_ASSET", "detail": f["detail"]})
+            if f["asset"] not in waived:
+                findings.append({"asset": f["asset"], "code": "FAMILY_ASSET", "detail": f["detail"]})
         elif f["code"] == "SPLITS_FAMILY":
             for a in f["requested"]:
-                findings.append({"asset": a, "code": "SPLITS_FAMILY", "detail": f["detail"]})
+                if a not in waived:
+                    findings.append({"asset": a, "code": "SPLITS_FAMILY", "detail": f["detail"]})
     return sorted(findings, key=lambda x: (x["asset"], x["code"]))
+
+
+def validate_allow_family(ids: Sequence[str], allow_family: Sequence[str], family: Mapping[str, Any],
+                          accept_excluded: Sequence[str] = ()) -> None:
+    """The --allow-family-assets names themselves: every one must be requested and be a family member (the same test that raises
+    FAMILY_ASSET: name pattern, or FAMILY_ASSETS.json family_set), and none may also be dropped by --accept-excluded. Raises
+    LevelWaveRefusal with every problem; returns None when the list is exact. Pure."""
+    req = set(ids)
+    members = {f["asset"] for f in slw.family_refusals(list(ids), family, committing=False) if f["code"] == "FAMILY_ASSET"}
+    bad: list[dict] = []
+    for a in sorted(allow_family):
+        if a not in req:
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_NOT_REQUESTED",
+                        "detail": f"--allow-family-assets names {a}, which is not in the requested list"})
+        elif a not in members:
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_NOT_FAMILY",
+                        "detail": f"--allow-family-assets names {a}, which is not a family member (name pattern or FAMILY_ASSETS.json family_set): "
+                                  "there is nothing to waive for it"})
+        elif a in set(accept_excluded):
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_ALSO_EXCLUDED",
+                        "detail": f"{a} is named in --allow-family-assets (build it) and in --accept-excluded (drop it): choose one"})
+    if bad:
+        raise slw.LevelWaveRefusal(bad)
 
 
 def apply_exclusions(ids: Sequence[str], findings: Sequence[Mapping[str, Any]], accept_excluded: Sequence[str]) -> tuple[list[str], list[dict]]:
@@ -450,16 +487,20 @@ def check_cross_chart_acceptance(impact: Mapping[str, Any], accepted: Mapping[st
 def build_confirm_token(*, manifest_digest: str, ids: Sequence[str], anchor: str, image_sha: str, worker_limit: int | None,
                         accepted_excluded: Sequence[str], allow_redispatch: Sequence[str], accepted_cross_chart: Mapping[str, int] = {},
                         impact_sha256: str | None = None, job: str = "", project: str = "", region: str = "",
-                        job_worker_limit: int | None = None) -> str:
+                        job_worker_limit: int | None = None, allow_family: Sequence[str] = ()) -> str:
     """`ASSETSET<N>_<12 hex>_FORCE_ASSET_SET_REBUILD`: a hash over the manifest digest (which carries the ids, waves, scopes, writer
     digests), the id set, the anchor chart, the deployed image sha, force=1, the worker-limit override (or its absence), the operator
     overrides (exclusions, redispatch), the cross-chart impact (its sha256 and the accepted per-chart counts) and WHERE it executes
-    (--job / --project / --region) and the job's declared worker limit the connection math used. Never equal to a wave or global token."""
+    (--job / --project / --region) and the job's declared worker limit the connection math used, and the family override list
+    (`allow_family`, sorted; the key is present ONLY when the list is non-empty, so a run without the flag keeps its token byte-for-byte).
+    Never equal to a wave or global token."""
     body = {"schema": TOKEN_SCHEMA, "manifest_digest": manifest_digest, "assets": sorted(ids), "anchor_chart": anchor,
             "image_sha": image_sha, "force_execute": True, "worker_limit": worker_limit,
             "accepted_excluded": sorted(accepted_excluded), "allow_redispatch": sorted(allow_redispatch),
             "accepted_cross_chart": dict(sorted(accepted_cross_chart.items())), "impact_sha256": impact_sha256,
             "job": job, "project": project, "region": region, "job_worker_limit": job_worker_limit}
+    if allow_family:
+        body["allow_family"] = sorted(allow_family)
     h = hashlib.sha256(slw.canonical_json(body).encode("utf-8")).hexdigest()
     return f"ASSETSET{len(ids)}_{h[:12].upper()}_FORCE_ASSET_SET_REBUILD"
 
@@ -671,7 +712,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="suvarna_asset_set_dispatch.py", formatter_class=argparse.RawDescriptionHelpFormatter,
         description="ONE forced multi-asset (L0+L1+L2) asset_set run over an explicit id list. Reads DATABASE_URL from the environment; "
-                    "never reads credential files; plan mode never touches gcloud.",
+                    "never reads credential files; plan mode only reads the live job image (read-only gcloud describe).",
         epilog="Default is a PLAN: INSERT build_runs + build_run_assets, ROLLBACK, print the waves, the connection math and the confirm "
                "token. --commit --confirm <token> inserts, then executes the Cloud Run job ONCE with NIRMANA_FORCE_EXECUTE=1 "
                "(and ORCHESTRATOR_WORKER_LIMIT=<n> with --worker-limit) set on that execution only. Without --wait it returns the run id "
@@ -681,6 +722,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--assets-file", metavar="FILE", help="file of asset ids (commas / spaces / newlines; # comments); <= 64 KiB")
     p.add_argument("--accept-excluded", action="append", metavar="LIST",
                    help="ids that FAIL validation and are dropped on purpose; any other failing id refuses the run")
+    p.add_argument("--allow-family-assets", action="append", metavar="LIST",
+                   help="ids of Pravaha-family assets (name pattern or FAMILY_ASSETS.json family_set) that are BUILT in this run: waives FAMILY_ASSET and "
+                        "SPLITS_FAMILY for exactly these ids and nothing else (NOT_ACTIVE, NO_WRITER, SERVICE_ASSET, PROTECTED_ASSET, layer ... still "
+                        "refuse); every name must be in the request; bound into the confirm token, the receipt and the log (`family-override: <ids>`)")
     p.add_argument("--accept-cross-chart-impact", action="append", metavar="CHART=N",
                    help="accept that the lit rows of dependents on OTHER charts (<chart uuid|global>=<count the plan printed>) are left as they are "
                         "after the global assets are rebuilt; one per chart; required when the plan has global assets with such rows; bound into the token")
@@ -688,10 +733,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--anchor-chart", required=True, help="a REAL chart id carrying the run (e.g. 482012f1-...)")
     p.add_argument("--receipt", required=True, help="receipt JSON path (outside the repo unless --receipt-in-repo)")
     p.add_argument("--receipt-in-repo", action="store_true")
-    p.add_argument("--deployed-sha", help="commit whose committed writer digests are the deployed image's")
-    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's head_sha)")
-    p.add_argument("--job-sha-file", help="file holding exactly the live job sha (40 hex); required with --commit; re-read before the "
-                   "INSERT and before the dispatch")
+    p.add_argument("--deployed-sha", help="OPTIONAL cross-check: the commit whose committed writer digests are the deployed image's "
+                   "(default: the commit the tool READS from the live job image); if given and not the live image: JOB_SHA_MISMATCH")
+    p.add_argument("--deployed-job-sha", help="OPTIONAL cross-check only: the tool READS the live job image itself (gcloud run jobs "
+                   "describe, read-only) at plan time and again right before the INSERT and the execute; a value that differs from "
+                   "the live image refuses (LIVE_JOB_IMAGE_DIFFERS)")
     p.add_argument("--worker-limit", type=int, default=None, metavar="N",
                    help=f"set ORCHESTRATOR_WORKER_LIMIT={WORKER_LIMIT_MIN}..{WORKER_LIMIT_MAX} on THIS execution only (default unset = the job's "
                         "own value); bound into the confirm token")
@@ -708,7 +754,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dispatch-existing", metavar="RUN_ID",
                    help="RECOVERY: execute the run this tool already committed as 'planned' but never executed (crash between COMMIT and execute). "
                         "Re-plans with the receipt's inputs, requires the SAME manifest digest and token (--confirm), the run still 'planned', the "
-                        "receipt without an execution; needs --commit and --job-sha-file")
+                        "receipt without an execution; needs --commit")
     p.add_argument("--terminalise-run", metavar="RUN_ID",
                    help="RECOVERY: cancel a committed run that is still 'planned' and never executed (plan mode prints the confirm token; "
                         "--commit --confirm <token> asserts that no execution of it exists: check `gcloud run jobs executions list` first)")
@@ -755,14 +801,14 @@ def _acquire_receipt_lock(receipt_path: Path, holder: dict) -> None:
 
 
 def run_cli(args: argparse.Namespace, *, connect, git=slw._git, out=None, sleep=time.sleep, monotonic=time.monotonic, dispatch=None,
-            now: Callable[[], datetime] | None = None) -> int:
+            now: Callable[[], datetime] | None = None, live_reader=None) -> int:
     out = out or sys.stdout
     now = now or (lambda: datetime.now(timezone.utc))
     committed: list[dict] = []
     holder: dict = {}
     try:
         return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch, now=now,
-                        committed=committed, holder=holder)
+                        committed=committed, holder=holder, live_reader=live_reader or slw.live_reader_for(args))
     except slw.LevelWaveRefusal as exc:
         _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed)
         return slw.REFUSAL_EXIT_CODE
@@ -864,7 +910,7 @@ def _check_run_is_ours(connect, run_id: str, anchor: str, receipt: Mapping[str, 
     return found
 
 
-def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed, holder) -> int:
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, committed, holder, live_reader) -> int:
     emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
     anchor = gad.validate_anchor_format(args.anchor_chart)
     receipt_path = gad.check_receipt_path(args.receipt, args.repo, args.receipt_in_repo)
@@ -886,9 +932,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     if args.dispatch_existing:
         if not commit:
             raise slw.LevelWaveError("--dispatch-existing executes a run: it needs --commit --confirm <the receipt's token>")
-        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact:
+        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact or args.allow_family_assets:
             raise slw.LevelWaveError("--dispatch-existing takes the ids and acceptances from the receipt: do not pass --assets / --assets-file / "
-                                     "--accept-excluded / --accept-cross-chart-impact (--allow-redispatch <RUN_ID> here means: the executions "
+                                     "--accept-excluded / --accept-cross-chart-impact / --allow-family-assets (--allow-redispatch <RUN_ID> here means: the executions "
                                      "list was checked and no execution of this run exists)")
         run_uuid = _parse_run_id(args.dispatch_existing, "--dispatch-existing")
         gad.parse_redispatch(args.allow_redispatch)          # validated up front (it is the "I checked the executions list" override)
@@ -902,17 +948,14 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         accept_excluded = list(inputs["accept_excluded"])
         accepted_cross = {k: int(v) for k, v in inputs["accept_cross_chart"].items()}
         allow_redispatch = list(inputs["allow_redispatch"])
+        allow_family = sorted(inputs.get("allow_family") or [])        # absent in receipts without the override
     else:
         allow_redispatch = gad.parse_redispatch(args.allow_redispatch)
         ids = parse_asset_ids(args.assets, args.assets_file)
         accept_excluded = parse_id_list(args.accept_excluded, "--accept-excluded")
         accepted_cross = parse_cross_chart_accepts(args.accept_cross_chart_impact)
+        allow_family = parse_id_list(args.allow_family_assets, "--allow-family-assets")
     allowed_layers = tuple(x for x in args.allowed_layers.split(",") if x)
-    if commit and not args.job_sha_file:
-        raise slw.LevelWaveError("--commit requires --job-sha-file (re-read right before the INSERT and before the dispatch)")
-    if not args.deployed_job_sha or not args.deployed_sha:
-        raise _refuse("DEPLOYED_JOB_SHA_REQUIRED", "--deployed-sha and --deployed-job-sha (the live deployed job image sha read at "
-                      "launch) are both required")
 
     # 1. the wave's gates: family ref, job sha binding, force support, re-read of the job sha
     ref_status = slw.family_ref_status(args.repo, args.family_ref, git=git)
@@ -922,19 +965,24 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         ref_refusals.append({"code": "FAMILY_FILE_MISSING", "detail": f"{slw.FAMILY_FILE_REL} is not on the family ref: a real dispatch needs it"})
     if ref_refusals:
         raise slw.LevelWaveRefusal(ref_refusals)
-    binding = slw.check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
+    live = live_reader()                       # READ by the tool, never asserted by hand (the flags are only cross-checks)
+    binding = slw.bind_live_job_sha(args.repo, live_sha=live, asserted_job_sha=args.deployed_job_sha, deployed_sha=args.deployed_sha, git=git)
     pinned = binding["deployed_job_sha"]
     slw.check_image_supports_force(args.repo, pinned, git=git)
-    if args.job_sha_file:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     local = slw.load_local_writer_digests(args.repo)
-    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, git=git)
+    deployed = slw.load_deployed_writer_digests(repo=args.repo, sha=binding["inventory_sha"], git=git)
     frozen = slw._load_frozen_dispatcher() if commit else None        # before any insert: a load failure strands nothing
 
     # 2. anchor chart, registry rows, per-id validation (nothing is dropped unless named in --accept-excluded)
     gad.check_anchor_exists(connect, anchor)
     rows = _read_rows(connect, ids)
-    findings = classify_assets(ids, rows, family, allowed_layers=allowed_layers, protected=_read_protected(connect, anchor, ids))
+    validate_allow_family(ids, allow_family, family, accept_excluded)
+    findings = classify_assets(ids, rows, family, allowed_layers=allowed_layers, protected=_read_protected(connect, anchor, ids),
+                               allow_family=allow_family)
+    if allow_family:
+        override_line = "family-override: " + ",".join(allow_family)
+        emit("family_override", ids=allow_family, waives=list(FAMILY_WAIVED_CODES), line=override_line)
+        print(override_line, file=sys.stderr)
     plan_ids, excluded = apply_exclusions(ids, findings, accept_excluded)
     rows_by_id = {r["asset_id"]: dict(r) for r in rows if r["asset_id"] in set(plan_ids)}
     plan_rows = [rows_by_id[a] for a in plan_ids]
@@ -963,14 +1011,18 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     token = build_confirm_token(manifest_digest=plan["manifest_digest"], ids=plan["plan"], anchor=anchor, image_sha=pinned,
                                 worker_limit=worker_limit, accepted_excluded=[e["asset"] for e in excluded], allow_redispatch=allow_redispatch,
                                 accepted_cross_chart=accepted_cross, impact_sha256=impact_sha, job=args.job, project=args.project,
-                                region=args.region, job_worker_limit=args.job_worker_limit)
+                                region=args.region, job_worker_limit=args.job_worker_limit, allow_family=allow_family)
     triggered_by = build_triggered_by(anchor, plan["manifest_digest"])
     estimate = slw.estimate_runtime(plan["waves"], {a: rows_by_id[a] for a in plan["plan"]})
     deps_all = {**plan["outside"], **{a: rows_by_id[a].get("depends_on") or [] for a in plan["plan"]}}
     meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "force_execute": True, "worker_limit": worker_limit}
+    if allow_family:
+        meta["family_override"] = list(allow_family)
     cmd_preview = dispatch_command(run_id="<run_id>", project=args.project, region=args.region, job=args.job, worker_limit=worker_limit)
     inputs = {"requested": list(ids), "accept_excluded": list(accept_excluded), "accept_cross_chart": dict(accepted_cross),
               "allow_redispatch": list(allow_redispatch)}
+    if allow_family:
+        inputs["allow_family"] = list(allow_family)
     summary = {
         "anchor_chart": anchor, "anchor_is_canonical": anchor == gad.CANONICAL_CHART_ID, "assets": plan["plan"],
         "asset_count": len(plan["plan"]), "layer_counts": _layer_counts(plan["plan"], rows_by_id), "global_assets": global_assets,
@@ -992,21 +1044,25 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         "runtime_estimate": estimate, "dispatch_command_preview": cmd_preview, "confirm_token": token, "committed": False,
         "receipt_path": str(receipt_path), "committed_runs": committed,
         "runbook_gates_not_in_tool": ["no deploy workflow open", "watchdog-reaper paused", "backup / PITR point recorded before the run",
-                                      "live job image sha == --deployed-job-sha (the tool trusts the value given)"],
+                                      "live job image sha: READ by the tool (gcloud run jobs describe) at plan, before the INSERT and before the execute; nothing is asserted by hand"],
     }
+    if allow_family:
+        summary["family_override"] = {"ids": list(allow_family), "waives": list(FAMILY_WAIVED_CODES), "line": override_line,
+                                      "note": "bound into the confirm token and the receipt; every other refusal still applies to these ids"}
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
 
     if old is not None:                                   # --dispatch-existing: the SAME plan, the SAME token, no INSERT
         return _dispatch_existing(args, old=old, run_id=run_uuid, committed=committed, token=token, plan=plan, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta,
                                   summary=summary, receipt_path=receipt_path, connect=connect, frozen=frozen, git=git, dispatch=dispatch,
-                                  out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                                  out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
     receipt = new_receipt(anchor_chart=anchor, assets=plan["plan"], waves=plan["waves"], manifest_digest=plan["manifest_digest"],
                           confirm_token=token, triggered_by=triggered_by, worker_limit=worker_limit, image_sha=pinned,
                           inventory_sha=binding["inventory_sha"], excluded_accepted=excluded, connection_budget=budget,
                           cross_chart_impact=impact, impact_sha256=impact_sha, inputs=inputs,
-                          target={"job": args.job, "project": args.project, "region": args.region}, planned_at=_utc_iso(now))
+                          target={"job": args.job, "project": args.project, "region": args.region}, planned_at=_utc_iso(now),
+                          **({"family_override": list(allow_family)} if allow_family else {}))
     check_receipt_overwrite(receipt_path, receipt)
     holder.update(receipt=receipt, receipt_path=receipt_path)
     if commit:
@@ -1027,6 +1083,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
             raise gad.ReceiptNotWritten(r["run_id"], anchor, exc, term) from exc
         emit("run_committed", **rec)
 
+    if commit:
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # immediately before the INSERT / COMMIT
     run = insert_asset_set_run(connect, anchor=anchor, manifest=plan["manifest"], digest=plan["manifest_digest"],
                                row_digests=plan["row_digests"], external=plan["external_dependencies"], triggered_by=triggered_by,
                                allow_redispatch=allow_redispatch, token=token, confirm=args.confirm if commit else None, commit=commit,
@@ -1040,16 +1098,16 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     summary["committed"] = True
     return _dispatch_stage(run["run_id"], args=args, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta, receipt=receipt,
                            receipt_path=receipt_path, summary=summary, plan_ids=plan["plan"], connect=connect, frozen=frozen, git=git,
-                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
 
 def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt, receipt_path, summary, plan_ids, connect, frozen, git,
-                    dispatch, out, sleep, monotonic, now, emit) -> int:
+                    dispatch, out, sleep, monotonic, now, emit, live_reader) -> int:
     """After the run exists as 'planned': re-read the job sha, execute ONCE (force + limit on that execution only), record, optionally wait."""
     send = dispatch or (lambda rid: dispatch_run(run_id=rid, project=args.project, region=args.region, job=args.job,
                                                  worker_limit=worker_limit, authorised=True))
     try:
-        slw.recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)     # a redeploy since the INSERT
+        slw.recheck_live_job_sha(live_reader, pinned_job_sha=pinned)     # a redeploy since the INSERT: the live image is READ again
         # write-ahead marker: on disk BEFORE the execute, so a crash inside / after it can never be mistaken for "never executed"
         receipt["dispatch_intended_at"] = _utc_iso(now)
         write_receipt(receipt_path, receipt)
@@ -1086,7 +1144,7 @@ def _dispatch_stage(run_id, *, args, anchor, pinned, worker_limit, meta, receipt
 
 
 def _dispatch_existing(args, *, old, run_id, committed, token, plan, anchor, pinned, worker_limit, meta, summary, receipt_path, connect, frozen, git, dispatch,
-                       out, sleep, monotonic, now, emit) -> int:
+                       out, sleep, monotonic, now, emit, live_reader) -> int:
     """RECOVERY: the run was committed 'planned' and never executed. Same plan (manifest digest), same token (the receipt's), the run
     still 'planned' and ours; then the ordinary dispatch stage. A late duplicate execution is harmless: the runner claims a run by
     compare-and-swap on state 'planned' and refuses one that is no longer runnable."""
@@ -1112,7 +1170,7 @@ def _dispatch_existing(args, *, old, run_id, committed, token, plan, anchor, pin
     summary["recovery"] = "dispatch-existing"
     return _dispatch_stage(run_id, args=args, anchor=anchor, pinned=pinned, worker_limit=worker_limit, meta=meta, receipt=old,
                            receipt_path=receipt_path, summary=summary, plan_ids=plan["plan"], connect=connect, frozen=frozen, git=git,
-                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit)
+                           dispatch=dispatch, out=out, sleep=sleep, monotonic=monotonic, now=now, emit=emit, live_reader=live_reader)
 
 
 def _terminalise_mode(args, *, anchor, receipt_path, connect, out, commit) -> int:

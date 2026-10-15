@@ -52,6 +52,53 @@ _GIT_TIMEOUT = 30
 _REGISTRY_STMT = re.compile(r"\b(?:INSERT\s+INTO|UPDATE)\s+(?:public\.)?asset_registry\b", re.I)
 
 
+# ───────────────────────── N-233 R1 (SS ruling): the CERTIFICATION window ─────────────────────────
+# The certification window OPENS at the bottom-up pass: build run CERT_WINDOW_RUN_ID (created 2026-10-07 ~20:18Z, SS N-233). An attempt before that run is not judged (it is REPORTED as pre-window history), whatever the
+# per-asset code/registry date says; the per-asset date (the later of the writer-digest change and the registry-identity change, above) still applies when it is LATER than the pass. The instant is not written here: it is
+# READ at measure time from `build_runs.created_at` of the pinned run id (the pass itself is inclusive: its own attempts are inside), and cross-checked against CERT_WINDOW_RUN_NOMINAL_UTC (a wrong or re-created run id
+# fails closed: NO_DETECTOR naming why, never a window).
+#
+# Inside the window the rule is (the grading is asset_census._grade_build_history_windowed): the asset's LATEST attempt is complete AND no UNEXPLAINED error or abort. An error is EXPLAINED only when it is attributable to
+# a pinned entry of EXPLAINED_RUNS (a run id, plus, for an `error` row, a cause pattern the error text must match; an `aborted` row of a pinned run is the cancellation itself). There is NO blanket ignore: an error of any
+# other run, or of a pinned run with another cause, is judged exactly as before. An explained attempt is not held against the asset and earns it no credit (it is removed from the tally and REPORTED by count).
+CERT_WINDOW_RUN_ID = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+CERT_WINDOW_RUN_NOMINAL_UTC = "2026-10-07T20:18:00Z"        # SS N-233: "2026-10-07 20:18Z" (minute precision); the DB value is authoritative
+CERT_WINDOW_RUN_TOLERANCE_S = 900.0
+EXPLAINED_RUNS = {
+    # the cancelled run 981a51ec (SS N-233): its errors (permissions, statement timeouts) were root-caused and fixed before the bottom-up pass; they are not held against the assets
+    "981a51ec-f1d1-4d82-b8c6-a8dccc81b1cb": dict(
+        why="cancellation of run 981a51ec (an abort row of that run gives no per-asset cause; it is the cancellation); its errors (permission denied, statement timeouts) were root-caused and fixed before the bottom-up pass (SS N-233)",
+        abort_explained=True,
+        error_causes=(r"InsufficientPrivilege|permission denied for", r"statement timeout|canceling statement due to statement timeout|QueryCanceled")),
+}
+
+
+def apply_certification_floor(window: dict, floor_epoch: float | None, floor_reason: str | None = None) -> dict:
+    """The certification window: `window` (compute_window's answer) opened no earlier than the bottom-up pass. Pure. `floor_epoch` None means the pass instant could not be read (`floor_reason` says why): the window is then
+    unknown (fail closed). When the pass is LATER than the per-asset date the window opens AT the pass and that instant is inclusive (the pass's own attempts count); otherwise the per-asset date stands (strictly after, as before)."""
+    if not window.get("ok"):
+        return window
+    if floor_epoch is None:
+        return dict(ok=False, reason=f"the certification window opens at build run {CERT_WINDOW_RUN_ID}, whose creation time could not be established ({floor_reason or 'unknown'})")
+    out = dict(window, explained_runs=EXPLAINED_RUNS, cert_run_id=CERT_WINDOW_RUN_ID, cert_floor_epoch=float(floor_epoch))
+    if floor_epoch >= window["epoch"]:
+        out.update(epoch=float(floor_epoch), inclusive=True, opens=_iso(floor_epoch),
+                   basis=f"certification window: opens at the bottom-up pass, build run {CERT_WINDOW_RUN_ID[:8]} created {_iso(floor_epoch)} (inclusive), later than the per-asset date ({window['basis']})")
+    else:
+        out.update(inclusive=False, basis=f"{window['basis']}; certification floor {_iso(floor_epoch)} (build run {CERT_WINDOW_RUN_ID[:8]}) is earlier, so the per-asset date stands")
+    return out
+
+
+def check_floor_against_nominal(floor_epoch: float) -> str | None:
+    """None when the pinned run's creation time agrees with the declared nominal instant (within CERT_WINDOW_RUN_TOLERANCE_S), else the reason it does not (the pin points at the wrong run)."""
+    import datetime as dt
+    nominal = dt.datetime.strptime(CERT_WINDOW_RUN_NOMINAL_UTC, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).timestamp()
+    if abs(floor_epoch - nominal) > CERT_WINDOW_RUN_TOLERANCE_S:
+        return (f"build run {CERT_WINDOW_RUN_ID[:8]} was created {_iso(floor_epoch)}, not within {int(CERT_WINDOW_RUN_TOLERANCE_S)} s of the declared {CERT_WINDOW_RUN_NOMINAL_UTC}: "
+                "the pin points at another run")
+    return None
+
+
 class WindowUnknown(Exception):
     """The window cannot be determined; the message is the reason the cell quotes."""
 

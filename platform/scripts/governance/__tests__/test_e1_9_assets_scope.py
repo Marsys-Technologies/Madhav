@@ -23,6 +23,13 @@ sys.path.insert(0, str(HERE.parent))
 import asset_census as ac  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _no_evaluation_copy_marker(monkeypatch):
+    """SS N-327/N-332: census_stamp looks for the evaluation-copy marker. These tests fake the database wholesale (every query gets one canned answer), so the lookup is answered 'no marker' here;
+    test_n317_evaluation_copy.py covers the lookup itself. The target is the conftest default, `disposable`."""
+    monkeypatch.setattr(ac, "read_eval_copy_marker", lambda: dict(checked=True, marker_present=False))
+
+
 # ───────────────────────── offline harness ─────────────────────────
 
 def _reg_row(aid, target_table=None, has_writer=False, count_sql=""):

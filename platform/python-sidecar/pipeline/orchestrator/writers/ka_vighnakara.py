@@ -21,6 +21,8 @@ and real panchāṅga calls.  Detection hierarchy:
 NEVER commits or rollbacks — orchestrator owns the transaction.
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date as DateType
 from typing import Optional
@@ -189,9 +191,9 @@ def _jd_from_date(d: DateType) -> float:
         return 2451545.0 + days
 
 
-@register('ka_vighnakara')
+# Public registration is on the candidate-aware wrapper below.
 @records_swiss_backend
-class KaVighnakaraWriter(WriterBase):
+class _LegacyKaVighnakaraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         # Guard: swisseph is REQUIRED for real ephemeris-based detection.  Without it
         # the malefic_transit, gandanta and papakartari detectors cannot run and
@@ -215,7 +217,7 @@ class KaVighnakaraWriter(WriterBase):
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s", (chart_id,))
+            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NULL", (chart_id,))
 
         # Read convergence windows
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
@@ -289,6 +291,7 @@ class KaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -327,17 +330,19 @@ class KaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
             with conn.cursor() as cur:
+                store_tier = has_stored_verification(cur, 'kala_obstruction')
                 cur.executemany(
-                    """INSERT INTO kala_obstruction (
+                    f"""INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_detail, source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                    rows if store_tier else [row[:-1] for row in rows],
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
@@ -511,8 +516,10 @@ class KaVighnakaraWriter(WriterBase):
                 cur.execute(
                     """
                     SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
-                    FROM kala_activation_predicates
-                    WHERE chart_id = %s
+                    FROM kala_activation_predicates p
+                    WHERE p.chart_id = %s
+                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                     ORDER BY signal_id
                     """,
                     (chart_id,),
@@ -995,3 +1002,23 @@ def _detect_obstructions(peak_date, convergence_score: float = 0.5,
         except Exception as exc:
             logger.debug("_detect_obstructions: %s failed for %s: %s", check.__name__, d, exc)
     return results
+
+
+@register('ka_vighnakara')
+class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
+    """Legacy dispatch plus KYD-134 explicitly selected consumer fixtures."""
+
+    def run(self, ctx) -> WriterResult:
+        if ctx.dry_run:
+            return WriterResult('ka_vighnakara', 0, notes='dry_run=True')
+        if 'negative_space_fixture_inputs' in ctx.config:
+            from services.ka_vighnakara.model import Finding
+            from services.ka_vighnakara.storage import write_fixture_candidate
+            inputs = [Finding.model_validate(value)
+                      for value in ctx.config['negative_space_fixture_inputs']]
+            count = write_fixture_candidate(ctx, inputs)
+            return WriterResult('ka_vighnakara', count,
+                                notes='KYD-134 fixture consumer; live bindings unadmitted')
+        # The original ephemeris gate wraps the legacy implementation exactly
+        # as before; fixtures compute no sky and claim no Swiss backend.
+        return super().run(ctx)

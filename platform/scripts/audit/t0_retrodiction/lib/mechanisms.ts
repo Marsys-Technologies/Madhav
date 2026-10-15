@@ -10,7 +10,7 @@
  *   BRIEF_D3 §F0 (D-2's DR-9 valence-root fix). `ganita_vichara_get(family=
  *   valence_pass, subject=MAR)` row id 81288/81304 (varga D1, link_kind=
  *   lord_aspects, target_house=2, actor_houses_lorded=[1,8]) is exactly
- *   this mechanism: Mars is 1st+8th lord (yogakaraka for this Aries lagna)
+ *   this mechanism: Mars is 1st+8th lord (yogakaraka for the chart under test)
  *   aspecting the 2nd (dhana) bhava. Significator = Mars alone, per the
  *   brief's own naming of the mechanism ("8L-Mars").
  * - WINDFALL (checks (b)): `judgment_query(domain=wealth, v3)` serves

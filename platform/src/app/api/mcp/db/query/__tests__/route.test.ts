@@ -242,3 +242,235 @@ describe('POST /api/mcp/db/query — kala_field_skill calibration authority (V4 
     expect(mockQuery).toHaveBeenCalledTimes(1)
   })
 })
+
+// ── S9 item 8 (held): the validator reads structure from a literal-stripped copy ──────────────
+//
+// Each rejection below executes on the pre-fix validator (only the identifier right after a
+// FROM/JOIN was inspected and ONE allowlisted relation was enough) and must now answer 400
+// with the database mock never called.
+
+describe('POST /api/mcp/db/query — S9 bypasses are rejected before execution', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    mockQuery.mockResolvedValue({ rows: [] })
+    process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  })
+
+  async function expectRejected(sql: string) {
+    const res = await POST(makeReq({ sql, params: [] }))
+    expect(res.status).toBe(400)
+    expect(mockQuery).not.toHaveBeenCalled()
+  }
+
+  describe('comma-joins', () => {
+    it('rejects a comma-join to a table outside the allowlist', async () => {
+      await expectRejected(`SELECT p.* FROM bodha_discoveries d, profiles p`)
+    })
+
+    it('rejects the comma-join written with no space after the comma', async () => {
+      await expectRejected(`SELECT p.* FROM bodha_discoveries d,profiles p`)
+    })
+
+    it('rejects a comma-join hidden after an explicit JOIN ... ON', async () => {
+      await expectRejected(
+        `SELECT p.* FROM bodha_discoveries d JOIN bodha_msr_signals s ON s.signal_id = d.discovery_id, profiles p WHERE d.chart_id = $1`
+      )
+    })
+
+    it('rejects a comma-join even between two allowlisted tables (explicit JOIN is required)', async () => {
+      await expectRejected(`SELECT d.discovery_id FROM bodha_discoveries d, bodha_msr_signals s`)
+    })
+
+    it('rejects a comma-join whose first item is a function call', async () => {
+      await expectRejected(`SELECT p.* FROM unnest(ARRAY[1,2]) AS t(a, b), profiles p JOIN bodha_discoveries d ON true`)
+    })
+
+    it('rejects a parenthesised joined table whose first relation follows no FROM/JOIN keyword', async () => {
+      await expectRejected(`SELECT p.* FROM (profiles p CROSS JOIN bodha_discoveries d)`)
+    })
+  })
+
+  describe('comment, TABLE and LATERAL forms', () => {
+    it('rejects UNION SELECT ... FROM/**/profiles (block comment as the separator)', async () => {
+      await expectRejected(
+        `SELECT discovery_id FROM bodha_discoveries UNION SELECT email FROM/**/profiles`
+      )
+    })
+
+    it('rejects a closing block-comment marker on its own', async () => {
+      await expectRejected(`SELECT discovery_id FROM bodha_discoveries WHERE discovery_id = $1 */`)
+    })
+
+    it('rejects WHERE id IN (TABLE profiles)', async () => {
+      await expectRejected(
+        `SELECT discovery_id FROM bodha_discoveries WHERE discovery_id IN (TABLE profiles)`
+      )
+    })
+
+    it('rejects LATERAL', async () => {
+      await expectRejected(
+        `SELECT d.discovery_id FROM bodha_discoveries d JOIN LATERAL (SELECT 1 AS one) x ON true`
+      )
+    })
+
+    it('rejects SELECT ... INTO (it would create a table)', async () => {
+      await expectRejected(`SELECT d.discovery_id INTO scratch_copy FROM bodha_discoveries d`)
+    })
+  })
+
+  describe('CTE-name spoofing', () => {
+    it('rejects the spoof where a string literal contains ", profiles AS ("', async () => {
+      await expectRejected(
+        `SELECT p.* FROM bodha_discoveries d JOIN profiles p ON true WHERE d.title = 'a, profiles AS ('`
+      )
+    })
+
+    // Needs the order check once comma-separated CTE lists are recognised (they were not before
+    // this change, which had a word-boundary in front of the comma alternative).
+    it('rejects a CTE declared AFTER the reference that it is supposed to explain', async () => {
+      await expectRejected(
+        `WITH a AS (SELECT * FROM profiles), profiles AS (SELECT discovery_id FROM bodha_discoveries) SELECT * FROM a`
+      )
+    })
+
+    it('rejects a non-recursive CTE that selects from a table of its own name', async () => {
+      await expectRejected(
+        `WITH profiles AS (SELECT p.* FROM profiles p JOIN bodha_discoveries d ON true) SELECT * FROM profiles`
+      )
+    })
+
+    it('rejects a WITH nested in a subquery used to explain a name outside its scope', async () => {
+      await expectRejected(
+        `SELECT p.* FROM bodha_discoveries d JOIN (WITH profiles AS (SELECT 1 AS one FROM bodha_discoveries) SELECT one FROM profiles) y ON true JOIN profiles p ON true`
+      )
+    })
+
+    it('rejects a quoted-identifier reference to a table outside the allowlist', async () => {
+      await expectRejected(`SELECT p.* FROM bodha_discoveries d JOIN "profiles" p ON true`)
+    })
+  })
+
+  describe('literal and quoting syntax the scan cannot follow', () => {
+    it('rejects dollar-quoting (tagged)', async () => {
+      await expectRejected(`SELECT $q$ a, profiles $q$ AS note FROM bodha_discoveries`)
+    })
+
+    it('rejects dollar-quoting (untagged)', async () => {
+      await expectRejected(`SELECT $$ x $$ AS note FROM bodha_discoveries`)
+    })
+
+    it('rejects an escape string (E-prefixed), whose backslash escapes change where the literal ends', async () => {
+      await expectRejected(
+        `SELECT discovery_id FROM bodha_discoveries WHERE title = E'\\'' OR 1=1 UNION SELECT 1 FROM bodha_discoveries WHERE title = '`
+      )
+    })
+
+    it('rejects an unterminated string literal', async () => {
+      await expectRejected(`SELECT discovery_id FROM bodha_discoveries WHERE title = 'abc`)
+    })
+  })
+
+  describe('functions that run SQL strings or touch the server', () => {
+    const base = 'FROM bodha_discoveries LIMIT 1'
+    const cases: Array<[string, string]> = [
+      ['query_to_xml', `SELECT query_to_xml('select 1', true, false, '') ${base}`],
+      ['QUERY_TO_XML (case-insensitive)', `SELECT QUERY_TO_XML('select 1', true, false, '') ${base}`],
+      ['table_to_xml', `SELECT table_to_xml('bodha_discoveries', true, false, '') ${base}`],
+      ['cursor_to_xml', `SELECT cursor_to_xml('c'::refcursor, 1, true, false, '') ${base}`],
+      ['dblink', `SELECT * FROM dblink('host=elsewhere', 'select 1') AS t(a int) JOIN bodha_discoveries d ON true`],
+      ['pg_read_file', `SELECT pg_read_file('/etc/hosts') ${base}`],
+      ['pg_read_binary_file', `SELECT pg_read_binary_file('/etc/hosts') ${base}`],
+      ['pg_ls_dir', `SELECT pg_ls_dir('.') ${base}`],
+      ['pg_stat_file', `SELECT pg_stat_file('.') ${base}`],
+      ['lo_import', `SELECT lo_import('/etc/hosts') ${base}`],
+      ['set_config', `SELECT set_config('search_path', 'public', false) ${base}`],
+      ['schema-qualified set_config', `SELECT pg_catalog.set_config('search_path', 'public', false) ${base}`],
+      ['pg_sleep', `SELECT pg_sleep(30) ${base}`],
+      ['current_setting', `SELECT current_setting('server_version') ${base}`],
+      ['pg_terminate_backend', `SELECT pg_terminate_backend(1) ${base}`],
+      ['pg_cancel_backend', `SELECT pg_cancel_backend(1) ${base}`],
+      ['ts_stat', `SELECT * FROM ts_stat('select 1') JOIN bodha_discoveries d ON true`],
+    ]
+    it.each(cases)('rejects %s', async (_name, sql) => {
+      await expectRejected(sql)
+    })
+  })
+
+  describe('positive controls (queries that must keep working)', () => {
+    async function expectAccepted(sql: string, params: unknown[] = []) {
+      const res = await POST(makeReq({ sql, params }))
+      expect(res.status).toBe(200)
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      // The statement that executes is the caller's text, byte for byte.
+      expect(mockQuery.mock.calls[0][0]).toBe(sql)
+    }
+
+    it('UNNEST(...) AS t(a, b) joined to an allowlisted table', async () => {
+      await expectAccepted(
+        `SELECT d.discovery_id, t.a FROM bodha_discoveries d CROSS JOIN unnest(ARRAY[1,2], ARRAY[3,4]) AS t(a, b) WHERE d.chart_id = $1`,
+        ['c']
+      )
+    })
+
+    it('a table function as the only FROM item with an allowlisted table in a subquery', async () => {
+      await expectAccepted(
+        `SELECT t.a FROM unnest(ARRAY[1,2]) AS t(a) WHERE EXISTS (SELECT 1 FROM bodha_discoveries WHERE chart_id = $1)`,
+        ['c']
+      )
+    })
+
+    it('two comma-separated CTEs, the second reading the first', async () => {
+      await expectAccepted(
+        `WITH a AS (SELECT discovery_id, chart_id FROM bodha_discoveries), b AS (SELECT discovery_id FROM a) SELECT * FROM b`
+      )
+    })
+
+    it('a subquery in FROM with commas in its select list and ORDER BY', async () => {
+      await expectAccepted(
+        `SELECT x.n, x.chart_id FROM (SELECT discovery_id AS n, chart_id FROM bodha_discoveries) x WHERE x.n > 1 ORDER BY x.n, x.chart_id`
+      )
+    })
+
+    it('a count-wrapper subquery in FROM (the gochara pre_trim shape)', async () => {
+      await expectAccepted(
+        `SELECT count(*)::int AS n FROM (SELECT discovery_id, chart_id FROM bodha_discoveries WHERE chart_id = $1) pre_trim`,
+        ['c']
+      )
+    })
+
+    it('a string literal containing a comma and the word FROM', async () => {
+      await expectAccepted(
+        `SELECT 'x, FROM y' AS lbl, d.discovery_id FROM bodha_discoveries d WHERE d.title = 'a, b from c' ORDER BY d.discovery_id`
+      )
+    })
+
+    it("a string literal with an escaped quote ('') next to a comma", async () => {
+      await expectAccepted(`SELECT d.discovery_id FROM bodha_discoveries d WHERE d.title = 'it''s, from here'`)
+    })
+
+    it('a string literal that looks like a CTE declaration is just data when the table is allowlisted', async () => {
+      await expectAccepted(`SELECT d.discovery_id FROM bodha_discoveries d WHERE d.title = 'a, profiles AS ('`)
+    })
+
+    it('commas in function arguments, ON conditions, IN lists and window specs', async () => {
+      await expectAccepted(
+        `SELECT d.discovery_id, COUNT(*) OVER (PARTITION BY d.chart_id, d.discovery_id) AS c FROM bodha_discoveries d LEFT JOIN bodha_msr_signals s ON COALESCE(s.signal_id, d.discovery_id) = d.discovery_id AND s.domain IN ('a', 'b') ORDER BY d.discovery_id, c`
+      )
+    })
+
+    it('EXTRACT(... FROM (expr)) and IS DISTINCT FROM in the select list', async () => {
+      await expectAccepted(
+        `SELECT EXTRACT(EPOCH FROM (d.created_at - d.updated_at)) AS e, d.title IS DISTINCT FROM $1, d.discovery_id FROM bodha_discoveries d`,
+        ['t']
+      )
+    })
+
+    it('a quoted alias containing a comma', async () => {
+      await expectAccepted(`SELECT d.discovery_id AS "id, raw" FROM bodha_discoveries d`)
+    })
+
+    it('a quoted allowlisted table name', async () => {
+      await expectAccepted(`SELECT d.discovery_id FROM "bodha_discoveries" d`)
+    })
+  })
+})

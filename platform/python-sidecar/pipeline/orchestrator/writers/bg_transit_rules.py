@@ -34,11 +34,27 @@ class BgTransitRulesWriter(WriterBase):
 
         counts = seed_transit_rules(ctx.db_conn, dry_run=False)
 
+        # WFIX-A: rows PRESENT in the built asset's own table after the seed. The seeder's total
+        # (bg_transit_engine + bg_transit_rules + bg_transit_moorti rows it processed = 105) was
+        # recorded for bg_transit_rules, whose own table holds 76.
+        from pipeline.orchestrator.writers._rows_present import present_count
+        with ctx.db_conn.cursor() as cur:
+            if ctx.asset_id == "bg_transit_engine":
+                cur.execute(ROWS_PRESENT_SQL_ENGINE)
+            else:
+                cur.execute(ROWS_PRESENT_SQL_RULES)
+            present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=counts.get("total", 0),
+            rows_inserted=present,
             notes=(
                 f"bg_transit_engine={counts.get('bg_transit_engine', 0)}; "
                 f"bg_transit_rules={counts.get('bg_transit_rules', 0)}"
             ),
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+ROWS_PRESENT_SQL_RULES = "SELECT count(*) AS n FROM bg_transit_rules"
+ROWS_PRESENT_SQL_ENGINE = "SELECT count(*) AS n FROM bg_transit_engine"

@@ -331,7 +331,13 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
 
   it('updates the chart-defining inputs in place and never its identity, owner or grants', async () => {
     setup()
-    await run({ ...INPUT, birth_time: '10:44', ayanamshas: ['true_chitra', 'lahiri'] })
+    // The ayanamsha edit is part of this "today's behaviour" test, so the policy is `off`.
+    await updateChartAndMaybeRecompute({
+      chartId: CHART,
+      principalId: 'owner-uid',
+      input: { ...INPUT, birth_time: '10:44', ayanamshas: ['true_chitra', 'lahiri'] },
+      ayanamshaPolicy: 'off',
+    })
     const update = statements.find((s) => /^UPDATE charts/.test(s.sql))!
     expect(update.sql).not.toMatch(/\bid\s*=\s*\$\d+\s*,|owner_id|client_id/)
     expect(update.params[0]).toBe(CHART)
@@ -375,5 +381,156 @@ describe('updateChartAndMaybeRecompute — successful correction', () => {
       error: 'spawn ENOENT',
     })
     expect(events).toEqual(['BEGIN', 'COMMIT'])
+  })
+})
+
+// ── Ayanamsha edit guard (SS N-319) ─────────────────────────────────────────
+// Editing the ayanamshas of an EXISTING chart is the destructive path (archive
+// all conversations, strict clear, throughput reset, global rebuild). The
+// policy switch decides whether such a request may run; nothing is written
+// when it refuses, and every other kind of edit is unaffected.
+describe('updateChartAndMaybeRecompute — ayanamsha edit guard', () => {
+  const AYANAMSHA_CHANGE = { ...INPUT, ayanamshas: ['kp', 'lahiri'] }
+  const runWith = (ayanamshaPolicy: 'block_all' | 'warn' | 'off', input: unknown) =>
+    updateChartAndMaybeRecompute({ chartId: CHART, principalId: 'owner-uid', input, ayanamshaPolicy })
+  const nothingWritten = () => {
+    expect(statements.some((s) => MUTATION.test(s.sql))).toBe(false)
+    expect(has(/FROM asset_registry/)).toBe(false)
+    expect(events).toEqual(['BEGIN', 'ROLLBACK'])
+    expect(mockDispatch).not.toHaveBeenCalled()
+  }
+
+  it('block_all refuses an ayanamsha edit with a plain message and writes nothing', async () => {
+    setup()
+    const err = await runWith('block_all', AYANAMSHA_CHANGE).catch((e) => e)
+    expect(err).toBeInstanceOf(ChartUpdateError)
+    expect(err.code).toBe('AYANAMSHA_EDIT_BLOCKED')
+    expect(err.status).toBe(403)
+    expect(err.message).toMatch(/ayanamsha of an existing chart can't be changed here/i)
+    expect(err.message).toMatch(/contact support/i)
+    expect(err.fields).toHaveProperty('ayanamshas')
+    nothingWritten()
+  })
+
+  it('block_all refuses a mixed request as a whole, naming the ayanamsha; the birth-time change is not applied', async () => {
+    setup()
+    const err = await runWith('block_all', { ...AYANAMSHA_CHANGE, birth_time: '10:44', name: 'Renamed' }).catch((e) => e)
+    expect(err.code).toBe('AYANAMSHA_EDIT_BLOCKED')
+    expect(err.message).toMatch(/ayanamsha/i)
+    expect(err.message).toMatch(/nothing was saved/i)
+    nothingWritten()
+  })
+
+  it('block_all ignores confirm_destructive', async () => {
+    setup()
+    await expect(runWith('block_all', { ...AYANAMSHA_CHANGE, confirm_destructive: true })).rejects.toMatchObject({
+      code: 'AYANAMSHA_EDIT_BLOCKED',
+    })
+    nothingWritten()
+  })
+
+  it('warn without confirmation returns a 409 that says it erases built results, archives conversations and needs confirmation', async () => {
+    setup()
+    const err = await runWith('warn', AYANAMSHA_CHANGE).catch((e) => e)
+    expect(err.code).toBe('AYANAMSHA_EDIT_NEEDS_CONFIRMATION')
+    expect(err.status).toBe(409)
+    expect(err.message).toMatch(/erases all built results/i)
+    expect(err.message).toMatch(/archives its conversations/i)
+    expect(err.message).toMatch(/requires confirmation/i)
+    nothingWritten()
+  })
+
+  it('warn with confirm_destructive: true runs the full destructive recompute exactly as before', async () => {
+    setup()
+    const result = await runWith('warn', { ...AYANAMSHA_CHANGE, confirm_destructive: true })
+    expect(result).toEqual({ mode: 'recompute-started', chartId: CHART, changedFields: ['ayanamshas'], runId: 'run-new' })
+    expect(has(/UPDATE conversations[\s\S]*archive_reason='chart_details_changed'/)).toBe(true)
+    expect(statements.find((s) => /^\s*UPDATE charts\b/.test(s.sql))?.params).toContain('kp,lahiri')
+    expect(events).toEqual(['BEGIN', 'COMMIT', 'DISPATCH'])
+  })
+
+  it('off is today’s behaviour: an ayanamsha edit recomputes without any flag', async () => {
+    setup()
+    const result = await runWith('off', AYANAMSHA_CHANGE)
+    expect(result.mode).toBe('recompute-started')
+    expect(events).toEqual(['BEGIN', 'COMMIT', 'DISPATCH'])
+  })
+
+  it('the default policy (env unset) is block_all', async () => {
+    vi.stubEnv('CHART_AYANAMSHA_EDIT_POLICY', '')
+    setup()
+    await expect(run(AYANAMSHA_CHANGE)).rejects.toMatchObject({ code: 'AYANAMSHA_EDIT_BLOCKED' })
+    vi.unstubAllEnvs()
+  })
+
+  it('the env var selects the policy at call time', async () => {
+    vi.stubEnv('CHART_AYANAMSHA_EDIT_POLICY', 'warn')
+    setup()
+    await expect(run(AYANAMSHA_CHANGE)).rejects.toMatchObject({ code: 'AYANAMSHA_EDIT_NEEDS_CONFIRMATION' })
+    vi.unstubAllEnvs()
+  })
+
+  it.each(['block_all', 'warn', 'off'] as const)('%s: a birth-time edit still recomputes (no ayanamsha change)', async (policy) => {
+    setup()
+    const result = await runWith(policy, { ...INPUT, birth_time: '10:44' })
+    expect(result).toMatchObject({ mode: 'recompute-started', changedFields: ['birth_time'] })
+  })
+
+  it.each(['block_all', 'warn', 'off'] as const)('%s: a name-only edit stays display-only', async (policy) => {
+    setup()
+    expect(await runWith(policy, { ...INPUT, name: 'Renamed Native' })).toEqual({
+      mode: 'display-only',
+      chartId: CHART,
+      changedFields: ['name'],
+    })
+  })
+
+  it.each(['block_all', 'warn', 'off'] as const)('%s: an unchanged ayanamsha list is a no-op', async (policy) => {
+    setup()
+    expect(await runWith(policy, INPUT)).toEqual({ mode: 'noop', chartId: CHART, changedFields: [] })
+  })
+
+  it.each([
+    ['a long-form stored value against the short id', 'lahiri_chitrapaksha', ['lahiri']],
+    ['a mixed-form, differently ordered stored list against the short ids', 'krishnamurti,lahiri_chitrapaksha', ['lahiri', 'kp']],
+    ['a legacy spelling of True Chitra', 'true_citra,lahiri', ['true_chitra', 'lahiri']],
+  ])('block_all: %s is NOT an ayanamsha change', async (_label, storedValue, submitted) => {
+    setup({ chart: { ...STORED, ayanamsa: storedValue } })
+    expect(await runWith('block_all', { ...INPUT, ayanamshas: submitted })).toEqual({
+      mode: 'noop',
+      chartId: CHART,
+      changedFields: [],
+    })
+  })
+
+  it('block_all: an omitted ayanamshas list never counts as an edit, even when the stored list holds a legacy id the form cannot send', async () => {
+    setup({ chart: { ...STORED, ayanamsa: 'lahiri,fagan_bradley' } })
+    const { ayanamshas: _omit, ...withoutAyanamshas } = INPUT
+    void _omit
+    expect(await runWith('block_all', { ...withoutAyanamshas, name: 'Renamed Native' })).toMatchObject({
+      mode: 'display-only',
+      changedFields: ['name'],
+    })
+    // and the stored ayanamsa is never rewritten by a display-only edit
+    expect(statements.filter((s) => MUTATION.test(s.sql))).toHaveLength(1)
+  })
+
+  it('block_all: an omitted ayanamshas list with a birth-time edit keeps the stored list in the recompute', async () => {
+    setup({ chart: { ...STORED, ayanamsa: 'lahiri,fagan_bradley' } })
+    const { ayanamshas: _omit, ...withoutAyanamshas } = INPUT
+    void _omit
+    await runWith('block_all', { ...withoutAyanamshas, birth_time: '10:44' })
+    expect(statements.find((s) => /^\s*UPDATE charts\b/.test(s.sql))?.params).toContain('fagan_bradley,lahiri')
+  })
+
+  it('a genuine change away from a legacy id is still an ayanamsha change under block_all', async () => {
+    setup({ chart: { ...STORED, ayanamsa: 'lahiri,fagan_bradley' } })
+    await expect(runWith('block_all', INPUT)).rejects.toMatchObject({ code: 'AYANAMSHA_EDIT_BLOCKED' })
+    nothingWritten()
+  })
+
+  it('the guard answers first: a blocked edit is reported as blocked even while a build is active', async () => {
+    setup({ activeRun: 'run-live' })
+    await expect(runWith('block_all', AYANAMSHA_CHANGE)).rejects.toMatchObject({ code: 'AYANAMSHA_EDIT_BLOCKED' })
   })
 })

@@ -1,0 +1,44 @@
+{
+ "schema": "ky.ku_bindings/1",
+ "plan_version": "2.7",
+ "source": {
+  "path": "00_ARCHITECTURE/briefs/kalayantra/reviews/ASTRA_REVIEW_KALAYANTRA_RELAUNCH_v2_2.md",
+  "sha256": "9f94344b7ceaf2891afe3e18c112dcdb37aa908906e65664b8077ea00f6a626f"
+ },
+ "rule": "A B-1 packet for a component named in required_in carries the clause text verbatim in its Spec excerpt (plan §8.3). Nothing enforces this yet: kypacket.py is a B-1 deliverable, and its check is to compare text_sha256 in every required_in packet; until it exists the packet reviewer verifies each clause hash by hand (sha256 of the excerpt's clause text equals text_sha256) and says so in the review.",
+ "clauses": {
+  "KU-01": {
+   "title": "HIGH before conductor paste: audit disagrees with typed completion",
+   "text": "Audit and guarded completion shall share the same normalized, typed evidence requirements. Data-writing code requires ACCEPTED post_deploy evidence at the observed squash merge commit. Code-only completion requires verified successful deployment containment of its mapped merge commit, without inventing a post_deploy obligation. Artifact and operation completion retain their digest-bound acceptance requirements. Apply the shared reviewed-patch inheritance predicate wherever reviewed-head validity is evaluated.\n\nAcceptance fixtures shall prove: valid code-only completion without post_deploy passes; missing deployment containment fails; data-writing completion with missing or wrong-commit post_deploy evidence fails; invalid inheritance fails. Reconcile remaining legacy claim/verdict findings explicitly before B-2 preflight acceptance. Do not fabricate verdicts, rewrite historical events or suppress unresolved findings.",
+   "text_sha256": "bb3670a36b9f2c101c21b9c2e246c218495ff90efa177b8eefb3f0a2328f5936",
+   "required_in": [
+    "tracker-semantics",
+    "preflight-v3",
+    "kyverdicts"
+   ],
+   "acceptance_binding": "B-2 preflight acceptance: remaining legacy claim/verdict findings are reconciled explicitly first"
+  },
+  "KU-02": {
+   "title": "HIGH before conductor paste: DB storage and cleanup lack executable acceptance",
+   "text": "Every v3 test database shall record its originating session and use PostgreSQL data storage explicitly bind-mounted beneath that session’s dated KY_SCRATCH realpath. Record container identity, mount source, database ownership and seed hashes in its receipt; reject an anonymous volume, an out-of-root mount or an ownership mismatch. Preserve incompatible pre-existing containers and report them; do not repurpose or delete them automatically.\n\nBefore the originating planner or conductor session closes, including handoff, stop relevant admissions, drain or terminate its test processes while preserving work, remove its test databases and owned storage, and verify physical absence. Remove a container only when session ownership permits it and no foreign database remains. Enforce this through the session-close/lock-release path as well as finalisation. Test wrong mounts, stale READY receipts, ownership conflicts and stop-without-removal. A later session recreates required databases from an admitted seed.",
+   "text_sha256": "196a7f9ca1d185efb40924df68695ce917ee07b37c1bbbe60f14c6d3b9fc74aa",
+   "required_in": [
+    "local-db",
+    "kylock",
+    "finalize-v3",
+    "kyloop-crash-cleanup",
+    "dispatcher-ready-receipts"
+   ],
+   "acceptance_binding": "every session that starts a test database: session-close / lock-release path and finalisation"
+  },
+  "KU-03": {
+   "title": "LOW: generated-file names disagree",
+   "text": "For WORKTREE_DISPOSITIONS, ACCEPTANCE_ROOTS and CLOSURE, use the plan’s named paths as canonical. Materialize the paired prompt’s differently named outputs as compatibility copies containing exactly the same reviewed bytes; retain content version 2.2. Record both absolute paths, the canonical role and their common SHA-256 in VERSIONS.bootstrap.json. Consumers use the canonical path; version checks verify both copies. Missing or unequal copies refuse bootstrap acceptance. Neither copy may be edited independently.",
+   "text_sha256": "e0de304ed2e91a63225b0bc38d65fcf2fdceffa8ca48c1d3427c839cc96ddc8b",
+   "required_in": [
+    "kyversion"
+   ],
+   "acceptance_binding": "run/VERSIONS.bootstrap.json generated_pairs (kymanifest.py build/check); bootstrap acceptance refuses missing or unequal copies"
+  }
+ }
+}

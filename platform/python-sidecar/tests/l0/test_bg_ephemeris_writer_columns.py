@@ -68,6 +68,12 @@ def test_insert_writes_every_column_the_compute_step_emits(monkeypatch):
         def executemany(self, sql, rows):
             Rec.sql, Rec.rows = sql, list(rows)
 
+        def execute(self, _sql, _params=None):      # WFIX-A: the rows-present COUNT(*) read after the upsert
+            pass
+
+        def fetchone(self):
+            return {"n": 9}
+
     conn = _patched_writer_env(monkeypatch, Rec())
     BgEphemerisWriter().run(ContextSpec(asset_id="bg_ephemeris", build_id="cols", db_conn=conn))
 
@@ -90,6 +96,12 @@ def test_conflict_guard_repairs_a_row_whose_node_mode_or_epoch_is_wrong(monkeypa
 
         def executemany(self, sql, _rows):
             Rec.sql = sql
+
+        def execute(self, _sql, _params=None):      # WFIX-A: the rows-present COUNT(*) read after the upsert
+            pass
+
+        def fetchone(self):
+            return {"n": 0}
 
     conn = _patched_writer_env(monkeypatch, Rec())
     BgEphemerisWriter().run(ContextSpec(asset_id="bg_ephemeris", build_id="guard", db_conn=conn))

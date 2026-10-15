@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
-from brahmagyan.l0_texts import TEXTS
+from brahmagyan.l0_texts import TEXTS, TEXTS as _CANONICAL_TEXTS  # alias: the legacy-row convergence reads the committed seed, whatever a test patches into TEXTS
 
 logger = logging.getLogger(__name__)
 
@@ -436,6 +436,14 @@ class TextsWriter(WriterBase):
             if cur.rowcount:
                 logger.info("[bg_texts] removed lal_kitab from classical_texts (DROPPED corpus text)")
 
+            # Legacy MCP-schema alias of bphs_jaimini: never deleted (chunks FK ON DELETE CASCADE; the
+            # l0_dasha_systems / l0_yogas citations resolve to it), but its tradition / source_edition
+            # converge to the registry: tradition = the bphs_jaimini TEXTS value, source_edition = NULL.
+            cur.execute(
+                "UPDATE classical_texts SET tradition = %s, source_edition = NULL WHERE text_id = 'jaimini_sutram'",
+                (next(t["tradition"] for t in _CANONICAL_TEXTS if t["text_id"] == "bphs_jaimini"),),
+            )
+
         # ── Step 1: Upsert classical_texts registry rows ──────────────────────
         for text in TEXTS:
             _upsert_text_metadata(conn, text)
@@ -444,7 +452,7 @@ class TextsWriter(WriterBase):
         if rebuild_mode == "metadata_only":
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=0,
+                rows_inserted=_rows_present(conn),
                 duration_seconds=time.time() - t0,
                 notes=(
                     f"metadata_only: converged {len(TEXTS)} canonical text rows; "
@@ -705,9 +713,28 @@ class TextsWriter(WriterBase):
             "[bg_texts] COMPLETE: total_chunks=%d texts=%d duration=%.1fs conditional=%s",
             total_chunks, len(per_text_counts), duration, conditional,
         )
+        # WFIX-A: rows PRESENT across the declared produced set (classical_text_chunks +
+        # classical_texts), not the chunks this run newly inserted (0 on an additive rerun that finds
+        # every text already ingested, against 10,667 live rows).
+        rows_present = _rows_present(conn)
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total_chunks,
+            rows_inserted=rows_present,
             duration_seconds=duration,
-            notes="; ".join(notes_parts),
+            notes="; ".join(notes_parts) + f"; chunks_inserted_this_run={total_chunks}; rows_present={rows_present}",
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set (asset_declarations.json produced_tables): the chunks and the text-metadata rows.
+ROWS_PRESENT_SQL = (
+    "SELECT (SELECT count(*) FROM classical_text_chunks) + (SELECT count(*) FROM classical_texts) AS n"
+)
+
+
+def _rows_present(conn) -> int:
+    from pipeline.orchestrator.writers._rows_present import present_count
+    with conn.cursor() as cur:
+        cur.execute(ROWS_PRESENT_SQL)
+        return present_count(cur.fetchone())

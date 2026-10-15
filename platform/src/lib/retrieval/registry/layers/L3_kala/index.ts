@@ -53,6 +53,7 @@ import { queryMoortiNirnayaCapability }       from './query_moorti_nirnaya'
 import { queryVedhaGocharaCapability }        from './query_vedha_gochara'
 // ṢAḌ-DARŚANA W3 Lane w3-tithi-pravesha, registry item 13 (lunar-return annual chart).
 import { queryTithiPraveshaCapability }       from './query_tithi_pravesha'
+import { queryAssertionFixtureCapability }   from './query_assertion_fixture'
 import {
   callTransitSearchCapability,
   callEphemerisAtTCapability,
@@ -76,9 +77,35 @@ registerCapability(queryKalaPaddhatiProfileCapability)
 registerCapability(queryMoortiNirnayaCapability)
 registerCapability(queryVedhaGocharaCapability)
 registerCapability(queryTithiPraveshaCapability)
+if (process.env.KALA_ASSERTION_FIXTURE_ENABLED === '1') {
+  registerCapability(queryAssertionFixtureCapability)
+}
 
 registerCapability(callTransitSearchCapability)
 registerCapability(callEphemerisAtTCapability)
 registerCapability(callDashaEligibilityCapability)
 registerCapability(callMuhurtaScoreCapability)
 registerCapability(callPriorityRankingCapability)
+
+// K7: additive published-head composites; legacy tool handlers stay registered.
+import { nowViewCapability } from './view_now'
+import { aheadViewCapability } from './view_ahead'
+import { priorityViewCapability } from './view_priority'
+import { electViewCapability } from './view_elect'
+import { storyViewCapability } from './view_story'
+import { ritualViewCapability } from './view_ritual'
+import { explainViewCapability } from './view_explain'
+registerCapability(nowViewCapability)
+registerCapability(aheadViewCapability)
+registerCapability(priorityViewCapability)
+registerCapability(electViewCapability)
+registerCapability(storyViewCapability)
+registerCapability(ritualViewCapability)
+registerCapability(explainViewCapability)
+
+// KYD-123: preserve the exact public legacy names beside the stage readers.
+// K7-1b owns authenticated MCP adapters and generated web-bridge projection.
+import { makePublicView } from './view_common'
+for (const view of ['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'] as const) {
+  registerCapability(makePublicView(view))
+}

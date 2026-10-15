@@ -85,7 +85,8 @@ def _psql(pg, sql=None, path=None):
 # the REAL migration files that create the produced tables (applied in this order; each is a standalone CREATE / ALTER)
 REAL_DDL = [SMIG / "204_chart_facts.sql", SMIG / "215_chart_facts_formula_id.sql", SMIG / "216_chart_facts_partial_indexes.sql",
             MIG / "279_ga_medical.sql", MIG / "276_bg_medical_mappings.sql", MIG / "277_bg_nakshatra_medical.sql", MIG / "316_bg_nakshatra_medical_dosha.sql",
-            MIG / "261_bg_prashna_rules_schema.sql", MIG / "288_prashna_charts.sql", MIG / "289_ga_prashna_lagna.sql", MIG / "290_ga_prashna_judgment.sql", MIG / "286_ga_vastu_planet_direction_map.sql"]
+            MIG / "261_bg_prashna_rules_schema.sql", MIG / "288_prashna_charts.sql", MIG / "289_ga_prashna_lagna.sql", MIG / "290_ga_prashna_judgment.sql", MIG / "286_ga_vastu_planet_direction_map.sql",
+            SMIG / "499_orchestrator_event_register.sql"]      # the register the ga_vichara post-pass writes its run-evidence record to (#3448: persist_event)
 SIGN_MEDICAL_DDL = ("CREATE TABLE bg_sign_medical (sign_number INTEGER PRIMARY KEY CHECK (sign_number BETWEEN 1 AND 12), sign_name TEXT NOT NULL UNIQUE, body_part TEXT NOT NULL, organ_systems TEXT[], "
                     "element TEXT NOT NULL CHECK (element IN ('fire','earth','air','water')), dosha TEXT NOT NULL, classical_citation TEXT NOT NULL)")
 STUBS = ["CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(uuid, text[], text[], text[]) RETURNS void LANGUAGE plpgsql AS $$ BEGIN END $$;",
@@ -94,7 +95,7 @@ STUBS = ["CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(uuid
          # the CREATE TABLE of supabase/migrations/431_bg_sign_medical_kalapurusha.sql (that file also writes asset_registry, which this database does not have); the L0 loader seeds it too
          SIGN_MEDICAL_DDL,
          "ALTER TABLE chart_facts ADD COLUMN IF NOT EXISTS formula_provenance_text TEXT"]      # the post-pass INSERT of ga_structural_writer names it (migration 209)
-TABLES = ["bg_sky_calendar", "bg_synthetic_cohort_md", "bg_synthetic_cohort", "chart_vichara", "chart_facts", "ga_medical", "bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical", "ga_condition_composite", "prashna_charts", "ga_prashna_lagna",
+TABLES = ["orchestrator_event_register", "bg_sky_calendar", "bg_synthetic_cohort_md", "bg_synthetic_cohort", "chart_vichara", "chart_facts", "ga_medical", "bg_medical_mappings", "bg_nakshatra_medical", "bg_sign_medical", "ga_condition_composite", "prashna_charts", "ga_prashna_lagna",
           "ga_prashna_judgment", "bg_prashna_lagna_methods", "bg_prashna_tajik_yogas", "bg_prashna_significators", "bg_prashna_fructification_rules", "bg_prashna_special_techniques", "ga_vastu_planet_direction_map"]
 
 
@@ -128,9 +129,9 @@ def _create_table_ddl(path, table):
     raise AssertionError(f"unbalanced CREATE TABLE {table}")
 
 
-def _conn(pg):
+def _conn(pg, autocommit=True):
     import psycopg
-    return psycopg.connect(pg.url, autocommit=True)
+    return psycopg.connect(pg.url, autocommit=autocommit)
 
 
 def _measure(aid, db, monkeypatch, files, target, tables, decl=None):
@@ -164,17 +165,26 @@ def _all_na(got):
 CHART_POS = {"Lagna": (0, 12.5, 1), "Sun": (9, 21.8, 10), "Moon": (10, 5.0, 11), "Mars": (7, 3.0, 8), "Mercury": (9, 10.0, 10), "Jupiter": (5, 2.0, 6),
              "Venus": (9, 2.0, 10), "Saturn": (6, 28.0, 7), "Rahu": (3, 5.0, 4), "Ketu": (9, 5.0, 10)}
 SUBJECT = {"Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER", "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN", "Lagna": "LAGNA"}
-NAKSHATRA27 = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
-               "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+# SS N-471 / N-548 (one canonical nakshatra spelling, narrow shape): the emitting ga_* writers fold the adapter's names to the L0 lexicon's spellings at emission, so the fixture's names are the lexicon's.
+NAKSHATRA27 = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigasira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+               "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha", "Shatabhisha", "Purva Bhadrapada",
                "Uttara Bhadrapada", "Revati"]
+# The spellings the L1 adapter wrote before; the DECLARED closed vocabularies in asset_declarations.json (the Engine's file) still hold them until the Engine re-seals them with the rebuild.
+NAKSHATRA27_LEGACY = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+                      "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+                      "Uttara Bhadrapada", "Revati"]
 
 
-def _seed_positions(conn, pos=CHART_POS, ayanamshas=AYANAMSHAS):
-    """The graha_position / graha_sign_attributes facts the real ga_positions writer stores (categories, keys and the sign / nakshatra names of the pyjhora adapter)."""
+STORED_NAKSHATRA27 = NAKSHATRA27   # what chart_facts holds TODAY (the adapter's spellings); after the SS N-548 rebuild ga_positions stores NAKSHATRA27 (see the strict-xfail "after-rebuild" case below)
+
+
+def _seed_positions(conn, pos=CHART_POS, ayanamshas=AYANAMSHAS, names=None):
+    """The graha_position / graha_sign_attributes facts the real ga_positions writer stores (categories, keys and the sign / nakshatra names AS STORED: `names`, default STORED_NAKSHATRA27)."""
+    names = STORED_NAKSHATRA27 if names is None else names
     for aya in ayanamshas:
         for g, (sn, deg, house) in pos.items():
             lon = sn * 30 + deg
-            nak = NAKSHATRA27[int(lon // (360 / 27)) % 27]
+            nak = names[int(lon // (360 / 27)) % 27]
             for cat, key, vtxt, vnum in (("graha_position", "longitude_sidereal", None, lon), ("graha_position", "sign", SIGNS[sn], None), ("graha_position", "nakshatra", nak, None),
                                          ("graha_position", "house_d1", None, house), ("graha_sign_attributes", "sign_num", None, sn + 1),
                                          ("graha_sign_attributes", "degree_in_sign", None, deg)):
@@ -308,6 +318,8 @@ def test_ga_medical_declaration_is_the_checked_none_form_with_the_stated_vocabul
     pn = e["prose_none"]
     assert pn.get("column_scope") is None and e.get("produced_tables") is None            # one table, every text column judged
     cc = {c["column"]: c["values"] for c in pn["closed_columns"]}
+    assert cc.pop("natal_nakshatra") in (NAKSHATRA27, NAKSHATRA27_LEGACY)       # declared: the legacy list until the Engine re-seals it canonical (listed in the PR body); never any other list
+    cc["natal_nakshatra"] = NAKSHATRA27
     assert cc == {"natal_sign": SIGNS, "natal_nakshatra": NAKSHATRA27, "indication_strength": ["strong", "moderate", "mild", "unknown"], "dosha_aggravated": MED_DOSHA,
                   "organ_watch": MED_ORGANS, "body_part_watch": MED_PARTS, "nakshatra_body_part": MED_NAK_PARTS, "indication_tier": ["jyotish_indication"]}
     assert [i["column"] for i in pn["identifier_columns"]] == ["ayanamsha_id", "graha"]
@@ -319,7 +331,8 @@ def test_ga_medical_the_forwarded_vocabularies_are_the_upstream_tables_complete_
     _need(*RUNTIME)
     from brahmagyan import l0_medical as l0
     from pyjhora_adapter import _names
-    assert SIGNS == _names.SIGN_NAMES and NAKSHATRA27 == _names.NAKSHATRA_NAMES[1:]
+    from brahmagyan.nakshatra_vocabulary import normalize_nakshatra
+    assert SIGNS == _names.SIGN_NAMES and NAKSHATRA27 == [normalize_nakshatra(n) for n in _names.NAKSHATRA_NAMES[1:]]   # the adapter's table is unchanged (SS N-548); the writer folds it
     rows = {r["graha"]: r for r in l0.MEDICAL_MAPPINGS if r["graha"] in NINE}
     assert sorted(rows) == sorted(NINE)
     for col, declared in (("dosha", MED_DOSHA), ("organ_systems", MED_ORGANS), ("body_part", MED_PARTS)):
@@ -329,7 +342,8 @@ def test_ga_medical_the_forwarded_vocabularies_are_the_upstream_tables_complete_
     assert sorted(set(w.INDICATION_STRENGTH_BY_BAND.values()) | {w.INDICATION_STRENGTH_UNKNOWN}) == sorted(["strong", "moderate", "mild", "unknown"])
 
 
-def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_the_engine_reads_na(db, monkeypatch):
+@pytest.mark.parametrize("names", [pytest.param(NAKSHATRA27, id="after-rebuild")])
+def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_the_engine_reads_na(db, monkeypatch, names):
     from brahmagyan import l0_medical as l0
     from ga_writers import ga_medical_writer as w
     conn = _conn(db)
@@ -343,8 +357,8 @@ def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_
         _psql(db, "DELETE FROM chart_facts")
         pos = dict(CHART_POS)
         pos["Moon"] = (10, 5.0 + 0.001 * k, 11)
-        _seed_positions(conn, pos, AYANAMSHAS[:1])
-        _psql(db, f"UPDATE chart_facts SET fact_value_text = '{NAKSHATRA27[nak_i]}' WHERE fact_subject = 'MOON' AND fact_key = 'nakshatra'")
+        _seed_positions(conn, pos, AYANAMSHAS[:1], names=names)
+        _psql(db, f"UPDATE chart_facts SET fact_value_text = '{names[nak_i]}' WHERE fact_subject = 'MOON' AND fact_key = 'nakshatra'")
         _psql(db, "DELETE FROM ga_condition_composite")
         band = list(scores.values())[k % 4]
         for g in NINE:
@@ -355,12 +369,12 @@ def test_ga_medical_real_substep_rows_stay_inside_every_declared_vocabulary_and_
     moon = {r[2]: r[4] for r in rows_seen if r[0] == "Moon"}
     assert moon["Purva Bhadrapada"] == "left_side"                                              # the FORENSIC native Moon nakshatra maps to the seeded body part
     assert sorted(v for v in moon.values() if v) == sorted(r["body_part"] for r in l0.NAKSHATRA_MEDICAL)       # all 27 nakshatras find their seeded body part since the writer's 23rd-nakshatra spelling fix (Exec 1e5d1b894)
-    assert moon["Dhanishta"] == "back/knees"                                                                    # the adapter's 'Dhanishta' now resolves to the L0 table's Dhanishtha row (it used to find nothing)
+    assert moon[names[22]] == "back/knees"                                                                   # the adapter's 'Dhanishtha' resolves to the L0 table's Dhanishtha row (its pre-rebuild 'Dhanishta' is folded to it too)
     # keep one chart of every ayanamsha in the table for the engine reading
     _psql(db, "DELETE FROM ga_medical")
     for aya in AYANAMSHAS:
         _psql(db, "DELETE FROM chart_facts")
-        _seed_positions(conn, CHART_POS, [aya])
+        _seed_positions(conn, CHART_POS, [aya], names=names)
         _psql(db, "DELETE FROM ga_condition_composite")
         for g in NINE:
             conn.execute("INSERT INTO ga_condition_composite (chart_id, ayanamsha_id, graha, condition_score) VALUES (%s, %s, %s, %s)", (CHART, aya, g, 0.5))
@@ -611,22 +625,22 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     assert [(t["table"], t.get("filter")) for t in e["produced_tables"]] == [("chart_vichara", None), ("chart_facts", {"column": "fact_subject", "equals": "daridra"})]
     assert e["cross_asset_writes"] == ["chart_facts.fact_value_text", "chart_facts.citation_human"]
     ev = e["evidence"]["prose_fields"]
-    for cite in ("ga_vichara_writer.py:676", "ga_vichara_writer.py:678", "ga_vichara_writer.py:371", "ga_vichara_writer.py:444", "ga_vichara_writer.py:526", "valence_doctrine.py:251",
-                 "ga_vichara_writer.py:1088", "ga_vichara_writer.py:1090", "ga_vichara_writer.py:1220", "ga_vichara_writer.py:1221", "ga_daridra_postpass.py:281", "ga_daridra_postpass.py:215",
-                 "ga_daridra_postpass.py:217", "ga_daridra_postpass.py:225", "ga_daridra_postpass.py:86", "ga_daridra_postpass.py:301", "ga_structural_writer.py:3103", "ga_structural_writer.py:3214",
-                 "ga_structural_writer.py:3215", "ga_structural_writer.py:3221"):
+    for cite in ("ga_vichara_writer.py:693", "ga_vichara_writer.py:695", "ga_vichara_writer.py:388", "ga_vichara_writer.py:461", "ga_vichara_writer.py:543", "valence_doctrine.py:251",
+                 "ga_vichara_writer.py:1105", "ga_vichara_writer.py:1107", "ga_vichara_writer.py:1237", "ga_vichara_writer.py:1238", "ga_daridra_postpass.py:393", "ga_daridra_postpass.py:216",
+                 "ga_daridra_postpass.py:218", "ga_daridra_postpass.py:226", "ga_daridra_postpass.py:87", "ga_daridra_postpass.py:420", "ga_structural_writer.py:3104", "ga_structural_writer.py:3215",
+                 "ga_structural_writer.py:3216", "ga_structural_writer.py:3222"):
         assert cite in ev, cite
     # the cited lines really hold what the evidence says they hold
     w = (SIDECAR / "ga_writers" / "ga_vichara_writer.py").read_text(encoding="utf-8").splitlines()
     v = (SIDECAR / "brahmagyan" / "valence_doctrine.py").read_text(encoding="utf-8").splitlines()
     pp = (SIDECAR / "ga_writers" / "ga_daridra_postpass.py").read_text(encoding="utf-8").splitlines()
     sw = (SIDECAR / "ga_writers" / "ga_structural_writer.py").read_text(encoding="utf-8").splitlines()
-    assert '"value_text": (' in w[675] and "ratification fails in" in w[677] and "verdict.citation" in w[370] and '"source_citation": citation' in w[443] and '"source_citation": citation' in w[525]
-    assert "citation = (" in v[250] and "value_text" in w[1087] and "source_citation" in w[1089]
-    assert "import emit_daridra_label_post_pass" in w[1219] and "emit_daridra_label_post_pass(conn" in w[1220] and "return inserted + daridra_written" in w[1221]
-    assert "def emit_daridra_label_post_pass" in pp[280] and '"citation_human": (' in pp[214] and "does not serve as a finding" in pp[216] and "Daridra stands uncancelled" in pp[224]
-    assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[85] and "insert_daridra_label_rows(conn, rows)" in pp[300]
-    assert "def _build_dosha_rows" in sw[3102] and "citation_human = (" in sw[3213] and "labels chart" in sw[3214] and "CANCELLED:" in sw[3220]
+    assert '"value_text": (' in w[692] and "ratification fails in" in w[694] and "verdict.citation" in w[387] and '"source_citation": citation' in w[460] and '"source_citation": citation' in w[542]
+    assert "citation = (" in v[250] and "value_text" in w[1104] and "source_citation" in w[1106]
+    assert "import emit_daridra_label_post_pass" in w[1236] and "emit_daridra_label_post_pass(conn" in w[1237] and "return inserted + daridra_written" in w[1238]
+    assert "def emit_daridra_label_post_pass" in pp[392] and '"citation_human": (' in pp[215] and "does not serve as a finding" in pp[217] and "Daridra stands uncancelled" in pp[225]
+    assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[86] and "insert_daridra_label_rows(conn, rows)" in pp[419]
+    assert "def _build_dosha_rows" in sw[3103] and "citation_human = (" in sw[3214] and "labels chart" in sw[3215] and "CANCELLED:" in sw[3221]
     assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"], ["citation_human"], ["citation_human"]]
     got = ac.narr_fidelity_scan(e["prose_fields"], ev, _python_tests(), e["fidelity_tests"], None)
     assert got["v"] == PASS and "6 declared golden-value test(s) verified" in got["measured"] and "covers citation_human, source_citation, value_text" in got["measured"], got["measured"]
@@ -675,7 +689,7 @@ def _vichara_world(db, monkeypatch, *, daridra="uncancelled"):
     _psql(db, "DROP TABLE IF EXISTS chart_vichara CASCADE")
     _psql(db, _chart_vichara_ddl())
     _psql(db, "DELETE FROM chart_facts")
-    conn = _conn(db)
+    conn = _conn(db, autocommit=False)          # #3448: the post-pass evidence record is written by persist_event inside a SAVEPOINT, which needs a transaction block (the orchestrator's own shape)
     facts = [g._link("l1", "Venus", 2, 2), g._link("l2", "Jupiter", 9, 2), g._functional("fc1", "JUP", "yogakaraka"), g._dignity("d1jup", "D1", "JUP", "exalted"),
              g._dignity("d9jup", "D9", "JUP", "debilitated"), g._dignity("d1ven", "D1", "VEN", "own"), g._dignity("d9ven", "D9", "VEN", "own")]
     domains = {"wealth": {"vargas": ["D1", "D9"], "houses": [2], "karaka": "Jupiter", "provisional": False}}
@@ -690,10 +704,11 @@ def _vichara_world(db, monkeypatch, *, daridra="uncancelled"):
         next(x for x in chart["grahas"] if x["name"] == "Venus").update(sign="Libra", sign_id=7, house=4, longitude=190.0)      # the 11th lord in a kendra
     canned = g._CannedConn(yoga_rows=[("dhana_yoga_house_lords", '["sun", "mercury", "venus"]')] if daridra == "cancelled" else None)
     real = getattr(pp.build_daridra_label_rows, "_real", pp.build_daridra_label_rows)           # the original, even when an earlier call of this helper in the same test already patched it
-    patched = lambda c, cid, bid, aya, **k: real(canned, cid, bid, aya, chart_output=chart, dosha_catalog=[g.DARIDRA_ENTRY])      # noqa: E731
+    patched = lambda c, cid, bid, aya, **k: real(canned, cid, bid, aya, chart_output=chart, dosha_catalog=[g.DARIDRA_ENTRY], evaluation=k.get("evaluation"))      # noqa: E731  (#3448: the emitter passes `evaluation` and reads entries_evaluated from it for the run-evidence record)
     patched._real = real
     monkeypatch.setattr(pp, "build_daridra_label_rows", patched)
     rows_written = gv.build_ga_vichara_substep(CHART, str(uuid.uuid4()), AYANAMSHAS[0], conn, as_of=datetime.date(2026, 1, 1))
+    conn.commit()
     n_v = int(_psql(db, f"SELECT count(*) FROM chart_vichara WHERE chart_id = '{CHART}'").strip())
     n_d = int(_psql(db, f"SELECT count(*) FROM chart_facts WHERE chart_id = '{CHART}' AND fact_subject = 'daridra'").strip())
     return rows_written, n_v, n_d
@@ -814,7 +829,7 @@ def _run_cohort_writer(conn, monkeypatch, n=54):
         return pos
     monkeypatch.setattr(w, "compute_synthetic_positions", fake_positions)
     res = w.BgCohortWriter().run(ContextSpec(asset_id="bg_cohort", build_id="11111111-1111-1111-1111-111111111111", db_conn=conn, config={}))
-    assert res.rows_inserted == n
+    assert res.rows_inserted == n + 10 * n       # WFIX-A: the rows PRESENT across the declared produced set (cohort + its ten-row MD chains), not the cohort rows alone
     return w
 
 
@@ -941,7 +956,7 @@ def test_bg_sky_calendar_mutations_flip_the_reading(db, monkeypatch):
     got = _measure(*args)
     assert got["Narr.agree"]["v"] == FAIL and "detail" in got["Narr.agree"]["measured"]
     _psql(db, "UPDATE bg_sky_calendar SET detail = '{}'::jsonb WHERE detail ? 'note'")
-    _psql(db, "UPDATE bg_sky_calendar SET nakshatra = 'Mrigasira' WHERE id = (SELECT min(id) FROM bg_sky_calendar WHERE nakshatra IS NOT NULL)")                # the cohort spelling, not the sky calendar's
+    _psql(db, "UPDATE bg_sky_calendar SET nakshatra = 'Mrigashirsha' WHERE id = (SELECT min(id) FROM bg_sky_calendar WHERE nakshatra IS NOT NULL)")                # a spelling no producer uses
     got = _measure(*args)
     assert got["Narr.agree"]["v"] == FAIL and "nakshatra" in got["Narr.agree"]["measured"]
 

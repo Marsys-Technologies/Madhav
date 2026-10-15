@@ -1,13 +1,13 @@
 /**
  * query_nakshatra_medical — L0 Brahmagyan nakshatra→medical reference
  * =======================================================================
- * W2b dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set,
- * `bg_nakshatra_medical`, 27 rows). Serves the classical 27-nakshatra→
- * body-part correspondence reference (Ashtanga Hridayam / BPHS). Global
- * classical reference — no chart_id needed.
+ * W2b dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set, `bg_nakshatra_medical`, 27 rows).
+ * Classical 27-nakshatra→body-part reference (Ashtanga Hridayam / BPHS); global, no chart_id needed.
+ * The name filter is spelling-tolerant (Mrigasira/Mrigashira, Moola/Mula, Dhanishtha/Dhanishta all match).
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { storedNakshatraSpellings } from '@/lib/nakshatra_spelling'
 
 export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_nakshatra_medical',
@@ -39,6 +39,13 @@ export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
 
+  // §N.6 serving-density contract (DENS-SERVED): the whole matching set is returned (small closed reference table), not paged; filters are the facets below;
+  // an empty result carries `empty_reason` naming the applied filters (see the handler).
+  density_contract: {
+    paginated: false,
+    facets: ['nakshatra_name', 'nakshatra_number'],
+    empty_reason: true,
+  },
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const nakshatraName = args['nakshatra_name'] ? String(args['nakshatra_name']) : null
@@ -47,7 +54,7 @@ export const queryNakshatraMedicalCapability: CapabilityDescriptor = {
     const filters: string[] = ['1=1']
     const params: unknown[] = []
     let p = 1
-    if (nakshatraName) { filters.push(`LOWER(nakshatra_name) = LOWER($${p++})`); params.push(nakshatraName) }
+    if (nakshatraName) { filters.push(`LOWER(nakshatra_name) = ANY($${p++}::text[])`); params.push((storedNakshatraSpellings(nakshatraName) ?? [nakshatraName]).map((n) => n.toLowerCase())) }
     if (nakshatraNum != null && Number.isInteger(nakshatraNum)) { filters.push(`nakshatra_number = $${p++}`); params.push(nakshatraNum) }
     const where = filters.join(' AND ')
 

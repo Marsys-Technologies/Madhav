@@ -1,0 +1,9 @@
+asset_census: statement cap ACTIVE: every census psql session runs under statement_timeout 600 s and lock_timeout 5 s (the integrity runner is exempt); a cancelled read reads NO_DETECTOR
+L0 Brahmagyan (fidelity): 39 assets · 37 registered ids vs 35 has_writer=true
+  population: 39 active of 40 registry rows for this layer — excluded (inactive/dead): bg_sarvatobhadra_grid
+  build scope: 8 global run(s), of which 0 touched this layer  ← the global path never exercises it
+  FAIL 2 · PARTIAL/NO_DETECTOR 48 · ERRORED 0 · assets measured 39
+    FAIL Cost.baseline: 2 — bg_ephemeris_engine, bg_panchanga
+census written: ../../../../suvarna-evidence/census_eval/7e63cc872-1791835965446-rev30/census_L0.json
+exit=2
+wall_seconds=3512

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 
+from .completion import evidence_requirements, unmet_evidence
 from .verdicts import accepted_verdict
 
 
@@ -26,8 +27,12 @@ def _read_json(path: Path) -> dict | None:
 
 
 def audit(model: dict, events: list[dict], run_root: str | Path, *,
-          since: dt.datetime, now: dt.datetime | None = None) -> list[dict]:
-    """Return violations. A missing receipt is never silently treated as acceptance."""
+          since: dt.datetime, now: dt.datetime | None = None, repo: str | None = None) -> list[dict]:
+    """Return violations. A missing receipt is never silently treated as acceptance.
+
+    In a model with `control_plane.declarations` a completion is judged by the typed evidence the guard requires
+    (completion.evidence_requirements); `repo` lets the shared inheritance predicate judge a reviewed head.
+    """
     now = now or dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None or since.tzinfo is None:
         raise ValueError("audit bounds need timezones")
@@ -42,6 +47,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
     completed: set[str] = set()
     completed_heads: list[tuple[str, str, str | None]] = []
     completed_artifacts: list[tuple[str, str]] = []
+    completed_typed: list[tuple[str, dict, dict, dict]] = []
     outcomes: dict[str, str] = {}
     seen: list[dict] = []
     earned = 0
@@ -112,23 +118,30 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 if model.get("control_plane", {}).get("guarded_completion") and ev.get("guarded") is not True:
                     fail("unguarded_done", item_id, "terminal event bypassed guarded completion")
                 completion = ev.get("completion") if isinstance(ev.get("completion"), dict) else {}
-                head = completion.get("reviewed_head") or ev.get("reviewed_head") or ev.get("head")
-                pr = completion.get("pr") if isinstance(completion.get("pr"), dict) else {}
-                merge_commit = pr.get("mergeCommit") if isinstance(pr.get("mergeCommit"), dict) else {}
-                merge = merge_commit.get("oid") if completion.get("type") == "code" else None
-                if head and accepted_verdict(seen, item_id, head=head) is None:
-                    fail("rejected_or_stale_verdict", item_id, "no current ACCEPTED verdict for reviewed head")
-                if head:
-                    completed_heads.append((item_id, head, merge))
-                if merge and accepted_verdict(seen, item_id, head=merge, phase="post_deploy") is None:
-                    fail("missing_post_deploy_verdict", item_id, "no ACCEPTED verdict for deployed merge commit")
-                digest = completion.get("artifact_digest")
-                if completion.get("type") in ("artifact", "operation", "packet"):
-                    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or \
-                            accepted_verdict(seen, item_id, artifact_digest=digest, phase="artifact") is None:
-                        fail("missing_artifact_verdict", item_id, "no ACCEPTED verdict for completed artifact")
-                    else:
-                        completed_artifacts.append((item_id, digest))
+                requirements = evidence_requirements(model, row)
+                if requirements is not None:
+                    # the guard's own requirements, on the log as it stood when the completion was written
+                    for gap in unmet_evidence(model, row, seen, completion, requirements, repo=repo):
+                        fail(gap["code"], item_id, gap["detail"])
+                    completed_typed.append((item_id, row, completion, requirements))
+                else:
+                    head = completion.get("reviewed_head") or ev.get("reviewed_head") or ev.get("head")
+                    pr = completion.get("pr") if isinstance(completion.get("pr"), dict) else {}
+                    merge_commit = pr.get("mergeCommit") if isinstance(pr.get("mergeCommit"), dict) else {}
+                    merge = merge_commit.get("oid") if completion.get("type") == "code" else None
+                    if head and accepted_verdict(seen, item_id, head=head) is None:
+                        fail("rejected_or_stale_verdict", item_id, "no current ACCEPTED verdict for reviewed head")
+                    if head:
+                        completed_heads.append((item_id, head, merge))
+                    if merge and accepted_verdict(seen, item_id, head=merge, phase="post_deploy") is None:
+                        fail("missing_post_deploy_verdict", item_id, "no ACCEPTED verdict for deployed merge commit")
+                    digest = completion.get("artifact_digest")
+                    if completion.get("type") in ("artifact", "operation", "packet"):
+                        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or \
+                                accepted_verdict(seen, item_id, artifact_digest=digest, phase="artifact") is None:
+                            fail("missing_artifact_verdict", item_id, "no ACCEPTED verdict for completed artifact")
+                        else:
+                            completed_artifacts.append((item_id, digest))
                 operation_id = completion.get("operation_id") or ev.get("operation_id")
                 if operation_id and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", operation_id):
                     receipt = _read_json(root / "ops" / "receipts" / f"{operation_id}.json")
@@ -161,6 +174,12 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 f["code"] == "missing_artifact_verdict" and f["ref"] == item_id for f in findings):
             fail("missing_artifact_verdict", item_id, "completed artifact lost its ACCEPTED verdict")
 
+    # the same requirements on the whole log: a verdict revoked after the completion is a finding
+    for item_id, row, completion, requirements in completed_typed:
+        for gap in unmet_evidence(model, row, events, completion, requirements, repo=repo):
+            if not any(f["code"] == gap["code"] and f["ref"] == item_id for f in findings):
+                fail(gap["code"], item_id, gap["detail"] + " (at the end of the log)")
+
     # A submitted production request must be bound to an independent acceptance.
     for folder in (root / "ops" / "requests", root / "ops" / "done"):
         if folder.is_dir():
@@ -177,7 +196,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
                 if not acceptance or acceptance.get("result") != "ACCEPTED" or \
                         acceptance.get("operation_id") != operation_id or \
-                        acceptance.get("by") not in ("v1", "v2") or \
+                        acceptance.get("by") not in ("v1", "v2", "v3", "v4") or \
                         acceptance.get("request_sha256") != digest or \
                         acceptance.get("reviewed_commit") != req.get("reviewed_commit"):
                     fail("unbound_production_operation", operation_id, "independent acceptance is absent")
@@ -188,7 +207,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
         safe_id = isinstance(operation_id, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", operation_id)
         quiescence = _read_json(root / "ops" / "acceptance" / f"{operation_id}.quiescence.json") if safe_id else None
         if not operation_id or not quiescence or quiescence.get("operation_id") != operation_id or \
-                quiescence.get("result") != "ACCEPTED" or quiescence.get("by") not in ("v1", "v2"):
+                quiescence.get("result") != "ACCEPTED" or quiescence.get("by") not in ("v1", "v2", "v3", "v4"):
             fail("unreleased_production_fence", operation_id or "fence", "no matching verifier quiescence receipt")
 
     if (now - since).total_seconds() >= 2700 and earned == 0 and not blocked and any(

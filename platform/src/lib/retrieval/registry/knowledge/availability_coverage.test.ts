@@ -752,7 +752,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(ruling_graha) = LOWER(NULL::text)',
         'ORDER BY direction_deg',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:49-68',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:56-75',
     },
     {
       scuId: 'scu.catalog.query_vastu_direction_remedials',

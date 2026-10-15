@@ -14,6 +14,7 @@ import functools
 import hashlib
 import json
 import pathlib
+import posixpath
 import re
 import sys
 
@@ -31,7 +32,8 @@ FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_t
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
 SNAPSHOT_N = len(REGISTRY_IDS)                         # the 2026-09-30 census snapshot: 127 assets
 POST_SNAPSHOT_REGISTERED = ["ga_fact_identity"]        # registered by migration 1262 AFTER the snapshot and declared (kind only, 1.37.0) so Earn.service_state reads N/A
-REGISTRY_IDS = sorted(REGISTRY_IDS + POST_SNAPSHOT_REGISTERED)
+RETIRED_INACTIVE = ["bg_sarvatobhadra_grid"]           # retired by #3414 / migration 1360 (SS N-430): no longer an active asset, so no declaration
+REGISTRY_IDS = sorted(a for a in REGISTRY_IDS + POST_SNAPSHOT_REGISTERED if a not in RETIRED_INACTIVE)
 
 
 PEV = dict(prose_fields="writer file.py:1: composed / stores source text")   # a non-blank evidence pointer
@@ -68,8 +70,19 @@ def _fixture_census():
 
 def test_committed_file_loads_and_covers_exactly_the_127_census_assets():
     decl = ac.load_asset_declarations(registry_ids=REGISTRY_IDS)
-    assert SNAPSHOT_N == 127 and len(REGISTRY_IDS) == 128      # the 127 snapshot assets + ga_fact_identity (registered by migration 1262)
+    assert SNAPSHOT_N == 127 and len(REGISTRY_IDS) == 127      # the 127 snapshot assets + ga_fact_identity (registered by migration 1262) - bg_sarvatobhadra_grid (retired by migration 1360)
     assert sorted(decl) == REGISTRY_IDS
+
+
+def test_no_declaration_names_an_inactive_asset():
+    """SS N-431 ruling (item from N-438): a declaration of an inactive (retired) asset is a stale entry. No validator change - this test is the guard. The inactive list is offline: the assets
+    retired by migration 1360 (is_active = false, catalog_status RETIRED); the test also reads the migration, so the list cannot drift from it."""
+    mig = (REPO_ROOT / "platform/migrations/1360_retire_bg_sarvatobhadra_grid.sql").read_text(encoding="utf-8")
+    for a in RETIRED_INACTIVE:
+        assert f"asset_id = '{a}'" in mig and "is_active = false" in mig and "'RETIRED'" in mig, a
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
+    assert [a for a in RETIRED_INACTIVE if a in raw["assets"]] == []
+    assert [a for a in RETIRED_INACTIVE if a in ac.load_asset_declarations(registry_ids=REGISTRY_IDS)] == []
 
 
 def test_committed_file_kinds_are_in_the_enum_and_multi_table_is_not_a_kind():
@@ -83,7 +96,7 @@ def test_committed_file_pins_the_ruled_kinds():
     decl = _decl()
     assert decl["lel_events"]["kind"] == "user_data"          # ruling, principle 6
     assert decl["bo_samvada"]["kind"] == "view"
-    assert {a for a, e in decl.items() if e["kind"] == "static"} == {"bg_gochara_citation_resolution", "bg_sarvatobhadra_grid"}
+    assert {a for a, e in decl.items() if e["kind"] == "static"} == {"bg_gochara_citation_resolution"}
     assert {a for a, e in decl.items() if e["kind"] == "rider"} == {"bg_sign_medical", "bg_transit_engine", "bg_nakshatra_medical"}
     # the two user-table services: neither writes a table of its own (code evidence in the evidence pointer)
     assert decl["mi_abhilekha"]["kind"] == "service" and decl["mi_seva"]["kind"] == "service"
@@ -114,7 +127,7 @@ def test_parse_prose_field_splits_a_column_from_its_json_path():
     assert ac.parse_prose_field("_c1.$._k") == ("_c1", ("_k",))
 
 
-@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.*", "n.$.1a",
+@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.a*", "n.$.1a",
                                  "1n", "n n", "n-n", "t.n", "n\n", ".n", "n.$.x\n", "n.$.$.x", "n.$.", None, 1, ["n"]])
 def test_parse_prose_field_rejects_malformed_entries(bad):
     with pytest.raises(ac.DeclarationsError):
@@ -138,7 +151,7 @@ def test_parse_prose_field_accepts_an_array_element_segment_after_an_identifier_
     "d.$.a[-1].b", "d.$.a[ * ].b", "d.$.a[**].b", "d.$.a[*.b", "d.$.a*].b", "d.$.a[].b", "d.$.a[*]b", "d.$.a[*]x.b",
     "d.$.a[*]..b", "d.$.a[*].", "d.$.a[*]\n", "d.$.a[*].b\n", "d.$.a.[*].b", "d.$.[*].b", "d.$.a[*] .b", "d.$.a [*].b",
     "d.$.a[\uff0a].b", "d.$.a[*]\u200b.b", "d.$.a[*].b[*", "d.$.a[n].b", "d.$.a['x'].b", "d.$.a[*:].b", "d.$.a[?(@.x)].b",
-    "d.$.*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
+    "d.$.a*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
 def test_parse_prose_field_rejects_malformed_wildcards(bad):
     with pytest.raises(ac.DeclarationsError):
         ac.parse_prose_field(bad)
@@ -276,9 +289,10 @@ CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_
                 **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
                                                    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
                                                    "ga_vargas", "ga_yoga")}}
-L2_FILL_DECLARED = {"bo_samskara": ["embedding_input_summary"], "bo_chart_gestalt": ["defining_threads_jsonb.$.note", "domain_verdict_map_jsonb", "headline_jsonb.$.note", "watch_list_jsonb.$.note", "central_question_jsonb.$.note", "outliers_jsonb.$.note", "contested_areas_jsonb.$.note", "zoom_spine_jsonb.$.note", "headline_epistemic_jsonb.$.note"], "bo_grounding": ["derivation_chain", "grounding_evidence_jsonb.$.reason"], "bo_pramana_mapa": ["notes"]}     # E5.7 L2 fill: prose_fields declared with a golden test, a lint_none and (samskara) a K3 source
+L2_FILL_DECLARED = {"bo_samskara": ["embedding_input_summary"], "bo_chart_gestalt": ["defining_threads_jsonb.$.note", "domain_verdict_map_jsonb.$.*.verdict_note", "headline_jsonb.$.note", "watch_list_jsonb.$.note", "central_question_jsonb.$.note", "outliers_jsonb.$.note", "contested_areas_jsonb.$.note", "zoom_spine_jsonb.$.note", "headline_epistemic_jsonb.$.note"], "bo_grounding": ["derivation_chain", "grounding_evidence_jsonb.$.reason"], "bo_pramana_mapa": ["notes"]}     # E5.7 L2 fill: prose_fields declared with a golden test, a lint_none and (samskara) a K3 source
 L2_FILL_EMPTY = ("bo_samvada", "bo_drishti")     # E5.7 L2 fill: a checked prose_none over the view vw_chart_digest
 VEDHA_DECLARED = {"bg_vedha_malefic_scale": ["effect_description"]}     # SS 2026-10-05: the seeded effect sentence of the PG353 scale is the asset's prose (golden test declared)
+BG_RULES_DECLARED = {"bg_rules": ["predicate_jsonb.$.description"]}     # SS N-455/N-457: the f-string description of all 27 extractors is writer-composed text, declared beside corpus_derived with two golden fidelity_tests (Exec #3433)
 CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
@@ -299,33 +313,33 @@ NARR_CITES = {
                     (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
     "bg_compendium_index": [(_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
                             (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
-    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 107, "_build_narrative("), (_WR + "ka_kala_darshana.py", 138, "obstruction_summary, narrative"),
-                         (_WR + "ka_kala_darshana.py", 234, "'headline': headline"),
+    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 117, "_build_narrative("), (_WR + "ka_kala_darshana.py", 150, "obstruction_summary, narrative"),
+                         (_WR + "ka_kala_darshana.py", 246, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
-                        (_L + "L3_kala/query_life_arc.ts", 152, "narrative, source_citation")],
-    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 323, "_build_projection_narrative("),
-                           (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
-                           (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f"),
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 191, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
+                        (_L + "L3_kala/query_life_arc.ts", 153, "narrative, source_citation")],
+    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 334, "_build_projection_narrative("),
+                           (_WR + "ka_bhavishya_lekha.py", 328, "_build_falsifiability("),
+                           (_WR + "ka_bhavishya_lekha.py", 544, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 545, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 648, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 700, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 757, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 834, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 913, "'reason': ("), (_WR + "ka_vighnakara.py", 969, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 292, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
-    "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
-                  (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
-                  (_L + "L3_kala/query_dasha_dossier.ts", 92, "dossier, quality")],
+    "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
+                  (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
+                  (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
     "ph_nimitta": [(_SC + "services/ph_nimitta/engine.py", 237, "def as_text"), (_SC + "services/ph_nimitta/engine.py", 552, "falsifier=sf.as_text()"),
                    (_WR + "ph_nimitta.py", 279, "a.falsifier"), (_L + "L4_phala/query_predictive_anchors.ts", 137, "falsifier, source_citation")],
     "ph_rectification": [(_SC + "services/ph_rectification/engine.py", 555, "firewall_note = ("),
                          (_WR + "ph_rectification/__init__.py", 74, 'flags["load_bearing_note"] = ('),
                          (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
-                         (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+                         (_L + "L4_phala/query_phala_calibration.ts", 648, "judgment_flags"),
+                         (_L + "L4_phala/query_phala_calibration.ts", 650, "leakage_firewall_note")],
     "bo_pratijna": [(_WR + "bo_pratijna_v4_engine.py", 310, 'f"sign={sign_number} matches exaltation_sign"'),
                     (_WR + "bo_pratijna_v4_engine.py", 410, "naisargika-only (tatkalika unavailable)"),
                     (_WR + "bo_pratijna_v4_engine.py", 425, "naisargika({graha}->{need.sign_lord})"),
@@ -344,22 +358,22 @@ NARR_CITES = {
                     (_WR + "bo_pratijna.py", 428, '"derivation": json.dumps(derivation)'),
                     (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
                     (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
-                    (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
-    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
+                    (_L + "L2_bodha/query_pratijna.ts", 185, "derivation, formula_version")],
+    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2408, 'return "Structured formation rule: " + json.dumps('), (_BG + "l0_yogas.py", 2411, "def _signification_text("),
                  (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
                  (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
                  (_L + "L0_brahmagyan/query_yoga_catalog.ts", 57, "SELECT * FROM brahma_yoga_catalog")],
     "bg_ontology": [(_BG + "l0_ontology.py", 145, 'f"nak_{nak_id:02d}_'), (_BG + "l0_ontology.py", 147, 'f"Nakshatra {nak_id}/27"'),
                     (_BG + "l0_ontology.py", 171, 'f"Sign {sign_id}/12"'), (_BG + "l0_ontology.py", 215, 'f"HOUSE_{house_num:02d}"'),
-                    (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 977, 'code = f"D{n}"'),
-                    (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
+                    (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 979, 'code = f"D{n}"'),
+                    (_BG + "l0_ontology.py", 983, 'f"d{n}"'), (_BG + "l0_ontology.py", 1154, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
                           (_WR + "bo_laksana.py", 3994, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 4024, "_CLEAR_CONTRADICTS_SQL"),
                           (_WR + "bo_laksana.py", 4032, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4091, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4146, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4149, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4213, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4224, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 509, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 546, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -412,7 +426,7 @@ def _read(path):
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives"])      # E5.7 fills + the residual declaration batch: prose_fields [] with a checked prose_none (minus bg_dasha_systems, bg_nakshatra, bg_reference: SS audit 2026-10-06, prose_none removed and prose_fields null)
+PN_FILL_EMPTY = ("bg_ephemeris", "bg_gochara_arcs", *["bg_class_lifetime_counts", "bg_class_priors", "bg_formula_constants", "bg_ghatana", "bg_gochara_citation_resolution", "bg_kota_chakra_rings", "bg_medical_mappings", "bg_nakshatra_medical", "bg_parihara_rules", "bg_prashna_rules", "bg_sign_medical", "bg_texts", "bg_vidhi_floors", "bg_vidhi_primitives", "ga_dashas", "ga_transit_anchors", "bg_concordance", "bg_text_index", "bg_muhurta_lattice", "bg_nakshatra", "bg_vastu_directions", "bg_transit_rules", "bg_dignity_reference", "bg_reference", "bg_dasha_systems", "ga_sensitive_degree"])      # E5.7 fills + the residual declaration batch + FORM-GAP (N-191, declarations 1.40.0 / 1.41.0): prose_fields [] with a checked prose_none (SS audit 2026-10-06 removed prose_none from bg_dasha_systems, bg_nakshatra, bg_reference; all three are back through the FORM-GAP forms: bg_nakshatra 1.45.0, bg_reference 1.51.0, bg_dasha_systems 1.52.0)
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
@@ -424,18 +438,20 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
         assert got[a] == v, a
     for a, v in VEDHA_DECLARED.items():
         assert got[a] == v, a
+    for a, v in BG_RULES_DECLARED.items():
+        assert got[a] == v, a
     PROSE2_FIELDS = {"ga_vichara": ["value_text", "source_citation", "citation_human"]}      # prose batch 2 (literal pins of what it declares; not imported from its own test file)
-    PROSE2_NONE = ("ga_ayurdaya", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
+    PROSE2_NONE = ("ga_ayurdaya", "ga_fact_identity", "ga_medical", "ga_prashna", "ga_vastu", "bg_cohort", "bg_sky_calendar")
     for a, v in PROSE2_FIELDS.items():
         assert got[a] == v, a
     assert sorted(a for a, v in got.items() if v == []) == sorted([*NARR_EMPTY, *LATTA_EMPTY, *BATCH2_EMPTY, *PN_FILL_EMPTY, *L2_FILL_EMPTY, *PROSE2_NONE])
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED) | set(PROSE2_NONE) | set(PROSE2_FIELDS)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW) | set(LATTA_EMPTY) | set(BATCH2_EMPTY) | {"bo_cgm_paths"} | set(PN_FILL_EMPTY) | set(L2_FILL_DECLARED) | set(L2_FILL_EMPTY) | set(VEDHA_DECLARED) | set(BG_RULES_DECLARED) | set(PROSE2_NONE) | set(PROSE2_FIELDS)      # E5.7 L1/L2 fill: bo_cgm_paths declares path_label_human
     for a in CITATION_NEW:
         assert got[a] == CITATION_NEW[a], a
     for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
         assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
-    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED) + len(PROSE2_NONE) + len(PROSE2_FIELDS)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
-    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 128 - n
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW) + len(LATTA_EMPTY) + len(BATCH2_EMPTY) + 1 + len(PN_FILL_EMPTY) + len(L2_FILL_DECLARED) + len(L2_FILL_EMPTY) + len(VEDHA_DECLARED) + len(BG_RULES_DECLARED) + len(PROSE2_NONE) + len(PROSE2_FIELDS)      # + bo_cgm_paths (E5.7 L1/L2 fill) + the L2 fill
+    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
 def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
@@ -652,16 +668,54 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [641, 693, 750, 827, 906, 962] and constant == [788, 863]
+    assert composed == [648, 700, 757, 834, 913, 969] and constant == [795, 870]
+
+
+def _avadhi_dossier_prose_report(src):
+    """Follow the K1-2 builder → Jsonb row → shared partition writer binding."""
+    tree = ast.parse(src)
+    run, = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "run"]
+    writes = [n for n in ast.walk(run) if isinstance(n, ast.Call)
+              and isinstance(n.func, ast.Name) and n.func.id == "replace_candidate_partition"]
+    assert len(writes) == 1
+    write = writes[0]
+    assert len(write.args) == 6 and ast.literal_eval(write.args[1]) == "kala_avadhi"
+    assert isinstance(write.args[-1], ast.Name) and write.args[-1].id == "rows"
+    rows = [n.args[0] for n in ast.walk(run) if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute) and n.func.attr == "append"
+            and isinstance(n.func.value, ast.Name) and n.func.value.id == "rows" and len(n.args) == 1]
+    assert len(rows) == 1 and isinstance(rows[0], ast.Call)
+    assert isinstance(rows[0].func, ast.Name) and rows[0].func.id == "dict"
+    bound = [k.value for k in rows[0].keywords if k.arg == "dossier"]
+    assert len(bound) == 1 and isinstance(bound[0], ast.Call)
+    assert isinstance(bound[0].func, ast.Name) and bound[0].func.id == "Jsonb" and len(bound[0].args) == 1
+    root = bound[0].args[0]
+    assert isinstance(root, ast.Name) and root.id == "dossier"
+    builders = [n.value for n in ast.walk(run) if isinstance(n, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == root.id for t in n.targets)]
+    assert len(builders) == 1 and isinstance(builders[0], ast.Call)
+    assert isinstance(builders[0].func, ast.Name) and builders[0].func.id == "build_dossier"
+    report = nw.composed_report(tree, [root], ("sublord_modulation", "note"))
+    assert report and all(composed for _line, composed in report)
+    return report
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
-    import ast
+    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(198, True)]
+
+
+@pytest.mark.parametrize("old,new", [
+    ("dossier=Jsonb(dossier)", "dossier=Jsonb({})"),
+    ("dossier=Jsonb(dossier)", "other=Jsonb(dossier)"),
+    ("dossier = build_dossier(", "dossier = dict("),
+    ("'kala_avadhi', chart, gen, None, rows", "'other_table', chart, gen, None, rows"),
+    ("f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\"", "\"fixed note\""),
+])
+def test_avadhi_candidate_prose_binding_rejects_storage_builder_and_composition_mutants(old, new):
     src = _read(_WR + "ka_avadhi.py")
-    problems, vals = nw.named_bound_values(src, "kala_avadhi", "dossier")
-    assert problems == [] and len(vals) == 1
-    roots = [nw.json_dumps_argument(v) for v in vals]
-    assert nw.composed_report(ast.parse(src), roots, ("sublord_modulation", "note")) == [(293, True)]
+    assert src.count(old) == 1
+    with pytest.raises(AssertionError):
+        _avadhi_dossier_prose_report(src.replace(old, new))
 
 
 def test_ph_nimitta_falsifier_is_bound_to_the_anchor_and_composed_by_as_text():
@@ -874,7 +928,9 @@ _ONTO = _BG + "l0_ontology.py"
 YOGAS_BOUND_TEXT = {
     "base_name + ' Yoga'": "name_en label (base name + the word Yoga)",
     "lex_name + ' Yoga'": "detected-name label from the lexicon",
-    "f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'": "formation_text fallback: provenance pointer",
+    # WFIX-A: the former f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})' fallback (a sentence claiming a formation "per" a verse
+    # while stating none) was removed; the fallback now restates the row's own cited structured rule (the value the row already holds)
+    "'Structured formation rule: ' + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)": "formation_text fallback: restatement of the row's own structured rule",
     "f'{text_id.upper()} Ch.{chapter} ({verse_ref})'": "source_citation: provenance",
 }
 YOGAS_ERROR_PREFIXES = ("bg_yogas ", "invalid yoga source chunk identifier")
@@ -928,8 +984,7 @@ def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_ch
     tree = ast.parse(_read(_YOGAS))
     fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
     fstrs = {ast.unparse(n): n for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)}
-    fmt = fstrs["f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'"]
-    assert nw.fstring_interpolations(fmt) == [("name_en", False), ("verse_ref", False), ("text_id", False), ("chapter", False)]
+    assert not [u for u in fstrs if "formation per" in u]                  # WFIX-A: the verse-pointer fallback sentence is gone from the extractor
     cit = fstrs["f'{text_id.upper()} Ch.{chapter} ({verse_ref})'"]
     assert nw.fstring_interpolations(cit) == [("text_id.upper()", False), ("chapter", False), ("verse_ref", False)]   # no spec/conversion
     for name, col in (("text_id", "text_id"), ("chapter", "chapter"), ("verse_ref", "verse_ref")):
@@ -937,10 +992,15 @@ def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_ch
     assert {ast.unparse(v) for v in nw._assign_values(fn, "name_en")} == {
         "base_name + ' Yoga' if not raw_name.lower().endswith('yoga') else raw_name", "name_en.strip()"}
     ft = [a for a in nw._assign_values(fn, "formation_text")]
-    assert len(ft) == 1 and isinstance(ft[0], ast.IfExp) and ast.unparse(ft[0].orelse) in fstrs     # the f-string is only the fallback
-    assert ast.unparse(ft[0].body) == "raw_clause"
+    assert [ast.unparse(v) for v in ft] == ["_formation_text(raw_clause, formation_rule_jsonb)"]     # the helper: verbatim clause, else the cited rule
     sig = {ast.unparse(v) for v in nw._assign_values(fn, "sig_text")}
-    assert sig == {"''", "rm.group(0).strip()[:300]", "raw_clause[:200] if raw_clause else name_en"}
+    assert sig == {"''", "rm.group(0).strip()[:300]", "_signification_text(sig_text, raw_clause)"}
+    helpers = {n.name: n for n in ast.parse(_read(_YOGAS)).body if isinstance(n, ast.FunctionDef)}
+    ret = [ast.unparse(n.value) for n in ast.walk(helpers["_formation_text"]) if isinstance(n, ast.Return)]
+    assert sorted(ret) == sorted(["raw_clause", "'Structured formation rule: ' + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)"])
+    assert not [n for n in ast.walk(helpers["_formation_text"]) if isinstance(n, ast.JoinedStr)]    # no interpolation, no computed value, no grade
+    sret = [ast.unparse(n.value) for n in ast.walk(helpers["_signification_text"]) if isinstance(n, ast.Return)]
+    assert sorted(sret) == sorted(["result_sentence", "raw_clause[:200] if raw_clause else ''"])                    # the yoga NAME is never a signification
 
 
 def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text():
@@ -957,16 +1017,16 @@ def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text()
 
 def test_bg_yogas_checker_kills_a_narration_mutant_in_the_bound_text_and_the_insert():
     src = _read(_YOGAS)
-    mutant = src.replace('f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})"',
-                         'f"{name_en}: formation per {verse_ref}, strength {len(raw_clause) / 10:.1f}"')
+    mutant = src.replace('''    return "Structured formation rule: " + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)''',
+                         '''    return f"Structured formation rule, strength {len(raw_clause) / 10:.1f}"''')
     assert mutant != src
-    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "_formation_text")
     assert ("len(raw_clause) / 10", True) in [i for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)
                                               for i in nw.fstring_interpolations(n)]
-    old = '                    y["significations_text"][:150],\n'
+    old = '                    y["significations_text"][:150] or None,'          # WFIX-A: an empty signification seeds a NULL description
     assert src.count(old) == 1
     assert nw.no_string_building_in_bound_params(
-        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",\n'), "seed_yogas",
+        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",'), "seed_yogas",
         extra_calls=("_yoga_synonyms", "_yoga_citation"))
 
 
@@ -1204,18 +1264,18 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    214,
+    223,
     "\"citation_human\": f\"Arudha: "
    ],
    [
     "platform/python-sidecar/bodha_writers/arudha_emitter.py",
-    243,
+    253,
     "headline=f\"Arudha Lagna (AL)"
    ]
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1254,7 +1314,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1299,7 +1359,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   121,
+   122,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1448,7 +1508,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    523,
+    528,
     "\"citation_human\": f\"{sig_cla"
    ],
    [
@@ -1489,7 +1549,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-   52,
+   53,
    "citation_ref, citation_human"
   ],
   "fields": [
@@ -1543,7 +1603,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-   73,
+   89,
    "classical_citation_id, verif"
   ],
   "fields": [
@@ -1576,7 +1636,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-   75,
+   91,
    "verification_pass_status, ci"
   ],
   "fields": null,
@@ -1603,27 +1663,27 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    689,
+    716,
     "f\"Argala: {graha_b} in {_ot.ordinal("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    773,
+    803,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    850,
+    880,
     "\"citation_human\":           "
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1425,
+    1460,
     "\"citation_human\": ("
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-    1799,
+    1834,
     "\"citation_human\": f\"{node_su"
    ]
   ],
@@ -1671,7 +1731,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-   78,
+   86,
    "verification_pass_status, ci"
   ],
   "fields": [
@@ -1714,7 +1774,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-   1498,
+   1499,
    "`SELECT mechanism_name, mech"
   ],
   "fields": [
@@ -1752,11 +1812,7 @@ CITATION_DECISIONS = json.loads(r"""
     "chum = f\"{subject} {key}: {v"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1784,11 +1840,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{method.capitalize()} long"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": null,
   "labels": [
    "HARANA_NOTE",
@@ -1823,11 +1875,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{graha} lajjitadi avastha "
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1899,20 +1947,16 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    371,
+    399,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    539,
+    567,
     "citation_human=f\"Sun's arc i"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1950,11 +1994,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{gname} Sripati bhāva-chal"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -1978,20 +2018,16 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    952,
+    979,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1310,
+    1298,
     "citation_human=f\"Sade Sati {"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2019,11 +2055,7 @@ CITATION_DECISIONS = json.loads(r"""
     "\"citation_human\": citation,"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": null,
   "labels": []
  },
@@ -2046,15 +2078,11 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    274,
+    279,
     "return f\"{category}.{subject"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2087,11 +2115,7 @@ CITATION_DECISIONS = json.loads(r"""
     "f\"{graha_name} shadbala rati"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2116,25 +2140,21 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1390,
+    1391,
     "citation_human=f\"House {h} r"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1789,
+    1790,
     "f\"House {h} strength classif"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    4756,
+    4757,
     "f\"{g_name} effective dignity"
    ]
   ],
-  "served": [
-   "platform/src/lib/ganita/facts_store.ts",
-   447,
-   "cf.citation_human,"
-  ],
+  "served": null,
   "fields": [
    "citation_human"
   ]
@@ -2164,7 +2184,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-   902,
+   905,
    "applicable_tajik_yogas_array"
   ],
   "fields": [
@@ -2238,7 +2258,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-   200,
+   292,
    "f.activation_dasha_periods, "
   ],
   "fields": [
@@ -2258,7 +2278,7 @@ CITATION_DECISIONS = json.loads(r"""
 # stays ga_structural's; ga_structural's AST census dropped from 191/5 to 190/4 by exactly those two moved sites)
 CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "ga_writers/ga_daridra_postpass.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
                           _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
-CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_transit_anchors")   # writers set no citation_human
+CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu")   # writers set no citation_human (ga_transit_anchors left this list: FORM-GAP 1.40.0 declares prose_fields [] with a checked prose_none; ga_vichara left it: prose batch 2 declares its prose)
 _GW = _SC + "ga_writers/"
 
 
@@ -2339,6 +2359,431 @@ def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidenc
         assert "SS ruling 2026-10-01" in ev and ev.count("AST census of the writer's citation_human sites") == 1
 
 
+# ── SS N-344/N-345: a "served" citation must be a read something imports. `facts_store.ts` had NO importer (dead code) yet ten assets cited it as the served read of
+# citation_human, and this very test only checked that the cited LINE existed. The typed L1 readers select citation_ref, not citation_human, so the ten now declare
+# `served: null` and their evidence says the narration is written and graded but NOT served by a typed reader. LIMIT, stated: an importer is necessary, not sufficient
+# (an importer that is itself dead still reads live; no reachability walk); the guard resolves each import path to the cited file, ignores comments, strings,
+# `import type` and test/fixture importers. ──
+
+_TS_SRC_ROOTS = ("platform/src", "platform-mcp/src")
+_TS_PACKAGES = ("platform", "platform-mcp")
+_TEST_DIRS = frozenset(("tests", "test", "__tests__", "__mocks__", "fixtures", "__fixtures__", "e2e", "stories"))
+_TEST_FILE = re.compile(r"\.(test|spec|stories|e2e)\.|^test-utils\.")
+_REGEX_PREV_PUNCT = frozenset("(,=:[!&|?{};+-*%<>~^")
+_REGEX_PREV_WORDS = frozenset(("return", "typeof", "case", "in", "of", "delete", "void", "throw", "new", "else", "do"))
+_ALLOWED_BETWEEN = frozenset("*{},")
+
+
+def _ts_tokens(src):
+    """A small TypeScript lexer: comments are dropped; string literals become ('str', value); the TEXT of a template literal is dropped (its `${...}` code is still lexed);
+    regex literals become ('re', ''); everything else is ('word', ident) or ('p', char). Enough to find import/export/require statements without being fooled by
+    comments, strings or templates; it is not a parser."""
+    toks, stack, i, n = [], [], 0, len(src)
+
+    def scan_template(i):
+        while i < n:
+            ch = src[i]
+            if ch == "\\":
+                i += 2
+            elif ch == "`":
+                return i + 1
+            elif ch == "$" and src.startswith("${", i):
+                stack.append("T")
+                return i + 2
+            else:
+                i += 1
+        return n
+
+    while i < n:
+        c = src[i]
+        if c.isspace():
+            i += 1
+        elif src.startswith("//", i):
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"":
+            j, buf = i + 1, []
+            while j < n and src[j] != c and src[j] != "\n":
+                if src[j] == "\\" and j + 1 < n:
+                    buf.append(src[j + 1])
+                    j += 2
+                else:
+                    buf.append(src[j])
+                    j += 1
+            toks.append(("str", "".join(buf)))
+            i = j + 1
+        elif c == "`":
+            toks.append(("tmpl", ""))
+            i = scan_template(i + 1)
+        elif c == "/":
+            prev = toks[-1] if toks else None
+            if prev is None or (prev[0] == "p" and prev[1] in _REGEX_PREV_PUNCT) or (prev[0] == "word" and prev[1] in _REGEX_PREV_WORDS):
+                j, in_class = i + 1, False
+                while j < n and src[j] != "\n":
+                    if src[j] == "\\":
+                        j += 2
+                        continue
+                    if src[j] == "[":
+                        in_class = True
+                    elif src[j] == "]":
+                        in_class = False
+                    elif src[j] == "/" and not in_class:
+                        break
+                    j += 1
+                toks.append(("re", ""))
+                i = j + 1
+            else:
+                toks.append(("p", c))
+                i += 1
+        elif c.isalnum() or c in "_$":
+            j = i + 1
+            while j < n and (src[j].isalnum() or src[j] in "_$"):
+                j += 1
+            toks.append(("word", src[i:j]))
+            i = j
+        else:
+            if c == "{":
+                stack.append("B")
+            elif c == "}":
+                if stack and stack.pop() == "T":
+                    i = scan_template(i + 1)
+                    continue
+            toks.append(("p", c))
+            i += 1
+    return toks
+
+
+def _ts_import_specifiers(src):
+    """The module specifiers a TS/TSX source imports at runtime: `import 'x'`, `import a, {b} from 'x'`, `export * from 'x'`, `export {a} from 'x'`, `import('x')`, `require('x')`.
+    NOT counted: anything in a comment, string or template literal; `import type ...`; `export type ... from`; `import { type A } from` where every named specifier is type-only."""
+    toks, out, n = _ts_tokens(src), [], 0
+    n = len(toks)
+    for k, (kind, val) in enumerate(toks):
+        if kind != "word" or val not in ("import", "export", "require"):
+            continue
+        if k and toks[k - 1] == ("p", "."):
+            continue                                              # obj.import / obj.require is not a module reference
+        nxt = toks[k + 1] if k + 1 < n else ("", "")
+        if val == "require" or (val == "import" and nxt == ("p", "(")):
+            if nxt == ("p", "(") and k + 2 < n and toks[k + 2][0] == "str":
+                out.append(toks[k + 2][1])
+            continue
+        if val == "import" and nxt[0] == "str":
+            out.append(nxt[1])                                    # side-effect import
+            continue
+        if val == "export" and nxt not in (("p", "*"), ("p", "{")):
+            continue                                              # export const/type/default/...: not a re-export; `export type {..} from` is skipped here too
+        if val == "import" and nxt == ("word", "type") and not (k + 2 < n and toks[k + 2] == ("word", "from")):
+            continue                                              # import type X from / import type { X } from
+        j, braces = k + 1, []
+        while j < n and (toks[j][0] == "word" or toks[j][1] in _ALLOWED_BETWEEN) and not (toks[j] == ("word", "from") and j + 1 < n and toks[j + 1][0] == "str"):
+            braces.append(toks[j])
+            j += 1
+        if j + 1 < n and toks[j] == ("word", "from") and toks[j + 1][0] == "str":
+            if val == "import" and ("p", "{") in braces and ("word", "type") in braces and _all_named_are_type(braces) and not _has_default_or_ns(braces):
+                continue
+            out.append(toks[j + 1][1])
+    return out
+
+
+def _has_default_or_ns(between):
+    """True when an import clause carries a default binding or a namespace before/after its braces."""
+    depth, saw = 0, False
+    for t in between:
+        if t == ("p", "{"):
+            depth += 1
+        elif t == ("p", "}"):
+            depth -= 1
+        elif depth == 0 and (t[0] == "word" and t[1] != "as" or t == ("p", "*")):
+            saw = True
+    return saw
+
+
+def _all_named_are_type(between):
+    """True when every specifier inside the braces starts with the inline `type` modifier (`{ type A, type B as C }`)."""
+    inside, depth = [], 0
+    for t in between:
+        if t == ("p", "{"):
+            depth += 1
+        elif t == ("p", "}"):
+            depth -= 1
+        elif depth:
+            inside.append(t)
+    specs, cur = [], []
+    for t in inside:
+        if t == ("p", ","):
+            specs.append(cur)
+            cur = []
+        else:
+            cur.append(t)
+    specs.append(cur)
+    specs = [s for s in specs if s]
+    return bool(specs) and all(s[0] == ("word", "type") and len(s) > 1 and s[1] != ("word", "as") for s in specs)
+
+
+def _ts_alias_prefixes(repo_root):
+    """{import prefix -> repo-relative directory prefix}, read from each package's own tsconfig.json compilerOptions.paths (+ baseUrl). Real repo: platform maps
+    '@/*' -> './src/*'; platform-mcp declares no paths (so '@/' means nothing there)."""
+    out = {}
+    for pkg in _TS_PACKAGES:
+        cfg = repo_root / pkg / "tsconfig.json"
+        if not cfg.is_file():
+            continue
+        text = cfg.read_text(encoding="utf-8", errors="replace")
+        try:
+            opts = json.loads(text).get("compilerOptions", {})
+        except ValueError:
+            opts = json.loads(re.sub(r"^\s*//.*$", "", text, flags=re.M)).get("compilerOptions", {})
+        base = posixpath.normpath(posixpath.join(pkg, opts.get("baseUrl", ".")))
+        for pat, targets in (opts.get("paths") or {}).items():
+            if pat.endswith("/*") and targets and targets[0].endswith("/*"):
+                out[(pkg, pat[:-1])] = posixpath.normpath(posixpath.join(base, targets[0][:-1]))
+    return out
+
+
+def _ts_resolve(spec, importer_rel, repo_root, aliases):
+    """The repo-relative path of the file `spec` (imported from `importer_rel`) resolves to, or None: relative specifiers against the importer's directory, alias
+    specifiers through that package's tsconfig paths; a trailing .js/.ts/.tsx/.mjs is stripped; tries path.ts, path.tsx, path/index.ts, path/index.tsx."""
+    if spec.startswith("."):
+        base = posixpath.normpath(posixpath.join(posixpath.dirname(importer_rel), spec))
+    else:
+        base = None
+        for (pkg, prefix), target in aliases.items():
+            if importer_rel.startswith(pkg + "/") and spec.startswith(prefix):
+                base = posixpath.normpath(posixpath.join(target, spec[len(prefix):]))
+                break
+        if base is None:
+            return None                                           # a bare package specifier (react, next/server, ...)
+    for ext in (".js", ".ts", ".tsx", ".mjs"):
+        if base.endswith(ext):
+            base = base[: -len(ext)]
+            break
+    for cand in (base + ".ts", base + ".tsx", base + "/index.ts", base + "/index.tsx"):
+        if (repo_root / cand).is_file():
+            return cand
+    return None
+
+
+def _is_test_or_fixture(rel):
+    parts = rel.split("/")
+    return any(d in _TEST_DIRS for d in parts[:-1]) or bool(_TEST_FILE.search(parts[-1]))
+
+
+def _live_importers(path, repo_root, files=None):
+    """The non-test, non-fixture TS/TSX sources (other than `path`) that import the cited module at runtime. Each import specifier (import / export-from re-export barrel
+    / dynamic import() / require()) is found by a lexer that ignores comments, strings and templates and skips `import type` / `export type ... from`, then RESOLVED to a
+    file (relative to the importer; '@/' through the package's tsconfig paths; .js/.ts/.tsx/.mjs stripped; path.ts, path.tsx, path/index.ts, path/index.tsx) and compared
+    with `path` itself, so a same-stem module elsewhere or an `index` collision never counts. LIMIT, stated: an importer is necessary, not sufficient. An importer that is
+    itself dead still reads live (no reachability walk from a route/registrar entry point), and a specifier built at run time (import(`./${x}`)) is invisible.
+    Further known misses (Kāla, 48 of 52 constructed cases read correctly): `typeof import('./x')` (a type position) counts as live; a `/*` or a lone backtick in JSX text can swallow a
+    later import(); a tsconfig with a trailing comma or `extends` raises (loud, not green)."""
+    stem = pathlib.PurePosixPath(path).stem
+    hint = pathlib.PurePosixPath(path).parent.name if stem == "index" else stem       # a sound prefilter: the specifier must contain this name
+    aliases = _ts_alias_prefixes(repo_root)
+    if files is None:
+        files = [p for r in _TS_SRC_ROOTS for ext in ("*.ts", "*.tsx") for p in (repo_root / r).rglob(ext)]
+    out = []
+    for p in sorted(files):
+        rel = p.relative_to(repo_root).as_posix()
+        if rel == path or _is_test_or_fixture(rel):
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        if hint not in text:
+            continue
+        if any(_ts_resolve(s, rel, repo_root, aliases) == path for s in _ts_import_specifiers(text)):
+            out.append(rel)
+    return out
+
+
+def test_the_grounding_resolver_basis_is_checked_not_just_quoted():
+    """Kāla's suggested §N.8 test: the declarations say the chart_facts readers of citation_human (platform/src/lib/retrieval/grounding/resolver.ts) are "unimported or
+    unregistered". The importer chain is checked here: resolver.ts is imported only by grounding/capability.ts and the grounding/index.ts barrel, and NOTHING imports either of those
+    (so the D3 grounding capabilities are registered nowhere). When a registrar or route starts importing them this fails, and the eight evidence strings must be re-read."""
+    root = HERE.parents[3]
+    g = "platform/src/lib/retrieval/grounding/"
+    assert sorted(_live_importers(g + "resolver.ts", root)) == [g + "capability.ts", g + "index.ts"]
+    assert _live_importers(g + "capability.ts", root) == [g + "index.ts"]
+    assert _live_importers(g + "index.ts", root) == []
+
+
+def _tree(root, files):
+    for rel, text in files.items():
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+
+
+_FAKE_TSCONFIG = {"platform/tsconfig.json": '{"compilerOptions": {"paths": {"@/*": ["./src/*"]}}}'}
+_DEAD = "platform/src/lib/dead.ts"
+
+
+def _fake(tmp_path, importer_rel, importer_text, extra=None):
+    _tree(tmp_path, {**_FAKE_TSCONFIG, _DEAD: "export const x = 1\n", importer_rel: importer_text, **(extra or {})})
+    return _live_importers(_DEAD, tmp_path)
+
+
+def test_the_importer_guard_finds_a_live_import_and_rejects_a_dead_file(tmp_path):
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform/src/lib/dead.ts": "export const x = 1\n", "platform/src/lib/live.ts": "export const y = 2\n",
+                     "platform/src/lib/user.ts": "import { y } from './live'\n", "platform/src/lib/dead.test.ts": "import { x } from './dead'\n"})
+    assert _live_importers("platform/src/lib/dead.ts", tmp_path) == []
+    assert _live_importers("platform/src/lib/live.ts", tmp_path) == ["platform/src/lib/user.ts"]
+
+
+def test_importer_guard_commented_out_line_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "// import { x } from './dead'\nexport const z = 1\n") == []
+
+
+def test_importer_guard_commented_block_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "/*\nimport { x } from './dead'\n*/\nexport const z = 1\n") == []
+
+
+def test_importer_guard_import_type_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import type { T } from './dead'\nimport type D from './dead'\n") == []
+
+
+def test_importer_guard_inline_type_only_named_import_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { type A, type B } from './dead'\n") == []
+
+
+def test_importer_guard_a_value_import_beside_inline_type_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { type A, x } from './dead'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_export_type_from_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "export type { T } from './dead'\n") == []
+
+
+def test_importer_guard_import_inside_a_string_literal_does_not_count(tmp_path):
+    text = "const a = \"import { x } from './dead'\"\nconst b = 'import { x } from \"./dead\"'\nconst c = `import { x } from './dead'`\n"
+    assert _fake(tmp_path, "platform/src/lib/u.ts", text) == []
+
+
+def test_importer_guard_code_inside_a_template_expression_still_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const c = `a ${await import('./dead')} b`\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_a_regex_literal_with_a_quote_does_not_hide_a_later_import(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const r = /['\"]/g\nimport { x } from './dead'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_same_stem_in_a_different_directory_does_not_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { x } from '../other/dead'\n", {"platform/src/other/dead.ts": "export const x = 2\n"}) == []
+
+
+def test_importer_guard_index_stem_collision_resolves_to_the_right_directory(tmp_path):
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform/src/a/index.ts": "export const a = 1\n", "platform/src/b/index.ts": "export const b = 1\n",
+                     "platform/src/c/useA.ts": "import { a } from '../a'\n", "platform/src/c/useB.ts": "import { b } from '../b/index'\n"})
+    assert _live_importers("platform/src/a/index.ts", tmp_path) == ["platform/src/c/useA.ts"]
+    assert _live_importers("platform/src/b/index.ts", tmp_path) == ["platform/src/c/useB.ts"]
+
+
+@pytest.mark.parametrize("importer", [
+    "platform/src/lib/tests/u.ts", "platform/src/lib/test/u.ts", "platform/src/lib/__tests__/u.ts", "platform/src/lib/fixtures/u.ts",
+    "platform/src/lib/__fixtures__/u.ts", "platform/src/lib/__mocks__/u.ts", "platform/src/lib/e2e/u.ts", "platform/src/lib/stories/u.ts",
+    "platform/src/lib/u.stories.tsx", "platform/src/lib/u.e2e.ts", "platform/src/lib/u.test.ts", "platform/src/lib/u.spec.tsx", "platform/src/lib/test-utils.ts"])
+def test_importer_guard_tests_and_fixtures_do_not_count(tmp_path, importer):
+    spec = "../dead" if importer.count("/") > 4 else "./dead"
+    assert _fake(tmp_path, importer, "import { x } from '" + spec + "'\n") == []
+
+
+@pytest.mark.parametrize("spec", ["./dead.js", "./dead.ts", "./dead", "./dead.mjs"])
+def test_importer_guard_extension_forms_of_the_same_module_count(tmp_path, spec):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "import { x } from '" + spec + "'\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_require_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const { x } = require('./dead')\n") == ["platform/src/lib/u.ts"]
+
+
+def test_importer_guard_dynamic_import_and_side_effect_import_count(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const m = await import('./dead')\n") == ["platform/src/lib/u.ts"]
+    assert _fake(tmp_path, "platform/src/lib/v.ts", "import './dead'\n") == ["platform/src/lib/u.ts", "platform/src/lib/v.ts"]
+
+
+def test_importer_guard_a_reexport_barrel_counts(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "export * from './dead'\n") == ["platform/src/lib/u.ts"]
+    assert _fake(tmp_path, "platform/src/lib/v.ts", "export { x } from './dead'\n") == ["platform/src/lib/u.ts", "platform/src/lib/v.ts"]
+    assert _fake(tmp_path, "platform/src/lib/w.ts", "export * as ns from './dead'\n")[-1] == "platform/src/lib/w.ts"
+
+
+def test_importer_guard_a_member_named_import_or_require_is_not_a_module_reference(tmp_path):
+    assert _fake(tmp_path, "platform/src/lib/u.ts", "const a = obj.require('./dead')\n") == []
+
+
+def test_importer_guard_alias_import_resolves_to_the_right_file(tmp_path):
+    extra = {"platform/src/other/dead.ts": "export const x = 2\n"}
+    assert _fake(tmp_path, "platform/src/app/u.ts", "import { x } from '@/lib/dead'\n", extra) == ["platform/src/app/u.ts"]
+    assert _fake(tmp_path, "platform/src/app/v.ts", "import { x } from '@/other/dead'\n", extra) == ["platform/src/app/u.ts"]         # v resolves to other/dead.ts, not lib/dead.ts
+    assert _live_importers("platform/src/other/dead.ts", tmp_path) == ["platform/src/app/v.ts"]
+
+
+def test_importer_guard_alias_is_package_scoped_and_read_from_tsconfig(tmp_path):
+    # platform-mcp declares no paths, so '@/lib/dead' there is not the platform module; and without a tsconfig no alias resolves at all
+    _tree(tmp_path, {**_FAKE_TSCONFIG, "platform-mcp/tsconfig.json": '{"compilerOptions": {}}', _DEAD: "export const x = 1\n",
+                     "platform-mcp/src/u.ts": "import { x } from '@/lib/dead'\n"})
+    assert _live_importers(_DEAD, tmp_path) == []
+    (tmp_path / "platform/tsconfig.json").unlink()
+    _tree(tmp_path, {"platform/src/app/u.ts": "import { x } from '@/lib/dead'\n"})
+    assert _live_importers(_DEAD, tmp_path) == []
+
+
+def test_the_real_tsconfig_alias_mapping_is_what_the_guard_reads():
+    assert _ts_alias_prefixes(HERE.parents[3]) == {("platform", "@/"): "platform/src"}
+
+
+def test_the_real_repo_does_not_credit_grounding_resolver_with_the_models_resolver_importer():
+    root = HERE.parents[3]
+    importers = _live_importers("platform/src/lib/retrieval/grounding/resolver.ts", root)
+    assert "platform/src/app/api/chat/consult/continue/route.ts" not in importers, importers
+    # and the models resolver that route.ts does import is credited with it
+    assert "platform/src/app/api/chat/consult/continue/route.ts" in _live_importers("platform/src/lib/models/resolver.ts", root)
+
+
+def test_the_real_repo_facts_store_has_no_importer_but_every_other_served_ts_read_has_one():
+    root = HERE.parents[3]
+    assert (root / "platform/src/lib/ganita/facts_store.ts").is_file()
+    assert _live_importers("platform/src/lib/ganita/facts_store.ts", root) == []
+    served = sorted({d["served"][0] for d in CITATION_DECISIONS.values() if d["served"] and d["served"][0].endswith((".ts", ".tsx"))})
+    assert served, "no TS served entries: the scan would be vacuous"
+    dead = [s for s in served if not _live_importers(s, root)]
+    assert dead == [], f"cited served reads with no live importer: {dead}"
+
+
+@pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["served"] and d["served"][0].endswith((".ts", ".tsx"))))
+def test_a_cited_served_read_has_a_live_importer(asset):
+    path = CITATION_DECISIONS[asset]["served"][0]
+    assert _live_importers(path, HERE.parents[3]), f"{asset}: the served read {path} has no non-test importer (dead code cannot serve anything)"
+
+
+NOT_SERVED_BASIS = "(the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)"
+DEAD_FACTS_STORE_ASSETS = ("ga_nakshatra", "ga_ayurdaya", "ga_condition", "ga_panchanga", "ga_positions", "ga_sade_sati", "ga_sensitive_degree", "ga_sensitive", "ga_strength", "ga_structural")
+
+
+@pytest.mark.parametrize("asset", DEAD_FACTS_STORE_ASSETS)
+def test_the_citation_human_of_these_assets_is_not_claimed_served(asset):
+    assert CITATION_DECISIONS[asset]["served"] is None
+    ev = _decl()[asset]["evidence"]["prose_fields"] or ""
+    assert "facts_store" not in ev
+    if CITATION_DECISIONS[asset]["decision"] == "declare":
+        assert "NOT served by a typed reader" in ev and "written and graded but not served by a typed reader" in ev, asset
+        assert NOT_SERVED_BASIS in ev, asset
+        # the retired clause was FALSE: grounding/resolver.ts selects citation_human from chart_facts (twice), so "the one reader ... has no importer" must not return
+        assert "has no importer" not in ev and "the one chart_facts reader" not in ev, asset
+
+
+def test_the_retired_false_importer_clause_is_absent_and_the_true_one_is_in_exactly_the_declared_assets():
+    raw = (HERE.parent / "asset_declarations.json").read_text(encoding="utf-8")
+    assert "has no importer" not in raw and "the one chart_facts reader" not in raw
+    assert raw.count(NOT_SERVED_BASIS) == sum(1 for a in DEAD_FACTS_STORE_ASSETS if CITATION_DECISIONS[a]["decision"] == "declare") == 8
+
+
+def test_no_declaration_text_names_the_dead_fact_store_module():
+    assert "facts_store" not in (HERE.parent / "asset_declarations.json").read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline"))
 def test_declined_citation_assets_compose_only_labels_or_nothing(asset):
     d = CITATION_DECISIONS[asset]
@@ -2369,19 +2814,19 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
             ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
             ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
-            ("bo_karanajala", _WR + "bo_karanajala.py", 773, "sign_num"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 803, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1822, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 575, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
-            ("ga_structural", _GW + "ga_structural_writer.py", 4756, "effective_dignity_score")):
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 399, "tithi_num"),
+            ("ga_structural", _GW + "ga_structural_writer.py", 4757, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
-    # numbers shaped into the text by a format spec (ga_structural :4756, ga_strength :996)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4756), (_GW + "ga_strength_writer.py", 996)):
+    # numbers shaped into the text by a format spec (ga_structural :4757, ga_strength :996)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4757), (_GW + "ga_strength_writer.py", 996)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]
@@ -2394,7 +2839,7 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
     assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
     fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
     assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
-    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [523]
+    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [528]
     # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
     syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
            "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
@@ -2534,7 +2979,7 @@ def test_citation_sites_scanner_classifies_dicts_keywords_helpers_names_and_call
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
     bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
-    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
+    bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
     bo_samskara bg_ephemeris_engine bg_panchanga ka_dasha_kala ka_graha_sancara ka_muhurta_seva ka_tulana""".split())
 
 
@@ -2545,7 +2990,7 @@ def test_committed_file_declares_no_negative_served_surface_and_nulls_the_unprov
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
-    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 26      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows) + ga_fact_identity (1.37.0, kind-only declaration)
+    assert sum(v is True for v in vals.values()) == 102 and sum(v is None for v in vals.values()) == 25      # 24 + bg_class_lifetime_counts (SS audit 2026-10-06: the cited query filters out its own rows) + ga_fact_identity (1.37.0, kind-only declaration)
 
 
 RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_prashna_rules bg_rules ga_prashna
@@ -2668,13 +3113,13 @@ def test_committed_read_evidence_repoints_and_kinds():
     decl = _decl()
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
-        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
+        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:831",
         "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1809",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",
         "mi_darshana": L + "L5_mimamsa/query_insights.ts:225",
         "mi_bhara": "platform-mcp/src/lib/kala_envelope.ts:556",
-        "bg_dignity_reference": "platform-mcp/src/tools/register_p1_reference.ts:373",
+        "bg_dignity_reference": "platform-mcp/src/tools/register_p1_reference.ts:406",
         "bg_ghatana": L + "L5_mimamsa/lel_intake_checklist.ts:248",
     }
     for a, ev in want.items():
@@ -2767,7 +3212,7 @@ BAD_DOCS = [
     ("prose-path-trailing-segment-dot", _doc(a=dict(prose_fields=["narrative.$.a."], evidence=PEV))),
     ("prose-path-space-in-key", _doc(a=dict(prose_fields=["narrative.$.head line"], evidence=PEV))),
     ("prose-path-array-index", _doc(a=dict(prose_fields=["narrative.$.items[0]"], evidence=PEV))),
-    ("prose-path-wildcard", _doc(a=dict(prose_fields=["narrative.$.*"], evidence=PEV))),
+    ("prose-path-star-inside-a-key", _doc(a=dict(prose_fields=["narrative.$.a*"], evidence=PEV))),
     ("prose-path-digit-key", _doc(a=dict(prose_fields=["narrative.$.1a"], evidence=PEV))),
     ("prose-path-trailing-newline", _doc(a=dict(prose_fields=["narrative.$.headline\n"], evidence=PEV))),
     ("prose-path-leading-dot", _doc(a=dict(prose_fields=[".narrative.$.headline"], evidence=PEV))),
@@ -3213,3 +3658,23 @@ def test_decl_helper_honours_a_monkeypatched_declarations_path(monkeypatch, tmp_
     assert len(_decl()) == len(real)
     got["bg_panchanga"]["kind"] = "edited"
     assert _decl()["bg_panchanga"]["kind"] != "edited"                # a deep copy: one test's edit is not another's
+
+
+def test_stored_tier_sql_branches_keep_narration_binding_and_reject_mutations():
+    src = '''
+import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+def run(conn, store_tier):
+    n = build(1)
+    rows = []
+    rows.append((1, json.dumps(n), UNVERIFIED_DEFAULT))
+    conn.executemany(f"INSERT INTO t (id, narrative{', verification_pass_status' if store_tier else ''}) VALUES (%s, %s{', %s' if store_tier else ''})", rows if store_tier else [row[:-1] for row in rows])
+def build(x):
+    return {"k": f"v{x}"}
+'''
+    assert nw.check_tuple_json_from_builder(src, 't', 'narrative', 'build') == []
+    for bad in (src.replace('json.dumps(n)', 'json.dumps({})'),
+                src.replace('row[:-1]', 'row[:-2]'),
+                src.replace('id, narrative{', 'id, wrong_column{'),
+                src.replace("', %s' if store_tier", "', %s, %s' if store_tier")):
+        assert nw.check_tuple_json_from_builder(bad, 't', 'narrative', 'build')

@@ -23,29 +23,10 @@ rsync -a --exclude '__pycache__' "$GOV/pravaha_tracker" "$LIVE.new/"; rm -rf "$L
 [ -f "$MODEL" ] || { echo "plan model missing: $MODEL"; exit 1; }
 $PY -c "import json,sys; json.load(open(sys.argv[1]))" "$MODEL"
 touch "$RUN/EVENTS.jsonl"
-cat > "$KY_ROOT/bin/ky" <<EOF
-#!/usr/bin/env bash
-# KĀLA-YANTRA campaign CLI (second instance of the Pravāha tracker). Stream from KY_STREAM or --stream. See: ky --help
-export PRAVAHA_HOME="$KY_ROOT"
-export PRAVAHA_EVENTS="$RUN/EVENTS.jsonl"
-export PRAVAHA_PLAN_MODEL="$MODEL"
-export PRAVAHA_TRACKER_PORT=8767
-export PRAVAHA_URL="http://127.0.0.1:8767"
-export PRAVAHA_REPO="$KY_ROOT/wt/campaign"
-export PRAVAHA_HOLD="$KY_ROOT/HOLD"
-export PRAVAHA_STREAM="\${KY_STREAM:-\${PRAVAHA_STREAM:-}}"
-export KY_WORKER="\${KY_LANE:-}"
-PYTHONPATH="$LIVE" exec $PY -m pravaha_tracker.cli "\$@"
-EOF
-chmod +x "$KY_ROOT/bin/ky"
-cat > "$KY_ROOT/bin/kybrief" <<EOF
-#!/usr/bin/env bash
-# kybrief <ID> — print one plan-model item, its brief included (the item's whole specification)
-exec $PY -c 'import json, sys
-m = json.load(open(sys.argv[1])); i = [x for x in m["items"] if x["id"] == sys.argv[2]]
-print(json.dumps(i[0], ensure_ascii=False, indent=1) if i else "no such item: " + sys.argv[2]); sys.exit(0 if i else 1)' "$MODEL" "\${1:?usage: kybrief <ITEM-ID>}"
-EOF
-chmod +x "$KY_ROOT/bin/kybrief"
+# wrappers: begin — ky and kybrief are static, reviewed files (bin/ beside this script); installing them is a byte copy.
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+for w in ky kybrief; do install -m 0755 "$HERE/bin/$w" "$KY_ROOT/bin/$w"; done
+# wrappers: end
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

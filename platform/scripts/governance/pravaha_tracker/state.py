@@ -24,6 +24,7 @@ import datetime as dt
 
 from .events import actor_stream
 
+DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_evidence")
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
 
 
@@ -224,6 +225,23 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
+    # Owner direction 2026-10-08: a dependency that is MERGED with an independent ACCEPTED pre-merge verdict lets its
+    # dependants START (readiness), while completion and joins still require it to be DONE (deployed, post-deploy
+    # accepted). `deps_open` is the readiness list; `deps_open_strict` is what completion and joins use.
+    merged_accepted = set()
+    if model.get("control_plane", {}).get("ready_at_merge") is True:
+        accepted = {e.get("item") for e in events if e.get("kind") == "verdict" and e.get("result") == "ACCEPTED"
+                    and e.get("phase", "pre_merge") == "pre_merge"}
+        merged_accepted = {iid for iid in items if iid in accepted
+                           and (det_results.get(iid) or {}).get("status") == "done"}
+        # ready_at_accepted (owner direction 2026-10-08, during another campaign's merge hold): a dependency whose
+        # LATEST pre-merge verdict is ACCEPTED lets dependants start, stacked on its branch, before it merges
+        if model.get("control_plane", {}).get("ready_at_accepted") is True:
+            latest = {}
+            for e in events:
+                if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
+                    latest[e["item"]] = e.get("result")
+            merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
     # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
     for _ in range(len(items) + 1):
         changed = False
@@ -232,8 +250,12 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             deps = it.get("depends_on", [])
             accepts_skips = it.get("accepts_not_applicable_dependencies") is True
             terminal = {"done", "not_applicable"} if accepts_skips else {"done"}
-            open_deps = [d for d in deps if status.get(d, {}).get("status") not in terminal]
+            strict_open = [d for d in deps if status.get(d, {}).get("status") not in terminal]
+            open_deps = [d for d in strict_open if d not in merged_accepted]
             s["deps_open"] = open_deps
+            s["deps_open_strict"] = strict_open
+            if strict_open != open_deps:
+                s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
             if decision_outcomes and s["status"] not in ("done", "not_applicable"):
                 origins = []
                 for decision, needed in it.get("requires_outcome", {}).items():
@@ -251,7 +273,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                     changed = True
                     continue
             if it.get("done_by") == "join":
-                new = "done" if not open_deps else "waiting"
+                new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
                     s["status"] = new
                     s["evidence"] = "all dependencies done" if new == "done" else None
@@ -273,6 +295,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         if s["status"] == "not_started":
             s["status"] = "ready" if not s["deps_open"] else "waiting"
 
+    # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
+    declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
     tracks = []
     for tr in model["tracks"]:
         tis = []
@@ -284,6 +308,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                         "owner": it.get("owner"), "depends_on": it.get("depends_on", []),
                         "cross_stream": it.get("cross_stream", False), **s,
                         "elapsed_s": _age_s(s["started_at"], now) if s["status"] in ("running", "review") else None})
+            if declared:
+                tis[-1].update({key: it.get(key) for key in DECLARATION_KEYS})
         n = len(tis)
         done = sum(1 for t in tis if t["status"] == "done")
         partial = sum((t["progress"] or 0) for t in tis if t["status"] != "done")
@@ -304,10 +330,17 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 needed_by[dec_item[dep]].append(it["id"])
         for d in it.get("needs_decisions", []):
             needed_by[d].append(it["id"])
+    # a retirement decision is owner-authorised already: its refusal is STAGED for the installation action (B-2)
+    # to publish, so until a final outcome is recorded it is marked and is not a question for the native
+    retirements = {it["decision"] for it in model["items"] if declared and it.get("done_by") == "decision"
+                   and it.get("decision") and (it.get("triage") or {}).get("class") == "retire_decision"}
+    final_outcomes = (decision_outcomes or {}).get("final", ["approved", "refused"])
     for d in model["decisions"]:
         st, dev = decision_status(ix["decisions"].get(d["id"], []))
         decisions.append({**d, "status": st, "detail": (dev or {}).get("detail", ""),
                           "updated_at": (dev or {}).get("ts"), "needed_by": needed_by.get(d["id"], [])})
+        if d["id"] in retirements and not (st in ("decided", "delegated") and (dev or {}).get("outcome") in final_outcomes):
+            decisions[-1]["staged"] = True
 
     streams = [_stream_view(s, flat, ix, activity, now) for s in model.get("streams", [])]
     phases = []
@@ -329,7 +362,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                        if it.get("done_by") == "decision" and it.get("decision")}
     for d in decisions:
         d["due"] = d["status"] == "requested" or dec_item_status.get(d["id"]) not in ("waiting",)
-    pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]],
+    pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]
+                             and not d.get("staged")],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
 
     return {

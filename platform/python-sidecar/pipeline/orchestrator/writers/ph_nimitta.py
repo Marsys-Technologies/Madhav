@@ -476,8 +476,8 @@ class PhNimittaWriter(WriterBase):
                 cur.execute(
                     "SELECT signal_id, "
                     "(dasha_eligibility_rule_jsonb->>'multi_system_confirmation_count')::int AS mscc "
-                    "FROM kala_activation_predicates "
-                    "WHERE chart_id = %s AND signal_id = ANY(%s::uuid[])",
+                    "FROM kala_activation_predicates p "
+                    "WHERE p.chart_id = %s AND p.signal_id = ANY(%s::uuid[]) AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')\n                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))",
                     (chart_id, signal_ids),
                 )
                 for r in cur.fetchall():
@@ -756,7 +756,14 @@ class PhNimittaWriter(WriterBase):
             contradiction_net=cont.get('net_direction'),
             dasha_consensus_count=0,   # U1: pre-fetched per window in production; 0 for now
             school_consensus_jsonb=None,  # U4: fetched via separate service at serve-time
-            ayanamsha_robustness=3,       # default; real value comes from kala_convergence row
+            # SS N-341 (PR-H2, §N.8 / §N.7 item 6): this used to be the constant 3 on EVERY
+            # anchor ("real value comes from kala_convergence row" -- but kala_convergence has
+            # no such column and nothing here compares an anchor across ayanamsha rows), which
+            # read as a measured cross-ayanamsha robustness and fed a 0.92 modifier into every
+            # posterior. Nothing measures it, so it is None (stored as NULL in
+            # phala_anchors.ayanamsha_robustness, a nullable smallint); compute_posterior()
+            # applies the STRICTEST factor (0.80) as a lower bound, status not_measured_floor_applied.
+            ayanamsha_robustness=None,
             # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
             # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
             # ayanamsha_id); multi_system_confirmation_count is a real join from ka_yojaka's

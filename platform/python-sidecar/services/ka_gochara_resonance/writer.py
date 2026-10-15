@@ -154,6 +154,9 @@ verified against corpus source OCR in.ernet.dli.2015.92117):
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import logging
 import re as _re
 from typing import Any, Iterable
@@ -857,12 +860,7 @@ WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true
   )
 """
 
-_FETCH_DASHA_ROWS_SQL = """
-SELECT DISTINCT lord_graha
-FROM chart_dashas
-WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = 'vimshottari' AND level_n = 1
-  AND lower(lord_graha) = ANY(%s)
-"""
+_FETCH_DASHA_ROWS_SQL = dasha_query('resonance_md_lords')
 
 # ── R-3/R-4 build-time validation fetches ─────────────────────────────────────
 # R-4: LAGNA's whole-sign sign_num (1-based, per ga_positions_writer.py) —
@@ -1001,7 +999,7 @@ def _fetch_event_class_rows(conn, chart_id: str, event_class: str,
     dasha_rows: list[dict] = []
     if karakas_lower:
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(_FETCH_DASHA_ROWS_SQL, (chart_id, _CANONICAL_AYANAMSHA, karakas_lower))
+            execute_governed_dasha_query(conn, chart_id, _FETCH_DASHA_ROWS_SQL, (chart_id, _CANONICAL_AYANAMSHA, karakas_lower), ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             dasha_rows = cur.fetchall()
 
     return build_resonance_rows(
@@ -1275,6 +1273,12 @@ def _build_writer_class():
             if ctx.dry_run:
                 logger.info("[ka_gochara_resonance] dry_run=True — skipping")
                 return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
+
+            # K2-2: opt-in F1 candidate path; legacy dispatch is retained until judge cutover.
+            if 'candidate_generation' in ctx.config:
+                from services.ka_gochara_resonance.relationship_storage import build_candidate_projection
+                count, notes = build_candidate_projection(ctx)
+                return WriterResult(asset_id=self.asset_id, rows_inserted=count, notes=notes)
 
             # R-3: capture the prior build's yoga target set BEFORE any
             # DELETE, so an id that no longer fires surfaces in THIS build's

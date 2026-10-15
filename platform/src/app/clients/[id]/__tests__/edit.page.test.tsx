@@ -50,6 +50,8 @@ async function load() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
+  vi.stubEnv('CHART_AYANAMSHA_EDIT_POLICY', '')
   formProps.current = null
   mockResolveAccess.mockResolvedValue({ user: { uid: 'u' }, role: 'guest', permission: 'all', canBuild: true })
   mockQuery.mockResolvedValue({ rows: [ROW] })
@@ -70,6 +72,7 @@ describe('/clients/[id]/edit', () => {
     expect(sql).toMatch(/birth_date::text/)
     expect(sql).toMatch(/birth_time::text/)
     expect(formProps.current).toEqual({
+      ayanamshaEditPolicy: 'block_all',
       chart: {
         id: 'c1',
         name: 'Test Native',
@@ -94,5 +97,23 @@ describe('/clients/[id]/edit', () => {
     mockQuery.mockResolvedValue({ rows: [{ ...ROW, timezone_id: null }] })
     await load()
     expect((formProps.current as { chart: { timezone_id: string | null } }).chart.timezone_id).toBeNull()
+  })
+
+  it.each([
+    ['warn', 'warn'],
+    ['off', 'off'],
+    ['  WARN ', 'warn'],
+    ['nonsense', 'block_all'],
+  ])('hands the server-read ayanamsha edit policy %j to the form as %s', async (env, expected) => {
+    vi.stubEnv('CHART_AYANAMSHA_EDIT_POLICY', env)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await load()
+    expect((formProps.current as { ayanamshaEditPolicy: string }).ayanamshaEditPolicy).toBe(expected)
+  })
+
+  it('folds a long-form stored ayanamsha to the short id the form offers', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ ...ROW, ayanamsa: 'lahiri_chitrapaksha' }] })
+    await load()
+    expect((formProps.current as { chart: { ayanamshas: string[] } }).chart.ayanamshas).toEqual(['lahiri'])
   })
 })

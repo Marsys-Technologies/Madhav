@@ -180,10 +180,18 @@ class BgEphemerisWriter(WriterBase):
             )
             raise
 
+        # WFIX-A: rows_inserted is the rows PRESENT in ephemeris_daily after this write. The upsert's
+        # cur.rowcount (kept as `changed`) is only the LAST executemany batch and is 0 on every rerun
+        # that changes nothing, which recorded rows_written=0 against 825,084 live rows.
+        from pipeline.orchestrator.writers._rows_present import present_count
+        changed = rows_inserted
+        with conn.cursor() as cur:
+            cur.execute(ROWS_PRESENT_SQL)
+            rows_inserted = present_count(cur.fetchone())
         elapsed = round(time.time() - t0, 2)
         logger.info(
-            "[bg_ephemeris] complete — %d rows inserted in %.1fs",
-            rows_inserted, elapsed,
+            "[bg_ephemeris] complete — %d rows present (%d changed by last batch) in %.1fs",
+            rows_inserted, changed, elapsed,
         )
         return WriterResult(
             asset_id=self.asset_id,
@@ -191,6 +199,12 @@ class BgEphemerisWriter(WriterBase):
             duration_seconds=elapsed,
             notes=(
                 f"period={BUILD_START.isoformat()}→{BUILD_END.isoformat()}; "
-                f"bodies=9; source={SOURCE_CITATION}"
+                f"bodies=9; source={SOURCE_CITATION}; last_batch_changed={changed}"
             ),
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: registry count_sql SELECT count(*) FROM ephemeris_daily.
+ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM ephemeris_daily"

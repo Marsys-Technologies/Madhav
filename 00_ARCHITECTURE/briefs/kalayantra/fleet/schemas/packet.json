@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.packet/1",
+  "title": "KĀLA-YANTRA v3 packet front matter (relaunch plan v2.7 §8)",
+  "description": "Front matter of 00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_<ID>_v<n>.md, as a JSON object. This schema checks shape and the per-kind conditionals only. Not checked by this schema (kypacket.py check, plan §8): that packet_sha256 is the SHA-256 of the canonical content excluding that field; that every sha256 / commit names what it claims; that schema_receipt_id resolves to an admitted schema receipt; that excerpts and reconciliation claims match the pinned sources; the 4 k-token size limit; test availability. Validated with fleet/kyschema.py (supported keyword subset only).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "kind", "wave", "build_tier", "routing_reason", "needs_chart_data", "max_loops", "plan_version",
+    "spec_sources", "schema_receipt_id", "pw_mechanism_version", "release_pins", "packet_sha256"
+  ],
+  "properties": {
+    "id": {
+      "description": "The item id; also the <ID> of the packet file name, so it is one safe path component.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "kind": {"enum": ["feature", "artifact", "operation", "schema-prerequisite", "bootstrap"]},
+    "wave": {
+      "description": "\"B\" for the bootstrap wave, the integers 0-3 for the campaign waves (plan §14). The value is constrained by the kind, in allOf/0: bootstrap packets carry \"B\", every other kind one of 0, 1, 2, 3."
+    },
+    "build_tier": {
+      "description": "The routed builder model tier (plan §4 roster, §9 routing).",
+      "enum": ["sonnet", "opus"]
+    },
+    "routing_reason": {"type": "string", "minLength": 1},
+    "needs_chart_data": {"type": "boolean"},
+    "max_loops": {
+      "description": "Fleet default is 2 (owner Amendment A2 D-17 §2.6, superseding plan §8); the default is NOT applied or enforced here, the field is required and must be an integer 1-5.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "plan_version": {"const": "2.7"},
+    "spec_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/spec_source"}
+    },
+    "schema_receipt_id": {
+      "description": "The admitted schema receipt the packet's signatures come from; null only where the kind permits it (bootstrap). Its resolution to an admitted receipt is not checked by this schema.",
+      "type": ["string", "null"],
+      "pattern": "^[^\\s]+$"
+    },
+    "intended_schema": {
+      "description": "schema-prerequisite packets only: the intended additive contract, declared next to the admitted existing schema (plan §8 section 4).",
+      "type": ["object", "string"],
+      "minLength": 1,
+      "not": {"const": {}}
+    },
+    "original_failing_base": {
+      "description": "Feature packets: the immutable commit on which the installed tests fail.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "test_commits": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/test_commit"}
+    },
+    "expected_failing_assertion": {"type": ["string", "null"], "minLength": 1},
+    "pw_mechanism_version": {
+      "description": "Version of the protected-window mechanism the packet was written against; null only where the kind permits it (bootstrap).",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "release_pins": {
+      "description": "\"not_applicable: bootstrap\" for bootstrap (Wave B) packets; otherwise the build snapshot id read from run/RELEASE_RECEIPT.json. Never main_sha, never a migration number (plan §8 section 1). The value is constrained by the kind, in allOf/0."
+    },
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "d1_paths": {
+      "description": "bootstrap packets only: the enumerated D-1 control-plane source paths the packet may change. Repository-relative, one explicit path each: no leading slash, no '.' or '..' segment, no glob.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/repo_path"}
+    },
+    "acceptance": {
+      "description": "bootstrap packets: the command, its expected result and the negative cases (plan §14 B-1).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "expected_result", "negative_cases"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "expected_result": {"type": "string", "minLength": 1},
+        "negative_cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "semantic_acceptance": {
+      "description": "artifact and operation packets: the explicit semantic acceptance (no invented red test).",
+      "type": "string",
+      "minLength": 1
+    },
+    "negative_fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "bootstrap: release pins not applicable, enumerated D-1 paths, named acceptance, no chart data, Wave B, Opus, KV3-B-* id. Every other kind: real release pins, a campaign wave, a schema receipt and a protected-window mechanism version, and no control-plane paths.",
+      "if": {"properties": {"kind": {"const": "bootstrap"}}, "required": ["kind"]},
+      "then": {
+        "required": ["d1_paths", "acceptance"],
+        "properties": {
+          "release_pins": {"const": "not_applicable: bootstrap"},
+          "needs_chart_data": {"const": false},
+          "wave": {"const": "B"},
+          "build_tier": {"const": "opus"},
+          "id": {"pattern": "^KV3-B-"}
+        }
+      },
+      "else": {
+        "not": {"required": ["d1_paths"]},
+        "properties": {
+          "release_pins": {"$ref": "#/$defs/release_pins"},
+          "wave": {"enum": [0, 1, 2, 3]},
+          "schema_receipt_id": {"type": "string"},
+          "pw_mechanism_version": {"type": "string"}
+        }
+      }
+    },
+    {
+      "$comment": "feature: the immutable original failing base, the test commits and the observed failing assertion.",
+      "if": {"properties": {"kind": {"const": "feature"}}, "required": ["kind"]},
+      "then": {
+        "required": ["original_failing_base", "test_commits", "expected_failing_assertion"],
+        "properties": {
+          "original_failing_base": {"type": "string"},
+          "test_commits": {"minItems": 1},
+          "expected_failing_assertion": {"type": "string"}
+        }
+      }
+    },
+    {
+      "$comment": "intended_schema: required for schema-prerequisite (id KV3-SCHEMA-<n>), forbidden for every other kind.",
+      "if": {"properties": {"kind": {"const": "schema-prerequisite"}}, "required": ["kind"]},
+      "then": {
+        "required": ["intended_schema"],
+        "properties": {"id": {"pattern": "^KV3-SCHEMA-[0-9]+$"}}
+      },
+      "else": {"not": {"required": ["intended_schema"]}}
+    },
+    {
+      "$comment": "artifact / operation: explicit semantic acceptance and negative fixtures; a red test must not be invented, so the two red-test fields are absent or null.",
+      "if": {"properties": {"kind": {"enum": ["artifact", "operation"]}}, "required": ["kind"]},
+      "then": {
+        "required": ["semantic_acceptance", "negative_fixtures"],
+        "properties": {
+          "original_failing_base": {"const": null},
+          "expected_failing_assertion": {"const": null}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "repo_path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+      "not": {"pattern": "(^|/)\\.\\.?(/|$)"}
+    },
+    "spec_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "revision", "section_range", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^[^\\s]+$",
+          "not": {"pattern": "(^|/)\\.\\.(/|$)"}
+        },
+        "revision": {
+          "description": "The pinned revision of the source (a commit id or the document's own version); the sha256 is what makes the pin immutable.",
+          "type": "string",
+          "pattern": "^[^\\s]+$"
+        },
+        "section_range": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "test_commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "digest", "path"],
+      "properties": {
+        "sha": {"$ref": "#/$defs/commit"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "path": {"$ref": "#/$defs/repo_path"}
+      }
+    },
+    "release_pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dash_build", "registry_revision"],
+      "properties": {
+        "dash_build": {"type": ["string", "integer"], "minLength": 1, "minimum": 0},
+        "registry_revision": {"type": ["string", "integer"], "minLength": 1, "minimum": 0}
+      }
+    }
+  }
+}

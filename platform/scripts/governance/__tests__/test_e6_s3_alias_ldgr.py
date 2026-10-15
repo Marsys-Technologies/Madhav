@@ -162,7 +162,7 @@ def test_the_committed_file_declares_neither_key_beyond_the_latta_and_lists_the_
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert sorted(a for a, e in raw["assets"].items() if "vocab_alias" in e) == sorted(["bg_phaladeepika_latta", "bg_dignity_reference", "bg_transit_engine", "bg_transit_rules",
                                                                                          "bg_vastu_directions", "bg_kp_sublord_division", *L0_FILL_NO_ALIAS_CLASS, *RESIDUAL_BATCH_NO_ALIAS_CLASS, "bo_upaya"])      # L0-WAVE batch; + bo_upaya: planet identity-only form (E5.7 L2 fill) 2 adds five identity_only planet declarations; the L0 fills add 11 no_alias_class
-    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta"]
+    assert [a for a, e in raw["assets"].items() if "ldgr_source" in e] == ["bg_phaladeepika_latta", "ga_fact_identity"]      # N-271: ga_fact_identity declares no_classical_claim (test_n271_decl_lane)
     ac.load_asset_declarations()
 
 
@@ -234,7 +234,7 @@ def test_the_na_is_released_only_by_the_declared_rule(monkeypatch):
 
 
 def test_the_causes_are_registered_and_a_typo_rule_is_refused(monkeypatch):
-    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
+    assert ac.NA_CAUSES[ALIAS] == ("no-alias-class", "no-vocabulary-values", "honest-null") and ac.NA_CAUSES[LDGR] == ("no-classical-claim", "no-data", "no-claims", "unsourced-declared")      # N-151 added the two checked-declaration causes; N-176 / N-177 one each
     for rid in ("Vocab.alias#measured:no-alias-claim", "Ldgr.source_presence#measured:no_classical_claim", "Vocab.alias#measured",
                 "Ldgr.source_presence#measured:no-alias-class", "Vocab.alias#measured:no-classical-claim"):
         monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, rid: "x"})
@@ -923,7 +923,7 @@ def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(m
 
 def test_revision_12_pins_the_s3_content():
     assert ac.REGISTRY_REVISION >= 12
-    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 7 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 6      # 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151); ALIAS 4 (N-176 the value reading) and LDGR 6 (N-177 the UNSOURCED_DECLARED residual) at the engine-fixes-II re-pin of pin 26
+    assert ac.CRITERION_REGISTRY[ALIAS]["revision"] == 10 and ac.CRITERION_REGISTRY[LDGR]["revision"] == 6      # ALIAS 10 at registry revision 30 (empty_slice_by_conditional); 3 at the S3 merge (pin 12), 4 at pin 24 (C2(ii)), 5 at pin 26 (N-151); ALIAS 4 (N-176 the value reading) and LDGR 6 (N-177 the UNSOURCED_DECLARED residual) at the engine-fixes-II re-pin of pin 26
     assert r13.S3_IDS <= set(ac.NA_RULE_DECISIONS) and r13.S3_IDS <= r13.DECLARED_IDS
     for rid in r13.S3_IDS:
         why = ac.NA_RULE_DECISIONS[rid]

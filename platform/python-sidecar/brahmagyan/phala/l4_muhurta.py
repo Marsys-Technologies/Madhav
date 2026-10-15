@@ -73,7 +73,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -81,8 +81,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 VALID_ACTION_TYPES = frozenset({
     "start_business", "medical_procedure", "legal_signing",
@@ -716,9 +714,10 @@ def api_query_muhurta(req: MuhurtaRequest) -> dict[str, Any]:
 
 
 @router.get("/phala/query_muhurta/gate")
-def api_muhurta_gate() -> dict[str, Any]:
-    """PH-4-4-V2 acceptance gate — all 6 action types return 3 windows."""
-    chart_id = NATIVE_CHART_ID
+def api_muhurta_gate(
+    chart_id: str = Query(..., description="Chart UUID (required; there is no default chart)"),
+) -> dict[str, Any]:
+    """PH-4-4-V2 acceptance gate — all 6 action types return 3 windows, for the requested chart."""
     checks = []
     for at in sorted(VALID_ACTION_TYPES):
         try:

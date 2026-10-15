@@ -4,6 +4,7 @@ import { EditClientForm } from '@/components/clients/EditClientForm'
 import { SharingPanel } from '@/components/sharing/SharingPanel'
 import { PageTitle } from '@/components/journey1/Titles'
 import { query } from '@/lib/db/client'
+import { getAyanamshaEditPolicy } from '@/lib/charts/ayanamshaEditPolicy'
 import { normalizeStoredChart, resolveTimezoneOffsetMinutes, type StoredChartRow } from '@/lib/charts/updateChart'
 import '@/components/profile/jataka-workspace.css'
 
@@ -12,6 +13,8 @@ import '@/components/profile/jataka-workspace.css'
  * the workspace. Loads every stored editable field; the initial offset comes
  * from the same resolver `PATCH /api/charts/[id]` verifies against, and a
  * missing or invalid timezone is surfaced for correction rather than defaulted.
+ * The ayanamsha edit policy (`CHART_AYANAMSHA_EDIT_POLICY`) is read here, on the
+ * server, and handed to the form; the PATCH route enforces it independently.
  */
 export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -42,6 +45,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   return (
     <div data-testid="edit-page-root">
       <EditClientForm
+        ayanamshaEditPolicy={getAyanamshaEditPolicy()}
         chart={{
           id: row.id,
           name: row.name,

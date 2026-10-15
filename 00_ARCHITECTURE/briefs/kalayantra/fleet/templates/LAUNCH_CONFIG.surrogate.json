@@ -1,0 +1,55 @@
+{
+ "schema": "ky.launch_config/1",
+ "role": "surrogate",
+ "model": "claude-fable-5-1",
+ "effort": "high",
+ "permission_mode": "bypassPermissions",
+ "max_turns": 30,
+ "deadline_seconds": 1800,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan",
+ "claude_bin": "/Users/Dev/.local/bin/claude",
+ "mcp_config": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/mcp.none.json",
+ "prompt_path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-relaunch-plan/00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md",
+ "env_names": [
+  "HOME",
+  "USER",
+  "LANG",
+  "TERM",
+  "PATH",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_FLEET",
+  "KY_SCRATCH",
+  "JOB_SCRATCH"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "extra_flags": [],
+ "disallowed_tools": [
+  "Task",
+  "Workflow",
+  "CronCreate",
+  "CronDelete",
+  "RemoteTrigger",
+  "ScheduleWakeup",
+  "PushNotification",
+  "SendMessage",
+  "EnterWorktree",
+  "ExitWorktree",
+  "WebFetch",
+  "WebSearch",
+  "DesignSync"
+ ],
+ "add_dirs": [
+  "/Users/Dev/kalayantra"
+ ],
+ "intended_tools": [
+  "Read",
+  "Write",
+  "Bash"
+ ],
+ "denied_tools": [],
+ "shell_canary": "python3",
+ "_note": "shell_canary is python3 because the program's Bash tool refuses a standalone `sleep` (observed in the real qualification of 2026-10-11): the kill probes need a long-running command the tool will actually run."
+}

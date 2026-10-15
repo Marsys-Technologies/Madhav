@@ -1,0 +1,89 @@
+{
+  "artifact": "STAGED_MODEL_ACTIONS",
+  "content_version": "2.2",
+  "plan_version": "2.2",
+  "status": "STAGED — NOT PUBLISHED. No tracker event has been written for any entry below.",
+  "publisher": "the B-2 installation/model-migration action (install.sh), after the owner's merge and after the reconciled plan model is the tracker's loaded model; never a test, a job or the planner (plan §0 step 4)",
+  "publication_rule": "each entry is published once, idempotently (an entry whose event already exists is skipped and reported); the receipt records the event ids; a failure stops the installation",
+  "decisions": [
+    {
+      "decision": "D-RETIRE-B-K-INBOX",
+      "retires": "B-K-INBOX",
+      "outcome": "refused",
+      "as": "steward",
+      "delegated": true,
+      "detail": "D-RETIRE-B-K-INBOX: refused — B-K-INBOX is retired by owner decision (relaunch plan v2.2 §0 step 4, approved by the owner at source commit 3323430f249222724a24226cb1df46e389f5f255; owner decisions 2026-10-11). v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6).",
+      "authority": "relaunch plan v2.2 §0 step 4, approved by the owner at source commit 3323430f249222724a24226cb1df46e389f5f255; owner decisions 2026-10-11",
+      "expected_effect": "B-K-INBOX becomes not_applicable with skip origin D-RETIRE-B-K-INBOX; the close join lists it as a gap with that reason"
+    },
+    {
+      "decision": "D-RETIRE-B-CLAIM-RECOVERY",
+      "retires": "B-CLAIM-RECOVERY",
+      "outcome": "refused",
+      "as": "steward",
+      "delegated": true,
+      "detail": "D-RETIRE-B-CLAIM-RECOVERY: refused — B-CLAIM-RECOVERY is retired by owner decision (relaunch plan v2.2 §0 step 4, approved by the owner at source commit 3323430f249222724a24226cb1df46e389f5f255; owner decisions 2026-10-11). v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet.",
+      "authority": "relaunch plan v2.2 §0 step 4, approved by the owner at source commit 3323430f249222724a24226cb1df46e389f5f255; owner decisions 2026-10-11",
+      "expected_effect": "B-CLAIM-RECOVERY becomes not_applicable with skip origin D-RETIRE-B-CLAIM-RECOVERY; the close join lists it as a gap with that reason"
+    }
+  ],
+  "parks": [
+    {
+      "item": "J-7",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'; re-entry: after the flip (J-6l) if D-T2 admits it",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "J-7b",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: documentation-only L5 hand-off contract; no retained item consumes it; re-entry: before L5 reads '5.0'",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "D-T2",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: decides only J-7's admission; re-entry: with J-7",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "L0-K",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path; re-entry: with D-T2",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "D-GOCHARA-TIMEOUT",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: rules one legacy materializer timeout; no retained item consumes it; re-entry: if J-4e/J-4f show that timeout binding",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "J-GOCHARA-TIMEOUT",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: applies D-GOCHARA-TIMEOUT; no retained item consumes it; re-entry: with D-GOCHARA-TIMEOUT",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "B-DB-BASELINE",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11; re-entry: if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    },
+    {
+      "item": "J-7a",
+      "as": "steward",
+      "detail": "deferred (b) by the v3 triage: legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11; re-entry: after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle",
+      "authority": "relaunch plan v2.2 §0 step 3; KALAYANTRA_V3_TRIAGE_v2_2.md §4"
+    }
+  ],
+  "blocks": [
+    {
+      "item": "KV3-SCHEMA-1",
+      "as": "steward",
+      "detail": "blocked contract input: the column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (KYD-150); requested through CAMPAIGN_COORDINATION §6 by the conductor; unblocked when the contract is recorded",
+      "authority": "relaunch plan v2.2 §0 step 3; KYD-150"
+    }
+  ],
+  "note": "The block records that KV3-SCHEMA-1 cannot be built until its contract input exists. The park notes record the deferral and its re-entry condition in the ledger; a deferred item is never counted as closed. The exact command lines are rendered by install.sh from these fields against the installed CLI."
+}

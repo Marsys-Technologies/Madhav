@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.release_receipt/1",
+  "title": "KĀLA-YANTRA v3 release receipt, run/RELEASE_RECEIPT.json (relaunch plan v2.7 §10)",
+  "description": "One release_id, the schema version and a digest, then the five release conditions, each binding its evidence to that release. This schema checks shape only. Every condition carries its own release_id; that each of the five is equal to the top-level release_id is not checked by this schema (JSON Schema cannot compare two fields) and must be checked by the gate's code (kygate.sh, plan §10: 'mixed release ids' is one of its negative fixtures), as must the digest, the truth of each evidence field, the uniqueness of PR numbers and the rule that missing or inconsistent evidence is WAIT. A SATISFIED condition must carry every evidence field the plan names for it; a WAIT condition may carry empty or partial evidence, which is still typed. A schema-valid receipt is therefore not a passed gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["release_id", "schema_version", "digest", "conditions"],
+  "properties": {
+    "release_id": {"$ref": "#/$defs/release_id"},
+    "schema_version": {"const": "ky.release_receipt/1"},
+    "digest": {
+      "description": "SHA-256 binding the receipt content; what it is computed over is fixed and verified by the gate's code, not by this schema.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["certification", "pins", "regeneration", "pr_dispositions", "coordinator_closure"],
+      "properties": {
+        "certification": {
+          "description": "Evidence: the coordination commit and the coordination record id.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "release_id", "evidence"],
+          "properties": {
+            "status": {"$ref": "#/$defs/status"},
+            "release_id": {"$ref": "#/$defs/condition_release_id"},
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "coordination_commit": {"$ref": "#/$defs/commit"},
+                "record_id": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "if": {"$ref": "#/$defs/is_satisfied"},
+          "then": {"properties": {"evidence": {"required": ["coordination_commit", "record_id"]}}}
+        },
+        "pins": {
+          "description": "Evidence: the rebuild producer and the rebuild run.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "release_id", "evidence"],
+          "properties": {
+            "status": {"$ref": "#/$defs/status"},
+            "release_id": {"$ref": "#/$defs/condition_release_id"},
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "rebuild_producer": {"type": "string", "minLength": 1},
+                "rebuild_run": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "if": {"$ref": "#/$defs/is_satisfied"},
+          "then": {"properties": {"evidence": {"required": ["rebuild_producer", "rebuild_run"]}}}
+        },
+        "regeneration": {
+          "description": "Evidence: the main commit, the generator version and the output digest.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "release_id", "evidence"],
+          "properties": {
+            "status": {"$ref": "#/$defs/status"},
+            "release_id": {"$ref": "#/$defs/condition_release_id"},
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "main_commit": {"$ref": "#/$defs/commit"},
+                "generator_version": {"type": "string", "minLength": 1},
+                "output_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+              }
+            }
+          },
+          "if": {"$ref": "#/$defs/is_satisfied"},
+          "then": {
+            "properties": {"evidence": {"required": ["main_commit", "generator_version", "output_digest"]}}
+          }
+        },
+        "pr_dispositions": {
+          "description": "Evidence: an exhausted paginated API traversal (the flag must be true to be SATISFIED) and one disposition per PR. That no PR number repeats is not checked by this schema.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "release_id", "evidence"],
+          "properties": {
+            "status": {"$ref": "#/$defs/status"},
+            "release_id": {"$ref": "#/$defs/condition_release_id"},
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "traversal_exhausted": {"type": "boolean"},
+                "prs": {"type": "array", "items": {"$ref": "#/$defs/pr_disposition"}}
+              }
+            }
+          },
+          "if": {"$ref": "#/$defs/is_satisfied"},
+          "then": {
+            "properties": {
+              "evidence": {
+                "required": ["traversal_exhausted", "prs"],
+                "properties": {"traversal_exhausted": {"const": true}}
+              }
+            }
+          }
+        },
+        "coordinator_closure": {
+          "description": "Evidence: the coordinator's enumerated hand-off records (at least one to be SATISFIED). The plan notes this condition has no producer yet and stays WAIT until one publishes it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "release_id", "evidence"],
+          "properties": {
+            "status": {"$ref": "#/$defs/status"},
+            "release_id": {"$ref": "#/$defs/condition_release_id"},
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "handoff_records": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          },
+          "if": {"$ref": "#/$defs/is_satisfied"},
+          "then": {
+            "properties": {
+              "evidence": {
+                "required": ["handoff_records"],
+                "properties": {"handoff_records": {"minItems": 1}}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "release_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "condition_release_id": {
+      "description": "Must be present on every condition. Equality with the top-level release_id is not checked by this schema; the gate's code checks it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "status": {"enum": ["SATISFIED", "WAIT"]},
+    "is_satisfied": {"properties": {"status": {"const": "SATISFIED"}}, "required": ["status"]},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "pr_disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pr", "disposition", "owner", "re_entry"],
+      "properties": {
+        "pr": {"type": "integer", "minimum": 1},
+        "disposition": {"enum": ["merged", "parked", "closed"]},
+        "owner": {"type": "string", "minLength": 1},
+        "re_entry": {
+          "description": "How and when the PR re-enters; a parked PR must state it, merged and closed PRs may carry null.",
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      },
+      "if": {"properties": {"disposition": {"const": "parked"}}, "required": ["disposition"]},
+      "then": {"properties": {"re_entry": {"type": "string"}}}
+    }
+  }
+}

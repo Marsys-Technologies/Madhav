@@ -1,0 +1,2202 @@
+{
+ "assets": 82,
+ "bar": "n268",
+ "bar_label": "bar: N-268 (named ceilings and disclosure gaps)",
+ "build_completion_counts_only": {
+  "assets": [],
+  "assets_of": 82,
+  "count": 0,
+  "limitation": "Build.completion: counts only (no integrity statement)"
+ },
+ "carr_d2": {
+  "assets": 82,
+  "na_no_per_witness": 76,
+  "other": {
+   "ruled N/A under another rule": 6
+  }
+ },
+ "census_target": "evaluation_copy",
+ "certified": [
+  {
+   "asset": "bg_class_lifetime_counts",
+   "ceilings": [
+    "Ratified judgment (N-235)"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L0_brahmagyan/query_class_priors.ts"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: ratified judgment (N-235)",
+    "D2: ratified judgment (N-235)",
+    "D3: ratified judgment (N-235)"
+   ]
+  },
+  {
+   "asset": "bg_class_priors",
+   "ceilings": [
+    "Ldgr: unsourced (declared)",
+    "Ratified judgment (N-235)"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D1: ratified judgment (N-235)",
+    "D2: ratified judgment (N-235)",
+    "D3: ratified judgment (N-235)",
+    "Ldgr: unsourced (declared)"
+   ]
+  },
+  {
+   "asset": "bg_cohort",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bg_synthetic_cohort.positions, bg_synthetic_cohort.source_citation; bounded sample only: bg_synthetic_cohort.positions; unread: bg_synthetic_cohort.positions"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_compendium_index",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "1602 of 9571 rows have no chapter number and 7969 have no topic id, so the only usable key is the expression index with COALESCE defaults.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L0_brahmagyan/query_compendium_index.ts"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in brahma_compendium_index.summary_text, brahma_compendium_index.topic_id); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_concordance",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in classical_attributions.topic_canonical_name); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in brahma_dasha_systems.computation_pseudocode, brahma_dasha_systems.conditions_for_use, brahma_dasha_systems.sequence_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_dignity_reference",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-not-attributable",
+     "reason": "served; per file: platform-mcp/src/tools/kala_views/now.ts: attribution not established: select in a different top-level declaration (static-reading limit); platform-mcp/src/tools/register_p1_reference.ts: attribution not established: select in a different capability entry (static-reading limit)"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_doshas",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "53 of 79 rows carry a placeholder citation; decision OS-2026-10-05-CITATIONS (not yet applied in the seed) sources 14 to a verified text, relabels 18 as modern practice, removes 13, and leaves 8 marked 'classical source claimed, not verified in our library'.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-not-attributable",
+     "reason": "served; per file: L0_brahmagyan/query_dosha_catalog.ts: no tier column in the served select (known absence); L0_brahmagyan/query_parihara_graph.ts: tier carriage not established: run-time select list (static-reading limit)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in brahma_dosha_catalog.classical_citations, brahma_dosha_catalog.formation_rule_jsonb, brahma_dosha_catalog.severity_grades"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_ephemeris",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_graha_yuddha.ts"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_formula_constants",
+   "ceilings": [
+    "Ratified judgment (N-235)"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in brahma_formula_constants.citation_or_ratification, brahma_formula_constants.value_jsonb); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: ratified judgment (N-235)",
+    "D2: ratified judgment (N-235)",
+    "D3: ratified judgment (N-235)"
+   ]
+  },
+  {
+   "asset": "bg_ghatana",
+   "ceilings": [
+    "Ratified judgment (N-235)"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in brahma_event_ontology.citations, brahma_event_ontology.signature_model, brahma_activity_ontology.significators"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: ratified judgment (N-235)",
+    "D2: ratified judgment (N-235)",
+    "D3: ratified judgment (N-235)"
+   ]
+  },
+  {
+   "asset": "bg_gochara_arcs",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_gochara_citation_resolution",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "It has no writer: its 14 rows were seeded by migrations 565, 630 and 631, so a build cannot regenerate them.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_kota_chakra_rings",
+   "ceilings": [
+    "D1: unverified transcription",
+    "Ldgr: unsourced (declared)"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The ring partition is a secondary-source transcription not traced to a primary text, the source is not held in the corpus (owner deferral N-102), and dvara_assignment is never filled.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 11,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 14,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values",
+    "Ldgr: unsourced (declared)"
+   ]
+  },
+  {
+   "asset": "bg_kp_sublord_division",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_medical_mappings",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bg_medical_mappings.graha, bg_medical_mappings.classical_citation"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_muhurta_lattice",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bg_muhurta_lattice.detail, bg_muhurta_lattice.sampling_method, bg_muhurta_lattice.source_citation; bounded sample only: bg_muhurta_lattice.detail"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-not-attributable",
+     "reason": "served; per file: platform-mcp/src/tools/register_p1_reference.ts: attribution not established: select in a different capability entry (static-reading limit) + tier carriage not established: run-time select list (static-reading limit)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in reference_nakshatra.degree_in_rashi_ranges, reference_nakshatra.deity_domain, reference_nakshatra.shakti"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra_medical",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_ontology",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "53 of 741 rows carry a placeholder source citation (the dosha rows); decision OS-2026-10-05-CITATIONS (not yet applied) sources 14, relabels 18 modern, removes 13, leaves 8 'classical source claimed, not verified'; all 79 dosha rows have an empty alias set.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "ceiling",
+     "pattern": "not-measurable:Dens.served:shared-table",
+     "reason": "not measurable: only a shared table is referenced: the served surface cannot be attributed to it by code"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_parihara_rules",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L0_brahmagyan/query_parihara_graph.ts"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_phaladeepika_latta",
+   "ceilings": [],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The per-row source citation names page PG339 only on all 8 rows although the passage spans PG338 and PG339, and the text is OCR English that has not been checked against the printed book.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 16,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 9,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_prashna_rules",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bg_prashna_significators.quesited_planet, bg_prashna_tajik_yogas.formation_rule_jsonb, bg_prashna_lagna_methods.derivation_rule_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_reference",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in reference_planets.source_citation, reference_aspects.notes, reference_aspects.source_citation, reference_houses.classical_doctrine_jsonb, reference_houses.name_en, reference_strength_systems.classical_interpretation, reference_strength_systems.formula_text, reference_karakas.classical_significations, reference_karakas.name_en, reference_upagrahas.computation_method, reference_upagrahas.significations, reference_constants.classical_context, reference_constants.name, reference_constants.value_text, reference_topic_tags.description, reference_topic_tags.name, reference_glossary.definition, reference_glossary.term_en, reference_glossary.term_id, reference_glossary.term_sa; bounded sample only: reference_glossary.term_en, reference_glossary.term_id, reference_glossary.term_sa"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_remedies",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "101 of 341 rows carry a placeholder citation; decision OS-2026-10-05-CITATIONS (not yet applied) sources 30 to BPHS, relabels 45 modern practice, removes 25, leaves 1 'classical source claimed, not verified'; 167 prescription sentences are fixed text.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in brahma_remedy_corpus.classical_attestation_text, brahma_remedy_corpus.classical_ref, brahma_remedy_corpus.contraindications, brahma_remedy_corpus.deity, brahma_remedy_corpus.ingredients_jsonb, brahma_remedy_corpus.source_citation, brahma_remedy_corpus.timing_rules_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_rules",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 16,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of register_d7_channel.ts"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in sutravali_rules.antecedent_jsonb, sutravali_rules.extraction_pass_log, sutravali_rules.predicate_jsonb, sutravali_rules.prediction_jsonb; bounded sample only: sutravali_rules.antecedent_jsonb, sutravali_rules.prediction_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 7,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_sign_medical",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_sky_calendar",
+   "ceilings": [],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: bounded sample only: bg_sky_calendar.detail"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_text_index",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "ceiling",
+     "pattern": "not-measurable:Dens.served:shared-table",
+     "reason": "not measurable: only a shared table is referenced: the served surface cannot be attributed to it by code"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in classical_text_chunks.content_en, classical_text_chunks.ocr_review_note, classical_text_chunks.topic_tag); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_texts",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "content_en is a machine translation (SS ruling 2026-10-06, not recorded by the writer, which stores the PDF chunk text), the chunk text is cut by character budget without a passage-level check, and verse_ref, content_sha256 and tradition_school are composed fields, so the extraction is declared an unverified transcription.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "ceiling",
+     "pattern": "not-measurable:Dens.served:no-served-select",
+     "reason": "not measurable: no served SELECT of its table was found: whether it is served cannot be told by code"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in classical_text_chunks.ocr_review_note, classical_text_chunks.topic_tag); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_transit_rules",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Six Rahu/Ketu house-vedha rows: vedha partner unsourced, pending owner ruling ND-NODE-VEDHA (transit result cites Phaladeepika XXVI); 19 rows cite BPHS Ch.29, which the corpus cannot resolve; 7 double_transit rows come from a migration.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-not-attributable",
+     "reason": "served; per file: platform-mcp/src/tools/register_p1_reference.ts: no tier column in the served select (known absence) + attribution not established: select in a different capability entry (static-reading limit)"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_vastu_directions",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "1 of 8 rows carries a placeholder citation (decision OS-2026-10-05-CITATIONS sources it to Muhurta Chintamani v.9, not yet applied); the 7 sibling rows cite Mayamata Ch.6, a text not in the corpus.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-not-attributable",
+     "reason": "served; per file: L0_brahmagyan/query_vastu_directions.ts: no tier column in the served select (known absence); L1_ganita/get_vastu_directions.ts: tier carriage not established: run-time select list (static-reading limit)"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_vedha_malefic_scale",
+   "ceilings": [],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "All five rows carry an editorial note (page PG349 disambiguation) added to the effect description that is not in the book text, and the source chunk for page PG353 has not been exported for checking.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 7,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_vidhi_floors",
+   "ceilings": [],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in vidhi_floor_items.args_override; bounded sample only: vidhi_floor_items.args_override"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_vidhi_primitives",
+   "ceilings": [],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in vidhi_primitives.tool_args); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_yogas",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#cca13ab8b230",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "1 of 233 rows carries a placeholder citation: decision OS-2026-10-05-CITATIONS labels kala_sarpa_yoga modern practice (not yet applied); it duplicates the dosha-form authority in ga_structural.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in brahma_yoga_catalog.canonical_id, brahma_yoga_catalog.formation_rule_jsonb, brahma_yoga_catalog.formation_text, brahma_yoga_catalog.name_en, brahma_yoga_catalog.name_sa, brahma_yoga_catalog.significations_text, reference_yogas.canonical_id, reference_yogas.name_en, brahma_ontology.canonical_id, brahma_ontology.canonical_name_en, brahma_ontology.canonical_name_sa, brahma_ontology.description, brahma_ontology.synonyms; bounded sample only: brahma_yoga_catalog.formation_rule_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bo_anveshana",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The constituent_refs key is called signal_ids but also holds L1 fact ids after the signal id, so the key is mislabelled for those entries.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_anomalies.subject_ref_jsonb, bodha_discoveries.ayanamsha_id, bodha_discoveries.hypothesis_text, bodha_discoveries.meaningfulness_basis, bodha_anomalies.ayanamsha_id); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_arudha",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Build.dag",
+     "kind": "ceiling",
+     "pattern": "dag-parse-incomplete",
+     "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+    },
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 3 site(s))"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_msr_signals.citation_ref, bodha_msr_signals.classical_sources_jsonb, bodha_msr_signals.configuration_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_bimba",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "On the native chart some yoga and dosha node names are computed status words, such as Dosha node: afflicted and Yoga node: true, standing as names.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_cgm_nodes.node_subject, bodha_cgm_nodes.citation_ref, bodha_cgm_nodes.node_label_human, bodha_cgm_nodes.position_in_chart_jsonb; bounded sample only: bodha_cgm_nodes.position_in_chart_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_cdlm_summary",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The summary sentence is the same fixed text for every chart, and a count of one reads over 1 cells.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_cdlm_pattern_clusters.ayanamsha_id); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_cgm_motifs",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The motif definition sentences are identical on every row and not derived from the row.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_cgm_motifs.ayanamsha_id, bodha_cgm_sub_graphs.ayanamsha_id, bodha_cgm_sub_graphs.representative_path_jsonb, bodha_cgm_sub_graphs.subgraph_label"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_cgm_paths",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_drishti",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_question_lenses.all_relevant_ranked_jsonb, bodha_question_lenses.citation_ref); no non-canonical value found; unread: bodha_question_lenses.template_element_ids_jsonb, bodha_question_lenses.all_relevant_ranked_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_grounding",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 15,
+   "named": [
+    {
+     "criterion": "Narr.checkable",
+     "kind": "ceiling",
+     "pattern": "narr-checkable-unknown-or-empty",
+     "reason": "checkable-row count unknown or zero for derivation_chain: nothing found, but those entries were not checked"
+    },
+    {
+     "criterion": "Null.blank_rows",
+     "kind": "gap",
+     "pattern": "null-blank-constant-write",
+     "reason": "no blank or placeholder row among the checkable prose rows; every constant_write literal the scan lists states an absence explicitly: honest absence statement: no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses (bodha_writers/grounding_matcher.py:183); honest absence statement: no classical_sources_jsonb citations for this signal (bodha_writers/grounding_matcher.py:238)"
+    },
+    {
+     "criterion": "Null.schema_default",
+     "kind": "gap",
+     "pattern": "null-default-constant-write",
+     "reason": "no schema default on the declared prose columns; every constant_write literal the scan lists states an absence explicitly: honest absence statement: no sutravali_rules antecedent (full or per-component) matched this firing's constituent_planets/constituent_houses (bodha_writers/grounding_matcher.py:183); honest absence statement: no classical_sources_jsonb citations for this signal (bodha_writers/grounding_matcher.py:238)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_grounding_matches.grounding_evidence_jsonb, bodha_grounding_matches.matched_rule_id, bodha_grounding_matches.target_id); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_karanajala",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Argala sentences use a fixed th suffix, so the second house reads 2th instead of 2nd.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_cgm_nodes.node_subject, bodha_cgm_edges.citation_ref, bodha_cgm_edges.edge_properties_jsonb, bodha_cgm_edges.relationship_basis, bodha_cgm_edges.relationship_class, bodha_cgm_edges.semantic_path_class, bodha_cgm_nodes.citation_human, bodha_cgm_nodes.citation_ref, bodha_cgm_nodes.node_label_human, bodha_cgm_nodes.position_in_chart_jsonb; bounded sample only: bodha_cgm_edges.edge_properties_jsonb, bodha_cgm_nodes.position_in_chart_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_nakshatra_semantic",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Build.dag",
+     "kind": "ceiling",
+     "pattern": "dag-parse-incomplete",
+     "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+    },
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 2 site(s))"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_msr_signals.citation_ref, bodha_msr_signals.classical_sources_jsonb, bodha_msr_signals.configuration_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_pratijna",
+   "ceilings": [
+    "Carr: single-derivation",
+    "Ldgr: unsourced (declared)"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Some gap sentences are fixed text: no KaryatvaMap registered, no D1 house data, and yoga catalog or firings not exposed.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 17,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L2_bodha/query_pratijna.ts"
+    },
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 2 site(s))"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_pratijna.derivation, bodha_pratijna.varga_confirmation; bounded sample only: bodha_pratijna.derivation; unread: bodha_pratijna.derivation"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)",
+    "Ldgr: unsourced (declared)"
+   ]
+  },
+  {
+   "asset": "bo_samvada",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 10,
+   "named": [
+    {
+     "criterion": "Build.completion",
+     "kind": "ceiling",
+     "pattern": "not-measurable:Build.completion:view-object",
+     "reason": "not measurable: a view: completion consistency is not measurable for a view"
+    },
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L2_bodha/query_ucd.ts"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in vw_chart_digest.ayanamsha_id"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_sangati",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "A count of one reads 1 shared signals and 1 signals because the plural is fixed.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 30,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_special_lagna",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Build.dag",
+     "kind": "ceiling",
+     "pattern": "dag-parse-incomplete",
+     "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+    },
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 2 site(s))"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_msr_signals.citation_ref, bodha_msr_signals.classical_sources_jsonb, bodha_msr_signals.configuration_jsonb, bodha_msr_signals.engine_version, bodha_msr_signals.producer_asset_id, bodha_msr_signals.relationship_classification, bodha_msr_signals.signal_type_class, bodha_msr_signals.source_subsystem"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_sudarshana",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Build.dag",
+     "kind": "ceiling",
+     "pattern": "dag-parse-incomplete",
+     "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_msr_signals.citation_ref, bodha_msr_signals.classical_sources_jsonb, bodha_msr_signals.configuration_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_upaya",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Gap sentences are fixed text, and a count of one reads 1 prescriptions in bundle and pattern citations.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 17,
+   "named": [
+    {
+     "criterion": "Narr.checkable",
+     "kind": "ceiling",
+     "pattern": "narr-checkable-unknown-or-empty",
+     "reason": "checkable-row count unknown or zero for counter_indications_array, prescription_detail_jsonb.$.maraka_contraindication_verdict.reason: nothing found, but those entries were not checked"
+    },
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 3 site(s))"
+    },
+    {
+     "criterion": "Null.blank_rows",
+     "kind": "gap",
+     "pattern": "null-blank-constant-write",
+     "reason": "no blank or placeholder row among the checkable prose rows; every constant_write literal the scan lists states an absence explicitly: honest absence statement: INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from \u2014 B.10 forbids inventing a figure. See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived. (bo_upaya.py:1677); honest absence statement: L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha \u2014 cannot compute a maraka verdict without it (never guessed). (bo_upaya.py:991)"
+    },
+    {
+     "criterion": "Null.schema_default",
+     "kind": "gap",
+     "pattern": "null-default-constant-write",
+     "reason": "no schema default on the declared prose columns; every constant_write literal the scan lists states an absence explicitly: honest absence statement: INR market pricing requires an external, time-varying market-price source not present in the classical-text corpus this system computes from \u2014 B.10 forbids inventing a figure. See cost_tier for the qualitative (free/low/medium/high) classification, which IS corpus-derived. (bo_upaya.py:1677); honest absence statement: L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha \u2014 cannot compute a maraka verdict without it (never guessed). (bo_upaya.py:991)"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_vargottama_dhana",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Build.dag",
+     "kind": "ceiling",
+     "pattern": "dag-parse-incomplete",
+     "reason": "dependency graph acyclic and every declared edge exists; the read parse is incomplete at 3 dynamic site(s) of the shared helper (not resolvable by static parse)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in bodha_msr_signals.citation_ref, bodha_msr_signals.configuration_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_yantra_mechanism",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#f416f533a706",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Null.blank_rows",
+     "kind": "gap",
+     "pattern": "null-blank-unresolved-write-path",
+     "reason": "no blank or placeholder row among the checkable prose rows; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+    },
+    {
+     "criterion": "Null.schema_default",
+     "kind": "gap",
+     "pattern": "null-default-unresolved-write-path",
+     "reason": "no schema default on the declared prose columns; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-embedded-only",
+     "reason": "no whole value is a term (embedded text only, spelling unchecked, in bodha_mechanisms.citation_ref); no non-canonical value found"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_ayurdaya",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.ayanamsha_id, chart_facts.fact_value_jsonb, chart_facts.fact_value_text"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_condition",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Baladi avastha ignores sign parity, so a graha in an even sign can get the wrong bala to mrita state, and the sayanadi, lajjitadi and deepta/swastha mappings are simplified with a doubtful citation.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 17,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_condition_composite.ts"
+    },
+    {
+     "criterion": "Null.blank_rows",
+     "kind": "gap",
+     "pattern": "null-blank-unresolved-write-path",
+     "reason": "no blank or placeholder row among the checkable prose rows; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+    },
+    {
+     "criterion": "Null.schema_default",
+     "kind": "gap",
+     "pattern": "null-default-unresolved-write-path",
+     "reason": "no schema default on the declared prose columns; the writer scan could not resolve 1 listed write path(s) (instrument limit); no literal problem is listed"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in ga_condition_composite.peak_dasha_periods, ga_condition_composite.weak_dasha_periods, ga_condition_composite.varga_dignity_spread, chart_facts.ayanamsha_id, chart_facts.citation_human, chart_facts.citation_ref"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_dashas",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_dashas.ayanamsha_id, chart_dashas.citation_human, chart_dashas.karakas_active_during_period, chart_dashas.period_deity_or_marker; bounded sample only: chart_dashas.concurrent_system_lords_jsonb, chart_dashas.period_deity_or_marker"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_fact_identity",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 12,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_fact_identity.parsed_from; bounded sample only: chart_fact_identity.graha_code"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_medical",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_medical_indications.ts"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in ga_medical.classical_citation"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_nakshatra",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "citation_human holds a machine template that restates the row rather than human prose.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.ayanamsha_id, chart_facts.citation_ref, chart_facts.fact_value_text, chart_facts.source_calculation; bounded sample only: chart_facts.fact_value_text"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_panchanga",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The inauspicious tithi set is compared with the 1-30 tithi number, so Krishna tithis 4, 6, 8, 9, 12 and 14 are never flagged inauspicious while the Shukla ones are.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.fact_subject, chart_facts.ayanamsha_id, chart_facts.citation_ref, chart_facts.fact_category, chart_facts.fact_key, chart_facts.fact_value_jsonb, chart_facts.fact_value_text"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_positions",
+   "ceilings": [],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "10 of 530 Rahu and Ketu rows store retrograde_flag as direct although the mean-node longitude moves backward, and the two CHART_FACTS_SCHEMA.json copies disagree on 8 of 27 nakshatra spellings.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.ayanamsha_id, chart_facts.citation_ref"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "ga_prashna",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [
+    "certified, empty by design: prashna questions (prashna_charts rows) for this chart recorded: none (writer ran to completion on the current code; the zero-row convention is verified against prashna_charts.chart_id)"
+   ],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 11,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_prashna_lagna.ts"
+    },
+    {
+     "criterion": "Ldgr.source_presence",
+     "kind": "ceiling",
+     "pattern": "empty-by-design:ga_prashna",
+     "reason": "empty by design: prashna questions (prashna_charts rows) for this chart recorded: none (writer ran to completion on the current code; the zero-row convention is verified against prashna_charts.chart_id)"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "empty-by-design:ga_prashna",
+     "reason": "empty by design: prashna questions (prashna_charts rows) for this chart recorded: none (writer ran to completion on the current code; the zero-row convention is verified against prashna_charts.chart_id)"
+    },
+    {
+     "criterion": "Vocab.identity",
+     "kind": "ceiling",
+     "pattern": "empty-by-design:ga_prashna",
+     "reason": "empty by design: prashna questions (prashna_charts rows) for this chart recorded: none (writer ran to completion on the current code; the zero-row convention is verified against prashna_charts.chart_id)"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_sade_sati",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Saturn in Gemini is stored as neutral while Virgo (also a Mercury sign) is friend, and sentences read Mars aspect to Saturn during ...: None when the upstream value is missing.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Narr.lint",
+     "kind": "ceiling",
+     "pattern": "narr-lint-allowlisted",
+     "reason": "only allowlisted narration lint violations (fact-category-pin; 3 site(s))"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.fact_subject, chart_facts.ayanamsha_id, chart_facts.citation_ref, chart_facts.fact_category, chart_facts.fact_key, chart_facts.fact_value_jsonb, chart_facts.source_calculation"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_sensitive",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "citation_human holds a machine template that restates the row rather than human prose.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.fact_subject, chart_facts.ayanamsha_id, chart_facts.citation_ref, chart_facts.fact_category, chart_facts.fact_value_text, chart_facts.formula_id, chart_facts.formula_provenance_text; bounded sample only: chart_facts.fact_value_text"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_sensitive_degree",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.ayanamsha_id, chart_facts.fact_value_jsonb; bounded sample only: chart_facts.fact_value_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_strength",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Shadbala sentences print raw subject codes such as SAT, MOON and JUP in some places and full names elsewhere.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "ceiling",
+     "pattern": "not-measurable:Dens.served:no-served-select",
+     "reason": "not measurable: no served SELECT of its table was found: whether it is served cannot be told by code"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_facts.fact_subject, chart_facts.ayanamsha_id, chart_facts.citation_human, chart_facts.citation_ref"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 5,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_tajaka",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "Panchavargiya bala takes D2 and D3 signs from a plain multiplicative division, not the Parashari rules, so the Panchavargiya winner and the methods-diverge flag can be wrong.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in l1_tajik_varsha_year_lords.candidate_lord_jsonb, l1_tajik_varsha_year_lords.citation_ref, l1_tajik_varsha_year_lords.muntha_position_jsonb; bounded sample only: l1_tajik_varsha_year_lords.candidate_lord_jsonb, l1_tajik_varsha_year_lords.ephemeris_audit_jsonb, l1_tajik_varsha_year_lords.muntha_position_jsonb; unread: l1_tajik_varsha_year_lords.candidate_lord_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_transit_anchors",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_transit_anchors.ts"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_vargas",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The Moon is always Exalted anywhere in Taurus, friend and enemy factors in vimsopaka are unreachable, and the D81 gap sentence is fixed text.",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_divisionals.fact_subject, chart_divisionals.ayanamsha_id, chart_divisionals.citation_ref, chart_divisionals.fact_category, chart_divisionals.fact_key, chart_divisionals.fact_value_text, chart_divisionals.formula_provenance_text, chart_divisionals.source_calculation, chart_divisionals.source_citation; bounded sample only: chart_divisionals.fact_value_text"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_vastu",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_vastu_directions.ts"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 10,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "ga_vichara",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [
+    {
+     "criterion": "Dens.served",
+     "kind": "gap",
+     "pattern": "dens-no-tier-column",
+     "reason": "served but does not state its verification level: no tier column in the served select of L1_ganita/get_dasha_lord_capability.ts, L1_ganita/get_vichara.ts"
+    },
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in chart_vichara.ayanamsha_id, chart_vichara.target, chart_vichara.value_jsonb; bounded sample only: chart_vichara.value_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "ga_yoga",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L1.json#3d4aaae1c7da",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L1",
+   "limitations": [],
+   "measured_pass": 20,
+   "named": [
+    {
+     "criterion": "Vocab.alias",
+     "kind": "ceiling",
+     "pattern": "vocab-canonical-with-caveats",
+     "reason": "every whole value found is canonical; not verified: embedded text, spelling unchecked, in ga_yoga_firings.bhanga_rule_fired, ga_yoga_firings.citation_ref, ga_yoga_firings.grounds_jsonb"
+    }
+   ],
+   "revision": 30,
+   "ruled_na": 4,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  }
+ ],
+ "certified_at_a_ceiling": 69,
+ "date": "2026-10-12",
+ "db_identity": {
+  "database": "amjis",
+  "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731"
+ },
+ "evaluation_copy": {
+  "backup_id": "1791835965446",
+  "backup_time": "2026-10-12T20:15:07.308Z",
+  "instance": "amjis-ri02-validation-c720f1832",
+  "source_instance": "amjis-postgres"
+ },
+ "layers": [
+  "L0",
+  "L1",
+  "L2"
+ ],
+ "overlays": [],
+ "registry_fingerprint": "b1acb3f678b5c8fbe343b93d96d8f2db24e2d024b15412aa960056b98bc5f23c",
+ "registry_revision": 30,
+ "tool": [
+  {
+   "tool_commit": "7e63cc872eda2da19eed3b484c6e36569e03bf50",
+   "tool_dirty": false
+  }
+ ],
+ "totals_by_layer_and_class": {
+  "L0": {
+   "(a) detector": 2
+  },
+  "L1": {
+   "(e) defect in data or code": 1
+  },
+  "L2": {
+   "(e) defect in data or code": 7
+  }
+ }
+}

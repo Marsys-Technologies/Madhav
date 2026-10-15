@@ -1,0 +1,129 @@
+[
+  {
+    "id": 201,
+    "dosha_canonical_id": "mars_eighth",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi v.88",
+    "source_chunk_id": "muhurta_chintamani_pg0116_c01",
+    "cancellation_condition_text": "If Maṅgala (Mars) is in a debilitated sign, or combust, or in the eighth, there is likewise no doṣa.",
+    "predicate": {
+      "op": "any_of",
+      "terms": [
+        {
+          "planet": "Mars",
+          "dignity": "debilitated",
+          "varga": "rasi"
+        },
+        {
+          "planet": "Mars",
+          "dignity": "combust",
+          "varga": "rasi"
+        },
+        {
+          "planet": "Mars",
+          "house_from_lagna": [
+            8
+          ]
+        }
+      ]
+    },
+    "extraction_context": "tika_commentary",
+    "conjunction_reading": "tika",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
+  },
+  {
+    "id": 202,
+    "dosha_canonical_id": "kartari",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi v.88 ṭīkā",
+    "source_chunk_id": "muhurta_chintamani_pg0116_c01",
+    "cancellation_condition_text": "If the pāpa-grahas that produce the kartarī are in an enemy's house, in debilitation and combust (and if some benefic stands between them), then there is no kartarī-doṣa in the lagna or the seventh.",
+    "predicate": null,
+    "extraction_context": "tika_commentary",
+    "conjunction_reading": "tika",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
+  },
+  {
+    "id": 203,
+    "dosha_canonical_id": "venus_sixth",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi v.88",
+    "source_chunk_id": "muhurta_chintamani_pg0116_c01",
+    "cancellation_condition_text": "And if Śukra is debilitated or in an enemy's sign, there is no doṣa even when he is in the sixth.",
+    "predicate": {
+      "op": "all_of",
+      "terms": [
+        {
+          "planet": "Venus",
+          "house_from_lagna": [
+            6
+          ]
+        },
+        {
+          "op": "any_of",
+          "terms": [
+            {
+              "planet": "Venus",
+              "dignity": "debilitated",
+              "varga": "rasi"
+            },
+            {
+              "planet": "Venus",
+              "dignity": "enemy_sign",
+              "varga": "rasi"
+            }
+          ]
+        }
+      ]
+    },
+    "extraction_context": "tika_commentary",
+    "conjunction_reading": "tika",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
+  },
+  {
+    "id": 204,
+    "dosha_canonical_id": "kartari",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi v.88",
+    "source_chunk_id": "muhurta_chintamani_pg0115_c02",
+    "cancellation_condition_text": "When the two pāpa-grahas that produce the kartarī (the \"scissors\" affliction) are in an enemy's house, in debilitation or combust, there is no kartarī-doṣa at all",
+    "predicate": {
+      "role": "dosha_agents",
+      "each_any_of": [
+        "enemy_sign",
+        "debilitated",
+        "combust"
+      ]
+    },
+    "extraction_context": "mula_reconstructed",
+    "conjunction_reading": "mula",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "cancellable_by_condition",
+    "source_verse": 88
+  },
+  {
+    "id": 205,
+    "dosha_canonical_id": "vedha",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi v.69",
+    "source_chunk_id": "muhurta_chintamani_pg0110_c01",
+    "cancellation_condition_text": "but the vedha-struck one is indeed to be shunned in every country.",
+    "predicate": null,
+    "extraction_context": "mula",
+    "conjunction_reading": "mula",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "never_cancelled",
+    "source_verse": 69
+  }
+]

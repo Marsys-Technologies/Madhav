@@ -1,0 +1,47 @@
+{
+ "schema": "ky.action/1",
+ "action_id": "ACT-KW01-planner-state-migration",
+ "kind": "state_migration",
+ "actor": {
+  "role": "planner",
+  "holder_kind": "cockpit",
+  "session_id": "local_dcfdab90-660c-4754-b30e-c417e655f39f"
+ },
+ "inputs": {
+  "legacy_state": "/Users/Dev/kalayantra/run/PLANNER_STATE.json",
+  "legacy_sha256": "b7b542bc92aeb318bd46b46c636e3e412f39269c8e19eaf43357aa6a6448a00b",
+  "authorised_source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
+ },
+ "target": {
+  "path": "/Users/Dev/kalayantra/run/PLANNER_STATE.json",
+  "preserved_copy": "/Users/Dev/kalayantra/run/PLANNER_STATE.legacy.b7b542bc92ae.json"
+ },
+ "intended_transition": "legacy planner state → ky.role_state/1 with an active index; evidence migrated by type (plan v2.7 §4a.1, KW-01)",
+ "created_at": "2026-10-11T17:44:58Z",
+ "state": "DONE",
+ "result": {
+  "new_sha256": "07789bcfb54c9139895bb91c57ef6076666ddb9586572bd2199e56f07808a76f",
+  "evidence_checks": {
+   "trust-anchor": "kept against its recorded commit",
+   "B-0a.inventory": "file hash verified",
+   "coordination.notice": "commit present",
+   "B-0b.mirror-commit": "file hash verified",
+   "B-0b.acceptance-roots": "file hash verified",
+   "B-0b.closure-tool": "file hash verified",
+   "B-0b.closure": "file hash verified",
+   "B-0b.model": "file hash verified",
+   "B-0b.expected-delta": "file hash verified",
+   "B-0b.delta-review": "file hash verified",
+   "B-0b.staged-actions": "file hash verified",
+   "B-0b.schema-receipt": "file hash verified",
+   "B-0b.triage": "file hash verified",
+   "B-0b.priority": "file hash verified",
+   "plan-change.proposal": "blob sha256 verified",
+   "B-0b.pr": "refreshed: {'observed_at': '2026-10-11T17:44:59Z', 'state': 'OPEN', 'head': 'e709f60d7fcd4559227a25a4d5d83d6431c396b6'}",
+   "B-0c.probes": "file hash verified"
+  },
+  "steps": 17,
+  "legacy_preserved": "/Users/Dev/kalayantra/run/PLANNER_STATE.legacy.b7b542bc92ae.json"
+ },
+ "completed_at": "2026-10-11T17:44:59Z"
+}

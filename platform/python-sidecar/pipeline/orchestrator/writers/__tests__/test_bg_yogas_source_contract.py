@@ -87,3 +87,85 @@ def test_writer_result_counts_all_owned_projections(monkeypatch, dry_run: bool) 
     assert result.rows_inserted == 784
     assert "source_links=85" in result.notes
     assert "total_owned=784" in result.notes
+
+
+# ── WFIX-A / CLAUDE.md N.7 item 6: an honest value beats an invented fallback sentence ───────────────
+
+def test_formation_text_never_invents_a_formation_per_verse_sentence() -> None:
+    rule = {"requires": [{"planets_in": ["1", "7"]}], "derivation": "structured_template"}
+    # a verbatim clause always wins
+    assert l0_yogas._formation_text("Planets occupy the 1st and 7th.", rule) == "Planets occupy the 1st and 7th."
+    # no clause: a deterministic restatement of the row's OWN cited rule, never prose about a verse
+    fallback = l0_yogas._formation_text("", rule)
+    assert fallback == 'Structured formation rule: {"derivation": "structured_template", "requires": [{"planets_in": ["1", "7"]}]}'
+    assert "formation per" not in fallback
+
+
+def test_signification_text_never_presents_the_yoga_name_as_its_signification() -> None:
+    assert l0_yogas._signification_text("Gives wealth.", "clause") == "Gives wealth."
+    assert l0_yogas._signification_text("", "A verbatim defining clause.") == "A verbatim defining clause."
+    assert l0_yogas._signification_text("", "") == ""      # NOT NULL column: honest empty, not the name
+
+
+def test_corpus_extraction_emits_no_invented_sentence_for_a_clauseless_template_yoga() -> None:
+    """vajra_sar / yava_sar / vapi_sar were written with formation_text='<name>: formation per PG358:C1
+    (bphs Ch.358)' and significations_text='<name>' when the chunk named the yoga without a clause."""
+    chunk = {"id": "11111111-1111-1111-1111-111111111111", "text_id": "bphs", "chapter": 358,
+             "verse_ref": "PG358:C1", "content_en": "The Vajra yoga is named in this passage.",
+             "tradition_school": "parashari"}
+
+    class Cursor:
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def execute(self, *_a, **_k): pass
+        def fetchall(self): return [chunk]
+
+    class Conn:
+        def cursor(self, *a, **k): return Cursor()
+
+    rows = {r["canonical_id"]: r for r in l0_yogas.extract_yogas_from_corpus(Conn())}
+    row = rows["vajra_sar"]
+    assert "formation per" not in row["formation_text"]
+    assert row["formation_text"].startswith("Structured formation rule: ")
+    assert row["significations_text"] != row["name_en"]
+    assert row["significations_text"] == ""
+
+
+def test_empty_signification_seeds_a_null_ontology_description_not_an_empty_string(monkeypatch) -> None:
+    """brahma_ontology.description is nullable: a yoga whose chunk states no result gets NULL, the
+    honest value, not '' (and never the yoga's name -- the pre-WFIX-A fallback)."""
+    extracted = {
+        "canonical_id": "vajra_sar", "name_sa": "Vajra Yoga (Saravali)", "name_en": "Vajra Yoga (Saravali) Yoga",
+        "category": "other", "school": "parashari",
+        "formation_rule_jsonb": {"requires": [{"relation": "benefics_in_1_7_malefics_in_4_10"}]},
+        "formation_text": 'Structured formation rule: {"requires": [{"relation": "benefics_in_1_7_malefics_in_4_10"}]}',
+        "significations_jsonb": {"gives": [], "subcategory": "structured_template", "source_chunk": "c"},
+        "significations_text": "", "cancellation_conditions": {}, "classical_citations": [{"text_id": "bphs"}],
+        "rare": False, "source_citation": "BPHS Ch.358 (PG358:C1)",
+        "_chunk_id_str": "11111111-1111-1111-1111-111111111111",
+    }
+    monkeypatch.setattr(l0_yogas, "extract_yogas_from_corpus", lambda _conn: [extracted])
+    expected = len(YOGAS_CORE) + len(DETECTOR_YOGAS) + 1
+
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self, owner): self.owner = owner
+        def __enter__(self): return self
+        def __exit__(self, *_exc): return False
+        def execute(self, sql, params=None): self.owner.calls.append((" ".join(sql.split()), params))
+        def fetchone(self):
+            return {"catalog_count": expected, "ontology_count": expected,
+                    "reference_count": expected, "source_link_count": 1}
+
+    class Conn:
+        def __init__(self): self.calls = []
+        def cursor(self): return Cursor(self)
+
+    conn = Conn()
+    l0_yogas.seed_yogas(conn, autocommit=False)
+    onto = [p for s, p in conn.calls if s.startswith("INSERT INTO brahma_ontology") and p[0] == "vajra_sar"]
+    assert len(onto) == 1
+    assert onto[0][4] is None                      # description
+    other = [p for s, p in conn.calls if s.startswith("INSERT INTO brahma_ontology") and p[0] != "vajra_sar"]
+    assert all(isinstance(p[4], str) and p[4] for p in other)     # inline yogas keep their [:150] description

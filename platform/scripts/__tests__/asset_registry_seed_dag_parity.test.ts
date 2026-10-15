@@ -40,6 +40,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   bo_pratijna: [
     'bo_laksana', 'bo_sangati',
     'ga_vargas', // migration 1210 (chart_divisionals read, chart_reader_v4.py)
+    'ga_fact_identity', // migration 1333 (chart_fact_identity read, chart_reader_v4.py)
   ],
   bo_samskara: [
     'bo_arudha', 'bo_laksana', 'bo_nakshatra_semantic',
@@ -93,6 +94,9 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   ka_bhavishya_lekha: [
     'ka_kala_darshana', 'ka_vighnakara', 'ka_sangam', 'bo_laksana',
   ],
+  // Migration 1360 (SS N-430) RETIRES bg_sarvatobhadra_grid in the live registry and removes it from ka_vedha_gochara.depends_on. The seed row
+  // is deliberately NOT edited (hashed census source): the seed upsert never rewrites depends_on of an existing row and keeps a RETIRED row
+  // RETIRED / inactive, so the seed literal below is the pre-1360 set and the live registry is this set minus bg_sarvatobhadra_grid.
   ka_vedha_gochara: [
     'ga_positions', 'bg_ephemeris', 'bg_transit_rules',
     'bg_sarvatobhadra_grid', 'bg_vedha_malefic_scale',
@@ -158,12 +162,15 @@ const SHARED_MSR_DAG_MIGRATION = readFileSync(
 describe('asset_registry_seed — migration-governed DAG parity', () => {
   const assetsById = new Map(ASSETS.map((asset) => [asset.asset_id, asset]))
 
-  it('has the complete 128-identity post-626 registry seed (+ ruled supporting writers)', () => {
+  it('has the complete 129-identity registry seed: the 128 of migration 626 plus ga_fact_identity (migration 1333) (+ ruled supporting writers)', () => {
     const denominatorAssets = ASSETS.filter(
       (asset) => !SUPPORTING_WRITER_IDS.includes(asset.asset_id as (typeof SUPPORTING_WRITER_IDS)[number]),
     )
-    expect(denominatorAssets).toHaveLength(128)
-    expect(assetsById.size).toBe(128 + SUPPORTING_WRITER_IDS.length)
+    // Migration 1333: ga_fact_identity is an ordinary build asset (a registered writer that bo_pratijna depends on), NOT a supporting writer: a
+    // supporting writer cannot be a dependency of a denominator asset (the elevation manifest requires every dependency to be in it).
+    // This pin moved 128 -> 129 on purpose; it is the denominator change SS must rule on (successor elevation definition).
+    expect(denominatorAssets).toHaveLength(129)
+    expect(assetsById.size).toBe(129 + SUPPORTING_WRITER_IDS.length)
     for (const supportingId of SUPPORTING_WRITER_IDS) {
       expect(assetsById.has(supportingId), `${supportingId} must have a seed row (it registers in the DAG)`).toBe(true)
     }
@@ -342,7 +349,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     expect(assetsById.has('ga_vastu_planet_direction_map')).toBe(false)
   })
 
-  it('includes the migration-owned static citation-resolution asset', () => {
+  it('includes the dispatchable static citation-resolution asset', () => {
     expect(assetsById.get('bg_gochara_citation_resolution')).toMatchObject({
       layer: 'brahmagyan',
       sort_order: 80,
@@ -354,14 +361,14 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       catalog_status: 'CURRENT',
       asset_kind: 'data',
       depends_on: ['bg_texts'],
-      has_writer: false,
+      has_writer: true,
       has_substeps: false,
       writer_timeout_seconds: 60,
     })
 
     expect(assetRegistryWriterGovernance(
       assetsById.get('bg_gochara_citation_resolution')!,
-    )).toEqual([false, false, 60])
+    )).toEqual([true, false, 60])
   })
 
   it('never overwrites migration-governed dependencies during a conflict update', () => {
@@ -386,5 +393,18 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     expect(ASSET_REGISTRY_UPSERT_SQL).not.toMatch(
       /(?:has_writer|has_substeps|writer_timeout_seconds) = EXCLUDED/,
     )
+  })
+  it('keeps migration 1360 (retire bg_sarvatobhadra_grid) durable across a routine re-seed', () => {
+    // The seed row of bg_sarvatobhadra_grid stays (hashed census source), so a re-seed MUST NOT resurrect the retired row or restore the edge:
+    // depends_on is never rewritten (asserted above), a RETIRED catalog_status is preserved, and is_active follows a RETIRED row.
+    expect(ASSET_REGISTRY_UPSERT_SQL).toMatch(/is_active = CASE WHEN asset_registry\.catalog_status = 'RETIRED'\s+THEN asset_registry\.is_active/)
+    expect(ASSET_REGISTRY_UPSERT_SQL).toMatch(/WHEN asset_registry\.catalog_status = 'RETIRED'\s+THEN asset_registry\.catalog_status/)
+    expect(ASSET_REGISTRY_UPSERT_SQL).not.toMatch(/data_disposition|superseded_by/)    // the seed never writes the lifecycle columns 1360 sets
+    const migration = readFileSync(new URL('../../migrations/1360_retire_bg_sarvatobhadra_grid.sql', import.meta.url), 'utf8')
+    expect(migration).toContain("catalog_status = 'RETIRED'")
+    expect(migration).toContain('array_remove(depends_on, c_grid)')
+    // the seed literal is the pre-1360 set; only ka_vedha_gochara names the grid as a dependency
+    const dependents = ASSETS.filter((asset) => asset.depends_on.includes('bg_sarvatobhadra_grid')).map((asset) => asset.asset_id)
+    expect(dependents).toEqual(['ka_vedha_gochara'])
   })
 })

@@ -27,10 +27,12 @@ Asset type: service (no DB rows; service_health written to asset_registry)
 Depends on: ka_graha_sancara (planned)
 """
 
-from .service import KaMuhurtaSevaService, score, find_windows
+from .service import KaMuhurtaSevaService, score, find_windows, primitives, tara_bala
 
 __all__ = [
     "KaMuhurtaSevaService",
     "score",
     "find_windows",
+    "primitives",
+    "tara_bala",
 ]

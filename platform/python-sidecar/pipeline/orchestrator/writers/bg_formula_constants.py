@@ -32,12 +32,27 @@ class FormulaConstantsWriter(WriterBase):
             autocommit=False,
         )
         total = counts.get("brahma_formula_constants", 0)
+        # WFIX-A: rows_inserted is the whole table as it stands (registry count_sql), writer-owned
+        # operational constants AND the migration-owned governed constants the writer preserves --
+        # the seeder's figure (10) counts only the former, against 17 live rows. A dry run writes nothing.
+        present = total
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with ctx.db_conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL)
+                present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total,
+            rows_inserted=present,
             duration_seconds=time.time() - t0,
             notes=(
-                f"brahma_formula_constants: {total} writer-owned operational constants; "
-                "migration-owned governed constants are preserved"
+                f"brahma_formula_constants: {total} writer-owned operational constants seeded; "
+                f"{present} rows present (migration-owned governed constants are preserved)"
             ),
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: registry count_sql SELECT count(*) FROM brahma_formula_constants.
+ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM brahma_formula_constants"

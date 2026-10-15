@@ -1,0 +1,29 @@
+{
+ "id": "SD-20261011T220500Z-3",
+ "awaiting": "AW-20261011T220000Z-capacity-above-max",
+ "class": "hard_stop",
+ "state": "PROPOSED",
+ "decision": "not decided: owner-only",
+ "rationale": "the question changes an owner decision (§15)",
+ "evidence": [
+  "/Users/Dev/kalayantra/run/JOURNAL_DISPATCHER.md"
+ ],
+ "target": {
+  "setting": "KY_BUILDERS_MAX",
+  "from": 6,
+  "to": 8
+ },
+ "authority": {
+  "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
+  "entrypoints_digest": "5555555555555555555555555555555555555555555555555555555555555555"
+ },
+ "notification": {
+  "submitted": false,
+  "ts": null
+ },
+ "veto_deadline": null,
+ "effective_at": null,
+ "by": "kalayantra-owner-surrogate",
+ "session": "surrogate-20261011T220400Z",
+ "reason": "hard stop: owner decisions are never delegated"
+}

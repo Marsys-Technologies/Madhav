@@ -1,0 +1,2034 @@
+{
+  "schema": "kalayantra.reconcile_capture/1",
+  "source": "tracker GET /api/state, version 60704, generated_at 2026-10-11T13:58:24+00:00",
+  "clock": "2026-10-11T13:58:24+00:00",
+  "events": {
+    "default_path": "/Users/Dev/kalayantra/run/EVENTS.jsonl",
+    "bytes": 5063668,
+    "lines": 12192,
+    "sha256": "0bc219bc10403e1b8bf0592149d60e1c3932e2626cb4f30f019c5950bc2e41c1"
+  },
+  "detector_results": {
+    "B-0": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-4": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-1a": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:41+00:00"
+    },
+    "B-1b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:41+00:00"
+    },
+    "B-1c": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-5": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:13+00:00"
+    },
+    "B-6": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-1p": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-1v": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-1": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:53+00:00"
+    },
+    "B-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-3b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-3": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-7": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "B-8": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "K0a-0": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:53+00:00"
+    },
+    "K0a-1a": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:39+00:00"
+    },
+    "K0a-1b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:35+00:00"
+    },
+    "K0a-1c": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:24+00:00"
+    },
+    "K0a-2": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:48+00:00"
+    },
+    "K0a-4": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:42+00:00"
+    },
+    "V-K0a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "K0-SV": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "K1-1a": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:37+00:00"
+    },
+    "K1-1b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:55+00:00"
+    },
+    "K2-1a": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:10+00:00"
+    },
+    "K2-1b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:20+00:00"
+    },
+    "K2-2": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:04+00:00"
+    },
+    "K1-2": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:51+00:00"
+    },
+    "V-K12": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "K7-1b": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:17+00:00"
+    },
+    "K7-2": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:56+00:00"
+    },
+    "K7-3": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:44+00:00"
+    },
+    "K7-4": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:59+00:00"
+    },
+    "V-K7": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "KA-2": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:57+00:00"
+    },
+    "KA-3a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:00+00:00"
+    },
+    "KA-3b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:45+00:00"
+    },
+    "KA-4": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:12+00:00"
+    },
+    "KA-4b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:59+00:00"
+    },
+    "V-KA": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "K3-1": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:06+00:00"
+    },
+    "V-K3": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "K3-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "V-K3b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "K4-1": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:09+00:00"
+    },
+    "K4-2b": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:26+00:00"
+    },
+    "K4-3": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:12+00:00"
+    },
+    "V-K4": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "K5-G1a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:12+00:00"
+    },
+    "K5-G1b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:19+00:00"
+    },
+    "VC-1": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:15+00:00"
+    },
+    "VC-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:11+00:00"
+    },
+    "V-VC": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "K5-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:06+00:00"
+    },
+    "K5-2b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:57+00:00"
+    },
+    "K5-3": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:32+00:00"
+    },
+    "V-K5": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:12+00:00"
+    },
+    "K6-4": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:16+00:00"
+    },
+    "K6-5a": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:29+00:00"
+    },
+    "K6-5": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:23+00:00"
+    },
+    "V-K6": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:50+00:00"
+    },
+    "K8-R26": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "K8-REG": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:14+00:00"
+    },
+    "L0-M": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:24+00:00"
+    },
+    "L0-K": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:24+00:00"
+    },
+    "J-0m": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-1a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-2a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-2b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-2c": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-2d": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-3a": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:04+00:00"
+    },
+    "J-3b": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:05+00:00"
+    },
+    "J-3c": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-3d": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-4a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:03+00:00"
+    },
+    "J-4p": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:26+00:00"
+    },
+    "J-4b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-4c": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-4d": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-4e": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-4f": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-5q": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-5s": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:45+00:00"
+    },
+    "J-6a": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:07+00:00"
+    },
+    "J-6m": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-6r": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-6": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:57+00:00"
+    },
+    "J-6l": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "V-J6": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-7a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-7": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:13+00:00"
+    },
+    "J-7b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:50+00:00"
+    },
+    "J-8a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-8": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "K9-1": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:29+00:00"
+    },
+    "K9-4a": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "K9-4b": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "K9-5": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:37+00:00"
+    },
+    "K9-6": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:31+00:00"
+    },
+    "KR-1": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:36+00:00"
+    },
+    "KR-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:30+00:00"
+    },
+    "V-K9": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "JOIN-ALL": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "C-1": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "C-2": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:38+00:00"
+    },
+    "C-3": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "C-4": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "B-6r": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:02+00:00"
+    },
+    "B-CLAIM-RECOVERY": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:10+00:00"
+    },
+    "B-K-INBOX": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:32+00:00"
+    },
+    "B-DEPLOY-DIAG": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-0a": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-0b": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-0c": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "J-0d": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:08+00:00"
+    },
+    "L0-K-RUNNER": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:12+00:00"
+    },
+    "B-DB-BASELINE": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:58+00:00"
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:34+00:00"
+    },
+    "K0a-3": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:59+00:00"
+    },
+    "K7-1a": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:44+00:00"
+    },
+    "KA-1e": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:08+00:00"
+    },
+    "KA-1w": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:18+00:00"
+    },
+    "K4-2aw": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:23+00:00"
+    },
+    "K4-2a": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:28+00:00"
+    },
+    "K6-123": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:56:20+00:00"
+    },
+    "K9-23": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:58:04+00:00"
+    },
+    "K-CERT": {
+      "status": "done",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:47+00:00"
+    },
+    "K-CERT-2": {
+      "status": "running",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:53+00:00"
+    },
+    "K-AVADHI-C": {
+      "status": "pending",
+      "detail": "",
+      "checked_at": "2026-10-11T13:57:44+00:00"
+    }
+  },
+  "detector_results_note": "reduced to {status, checked_at}; `detail` is not recoverable from the snapshot and is empty",
+  "item_states": {
+    "B-0": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1a": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1c": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1p": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-1v": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-2": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-3": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-3b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-4": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-5": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-6": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-6r": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-7": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-8": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-CLAIM-RECOVERY": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-DB-BASELINE": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-DEPLOY-DIAG": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "B-K-INBOX": {
+      "status": "running",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "C-1": {
+      "status": "waiting",
+      "deps_open": [
+        "JOIN-ALL"
+      ],
+      "deps_open_strict": [
+        "JOIN-ALL"
+      ]
+    },
+    "C-2": {
+      "status": "waiting",
+      "deps_open": [
+        "C-1"
+      ],
+      "deps_open_strict": [
+        "C-1"
+      ]
+    },
+    "C-3": {
+      "status": "waiting",
+      "deps_open": [
+        "C-2"
+      ],
+      "deps_open_strict": [
+        "C-2"
+      ]
+    },
+    "C-4": {
+      "status": "waiting",
+      "deps_open": [
+        "C-3"
+      ],
+      "deps_open_strict": [
+        "C-3"
+      ]
+    },
+    "D-CLOUD": {
+      "status": "waiting",
+      "deps_open": [
+        "J-4d"
+      ],
+      "deps_open_strict": [
+        "J-4d"
+      ]
+    },
+    "D-COMPACT": {
+      "status": "waiting",
+      "deps_open": [
+        "K5-2"
+      ],
+      "deps_open_strict": [
+        "K5-2"
+      ]
+    },
+    "D-FLIP": {
+      "status": "waiting",
+      "deps_open": [
+        "J-5q",
+        "J-5s",
+        "J-6r"
+      ],
+      "deps_open_strict": [
+        "J-5q",
+        "J-5s",
+        "J-6r"
+      ]
+    },
+    "D-G2": {
+      "status": "waiting",
+      "deps_open": [
+        "D-VC"
+      ],
+      "deps_open_strict": [
+        "D-VC"
+      ]
+    },
+    "D-G9": {
+      "status": "waiting",
+      "deps_open": [
+        "J-3d"
+      ],
+      "deps_open_strict": [
+        "J-3d"
+      ]
+    },
+    "D-GOCHARA-TIMEOUT": {
+      "status": "waiting",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-KR": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-R11": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-R5": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-R6": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-R8": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-R9": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "D-T2": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6l",
+        "L0-K"
+      ],
+      "deps_open_strict": [
+        "J-6l",
+        "L0-K"
+      ]
+    },
+    "D-TEARDOWN": {
+      "status": "waiting",
+      "deps_open": [
+        "J-1a"
+      ],
+      "deps_open_strict": [
+        "J-1a"
+      ]
+    },
+    "D-VC": {
+      "status": "waiting",
+      "deps_open": [
+        "VC-2"
+      ],
+      "deps_open_strict": [
+        "VC-2"
+      ]
+    },
+    "J-0": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0c",
+        "J-0d"
+      ],
+      "deps_open_strict": [
+        "J-0c",
+        "J-0d"
+      ]
+    },
+    "J-0a": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "J-0b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "J-0c": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "J-0d": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0c"
+      ],
+      "deps_open_strict": [
+        "J-0c"
+      ]
+    },
+    "J-0m": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0"
+      ],
+      "deps_open_strict": [
+        "J-0"
+      ]
+    },
+    "J-1a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0m",
+        "J-4p"
+      ],
+      "deps_open_strict": [
+        "J-0m",
+        "J-4p"
+      ]
+    },
+    "J-2a": {
+      "status": "waiting",
+      "deps_open": [
+        "D-TEARDOWN",
+        "J-1a"
+      ],
+      "deps_open_strict": [
+        "D-TEARDOWN",
+        "J-1a"
+      ]
+    },
+    "J-2b": {
+      "status": "waiting",
+      "deps_open": [
+        "J-2a"
+      ],
+      "deps_open_strict": [
+        "J-2a"
+      ]
+    },
+    "J-2c": {
+      "status": "waiting",
+      "deps_open": [
+        "J-2b"
+      ],
+      "deps_open_strict": [
+        "J-2b"
+      ]
+    },
+    "J-2d": {
+      "status": "waiting",
+      "deps_open": [
+        "J-2c"
+      ],
+      "deps_open_strict": [
+        "J-2c"
+      ]
+    },
+    "J-3a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-2d"
+      ],
+      "deps_open_strict": [
+        "J-2d"
+      ]
+    },
+    "J-3b": {
+      "status": "waiting",
+      "deps_open": [
+        "J-2d"
+      ],
+      "deps_open_strict": [
+        "J-2d"
+      ]
+    },
+    "J-3c": {
+      "status": "waiting",
+      "deps_open": [
+        "J-3a",
+        "J-3b"
+      ],
+      "deps_open_strict": [
+        "J-3a",
+        "J-3b"
+      ]
+    },
+    "J-3d": {
+      "status": "waiting",
+      "deps_open": [
+        "J-3c"
+      ],
+      "deps_open_strict": [
+        "J-3c"
+      ]
+    },
+    "J-4a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-3d"
+      ],
+      "deps_open_strict": [
+        "J-3d"
+      ]
+    },
+    "J-4b": {
+      "status": "waiting",
+      "deps_open": [
+        "J-4a"
+      ],
+      "deps_open_strict": [
+        "J-4a"
+      ]
+    },
+    "J-4c": {
+      "status": "waiting",
+      "deps_open": [
+        "J-4b"
+      ],
+      "deps_open_strict": [
+        "J-4b"
+      ]
+    },
+    "J-4d": {
+      "status": "waiting",
+      "deps_open": [
+        "D-G9",
+        "J-4c",
+        "J-4p"
+      ],
+      "deps_open_strict": [
+        "D-G9",
+        "J-4c",
+        "J-4p"
+      ]
+    },
+    "J-4e": {
+      "status": "waiting",
+      "deps_open": [
+        "D-CLOUD"
+      ],
+      "deps_open_strict": [
+        "D-CLOUD"
+      ]
+    },
+    "J-4f": {
+      "status": "waiting",
+      "deps_open": [
+        "J-4e"
+      ],
+      "deps_open_strict": [
+        "J-4e"
+      ]
+    },
+    "J-4p": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0m"
+      ],
+      "deps_open_strict": [
+        "J-0m"
+      ]
+    },
+    "J-5q": {
+      "status": "waiting",
+      "deps_open": [
+        "J-4f"
+      ],
+      "deps_open_strict": [
+        "J-4f"
+      ]
+    },
+    "J-5s": {
+      "status": "waiting",
+      "deps_open": [
+        "J-5q"
+      ],
+      "deps_open_strict": [
+        "J-5q"
+      ]
+    },
+    "J-6": {
+      "status": "waiting",
+      "deps_open": [
+        "D-FLIP"
+      ],
+      "deps_open_strict": [
+        "D-FLIP"
+      ]
+    },
+    "J-6a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-5s"
+      ],
+      "deps_open_strict": [
+        "J-5s"
+      ]
+    },
+    "J-6l": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6"
+      ],
+      "deps_open_strict": [
+        "J-6"
+      ]
+    },
+    "J-6m": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6a"
+      ],
+      "deps_open_strict": [
+        "J-6a"
+      ]
+    },
+    "J-6r": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6m"
+      ],
+      "deps_open_strict": [
+        "J-6m"
+      ]
+    },
+    "J-7": {
+      "status": "waiting",
+      "deps_open": [
+        "D-T2",
+        "KA-3b"
+      ],
+      "deps_open_strict": [
+        "D-T2",
+        "KA-3b"
+      ]
+    },
+    "J-7a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6l",
+        "V-J6"
+      ],
+      "deps_open_strict": [
+        "J-6l",
+        "V-J6"
+      ]
+    },
+    "J-7b": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6l"
+      ],
+      "deps_open_strict": [
+        "J-6l"
+      ]
+    },
+    "J-8": {
+      "status": "waiting",
+      "deps_open": [
+        "J-8a",
+        "V-J6"
+      ],
+      "deps_open_strict": [
+        "J-8a",
+        "V-J6"
+      ]
+    },
+    "J-8a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-7",
+        "J-7a",
+        "J-7b"
+      ],
+      "deps_open_strict": [
+        "J-7",
+        "J-7a",
+        "J-7b"
+      ]
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "status": "waiting",
+      "deps_open": [
+        "D-GOCHARA-TIMEOUT"
+      ],
+      "deps_open_strict": [
+        "D-GOCHARA-TIMEOUT"
+      ]
+    },
+    "JOIN-ALL": {
+      "status": "waiting",
+      "deps_open": [
+        "B-CLAIM-RECOVERY",
+        "B-DB-BASELINE",
+        "B-K-INBOX",
+        "D-CLOUD",
+        "D-COMPACT",
+        "D-FLIP",
+        "D-G2",
+        "D-G9",
+        "D-GOCHARA-TIMEOUT",
+        "D-T2",
+        "D-TEARDOWN",
+        "D-VC",
+        "J-0",
+        "J-0c",
+        "J-0d",
+        "J-0m",
+        "J-1a",
+        "J-2a",
+        "J-2b",
+        "J-2c",
+        "J-2d",
+        "J-3a",
+        "J-3b",
+        "J-3c",
+        "J-3d",
+        "J-4a",
+        "J-4b",
+        "J-4c",
+        "J-4d",
+        "J-4e",
+        "J-4f",
+        "J-4p",
+        "J-5q",
+        "J-5s",
+        "J-6",
+        "J-6a",
+        "J-6l",
+        "J-6m",
+        "J-6r",
+        "J-7",
+        "J-7a",
+        "J-7b",
+        "J-8",
+        "J-8a",
+        "J-GOCHARA-TIMEOUT",
+        "K3-2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1a",
+        "K5-G1b",
+        "K6-4",
+        "K7-3",
+        "K7-4",
+        "K8-R26",
+        "K8-REG",
+        "K9-1",
+        "K9-23",
+        "K9-4a",
+        "K9-4b",
+        "K9-5",
+        "K9-6",
+        "KA-3a",
+        "KA-3b",
+        "KA-4b",
+        "KR-1",
+        "KR-2",
+        "L0-K",
+        "V-J6",
+        "V-K0a",
+        "V-K12",
+        "V-K3",
+        "V-K3b",
+        "V-K4",
+        "V-K5",
+        "V-K6",
+        "V-K7",
+        "V-K9",
+        "V-KA",
+        "V-VC",
+        "VC-1",
+        "VC-2"
+      ],
+      "deps_open_strict": [
+        "B-CLAIM-RECOVERY",
+        "B-DB-BASELINE",
+        "B-K-INBOX",
+        "D-CLOUD",
+        "D-COMPACT",
+        "D-FLIP",
+        "D-G2",
+        "D-G9",
+        "D-GOCHARA-TIMEOUT",
+        "D-T2",
+        "D-TEARDOWN",
+        "D-VC",
+        "J-0",
+        "J-0c",
+        "J-0d",
+        "J-0m",
+        "J-1a",
+        "J-2a",
+        "J-2b",
+        "J-2c",
+        "J-2d",
+        "J-3a",
+        "J-3b",
+        "J-3c",
+        "J-3d",
+        "J-4a",
+        "J-4b",
+        "J-4c",
+        "J-4d",
+        "J-4e",
+        "J-4f",
+        "J-4p",
+        "J-5q",
+        "J-5s",
+        "J-6",
+        "J-6a",
+        "J-6l",
+        "J-6m",
+        "J-6r",
+        "J-7",
+        "J-7a",
+        "J-7b",
+        "J-8",
+        "J-8a",
+        "J-GOCHARA-TIMEOUT",
+        "K3-1",
+        "K3-2",
+        "K4-2aw",
+        "K4-2b",
+        "K4-3",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1a",
+        "K5-G1b",
+        "K6-123",
+        "K6-4",
+        "K6-5",
+        "K6-5a",
+        "K7-1a",
+        "K7-1b",
+        "K7-2",
+        "K7-3",
+        "K7-4",
+        "K8-R26",
+        "K8-REG",
+        "K9-1",
+        "K9-23",
+        "K9-4a",
+        "K9-4b",
+        "K9-5",
+        "K9-6",
+        "KA-3a",
+        "KA-3b",
+        "KA-4b",
+        "KR-1",
+        "KR-2",
+        "L0-K",
+        "L0-M",
+        "V-J6",
+        "V-K0a",
+        "V-K12",
+        "V-K3",
+        "V-K3b",
+        "V-K4",
+        "V-K5",
+        "V-K6",
+        "V-K7",
+        "V-K9",
+        "V-KA",
+        "V-VC",
+        "VC-1",
+        "VC-2"
+      ]
+    },
+    "K-AVADHI-C": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K-CERT": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K-CERT-2": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0-SV": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-0": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-1": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-1a": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-1b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-1c": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-2": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-3": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K0a-4": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K1-1a": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K1-1b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K1-2": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K2-1a": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K2-1b": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K2-2": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K3-1": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K3-2": {
+      "status": "waiting",
+      "deps_open": [
+        "J-5s"
+      ],
+      "deps_open_strict": [
+        "J-5s",
+        "K3-1"
+      ]
+    },
+    "K4-1": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K4-2a": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K3-1"
+      ]
+    },
+    "K4-2aw": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-2a"
+      ]
+    },
+    "K4-2b": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-2aw"
+      ]
+    },
+    "K4-3": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-2b"
+      ]
+    },
+    "K5-2": {
+      "status": "waiting",
+      "deps_open": [
+        "D-VC"
+      ],
+      "deps_open_strict": [
+        "D-VC"
+      ]
+    },
+    "K5-2b": {
+      "status": "waiting",
+      "deps_open": [
+        "D-COMPACT"
+      ],
+      "deps_open_strict": [
+        "D-COMPACT"
+      ]
+    },
+    "K5-3": {
+      "status": "waiting",
+      "deps_open": [
+        "D-G2",
+        "K5-G1b"
+      ],
+      "deps_open_strict": [
+        "D-G2",
+        "K5-G1b"
+      ]
+    },
+    "K5-G1a": {
+      "status": "waiting",
+      "deps_open": [
+        "KA-3a",
+        "KA-3b"
+      ],
+      "deps_open_strict": [
+        "K4-3",
+        "KA-3a",
+        "KA-3b"
+      ]
+    },
+    "K5-G1b": {
+      "status": "waiting",
+      "deps_open": [
+        "K5-G1a"
+      ],
+      "deps_open_strict": [
+        "K5-G1a"
+      ]
+    },
+    "K6-123": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-3"
+      ]
+    },
+    "K6-4": {
+      "status": "waiting",
+      "deps_open": [
+        "K5-G1b"
+      ],
+      "deps_open_strict": [
+        "K5-G1b"
+      ]
+    },
+    "K6-5": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K6-5a"
+      ]
+    },
+    "K6-5a": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-3"
+      ]
+    },
+    "K7-1a": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K7-1b": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K7-1a"
+      ]
+    },
+    "K7-2": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K7-1b"
+      ]
+    },
+    "K7-3": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K7-2"
+      ]
+    },
+    "K7-4": {
+      "status": "waiting",
+      "deps_open": [
+        "K7-3"
+      ],
+      "deps_open_strict": [
+        "K4-2b",
+        "K7-3"
+      ]
+    },
+    "K8-R26": {
+      "status": "review",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "K8-REG": {
+      "status": "waiting",
+      "deps_open": [
+        "K3-2",
+        "K5-G1b",
+        "K7-4",
+        "KA-4b"
+      ],
+      "deps_open_strict": [
+        "K3-2",
+        "K4-3",
+        "K5-G1b",
+        "K6-5",
+        "K7-4",
+        "KA-4b"
+      ]
+    },
+    "K9-1": {
+      "status": "waiting",
+      "deps_open": [
+        "D-COMPACT",
+        "D-G2",
+        "K3-2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b",
+        "K6-4",
+        "K7-3",
+        "K7-4",
+        "K8-REG",
+        "KA-3a",
+        "KA-3b",
+        "KA-4b"
+      ],
+      "deps_open_strict": [
+        "D-COMPACT",
+        "D-G2",
+        "K3-2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b",
+        "K6-123",
+        "K6-4",
+        "K6-5",
+        "K7-3",
+        "K7-4",
+        "K8-REG",
+        "KA-3a",
+        "KA-3b",
+        "KA-4b"
+      ]
+    },
+    "K9-23": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-1"
+      ],
+      "deps_open_strict": [
+        "K9-1"
+      ]
+    },
+    "K9-4a": {
+      "status": "waiting",
+      "deps_open": [
+        "D-FLIP",
+        "J-6l",
+        "K9-23",
+        "V-J6",
+        "V-K0a",
+        "V-K12",
+        "V-K3",
+        "V-K3b",
+        "V-K4",
+        "V-K5",
+        "V-K6",
+        "V-K7",
+        "V-KA",
+        "V-VC"
+      ],
+      "deps_open_strict": [
+        "D-FLIP",
+        "J-6l",
+        "K9-23",
+        "V-J6",
+        "V-K0a",
+        "V-K12",
+        "V-K3",
+        "V-K3b",
+        "V-K4",
+        "V-K5",
+        "V-K6",
+        "V-K7",
+        "V-KA",
+        "V-VC"
+      ]
+    },
+    "K9-4b": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-4a"
+      ],
+      "deps_open_strict": [
+        "K9-4a"
+      ]
+    },
+    "K9-5": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-4b",
+        "KR-1",
+        "KR-2"
+      ],
+      "deps_open_strict": [
+        "K9-4b",
+        "KR-1",
+        "KR-2"
+      ]
+    },
+    "K9-6": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-4b"
+      ],
+      "deps_open_strict": [
+        "K9-4b"
+      ]
+    },
+    "KA-1e": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "KA-1w": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "KA-2": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "KA-3a": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0m"
+      ],
+      "deps_open_strict": [
+        "J-0m"
+      ]
+    },
+    "KA-3b": {
+      "status": "waiting",
+      "deps_open": [
+        "J-0m",
+        "KA-3a"
+      ],
+      "deps_open_strict": [
+        "J-0m",
+        "KA-3a"
+      ]
+    },
+    "KA-4": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "KA-4b": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K7-1b",
+        "L0-M"
+      ]
+    },
+    "KR-1": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-6"
+      ],
+      "deps_open_strict": [
+        "K9-6"
+      ]
+    },
+    "KR-2": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-6"
+      ],
+      "deps_open_strict": [
+        "K9-6"
+      ]
+    },
+    "L0-K": {
+      "status": "blocked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "L0-K-RUNNER": {
+      "status": "done",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "L0-M": {
+      "status": "parked",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "V-J6": {
+      "status": "waiting",
+      "deps_open": [
+        "J-6l"
+      ],
+      "deps_open_strict": [
+        "J-6l"
+      ]
+    },
+    "V-K0a": {
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "V-K12": {
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": []
+    },
+    "V-K3": {
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K3-1"
+      ]
+    },
+    "V-K3b": {
+      "status": "waiting",
+      "deps_open": [
+        "K3-2"
+      ],
+      "deps_open_strict": [
+        "K3-2"
+      ]
+    },
+    "V-K4": {
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": [
+        "K4-3"
+      ]
+    },
+    "V-K5": {
+      "status": "waiting",
+      "deps_open": [
+        "D-COMPACT",
+        "D-G2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b"
+      ],
+      "deps_open_strict": [
+        "D-COMPACT",
+        "D-G2",
+        "K5-2",
+        "K5-2b",
+        "K5-3",
+        "K5-G1b"
+      ]
+    },
+    "V-K6": {
+      "status": "waiting",
+      "deps_open": [
+        "K6-4"
+      ],
+      "deps_open_strict": [
+        "K6-123",
+        "K6-4",
+        "K6-5"
+      ]
+    },
+    "V-K7": {
+      "status": "waiting",
+      "deps_open": [
+        "K7-3",
+        "K7-4"
+      ],
+      "deps_open_strict": [
+        "K7-3",
+        "K7-4"
+      ]
+    },
+    "V-K9": {
+      "status": "waiting",
+      "deps_open": [
+        "K9-5",
+        "K9-6",
+        "KR-1",
+        "KR-2"
+      ],
+      "deps_open_strict": [
+        "K9-5",
+        "K9-6",
+        "KR-1",
+        "KR-2"
+      ]
+    },
+    "V-KA": {
+      "status": "waiting",
+      "deps_open": [
+        "KA-3a",
+        "KA-3b",
+        "KA-4b"
+      ],
+      "deps_open_strict": [
+        "KA-3a",
+        "KA-3b",
+        "KA-4b"
+      ]
+    },
+    "V-VC": {
+      "status": "waiting",
+      "deps_open": [
+        "D-VC"
+      ],
+      "deps_open_strict": [
+        "D-VC"
+      ]
+    },
+    "VC-1": {
+      "status": "waiting",
+      "deps_open": [
+        "K5-G1b"
+      ],
+      "deps_open_strict": [
+        "K5-G1b"
+      ]
+    },
+    "VC-2": {
+      "status": "waiting",
+      "deps_open": [
+        "VC-1"
+      ],
+      "deps_open_strict": [
+        "VC-1"
+      ]
+    }
+  }
+}

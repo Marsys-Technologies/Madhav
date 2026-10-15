@@ -6,6 +6,7 @@
  * read path.
  *
  * Rules (in order):
+ *   0. role 'inactive' (profile not active) → 'deny'
  *   1. super_admin, IF chart_id exists → 'all'
  *   2. principal.uid === charts.owner_id → 'all'
  *   3. chart_grants row matches (chartId, principal.uid) → 'view'
@@ -17,7 +18,12 @@
 
 export type Principal = {
   uid: string
-  role: 'guest' | 'super_admin'
+  /**
+   * 'inactive' is NOT a privilege level: it marks a principal whose profile is not
+   * active (disabled / pending / missing), as resolved by `resolveMcpPrincipalRole`.
+   * It always yields 'deny' (Rule 0), whatever the chart.
+   */
+  role: 'guest' | 'super_admin' | 'inactive'
 }
 
 export type Permission = 'all' | 'view' | 'deny'
@@ -46,6 +52,9 @@ export async function authorizeChartAccess(
   args: AuthorizeArgs
 ): Promise<Permission> {
   const { principal, chartId, db } = args
+
+  // Rule 0: an inactive principal gets nothing, and no DB read is spent on it.
+  if (principal.role === 'inactive') return 'deny'
 
   // Rule 1: super_admin sees everything — but only for a chart_id that
   // actually exists. Defense-in-depth: without this check a super_admin

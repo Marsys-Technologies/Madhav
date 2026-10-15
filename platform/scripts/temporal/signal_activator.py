@@ -23,7 +23,8 @@ Signals consumed: parsed directly from 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
 
 CLI:
     python3 platform/scripts/temporal/signal_activator.py \\
-        --chart-id abhisek_mohanty_primary \\
+        --chart-id <chart-uuid> \\
+        --birth <ISO8601-birth-datetime-with-offset> \\
         --date 2026-05-01 \\
         --output 05_TEMPORAL_ENGINES/transit/lit_states_sample_M3B_v1_0.json
 
@@ -249,10 +250,11 @@ def activate(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--chart-id", default="abhisek_mohanty_primary")
+    parser.add_argument("--chart-id", required=True,
+                        help="Chart UUID (the charts.chart_id of the chart under test). REQUIRED.")
     parser.add_argument(
-        "--birth", default="1984-02-05T10:43:00+05:30",
-        help="ISO8601 birth datetime (timezone-aware).",
+        "--birth", required=True,
+        help="ISO8601 birth datetime of the chart under test (timezone-aware), from its `charts` row. REQUIRED: no birth datetime is embedded in this script.",
     )
     parser.add_argument(
         "--date", default=date.today().isoformat(),

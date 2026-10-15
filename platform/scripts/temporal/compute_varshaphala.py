@@ -12,15 +12,12 @@ Per CLAUDE.md §I B.10: pyswisseph is required. The engine halts with
 Per PROJECT_ARCHITECTURE §B.1: outputs are L1.5 substrate (computed from L1
 chart inputs), not L2.5 interpretation.
 
-Run direct (defaults to native chart):
-    python3 platform/scripts/temporal/compute_varshaphala.py
-
-Run with explicit args:
+Run (chart id, birth datetime and birth coordinates are all required):
     python3 platform/scripts/temporal/compute_varshaphala.py \\
-        --chart-id abhisek_mohanty_primary \\
-        --birth 1984-02-05T10:43:00+05:30 \\
-        --birth-lat 20.2961 --birth-lon 85.8245 \\
-        --year-start 1984 --year-end 2061 \\
+        --chart-id <chart-uuid> \\
+        --birth <ISO8601-birth-datetime-with-offset> \\
+        --birth-lat <lat> --birth-lon <lon> \\
+        [--year-start <birth year>] [--year-end <birth year + 77>] \\
         --output 05_TEMPORAL_ENGINES/varshaphala/VARSHAPHALA_RAW_v1_0.json
 """
 from __future__ import annotations
@@ -315,17 +312,20 @@ def compute_varshaphala(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--chart-id", default="abhisek_mohanty_primary")
+    parser.add_argument("--chart-id", required=True,
+                        help="Chart UUID (the charts.chart_id of the chart under test). REQUIRED.")
     parser.add_argument(
-        "--birth", default="1984-02-05T10:43:00+05:30",
-        help="ISO8601 birth datetime (timezone-aware).",
+        "--birth", required=True,
+        help="ISO8601 birth datetime of the chart under test (timezone-aware), from its `charts` row. REQUIRED: no birth datetime is embedded in this script.",
     )
-    parser.add_argument("--birth-lat", type=float, default=20.2961,
-                        help="Birth latitude in decimal degrees (N positive).")
-    parser.add_argument("--birth-lon", type=float, default=85.8245,
-                        help="Birth longitude in decimal degrees (E positive).")
-    parser.add_argument("--year-start", type=int, default=1984)
-    parser.add_argument("--year-end", type=int, default=2061)
+    parser.add_argument("--birth-lat", type=float, required=True,
+                        help="Birth latitude in decimal degrees (N positive). REQUIRED (from the charts row).")
+    parser.add_argument("--birth-lon", type=float, required=True,
+                        help="Birth longitude in decimal degrees (E positive). REQUIRED (from the charts row).")
+    parser.add_argument("--year-start", type=int, default=None,
+                        help="First solar-return year (default: the birth year).")
+    parser.add_argument("--year-end", type=int, default=None,
+                        help="Last solar-return year (default: year-start + 77).")
     parser.add_argument("--ayanamsha", default="lahiri")
     parser.add_argument(
         "--ephe-path", default=os.environ.get("SE_EPHE_PATH"),
@@ -338,14 +338,16 @@ def main() -> int:
     args = parser.parse_args()
 
     birth_dt = parse_iso8601(args.birth)
+    year_start = args.year_start if args.year_start is not None else birth_dt.year
+    year_end = args.year_end if args.year_end is not None else year_start + 77
 
     rows, diag = compute_varshaphala(
         chart_id=args.chart_id,
         birth_dt=birth_dt,
         birth_lat=args.birth_lat,
         birth_lon=args.birth_lon,
-        year_start=args.year_start,
-        year_end=args.year_end,
+        year_start=year_start,
+        year_end=year_end,
         ayanamsha=args.ayanamsha,
         ephe_path=args.ephe_path,
     )

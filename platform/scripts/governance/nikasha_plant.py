@@ -146,8 +146,12 @@ ROWS = (            # (code, variant, tier, synonyms, classical_citation, note, 
 # The declared integrity_check_sql HOLDS on the clean world (N-99, registry revision 25: count equality alone is not a completion when an asset
 # declares an integrity check; it must hold too): a truthy first value of the first row.
 INTEGRITY_SQL = "SELECT bool_and(length({col}) > 0) FROM {t}"
-T_RUN = "2026-01-01 00:00:00+00"         # the one build run
-T_START, T_END = "2026-01-01 00:00:01+00", "2026-01-01 00:00:10+00"
+# N-233 R1: the Build.history window opens at the bottom-up pass (build_window.CERT_WINDOW_RUN_ID, read from build_runs.created_at and cross-checked against 2026-10-07T20:18Z), so the fixture carries
+# that pass run (T_PASS) and ALL synthetic history lies after it (the fixture commit, 2025-12-31, is earlier than the pass: the window opens at the pass).
+PASS_RUN_ID = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+T_PASS = "2026-10-07 20:18:00+00"
+T_RUN = "2026-10-08 00:00:00+00"         # the one build run
+T_START, T_END = "2026-10-08 00:00:01+00", "2026-10-08 00:00:10+00"
 RUN_ID = "00000000-0000-4000-8000-0000000000e1"
 
 SCHEMA_SQL = """
@@ -194,7 +198,8 @@ def registry_sql(a: AssetSpec) -> str:
 
 
 def world_sql(assets=ASSETS) -> str:
-    out = [SCHEMA_SQL, f"INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('{RUN_ID}', '{CHART}', 'layer', '{T_RUN}');\n"]
+    out = [SCHEMA_SQL, f"INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('{PASS_RUN_ID}', '{CHART}', 'layer', '{T_PASS}');\n",
+           f"INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('{RUN_ID}', '{CHART}', 'layer', '{T_RUN}');\n"]
     for a in assets:
         out.append(table_sql(a))
         out.append(registry_sql(a))
@@ -279,6 +284,8 @@ def tree_files(assets=ASSETS) -> dict:
              "platform-mcp/src/tools/README.md": "fixture serving root (no capability here)\n",
              "platform-mcp/src/lib/README.md": "fixture serving root (no capability here)\n",
              "00_ARCHITECTURE/control/README.md": "fixture control directory\n",
+             # the committed registry of cluster identities (a byte copy): the inspector's target proof needs it to rule production lineage OUT for a disposable declaration (Kāla note on #3372)
+             "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json": (REPO / "00_ARCHITECTURE/control/REGISTERED_DB_IDENTITIES.json").read_text(encoding="utf-8"),
              # Build.history window (SS): the registry identity of each fixture asset is dated by the migration that registers it
              "platform/migrations/001_t1_fixture_registry.sql": "".join(
                  f"INSERT INTO asset_registry (asset_id) VALUES ('{a.aid}');\n" for a in assets)}
@@ -311,7 +318,7 @@ def write_tree(dest: Path, files: dict, overrides: dict | None = None) -> None:
     for rel, data in overrides.items():                  # EARNED: a mutant that did not reach the tree would make "noticed" vacuous
         if (dest / rel).read_bytes() != data:
             raise HarnessError(f"the mutated {rel} did not reach the fixture tree")
-    # The fixture commit is dated BEFORE the synthetic build history (T_RUN, 2026-01-01) so that history lies inside the Build.history window
+    # The fixture commit is dated BEFORE the synthetic build history (T_RUN, 2026-10-08, after the pass run) so that history lies inside the Build.history window
     # (the later of the code and the registry-identity dates, both this one commit); the branch is `main`, the ref the window reads.
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(dest), "GIT_CONFIG_NOSYSTEM": "1",
            "GIT_COMMITTER_DATE": "2025-12-31T00:00:00 +0000", "GIT_AUTHOR_DATE": "2025-12-31T00:00:00 +0000"}
@@ -379,7 +386,7 @@ def run_census(db: Db, tree: Path, dbname: str, layer: str = LAYER, assets: str 
     if out.exists():
         out.unlink()
     env = {"PATH": f"{db.cl.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin", "PYTHONHASHSEED": "0", "LC_ALL": "C", "HOME": str(tree),
-           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), **db.cl.env(), "PGDATABASE": dbname}
+           "NIKASHA_CONTROL_DIR": str(tree / "00_ARCHITECTURE" / "control"), "SUVARNA_CENSUS_TARGET": "disposable", **db.cl.env(), "PGDATABASE": dbname}      # SS N-332/Kāla: a throw-away cluster says what it is
     cmd = [sys.executable, str(tree / INSPECTOR_REL), "--layer", layer, "--out", str(out)]
     if assets:
         cmd += ["--assets", assets]
@@ -620,16 +627,16 @@ plant(id="build_exercised", check="Build.exercised", asset=a("exer"),
 plant(id="build_history", check="Build.history", asset=a("hist"),
       desc="a later build run ends in state=error for the asset: its latest recorded attempt failed",
       apply=tbl_sql(a("hist"), "INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('00000000-0000-4000-8000-0000000000e2', "
-                               f"'{CHART}', 'layer', '2026-01-02 00:00:00+00'); INSERT INTO build_run_assets (run_id, asset_id, position, state, "
+                               f"'{CHART}', 'layer', '2026-10-09 00:00:00+00'); INSERT INTO build_run_assets (run_id, asset_id, position, state, "
                                "disposition, started_at, ended_at, error) VALUES ('00000000-0000-4000-8000-0000000000e2', '{t}', 0, 'error', NULL, "
-                               "'2026-01-02 00:00:01+00', '2026-01-02 00:00:02+00', 'planted failure')"),
+                               "'2026-10-09 00:00:01+00', '2026-10-09 00:00:02+00', 'planted failure')"),
       allow=("Cost.baseline", "Earn.build_record"))                                   # the latest attempt is no longer a completion
 plant(id="build_history_aborted", check="Build.history", asset=a("histab"),
       desc="a later build run is ABORTED for the asset (a different failure class from an error: the latest attempt never finished)",
       apply=tbl_sql(a("histab"), "INSERT INTO build_runs (id, chart_id, scope, created_at) VALUES ('00000000-0000-4000-8000-0000000000e2', "
-                                 f"'{CHART}', 'layer', '2026-01-02 00:00:00+00'); INSERT INTO build_run_assets (run_id, asset_id, position, state, "
+                                 f"'{CHART}', 'layer', '2026-10-09 00:00:00+00'); INSERT INTO build_run_assets (run_id, asset_id, position, state, "
                                  "disposition, started_at, ended_at, error) VALUES ('00000000-0000-4000-8000-0000000000e2', '{t}', 0, 'aborted', NULL, "
-                                 "'2026-01-02 00:00:01+00', '2026-01-02 00:00:02+00', NULL)"),
+                                 "'2026-10-09 00:00:01+00', '2026-10-09 00:00:02+00', NULL)"),
       allow=("Cost.baseline", "Earn.build_record"))
 plant(id="build_completion_integrity", check="Build.completion", asset=a("integ"), expect=("PARTIAL",),
       desc="the declared integrity_check_sql stops holding (a blank code on one row; the count still equals rows_written): count equality alone "

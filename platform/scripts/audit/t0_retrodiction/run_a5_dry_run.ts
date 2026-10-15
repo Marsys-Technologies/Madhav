@@ -28,8 +28,8 @@
  *   scripts/audit/t0_retrodiction/run_a5_dry_run.ts
  * (DATABASE_URL must be set — see platform/.env.local.example. `node --import
  * tsx/esm` hits Node 24's ERR_REQUIRE_CYCLE_MODULE on this repo's `pg` +
- * path-alias setup, same pre-existing quirk documented in
- * scripts/d4a/file_baseline_predictions.mts's header — the tsx CLI binary
+ * path-alias setup, same pre-existing quirk previously documented in
+ * the (since deleted) scripts/d4a/*.mts headers — the tsx CLI binary
  * avoids it.)
  */
 import { Pool } from 'pg'
@@ -42,7 +42,6 @@ import { parseDate } from './lib/dates'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYANAMSHA = 'lahiri_chitrapaksha'
-const BOUNDS_START = parseDate('1984-02-05')
 const BOUNDS_END = parseDate('2030-12-31')
 
 // ── §3.1 pre-registered exclusions (PREREGISTRATION_v1_0.md) ─────────────
@@ -87,6 +86,18 @@ async function fetchLifeEvents(pool: Pool): Promise<LifeEventRow[]> {
   return rows
 }
 
+/** The chart's own birth date, read from its `charts` row: nothing about the native is embedded here. */
+async function fetchBirthDate(pool: Pool): Promise<string> {
+  const { rows } = await pool.query<{ birth_date: string }>(
+    `SELECT to_char(birth_date,'YYYY-MM-DD') AS birth_date FROM charts WHERE chart_id = $1`,
+    [CHART_ID]
+  )
+  if (rows.length !== 1 || !rows[0].birth_date) {
+    throw new Error(`charts row for ${CHART_ID} not found: cannot derive the scoring bounds start (birth date)`)
+  }
+  return rows[0].birth_date
+}
+
 async function fetchDashaPeriods(pool: Pool): Promise<DashaPeriod[]> {
   const { rows } = await pool.query<{ level_n: number; lord_graha: string; start_date: string; end_date: string }>(
     `SELECT level_n, lord_graha, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date
@@ -129,7 +140,7 @@ type ModelRunResult =
   | { modelId: string; status: 'scored'; perDomain: HarnessResult[] }
   | { modelId: string; status: 'gap'; reason: string }
 
-function runModel(model: TemporalCurveModel, chart: ChartContext, groups: DomainGroup[]): ModelRunResult {
+function runModel(model: TemporalCurveModel, chart: ChartContext, groups: DomainGroup[], boundsStart: Date): ModelRunResult {
   try {
     const perDomain = groups.map((g) =>
       runMirroredScoringHarness({
@@ -137,7 +148,7 @@ function runModel(model: TemporalCurveModel, chart: ChartContext, groups: Domain
         chart,
         eventClass: g.domain,
         events: g.events,
-        boundsStart: BOUNDS_START,
+        boundsStart,
         boundsEnd: BOUNDS_END,
         params: PARAMS,
       })
@@ -154,7 +165,8 @@ function runModel(model: TemporalCurveModel, chart: ChartContext, groups: Domain
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   try {
-    const [lifeEvents, periods] = await Promise.all([fetchLifeEvents(pool), fetchDashaPeriods(pool)])
+    const [lifeEvents, periods, birthDate] = await Promise.all([fetchLifeEvents(pool), fetchDashaPeriods(pool), fetchBirthDate(pool)])
+    const boundsStart = parseDate(birthDate)
     const groups = groupByDomain(lifeEvents)
     const scoredEventCount = groups.reduce((s, g) => s + g.events.length, 0)
 
@@ -163,7 +175,7 @@ async function main() {
     const eventClassSignificators = DOMAIN_LORDS // §4: domain == eventClass in this run, reusing T-0/A-3's live-verified map
     const models: TemporalCurveModel[] = [pratyantarLordModel(eventClassSignificators), midpointTriangleModel(), transitKernelModel()]
 
-    const results = models.map((m) => runModel(m, chart, groups))
+    const results = models.map((m) => runModel(m, chart, groups, boundsStart))
 
     const receipt = {
       DISCLAIMER:
@@ -175,7 +187,7 @@ async function main() {
       chart_id: CHART_ID,
       ayanamsha_id: AYANAMSHA,
       run_at: new Date().toISOString(),
-      bounds: { start: '1984-02-05', end: '2030-12-31' },
+      bounds: { start: birthDate, end: '2030-12-31' },
       params: PARAMS,
       substrate: {
         life_events_total_rows: lifeEvents.length,

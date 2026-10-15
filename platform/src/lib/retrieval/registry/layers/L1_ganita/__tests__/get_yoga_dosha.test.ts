@@ -71,14 +71,14 @@ describe('getYogaDoshaCapability — kala_sarpa_reconciliation (D-1.6 Lane S-2 i
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '1' }] })   // countResult
     mockQuery.mockResolvedValueOnce({
       rows: [{
-        fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
         fact_value_jsonb: { fires: true, catalog_only: false },
       }],
     }) // result (paged rows)
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '5' }] })    // firingsCountResult
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] })    // doshaGatedCountResult
     mockQuery.mockResolvedValueOnce({
-      rows: [{ fact_value_jsonb: { varga: 'D1', fires: true } }],
+      rows: [{ ayanamsha_id: 'lahiri_chitrapaksha', fact_value_jsonb: { varga: 'D1', fires: true } }],
     }) // kala_sarpa_per_varga SELECT (only fired when facet=dosha_fires)
 
     const result = await getYogaDoshaCapability.handler(
@@ -103,7 +103,7 @@ describe('getYogaDoshaCapability — kala_sarpa_reconciliation (D-1.6 Lane S-2 i
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '5' }] })
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] })
     mockQuery.mockResolvedValueOnce({
-      rows: [{ fact_value_jsonb: { varga: 'D1', fires: false } }],
+      rows: [{ ayanamsha_id: 'lahiri_chitrapaksha', fact_value_jsonb: { varga: 'D1', fires: false } }],
     })
 
     const result = await getYogaDoshaCapability.handler(
@@ -121,14 +121,14 @@ describe('getYogaDoshaCapability — kala_sarpa_reconciliation (D-1.6 Lane S-2 i
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '1' }] })
     mockQuery.mockResolvedValueOnce({
       rows: [{
-        fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
         fact_value_jsonb: { fires: true, catalog_only: false },
       }],
     })
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '5' }] })
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] })
     mockQuery.mockResolvedValueOnce({
-      rows: [{ fact_value_jsonb: { varga: 'D1', fires: false } }],
+      rows: [{ ayanamsha_id: 'lahiri_chitrapaksha', fact_value_jsonb: { varga: 'D1', fires: false } }],
     })
 
     const result = await getYogaDoshaCapability.handler(

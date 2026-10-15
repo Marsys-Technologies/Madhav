@@ -611,7 +611,7 @@ def _resolve_unqualified_names_to_real_tables(ctx: Any) -> None:
 
 
 def _writer_source_digest(asset_id: str) -> str:
-    from pipeline.orchestrator.asset_runner import get_writer_source_hash
+    from pipeline.orchestrator.writer_runtime_support import get_writer_source_hash
 
     return get_writer_source_hash(asset_id)
 

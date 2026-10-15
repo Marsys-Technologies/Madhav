@@ -1,0 +1,183 @@
+{
+  "item": "J-0b",
+  "observed_at": "2026-10-07T20:55:02Z",
+  "scope": "Pravaha residual-state inventory; observation only",
+  "sources": [
+    {
+      "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/control/pravaha/plan_model.json",
+      "sha256": "39c10735591a686bffcc897990367c886bc74027b6873191befca6f9a958e7ee",
+      "role": "governed model"
+    },
+    {
+      "path": "http://127.0.0.1:8766/api/state",
+      "sha256": "4eeaf5f6e3b194c6347da8c2bab8d9e6387fa34be23b026817abed57785f8583",
+      "role": "live tracker state"
+    },
+    {
+      "path": "/Users/Dev/pravaha/run/EVENTS.jsonl",
+      "sha256": "265052feafbe6d4288da759ad339920580e03b8842df2f9dd5621b9846f7ecab",
+      "role": "event evidence"
+    },
+    {
+      "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/PRAVAHA_CAMPAIGN_PLAN_v1_0.md",
+      "sha256": "54ecf3f2ffb20d229a042867818976ac6e0b53b862cee73f59a60ca45429d3a7",
+      "role": "governed plan"
+    },
+    {
+      "path": "/Users/Dev/kalayantra/run/tests/J-0b.v1.cycle46.live-state.json",
+      "sha256": "2460f96e1a641a5d1c26f98ea147a5c0e7ae79ac03bb4963ac5a9df61315b0e4",
+      "role": "durable live-state snapshot"
+    },
+    {
+      "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/ND-H-20261005_DECISION_BY_DELEGATE.md",
+      "sha256": "5685921534f1963cb8b193f494286d0a13b0090d887ba9345dda35322c116c3b",
+      "role": "sealed delegated decision"
+    },
+    {
+      "path": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/ND-P2-20261005_DECISION_BY_DELEGATE_RECONCILED.md",
+      "sha256": "1ca0059579de8b3d5128c213794e78fa63836f68cec023e4e9bb946f12dbcd36",
+      "role": "sealed reconciled delegated decision"
+    }
+  ],
+  "tracker": {
+    "generated_at": "2026-10-07T20:55:02+00:00",
+    "overall": {
+      "total": 102,
+      "done": 75,
+      "running": 5,
+      "ready": 4,
+      "waiting": 17,
+      "blocked": 1,
+      "unknown": 0,
+      "pct": 77.4
+    },
+    "hold": false,
+    "health": {
+      "event_log": {
+        "events": 5358,
+        "malformed": 0,
+        "exists": true
+      },
+      "model_error": null,
+      "tick_errors": [
+        "git activity timed out"
+      ]
+    }
+  },
+  "non_done_items": [
+    {
+      "id": "A5.5",
+      "status": "running",
+      "owner": "A",
+      "source": "event"
+    },
+    {
+      "id": "A5.5h",
+      "status": "running",
+      "owner": "A",
+      "source": "event"
+    },
+    {
+      "id": "A5.5j",
+      "status": "ready",
+      "owner": "A",
+      "source": "event"
+    },
+    {
+      "id": "A5.5k",
+      "status": "ready",
+      "owner": "steward",
+      "source": "event"
+    },
+    {
+      "id": "A5.5l",
+      "status": "ready",
+      "owner": "A",
+      "source": "event"
+    },
+    {
+      "id": "A5.5m",
+      "status": "waiting",
+      "owner": "steward",
+      "source": "event"
+    },
+    {
+      "id": "A5.6",
+      "status": "waiting",
+      "owner": "A",
+      "source": "detector:db_query"
+    },
+    {
+      "id": "A5.7",
+      "status": "waiting",
+      "owner": "A",
+      "source": "event"
+    },
+    {
+      "id": "B5.4",
+      "status": "waiting",
+      "owner": "B",
+      "source": "detector:file_exists"
+    },
+    {
+      "id": "B6.3",
+      "status": "waiting",
+      "owner": "B",
+      "source": "event"
+    },
+    {
+      "id": "J2",
+      "status": "waiting",
+      "owner": "steward",
+      "source": "join"
+    },
+    {
+      "id": "J3",
+      "status": "waiting",
+      "owner": "steward",
+      "source": "join"
+    },
+    {
+      "id": "N-G9",
+      "status": "ready",
+      "owner": "native",
+      "source": "decision:D-G9"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-G9",
+      "status": "pending"
+    }
+  ],
+  "sealed_decisions": [
+    {
+      "id": "ND-H-20261005",
+      "disposition": "current",
+      "status": "sealed_current",
+      "source": "/Users/Dev/kalayantra/wt/campaign/00_ARCHITECTURE/briefs/pravaha/run_records/2026-10-06/ND-H-20261005_DECISION_BY_DELEGATE.md",
+      "evidence": "SEALED 2026-10-05; its append-only errata says no rule changed; no later supersession source observed in the governed inventory set"
+    }
+  ],
+  "decision_evidence_locator": "http://127.0.0.1:8766/api/state#/decisions (pinned by live-state SHA-256 above)",
+  "holds": {
+    "tracker_global": {
+      "status": "inactive",
+      "governed_source": "http://127.0.0.1:8766/api/state#/health/hold",
+      "evidence": "live health.hold=false at 2026-10-07T20:40:22Z"
+    },
+    "operational": [
+      {
+        "source_item": "ST-SL1-HOLD",
+        "disposition": "stale",
+        "status": "historical_unresolved",
+        "source": "sitting-20261003/RESUME_NOTES.md:5,18",
+        "evidence": "the governed record states the hold was in force until SETTLED-1 plus re-pin merge, but the inventory set contains no later governed release receipt; current applicability is unavailable"
+      }
+    ]
+  },
+  "limitations": [
+    "The persisted snapshot omits tracks/items; the live /api/state response is the item-status source and its durable cycle-46 snapshot is listed in sources.",
+    "No production, runtime, migration, serving, source implementation, tracker, decision, or hold state was modified."
+  ]
+}

@@ -3256,7 +3256,7 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
             chunk_id = source_row["chunk_id"]
             text_id = source_row["text_id"]
             source_citation = source_row["source_citation"]
-            content_en = source_row["content_en"]
+            content_en = source_row.get("content_en")
         else:
             chunk_id, text_id, source_citation, content_en = source_row
         if not content_en:

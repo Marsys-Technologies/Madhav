@@ -81,6 +81,8 @@ function makeReq(body: unknown): NextRequest {
     headers: {
       'content-type': 'application/json',
       'x-mcp-internal-token': 'test-token',
+      'x-mcp-user': 'test-user-uid',
+      'x-mcp-key-id': 'mcp_test_KEY001',
     },
     body: JSON.stringify(body),
   })
@@ -146,6 +148,7 @@ function makeReqWithChartHeader(body: unknown, chartId: string): NextRequest {
       'x-mcp-internal-token': 'test-token',
       'x-mcp-chart-id': chartId,
       'x-mcp-user': 'test-user-uid',
+      'x-mcp-key-id': 'mcp_test_KEY001',
     },
     body: JSON.stringify(body),
   })

@@ -152,6 +152,7 @@ def _open_window(monkeypatch, aid, attempts):
     rows describe, so a test about the TALLY of an executed history keeps testing it."""
     bw = ac._lint_module("build_window")
     monkeypatch.setattr(bw, "compute_window", lambda reader, a, paths: dict(ok=True, epoch=0.0, basis="test window", opens="1970-01-01T00:00:00Z"))
+    monkeypatch.setattr(ac._WindowedHistory, "cert_floor", lambda self: (0.0, None))      # N-233 R1: the pass instant (a DB read) is out of these tests' scope; 0.0 = earlier than every test window
     monkeypatch.setattr(bw.WindowReader, "__init__", lambda self, *a, **k: None)
     monkeypatch.setattr(ac, "_writer_code_paths", lambda a, f, h: ["x"])
     monkeypatch.setattr(ac, "build_attempt_log", lambda prefix, ids=None: {aid: [dict(a, epoch=float(i + 1)) for i, a in enumerate(attempts)]})

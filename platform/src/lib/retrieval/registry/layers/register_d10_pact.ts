@@ -66,6 +66,7 @@ import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServed
 // the same closed vocabulary judgment_query's gradeGraha() uses for D1). F-153: imported
 // from register_d9_judgment.ts rather than hand-duplicated — one registry, not two. ──
 import { DIGNITY_WEIGHT } from './register_d9_judgment'
+import { ordinal } from '@/lib/format/ordinal'
 
 interface VargaDignityRow {
   role: 'bhavesha' | 'karaka'
@@ -455,7 +456,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
         }
         triggerStatus = triggerRows.length > 0 ? 'gate_data_fetched' : 'unreachable'
         triggerReason = triggerRows.length > 0
-          ? `Transiting (tropical) position fetched for ${as_of_date}. HONEST GAP: this instrument does not convert to sidereal / cross-check the classical vedha or full aspect-gate rules against the natal ${about['bhava']}th bhava — that conversion is a documented data-plane gap (same discipline as judgment_query's bhanga_checked:false), not fabricated here as an "open"/"closed" gate verdict.`
+          ? `Transiting (tropical) position fetched for ${as_of_date}. HONEST GAP: this instrument does not convert to sidereal / cross-check the classical vedha or full aspect-gate rules against the natal ${Number.isInteger(about['bhava']) ? ordinal(about['bhava'] as number) : String(about['bhava'])} bhava — that conversion is a documented data-plane gap (same discipline as judgment_query's bhanga_checked:false), not fabricated here as an "open"/"closed" gate verdict.`
           : 'Ephemeris sidecar unreachable or returned no rows for this window — transit-gate check not completed (honest gap, not fabricated).'
       } catch (e) {
         triggerReason = `Ephemeris sidecar call failed: ${String(e)} — transit-gate check not completed (honest gap, not fabricated).`

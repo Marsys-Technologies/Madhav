@@ -17,10 +17,12 @@ export type DispatchResult =
 
 export async function dispatchPreparedRun(
   runId: string,
-  options: { failurePrefix?: string } = {},
+  options: { failurePrefix?: string; forceExecute?: boolean } = {},
 ): Promise<DispatchResult> {
   try {
-    const invocation = await invokeRunJob(runId)
+    const invocation = options.forceExecute
+      ? await invokeRunJob(runId, { forceExecute: true })
+      : await invokeRunJob(runId)
     return { ok: true, executionName: invocation?.executionName ?? '' }
   } catch (error) {
     const message = (error as Error)?.message ?? String(error)

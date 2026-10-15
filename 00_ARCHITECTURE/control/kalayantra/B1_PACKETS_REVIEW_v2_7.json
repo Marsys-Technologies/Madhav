@@ -1,0 +1,84 @@
+{
+ "schema": "ky.b1_packets_review/1",
+ "verdict": "ACCEPTED",
+ "plan_version": "2.7",
+ "source_commit": "e709f60d7fcd4559227a25a4d5d83d6431c396b6",
+ "reviewed_at_head": "2873019eacd5e3df439027bc8e53035c85755b6c",
+ "statement": "Each of the 26 B-1 packets is covered, at exactly the bytes hashed below, by an ACCEPTED slice review with no blocking finding. Reviewers were independent launchd jobs under the qualified area-reviewer configuration; the cockpit sessions and their helpers authored and reworked the packets and reviewed none.",
+ "inputs": {
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-BASELINE_v1.md": "7ae62871bb6654ddc3f0ea81597ae988c27bb3ef4884ba66d6ce1d719a8a4ab0",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-EXECUTOR-TABLE_v1.md": "e4ab5ca31f50a80c33975fc69073114fbadf3798de28dcf813b3724ceded86e3",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-FINALIZE_v1.md": "84f8d554f5ebbe8f2a416a32ad6449a5d0766aa07a4241d613d301721112cb24",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-INSTALL_v1.md": "d0a3be192f38faff214b763ba493ee593ae2a1db577b9d60b58066bb4e712483",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYALLOC_v1.md": "abeccddcbef2729d45a9b6a42df523bcb4bc91dd4b4d4d8856bd1084a29e0afe",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYBOUNDARY_v1.md": "ecb87c0531d6c32f0252c1d9c5eb2fa6657dbad9a8833ac33b78be5bbec39aff",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDADMIT_v1.md": "2bf3f04a389e87a1556aad624d2a7047c15742d74978ce19b4a43cdc63a312a3",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDISPATCH_v1.md": "1cfddb7262de4d7b5eb55336316ca5cd34ce66b7b7d31e89fb97ff00093bd54a",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDJOBS_v1.md": "332232dd5cdf5bd18ac92754c76d694867f15b263ff64700371535bc0a2745c8",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDKINDS-BUILD_v1.md": "13c84bfafcfbcd69142cb5ef6ef8142a1b57ac6c7507c1e6bf135d680dd8adcb",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDKINDS-LAND_v1.md": "6363f0ac491a0f3763c47e3915982425c1f34702792c85aacb4d1fead95d6fe3",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYDKINDS-OPS_v1.md": "04582edd94a42f126e430fb755802c2a2300b0718d612b3d12566992d7c68c47",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYGATE_v1.md": "aa17e6c66afd03a4f31fe6cf0c3679a759a6aa6a895f235b217a796808df5a44",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYJOB_v1.md": "c781475eab8bdb518fca837ba62329804586a10a536cb90a79514182b0452924",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYLOCK_v1.md": "c0c56c01b19d64370b25d6fc209af4ad6dadf48a5e4e213436509f704712d81d",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYPACKET_v1.md": "e9e7cf64d7c9a9ed0431c90f5b91f91a604719be516348b8e509d80de41a0558",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYREGEN_v1.md": "a792e2b88ff0ea393a19d0229af2f37c2dfe4a06da691eef4f74a8cb22fa5de5",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYREPORT_v1.md": "7584ee0f1bf02524ebdd828fbee58752c4097903053c910ece0eb9cb3f4c83a4",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYROUTE_v1.md": "f1a84a6c0655bea265295f44d01fdedcce69c967a650e84059fc0caaab44c029",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYVERDICTS_v1.md": "02384dc62e84038ae9f78240e1e1f606034da8bf8f4f008d641f6805ccfd2607",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-KYVERSION_v1.md": "09340d3de9b910da5401cff2f708783c0ad621ea3a36b06e3b1e91084ab53b22",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-LOCALDB_v1.md": "3deb6046d1fc0e30acdf44346b4a4059cf9737a7d6fcd066fc7cedd64c784c66",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-PRECHECK_v1.md": "e56df2d81736511c00b6eda74f1c7e75ea057706e87653dd9e430d6cf7890a39",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-PREFLIGHT_v1.md": "a73b089162c5425d6dc8784fd18566967e60c922e7304f742ca649bf021c3b7e",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-TRACKER_v1.md": "fb0b34baa35c072ae4c79894c1901156befca4d105d082208a70bce3881fb913",
+  "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-B-WRAPPERS_v1.md": "4465e7fa535d381000ebae6dbac97d23e642b7753d009dc6ab998bd6fe400db5"
+ },
+ "slice_reviews": [
+  {
+   "slice": "w1",
+   "round": 3,
+   "record": "/Users/Dev/kalayantra/run/reviews/b1-packets-r3/w1.review.json",
+   "record_sha256": "3f8dc745480193de2426d06022ee2d1730d4356b566fe98353dd56564aa46eca",
+   "reviewer_session_id": "be57f402-eae3-4fb4-8787-5f93f33b2136",
+   "packets": 8
+  },
+  {
+   "slice": "disp",
+   "round": 3,
+   "record": "/Users/Dev/kalayantra/run/reviews/b1-packets-r3/disp.review.json",
+   "record_sha256": "b0f55f27e93af4299288cbb99baba79bd3cec50afeda5ffec92f2cf8644642a7",
+   "reviewer_session_id": "f61e74a0-d02e-4687-a098-be440ce8e492",
+   "packets": 7
+  },
+  {
+   "slice": "w2",
+   "round": 4,
+   "record": "/Users/Dev/kalayantra/run/reviews/b1-packets-r4/w2.review.json",
+   "record_sha256": "99c98d7610e20fb5a5b22df3d3718274be62e75e0fdd47e349bbafc784131a09",
+   "reviewer_session_id": "2811037e-a249-40dc-ad35-5244623d0dc0",
+   "packets": 11
+  }
+ ],
+ "rounds": {
+  "r1": "3 slices REJECTED (13 blocking)",
+  "r2": "20 of 26 accepted (7 blocking)",
+  "r3": "w1 and disp ACCEPTED; w2 rejected on FINALIZE (1 blocking)",
+  "r4": "w2 ACCEPTED"
+ },
+ "rulings": {
+  "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/b1/B1_RULINGS.md",
+  "sha256": "62a9f3d2a06463a93ac84d6c7fda3cdf819f473d7b67d3d433bfa53955d1d919"
+ },
+ "authorises": "using these packets as B-1 build work orders; nothing else. Launching any build still requires the conditions_for_b1 of B0C_PART1_REVIEW_v2_7.json (owner confirmation among them) and working-copy capacity.",
+ "open_for_owner": [
+  "P26/P37/P44: shared test-database container is handed over or removed by the last closing session (reading of KU-02)",
+  "P7 (HOLD_MERGES does not close the release gate), P9 (campaign checkout pinned during the hold), no-model preflight smoke with file-based review (P17)",
+  "record the 2026-10-12 capacity direction in the owner decisions file; verifier maximum",
+  "enablement path for the five disabled executor entries after Wave B",
+  "disposal of the old ky-pg container",
+  "a dedicated OS user if the verifier boundary cannot be met otherwise",
+  "whether a restarted dispatcher may take over its predecessor's slot databases"
+ ],
+ "recorded_at": "2026-10-12T05:59:00Z",
+ "recorded_by": "cockpit session 50343377-2166-4183-b4cc-9955698a992b"
+}

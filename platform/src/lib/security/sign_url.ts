@@ -17,6 +17,7 @@
  */
 
 import { createHmac } from 'crypto'
+import { safeEqual } from '@/lib/security/safe_equal'
 
 // ── Secret resolution ─────────────────────────────────────────────────────────
 
@@ -109,7 +110,8 @@ export function verifyFeedToken(token: string): VerifyResult {
     // Verify HMAC
     const secret = getSecret()
     const expected = createHmac('sha256', secret).update(encoded).digest('hex')
-    if (sig !== expected) return { ok: false, reason: 'tampered' }
+    // SS N-373 item 5: timing-safe signature compare (hash-then-timingSafeEqual).
+    if (!safeEqual(sig, expected)) return { ok: false, reason: 'tampered' }
 
     // Decode payload
     const payloadStr = Buffer.from(encoded, 'base64url').toString('utf8')

@@ -227,30 +227,30 @@ def _load_graha_positions(
     return result
 
 
-#: Spelling families of the three nakshatras the repo spells more than one way, folded (case-insensitive)
-#: to the spelling of the L0 seed table this writer looks up (`bg_nakshatra_medical`, seeded from
-#: `brahmagyan.l0_medical.NAKSHATRA_MEDICAL`): the L1 adapter (`pyjhora_adapter._names`) spells nakshatra 23
-#: "Dhanishta" where the seed says "Dhanishtha", so a Moon in nakshatra 23 found no body part. The other
-#: two families (`Moola` / `Mula`, `Mrigasira` / `Mrigashira`) are spelled the seed's way by the adapter
-#: already; they are folded too so a caller handing in the bg_cohort spelling reaches the same row.
-#: Every other nakshatra reaches the seed under the spelling it is already written with.
+#: The `bg_nakshatra_medical.nakshatra_name` spelling of each CANONICAL nakshatra name, DERIVED from the L0
+#: medical seed (`brahmagyan.l0_medical.NAKSHATRA_MEDICAL`, which spells no. 5 / 19 "Mrigashira" / "Mula", not
+#: the lexicon's "Mrigasira" / "Moola") by nakshatra NUMBER -- never a hand-typed spelling table.
+#: SS N-548: the writer resolves the L1 fact's name through the ONE normaliser (canonical, legacy-L1 and the
+#: lexicon / ontology aliases) and then reads the seed row under the seed's own spelling, so a Moon in
+#: nakshatra 5 / 19 / 23 reaches its body part under any registered spelling. An unregistered name yields
+#: None (an honest miss: no body-part row, logged by the caller), never another nakshatra's row.
+from brahmagyan.l0_medical import NAKSHATRA_MEDICAL as _NAKSHATRA_MEDICAL_SEED  # noqa: E402  (beside its use: keeps pinned line numbers)
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES as _CANON, canonical_nakshatra as _canonical  # noqa: E402
 _NAKSHATRA_SEED_SPELLING: dict[str, str] = {
-    "dhanishta": "Dhanishtha",
-    "dhanishtha": "Dhanishtha",
-    "moola": "Mula",
-    "mula": "Mula",
-    "mrigasira": "Mrigashira",
-    "mrigashira": "Mrigashira",
+    _CANON[int(row["nakshatra_number"]) - 1]: row["nakshatra_name"] for row in _NAKSHATRA_MEDICAL_SEED
 }
+if len(_NAKSHATRA_SEED_SPELLING) != 27:  # pragma: no cover
+    raise RuntimeError("bg_nakshatra_medical seed must name all 27 nakshatras exactly once")
 
 
-def nakshatra_seed_name(nakshatra_name: str) -> str:
-    """The `bg_nakshatra_medical.nakshatra_name` spelling for a nakshatra name as the L1 facts spell it.
+def nakshatra_seed_name(nakshatra_name: str) -> Optional[str]:
+    """The `bg_nakshatra_medical.nakshatra_name` spelling for a nakshatra name as the L1 facts spell it
+    (canonical, legacy-L1 or any lexicon / ontology alias), or None for a name that is none of the 27.
 
     Applied at the LOOKUP only: the stored `natal_nakshatra` stays the L1 fact's own value (the writer
     forwards it, it does not re-spell it)."""
-    squashed = " ".join(nakshatra_name.split())
-    return _NAKSHATRA_SEED_SPELLING.get(squashed.casefold(), squashed)
+    canon = _canonical(nakshatra_name)
+    return None if canon is None else _NAKSHATRA_SEED_SPELLING[canon]
 
 
 def _load_nakshatra_body_part(conn: Any, nakshatra_name: str) -> Optional[str]:
@@ -258,12 +258,12 @@ def _load_nakshatra_body_part(conn: Any, nakshatra_name: str) -> Optional[str]:
     Look up body_part for a nakshatra from bg_nakshatra_medical.
 
     FORENSIC: 'Purva Bhadrapada' → 'left_side' (native Moon nakshatra).
-    The name is folded to the seed table's spelling first (`nakshatra_seed_name`): nakshatra 23 is
-    'Dhanishta' in the L1 facts and 'Dhanishtha' in the seed.
+    SS N-548: the name goes through the ONE normaliser and is read under the seed's own spelling (`nakshatra_seed_name`); None = not one of the 27.
     """
     if not nakshatra_name:
         return None
-    nakshatra_name = nakshatra_seed_name(nakshatra_name)
+    if (nakshatra_name := nakshatra_seed_name(nakshatra_name)) is None:  # an honest miss: no row, never another nakshatra's
+        return None
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""

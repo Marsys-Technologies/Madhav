@@ -2,7 +2,7 @@
 dispatch_int929_gochara_resume_482012f1.py -- int-929 relay-resume session.
 
 Resumes `ka_gochara_sweep` for chart 482012f1-710e-4a25-994a-93821f5871aa
-(Abhisek Mohanty), one of the two canonical operator charts. This is a
+(the native), one of the two canonical operator charts. This is a
 routine continuation dispatch: the prior run (executions -zjwvn/-gbnsd,
 2026-08-02 14:23-20:23 UTC) completed its 6h container budget successfully
 (Cloud Run status: Completed/True) with 117/606 ka_gochara_sweep substeps

@@ -118,6 +118,65 @@ const historicalV16 = {
   artifact_hash: 'sha256:63a15a628daa75a403b79711932ff39fad8a1249f3fbad40a568a8437a71680e',
 } as const
 
+// The per-asset served-fence successor of v16 (SS N-208). Immutable since the Dens.served density-contract
+// regeneration (SS N-211 / N-212, v18) superseded it.
+const historicalV17 = {
+  capability_content_hash: 'sha256:d84fd0ab6305e135aa1805b3c93a388171b5f395d9085d0a7bb85b37e2002bbe',
+  report_hash: 'sha256:e35350a1205ea310be1d686d1832c3fbc78e771b54f7145b426b31550df4ddbd',
+  artifact_hash: 'sha256:67c10a3079193f6d652219ffc64b01c50e586f553ebed025f05b39a4bc3070e3',
+} as const
+
+// The Dens.served density-contract successor of v17 (SS N-211 / N-212). Immutable since the Fact Identity Index writer (migration 1333, FIX1, v19)
+// superseded it.
+const historicalV18 = {
+  capability_content_hash: 'sha256:90d63b9b76d8ff5a13adbedf7785a37837185d0db264559daf59a3d8c876a4c6',
+  report_hash: 'sha256:0e631feaf231cfdbdb5c546017ceabd7857696293778deb7c86050c3ba6a09f4',
+  artifact_hash: 'sha256:f4e200f03fc0441c1e08de4a0758016bf6dff329d730d28a5aecbee86e6d5037',
+} as const
+
+// The Fact Identity Index writer successor of v18 (FIX1 / migration 1333). Immutable since the DENS-F shared-table-facet regeneration (v20) superseded it.
+const historicalV19 = {
+  capability_content_hash: 'sha256:767da1a16a070263ec6e42cd607c173f192443c8ba4c962adc8b954c026d5e4e',
+  report_hash: 'sha256:a12f8859a2d62aec21d95e8d375308c7dc4b80b3ed80915b29aac5402c5c7d96',
+  artifact_hash: 'sha256:af02c2846c2c7d07456d341cc87d399276609b6b3d1467f01afbc10b50b469d3',
+} as const
+
+// The DENS-F shared-table-facet successor of v19 (PR #3302). Immutable since the combined fix round 1 regeneration (v21: DENS-A tier carriage,
+// WFIX-A writer rows-written, dispatch image, KARA fix) superseded it.
+const historicalV20 = {
+  capability_content_hash: 'sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858',
+  report_hash: 'sha256:30ec3edce1578dd504a95661174e0530d5b8498a6d2ac4655be928191c951c56',
+  artifact_hash: 'sha256:f3b89cb45de7a180ad096f704d8618e044b6fd654bd455aa8d3823c327bbf718',
+} as const
+
+// The combined fix round 1 successor of v20 (v21). Immutable since the bg_rules Dens.served regeneration (SS N-268, v22) superseded it.
+const historicalV21 = {
+  capability_content_hash: 'sha256:7d90d35bb7b6d555271a269f5e09cc56175f57dab3fcf8994d84580998405ae9',
+  report_hash: 'sha256:c98aca8e067cecaf3572759a94c95a724bdf07d15fa41ebd8f962f4dd9031827',
+  artifact_hash: 'sha256:0acc7bb575c9afc2eb5a2ae5f3a2f6ade2e2a13e6da9f736a19aff70064479e2',
+} as const
+
+// The bg_rules Dens.served successor of v21 (SS N-268, v22). Immutable since the query_discoveries tool-description correction (v23) superseded it.
+const historicalV22 = {
+  capability_content_hash: 'sha256:90f1050b6145a733fc7a2d7a7f2fe69dc9a16aca97ac25d3de3f17442fe86634',
+  report_hash: 'sha256:0acf2879414236d4bbc92af49cebfde2264c9a0bfbcab3a81eb18745b28847bb',
+  artifact_hash: 'sha256:21b1520b9fc42916de0c400645277d5bbd8e1500c84e6c6a5b36b49a5e1072dc',
+} as const
+
+// The query_discoveries tool-description correction successor of v22 (PR #3387, v23). Immutable since the ephemeris_cache_native_lifetime retirement (SS N-373, v24) superseded it.
+const historicalV23 = {
+  capability_content_hash: 'sha256:bc7e70deae1764b5418a39d8891ac6b1f1576e9ce63b2a0f60a6a996a212b737',
+  report_hash: 'sha256:b333f59c56c51ed27c82d28cf825f1507314962d760b056aca4596db980e3c39',
+  artifact_hash: 'sha256:edbd68c082fda664345decfba78a42bea90266ff9e6b0069df949c0452aa79eb',
+} as const
+
+// The ephemeris_cache_native_lifetime retirement successor of v23 (SS N-373, PR #3396, v24). Immutable since the Lahiri-primary combined batch (v25) superseded it.
+const historicalV24 = {
+  capability_content_hash: 'sha256:78e40671513098ee8863b6830d83c4e1e565988ac8a822451fcebbeaf58736ef',
+  report_hash: 'sha256:3d8fe79364260ea1344853138f54f5d7572d51c1c003f40269e592ab3554584a',
+  artifact_hash: 'sha256:1f2aad07204f67eeabddde939d6bf28bb4d987335055ae6c138e53a75e7d43ac',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -128,6 +187,32 @@ function withoutScu(
     edges: source.edges.filter((edge) => edge.from_scu_id !== scuId && edge.to_scu_id !== scuId),
   }
 }
+
+// OSR-009: v25 is the immutable predecessor of K7-1a's evaluator-derived v26.
+const historicalV25 = {
+  capability_content_hash: 'sha256:f8382015b7de8a314cf984bada267e56903657b91f4dde68324542e7360f61c4',
+  report_hash: 'sha256:fb722f208488bfb3d928938a6a4bb05bdd1669c7119b4ce1ec70c84fb13cf14d',
+  artifact_hash: 'sha256:6b657095c3e5407a06d0ce97225ce8a483b4ce93de50611318748fc2f5ef84da',
+} as const
+// OSR-010: v26 is the immutable predecessor of the vocabulary-round combined stack's evaluator-derived v27.
+const historicalV26 = {
+  capability_content_hash: 'sha256:feda7ac45b23b88b4645a447d5223a56e3e0a306c554c8d6de95551a13b147f6',
+  report_hash: 'sha256:0596e9e00f64c24d4613b40512455c40cd6115abcf1cd9b6fecf7b2d2b98dcc6',
+  artifact_hash: 'sha256:ffe465e3d25d796c0c657123112a2ac1dab9b9e2c163f0a3f7c78cb2eae963de',
+} as const
+
+// OSR-011: v27 is the immutable predecessor of PR #3337's evaluator-derived v28.
+const historicalV27 = {
+  capability_content_hash: 'sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85',
+  report_hash: 'sha256:9f745aea6b55837f6d1e174e40412ed83cf7c3cfcd4f8fabea4e75cdd9edb7e0',
+  artifact_hash: 'sha256:c9f6cf7296277e7e94c470cd71d51b8a3c878e83489eb453f4338881b2560333',
+} as const
+
+const historicalV28 = {
+  capability_content_hash: 'sha256:ce4bf90ad8c7f4a4cd49641b3af9555a8c14019ee4b262ea2f7e7301e4497d00',
+  report_hash: 'sha256:0f4ef835c42b38c189d71a07a6b4e13eae7a9c3a92dfa676933099c1983e006d',
+  artifact_hash: 'sha256:f82d4eb5abd6ca42f528614f898dbf5788989a93a9693873f1098dea783ab67b',
+} as const
 
 describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   it('closes the unchanged frozen route denominator through receipted transit derivation', () => {
@@ -196,7 +281,39 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
     // PR #3236 review fixes F1-F3 additionally moved the resolver/overlay SQL (failed co-writer attempts, held-back
     // writer guard) that the source-query contract mirrors; same single re-pin, no further successor.
-    expect(report.report_hash).toBe('sha256:e35350a1205ea310be1d686d1832c3fbc78e771b54f7145b426b31550df4ddbd')
+    // Dens.served (v18, SS N-211 / N-212): density_contract / empty_reason / paginated declarations on the L0/L1/L2 query capabilities
+    // and traverse_chart_graph's tier column moved source_catalog_fingerprint (descriptor contracts), hence capability_content_hash and
+    // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v17's; no SCU, edge, proof kind or
+    // availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    // Fact Identity Index writer (v19, FIX1 / migration 1333): ga_fact_identity joins the active producer census (relational_digest_current_source_intent, via the
+    // spec its migration inserts) and receives one authored producer-to-semantics binding (scu.catalog.query_pratijna, supports_same_semantic_domain). That moved
+    // semantic_review_fingerprint and producer_contract_fingerprint, hence capability_content_hash and report_hash; source_catalog_fingerprint coincides with
+    // v18's and no SCU, edge, proof kind or availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    // DENS-F (v20): density_contract / empty_reason declarations on get_nakshatra, get_positions, get_sensitive_points, get_sensitive_degrees, query_ucd and get_graha_yuddha,
+    // query_signals' producer_asset_id input and the two platform-mcp ref_* density entries moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
+    // semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
+    // Combined fix round 1 (v21): DENS-A's get_dasha_lord_capability description (dasha_verification_pass_status), query_mechanisms' tier count and the vastu density_contract
+    // moved source_catalog_fingerprint, hence capability_content_hash and report_hash. Only this pinned hash was re-pinned.
+    // bg_rules Dens.served (v22, SS N-268): read_sutravali_rule's density_contract moved source_catalog_fingerprint, hence capability_content_hash and report_hash.
+    // semantic_review_fingerprint and producer_contract_fingerprint coincide with v21's; no SCU, edge, proof kind or availability disposition changed. Only this pinned hash was re-pinned.
+    // query_discoveries tool-description correction (v23): the corrected generated tool text (ordering wording) and its source-query availability probe moved
+    // source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint coincides with v22's;
+    // no SCU, edge, proof kind or availability disposition changed (the metric assertions above are unchanged). Only this pinned hash was re-pinned.
+    // ephemeris_cache_native_lifetime retirement (v24, SS N-373): the capability (one reviewed SCU, one registry binding) is removed from the catalog,
+    // which moved source_catalog_fingerprint and semantic_review_fingerprint, hence capability_content_hash and report_hash. producer_contract_fingerprint
+    // coincides with v23's and every metric assertion above is unchanged. Only this pinned hash was re-pinned.
+    // Lahiri-primary combined batch (v25, SS N-339..N-404): the L1/L2 handlers' source-query availability probes mirror the primary-ayanamsha filter, serve-order ORDER BY and
+    // citation_human select item (PR-2); include_cross_check inputs and the compact identity_cross_check were added to get_positions, get_dashas, query_discoveries, query_pratijna,
+    // graha_portrait and chart_snapshot (PR-3); every ayanamsha_id input text now says omitted = the Lahiri primary and "all" = the explicit raw opt-out; the KP-reaching readers'
+    // text follows the one-frame KP rule; get_prashna_lagna no longer claims a kp_sub_lord for kp_249. That moved source_catalog_fingerprint, hence capability_content_hash and
+    // report_hash. semantic_review_fingerprint and producer_contract_fingerprint coincide with v24's and every metric assertion above is unchanged.
+    // Only this pinned hash was re-pinned (once, for the whole batch; no intermediate states are recorded).
+    // OSR-009 / K7-1a v26: fourteen additive L3 views move catalog provenance; corpus metrics stay fixed.
+    // OSR-010 / v27 (the vocabulary-round combined stack): get_dashas.ts (72ae74031, 70d5b6475) moved capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256; corpus metrics stay fixed. Re-pinned by regeneration from the evaluator, not typed.
+    // OSR-011 / PR #3337 v28: optional at input and published_now registration move catalog hashes; corpus metrics stay fixed.
+    // OSR-012: re-mint v28 at the merged final head; seven-view stored producer tiers change catalog provenance only.
+    // OSR-013: Tulana into PRIORITY moves catalog provenance only; metrics and protected fingerprints stay fixed.
+    expect(report.report_hash).toBe('sha256:04d5f103e68a59bd96f32e349812279670ed38f3eb0dcbc2210da9f13cdb4fe9')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -626,23 +743,288 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v17 source-successor artifact to the current executable report without claiming live acceptance (per-asset served fence, SS N-208)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v17 source-successor artifact immutable after the Dens.served density-contract advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v17.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV17.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v17',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v16.json',
+        capability_content_hash: historicalV16.capability_content_hash,
+        report_hash: historicalV16.report_hash,
+      },
+      capability_content_hash: historicalV17.capability_content_hash,
+      report_hash: historicalV17.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '9d0637087596eed1397634d45a644d9cb559d414',
+    })
+  })
+
+  it('keeps the v18 source-successor artifact immutable after the Fact Identity Index writer advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v18.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV18.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v18',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v17.json',
+        capability_content_hash: historicalV17.capability_content_hash,
+        report_hash: historicalV17.report_hash,
+      },
+      capability_content_hash: historicalV18.capability_content_hash,
+      report_hash: historicalV18.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '915fe924f4a3819bfdc803812dc41ae9e1adff7f',
+    })
+  })
+
+  it('keeps the v19 source-successor artifact immutable after the DENS-F shared-table-facet advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v19.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV19.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v19',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v18.json',
+        capability_content_hash: historicalV18.capability_content_hash,
+        report_hash: historicalV18.report_hash,
+      },
+      capability_content_hash: historicalV19.capability_content_hash,
+      report_hash: historicalV19.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v20 source-successor artifact immutable after the combined fix round 1 advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v20.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV20.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v20',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v19.json',
+        capability_content_hash: historicalV19.capability_content_hash,
+        report_hash: historicalV19.report_hash,
+      },
+      capability_content_hash: historicalV20.capability_content_hash,
+      report_hash: historicalV20.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v21 source-successor artifact immutable after the bg_rules Dens.served advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v21.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV21.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v21',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v20.json',
+        capability_content_hash: historicalV20.capability_content_hash,
+        report_hash: historicalV20.report_hash,
+      },
+      capability_content_hash: historicalV21.capability_content_hash,
+      report_hash: historicalV21.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v22 source-successor artifact immutable after the query_discoveries description correction', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v22.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV22.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v22',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v21.json',
+        capability_content_hash: historicalV21.capability_content_hash,
+        report_hash: historicalV21.report_hash,
+      },
+      capability_content_hash: historicalV22.capability_content_hash,
+      report_hash: historicalV22.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v23 source-successor artifact immutable after the ephemeris_cache_native_lifetime retirement', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v23.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV23.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v23',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v22.json',
+        capability_content_hash: historicalV22.capability_content_hash,
+        report_hash: historicalV22.report_hash,
+      },
+      capability_content_hash: historicalV23.capability_content_hash,
+      report_hash: historicalV23.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v24 source-successor artifact immutable after the Lahiri-primary combined batch', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v24.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV24.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v24',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v23.json',
+        capability_content_hash: historicalV23.capability_content_hash,
+        report_hash: historicalV23.report_hash,
+      },
+      capability_content_hash: historicalV24.capability_content_hash,
+      report_hash: historicalV24.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v25 source-successor artifact immutable after the K7-1a catalog advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v25.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV25.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v25',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v24.json',
+        capability_content_hash: historicalV24.capability_content_hash,
+        report_hash: historicalV24.report_hash,
+      },
+      capability_content_hash: historicalV25.capability_content_hash,
+      report_hash: historicalV25.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v26 source-successor artifact immutable after the vocabulary-round combined stack advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v26.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV26.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v26',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v25.json',
+        capability_content_hash: historicalV25.capability_content_hash,
+        report_hash: historicalV25.report_hash,
+      },
+      capability_content_hash: historicalV26.capability_content_hash,
+      report_hash: historicalV26.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v27 source-successor artifact immutable after the K7-3 optional at input catalog advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v27.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV27.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v27',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v26.json',
+        capability_content_hash: historicalV26.capability_content_hash,
+        report_hash: historicalV26.report_hash,
+      },
+      capability_content_hash: historicalV27.capability_content_hash,
+      report_hash: historicalV27.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v28 source-successor artifact immutable after the K7-4 Tulana into PRIORITY catalog advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v28.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV28.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v28',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v27.json',
+        capability_content_hash: historicalV27.capability_content_hash,
+        report_hash: historicalV27.report_hash,
+      },
+      capability_content_hash: historicalV28.capability_content_hash,
+      report_hash: historicalV28.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v29 source-successor artifact to the current executable report without claiming live acceptance (PR #3503 Tulana into PRIORITY / OSR-013)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v29.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
     const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
+    const predecessor = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v28.json',
+      import.meta.url,
+    ), 'utf8'))
+    expect(artifact.metrics).toEqual(report.metrics)
+    expect(artifact.metrics).toEqual(predecessor.metrics)
+    expect(snapshot.semantic_review_fingerprint).toBe(predecessor.generated_snapshot.semantic_review_fingerprint)
+    expect(snapshot.producer_contract_fingerprint).toBe(predecessor.generated_snapshot.producer_contract_fingerprint)
+
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v17',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v29',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v16.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v28.json',
+        artifact_hash: historicalV28.artifact_hash,
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV16.capability_content_hash,
-        report_hash: historicalV16.report_hash,
+        capability_content_hash: historicalV28.capability_content_hash,
+        report_hash: historicalV28.report_hash,
       },
+      preserves_historical_predecessor: true,
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
       capability_content_hash: report.capability_content_hash,
@@ -684,10 +1066,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Per-asset served fence (SS N-208): the get-dashas source-query contract SQL moved semantic_review_fingerprint;
-      // the snapshot is regenerated with its committed generated_at (source_catalog_fingerprint and
-      // producer_contract_fingerprint coincide with v16's).
-      evaluated_source_revision: '9d0637087596eed1397634d45a644d9cb559d414',
+      evaluated_source_revision: '86735052430c84449165b9aee287b10f7fcf02b4',
     })
   })
 })

@@ -170,3 +170,111 @@ describe('buildConvergenceNarrative', () => {
     expect(n).toContain('pending')
   })
 })
+
+// ── SS N-362/N-363: not-available schools are skipped, never counted ─────────
+
+function makeUnavailable(school: SchoolResult['school'], domain: Domain = 'CAREER'): SchoolResult {
+  return {
+    school,
+    domain,
+    domainScore: null,
+    direction: null,
+    topSignals: [],
+    schoolVerdict: 'not available',
+    signalCoverage: 'silent',
+    available: false,
+    unavailableReason: 'no_live_signals',
+    signalSupply: 'not_supplied',
+  }
+}
+
+describe('not-available schools (no live signals)', () => {
+  const FOUR_OF_SEVEN: SchoolResult[] = [
+    makeResult('parashari', 4.2, 'positive'),
+    makeResult('jaimini', 4.0, 'positive'),
+    makeResult('kp', 3.8, 'positive'),
+    makeResult('nadi', 1.5, 'negative'),
+    makeUnavailable('bnn'),
+    makeUnavailable('yogini'),
+    makeUnavailable('tajika'),
+  ]
+
+  it('are skipped: not agreement, not in schoolsTotal, not in the mean', () => {
+    const c = computeConvergence(FOUR_OF_SEVEN, 'CAREER')
+    expect(c.schoolsEvaluated).toBe(7)
+    expect(c.schoolsAvailable).toBe(4)
+    expect(c.schoolsTotal).toBe(4)
+    expect(c.schoolsAgreeing).toBe(3)
+    expect([...c.schoolsUnavailable].sort()).toEqual(['bnn', 'tajika', 'yogini'])
+    expect(c.meanDomainScore).toBeCloseTo((4.2 + 4.0 + 3.8 + 1.5) / 4, 2)
+    expect(Object.keys(c.perSchoolScores).sort()).toEqual(['jaimini', 'kp', 'nadi', 'parashari'])
+  })
+
+  it('a not-available school does not turn a LOW result into HIGH (no unavailable-as-agree)', () => {
+    const c = computeConvergence([
+      makeResult('parashari', 4.2, 'positive'),
+      makeUnavailable('jaimini'), makeUnavailable('kp'), makeUnavailable('nadi'),
+      makeUnavailable('bnn'), makeUnavailable('yogini'), makeUnavailable('tajika'),
+    ], 'CAREER')
+    expect(c.schoolsAgreeing).toBe(1)
+    expect(c.convergenceLevel).toBe('LOW')
+    expect(c.schoolsTotal).toBe(1)
+  })
+
+  it('all unavailable => NOT_AVAILABLE, null scores, no throw', () => {
+    const all = (['parashari', 'jaimini', 'tajika', 'kp', 'nadi', 'bnn', 'yogini'] as const).map(s => makeUnavailable(s))
+    const c = computeConvergence(all, 'CAREER')
+    expect(c.convergenceLevel).toBe('NOT_AVAILABLE')
+    expect(c.schoolsTotal).toBe(0)
+    expect(c.schoolsAgreeing).toBe(0)
+    expect(c.meanDomainScore).toBeNull()
+    expect(c.stdDomainScore).toBeNull()
+    expect(c.direction).toBe('not_available')
+    const div = detectDivergence(all, c)
+    expect(div.isDivergent).toBe(false)
+    expect(div.schoolsUnavailable).toHaveLength(7)
+    expect(div.schoolsAgreeing).toEqual([])
+    expect(div.schoolsSilent).toEqual([])
+  })
+
+  it('detectDivergence lists them as unavailable, not agreeing/contradicting/silent', () => {
+    const c = computeConvergence(FOUR_OF_SEVEN, 'CAREER')
+    const div = detectDivergence(FOUR_OF_SEVEN, c)
+    expect([...div.schoolsUnavailable].sort()).toEqual(['bnn', 'tajika', 'yogini'])
+    expect(div.schoolsContradict).toEqual(['nadi'])
+    expect([...div.schoolsAgreeing].sort()).toEqual(['jaimini', 'kp', 'parashari'])
+    expect(div.schoolsSilent).toEqual([])
+  })
+
+  it('narrative says how many schools were available and which were not', () => {
+    const c = computeConvergence(FOUR_OF_SEVEN, 'CAREER')
+    const n = buildConvergenceNarrative(c, detectDivergence(FOUR_OF_SEVEN, c))
+    expect(n).toContain('4 of 7 schools available')
+    expect(n).toContain('3/4 counted schools')
+    expect(n).toContain('bnn, yogini, tajika')
+    expect(n).not.toContain('/7 counted')
+  })
+
+  it('all-unavailable narrative claims no convergence', () => {
+    const all = (['parashari', 'jaimini', 'tajika', 'kp', 'nadi', 'bnn', 'yogini'] as const).map(s => makeUnavailable(s))
+    const c = computeConvergence(all, 'CAREER')
+    const n = buildConvergenceNarrative(c, detectDivergence(all, c))
+    expect(n).toContain('0 of 7 schools available')
+    expect(n).toContain('no inter-school agreement or score is claimed')
+  })
+
+  it('Tajika pending AND others unavailable are reported separately', () => {
+    const rs: SchoolResult[] = [
+      makeResult('parashari', 4.2, 'positive'),
+      makeResult('jaimini', 4.0, 'positive'),
+      { ...makeResult('tajika', 3.0, 'positive'), pendingFlags: ['[VARSHA_KUNDALI_PENDING]'] },
+      makeUnavailable('kp'), makeUnavailable('nadi'), makeUnavailable('bnn'), makeUnavailable('yogini'),
+    ]
+    const c = computeConvergence(rs, 'CAREER')
+    expect(c.schoolsAvailable).toBe(3)
+    expect(c.schoolsTotal).toBe(2)
+    const n = buildConvergenceNarrative(c, detectDivergence(rs, c))
+    expect(n).toContain('3 of 7 schools available')
+    expect(n).toContain('excluded')
+  })
+})

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.launch_config/1",
+  "title": "KĀLA-YANTRA v3 launch configuration, the input of fleet/kyqualify.py (relaunch plan v2.7 §7 launch line and launch qualification KV-06, §14 B-0c)",
+  "description": "One role's launch line as data: everything a qualification receipt binds. kyqualify.py builds the argv from it as: claude_bin -p --setting-sources project --permission-mode <permission_mode> --model <model> --effort <effort> --max-turns <max_turns> <extra_flags…> --strict-mcp-config --mcp-config <mcp_config> [--disallowedTools <disallowed_tools…>] --output-format stream-json --verbose [--add-dir <dir> per add_dirs]. prompt_path is the role prompt or card whose hash is bound; it is not sent during qualification. Shape only. Not checked by this schema, and checked by kyqualify.py before anything is launched: paths normalised; worktree, claude_bin (executable), mcp_config and prompt_path present on disk, and the worktree's .claude/settings.json — when there is one — a readable regular file (its sha256, or \"absent\", is bound and a byte copy of it is in force in every canary project); the program version (2.1.296 or newer); a value policy for every env_names entry (HOME/USER from the caller, LANG, TERM, PATH = child_path and ZDOTDIR fixed, TMPDIR and JOB_SCRATCH that qualification run's own directories, KY_* conventional or from the caller — KY_SCRATCH is the campaign scratch root — anything else refused) and the six plan §7 basics present; no tool both intended and denied, no intended tool in disallowed_tools, bash_canary only when Bash is intended or denied, denied_bash only when Bash is intended. A missing or non-positive max_turns or deadline_seconds refuses for every role (plan §7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "role",
+    "model",
+    "effort",
+    "permission_mode",
+    "max_turns",
+    "deadline_seconds",
+    "worktree",
+    "claude_bin",
+    "mcp_config",
+    "prompt_path",
+    "env_names",
+    "child_path",
+    "extra_flags",
+    "disallowed_tools",
+    "add_dirs",
+    "intended_tools",
+    "denied_tools"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ky.launch_config/1"
+    },
+    "engine": {
+      "description": "Absent (as in every Claude Code configuration written before the second engine) or \"claude\". An OpenAI Codex CLI configuration says \"codex\" and is described by launch_config_codex.json instead.",
+      "const": "claude"
+    },
+    "_note": {
+      "description": "Free text for people; never read by the harness and never bound.",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "bash_canary": {
+      "description": "Which Bash canary to use (default 'write'). 'write': `printf %s <nonce> > <file>`, the file must exist afterwards. 'readonly': `shasum -a 256 <file>` on a file the harness wrote; the reply must contain the SHA-256 the harness computed itself and no file may change on disk - for roles whose shell is restricted to read-only commands.",
+      "enum": [
+        "write",
+        "readonly"
+      ]
+    },
+    "shell_canary": {
+      "description": "How the harness words the shell commands of its long-running canary (the timeout and termination probes need a live tool child) and of its PATH canary (default 'plain'). 'plain': `sleep 600` and `printf 'KYQ-PATH=%s\\n' \"$PATH\"`. 'python3': the same through `python3 -c …`, for a role whose shell allows python3 and little else.",
+      "enum": [
+        "plain",
+        "python3"
+      ]
+    },
+    "denied_bash": {
+      "description": "Shell commands that must be refused with no effect although Bash itself is an intended tool. Each runs once, in a canary project that is also a scratch `git init` repository, so a file, index, HEAD, ref or configuration change is observable; pass = nothing changed AND a permission denial of exactly that command was observed. Plain words, relative names and options only (a command runs inside the scratch repository if its denial fails): no path separator, no '~', no '..', no shell syntax.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 200,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 _.=:@%+,-]*$",
+        "not": {
+          "pattern": "\\.\\.|  | $"
+        }
+      }
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$",
+      "description": "Names the receipt run/QUALIFICATIONS/<role>-<model>.json and the one-shot launchd label in.marsys.kalayantra.qualify.<role>."
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,79}$"
+    },
+    "effort": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "permission_mode": {
+      "description": "Always explicit, never inherited.",
+      "enum": [
+        "default",
+        "acceptEdits",
+        "plan",
+        "bypassPermissions"
+      ]
+    },
+    "max_turns": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "deadline_seconds": {
+      "description": "The role's wall-clock deadline; bound, and the upper limit of every canary run.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "worktree": {
+      "$ref": "#/$defs/path"
+    },
+    "claude_bin": {
+      "$ref": "#/$defs/path"
+    },
+    "mcp_config": {
+      "$ref": "#/$defs/path"
+    },
+    "prompt_path": {
+      "$ref": "#/$defs/path"
+    },
+    "env_names": {
+      "description": "The job's whole environment, by name (env -i semantics); values follow kyqualify.py's value policy. Every job carries JOB_SCRATCH and KY_SCRATCH (rework ruling R1).",
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "not": {
+          "pattern": "^(DATABASE_URL|.*_DATABASE_URL|PGPASSWORD|ANTHROPIC_API_KEY)$"
+        }
+      }
+    },
+    "child_path": {
+      "description": "The PATH value: absolute entries separated by ':'; an empty entry would be the current directory.",
+      "type": "string",
+      "pattern": "^/[^:\\n]*(:/[^:\\n]*)*$"
+    },
+    "extra_flags": {
+      "description": "The EXTRA_LEAN_FLAGS chosen by the B-0c probes: flags only, each '--name' or '--name=value' (a bare word would become the prompt). Never a flag that changes where settings, permissions, sign-in or MCP servers come from, and never one the launch line sets itself.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "not": {
+          "pattern": "^(--bare|--dangerously-skip-permissions|--allow-dangerously-skip-permissions|--settings|--setting-sources|--mcp-config|--print|--permission-mode|--model|--effort|--max-turns|--strict-mcp-config|--disallowedTools|--disallowed-tools|--output-format|--verbose|--add-dir|--include-hook-events)(=|$)"
+        },
+        "pattern": "^--[A-Za-z][A-Za-z0-9-]*(=|$)"
+      }
+    },
+    "disallowed_tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[^-\\n][^\\n]*$"
+      },
+      "description": "Tool names (removed from the offered tools) and permission rules of the form Bash(<glob>) (the tool stays offered; a matching call is denied — deny rules beat allow rules, the project's included). Passed as separate arguments after --disallowedTools."
+    },
+    "add_dirs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/path"
+      }
+    },
+    "intended_tools": {
+      "description": "Tools the role must be able to use without a TTY or a permission prompt; one observable canary each.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "Read",
+          "Write",
+          "Edit",
+          "Bash"
+        ]
+      }
+    },
+    "denied_tools": {
+      "description": "Tools the role must NOT be able to use: the same canary must leave no effect and a denial must be observed.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "Read",
+          "Write",
+          "Edit",
+          "Bash"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "pattern": "^/[^\\n]*$"
+    }
+  }
+}

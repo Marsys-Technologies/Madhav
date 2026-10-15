@@ -949,7 +949,7 @@ def test_measure_hands_the_registry_kind_to_the_scan(monkeypatch, tree):
 def test_the_carr_no_carriage_docstring_describes_the_dens_na_as_no_served_select():
     d = ac.grade_carr_no_carriage.__doc__
     assert "scanned, no served select" in d and "REGISTRY_REVISION 14" in d and 'meaning "scanned, no reference"' not in d, d
-    assert ac.NA_CAUSES["Dens.served"] == ("no-served-surface",)
+    assert ac.NA_CAUSES["Dens.served"] == ("no-served-surface", "dens-not-served", "dens-owned-by-sibling")      # SS N-211: + dens-not-served / dens-owned-by-sibling (the measured no-served-surface cause is unchanged)
 
 
 # ───────────────────────── Python readers are outside the served surface, by design ─────────────────────────
@@ -1089,8 +1089,31 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # DENS-SCANNER (REGISTRY_REVISION 26): the real lexer reads the four files the quote loops lost sync on, so nine NO_DETECTOR cells become a read FAIL
     # (ga_structural, bo_bimba, bo_karanajala, bo_samvada, bo_upaya, ka_jivana_parva, ph_muhurta, ph_nimitta, ph_rectification) and bo_cdlm_summary (a const-map table) a PARTIAL:
     # (2, 29, 43) + 1 PARTIAL + 9 FAIL; N/A unchanged; NO_DETECTOR 48 - 10.
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (2, 30, 52), c
-    assert c["N/A"] == 5 and c["NO_DETECTOR"] == 38, c
+    # DENS-SERVED: the L0 / L1 / L2 query capabilities declare the contract their handlers honour (13 L0 FAIL -> PARTIAL; ga_ayurdaya, ga_structural, ga_vargas, bo_cgm_motifs, bo_cgm_paths,
+    # bo_upaya, bo_sangati, bo_cdlm_summary -> PASS; bo_pramana_mapa FAIL -> PARTIAL): (2, 30, 52) -> (9, 42, 33). The uniform_authority / density_tier_columns declarations are not read here (the
+    # scan reads source, not declarations): they move six more L0 cells PARTIAL -> PASS in the census.
+    # DENS-F: (10, 43, 31) -> (16, 47, 27); NO_DETECTOR 38 -> 32. This committed fixture predates the shared-table ruling (bodha_msr_signals is not in its shared list) and
+    # carries no facet declarations, so what moves HERE is: query_ucd now declares its contract over a bodha_msr_signals select carrying verification_pass_status (the six producers
+    # whose tokens are that table read PASS in this fixture: + 6 PASS, - 6 NO_DETECTOR), and four FAIL -> PARTIAL (bo_samvada: query_ucd; bg_ephemeris: get_graha_yuddha;
+    # bg_nakshatra / bg_transit_rules: the register_p1_reference.ts density entries). The live census attributes through facets (offline replay of the committed declarations:
+    # ga_nakshatra, ga_positions, ga_sensitive, ga_sensitive_degree, bo_laksana and bg_class_priors NO_DETECTOR -> PASS).
+    # K7-1a / KYD-127: the seven stored-stage readers add a density contract
+    # over kala_darshana. The unchanged scanner moves ka_kala_darshana from
+    # FAIL to PARTIAL only: its runtime SELECT still proves no stored tier
+    # carriage. Main SS N-268 independently moves bg_rules FAIL to PARTIAL.
+    # Excluding the new K7 views restores exactly (18, 48, 24).
+    assert real_dens["ka_kala_darshana"][0]["v"] == ac.PARTIAL
+    assert real_dens["ka_kala_darshana"][1]["density"] == 0
+    # SS N-268 (bg_rules FAIL -> PARTIAL, was (18, 47, 25)); SS N-236 (function-entry helper credit): bg_gochara_citation_resolution and ka_gochara_resonance FAIL -> PARTIAL (their selects are in helpers of register_gochara_windows.ts called in the body of the function that returns a contract object; no tier column in either table); SS N-212 (a): + bo_bimba PASS, bo_karanajala FAIL -> PARTIAL (traverse_chart_graph declares its contract; the CTE node select lists the tier)
+    assert real_dens["bg_rules"][0]["v"] == ac.PARTIAL
+    assert real_dens["bg_rules"][1]["density"] == 0
+    # K7-2 / F-L2: STORY's chart-scoped EXISTS over kala_convergence
+    # attributes that source to view_common's contract. ka_sangam moves
+    # FAIL -> PARTIAL only; the sub-select establishes no stored tier carriage.
+    assert real_dens["ka_sangam"][0]["v"] == ac.PARTIAL
+    assert real_dens["ka_sangam"][1]["density"] == 0
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 50, 22), c
+    assert c["N/A"] == 5 and c["NO_DETECTOR"] == 32, c
 
 
 def test_a_real_select_is_never_relabelled_on_the_real_tree():
@@ -1113,7 +1136,7 @@ def test_R02_decision_text_is_the_cause_keyed_reading_and_cites_N74a():
 
 def test_the_rule_is_still_cause_keyed_not_asset_keyed():
     ids = [r for r in ac.NA_RULE_DECISIONS if r.startswith("Dens.served")]
-    assert ids == ["Dens.served#measured:no-served-surface"], ids
+    assert ids == ["Dens.served#measured:no-served-surface", "Dens.served#measured:dens-not-served", "Dens.served#measured:dens-owned-by-sibling"], ids      # SS N-211 adds the two declaration-keyed, checked causes
     for a in R02_PRE_N74 + R02_LABEL_REPAIR:
         assert a not in ac.NA_RULE_DECISIONS["Dens.served#measured:no-served-surface"], a
 
@@ -1125,7 +1148,7 @@ def test_the_python_reader_clause_of_the_old_text_is_gone_and_replaced_by_the_se
 
 def test_dens_served_criterion_revision_5_states_the_select_reading():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 8 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary; 7: DENS-SCANNER
+    assert e["revision"] == 14 and "tier column" in e["applicability"] and "label" in e["applicability"], e      # 6: N-98 closed tier vocabulary; 7: DENS-SCANNER; 9: DENS-SERVED (const-map select lists)
 
 
 def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
@@ -1137,8 +1160,8 @@ def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_de
 def test_only_dens_served_changed_in_the_criterion_registry_at_14():
     """Everything else in the registry is the rev-13 content: the one revision-5 entry is Dens.served."""
     revs = {k: v["revision"] for k, v in ac.CRITERION_REGISTRY.items() if v["revision"] != 1}
-    assert revs.get("Dens.served") == 8          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98); 7 at pin 26 (DENS-SCANNER)
-    assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface"}
+    assert revs.get("Dens.served") == 14          # 5 at pin 14; 6 at pin 23 (DENS-TIER-GUARD, N-98); 7 at pin 26 (DENS-SCANNER); 9 at pin 26 (DENS-SERVED)
+    assert set(ac.NA_CAUSES["Dens.served"]) == {"no-served-surface", "dens-not-served", "dens-owned-by-sibling"}
 
 
 def test_the_na_cell_is_released_by_the_rule_in_the_rollup_with_the_new_text():

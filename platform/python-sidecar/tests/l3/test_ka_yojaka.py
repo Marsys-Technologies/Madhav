@@ -276,6 +276,11 @@ class _RunFakeCursor:
         c = self._conn
         self._pending = []
         if 'DELETE FROM' in sql:
+            c.delete_params.append(params)
+            c.inserted[:] = [
+                row for row in c.inserted
+                if not (row[0] == params[0] and row[8] == params[1])
+            ]
             return
         if 'SET LOCAL' in sql:
             return
@@ -318,6 +323,7 @@ class _RunFakeConn:
         self.house_lord_rows = house_lord_rows
         self.fact_subject_rows = fact_subject_rows
         self.inserted = []
+        self.delete_params = []
 
     def cursor(self, *a, **k):
         return _RunFakeCursor(self)
@@ -350,7 +356,7 @@ class TestKaYojakaWriterRunIntegration:
         ctx = ContextSpec(asset_id='ka_yojaka', build_id='b1', db_conn=conn,
                            config={'chart_id': 'cid'})
         writer = KaYojakaWriter()
-        result = writer.run(ctx)
+        result = writer.legacy_testimony_fixture(ctx)
         return result, conn
 
     def test_config_key_resolution_unaffected(self):

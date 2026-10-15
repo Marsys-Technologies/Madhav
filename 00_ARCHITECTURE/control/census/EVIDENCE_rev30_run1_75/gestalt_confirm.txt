@@ -1,0 +1,18 @@
+gestalt_confirm: bodha_chart_gestalt (target_table of bo_chart_gestalt per the live asset_registry on ri02 and the writer INSERT, bo_chart_gestalt.py:61)
+copy: ri02, marker equal to EVAL_COPY.json (backup 1791835965446); chart 482012f1-710e-4a25-994a-93821f5871aa; one session, BEGIN READ ONLY, statement_timeout 120s, rc=0, err file empty
+query: the census's own label_distinct_sql predicate (string leaves only, chart scope) per closed entry, with GROUP BY count in place of DISTINCT/LIMIT 65 (same value set); SQL in gestalt_confirm.sql
+rows of the chart in the table: 5
+
+central_question_jsonb.$.note: 1 distinct stored value(s) [('pointer-only — antagonistic axis; follow signal_ids for content', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+defining_threads_jsonb.$.note: 1 distinct stored value(s) [('pointer-only — follow signal_id to bodha_msr_signals for content', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+headline_jsonb.$.note: 1 distinct stored value(s) [('pointer-only — no verdict text stored here. strongest_domain is ranked by evidence.top_signal_salience (descending), not by insertion/alphabetical order.', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+outliers_jsonb.$.note: 1 distinct stored value(s) [('pointer-only — non-template-significant outliers from bo_anveshana', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+watch_list_jsonb.$.note: 1 distinct stored value(s) [('pointer-only — follow signal_ids for content. weakest_domain is ranked by evidence.top_signal_salience (ascending), not by insertion/alphabetical order.', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+zoom_spine_jsonb.$.note: 1 distinct stored value(s) [('zoom spine: gestalt → domain signal ids → CGM hubs → L1 facts via constituent_facts_array', 5)] ; declared constant_write literals: 7 ; stray: none ; closure WOULD PASS
+
+VERDICT: data WOULD pass the six closed entries on this copy (every stored distinct value is one of the declared literals, each entry non-empty; no stray values).

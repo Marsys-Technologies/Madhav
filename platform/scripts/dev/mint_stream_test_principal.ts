@@ -1,3 +1,4 @@
+// NOTE (sign-up approval, S8): POST /api/auth/session now lands a first-time principal PENDING (403 account_pending); pre-create an ACTIVE profile for this uid before minting.
 // Provision (idempotently) a per-stream test principal on the synthetic
 // Pariprashna assurance chart, and mint it a __session cookie.
 //

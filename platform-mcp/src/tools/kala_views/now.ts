@@ -66,6 +66,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
+import { kalaViewAlias } from './registry_alias.js'
+import { stageDensityBudgetSections } from './stage_budget.js'
+import { publishedNowDisclosure, validPublishedNowInstant, type PublishedNowDisclosure } from './published_now.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -92,12 +95,13 @@ import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+import { buildKalaAyanamshaFrame, KALA_NOW_LAHIRI_ONLY_SECTIONS, type KalaAyanamshaFrame } from '../../lib/kala_ayanamsha_frame.js'
 // F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
 // capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
 // forcing field_gochara_alignment to 'insufficient_data' unconditionally. The real logic
 // already lives in this same platform-mcp package as a plain exported function; call it
 // directly instead of round-tripping through the registry/HTTP capability system.
-import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+import { computeGocharaForecast, type ResolutionDisclosure } from '../retrieval/register_gochara_windows.js'
 // GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
 // registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
 // (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
@@ -1031,7 +1035,9 @@ function dualOutput(data: unknown, toolName = 'kala_now_get') {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
-    const sections = autoDetectTrimmableSections(obj, toolName)
+    const stageSections = stageDensityBudgetSections(obj)
+    const sections = [...autoDetectTrimmableSections(obj, toolName).filter(section =>
+      !stageSections.some(stage => section.path === stage.path)), ...stageSections]
     finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
   }
   const structuredContent = { type: 'object' as const, object: finalData }
@@ -1411,11 +1417,21 @@ export interface GocharaNarrativeWindow {
   valence: string
   signed_intensity: number
   coverage_tier: 'thin' | 'moderate' | 'rich' | null
+  generation: string | null
+  qualification: 'timing_window' | 'context_only'
+  resolution_disclosure: ResolutionDisclosure | null
 }
 
 export interface GocharaNarrativeBlock {
   moon_primary: GocharaNarrativeMoonPrimary
   active_windows: GocharaNarrativeWindow[]
+  context_windows: GocharaNarrativeWindow[]
+  resolution_disclosure: {
+    timing_rows_in_page: number
+    context_only_rows_in_page: number
+    unavailable_rows_in_page: number
+    note: string
+  }
   field_gochara_alignment: 'aligned' | 'divergent' | 'insufficient_data'
   narrative_tier: 'rich' | 'moderate' | 'thin'
 }
@@ -1485,6 +1501,11 @@ async function fetchGocharaForecastWindows(
     .filter((w) => typeof w['event_class'] === 'string')
     .map((w) => ({
       event_class: String(w['event_class']),
+      generation: typeof w['generation'] === 'string' ? w['generation'] : null,
+      resolution_disclosure: (w['resolution_disclosure'] as ResolutionDisclosure | null | undefined) ?? null,
+      qualification: w['generation'] !== '3.0'
+        && (w['resolution_disclosure'] as ResolutionDisclosure | undefined)?.is_timing_window === true
+        ? 'timing_window' as const : 'context_only' as const,
       window_start: typeof w['window_start'] === 'string' ? String(w['window_start']) : asOfDate,
       window_end: typeof w['window_end'] === 'string' ? String(w['window_end']) : asOfDate,
       peak_date: typeof w['peak_date'] === 'string' ? String(w['peak_date']) : asOfDate,
@@ -1521,7 +1542,9 @@ async function buildGocharaNarrativeBlock(
   }
 
   // Active gochara windows — fetched via callRegistryCapability (no new DB query).
-  const activeWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+  const forecastWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+  const activeWindows = forecastWindows.filter(w => w.qualification === 'timing_window')
+  const contextWindows = forecastWindows.filter(w => w.qualification === 'context_only')
 
   // field_gochara_alignment — requires both Moon transit and at least one window.
   let fieldGocharaAlignment: 'aligned' | 'divergent' | 'insufficient_data'
@@ -1551,6 +1574,13 @@ async function buildGocharaNarrativeBlock(
   return {
     moon_primary: moonPrimary,
     active_windows: activeWindows,
+    context_windows: contextWindows,
+    resolution_disclosure: {
+      timing_rows_in_page: activeWindows.length,
+      context_only_rows_in_page: contextWindows.length,
+      unavailable_rows_in_page: forecastWindows.filter(w => w.resolution_disclosure === null).length,
+      note: 'Only disclosed timing windows enter active_windows or alignment. 3.0-era rows and rows without a timing verdict remain context only; a missing disclosure is null.',
+    },
     field_gochara_alignment: fieldGocharaAlignment,
     narrative_tier: narrativeTier,
   }
@@ -1560,6 +1590,8 @@ export interface KalaNowResult {
   tool: 'kala_now_get'
   chart_id: string
   as_of_date: string
+  /** SS N-342: which ayanamsha each side of the natal-vs-transit joins is read in (see lib/kala_ayanamsha_frame.ts). */
+  ayanamsha_frame: KalaAyanamshaFrame
   reading: ArgumentReading
   reading_prose: string
   question_frame: QuestionFrame | null
@@ -1599,6 +1631,8 @@ export interface KalaNowResult {
   drill_pointers: DrillPointerLike[]
   // SM-γ C4.1: unified NOW narrative (flag-guarded — absent when SM_GAMMA_C4_ENABLED is off).
   gochara_narrative?: GocharaNarrativeBlock
+  /** Optional exact-instant stage snapshot, never a legacy date/identity cutover. */
+  published_now?: PublishedNowDisclosure
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1636,13 +1670,14 @@ const SOURCE_CITATION =
 
 export async function computeKalaNow(
   chartId: string,
-  args: { ayanamsha_id?: string; as_of?: string; question_frame?: QuestionFrame | null },
+  args: { ayanamsha_id?: string; as_of?: string; at?: string; question_frame?: QuestionFrame | null },
   principal: Principal,
 ): Promise<KalaNowResult> {
+  if (args.at !== undefined && !validPublishedNowInstant(args.at)) throw new Error('at requires a valid ISO instant with timezone')
   const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
-  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([
+  const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow, publishedNowResp] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       { chart_id: chartId, ayanamsha_id: ayanamshaId, as_of: asOfDate, top_k: 20 },
@@ -1679,6 +1714,11 @@ export async function computeKalaNow(
     fetchVedhaGocharaNow(chartId, asOfDate, principal),
     // item 13 (W3): current Tithi-Praveśa (lunar-return annual chart) year.
     fetchTithiPraveshaNow(chartId, asOfDate, principal),
+    // Explicit optional input supplies the existing now_read contract exactly.
+    // as_of keeps its old date semantics; no implicit midnight or new default.
+    args.at === undefined ? Promise.resolve(null) : callRegistryCapability(
+      'marsys://tool/L3/now_read', { chart_id: chartId, at: args.at }, principal,
+    ),
   ])
 
   const windowsOk = windowsResp.ok
@@ -2111,11 +2151,14 @@ export async function computeKalaNow(
     tool: 'kala_now_get' as const,
     chart_id: chartId,
     as_of_date: asOfDate,
+    ayanamsha_frame: buildKalaAyanamshaFrame(ayanamshaId, KALA_NOW_LAHIRI_ONLY_SECTIONS),
     ...envelope,
     density_contract: densityContract,
     reading_prose: composed.full_text,
     windows: windowFamilies,
     darshana,
+    ...(args.at !== undefined && publishedNowResp !== null
+      ? { published_now: publishedNowDisclosure(chartId, args.at, publishedNowResp) } : {}),
     disha_shula: dishaShula,
     gulika_kalam_now: gulikaKalamNow,
     chandrashtama,
@@ -2204,6 +2247,8 @@ const InputSchema = z.object({
     .optional()
     .describe('Point-in-time date YYYY-MM-DD to read as "now" (default: today).'),
   question_frame: QuestionFrameSchema,
+  at: z.string().refine(validPublishedNowInstant, 'Requires a valid ISO instant with timezone').optional()
+    .describe('Optional exact instant for a separate published NOW stage snapshot. No default; as_of retains its legacy date semantics.'),
 })
 
 const TOOL_NAME = 'kala_now_get'
@@ -2270,7 +2315,7 @@ Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state n
 — kala_windows_get remains live (not retired).`
 
 export function registerKalaNowGetTool(server: McpServer, principal: Principal): void {
-  server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
+  server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, kalaViewAlias(principal, 'now', async (params) => {
     const input = InputSchema.parse(params)
     if (!input.chart_id) return errOut(TOOL_NAME, 'chart_id is required')
     // F-38 (PARIŚEṢA-V4): entitlement/existence gate BEFORE any computation or data fetch —
@@ -2287,12 +2332,12 @@ export function registerKalaNowGetTool(server: McpServer, principal: Principal):
     try {
       const result = await computeKalaNow(
         input.chart_id,
-        { ayanamsha_id: input.ayanamsha_id, as_of: input.as_of, question_frame: input.question_frame ?? null },
+        { ayanamsha_id: input.ayanamsha_id, as_of: input.as_of, at: input.at, question_frame: input.question_frame ?? null },
         principal,
       )
       return dualOutput(result, TOOL_NAME)
     } catch (err) {
       return errOut(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id: input.chart_id })
     }
-  })
+  }))
 }

@@ -26,7 +26,7 @@ from __future__ import annotations
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
 
 KY_ROOT = pathlib.Path(os.environ.get("KY_ROOT", "/Users/Dev/kalayantra"))
-GIT = KY_ROOT / "wt" / "campaign"            # used ONLY as a handle on the shared object store (fetch / show / merge-base / worktree)
+GIT = pathlib.Path(os.environ.get("KY_SOURCE_REPO", "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"))   # used ONLY as a handle on the shared object store (fetch / show / merge-base / worktree); the campaign checkout unless KY_SOURCE_REPO selects another
 RUN = KY_ROOT / "run"; OPS = RUN / "ops"; EXEC = KY_ROOT / "exec"
 REQ, REC, DONE, ACC, INFLIGHT, TMP = OPS / "requests", OPS / "receipts", OPS / "done", OPS / "acceptance", OPS / "inflight", OPS / "tmp"
 FENCE = OPS / "PRODUCTION_PENDING.json"
@@ -122,7 +122,7 @@ def fence_quiescent() -> bool:
     return (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
             and proof.get("operation_id") == operation_id and proof.get("request_sha256") == request_sha256
             and proof.get("result") == "ACCEPTED"
-            and proof.get("by") in ("v1", "v2") and bool(proof.get("ts")))
+            and proof.get("by") in ("v1", "v2", "v3", "v4") and bool(proof.get("ts")))
 
 def refresh_state() -> str:
     try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
@@ -229,6 +229,26 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
         body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
+    if req.get("kind") == "smalltest_dispatch" and status == "COMPLETED":
+        # A staging UUID/exit zero is never launch evidence. Only the reviewed
+        # wrapper's machine record binds the exact run and remote execution.
+        records = []
+        for line in out.splitlines():
+            try:
+                value = json.loads(line)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(value, dict) and value.get("schema") == "ky.smalltest_launch/1":
+                records.append(value)
+        launch = records[0] if len(records) == 1 else {}
+        if (rc == 0 and launch.get("status") == "LAUNCHED" and launch.get("chart_id") == CANONICAL_CHART
+                and launch.get("asset_id") == "ka_gochara_v5"
+                and re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", str(launch.get("run_id", "")))
+                and re.fullmatch(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*", str(launch.get("execution_name", "")))
+                and re.fullmatch(r"[0-9a-f]{64}", str(launch.get("plan_manifest_digest", "")))):
+            r["launch"] = launch
+        else:
+            r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
     if extra: r.update(extra)
     with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
@@ -244,6 +264,8 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     if "TO_BE_SET" in op.get("script", "") or "TO_BE_SET" in str(op.get("needs", "")): return "operation script not yet reviewed/landed"
     if req["requested_by"] not in op.get("requesters", ["adhikarin"]): return f"requested_by {req['requested_by']} may not request {req['kind']}"
     if not caps.get(op["needs"], False): return f"capability_missing: {op['needs']}"
+    for capability in op.get("also_needs", []):
+        if not caps.get(capability, False): return f"capability_missing: {capability}"
     args = req.get("args") or {}
     bad = [k for k in args if k not in op.get("allowed_args", [])]
     if bad: return f"disallowed args {bad}"
@@ -256,7 +278,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         try:
             a = json.loads(pathlib.Path(acc).read_text())
         except Exception: return "pre-acceptance receipt unreadable"
-        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2"):
+        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
             return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
         rc = str(req.get("reviewed_commit", ""))
         if not SHA.match(rc): return "reviewed_commit required for a production operation"

@@ -1,0 +1,3318 @@
+{
+  "schema": "kalayantra.triage_delta/1",
+  "plan": "KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 5 (triage reconciliation: dependencies, dispositions, readiness, close membership, earned completions)",
+  "inputs": {
+    "base_model_canonical_sha256": "fba94b41cc26c257c1cadd742e08812fa99b116675a82adb7d401c67cd6a1017",
+    "path_migrated_model_canonical_sha256": "7363c07fbf4c3a4e0d666a70e1067dde91d2dccae21bbf87bdf79d01822e2e57",
+    "declarations_canonical_sha256": "0890944f7b7bf47f3ef1a69d1919b95f606fbd8cf72911c6ca747ed56c3662a9",
+    "staged_actions_canonical_sha256": "7627ab0d76f917a90f4a2d959bb8e4aa2207ed9292f6e7fa228ac401a5047668",
+    "events_prefix": {
+      "default_path": "/Users/Dev/kalayantra/run/EVENTS.jsonl",
+      "bytes": 5063668,
+      "lines": 12192,
+      "sha256": "0bc219bc10403e1b8bf0592149d60e1c3932e2626cb4f30f019c5950bc2e41c1"
+    },
+    "clock": "2026-10-11T13:58:24+00:00",
+    "detector_results_canonical_sha256": "d323a0474ef0ba6ae777786d00ef4fd143ddafbaca6987a3def63a2d12191541"
+  },
+  "counts": {
+    "items_before": 148,
+    "items_after": 151,
+    "classes": {
+      "a": 126,
+      "a_close": 5,
+      "b": 8,
+      "c": 2,
+      "done_outside": 6,
+      "retire_decision": 2,
+      "retired": 2
+    },
+    "status_before": {
+      "blocked": 1,
+      "done": 46,
+      "parked": 7,
+      "ready": 4,
+      "review": 14,
+      "running": 1,
+      "waiting": 75
+    },
+    "status_after": {
+      "blocked": 1,
+      "done": 46,
+      "parked": 7,
+      "ready": 6,
+      "review": 14,
+      "unknown": 1,
+      "waiting": 76
+    }
+  },
+  "items_added": [
+    {
+      "id": "D-RETIRE-B-K-INBOX",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Retirement of B-K-INBOX by owner decision (relaunch plan v2.2 §0 step 4)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+          "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+        ],
+        "notes": "Owner-authorised outcome: refused — B-K-INBOX is retired, not completed. v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6). The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+      },
+      "done_by": "decision",
+      "decision": "D-RETIRE-B-K-INBOX",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "B-K-INBOX"
+      }
+    },
+    {
+      "id": "D-RETIRE-B-CLAIM-RECOVERY",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Retirement of B-CLAIM-RECOVERY by owner decision (relaunch plan v2.2 §0 step 4)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 4, §3 (cut list), §6 (claims, locks, renewals; terminal release)",
+          "owner decisions 2026-10-11 (WORKTREE_DISPOSITIONS_v2_1.md §6 item 4; /Users/Dev/kalayantra/run/HANDOFF_PLANNER_20261011T141551Z.md)"
+        ],
+        "notes": "Owner-authorised outcome: refused — B-CLAIM-RECOVERY is retired, not completed. v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet. The decision event is STAGED in 00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json and is published only by the B-2 installation/model-migration action; never by a test, a job or the planner."
+      },
+      "done_by": "decision",
+      "decision": "D-RETIRE-B-CLAIM-RECOVERY",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "B-CLAIM-RECOVERY"
+      }
+    },
+    {
+      "id": "KV3-SCHEMA-1",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "title": "Schema prerequisite for K-CERT: the stored tier column that bg_gochara_citation_resolution's density contract names, added additively under the Suvarṇa asset custodian's recorded contract (KYD-150)",
+      "owner": "K",
+      "depends_on": [
+        "B-7",
+        "K0-SV"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/kv3-schema-1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0 step 3, §8 (schema-prerequisite packets: admitted existing schema + intended additive contract)",
+          "/Users/Dev/kalayantra/run/DECISIONS.jsonl KYD-150",
+          "CLAUDE.md §N.6 Serving Density Principle; §N.4 surgical migrations, verified",
+          "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json (admitted existing schema of bg_gochara_citation_resolution)"
+        ],
+        "owns": [
+          "platform/migrations/<allocated>_gochara_citation_resolution_tier.sql (additive; the number is allocated at job start, never written in the packet)",
+          "platform/python-sidecar/tests/l3/kala_db/certification/test_citation_resolution_tier_schema.py"
+        ],
+        "tests": [
+          "on the admitted schema the column is absent (the test fails on base) and present after the migration, with every existing column and row retained",
+          "the migration is idempotent and is verified applied after deploy (CLAUDE.md §N.4)",
+          "no value is synthesised: rows without a recorded tier stay NULL with the custodian's stated reason"
+        ],
+        "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
+        "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
+        "notes": "BLOCKED CONTRACT INPUT. The column's name, value vocabulary, backfill rule and density-contract mapping are the Suvarṇa asset custodian's to state (bg_* tables are outside the Kāla partition, CAMPAIGN_COORDINATION §3a); none is defined here (CLAUDE.md B.10, §N.7 rule 6). The conductor requests the contract through the coordination §6 log, as KYD-150 directs. Until it is recorded this item is blocked and K-CERT waits. If the custodian adds the column in its own estate, this item is closed by a recorded decision naming that change, never silently."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "triage": {
+        "class": "a"
+      }
+    }
+  ],
+  "decisions_added": [
+    {
+      "id": "D-RETIRE-B-K-INBOX",
+      "title": "Retire B-K-INBOX (worker-prompt inbox, acknowledgement and renewal repair for the standing K lanes)",
+      "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+      "default": "refused (staged) — v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6)."
+    },
+    {
+      "id": "D-RETIRE-B-CLAIM-RECOVERY",
+      "title": "Retire B-CLAIM-RECOVERY (tracker repair of checkpoint identity across released and expired claims)",
+      "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+      "default": "refused (staged) — v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet."
+    }
+  ],
+  "dependencies": {
+    "J-8a": {
+      "depends_on": {
+        "added": [
+          "J-0",
+          "V-J6"
+        ],
+        "removed": [
+          "J-7",
+          "J-7a",
+          "J-7b"
+        ]
+      }
+    },
+    "B-CLAIM-RECOVERY": {
+      "depends_on": {
+        "added": [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ],
+        "removed": []
+      },
+      "requires_outcome": {
+        "added": {
+          "D-RETIRE-B-CLAIM-RECOVERY": "approved"
+        },
+        "removed": {}
+      }
+    },
+    "B-K-INBOX": {
+      "depends_on": {
+        "added": [
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "removed": []
+      },
+      "requires_outcome": {
+        "added": {
+          "D-RETIRE-B-K-INBOX": "approved"
+        },
+        "removed": {}
+      }
+    },
+    "K-CERT": {
+      "depends_on": {
+        "added": [
+          "KV3-SCHEMA-1"
+        ],
+        "removed": []
+      }
+    }
+  },
+  "dispositions": {
+    "B-0": {
+      "class": "a"
+    },
+    "B-4": {
+      "class": "a"
+    },
+    "B-1a": {
+      "class": "a"
+    },
+    "B-1b": {
+      "class": "a"
+    },
+    "B-1c": {
+      "class": "a"
+    },
+    "B-5": {
+      "class": "a"
+    },
+    "B-6": {
+      "class": "a"
+    },
+    "B-1p": {
+      "class": "a"
+    },
+    "B-1v": {
+      "class": "a"
+    },
+    "B-1": {
+      "class": "a"
+    },
+    "B-2": {
+      "class": "a"
+    },
+    "B-3b": {
+      "class": "a"
+    },
+    "B-3": {
+      "class": "a"
+    },
+    "B-7": {
+      "class": "a"
+    },
+    "B-8": {
+      "class": "done_outside"
+    },
+    "D-R5": {
+      "class": "done_outside"
+    },
+    "D-R6": {
+      "class": "a"
+    },
+    "D-R8": {
+      "class": "a"
+    },
+    "D-R9": {
+      "class": "done_outside"
+    },
+    "D-R11": {
+      "class": "a"
+    },
+    "D-KR": {
+      "class": "a"
+    },
+    "K0a-0": {
+      "class": "a"
+    },
+    "K0a-1a": {
+      "class": "a"
+    },
+    "K0a-1b": {
+      "class": "a"
+    },
+    "K0a-1c": {
+      "class": "a"
+    },
+    "K0a-1": {
+      "class": "a"
+    },
+    "K0a-2": {
+      "class": "a"
+    },
+    "K0a-4": {
+      "class": "a"
+    },
+    "V-K0a": {
+      "class": "a"
+    },
+    "K0-SV": {
+      "class": "a"
+    },
+    "K1-1a": {
+      "class": "a"
+    },
+    "K1-1b": {
+      "class": "a"
+    },
+    "K2-1a": {
+      "class": "a"
+    },
+    "K2-1b": {
+      "class": "a"
+    },
+    "K2-2": {
+      "class": "a"
+    },
+    "K1-2": {
+      "class": "a"
+    },
+    "V-K12": {
+      "class": "a"
+    },
+    "K7-1b": {
+      "class": "a"
+    },
+    "K7-2": {
+      "class": "a"
+    },
+    "K7-3": {
+      "class": "a"
+    },
+    "K7-4": {
+      "class": "a"
+    },
+    "V-K7": {
+      "class": "a"
+    },
+    "KA-2": {
+      "class": "a"
+    },
+    "KA-3a": {
+      "class": "a"
+    },
+    "KA-3b": {
+      "class": "a"
+    },
+    "KA-4": {
+      "class": "a"
+    },
+    "KA-4b": {
+      "class": "a"
+    },
+    "V-KA": {
+      "class": "a"
+    },
+    "K3-1": {
+      "class": "a"
+    },
+    "V-K3": {
+      "class": "a"
+    },
+    "K3-2": {
+      "class": "a"
+    },
+    "V-K3b": {
+      "class": "a"
+    },
+    "K4-1": {
+      "class": "a"
+    },
+    "K4-2b": {
+      "class": "a"
+    },
+    "K4-3": {
+      "class": "a"
+    },
+    "V-K4": {
+      "class": "a"
+    },
+    "K5-G1a": {
+      "class": "a"
+    },
+    "K5-G1b": {
+      "class": "a"
+    },
+    "VC-1": {
+      "class": "a"
+    },
+    "VC-2": {
+      "class": "a"
+    },
+    "D-VC": {
+      "class": "a"
+    },
+    "V-VC": {
+      "class": "a"
+    },
+    "K5-2": {
+      "class": "a"
+    },
+    "D-COMPACT": {
+      "class": "a"
+    },
+    "K5-2b": {
+      "class": "a"
+    },
+    "D-G2": {
+      "class": "a"
+    },
+    "K5-3": {
+      "class": "a"
+    },
+    "V-K5": {
+      "class": "a"
+    },
+    "K6-4": {
+      "class": "a"
+    },
+    "K6-5a": {
+      "class": "a"
+    },
+    "K6-5": {
+      "class": "a"
+    },
+    "V-K6": {
+      "class": "a"
+    },
+    "K8-R26": {
+      "class": "a"
+    },
+    "K8-REG": {
+      "class": "a"
+    },
+    "L0-M": {
+      "class": "a"
+    },
+    "L0-K": {
+      "class": "b",
+      "reason": "KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path",
+      "re_entry": "with D-T2"
+    },
+    "J-0": {
+      "class": "a"
+    },
+    "J-0m": {
+      "class": "a"
+    },
+    "J-1a": {
+      "class": "a"
+    },
+    "D-TEARDOWN": {
+      "class": "a"
+    },
+    "J-2a": {
+      "class": "a"
+    },
+    "J-2b": {
+      "class": "a"
+    },
+    "J-2c": {
+      "class": "a"
+    },
+    "J-2d": {
+      "class": "a"
+    },
+    "J-3a": {
+      "class": "a"
+    },
+    "J-3b": {
+      "class": "a"
+    },
+    "J-3c": {
+      "class": "a"
+    },
+    "J-3d": {
+      "class": "a"
+    },
+    "D-G9": {
+      "class": "a"
+    },
+    "J-4a": {
+      "class": "a"
+    },
+    "J-4p": {
+      "class": "a"
+    },
+    "J-4b": {
+      "class": "a"
+    },
+    "J-4c": {
+      "class": "a"
+    },
+    "J-4d": {
+      "class": "a"
+    },
+    "D-CLOUD": {
+      "class": "a"
+    },
+    "J-4e": {
+      "class": "a"
+    },
+    "J-4f": {
+      "class": "a"
+    },
+    "J-5q": {
+      "class": "a"
+    },
+    "J-5s": {
+      "class": "a"
+    },
+    "J-6a": {
+      "class": "a"
+    },
+    "J-6m": {
+      "class": "a"
+    },
+    "J-6r": {
+      "class": "a"
+    },
+    "D-FLIP": {
+      "class": "a"
+    },
+    "J-6": {
+      "class": "a"
+    },
+    "J-6l": {
+      "class": "a"
+    },
+    "V-J6": {
+      "class": "a"
+    },
+    "J-7a": {
+      "class": "b",
+      "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
+      "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+    },
+    "D-T2": {
+      "class": "b",
+      "reason": "decides only J-7's admission",
+      "re_entry": "with J-7"
+    },
+    "J-7": {
+      "class": "b",
+      "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
+      "re_entry": "after the flip (J-6l) if D-T2 admits it"
+    },
+    "J-7b": {
+      "class": "b",
+      "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
+      "re_entry": "before L5 reads '5.0'"
+    },
+    "J-8a": {
+      "class": "c",
+      "reason": "records the disposition of every remaining Pravāha item under the accepted J0_DISPOSITION (J-0c → J-0); owner decision 2026-10-11",
+      "basis": "J0_DISPOSITION once J-0c is independently accepted"
+    },
+    "J-8": {
+      "class": "c",
+      "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
+      "basis": "J0_DISPOSITION once J-0c is independently accepted"
+    },
+    "K9-1": {
+      "class": "a"
+    },
+    "K9-4a": {
+      "class": "a"
+    },
+    "K9-4b": {
+      "class": "a"
+    },
+    "K9-5": {
+      "class": "a"
+    },
+    "K9-6": {
+      "class": "a"
+    },
+    "KR-1": {
+      "class": "a"
+    },
+    "KR-2": {
+      "class": "a"
+    },
+    "V-K9": {
+      "class": "a"
+    },
+    "JOIN-ALL": {
+      "class": "a_close"
+    },
+    "C-1": {
+      "class": "a_close"
+    },
+    "C-2": {
+      "class": "a_close"
+    },
+    "C-3": {
+      "class": "a_close"
+    },
+    "C-4": {
+      "class": "a_close"
+    },
+    "B-6r": {
+      "class": "done_outside"
+    },
+    "B-CLAIM-RECOVERY": {
+      "class": "retired",
+      "decision": "D-RETIRE-B-CLAIM-RECOVERY"
+    },
+    "B-K-INBOX": {
+      "class": "retired",
+      "decision": "D-RETIRE-B-K-INBOX"
+    },
+    "B-DEPLOY-DIAG": {
+      "class": "done_outside"
+    },
+    "J-0a": {
+      "class": "a"
+    },
+    "J-0b": {
+      "class": "a"
+    },
+    "J-0c": {
+      "class": "a"
+    },
+    "J-0d": {
+      "class": "a"
+    },
+    "L0-K-RUNNER": {
+      "class": "done_outside"
+    },
+    "B-DB-BASELINE": {
+      "class": "b",
+      "reason": "its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11",
+      "re_entry": "if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed"
+    },
+    "D-GOCHARA-TIMEOUT": {
+      "class": "b",
+      "reason": "rules one legacy materializer timeout; no retained item consumes it",
+      "re_entry": "if J-4e/J-4f show that timeout binding"
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "class": "b",
+      "reason": "applies D-GOCHARA-TIMEOUT; no retained item consumes it",
+      "re_entry": "with D-GOCHARA-TIMEOUT"
+    },
+    "K0a-3": {
+      "class": "a"
+    },
+    "K7-1a": {
+      "class": "a"
+    },
+    "KA-1e": {
+      "class": "a"
+    },
+    "KA-1w": {
+      "class": "a"
+    },
+    "K4-2aw": {
+      "class": "a"
+    },
+    "K4-2a": {
+      "class": "a"
+    },
+    "K6-123": {
+      "class": "a"
+    },
+    "K9-23": {
+      "class": "a"
+    },
+    "K-CERT": {
+      "class": "a"
+    },
+    "K-CERT-2": {
+      "class": "a"
+    },
+    "K-AVADHI-C": {
+      "class": "a"
+    },
+    "D-RETIRE-B-K-INBOX": {
+      "class": "retire_decision",
+      "retires": "B-K-INBOX"
+    },
+    "D-RETIRE-B-CLAIM-RECOVERY": {
+      "class": "retire_decision",
+      "retires": "B-CLAIM-RECOVERY"
+    },
+    "KV3-SCHEMA-1": {
+      "class": "a"
+    }
+  },
+  "declarations": {
+    "B-0": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-4": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [
+        "lease_taken_and_verified",
+        "session_open_validated",
+        "ccd_entry_appended"
+      ],
+      "step_evidence_classes": [
+        "artifact_section"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-1a": {
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-1b": {
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "claims",
+        "verdicts_and_guarded_done",
+        "structured_decisions",
+        "messaging_hold_preflight",
+        "audit",
+        "tests",
+        "control_plane_md_ready_for_acceptance"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-1c": {
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-5": {
+      "completion_kind": "artifact",
+      "producer": "N",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [
+        "writers_quiesced_recorded",
+        "model_streams_extended_both_copies",
+        "ruling_written",
+        "streams_messaged",
+        "branch_pushed_for_merge"
+      ],
+      "step_evidence_classes": [
+        "artifact_section"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-6": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-1p": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [
+        "n_b5_merged_in",
+        "current_with_main",
+        "precheck_green",
+        "pr_open_recorded"
+      ],
+      "step_evidence_classes": [
+        "artifact_section"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-1v": {
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-1": {
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "verdict_head_equals_pr_head",
+        "ci_green",
+        "queued",
+        "merged"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-2": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-3b": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [
+        "seed_current",
+        "lane_databases_ready",
+        "precheck_aligned",
+        "alignment_recorded"
+      ],
+      "step_evidence_classes": [
+        "artifact_section"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-3": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-7": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-8": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K0a-0": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "canary",
+        "ci_job",
+        "guard",
+        "precheck_and_testing_note"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K0a-1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K0a-1b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K0a-1c": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K0a-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "hazard_lookup_fix",
+        "weight_keys_migration",
+        "typed_lords",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K0a-4": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "assertion_envelope",
+        "obstruction_columns",
+        "darshana_read_model_row",
+        "registry_capability_serves",
+        "mutations_fail",
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K0a": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K0-SV": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "template_checklist",
+        "dasha_contract_drafted",
+        "suvarna_acknowledged"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K1-1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "period_context_boundaries",
+        "hierarchy_sandhi",
+        "pinned_read_contract",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K1-1b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "named_methods_applicability",
+        "sigma_linearisation",
+        "scenarios",
+        "dasha_kala_facade",
+        "perturbation_oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K2-1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "graph_nodes_edges",
+        "frames_event_class_map",
+        "l2_attachment_loader",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K2-1b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "defeat_except_effective_state",
+        "two_routes",
+        "yojaka_reshape_migration",
+        "writer_digest_regenerated",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K2-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "relationship_resolver",
+        "frame_before_rule_oracle",
+        "resonance_corrections",
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K1-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "V-K12": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K7-1b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "mcp_aliases",
+        "bridge_regenerated",
+        "floor_resolution_test"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K7-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "story_stale_counts",
+        "now_context_only",
+        "golden_tests"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K7-3": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "density_contracts",
+        "attribution_fix",
+        "sentinel_on_fixture"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K7-4": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K7": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-3a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "overlays_module",
+        "vedha_intervals",
+        "coverage_and_qualification",
+        "writer_digest_regenerated",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "KA-3b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-4": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-4b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-KA": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K3-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "five_axes_schema",
+        "effective_state",
+        "release_semantics",
+        "trigger_producers",
+        "fixtures_per_axis",
+        "no_forecaster_read_lint"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K3": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K3-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K3b": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K4-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "segments_and_schedule",
+        "jury_null_experiment",
+        "verdict_types",
+        "tests"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K4-2b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "deletions",
+        "shim_for_live_readers",
+        "three_readers_moved",
+        "tests"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K4-3": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K4": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K5-G1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "suppression_inputs",
+        "as_of_and_axis",
+        "rarity_ayanamsha",
+        "full_breakpoints",
+        "oracles"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K5-G1b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "insight_detectors",
+        "forecaster_null_on_measure",
+        "snapshot_to_manifest",
+        "baseline_frozen",
+        "oracles_K1_K6",
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "VC-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "VC-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "V-VC": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K5-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K5-2b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K5-3": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "V-K5": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K6-4": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K6-5a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K6-5": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "identity_split",
+        "registrar_interface",
+        "reference_protection_switched",
+        "oracles",
+        "certification_mapping"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-K6": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K8-R26": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K8-REG": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "L0-M": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "rows_extracted_with_locators",
+        "scope_column",
+        "suvarna_reseal_coordinated",
+        "tests"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "L0-K": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [
+        "chunks_ingested",
+        "count_recorded",
+        "search_returns_kp"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-0m": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-2a": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "backup_restore_verified",
+        "dry_run",
+        "pre_acceptance",
+        "dispatched"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-2b": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "readback_accepted",
+        "teardown_dry_run",
+        "teardown",
+        "absence_proof_accepted"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-2c": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "dry_run",
+        "pre_acceptance",
+        "dispatched"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-2d": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "readback_accepted",
+        "teardown_dry_run",
+        "teardown",
+        "absence_proof_accepted"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-3a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-3b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-3c": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "backup_restore_verified",
+        "dry_run",
+        "pre_acceptance",
+        "dispatched"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-3d": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "readback_accepted",
+        "golden_capture",
+        "report_written",
+        "teardown",
+        "absence_proof_accepted"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-4a": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-4p": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-4b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-4c": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-4d": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-4e": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "backup_restore_verified",
+        "dry_run",
+        "pre_acceptance",
+        "dispatched"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-4f": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "completed_observed",
+        "readback_accepted"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-5q": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-5s": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "pre_acceptance",
+        "dispatched",
+        "sealed_observed",
+        "manifest_and_job_bound"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-6a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-6m": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-6r": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-6": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "backup_restore_verified",
+        "pre_acceptance",
+        "flip_dispatched",
+        "authority_observed"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-6l": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "live_response_captured",
+        "soak_recorded"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "V-J6": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-7a": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-7": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-7b": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-8a": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-8": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K9-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K9-4a": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "lease_held",
+        "backup_restore_verified",
+        "dry_run",
+        "pre_acceptance",
+        "dispatched"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "K9-4b": {
+      "completion_kind": "operation",
+      "producer": "N",
+      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "steps": [
+        "per_writer_readback_accepted",
+        "verification_passed",
+        "published",
+        "publication_readback_accepted"
+      ],
+      "step_evidence_classes": [
+        "executor_receipt"
+      ],
+      "step_detectors_named": 0
+    },
+    "K9-5": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K9-6": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "views_live",
+        "now_sentinel_live",
+        "arrival_line_wired"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "KR-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KR-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "V-K9": {
+      "completion_kind": "packet",
+      "producer": "V",
+      "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "JOIN-ALL": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "C-1": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "C-2": {
+      "completion_kind": "code",
+      "producer": "S",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "C-3": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "finalizer_independent_review_artifact_digest",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "C-4": {
+      "completion_kind": "artifact",
+      "producer": "V",
+      "reviewer_rule": "finalizer_independent_review_artifact_digest",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-6r": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "B-CLAIM-RECOVERY": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "reproduce",
+        "repair",
+        "negative_cases",
+        "package_tests"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-K-INBOX": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "read_order",
+        "peer_ack_refusal",
+        "rendered_review",
+        "post_merge_uptake"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-DEPLOY-DIAG": {
+      "completion_kind": "artifact",
+      "producer": "S",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [
+        "capture",
+        "owner_routing",
+        "deployment_readbacks",
+        "independent_verdict"
+      ],
+      "step_evidence_classes": [
+        "artifact_section"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-0a": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-0b": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-0c": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "J-0d": {
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "L0-K-RUNNER": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "imports_and_dry_run",
+        "served_table_path",
+        "negative_cases",
+        "independent_review"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "B-DB-BASELINE": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "reproduce",
+        "baseline_source_repair",
+        "negative_readiness",
+        "independent_lane_receipt"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [
+        "literal_evidence_bound",
+        "policy_approved",
+        "additive_migration_tested",
+        "independent_review",
+        "production_readback"
+      ],
+      "step_evidence_classes": [
+        "pr_head_evidence"
+      ],
+      "step_detectors_named": 0
+    },
+    "K0a-3": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K7-1a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-1e": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KA-1w": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K4-2aw": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K4-2a": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K6-123": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K9-23": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K-CERT": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K-CERT-2": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "K-AVADHI-C": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    },
+    "KV3-SCHEMA-1": {
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+      "steps": [],
+      "step_evidence_classes": [],
+      "step_detectors_named": 0
+    }
+  },
+  "other_item_changes": {
+    "JOIN-ALL": {
+      "brief": [
+        {
+          "spec": [
+            "CHARTER §0, §14",
+            "ASTRA charter review KY-09"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/JOIN_ALL.json"
+          ],
+          "tests": [
+            "ky audit --since kickoff exits 0",
+            "the gap list equals the tracker's mandatory-and-not_applicable set"
+          ],
+          "compat": "documentation/declaration only — no runtime effect"
+        },
+        {
+          "spec": [
+            "CHARTER §0, §14",
+            "ASTRA charter review KY-09"
+          ],
+          "owns": [
+            "/Users/Dev/kalayantra/run/JOIN_ALL.json"
+          ],
+          "tests": [
+            "ky audit --since kickoff exits 0",
+            "the gap list equals the tracker's mandatory-and-not_applicable set",
+            "the deferred list equals the model's triage class b set, each with its re-entry condition"
+          ],
+          "compat": "documentation/declaration only — no runtime effect"
+        }
+      ],
+      "title": [
+        "Mandatory-results join: every item of the campaign is terminal (done, or not_applicable with its reason); the mandatory items that ended not_applicable are listed as the campaign's gaps",
+        "Retained-results join (relaunch plan v2.2 §0): every retained item is terminal (done, or not_applicable with its reason); the mandatory items that ended not_applicable are listed as the campaign's gaps; the deferred items are listed with their re-entry conditions and are never counted as closed"
+      ]
+    },
+    "C-1": {
+      "brief": [
+        {
+          "spec": [
+            "CHARTER §0, §14"
+          ],
+          "owns": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md"
+          ],
+          "tests": [
+            "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly"
+          ],
+          "compat": "documentation/declaration only — no runtime effect"
+        },
+        {
+          "spec": [
+            "CHARTER §0, §14"
+          ],
+          "owns": [
+            "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md"
+          ],
+          "tests": [
+            "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly",
+            "the deferred (class b) list with re-entry conditions is attached; a deferred item is never reported closed"
+          ],
+          "compat": "documentation/declaration only — no runtime effect"
+        }
+      ]
+    }
+  },
+  "topology": {
+    "model": {
+      "control_plane": {
+        "declarations": [
+          null,
+          {
+            "plan": "KALAYANTRA_RELAUNCH_PLAN_v2_2.md §6 (item declaration); written by fleet/kyreconcile.py, never by hand",
+            "applies_to": "every executable item (one that is not completed by a decision or a join)",
+            "completion_kind": {
+              "code": "a merged pull request: independent verdict at the exact reviewed head, then the squash merge commit",
+              "artifact": "a registered artifact: path + SHA-256, independently accepted at that digest",
+              "operation": "an executor operation: request and operation identity, completed receipt, independent readback",
+              "packet": "a packet-exit review: verdict bound to the reviewed packet and its review digest"
+            },
+            "producer": "the stream that produces the item's evidence (the item's owner); only that stream claims the item",
+            "reviewer_rule": {
+              "v_exact_head_then_deploy_containment": "V verdict at the exact PR head by a slot independent of the author; complete once a successful deployment of main contains the squash merge commit",
+              "v_exact_head_then_post_deploy_at_merge_commit": "V verdict at the exact PR head, then a second V verdict (post_deploy) at the squash merge commit with the migration or operation readback",
+              "v_artifact_digest_reviewer_not_author": "V verdict bound to the artifact's SHA-256; the reviewer slot differs from the recorded author identity; a V claim only when the item is V-owned",
+              "finalizer_independent_review_artifact_digest": "the finalizer's bounded independent reviewer accepts the receipt's exact digest (plan §12), outside ordinary dispatch",
+              "v_pre_acceptance_then_receipt_readback_digest": "independent V pre-acceptance of the request, then V acceptance of the completed receipt's digest after measured readback",
+              "v_packet_verdict_bound_to_external_review": "V packet verdict with no open blocking finding, bound to the review record's digest"
+            },
+            "step_evidence": "per required step: the evidence class the step must cite and its named detector. detector null = not yet named: the item's packet names it; a STEP action never records a step whose detector is null or has not passed (CLAUDE.md §N.8)",
+            "earned": "for an item already completed, completion_kind is the type recorded in its guarded completion event",
+            "triage": "class a = critical path (closure of acceptances i–iii); a_close = the close chain (acceptance iv); b = deferred with a re-entry condition, never counted as closed; c = dispositioned under J0_DISPOSITION; retired / retire_decision = retirement by decision (refusal staged, published only by B-2); done_outside = earned completion outside the closure, preserved"
+          }
+        ],
+        "triage": [
+          null,
+          {
+            "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0",
+            "roots": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_1.json",
+            "closure": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v2_1.json",
+            "declarations": "00_ARCHITECTURE/control/kalayantra/TRIAGE_DECLARATIONS_v2_2.json",
+            "staged_actions": "00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json (not published; B-2 publishes)",
+            "schema_receipt": "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json",
+            "generator": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyreconcile.py build"
+          }
+        ]
+      },
+      "coverage": {
+        "assets_and_legacy_code": [
+          {
+            "ka_gochara_v5": [
+              "J-0",
+              "J-5s",
+              "J-6",
+              "K8-KA"
+            ],
+            "ka_gochara": [
+              "J-7a",
+              "K8-REG"
+            ],
+            "ka_gochara_v3_century_materialize": [
+              "D-R9",
+              "K8-REG",
+              "K9-23"
+            ],
+            "ka_gochara_v4_41_candidate": [
+              "J-7a",
+              "K8-REG"
+            ],
+            "ka_gochara_sweep": [
+              "K8-REG"
+            ],
+            "ka_gochara_resonance": [
+              "K2-2"
+            ],
+            "ka_vedha_gochara": [
+              "KA-3a"
+            ],
+            "ka_moorti_nirnaya": [
+              "KA-3b"
+            ],
+            "ka_kota_chakra": [
+              "KA-3b"
+            ],
+            "ka_tithi_pravesha": [
+              "KA-3b"
+            ],
+            "ka_sudarshana_varsha": [
+              "KA-3b",
+              "J-7"
+            ],
+            "ka_graha_sancara": [
+              "KA-1w"
+            ],
+            "ka_dasha_kala": [
+              "K1-1b"
+            ],
+            "ka_avadhi": [
+              "K1-2"
+            ],
+            "ka_yojaka": [
+              "K2-1b"
+            ],
+            "ka_sangam": [
+              "K4-2aw",
+              "K4-2b",
+              "K4-3"
+            ],
+            "ka_vighnakara": [
+              "K3-1",
+              "K3-2"
+            ],
+            "ka_kshetra": [
+              "K0a-2",
+              "K5-G1a",
+              "K5-G1b"
+            ],
+            "ka_kalasutra": [
+              "K6-123"
+            ],
+            "ka_kala_darshana": [
+              "K6-123"
+            ],
+            "ka_jivana_parva": [
+              "K6-123"
+            ],
+            "ka_bhavishya_lekha": [
+              "K6-5"
+            ],
+            "ka_taranga": [
+              "K6-4"
+            ],
+            "ka_tulana": [
+              "K7-4"
+            ],
+            "ka_muhurta_seva": [
+              "KA-4"
+            ],
+            "legacy: gochara_grammar, gochara_intensity, kala_trigger, kala_permission, w2g, taranga_*, ka_temporal, transit_search": [
+              "K1-1a",
+              "K3-1",
+              "KA-1w",
+              "KR-1"
+            ],
+            "legacy: brahmagyan/kala": [
+              "KR-2"
+            ]
+          },
+          {
+            "ka_gochara_v5": [
+              "J-0",
+              "J-5s",
+              "J-6",
+              "KA-4b"
+            ],
+            "ka_gochara": [
+              "J-7a",
+              "K8-REG"
+            ],
+            "ka_gochara_v3_century_materialize": [
+              "D-R9",
+              "K8-REG",
+              "K9-23"
+            ],
+            "ka_gochara_v4_41_candidate": [
+              "J-7a",
+              "K8-REG"
+            ],
+            "ka_gochara_sweep": [
+              "K8-REG"
+            ],
+            "ka_gochara_resonance": [
+              "K2-2"
+            ],
+            "ka_vedha_gochara": [
+              "KA-3a"
+            ],
+            "ka_moorti_nirnaya": [
+              "KA-3b"
+            ],
+            "ka_kota_chakra": [
+              "KA-3b"
+            ],
+            "ka_tithi_pravesha": [
+              "KA-3b"
+            ],
+            "ka_sudarshana_varsha": [
+              "KA-3b",
+              "J-7"
+            ],
+            "ka_graha_sancara": [
+              "KA-1w"
+            ],
+            "ka_dasha_kala": [
+              "K1-1b"
+            ],
+            "ka_avadhi": [
+              "K1-2"
+            ],
+            "ka_yojaka": [
+              "K2-1b"
+            ],
+            "ka_sangam": [
+              "K4-2aw",
+              "K4-2b",
+              "K4-3"
+            ],
+            "ka_vighnakara": [
+              "K3-1",
+              "K3-2"
+            ],
+            "ka_kshetra": [
+              "K0a-2",
+              "K5-G1a",
+              "K5-G1b"
+            ],
+            "ka_kalasutra": [
+              "K6-123"
+            ],
+            "ka_kala_darshana": [
+              "K6-123"
+            ],
+            "ka_jivana_parva": [
+              "K6-123"
+            ],
+            "ka_bhavishya_lekha": [
+              "K6-5"
+            ],
+            "ka_taranga": [
+              "K6-4"
+            ],
+            "ka_tulana": [
+              "K7-4"
+            ],
+            "ka_muhurta_seva": [
+              "KA-4"
+            ],
+            "legacy: gochara_grammar, gochara_intensity, kala_trigger, kala_permission, w2g, taranga_*, ka_temporal, transit_search": [
+              "K1-1a",
+              "K3-1",
+              "KA-1w",
+              "KR-1"
+            ],
+            "legacy: brahmagyan/kala": [
+              "KR-2"
+            ]
+          }
+        ],
+        "definition_of_done": [
+          {
+            "line 1 — every mandatory K-packet item complete": [
+              "JOIN-ALL"
+            ],
+            "line 2 — Gochara 5.0 tested, measured, built, qualified, sealed, served, flipped, soaked, retired, Pravāha closed": [
+              "J-2d",
+              "J-3d",
+              "J-4f",
+              "J-5q",
+              "J-5s",
+              "J-6m",
+              "J-6a",
+              "J-6",
+              "J-6l",
+              "J-7a",
+              "J-8"
+            ],
+            "line 3 — layer rebuilt and served for the canonical chart": [
+              "K9-4a",
+              "K9-4b",
+              "K9-6"
+            ],
+            "line 4 — certification mapping per implemented asset; rehearsal census": [
+              "K8-R26",
+              "K8-K0a",
+              "K8-K12",
+              "K8-KA",
+              "K8-K3",
+              "K8-K4",
+              "K8-K5",
+              "K8-K6",
+              "K8-K7",
+              "K8-REG",
+              "K9-5"
+            ],
+            "line 5 — close report, SESSION_CLOSE, finalizer receipt, final verdict": [
+              "C-1",
+              "C-2",
+              "C-3",
+              "C-4"
+            ]
+          },
+          {
+            "line 1 — every mandatory K-packet item complete": [
+              "JOIN-ALL"
+            ],
+            "line 2 — Gochara 5.0 tested, measured, built, qualified, sealed, served, flipped, soaked, retired, Pravāha closed": [
+              "J-2d",
+              "J-3d",
+              "J-4f",
+              "J-5q",
+              "J-5s",
+              "J-6m",
+              "J-6a",
+              "J-6",
+              "J-6l",
+              "J-7a",
+              "J-8"
+            ],
+            "line 3 — layer rebuilt and served for the canonical chart": [
+              "K9-4a",
+              "K9-4b",
+              "K9-6"
+            ],
+            "line 4 — certification mapping per implemented asset; rehearsal census": [
+              "K8-R26",
+              "K0a-4",
+              "K2-2",
+              "K3-2",
+              "K4-3",
+              "K5-G1b",
+              "K6-5",
+              "K7-4",
+              "KA-4b",
+              "K8-REG",
+              "K9-5",
+              "K-CERT",
+              "K-CERT-2"
+            ],
+            "line 5 — close report, SESSION_CLOSE, finalizer receipt, final verdict": [
+              "C-1",
+              "C-2",
+              "C-3",
+              "C-4"
+            ]
+          }
+        ]
+      },
+      "decisions": {
+        "added": [
+          {
+            "id": "D-RETIRE-B-K-INBOX",
+            "title": "Retire B-K-INBOX (worker-prompt inbox, acknowledgement and renewal repair for the standing K lanes)",
+            "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+            "default": "refused (staged) — v3 has no standing lanes, inbox reads or claim-renewal model turns: jobs carry packets, the dispatcher renews claims (plan §3 cut list, §6)."
+          },
+          {
+            "id": "D-RETIRE-B-CLAIM-RECOVERY",
+            "title": "Retire B-CLAIM-RECOVERY (tracker repair of checkpoint identity across released and expired claims)",
+            "owner": "native — owner-authorised by the approved relaunch plan v2.2 §0 step 4",
+            "default": "refused (staged) — v3 persists job identity and checkpoints in run/jobs/<job_id>/state.json and releases claims on every terminal path (plan §6 terminal release, recovery); join derivation is carried by the B-1 tracker packet."
+          }
+        ],
+        "removed": []
+      },
+      "documents": {
+        "_note": [
+          "Relative paths resolve under /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign (branch campaign/kalayantra until B-1 merges; origin/main after B-2). Pravāha's tracked documents are read from /Users/Dev/madhav-l3/pravaha (branch campaign/pravaha); its previously unsaved ones from /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha.",
+          "Relative paths resolve under /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign (branch kalayantra/campaign, upstream origin/main; the checkout is created by the v3 B-2 installation). Pravāha's tracked documents are read from /Users/Dev/madhav-l3/pravaha (branch campaign/pravaha); its previously unsaved ones from /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/pravaha."
+        ]
+      },
+      "model_version": [
+        "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008",
+        "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011"
+      ]
+    },
+    "streams": {
+      "S": {
+        "branch_pattern": [
+          "^(campaign/kalayantra|kalayantra/(b-|ledger-|c-|j-0m|j-8$).*)$",
+          "^(kalayantra/campaign|campaign/kalayantra|kalayantra/(b-|ledger-|c-|j-0m|j-8$).*)$"
+        ]
+      },
+      "N": {
+        "branch_pattern": [
+          "^(kalayantra/n-.*|campaign/kalayantra)$",
+          "^(kalayantra/campaign|kalayantra/n-.*|campaign/kalayantra)$"
+        ]
+      },
+      "V": {
+        "worktrees": {
+          "added": [
+            "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-schema-1"
+          ],
+          "removed": []
+        }
+      },
+      "K": {
+        "worktrees": {
+          "added": [
+            "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-kv3-schema-1"
+          ],
+          "removed": []
+        }
+      }
+    }
+  },
+  "readiness": {
+    "J-8a": {
+      "status": [
+        "waiting",
+        "waiting"
+      ],
+      "deps_open": {
+        "added": [
+          "J-0",
+          "V-J6"
+        ],
+        "removed": [
+          "J-7",
+          "J-7a",
+          "J-7b"
+        ],
+        "count": [
+          3,
+          2
+        ]
+      },
+      "deps_open_strict": {
+        "added": [
+          "J-0",
+          "V-J6"
+        ],
+        "removed": [
+          "J-7",
+          "J-7a",
+          "J-7b"
+        ],
+        "count": [
+          3,
+          2
+        ]
+      }
+    },
+    "JOIN-ALL": {
+      "status": [
+        "waiting",
+        "waiting"
+      ],
+      "deps_open": {
+        "added": [
+          "D-RETIRE-B-CLAIM-RECOVERY",
+          "D-RETIRE-B-K-INBOX",
+          "K-AVADHI-C",
+          "K-CERT",
+          "KV3-SCHEMA-1"
+        ],
+        "removed": [
+          "B-DB-BASELINE",
+          "D-GOCHARA-TIMEOUT",
+          "D-T2",
+          "J-7",
+          "J-7a",
+          "J-7b",
+          "J-GOCHARA-TIMEOUT",
+          "L0-K"
+        ],
+        "count": [
+          82,
+          79
+        ]
+      },
+      "deps_open_strict": {
+        "added": [
+          "D-RETIRE-B-CLAIM-RECOVERY",
+          "D-RETIRE-B-K-INBOX",
+          "K-AVADHI-C",
+          "K-CERT",
+          "K-CERT-2",
+          "K4-2a",
+          "KV3-SCHEMA-1"
+        ],
+        "removed": [
+          "B-DB-BASELINE",
+          "D-GOCHARA-TIMEOUT",
+          "D-T2",
+          "J-7",
+          "J-7a",
+          "J-7b",
+          "J-GOCHARA-TIMEOUT",
+          "L0-K"
+        ],
+        "count": [
+          93,
+          92
+        ]
+      }
+    },
+    "B-CLAIM-RECOVERY": {
+      "status": [
+        "parked",
+        "parked"
+      ],
+      "deps_open": {
+        "added": [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      },
+      "deps_open_strict": {
+        "added": [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      }
+    },
+    "B-K-INBOX": {
+      "status": [
+        "running",
+        "waiting"
+      ],
+      "deps_open": {
+        "added": [
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      },
+      "deps_open_strict": {
+        "added": [
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      }
+    },
+    "K-CERT": {
+      "status": [
+        "parked",
+        "parked"
+      ],
+      "deps_open": {
+        "added": [
+          "KV3-SCHEMA-1"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      },
+      "deps_open_strict": {
+        "added": [
+          "KV3-SCHEMA-1"
+        ],
+        "removed": [],
+        "count": [
+          0,
+          1
+        ]
+      }
+    },
+    "D-RETIRE-B-K-INBOX": {
+      "new_item": true,
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": [],
+      "skip_origin": null,
+      "gaps": null
+    },
+    "D-RETIRE-B-CLAIM-RECOVERY": {
+      "new_item": true,
+      "status": "ready",
+      "deps_open": [],
+      "deps_open_strict": [],
+      "skip_origin": null,
+      "gaps": null
+    },
+    "KV3-SCHEMA-1": {
+      "new_item": true,
+      "status": "unknown",
+      "deps_open": [],
+      "deps_open_strict": [],
+      "skip_origin": null,
+      "gaps": null
+    }
+  },
+  "close_membership": {
+    "join": "JOIN-ALL",
+    "before": 138,
+    "after": 138,
+    "added": [
+      "D-RETIRE-B-CLAIM-RECOVERY",
+      "D-RETIRE-B-K-INBOX",
+      "K-AVADHI-C",
+      "K-CERT",
+      "K-CERT-2",
+      "K4-2a",
+      "KA-1e",
+      "KV3-SCHEMA-1"
+    ],
+    "removed": [
+      "B-DB-BASELINE",
+      "D-GOCHARA-TIMEOUT",
+      "D-T2",
+      "J-7",
+      "J-7a",
+      "J-7b",
+      "J-GOCHARA-TIMEOUT",
+      "L0-K"
+    ],
+    "members": [
+      "B-0",
+      "B-1",
+      "B-1a",
+      "B-1b",
+      "B-1c",
+      "B-1p",
+      "B-1v",
+      "B-2",
+      "B-3",
+      "B-3b",
+      "B-4",
+      "B-5",
+      "B-6",
+      "B-6r",
+      "B-7",
+      "B-8",
+      "B-CLAIM-RECOVERY",
+      "B-DEPLOY-DIAG",
+      "B-K-INBOX",
+      "D-CLOUD",
+      "D-COMPACT",
+      "D-FLIP",
+      "D-G2",
+      "D-G9",
+      "D-KR",
+      "D-R11",
+      "D-R5",
+      "D-R6",
+      "D-R8",
+      "D-R9",
+      "D-RETIRE-B-CLAIM-RECOVERY",
+      "D-RETIRE-B-K-INBOX",
+      "D-TEARDOWN",
+      "D-VC",
+      "J-0",
+      "J-0a",
+      "J-0b",
+      "J-0c",
+      "J-0d",
+      "J-0m",
+      "J-1a",
+      "J-2a",
+      "J-2b",
+      "J-2c",
+      "J-2d",
+      "J-3a",
+      "J-3b",
+      "J-3c",
+      "J-3d",
+      "J-4a",
+      "J-4b",
+      "J-4c",
+      "J-4d",
+      "J-4e",
+      "J-4f",
+      "J-4p",
+      "J-5q",
+      "J-5s",
+      "J-6",
+      "J-6a",
+      "J-6l",
+      "J-6m",
+      "J-6r",
+      "J-8",
+      "J-8a",
+      "K-AVADHI-C",
+      "K-CERT",
+      "K-CERT-2",
+      "K0-SV",
+      "K0a-0",
+      "K0a-1",
+      "K0a-1a",
+      "K0a-1b",
+      "K0a-1c",
+      "K0a-2",
+      "K0a-3",
+      "K0a-4",
+      "K1-1a",
+      "K1-1b",
+      "K1-2",
+      "K2-1a",
+      "K2-1b",
+      "K2-2",
+      "K3-1",
+      "K3-2",
+      "K4-1",
+      "K4-2a",
+      "K4-2aw",
+      "K4-2b",
+      "K4-3",
+      "K5-2",
+      "K5-2b",
+      "K5-3",
+      "K5-G1a",
+      "K5-G1b",
+      "K6-123",
+      "K6-4",
+      "K6-5",
+      "K6-5a",
+      "K7-1a",
+      "K7-1b",
+      "K7-2",
+      "K7-3",
+      "K7-4",
+      "K8-R26",
+      "K8-REG",
+      "K9-1",
+      "K9-23",
+      "K9-4a",
+      "K9-4b",
+      "K9-5",
+      "K9-6",
+      "KA-1e",
+      "KA-1w",
+      "KA-2",
+      "KA-3a",
+      "KA-3b",
+      "KA-4",
+      "KA-4b",
+      "KR-1",
+      "KR-2",
+      "KV3-SCHEMA-1",
+      "L0-K-RUNNER",
+      "L0-M",
+      "V-J6",
+      "V-K0a",
+      "V-K12",
+      "V-K3",
+      "V-K3b",
+      "V-K4",
+      "V-K5",
+      "V-K6",
+      "V-K7",
+      "V-K9",
+      "V-KA",
+      "V-VC",
+      "VC-1",
+      "VC-2"
+    ],
+    "close_chain": {
+      "C-1": [
+        "JOIN-ALL"
+      ],
+      "C-2": [
+        "C-1"
+      ],
+      "C-3": [
+        "C-2"
+      ],
+      "C-4": [
+        "C-3"
+      ]
+    }
+  },
+  "earned_completions": {
+    "count": 46,
+    "all_unchanged": true,
+    "items": {
+      "B-0": {
+        "evidence_sha256": "7438b643d9846e9f603a1018c239b7cf1d3c676a07d491387a99ff59dae80aef",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1": {
+        "evidence_sha256": "471580d1289f4887c55c8797c4959ea5c077fc832d208e3afe23b2f9dd2b8fba",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1a": {
+        "evidence_sha256": "7b3a0dd29a881b33a43280297dba300dea6b114a98578d1a5a4c1d1cb945a399",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1b": {
+        "evidence_sha256": "2ee0209715c9382a50086cd9a7e1bb66a923237a06db7f74a57dcb8c2ed92d2d",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1c": {
+        "evidence_sha256": "c8b7e95df9d8b827ec04e3030f58b38364bc84f514e0d9ec2955a841096743b1",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1p": {
+        "evidence_sha256": "86fe3c3b022d39bf59e01f2a1268513fad6a776e0a32d9918643edf75f6039b8",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-1v": {
+        "evidence_sha256": "a07fa2def992f61084606e446e5eb1c2655a6252e8c07ecd6d2c053033d33c58",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-2": {
+        "evidence_sha256": "eb691f69fd8cdf17d4c74c933ca595e2986f8041c93e0a276fb53382ea842e8a",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-3": {
+        "evidence_sha256": "c1d6f2b581aea66cc6f90bd1b4153bad0fcfb07098be9577b1da7c5737eda3ba",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-3b": {
+        "evidence_sha256": "7227db604f0d99815a00d5caf1b69886793a546cd8e861c325b4f2f0bed747eb",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-4": {
+        "evidence_sha256": "2a4b0f1c328222bd364b5356ca98644ea2b8c41e4bd7e8f980db4b407fa5c206",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-5": {
+        "evidence_sha256": "bd7871461a320073466a878cce63e282bbe478de7b169629b57d71226cabba24",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-6": {
+        "evidence_sha256": "4d5e457da81c4a708729a45607ffd6e81d1f9da9012db5cb734a96d6d35bdc7e",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-6r": {
+        "evidence_sha256": "55334bd6b88e1bb12a7e3eae322db43bcea3369f17027b742d6a666e289ad9b6",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-7": {
+        "evidence_sha256": "f5af97b3951b028a6b07613471396a29ecacdc27e8cc1b8204de9c0580e98032",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-8": {
+        "evidence_sha256": "c719c2f93d79630dcb0bef315c02bd55760214fe1242a8e2f965833a0ffaf4ec",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "B-DEPLOY-DIAG": {
+        "evidence_sha256": "9a56424838bf07ae2953b631225e0c6679852435fc35075ea43da9fa1fa0de72",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "D-KR": {
+        "evidence_sha256": "d7acd0890a819f28e72521bbf36b2961b9774f8e1699883be97ba3d23bf4c877",
+        "source": "decision:D-KR",
+        "unchanged": true
+      },
+      "D-R11": {
+        "evidence_sha256": "f39920bdcf6b150c95408260744c5c8f3d05cec97be685eb53b32c5d9b854086",
+        "source": "decision:D-R11",
+        "unchanged": true
+      },
+      "D-R5": {
+        "evidence_sha256": "8898cf0520b94989eb8612b01b58fa198385678513a7fa6d24aaf725551269ca",
+        "source": "decision:D-R5",
+        "unchanged": true
+      },
+      "D-R6": {
+        "evidence_sha256": "246566da7ba2302c1a0a9a4811dbbf5cc5aca853df05288daf2d877de33fa478",
+        "source": "decision:D-R6",
+        "unchanged": true
+      },
+      "D-R8": {
+        "evidence_sha256": "34fa8bcd9783a1b95e752df2000f376e71c6835d3e21216a26d8792357193e76",
+        "source": "decision:D-R8",
+        "unchanged": true
+      },
+      "D-R9": {
+        "evidence_sha256": "47a59d4313134206af519145be55b42033f602cc3d51307260d0787df59064e0",
+        "source": "decision:D-R9",
+        "unchanged": true
+      },
+      "J-0a": {
+        "evidence_sha256": "89a3fb83ae07affc409e66a91592dacf0b914e272b950066f8fcefb650711eeb",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "J-0b": {
+        "evidence_sha256": "c49992cf7f6f9ab7726df6ca389f8a05d7e881bc3c95abd0bd9431109aebda40",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0-SV": {
+        "evidence_sha256": "bed641ccc674eaf7925393f031ac85582e9a3b96e84c5ffd4346045fb5d5ca53",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-0": {
+        "evidence_sha256": "c54a42840cf3d139fdfb2bf9db95c78026237f67b2859721b6c1915a02ce683e",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-1": {
+        "evidence_sha256": "5b7d4b6339f05b333ce4c623e7a0349906d7efe8f589f226a2316e0e8a60640e",
+        "source": "join",
+        "unchanged": true
+      },
+      "K0a-1a": {
+        "evidence_sha256": "6faf3a63bc5388c51b710ba8de144d279b5bafe8992cfc12ba849d3b50cbd5cb",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-1b": {
+        "evidence_sha256": "3e9a1abeeaef18a56a9f64701441fc536fa3162f4e5ff218f4d1045548b42c66",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-1c": {
+        "evidence_sha256": "0e1eac7aeeec965f81373ae609d51acc4231d905585beb4d22b2c7fb66975b8f",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-2": {
+        "evidence_sha256": "40f06c9bae57e14e714ee27cd4cfbff9a23173b543b365f65f87dd998daa2789",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-3": {
+        "evidence_sha256": "d2bd8327d72b23a9bef81769273e7406626308d93afa3eed1187462167901c1c",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K0a-4": {
+        "evidence_sha256": "e92e315fdf989668d29ff60b04db2f5d94fb7f1b72c2ec421b52a96766a2dcc3",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K1-1a": {
+        "evidence_sha256": "603e3a9a01785c527f2e42154ae91933bd49e620f52c2d0cc34633c067a5c0e2",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K1-1b": {
+        "evidence_sha256": "ca55c2b7c68536f670d6ae286aadf73a09523d11a9176b1029a515aca15c9c8e",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K1-2": {
+        "evidence_sha256": "bba5cad65cb2457b8dacb262e3a4ae536819390e06eb34fda7fdbfe90feec972",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K2-1a": {
+        "evidence_sha256": "ff2435b059675952621931801e6a22e6a78944f134e0be5b2f74ab3789cdabc1",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K2-1b": {
+        "evidence_sha256": "3112c1f36c4207ed486bdfca076fb52c96679729e41774e39d7f7d0ece592d45",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K2-2": {
+        "evidence_sha256": "c8011e2f30010d6b596f3d5ab7a9396fa3d00bdd85c4fabd49deecde002214a7",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "K4-1": {
+        "evidence_sha256": "9c70a3f661e42602f82ecee2bb2eb38cfed04825e980ae7d9496c6e33c1c0dff",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "KA-1e": {
+        "evidence_sha256": "9d9eaa274bde0f90ae50faee80231b3a5f840db43f07b23ed8fc1a92331614b8",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "KA-1w": {
+        "evidence_sha256": "929b783d2709afa7de31cecfeb91d389c9434b21b0310086f03c2751af9dd832",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "KA-2": {
+        "evidence_sha256": "7cd73d11d739f52c86c2cd421b41fae92933b0d925139b80ee4a6ec5f2354ccd",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "KA-4": {
+        "evidence_sha256": "c66da1bceef8c7095a4db55e3187e0a01d9f41cfdcadf15e516ae6a89a32ea22",
+        "source": "guarded:event",
+        "unchanged": true
+      },
+      "L0-K-RUNNER": {
+        "evidence_sha256": "9d6f06f3663a6f97333be7848d20abe49967219267b3207260e7e1668bd9dc27",
+        "source": "guarded:event",
+        "unchanged": true
+      }
+    }
+  },
+  "staged_effects_if_published": {
+    "L0-K": {
+      "status": [
+        "blocked",
+        "parked"
+      ]
+    },
+    "J-7a": {
+      "status": [
+        "waiting",
+        "parked"
+      ]
+    },
+    "D-T2": {
+      "status": [
+        "waiting",
+        "parked"
+      ]
+    },
+    "J-7": {
+      "status": [
+        "waiting",
+        "parked"
+      ]
+    },
+    "J-7b": {
+      "status": [
+        "waiting",
+        "parked"
+      ]
+    },
+    "JOIN-ALL": {
+      "status": [
+        "waiting",
+        "waiting"
+      ],
+      "deps_open": {
+        "added": [],
+        "removed": [
+          "B-CLAIM-RECOVERY",
+          "B-K-INBOX",
+          "D-RETIRE-B-CLAIM-RECOVERY",
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "count": [
+          79,
+          75
+        ]
+      },
+      "deps_open_strict": {
+        "added": [],
+        "removed": [
+          "B-CLAIM-RECOVERY",
+          "B-K-INBOX",
+          "D-RETIRE-B-CLAIM-RECOVERY",
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "count": [
+          92,
+          88
+        ]
+      }
+    },
+    "B-CLAIM-RECOVERY": {
+      "status": [
+        "parked",
+        "not_applicable"
+      ],
+      "deps_open": {
+        "added": [],
+        "removed": [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ],
+        "count": [
+          1,
+          0
+        ]
+      },
+      "deps_open_strict": {
+        "added": [],
+        "removed": [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ],
+        "count": [
+          1,
+          0
+        ]
+      },
+      "skip_origin": [
+        null,
+        [
+          "D-RETIRE-B-CLAIM-RECOVERY"
+        ]
+      ]
+    },
+    "B-K-INBOX": {
+      "status": [
+        "waiting",
+        "not_applicable"
+      ],
+      "deps_open": {
+        "added": [],
+        "removed": [
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "count": [
+          1,
+          0
+        ]
+      },
+      "deps_open_strict": {
+        "added": [],
+        "removed": [
+          "D-RETIRE-B-K-INBOX"
+        ],
+        "count": [
+          1,
+          0
+        ]
+      },
+      "skip_origin": [
+        null,
+        [
+          "D-RETIRE-B-K-INBOX"
+        ]
+      ]
+    },
+    "J-GOCHARA-TIMEOUT": {
+      "status": [
+        "waiting",
+        "parked"
+      ]
+    },
+    "D-RETIRE-B-K-INBOX": {
+      "status": [
+        "ready",
+        "done"
+      ]
+    },
+    "D-RETIRE-B-CLAIM-RECOVERY": {
+      "status": [
+        "ready",
+        "done"
+      ]
+    },
+    "KV3-SCHEMA-1": {
+      "status": [
+        "unknown",
+        "blocked"
+      ]
+    }
+  }
+}

@@ -331,14 +331,17 @@ export function LayerPanel({
                 ? <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
                 : null
             ) : (
-              <ClearIconButton
-                chartId={chartId}
-                scope="layer"
-                scopeTarget={layer}
-                size={28}
-                onSuccess={onRunStarted}
-                textLabel={preparation}
-              />
+              // FIX2: every L0 (brahmagyan) table is shared by every chart; never offer to clear it here.
+              layer === 'brahmagyan' ? null : (
+                <ClearIconButton
+                  chartId={chartId}
+                  scope="layer"
+                  scopeTarget={layer}
+                  size={28}
+                  onSuccess={onRunStarted}
+                  textLabel={preparation}
+                />
+              )
             )
           )}
         </div>}

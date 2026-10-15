@@ -2,7 +2,7 @@
 dispatch_elev_beta_t_gochara_resume.py — Elevation Campaign v2.1, Stream beta, Lane T
 (timing residuals / gochara env / CR-131 sweep completion).
 
-Resumes `ka_gochara_sweep` for chart 482012f1 (Abhisek). CURRENT_STATE A-3/CR-131's last
+Resumes `ka_gochara_sweep` for chart 482012f1 (the native). CURRENT_STATE A-3/CR-131's last
 known figure ("165/300") is stale by this lane's own live re-check: as of dispatch time
 this session, `build_substep_progress` already holds 174/303 substeps (career_advancement
 86, major_gain 44, marriage 44 -- 3 event classes x 101 years = 303, matching the T-2
@@ -27,7 +27,7 @@ dispatch_uat_darpana_t2_span_scoped_gochara_rebuild.py); build_substep_progress 
 resumption ledger) is untouched here -- already-completed (event_class, year) substeps
 resume from there per the writer's own idempotent replan path.
 
-Abhisek's chart (482012f1) ONLY.
+The native's chart (482012f1) ONLY.
 
 Prints ONLY the run_id (UUID) to stdout on success, for shell capture.
 

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   requireAdmin: vi.fn(),
   createUser: vi.fn(),
+  getUserByEmail: vi.fn(),
   deleteUser: vi.fn(),
   resetLink: vi.fn(),
   verifyToken: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("@/lib/firebase/server", () => ({
   getServerUser: vi.fn(),
   adminAuth: {
     createUser: mocks.createUser,
+    getUserByEmail: mocks.getUserByEmail,
     deleteUser: mocks.deleteUser,
     generatePasswordResetLink: mocks.resetLink,
     verifyIdToken: mocks.verifyToken,
@@ -38,6 +40,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.requireAdmin.mockResolvedValue({ user: { uid: "admin-test" } });
   mocks.createUser.mockResolvedValue({ uid: "approved-test" });
+  // A brand-new address: no Firebase account exists yet (today's create path).
+  mocks.getUserByEmail.mockRejectedValue(
+    Object.assign(new Error("no user"), { code: "auth/user-not-found" }),
+  );
   mocks.resetLink.mockResolvedValue(
     "https://portal.example.invalid/reset-password?oobCode=fictional",
   );
@@ -124,7 +130,7 @@ describe("session directs approved users to their own setup", () => {
       ok: true,
       username_setup_required: expected,
     });
-    expect(mocks.verifyToken).toHaveBeenCalledWith("fictional-token");
+    expect(mocks.verifyToken).toHaveBeenCalledWith("fictional-token", true);
     const cookie = response.cookies.get("__session")!;
     expect(cookie.value).toBe("fictional-test-cookie");
     expect(cookie.httpOnly).toBe(true);

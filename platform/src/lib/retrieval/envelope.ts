@@ -1078,6 +1078,8 @@ export const JUDGMENT_FLAG_CODES = [
   'time_sensitive_low_confidence',
   // ── L1 get_dasha_lord_capability / get_dashas ──
   'unmapped_lord_graha',
+  // the caller's lord_graha filter was a code/alias/sign/deity spelling, resolved to the stored form before it reached SQL ──
+  'lord_graha_resolved',
   'house_class_unresolved',
   'ratification_unavailable',
   // ── D9 judgment_query checklist legs ──

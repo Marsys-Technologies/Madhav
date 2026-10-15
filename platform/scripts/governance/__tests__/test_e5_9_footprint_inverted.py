@@ -763,8 +763,10 @@ def test_real_tree_strict_default_scans_without_exception_and_keeps_the_known_cl
         (scanned if "tables" in res else flipped)[f.stem] = res
     assert len(scanned) >= 70
     # the real `_batch_insert(cur, rows, sql)` and `for view in [...]` patterns stay complete
-    for asset in ("bo_karanajala", "bo_sangati", "bo_upaya", "mi_darshana", "ka_avadhi", "ga_dashas", "ga_condition", "ga_tajaka", "bo_laksana"):
+    for asset in ("bo_karanajala", "bo_sangati", "bo_upaya", "mi_darshana", "ga_dashas", "ga_condition", "ga_tajaka", "bo_laksana"):
         assert asset in scanned, (asset, flipped.get(asset))
+    # K1-2 now delegates candidate writes to an unsupported kala_core helper.
+    assert flipped["ka_avadhi"] == {"not_scanned": "no_write_statement_found (delegates to another module, or read-only: not distinguishable)"}
     # the writers that pass a SQL-running callback out of the file, or import a module by path at runtime, do not
     for asset in ("bg_gochara_arcs", "ka_gochara", "ka_gochara_v3_century_materialize", "ka_gochara_v4_41_candidate"):
         assert asset in flipped, asset

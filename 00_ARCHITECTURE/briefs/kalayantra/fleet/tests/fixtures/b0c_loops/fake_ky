@@ -1,0 +1,46 @@
+#!/bin/bash
+# Test double for $KY_ROOT/bin/ky (B-0c loop tests): `ky inbox --stream S|--steward --json` and `ky decide …`.
+# Messages come from $KY_ROOT/fake_ky/inbox.<party>.json minus the ids listed in fake_ky/acked.
+# Exit 0 with messages, 1 with none (the real CLI's contract). `--wait` is recorded, never honoured.
+# `ky decide …` (the veto handler's publication) contacts nothing: it sleeps fake_ky/decide.sleep seconds, makes
+# $KY_RUN/KY_VERIFIERS unusable when fake_ky/decide.break_capacity exists (an executor failure AFTER the
+# publication), and exits with the integer in fake_ky/decide.rc (default 0). Every call is one line of calls.log.
+# fake_ky/inbox.touch names a file that every `ky inbox` call creates: something that changes WHILE the controller
+# is looking for work (a hold set between its first check and the launch).
+set -u
+D="$(cd "$(dirname "$0")/.." && pwd)/fake_ky"
+mkdir -p "$D"; printf '%s\n' "$*" >> "$D/calls.log"
+exec python3 - "$D" "$@" <<'PY'
+import json, os, sys, time
+d, args = sys.argv[1], sys.argv[2:]
+if args and args[0] == "decide":
+    def said(name):
+        try:
+            return open(os.path.join(d, name)).read().strip()
+        except OSError:
+            return None
+    if said("decide.sleep"):
+        time.sleep(float(said("decide.sleep")))
+    if said("decide.break_capacity") is not None:
+        target = os.path.join(os.environ["KY_RUN"], "KY_VERIFIERS")
+        if os.path.isfile(target):
+            os.unlink(target)
+        os.makedirs(target, exist_ok=True)
+    sys.exit(int(said("decide.rc") or 0))
+if not args or args[0] != "inbox":
+    sys.exit(64)
+if os.path.exists(os.path.join(d, "inbox.touch")):
+    open(open(os.path.join(d, "inbox.touch")).read().strip(), "a").close()
+party = "steward" if "--steward" in args else args[args.index("--stream") + 1]
+rc_file = os.path.join(d, "rc")
+if os.path.exists(rc_file):
+    sys.exit(int(open(rc_file).read()))
+try:
+    msgs = json.load(open(os.path.join(d, "inbox.%s.json" % party)))
+except FileNotFoundError:
+    msgs = []
+acked = set(open(os.path.join(d, "acked")).read().split()) if os.path.exists(os.path.join(d, "acked")) else set()
+msgs = [m for m in msgs if m["msg_id"] not in acked]
+print(json.dumps(msgs))
+sys.exit(0 if msgs else 1)
+PY

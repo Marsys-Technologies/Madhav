@@ -287,7 +287,12 @@ def _compute_distributional_anomalies(conn: Any, chart_id: str, aya: str) -> lis
 
     by_subsystem: dict[str, list] = {}
     for r in rows:
-        sub = str(r["source_l1_asset"] or "unknown")
+        raw_sub = r["source_l1_asset"]
+        if raw_sub is None or not str(raw_sub).strip():
+            # A signal that names no source subsystem cannot be attributed to one: it is left out of the
+            # per-subsystem statistics rather than pooled under an invented "unknown" subsystem.
+            continue
+        sub = str(raw_sub)
         if sub not in by_subsystem:
             by_subsystem[sub] = []
         by_subsystem[sub].append(r)
@@ -429,7 +434,7 @@ def _make_discovery(
             "ayanamsha_fragility_reason": AYANAMSHA_FRAGILITY_NOT_ASSESSED,
         }),
         "meaningfulness_basis": meaningfulness_basis,
-        "corroborating_methods_array": list(set(corroborating_methods)),
+        "corroborating_methods_array": sorted(set(corroborating_methods)),      # N-307 (Kāla #3368): list(set(...)) of strings follows the per-process hash seed and this array is digested
         "corroboration_count": corr_count,
         "surface_reading": surface,
         "depth_reading": depth,
@@ -706,7 +711,10 @@ def _mine_ayanamsha(
         sal_norm    = non_ob_info.get("sal_norm", 0.5)
         non_ob      = consequence * (1.0 - sal_norm)
 
-        subject = str(broker.get("node_subject") or "")
+        raw_subject = broker.get("node_subject")
+        if raw_subject is None or not str(raw_subject).strip():
+            continue    # a broker node with no subject cannot be named in the surface / depth / why-missed prose: no discovery rather than a blank-subject sentence
+        subject = str(raw_subject)
 
         if is_cross:
             cross_refs = [{

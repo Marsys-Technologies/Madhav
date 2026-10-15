@@ -6,113 +6,112 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "2116f7099036d486670debb1840079f65e9f90b394aa5a08f2d1e2f538dd2468",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
-        "reviewed_exposed": 71,
-        "reviewed_not_exposed": 115
+        "reviewed_exposed": 78,
+        "reviewed_not_exposed": 121
       },
-      "denominator": 186,
-      "descriptor_content_untyped": 181,
+      "denominator": 199,
+      "descriptor_content_untyped": 194,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 91
+      "non_exhaustible_paginated": 107
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
       "policy": "live descriptor has a callable handler/loader and calibration_context_only is not true; public dispatchability is reported separately",
-      "total": 183
+      "total": 196
     },
     "producer_assets": {
-      "active": 128,
+      "active": 129,
       "by_catalog_status": {
-        "CURRENT": 69,
+        "CURRENT": 70,
         "DRAFT": 29,
         "undeclared": 30
       },
       "by_layer": {
         "bodha": 23,
         "brahmagyan": 40,
-        "ganita": 19,
+        "ganita": 20,
         "kala": 22,
         "mimamsa": 15,
         "phala": 9
       },
       "by_scope": {
         "global": 45,
-        "per_chart": 83
+        "per_chart": 84
       },
       "by_storage_type": {
         "pgvector": 4,
-        "postgres_table": 115,
+        "postgres_table": 116,
         "postgres_view": 1,
         "service": 8
       },
-      "non_writer_identities": 6,
+      "non_writer_identities": 5,
       "retired": 3,
-      "total": 131,
-      "writer_identities": 125
+      "total": 132,
+      "writer_identities": 127
     },
     "producer_output_contracts": {
       "by_disposition": {
         "excluded_nondeterministic": 1,
         "relational_contract_blocked": 1,
-        "relational_digest_current_source_intent": 117,
+        "relational_digest_current_source_intent": 118,
         "service_effect_contract": 2,
         "service_probe": 6,
         "user_authored_source_contract": 1
       },
-      "denominator": 128,
+      "denominator": 129,
       "unexplained": 0
     },
     "public_registrar_resolution": {
       "ambiguous": 0,
-      "descriptor_denominator": 186,
+      "descriptor_denominator": 199,
       "literal_public_names": 131,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
-      "not_exposed": 115,
-      "resolved_including_ambiguous": 71,
+      "not_exposed": 121,
+      "resolved_including_ambiguous": 78,
       "unambiguous_uri_bindings": 70,
       "unresolved": 0,
-      "verified": 71
+      "verified": 78
     },
     "reviewed_output_digest_coverage": {
-      "active_asset_denominator": 128,
+      "active_asset_denominator": 129,
       "active_assets_without_any_reviewed_spec": 8,
-      "asset_denominator": 131,
-      "assets_with_any_reviewed_spec": 120,
+      "asset_denominator": 132,
+      "assets_with_any_reviewed_spec": 121,
       "assets_without_any_reviewed_spec": 11,
       "basis": "distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried",
-      "current_source_intended_active_spec_rows": 119,
-      "current_source_intended_spec_rows": 119
+      "current_source_intended_active_spec_rows": 120,
+      "current_source_intended_spec_rows": 120
     },
     "runtime_descriptors": {
       "by_data_source": {
-        "computed": 21,
+        "computed": 20,
         "hybrid": 1,
-        "stored": 164
+        "stored": 178
       },
       "by_layer": {
-        "L0": 67,
+        "L0": 66,
         "L1": 40,
         "L2": 32,
-        "L3": 21,
+        "L3": 35,
         "L4": 11,
         "L5": 15
       },
       "by_scope": {
-        "global": 71,
-        "per_chart": 115
+        "global": 70,
+        "per_chart": 129
       },
-      "callable": 186,
+      "callable": 199,
       "output_schema_declared": 5,
-      "paginated_declared": 96,
+      "paginated_declared": 112,
       "prompts": 1,
-      "resources": 5,
-      "tools": 180,
-      "total": 186
+      "resources": 4,
+      "tools": 194,
+      "total": 199
     }
   },
   "details": {
@@ -304,33 +303,6 @@
         ]
       },
       {
-        "capability_uri": "marsys://resource/ephemeris-cache/native-lifetime",
-        "descriptor_name": "ephemeris_cache_native_lifetime",
-        "descriptor_type": "resource",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
-        "full_profile_enforcement": "enforced",
-        "input_contract": null,
-        "internal_route": "loader",
-        "internal_route_evidence": [
-          "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
-          "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts"
-        ],
-        "output_contract": null,
-        "output_contract_state": "descriptor_content_untyped",
-        "pagination": {
-          "disposition": "not_paginated"
-        },
-        "planner_disposition": "addressable",
-        "planner_reason": null,
-        "public_route_disposition": "reviewed_not_exposed",
-        "public_route_evidence": [
-          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
-        ],
-        "public_routes": [],
-        "public_tool_names": []
-      },
-      {
         "capability_uri": "marsys://resource/ephemeris-cache/year/{yyyy}",
         "descriptor_name": "ephemeris_cache_year",
         "descriptor_type": "resource",
@@ -454,7 +426,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -507,7 +479,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -560,7 +532,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -613,7 +585,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha to use (default: 'LAHIRI').",
+            "description": "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "chart_id": {
@@ -868,7 +840,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha filter (default: 'LAHIRI').",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
           "build_id": {
@@ -1404,7 +1376,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -3509,7 +3483,7 @@
             "type": "object"
           },
           "ayanamsha_id": {
-            "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4).",
+            "description": "Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default; \"all\" = explicit raw multi-ayanamsha rows). One ayanamsha per call by design (§1 E4). Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "category": {
@@ -3614,6 +3588,10 @@
             "required": true,
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary SS N-361: when true, the always-on `identity_cross_check` (compact: one line when the five ayanamshas agree, only the dissenting ayanamshas named otherwise) carries the FULL per-ayanamsha detail: all four other ayanamshas each named, degrees shown (never compared). Default false.",
+            "type": "boolean"
+          },
           "include_navamsa": {
             "description": "Also include the D9 (navamsa) grid. Default: false (D1 only).",
             "type": "boolean"
@@ -3707,7 +3685,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -3775,7 +3753,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -3830,7 +3808,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -3984,7 +3962,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4044,7 +4022,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4100,7 +4078,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4200,7 +4178,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4300,7 +4278,7 @@
             "type": "string"
           },
           "ayanamsha_id": {
-            "description": "Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | surya_siddhanta_classical | true_chitra). Unknown values are rejected. F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha.",
+            "description": "Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | surya_siddhanta_classical | true_chitra). Unknown values are rejected. F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. Exception: the KP dasha system (system=vimshottari_kp) is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever is passed here.",
             "type": "string"
           },
           "chart_id": {
@@ -4324,6 +4302,10 @@
             "description": "Projection facet. \"compact\" (default) — fact-card fields only (lord, sign, span, natal condition, citation); \"all\" — every chart_dashas column (verification metadata, jsonb sandhi/concurrent-lord detail); or a comma-separated column list for a custom projection.",
             "type": "string"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` for the current Vimshottari Mahadasha lord (as of as_of_date/date_contains, else today) under the other four ayanamshas, even if this page does not itself carry that Mahadasha. A LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality of the lord only). Independently of this flag, a single-ayanamsha Vimshottari page that serves the current Mahadasha always carries the compact identity cross-check. Not applied under ayanamsha_id:\"all\" (the raw multi-row option).",
+            "type": "boolean"
+          },
           "level": {
             "description": "Dasha level facet — exact level. Accepts a number (1=Maha, 2=Antar, 3=Pratyantar, 4=Sookshma, 5=Prana) or the level name. When set, overrides the default level-cap (see all_levels).",
             "type": "string"
@@ -4333,7 +4315,7 @@
             "type": "number"
           },
           "lord_graha": {
-            "description": "Filter by lord graha abbreviation (e.g. SU, MO, MA).",
+            "description": "Filter by dasha lord. Accepts a graha code, alias or name (SU, Sun and sun are the same; MO, MA, Rahu, Ketu ...), a sign name for the rashi dasha systems (chara_karaka, kalachakra, narayana: e.g. Taurus), or a yogini deity name (e.g. Mangala); resolved to the stored form. An unrecognised value returns an invalid_lord_graha error listing the recognised values, never an empty page.",
             "type": "string"
           },
           "offset": {
@@ -4345,7 +4327,7 @@
             "type": "string"
           },
           "system": {
-            "description": "Dasha system facet. One of: vimshottari | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka). Pass \"all\" to disable the system filter (all 7 systems). Default: vimshottari.",
+            "description": "Dasha system facet. One of: vimshottari | vimshottari_kp (the KP sub-period chain; read in the KP frame, krishnamurti) | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka, \"kp\" to vimshottari_kp). Pass \"all\" to disable the system filter (all systems). Default: vimshottari.",
             "type": "string"
           },
           "system_id": {
@@ -4452,7 +4434,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4516,7 +4498,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -4575,7 +4557,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "build_id": {
@@ -4637,6 +4619,10 @@
         "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
+          "ayanamsha_id": {
+            "description": "Ayanamsha (stored id or alias, default 'lahiri_chitrapaksha' = the primary reading). Pass 'all' for the raw rows of every ayanamsha.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID",
             "required": true,
@@ -4682,7 +4668,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all ayanamshas present.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4727,7 +4713,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4751,7 +4737,7 @@
             "type": "number"
           },
           "system": {
-            "description": "Filter by system: jaimini | kp. Omit for all.",
+            "description": "Filter by system: jaimini | kp. Omit for both. system=kp is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever ayanamsha_id is passed.",
             "enum": [
               "jaimini",
               "kp"
@@ -4790,7 +4776,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.",
+            "description": "Accepted but NOT applied: KP has one frame by doctrine, so the cusps are always read at 'krishnamurti' (labelled \"KP frame (Krishnamurti ayanamsha)\"); a different explicit id (or \"all\") is reported in ayanamsha_note.",
             "type": "string"
           },
           "build_id": {
@@ -4809,6 +4795,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/constants.ts",
           "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts"
@@ -4844,7 +4831,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -4904,7 +4891,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -4920,7 +4907,7 @@
             "type": "string"
           },
           "domain": {
-            "description": "Filter by domain: identity | kp | relational | strength | meta.",
+            "description": "Filter by domain: identity | kp | relational | strength | meta. domain=kp is always read at krishnamurti (\"KP frame (Krishnamurti ayanamsha)\"), whatever ayanamsha_id is passed.",
             "enum": [
               "identity",
               "kp",
@@ -4970,7 +4957,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5040,7 +5027,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -5078,6 +5065,11 @@
               "karakamsha"
             ],
             "type": "string"
+          },
+          "include_cross_check": {
+            "default": false,
+            "description": "Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every graha on this page under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check (Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\" (that is the raw multi-row option).",
+            "type": "boolean"
           },
           "include_upagrahas": {
             "default": false,
@@ -5141,7 +5133,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5187,8 +5179,8 @@
         "capability_uri": "marsys://tool/L1/get_sade_sati",
         "descriptor_name": "get_sade_sati",
         "descriptor_type": "tool",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "all": {
@@ -5197,7 +5189,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5260,7 +5252,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5320,7 +5312,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5401,7 +5393,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha_id. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -5485,7 +5477,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "categories": {
@@ -5551,7 +5543,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5635,7 +5627,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5692,7 +5684,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. lahiri_chitrapaksha). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5751,7 +5743,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5815,7 +5807,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -5900,7 +5892,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows. Exception by KP doctrine (one frame): the KP categories (cusp_kp_lords, graha_kp_lords, kp_cuspal_significators, kp_house_significators, kp_planet_significations, kp_ruling_planets_natal) are always read at krishnamurti and labelled \"KP frame (Krishnamurti ayanamsha)\", whatever ayanamsha_id is passed (an explicit different id is reported in ayanamsha_note, not applied); on a mixed page the KP rows come from krishnamurti and the other rows from the requested or primary ayanamsha.",
             "type": "string"
           },
           "build_id": {
@@ -5977,7 +5969,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "bhanga_active": {
@@ -6053,7 +6045,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for default.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6194,6 +6186,10 @@
             },
             "type": "array"
           },
+          "include_cross_check": {
+            "description": "Lahiri-primary SS N-360: when true, adds `identity_cross_check` for this graha: its sign and nakshatra under the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only, degrees shown never compared). Default false. Independently of this flag, a portrait of the MOON (when the position section is served) always carries the compact identity cross-check (Moon sign, Moon nakshatra). Not applied under ayanamsha_id:\"all\".",
+            "type": "boolean"
+          },
           "operative_vargas": {
             "description": "Which vargas to call out as \"operative\" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless.",
             "items": {
@@ -6238,7 +6234,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6295,7 +6291,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6343,7 +6339,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6396,7 +6392,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6498,7 +6494,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6513,6 +6509,10 @@
           "domain": {
             "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all.",
             "type": "string"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each discovery family carries `ayanamsha_cross_check` — whether the SAME motif (class, subsystem, hypothesis) is also found under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"). Under a single-ayanamsha scope the old \"n/N ayanamshas agree\" string is no longer served (it read \"1/1\"); a chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Under ayanamsha_id:\"all\" the raw pooled `ayanamsha_agreement` is unchanged. Default false.",
+            "type": "boolean"
           },
           "limit": {
             "description": "Max rows (default 50, max 50). Applies independently to both rows and discovery_families.",
@@ -6634,7 +6634,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -6662,7 +6664,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chain_circuit_only": {
@@ -6733,7 +6735,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6744,6 +6746,10 @@
           "event_class_id": {
             "description": "Filter by event_class_id. Omit for all.",
             "type": "string"
+          },
+          "include_cross_check": {
+            "description": "Lahiri-primary PR-3: when true, each row carries `ayanamsha_cross_check` — the SAME event class's status (and, where the row has varga_confirmation, the varga dignity) under each of the other four ayanamshas, as a LABELLED cross-check (\"Cross-check, not the reading\"; categorical equality only). A chart with fewer than two ayanamshas stored gets `ayanamsha_cross_check: { not_available: true, reason: \"single_ayanamsha_chart\" }`. Default false. `consensus_chip` is a derived pooled value over the five ayanamshas and keeps that label.",
+            "type": "boolean"
           },
           "limit": {
             "description": "Max rows (default 50, max 50).",
@@ -6792,8 +6798,8 @@
         "capability_uri": "marsys://tool/L2/query_quality_scorecard",
         "descriptor_name": "query_quality_scorecard",
         "descriptor_type": "tool",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
@@ -6844,7 +6850,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -6985,7 +6991,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7036,7 +7042,7 @@
             "type": "string"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7091,7 +7097,7 @@
             "type": "boolean"
           },
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7138,7 +7144,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7185,7 +7191,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7245,7 +7251,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7347,6 +7353,18 @@
             ],
             "type": "string"
           },
+          "producer_asset_id": {
+            "description": "Filter to the rows ONE producer asset wrote into bodha_msr_signals (the table's producer_asset_id column, closed by a CHECK constraint to the six producers below). Applied in the WHERE clause before the salience LIMIT, exactly like signal_type_class. bo_laksana is the category-agnostic producer: it owns every signal_type_class that is not one of the five dedicated producers' classes, so this is the filter that reaches its rows without enumerating those classes. Omitted: no producer filter.",
+            "enum": [
+              "bo_laksana",
+              "bo_arudha",
+              "bo_special_lagna",
+              "bo_sudarshana",
+              "bo_vargottama_dhana",
+              "bo_nakshatra_semantic"
+            ],
+            "type": "string"
+          },
           "projection": {
             "description": "WP-1.3(g)/LCA-7 — which bodha_msr_signals columns to serve. Omit for the default 17-column view (backward-compatible). Pass [\"*\"] to serve ALL 82 columns. Pass an explicit array (e.g. [\"signal_id\",\"orb_tightness\",\"dignity_score\"]) to serve exactly those columns. Every name is validated against the real column whitelist — an unknown column is rejected before any SQL runs (injection-safe); arbitrary SQL is never accepted.",
             "type": "array"
@@ -7416,7 +7434,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "Filter by ayanamsha. Omit for all.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "chart_id": {
@@ -7468,8 +7486,8 @@
         "capability_uri": "marsys://tool/L2/query_ucd",
         "descriptor_name": "query_ucd",
         "descriptor_type": "tool",
-        "empty_reason_declared": false,
-        "empty_result_state": "missing",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
@@ -7524,7 +7542,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -7567,7 +7587,7 @@
             "type": "object"
           },
           "ayanamsha_id": {
-            "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+            "description": "Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); \"all\" = the explicit raw multi-ayanamsha rows.",
             "type": "string"
           },
           "build_id": {
@@ -7673,7 +7693,9 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "disposition": "not_paginated"
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -7697,6 +7719,76 @@
           "bodha_graph_subgraph_get",
           "bodha_graph_traverse_get"
         ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/ahead_read",
+        "descriptor_name": "ahead_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
       },
       {
         "capability_uri": "marsys://tool/L3/call_dasha_eligibility",
@@ -7874,6 +7966,17 @@
             "description": "MC-024: filter to signals affecting ANY of these life domains (OR/overlap match against domains_affected_array, case-insensitive). Ignored if `domain` is also given.",
             "type": "array"
           },
+          "preference": {
+            "description": "Unique active axes in caller presentation order; remaining defaults appended.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "question_frame": {
+            "description": "Declared question frame used for best_suited; entities echoed only.",
+            "type": "object"
+          },
           "top_k": {
             "description": "Max signals to return (default: 20, max: 100).",
             "type": "number"
@@ -8006,6 +8109,916 @@
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
           "disposition": "not_paginated"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/elect_read",
+        "descriptor_name": "elect_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/explain_read",
+        "descriptor_name": "explain_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_ahead_get",
+        "descriptor_name": "kala_ahead_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "ayanamsha_id": {
+            "description": "Established default: lahiri_chitrapaksha.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "horizon_years": {
+            "description": "Integer 1..20; legacy default 5.",
+            "type": "number"
+          },
+          "max_items": {
+            "description": "Integer 1..200; legacy default 20.",
+            "type": "number"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "disposition": "not_paginated"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_ahead_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_ahead_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_elect_get",
+        "descriptor_name": "kala_elect_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "budget_kb": {
+            "description": "Established response ceiling: 1..200 KB, default 40.",
+            "type": "number"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "date_range": {
+            "description": "Legacy default today..today+90 days; maximum 90 days.",
+            "properties": {
+              "end": {
+                "required": true,
+                "type": "string"
+              },
+              "start": {
+                "required": true,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "limit": {
+            "description": "Integer 1..45; legacy default 5.",
+            "type": "number"
+          },
+          "min_score": {
+            "description": "0..1; legacy default 0.",
+            "type": "number"
+          },
+          "native_janma_nakshatra": {
+            "type": "string"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "target_graha": {
+            "enum": [
+              "Sun",
+              "Moon",
+              "Mars",
+              "Mercury",
+              "Jupiter",
+              "Venus",
+              "Saturn",
+              "Rahu",
+              "Ketu"
+            ],
+            "type": "string"
+          },
+          "undertaking": {
+            "description": "Legacy default general.",
+            "enum": [
+              "marriage",
+              "travel",
+              "business",
+              "medical",
+              "education",
+              "property",
+              "general",
+              "spiritual_initiation",
+              "remedial_ritual",
+              "japa_start"
+            ],
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_elect_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_elect_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_explain_get",
+        "descriptor_name": "kala_explain_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "as_of_date": {
+            "description": "YYYY-MM-DD; legacy default today.",
+            "type": "string"
+          },
+          "ayanamsha_id": {
+            "description": "Established default: lahiri_chitrapaksha.",
+            "type": "string"
+          },
+          "bhava": {
+            "description": "Integer 1..12; required when domain is omitted.",
+            "type": "number"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "domain": {
+            "description": "Legacy PACT domain; never an assertion identity.",
+            "type": "string"
+          },
+          "max_signals": {
+            "description": "Integer 1..50; legacy default 15.",
+            "type": "number"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_explain_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_explain_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_now_get",
+        "descriptor_name": "kala_now_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "as_of": {
+            "description": "YYYY-MM-DD; omission retains the legacy today default.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of.",
+            "type": "string"
+          },
+          "ayanamsha_id": {
+            "description": "Established default: lahiri_chitrapaksha.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "disposition": "not_paginated"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_now_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_now_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_priority_get",
+        "descriptor_name": "kala_priority_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "ayanamsha_id": {
+            "description": "Established default: lahiri_chitrapaksha.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "YYYY-MM-DD; legacy default today.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "YYYY-MM-DD; legacy default today+90 days.",
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "preference": {
+            "description": "Declared Tulana presentation order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "top_k": {
+            "description": "Integer 1..100; legacy default 20.",
+            "type": "number"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_priority_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_priority_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_ritual_get",
+        "descriptor_name": "kala_ritual_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "activity_class": {
+            "description": "Legacy default upaya_ritual.",
+            "enum": [
+              "vivah",
+              "griha_pravesh",
+              "vyapara",
+              "yatra",
+              "property_purchase",
+              "mantra_initiation",
+              "upaya_ritual",
+              "sadhana_initiation"
+            ],
+            "type": "string"
+          },
+          "budget_kb": {
+            "description": "Established response ceiling: 1..200 KB, default 40.",
+            "type": "number"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "horizon": {
+            "description": "Legacy parser and its explicit fallback disclosure are preserved.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Integer 1..50; legacy default 10.",
+            "type": "number"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "sky_pattern_spec": {
+            "type": "object"
+          },
+          "undertaking": {
+            "description": "Legacy Mode-3 redirect to kala_elect_get; never a stage class.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_ritual_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_ritual_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/kala_story_get",
+        "descriptor_name": "kala_story_get",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "budget_kb": {
+            "description": "Established response ceiling: 1..200 KB, default 40.",
+            "type": "number"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID; no chart default.",
+            "required": true,
+            "type": "string"
+          },
+          "question_frame": {
+            "description": "Forwarded without reinterpretation to the established handler.",
+            "properties": {
+              "comparison_target": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "entity": {
+                "type": "string"
+              },
+              "horizon": {
+                "type": "string"
+              },
+              "intent_verb": {
+                "type": "string"
+              },
+              "stakes": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "top_k": {
+            "description": "Integer 1..739; omission retains all source rows before dedup.",
+            "type": "number"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "bounded_without_position",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist"
+        ],
+        "public_routes": [
+          {
+            "route_kind": "parallel_same_name",
+            "tool_name": "kala_story_get"
+          }
+        ],
+        "public_tool_names": [
+          "kala_story_get"
+        ]
+      },
+      {
+        "capability_uri": "marsys://tool/L3/now_read",
+        "descriptor_name": "now_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/priority_read",
+        "descriptor_name": "priority_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -8949,6 +9962,146 @@
         "public_tool_names": []
       },
       {
+        "capability_uri": "marsys://tool/L3/ritual_read",
+        "descriptor_name": "ritual_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L3/story_read",
+        "descriptor_name": "story_read",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "assertion_id": {
+            "description": "Stored assertion identity for EXPLAIN, or use source_table and record_id.",
+            "type": "string"
+          },
+          "at": {
+            "description": "Exact ISO instant with timezone for NOW; intervals are half open.",
+            "type": "string"
+          },
+          "chart_id": {
+            "description": "Explicit chart UUID.",
+            "required": true,
+            "type": "string"
+          },
+          "date_from": {
+            "description": "Inclusive ISO horizon start with timezone.",
+            "type": "string"
+          },
+          "date_to": {
+            "description": "Exclusive ISO horizon end with timezone.",
+            "type": "string"
+          },
+          "event_class": {
+            "description": "Stored assertion subject class; required for ELECT/RITUAL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Rows per source, default 25, maximum 50.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "Nonnegative row offset per source.",
+            "type": "number"
+          },
+          "record_id": {
+            "description": "Record identity paired with source_table.",
+            "type": "string"
+          },
+          "source_table": {
+            "description": "Stored context/contact source named by a drill pointer.",
+            "type": "string"
+          }
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts"
+        ],
+        "output_contract": null,
+        "output_contract_state": "descriptor_content_untyped",
+        "pagination": {
+          "blocker": "response collection and exhaustion paths are not source-reviewed",
+          "declared": "offset",
+          "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
         "capability_uri": "marsys://tool/L4/query_anomaly_flags",
         "descriptor_name": "query_anomaly_flags",
         "descriptor_type": "tool",
@@ -9353,7 +10506,7 @@
         "full_profile_enforcement": "enforced",
         "input_contract": {
           "ayanamsha_id": {
-            "description": "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas.",
+            "description": "Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading). Stored id or short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Pass \"all\" for the explicit raw five-ayanamsha candidate list.",
             "type": "string"
           },
           "chart_id": {
@@ -10732,6 +11885,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -10806,7 +11960,6 @@
       ],
       "non_writer_identity_ids": [
         "bg_ephemeris_engine",
-        "bg_gochara_citation_resolution",
         "bg_panchanga",
         "bg_sarvatobhadra_grid",
         "ka_gochara_sweep",
@@ -10830,6 +11983,7 @@
         "bg_formula_constants",
         "bg_ghatana",
         "bg_gochara_arcs",
+        "bg_gochara_citation_resolution",
         "bg_kota_chakra_rings",
         "bg_kp_sublord_division",
         "bg_medical_mappings",
@@ -10880,6 +12034,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -12261,6 +13416,26 @@
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
           "relation:chart_dashas"
+        ],
+        "known_gaps": [
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
+          "deployed_current_state_not_read"
+        ],
+        "producer_kind": "relational",
+        "tests": [
+          "platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py"
+        ]
+      },
+      {
+        "asset_id": "ga_fact_identity",
+        "contract_ref": {
+          "migration_path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+          "source_state": "ordered_static_replay_not_database_replay",
+          "spec_sha256": "1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d"
+        },
+        "disposition": "relational_digest_current_source_intent",
+        "implementation_refs": [
+          "relation:chart_fact_identity"
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
@@ -13832,6 +15007,41 @@
           "public_tool_name": "kala_priority_ranking_get"
         },
         {
+          "capability_uri": "marsys://tool/L3/kala_ahead_get",
+          "descriptor_name": "kala_ahead_get",
+          "public_tool_name": "kala_ahead_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_elect_get",
+          "descriptor_name": "kala_elect_get",
+          "public_tool_name": "kala_elect_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_explain_get",
+          "descriptor_name": "kala_explain_get",
+          "public_tool_name": "kala_explain_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_now_get",
+          "descriptor_name": "kala_now_get",
+          "public_tool_name": "kala_now_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_priority_get",
+          "descriptor_name": "kala_priority_get",
+          "public_tool_name": "kala_priority_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_ritual_get",
+          "descriptor_name": "kala_ritual_get",
+          "public_tool_name": "kala_ritual_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/kala_story_get",
+          "descriptor_name": "kala_story_get",
+          "public_tool_name": "kala_story_get"
+        },
+        {
           "capability_uri": "marsys://tool/L3/query_life_arc",
           "descriptor_name": "query_life_arc",
           "public_tool_name": "kala_life_arc_get"
@@ -13959,6 +15169,7 @@
         "ga_ayurdaya",
         "ga_condition",
         "ga_dashas",
+        "ga_fact_identity",
         "ga_medical",
         "ga_nakshatra",
         "ga_panchanga",
@@ -17751,6 +18962,40 @@
           "spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14"
         },
         {
+          "asset_id": "ga_fact_identity",
+          "migration_path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+          "spec": {
+            "components": [
+              {
+                "key_columns": [
+                  "chart_id",
+                  "fact_id"
+                ],
+                "name": "chart_fact_identity",
+                "relation": "chart_fact_identity",
+                "value_columns": [
+                  "fact_id",
+                  "chart_id",
+                  "entity_kind",
+                  "graha_code",
+                  "graha_code_secondary",
+                  "house_num",
+                  "house_num_secondary",
+                  "varga_id",
+                  "sign_num",
+                  "parse_rule",
+                  "parsed_from"
+                ],
+                "where_equals": {
+                  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+                }
+              }
+            ],
+            "version": "nirmana-output-digest-spec-v1"
+          },
+          "spec_sha256": "1e3ce7d4e38ab731a4f8841b5c2624d5ec697ad703363f17fab6f4df5f18fd9d"
+        },
+        {
           "asset_id": "ga_medical",
           "migration_path": "platform/migrations/916_nirmana_l1_ga_medical_output_digest_spec.sql",
           "spec": {
@@ -20901,6 +22146,7 @@
         "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
         "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
         "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+        "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -20974,7 +22220,6 @@
       ]
     }
   },
-  "generated_at": "2026-10-04T00:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20991,16 +22236,16 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "267b24039f15a6843f0aba1e1964d38681b9d5ec21d0022dc48a5d7a7dbf7e46"
+        "sha256": "75b9467ac0e9309582a2b1266ebd68218e12e81b6882278a82a7ed06b7cd29e2"
       },
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
+        "sha256": "0b88c31db28b907947e8c50da29da384ad39df1b525c9fca3f921a818b0e1cf9"
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 94,
+        "member_count": 95,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -21097,6 +22342,10 @@
           {
             "path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
             "sha256": "7dd8bf53c5fe3bd6ca916125149052088822c7e6bfee09fdedaffdf6b125e9f9"
+          },
+          {
+            "path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
+            "sha256": "88965eb4b6433b66307a143d1970d06e070140a72ead485e34b81a7bb9f943b4"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21380,16 +22629,16 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "c65eb64e3e40938d7e7b4f049b82f64d1ef3878a17cbd88ae7559d0d280f9168"
+        "sha256": "d68412f33a8c2850af44e93f6f11147f7247f7fe5e5f3fc8256b7993017ffac7"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "98a5a4b6e5baf7db4d28f5ff326ba070a739382623f1ae77aece5d09987c3161"
+        "sha256": "4ef0932afe06188beaa884bcf14a23572f12925f6d23e95f32f26b57c123ab4a"
       },
       {
         "id": "public_registrar_source_set",
-        "member_count": 49,
+        "member_count": 53,
         "members": [
           {
             "path": "platform-mcp/src/tools/bo_2-8.ts",
@@ -21401,7 +22650,7 @@
           },
           {
             "path": "platform-mcp/src/tools/dossier.ts",
-            "sha256": "55cc23b608cdfc5473bb52d0cf71b300d8357b1199eac399c1c99076ab44201a"
+            "sha256": "8da4c5840760a6fd14869415e0a8ed61a8a1ae3839e10aeca02bb0d840340976"
           },
           {
             "path": "platform-mcp/src/tools/errors_that_teach.ts",
@@ -21417,7 +22666,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "f5f63f56d4cb98c32e9f9dc4603eb15c3f9f694694057adfd335b9ce16e86ce7"
+            "sha256": "5512684ed1fe4b6710b0c3bc967b541eb84fb9cfb11d6657b7f473b8a4147dda"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -21425,39 +22674,55 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/elect.ts",
-            "sha256": "7105b65cc9f00368bf321984fe6bb4afde27ea4f95363f7c96d2ab5f0d923b6c"
+            "sha256": "905f830f0933092ead34294494f315121edb33bab190608ce57c312825eb129c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "f8043fcb726a866034871718e7c23df0f9c8f18e04d3009b9a0e3b317eaf6873"
+            "sha256": "66357ab15c412fadc253653dc95c4349fd9bdaea9f44dceff2e56edf2f3a163b"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "67d507ae293483ab1933b915a28b22646ba2cfc6d0540e8991f1c8c1e0949f6e"
+            "sha256": "0ac067fa62d1fc5f8b2b556110b2d7f04b1d0e48bc73ab4f34c5fc9652bdc1bf"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "2799af8a505663207999ec0f70cebd8177b84bc94260b08a47b60c8a324611ac"
+            "sha256": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
             "sha256": "4b1e262bbb8f196cca5d1aa6a34bbce2248df70dbbff98002ca955f8a24d1a90"
           },
           {
+            "path": "platform-mcp/src/tools/kala_views/published_now.ts",
+            "sha256": "416c7105afe64dc168e590954ea7bf00742ebf8ab940d4bb2ecf727c20055dd1"
+          },
+          {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
             "sha256": "d224a51c27037ede2e0a96c1eb56b34efcf8567c5c111b4e070a8c9912806455"
           },
           {
+            "path": "platform-mcp/src/tools/kala_views/registry_alias.ts",
+            "sha256": "ee5d3cd54d0105b727805705b362ccfef1fc45dbefd550600ee96ee0e0710e1f"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/registry_alias.vitest.config.ts",
+            "sha256": "a463f6d939579c55fd031328a08a12a24ffcc604b5adcf81190caa7118cb4739"
+          },
+          {
             "path": "platform-mcp/src/tools/kala_views/ritual.ts",
-            "sha256": "be10ba5e7b1ca6858a440287699595dedde36b22579b68c37c21634fd88032da"
+            "sha256": "4230076ca8bb9e6d061aaff2fc37f8e59d358c1192f60dd4684863e0bdfa5b6c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/shared.ts",
             "sha256": "9300a9e2c014cbe47728854078bdd3627c4a7914c38c71bd0b94e694cbab2e69"
           },
           {
+            "path": "platform-mcp/src/tools/kala_views/stage_budget.ts",
+            "sha256": "acd666edbb2d0225132037cf95cf9d662c1111aee12e17b8a02ce3794222acbb"
+          },
+          {
             "path": "platform-mcp/src/tools/kala_views/story.ts",
-            "sha256": "ae43167f6e96bc67566194f8d7e368461d01d296181c4b151962c2345df82940"
+            "sha256": "43fe28a73731dc76e95a851fcd6b8e2f73becf55a9db87ecc09e31e1c481d413"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/upaya.ts",
@@ -21469,11 +22734,11 @@
           },
           {
             "path": "platform-mcp/src/tools/l0_ephemeris.ts",
-            "sha256": "353b35b146d3a5fb0d674ab07a7dd24dfe24c006ae6b4e81224368049b6b718e"
+            "sha256": "737eae6dc33a4c5e08c5f3293aeada2c1f6d6f64fb213351939fd615adf39cd6"
           },
           {
             "path": "platform-mcp/src/tools/mechanism_retrodiction.ts",
-            "sha256": "7b631d7ecf6f5853f9728a78b9e09a78cb235141f9e5f19bb04d02d7426e9d73"
+            "sha256": "c10f80ef0614c4a3cf02e817d3f37abca7b79686103ea2bb45c8f2f82c469d5e"
           },
           {
             "path": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
@@ -21485,7 +22750,7 @@
           },
           {
             "path": "platform-mcp/src/tools/muhurta_finder.ts",
-            "sha256": "f4a14a75394b976acaf84a7c2cf8f50702abda65a93a67e7aaa55288a5a1ec03"
+            "sha256": "2b915439a8cf95ce3832317e95397e60e0fa20e9021f96ca5cd4d48d9fe1203e"
           },
           {
             "path": "platform-mcp/src/tools/phala_event_anchors.ts",
@@ -21517,19 +22782,19 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "4b16f99f35c42f4f049b0a2ea580084498d6058fd9910a3de2dbe599b21409c3"
+            "sha256": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
-            "sha256": "02bee61649464ed7285e19a024930174140a09c65596620bb0555da5bde74e4b"
+            "sha256": "3975d1eff9e2e914d972725a185aaeee3bdc083e40b833cb7fd4e24ec388eb84"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
-            "sha256": "05dacc71ade9dbf118c59027310937bd501c5043083d0e3ea5e31c4a9977cedd"
+            "sha256": "ab73f34bf6417785843879a6554e7f53f657d231bc96dc0231aa574d51ca0112"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "8893f20181e2ee78c1176833119b03b921b26c9d049000f79404928795397e4a"
+            "sha256": "a6feac5e8e4bfcda9b8b66de0bc21734fc4e58d86d9223a48a562a5d7906fb12"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -21553,7 +22818,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "7bedb34b8ff82443da293ef9a3a48c0dc2f89a6b5aed9aed3f4a9ed65ab574c0"
+            "sha256": "a23e12659d2cd08f74c2d2c61fa156c8ba5e431dcdc4769c18e8f249f9f9f7ff"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21565,7 +22830,7 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/pyhora_natal.ts",
-            "sha256": "4d9eda143a9cd878564dee64a1f40f084c7a9550761b21bf096f189cf4b03cd1"
+            "sha256": "ae7415c75e0d2f089da5fbbabdeb4aa0a843c734c7fefb19de0db90ff14f2cf4"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
@@ -21581,7 +22846,7 @@
           },
           {
             "path": "platform-mcp/src/tools/scan_fetch_signals.ts",
-            "sha256": "4450e3f934d6b40c021c57cc1795c64737268f02ccd12e6964facd18648355fb"
+            "sha256": "dcf9590b9b0e1f6493afdab2530a9acf76a541c80593237780544e40558d9cd4"
           },
           {
             "path": "platform-mcp/src/tools/session_tools.ts",
@@ -21589,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "2c226c52d581f9927359795911844ac43a62effd2a6eea4150396a2819542f9c"
+        "sha256": "8caa015056c842d7cccfe0d5fe962efbafe53952703dc91bbd9a738e6d4d57e2"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21603,11 +22868,11 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 205,
+        "member_count": 218,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
-            "sha256": "9eabb20b87f5a92c8fc00b8576e3c109ee657c77b4216bf11a02bfa01c5e017d"
+            "sha256": "564e68cbbcd027fa01a97d8b04c64788d6ec56efdec09368638873e798e1ef6f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/chart_agnostic_gate.ts",
@@ -21615,7 +22880,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/constants.ts",
-            "sha256": "6b776b83ee5a4b9f915db0eafe3d6e34967f6a725515c2cae15a6b8dd6cf14cc"
+            "sha256": "23df4cd0b32b70842f9086665868fa6f96f1e6d91781419faa3112fead0587a1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
@@ -21623,7 +22888,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
-            "sha256": "6f91966dfac1f422a6f86a5dbf27ce0b5c027bdd6cdb7618dbe303d9a5657f46"
+            "sha256": "2d69e126b866a9e77d72d9f14b3f0aab93a401845860f34226087b8688dafda9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/generated_web_tool_bridge.ts",
@@ -21638,6 +22903,10 @@
             "sha256": "1b912281874d43041abbbe824f552fa6bfcd8841e8787ef917dfad84d4c44727"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/handler_ayanamsha.ts",
+            "sha256": "7cec7f8dd908036d675a9bc63b7d8d5d18c5bbceabcb96b10fba924a38580906"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/index.ts",
             "sha256": "61bd72d0fb3fcb7ee6dd75799b7561b81434558b9f46504f4ddb18ffe9f74545"
           },
@@ -21647,7 +22916,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "6046232e2674498db9e4cbc418a1141ef82a8bb62cb00887a612605dac125741"
+            "sha256": "950dfb061a74a4ab6c23185311c38b59b77def08d5f7141b0c80c4639d913e75"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21675,7 +22944,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts",
-            "sha256": "0cdf02438eacdf8c09d9e5abf3ecdd7f809c141a42244fa43367d2d620895980"
+            "sha256": "55f0b5303a7fa6f5f8922b123d2642b97222f7eeaf1a522fa41206fcebd3dd9d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/proof_kind.ts",
@@ -21691,7 +22960,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "229c4f2e0568c908c3c8ad1987c47220e5223efb4e2b712e8b2ba171b2f6fc1c"
+            "sha256": "306b21eb40a6de69dc5de1c5e533e65b50548e0f261643fdf06a0d26f983acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21700,6 +22969,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
             "sha256": "66fe0dcf219d82c47e14a427eca773430d4e950eed1d597fda923b5f95a6bbed"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/kp_categories.ts",
+            "sha256": "f77b2e433095829c6f22defb47d46bd33de3fca868085c5a906bb2e2adad6ad8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21718,16 +22991,12 @@
             "sha256": "d1ae4f3f31c10444e2e90b477c3b05bc85eff902598e6221002d2289ad6e8d50"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
-            "sha256": "574503c5f3ee8065491ceb28c14ceaaa496b9713a983a0f20aa72abafd2c3746"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
             "sha256": "b94ac96da418c28089adca1614132e862ad51a34a8a4a86fd48f381e8c7705d0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
-            "sha256": "9936c60ddb7667b772eda1ef2dd64c2489133f23fbcb838a35315934bf8db3f8"
+            "sha256": "fdaeecf716561720e192b7357c5987f0bcc0f02eeabe3ab9baf33dcedb6cf88d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts",
@@ -21747,7 +23016,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
-            "sha256": "6ce0b5fbcaf55a9254f9462639e47d73228529885833e4bc04b88ebf99483dde"
+            "sha256": "63d8a3efebb4b4ede404996bd0afaf8ac9b03db40f9d580c3eae6251ae62f0c4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
@@ -21759,7 +23028,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
-            "sha256": "3fa81ee07629dc93273316f305e9136a558bef8332f898d745802769a5690d91"
+            "sha256": "0c24cd443db234dac05b2eb5eb0375a3a355c0174eb266ddd7046a2ee3204f93"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
@@ -21767,15 +23036,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
-            "sha256": "d3117124a4bc84fd3489f488f0bedfc206f15b5810c520a38c4ea01787046499"
+            "sha256": "2356fc5b7ef329ddb116b79a116abfb61ac72df748ceafc19f194f41ce46ff1b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts",
-            "sha256": "5b881f2045f1e30a4ca0457b6d08fcced69a9df55ee632bc892b66106997f848"
+            "sha256": "440d2fddcaa51e7fc82ae243271e3f6e3dc273496dd11748048249fc6d0c076b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts",
-            "sha256": "6b09c1c3b613058ec80c5056a8632310b559b3fc16463743fc82de98861dae75"
+            "sha256": "6e61f76240fde4959339fd34618ff99e3b43e8832b97a2bfeb8d835dc8028984"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts",
@@ -21787,7 +23056,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts",
-            "sha256": "502c02535c1c0a5bee73e066586ea59036c07c3b87c0a1cc142bda34a5298454"
+            "sha256": "de10e4fce2dec778c1d3f6a5e9a2e19e728322b5d52658dde022f40531c9d3ee"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts",
@@ -21795,15 +23064,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts",
-            "sha256": "6f302cb2fa9bf8e2f17469fc11e1978033a08285ad34ab025197c1e4249c256c"
+            "sha256": "393798a42f05bcbb2c910c3474ff4de05ef9e203167dea28cf122930fc0a87f2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts",
-            "sha256": "9d0e18f352f64e99c3f815adf66d96ba6d630ee1c192a24f3ee422aa0a1f1bc2"
+            "sha256": "0daa996eacf51e57f685f9b868db3ae6c0dec94d13a600e3c96f123c0d9834df"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
-            "sha256": "f748e728170871d39479991da3e428f4006c02aa72993de4e8635b7a0fc2e1d4"
+            "sha256": "0c744ee92d777121bd65f5c13c5a200c576d9adbbe7a0edf804f37babd3583b3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
@@ -21815,27 +23084,27 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
-            "sha256": "9b816b2e190ea8e6633703aefc7d4b2787a049f48a7bb67127fd81c298d79693"
+            "sha256": "92ced81651dfb83dd9e2059f6112024b623b3597acbb3d6d567067b4846448bd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts",
-            "sha256": "f5388e1b2abc5e42c7a67decec7961d49929097ac631fa805b9e40efca241b0a"
+            "sha256": "b63e316ac690b623c190701f90086ae4b300d5368b5804eaa5bfc9c02eb935c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts",
-            "sha256": "0a6d88a3474b1b18ed0c46b43a2e9189a4a3c59e7a4d9fe0f5c53cfb287ed809"
+            "sha256": "2a467fa45d856fc33a11d54e40afdb570c4e6e9b751c91a1fc570c21762c6daa"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts",
-            "sha256": "c16962eb8a8a2477064729e798134a070370e1b2d4e14fbc99fe0f40a7c595a0"
+            "sha256": "cb4f0e02ff9759e26ba7666b12147f64a7bcbd911488be21fb2afd90c3d38f9c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts",
-            "sha256": "9dd6a42d2c1b196ba5f92fb2a732ec59f9e885ef5d831e948354128038f13df0"
+            "sha256": "11a1a71c22dab8907890352eeab85139b5b2450595abc2c5d69f93a747243bc1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts",
-            "sha256": "76465d396afbf86b6c603a9c1152d9590e74f82a38392bac7b7dcdbd82aeb9b8"
+            "sha256": "b299fdcd4ec97b0993a2dc902f9f7c4c9dd730b0d7f26153941379c9ffcbea4f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
@@ -21847,11 +23116,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts",
-            "sha256": "24a057ee6d1a17ac168c9a36ea2a234e36f8a89fc9b101905eec9982472e2d79"
+            "sha256": "48ca3fbc2218a5bf7492912785757a2a8d24f7788615c5daadf37c338461f2a9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts",
-            "sha256": "7a2549f5f51cc1b12a07f449f5d63adadf76269861b5baeccad09cf60c90727f"
+            "sha256": "fb5bfaca6e004a7229b37cd87dc2399ede81cb1eb83a05f4a99f44537b371785"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts",
@@ -21859,7 +23128,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts",
-            "sha256": "00d1681cf7339593e4c9f5352a88c36814d144a66e3803757d51c9ea4657ad01"
+            "sha256": "aafd0386c8386c1bff3aef005596de942b273ec0f6e4afadd3307223183b67b3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts",
@@ -21867,7 +23136,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts",
-            "sha256": "48f0032ccef0c907af7aa38e6874bcacae4d08dae1ecc03b3d3938b1b7f886f0"
+            "sha256": "757f87eb24a7cbce6519a4d2a29916187c430f4ec39193104a7dea1ac92ad151"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts",
@@ -21875,7 +23144,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts",
-            "sha256": "ddc3025818706b8349fa69548068e2fe04a514b8f2de711e0c871a6a5f921e27"
+            "sha256": "0af6711c32c8809da18eff21061b4b75e8019d64d42cb1b2b4bf2b0cca408181"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts",
@@ -21883,7 +23152,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts",
-            "sha256": "ecc947ee624c62cc512cc30324852621ebed96f720df9b75fb13ff11a211f40d"
+            "sha256": "264dc48d529dbe3299abad35ebdf0ad530f2db931837513bbaed480e69b6018d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts",
@@ -21896,6 +23165,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/ayurdaya_unreduced_base.ts",
             "sha256": "afa6725b35ee5ff9a6fa02d57d03e359cd412bf5fb6488fdcba33c766de620ab"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/citation_narration.ts",
+            "sha256": "54c65a348bfbcdf9b998b8fee3a952ce1b0e091887060607ab9ec9847940a712"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_aliases.ts",
@@ -21911,51 +23184,51 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
-            "sha256": "8451abdf4f836b8c2eb72b78f34ff3aca335b5f237ac185f210117b91b4cadc3"
+            "sha256": "38ee38bff6895a50f206bb9d16a9130735f9120a1ba38422d1309956dba4a8d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
-            "sha256": "98c8543fc4d7366e44d6dd14cbfded5eec02005de86fa5b6ed4aada6d15078dc"
+            "sha256": "965cf3e48a423d8da670551340473a35cc5aef431fa7cab2f32b6574a2beb7a5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "1b430efab124f5c304b7ff6b3788ee6a23cd86fad059833bedf1994ad4949a45"
+            "sha256": "4ccaecafbef0166e95ef781b119d7b4a4438d657af923c9041201b4129d06d4c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-            "sha256": "2f79d75d060d24169cb34405bc6f4706dacda149f5e4822a030501c23e8e0fae"
+            "sha256": "f78ce291d6489490e78ee04a698e7aa3288e6bc2b545f213e05cc1cd0fd773cd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
-            "sha256": "24653dc1f1878ebfa601232df0a749a0b820bb2f8c52b1422549b516bf518258"
+            "sha256": "0eefe7edd914987bc90802d7edfc2b3a01735b7ddef196fadc274c782063e797"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
-            "sha256": "3f118fe8ab472438bab4b90251ace12a8845595c897f5c32d7bc1024af93df90"
+            "sha256": "020ff0ede0dd8fb05b5ea1fa651a0ec07422362f7efd5ade18142373cdce4c86"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
-            "sha256": "56e8c9be0bfffbb7444c61ddad798a04d56e28ece06066d488db369dcd48e52b"
+            "sha256": "cbedf0897e497c799f4f92a012e90280237dc5a53be2b69308f31b4ad1b1acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts",
-            "sha256": "c3d200e0fa2d41852ed778949f9dea7862ed7d7aa0144aa2bbc6a421ac604bc6"
+            "sha256": "8de25e12e779768d3855dde155d9d366015479727ff5fb55fc2df0749371384d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts",
-            "sha256": "3d4b5e2604b0ddc372f8230603a436d0339d4afb5e2b140e46e12ada57f1b6ce"
+            "sha256": "b2c6186f65ce44ce96dc287b3499ffdf606f3eed08c2b7e0f8374ad3a9d07f56"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
-            "sha256": "d879196139c9591435451b35ef22292b3a56e9430673082f3746f0b3fef776a9"
+            "sha256": "d080c5a268d1d2cbcc6574d96875014a49a02855f8e8d75a8639dff2e51a0ec2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
-            "sha256": "9cd009cb7ad37da7aa0898b48f2d00fb0b22e82942bfc01bf71eddae6a78f17e"
+            "sha256": "5b43aad2b6bae4876a18cda3d479af42cc85364dcaa7f05c535db93d6e7439f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "7ad2386313b1fa087e5a4eca1047a094bcd488e03220acd14399d986da532aa9"
+            "sha256": "966fd1dd470454eb2aea01454c73afb3a9371da741e4faa359c707050f520117"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -21963,99 +23236,99 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
-            "sha256": "22fd718f853ef35d037cd4fbc160515947af4ea10c3a8669d843cae3d46993b8"
+            "sha256": "6eaa72a8d2299e454cc84df84b328902e9b02e55e0dacf151567b5424a07e4f8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "180c8a5b991085e300fb9977d5ad0d328516b18ef375a6274ca97c945cbb6670"
+            "sha256": "278a8a97ee62d334bbdafd27db04071e9106ff768be53f2bf7fc92d8db8483ba"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "280a7b9ef495f7f923843a1d2779a925abaf05935bac25549736b65f5502855c"
+            "sha256": "883cc9a7aeb8fa42bbb5e36f6c1e4f118612581abc0506605ef2589af9876b71"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
-            "sha256": "5d0ed3dd87113298e5cc24695d3d244c92298c2ae1003cb1994dda76f8f8d875"
+            "sha256": "34d22d09abe647fa96089d02c4668e4729de48d23be99c971515471c6fe37504"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "7be753fcb7ecb40d6ef494b3cc493692a47c47393103e571975d1a464042e9bd"
+            "sha256": "cdb1750697e82c1514a32b3efc705289ab721bd52895344ce8a484b73dc9009d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
-            "sha256": "4255680b6955b008f1cfcd29448e13e99519e3866685c9b330ecdadc6ee63780"
+            "sha256": "1003461d6a5bf84901e7f88c9670f62e3a17b4d3ca97e20c04cff9304e1aaf7f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "16e98b3b5c107a3d7574ad0f8d48c77f4e77f04bc70c74dffaee007040a2feff"
+            "sha256": "930999751c56dff3127e37e64f1a0e0eef83f8fa0c49bd99872c0f928a007087"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
-            "sha256": "cd5d60969494d93b3b4fce61c7346716cc8090fae3468178a365d36bdfd171da"
+            "sha256": "01f0400b093433cbffa2e45e0a75ae10a0fd4220909a75958b3d041dddf2dd5d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "89a3be7a74ae55e183aba36fe556233edc4c97052f12fc1968f6f07ff3ece6eb"
+            "sha256": "56fe79fe07851607218bbdb47c119c02d92dfbe1cf15a05726eebe8da355a04d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
-            "sha256": "d7d482b7ac0c1e6ec0ae1add59cc2b69696e5fe78f32b938e86f282272fc6503"
+            "sha256": "8e621dab1b115f6cbedae05405c26669dfd0cad1b8dd92e835a55d1a088a7934"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "24d57f7a9f1c5bb281bc62d1e0c73d9cebdc3bb7df62b089d73f8d87914b8953"
+            "sha256": "13479e56b3750f44c89f93b8f887a89928aa5ccc01a699ff823f736276b2d959"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
-            "sha256": "6093c220c703eccbd38b369dc5ed8bf2fe69ef289313ea90a4a2f0a9d12e5a5c"
+            "sha256": "25d051dad42aeab67471d9dd2d1df3e42ddc67e4196fbf34412c0ca23d25dfab"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
-            "sha256": "b2798b0697f84975f28f402e2b4b58755e17080d00ed800b2d1830d078f38966"
+            "sha256": "92e2d1ca41d28c4d6a578d8e3d3c913ef57871ff662eb4dedd1cb24dbdf1c42c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
-            "sha256": "dc8270d7676e69a6b832da1e8983eedd3c624dc0d5426dabdef5234ecd925f31"
+            "sha256": "2367ca14e481dae0827180015da8b90605d1c83bd2fac1c6cfb30e83e531f07b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "2e2b68b491998ceccffbb51925af8bf60d7488744c4f2cd97595aa038176dfc6"
+            "sha256": "52a89cd9ce6906cbeaf7df0a69279ce9781216ca769943416d39a09f25c8cd38"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "564bbb75c6fc05485e1c3f88c4a3db0b7a02c8b9e1a178afa740d05b784a639d"
+            "sha256": "f649381e8a4ad5fc9af7f7e56fab7fd204056c0c3230dd2f766660d6226f70b2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-            "sha256": "9828d1ee131a559ac2c198560695636239faa90c7ae67b5afe4dfb66d397bd45"
+            "sha256": "2a1f3a647b4ad91e3582335c995dffa81573afa471954a49820c9c2e71068b5d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
-            "sha256": "686dbaacc4c3abea6745a21aeb828dbc779ac2a63cfbb2ceaab70c495c4c1f9c"
+            "sha256": "d13e4ee448fcff8375432764be49c0ad4bfe123e1efe8c1341aa4b67c83f13d9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
-            "sha256": "2cd81d1c54b55c486b98b67cabcf246dcb21baadb6da3d8550c36488ecee4d30"
+            "sha256": "db86e9c34156ea441c03015b9c31ff7ac00047377de27a23600be2b03149ea77"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts",
-            "sha256": "df804a4b12675e710216b2bf07849b65d2f3c0529802aa88e0a2be63ac6efe7d"
+            "sha256": "dd343ed042f4cb92e1b645e3e167bfc0b305d7d2c38eaf07522f87339e2f6237"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
-            "sha256": "ec2a979384243fb4243fd007b71481015086d1dc739a2129715df1b32d4a626e"
+            "sha256": "bce38f4611f29ad635eb94fd7866faa916f9ed8466f1359722b98c6b62dd6fc7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts",
-            "sha256": "132832ba6a5e5cee4ced26c0b45d6ad4089651cec1b65d1daae45bf4dec388a5"
+            "sha256": "4515dbb49c3f59d549fde42133925285f6813432f898614a287acc38ff4e46b5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "7b2aaecfe02df408dccff6bf23ae4536fa3e4d64a981ad6510d9af8a7cb03784"
+            "sha256": "ee42030058eb43563cbce4edded3978839f0bc5070735271d68133543dc13e4e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
+            "sha256": "3b354af08a7bee654eb8259c57325ed9db0fcdef58598205cdbe6e2b910d5e73"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -22063,7 +23336,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "a5ea014254d4bdbd5f99c919785ce0bfe2aae24e5d1f0d4c3767e73b0b060b38"
+            "sha256": "159627c98716ae71dfe856a1ddfa5ea380fc8d80330f44ae9ae76a1e8444b181"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -22071,7 +23344,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "69602a32786364ed8381c77c1c06cdae75d653f8566a9f3a28df4da99f3a089c"
+            "sha256": "cd355359dd35bf5381d4b96823ce73e8c64f19552b86a69ad344c7664f53071e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -22079,19 +23352,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
-            "sha256": "0083a542160b7ac081d766309058f2f8a7fdd3959441b0c97a6dc5cf609fd5c1"
+            "sha256": "6ae4bd29510fe978381a93924a96984700ca1839f696b49de624ebc955830a33"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
-            "sha256": "a483b6e073d35c36b893f11f9d41612e1c91940d0d5d8c71faa6c68f4e8d03e3"
+            "sha256": "a74dd28c2e794b3cf21cbeb3340b954ac9d7008172df81d0a642ce3bd1ca5d3f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
-            "sha256": "1c99050c3f592417bfd855c8d574ee8fca7ab650c1ca9d0eebabd8cb24fa04e3"
+            "sha256": "f6fa2f21ee5a503ab7f4ba11a28bd961377b425e807a9544956bfc72a7c137b6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
-            "sha256": "5928b0fae1f1e099a84b92323fd1cb92d8ab230cd4541916dd956bd9fa4afc3b"
+            "sha256": "eaf27d231f50f1969d007ba253c77d1236ccd73a848d7d8f7e70b7e2652aac12"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
@@ -22099,27 +23372,27 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
-            "sha256": "e3bde181d9fc156e824fa0aabc30e6060aaa422ab919b1f4b5a022c10fdcf895"
+            "sha256": "8ea9bf2d38f09a35b55f001645d8394206c9f9232405fa8a45aadc7d1d0bd1be"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
-            "sha256": "820ec6846be3fb9d488859f42c77cf7c4dab3ac430ba32d1ceb130e68660daad"
+            "sha256": "0e75c917e324ee4b24631ccd4471a267b7f2ed7c84411fdb22effc77b405bede"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "cd8256961c7799ed335028037f6b9f9b486e5839a38c2f502872a8c7a6a83761"
+            "sha256": "434ff8aed6de1355597cc96281fcd9a71e5c8f60611a499077629562ac509f5e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
-            "sha256": "865131a91aa78cc1fb5f156b48a20de43792541da4bd014c64c9150095fcf1ed"
+            "sha256": "4563a6d6889e7d2abbcf2704edcb643c57598def3ce32f45d17e264273c54b9f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
-            "sha256": "397457ba112d7ef9033d89a629116b53cea742b20acbbc5f5aa2f99887946bd2"
+            "sha256": "30fbeb8d65d4017c917d89f567d0f7db6c2fa88ca258b67018d40a86075294c2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts",
-            "sha256": "8e653bf2be204c3314afc76d71df231ec20b54b270c4e6f4b0e6a58b35c0e0d4"
+            "sha256": "ba98a33b3a59d0550548902dab9fafb7f30b4c47d08ca6ab9096654efca483e7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
@@ -22127,39 +23400,39 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
-            "sha256": "ef211f36f272e9bc96672d42e4166289e9df8e1252fcd14a56aae85caed09403"
+            "sha256": "c3fcdf00c8929fa71e7d05ef546bb3236b5f9c4dc1b6170bcc58bed336e93fd3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts",
-            "sha256": "c372bf403000f67658af9d36334bd43288f0cd27de18feff4c8c1abfa598904f"
+            "sha256": "5c4d3f1e943c8698987ee88190c12dc02b2161db42eb916941de244d72ceaefd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts",
-            "sha256": "da9298c813322d699ef6d45fb57ad89294a142cde636b8461abc05c3008dff42"
+            "sha256": "d1a25ac2431622d2cd6be58af751be8ec90640a17aca2a9f474497cf4594c1d2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts",
-            "sha256": "bc78e132a363c9c3ac6be4ad8f352f3d87056a4e782b9bd1f90d412a686848b7"
+            "sha256": "84a35e20c89d24793de70aef48830d926b69f043a3d5cef42eabde0fa85d21fb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts",
-            "sha256": "34024d7ed46b17c9542583c35fa93a5c872219b0aeab0dfc032810c7565660fc"
+            "sha256": "84f740557f55572fc352e0062cf9ce0e85c4853fe6553b7e322f0692657cd127"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts",
-            "sha256": "44d01c747a19581d404410d34900aaaac4ad8c324c2d26ffa1f7e299cf5e567f"
+            "sha256": "4e4891a96d53d129148e13c67932842b2b1b2298d995836297148705366412b7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "60a3f0320632c4a4e86212ab61aa97f334e519695fc5aabf4ae85963ca5473f8"
+            "sha256": "87ec58d7a6e014ebc654c33f9c6b55c2b89b24310564bc80b49b08e9e668ec4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
-            "sha256": "41f27f820fcd9b69822026adfd8d142aba20a6e30c1d853de7ffcdcc4cd58c3a"
+            "sha256": "dfda2b81e2d014ef305a73c9970119739c46e723566bf7bc6083026282841f11"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
-            "sha256": "2f54eb2e3c2420831cff1a9b0198fb742f2113f3bd9377fed5c98e6713280f1f"
+            "sha256": "360885fc8029bddd69813dd3b3e44caf1e1c06416bece60a4e7b51448bc9643f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
@@ -22167,15 +23440,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "847b26a613568dd69bdf6286a751633dfc5ad820621a1dd2373ab200832290ac"
+            "sha256": "e488a71efb4b0985a0f406529cdd460ee21e7d4b6faf0ca4f31c06a2caa967b0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "0995059e19b3c28ec16c96b13d207110558f2134f0dc13f78d9caa444fd7993d"
+            "sha256": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support.ts",
+            "sha256": "8c2f4cafc1003da4663bcfc8f5edd41fb8b96ce2efafe585fae38d52a3a7b78a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
-            "sha256": "644ea70909c2519dd81c4a896d34ad2ee9ca6bc8e109b3dbc42f32003bc72620"
+            "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -22186,12 +23463,16 @@
             "sha256": "fd1c5696235bf1ac80cde42e8828c3a6d9b07b01562bb7fce32f6844789653bf"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_assertion_fixture.ts",
+            "sha256": "089f6f72f66f6095388cdd98f5866778526228844ed34d049bb2ee9857c6d075"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts",
             "sha256": "11cffe3fc94d8e73a6f77edb041218f269f55906660e1a24845bb2d9bb05e727"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts",
-            "sha256": "4769dac59b785e887e6a4092788b2eeaa238e53fe016b7d6846327e56a50f670"
+            "sha256": "05a3ab16cc3aaca869cd41b941dd31c719bfed1eedcff4101748e8cf67081bef"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts",
@@ -22203,7 +23484,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
-            "sha256": "22dfe6535395183939b099b7e6f0f8e92cfefe470649f598b205c5348ff04fae"
+            "sha256": "be79ca73708813971f2276a1e0602ec360169d7c7345ed39a2c56fff6a2ac1e9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts",
@@ -22211,7 +23492,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts",
-            "sha256": "140f5554dbee34dff1aab84fd7022e738824e1a7ba0742071452a5c763dc2676"
+            "sha256": "a61befa02751d683d29703358e9086e77caadb352cdfcac9882187e82509600c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts",
@@ -22223,11 +23504,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "sha256": "ffa9081f31365444b2730273cbe88e3b064d700d1b349247cd9dc3f1cf57e342"
+            "sha256": "80232184c8505146f030e0089b00597ca53dfdce062ff0ea97755ceb58ad0160"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
-            "sha256": "570ec95eeb724d384d27dad3b35cc09ebc6253c975fd2f8f59c001b27877d72d"
+            "sha256": "b214573de5039d895c0ca42ae36a9f85fb636fb76ed9685b03471439bf7c5b45"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts",
@@ -22236,6 +23517,42 @@
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts",
             "sha256": "5a1cc7853c530df35b1ad2794e37818424c47afc26f22488241552606eb1284c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/story_source.ts",
+            "sha256": "1e287c7611bf7e1acf2cfcb2749e8249fd1a3520eb64d749ff4448736539c096"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts",
+            "sha256": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
+            "sha256": "89f21cf3247c95bb1d0dcafcbf2cd8585ce764b545d4d3936fb349b47a8f101e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
+            "sha256": "33a4c14a7a66b27c6757188bd886d9a114a4c7711e2e085ad90061afc4a95589"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts",
+            "sha256": "f561265b6c922fac0084f5317ebd3af1851c4b58926563bf948bb4a9c25a3c33"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts",
+            "sha256": "4c8266893b1cd10b5b687b8cfe1344460b23d841ad6bcbf77954c2e63af75bcd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts",
+            "sha256": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts",
+            "sha256": "602628753eae5b79a8969e507965f8252a6cd4b4d814bae87e6fef83a503096b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts",
+            "sha256": "c1d75b5a097bc4b315bbad19c2c1059aeba20a65ce8b653736382b4e25fc2c23"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/index.ts",
@@ -22251,11 +23568,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
-            "sha256": "fd71e047e9a5654c9609d32b27539b5ea3f31e4547a24f2d1f37de26574827af"
+            "sha256": "31cab2e1aa0550d77c7afa56dc6d8aa18ecd98ea1a2541aa6527e7ff26be4e4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
-            "sha256": "f86a3103f817314269b41ad29cead32d6f7f93f2b81d7990d56e4332e1fc6a11"
+            "sha256": "552ce5f17bd5498d4e6723a23d96aa1029225420a3dc6d2ce23b748a9b670998"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
@@ -22335,11 +23652,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "ccf9704c917e1775261c58578427461b1de954829eee600fcfb8a5552e298fbf"
+            "sha256": "2a9cb20e0276b77d4bc851c477e204d63566284c02d4436b0dc967a8d9ef3cde"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
-            "sha256": "25125ec63749a3648cdc1372c36e42fb50237afc6c3dd5dfedeceac1e8ae294a"
+            "sha256": "f5461c48337b9101711f6263a7a96bc45ba2572de3ca8d199d4c20bca09849ad"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -22351,15 +23668,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "5a447a1ef507b43b883a4400ae540b6c7ef9e8bb4ba419f6c6d470eae19be73f"
+            "sha256": "fdd9e12ff4a77f88da2f92bef0e6e0f517a8c1e4cfe8e67a095a71ba577967c2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "8eed667ce4020730d48358bcc4e67aa36091faa3e41ca176ca65c52fa40b2943"
+            "sha256": "183981ecc2fe999a839f406959c2b8aac49663098d0d8d888738241270000d92"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "3dff951d46cbed29bbb7796b5b8df1955eb27ef29c92d4b74364826e9c552de9"
+            "sha256": "9a9465b92a40ff0e3583526215a427ed93c246951da35652c222177eecc3c20d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22375,11 +23692,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
-            "sha256": "d35b9d7e9b284e1794149c975c6f7353aedbe50aa68471ea8f48c9780691b0dd"
+            "sha256": "fa8ae8c778fc38826ae8b51522d5faef2bd6803cd82b6d5633422b23669fa9fe"
           },
           {
             "path": "platform/src/lib/retrieval/registry/parity_check.ts",
-            "sha256": "40704bb93bbf4fb38caa1190b4c726f2e3ed2750009160f91bb67c23cd4d838f"
+            "sha256": "94ea3dba67016b6df7937a68f559efc1302b8244db302e933848cfd0bf2368c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/schema_utils.ts",
@@ -22391,7 +23708,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
-            "sha256": "e26c7496fc5201814a1aeebc9c003ac3a3796daa9081fd14a66914c4f07762e1"
+            "sha256": "6262742030e0a7c843b3b68b3732eb296e9d3f3d4886150c9b5d588b488f70da"
           },
           {
             "path": "platform/src/lib/retrieval/registry/tool_search.ts",
@@ -22427,7 +23744,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "48944a790148020191520a27481cbf49dc1285634d63e42ad77c622932047997"
+        "sha256": "14fc04c4223a8d7818946d6de6a65e35ebc0264fd2cca1a03cb4e44e49d015b6"
       },
       {
         "id": "service_effect_contracts",
@@ -22447,10 +23764,9 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "a8478eca71581c7d1087f090a9b534518f926646cfafd2ed4e2109ce898d4d57"
+        "sha256": "93084935c3c63381f951e60e1021de44a6e73afe7b1ed34f0f9a8f0cdd2603b7"
       }
     ]
   },
-  "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "867621fd205f1f309020d0e6300b103825d2acaf"
+  "schema_version": "capability-estate-census/v1.3"
 }

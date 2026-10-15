@@ -564,9 +564,12 @@ class TextIndexWriter(WriterBase):
             changed, unchanged, distinct_tags, skipped_no_match, skipped_invalid_tag, duration,
         )
 
+        # WFIX-A: rows_inserted is the figure the asset's registry count_sql measures (distinct
+        # topic tags over embedded chunks) as it stands AFTER this write, not the number of UPDATEs
+        # this run issued (0 on every converged rerun against 361 live tags).
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=changed,
+            rows_inserted=distinct_tags,
             duration_seconds=duration,
             notes=(
                 f"changed={changed}; unchanged={unchanged}; distinct_topic_tags={distinct_tags}; "
@@ -574,3 +577,13 @@ class TextIndexWriter(WriterBase):
                 f"embedded_chunks={embedded_count}; unclassified_before={unclassified_count}"
             ),
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The asset's produced figure is its registry count_sql: distinct topic tags over embedded chunks. The HALT and
+# upstream-empty exits keep reporting 0 (a nonzero figure there could promote a halted run to lit).
+ROWS_PRESENT_SQL = (
+    "SELECT count(DISTINCT topic_tag) AS n FROM classical_text_chunks "
+    "WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
+)

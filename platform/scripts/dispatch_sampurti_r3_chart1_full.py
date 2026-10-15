@@ -1,7 +1,7 @@
 """
-dispatch_sampurti_r3_chart1_full.py — SAMPŪRTI R3 full-DAG rebuild, chart 1 (native Abhisek).
+dispatch_sampurti_r3_chart1_full.py — SAMPŪRTI R3 full-DAG rebuild, chart 1 (native).
 
-Dispatches a full-DAG build for chart 482012f1 (Abhisek Mohanty, canonical).
+Dispatches a full-DAG build for chart 482012f1 (canonical native chart).
 Targets all stale/error bo_*/ka_*/mi_*/ph_* assets minus the 5 gochara exclusions
 and ka_gochara_sweep.
 

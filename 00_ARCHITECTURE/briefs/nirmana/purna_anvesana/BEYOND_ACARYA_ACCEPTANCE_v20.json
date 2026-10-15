@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v20",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "DENS-F-SHARED-TABLE-FACETS-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v19.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:767da1a16a070263ec6e42cd607c173f192443c8ba4c962adc8b954c026d5e4e",
+        "report_hash": "sha256:a12f8859a2d62aec21d95e8d375308c7dc4b80b3ed80915b29aac5402c5c7d96"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "bb143edf2af761ba4ab88754eb2aa2f8c5bc30a8",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:9f7363c44ab7c5d197a2f1b959b59bb442f45a009be16ad554ce7a67547d48b3",
+        "capability_content_hash": "sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858",
+        "source_catalog_fingerprint": "sha256:f00e12ab7004ce535dbf1c4fddb139835e2f07d12bcd1e3b15f01e207c665159",
+        "semantic_review_fingerprint": "sha256:16c6a20e6ca0e8704b841fa1182393aafea9a1fd782453aac53a0e2809937bf4",
+        "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
+    },
+    "capability_content_hash": "sha256:742a6ee6353c8622eb6896b7f18f6fedc44f098b6bbde7aa5f11e808753d4858",
+    "report_hash": "sha256:30ec3edce1578dd504a95661174e0530d5b8498a6d2ac4655be928191c951c56",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "DENS-F workstream (shared-table facets and serving contracts, PR #3302, rebased onto origin/main bb143edf2 which carries the v19 Fact Identity Index step): density_contract / empty_reason declarations on get_nakshatra, get_positions, get_sensitive_points, get_sensitive_degrees, query_ucd and get_graha_yuddha, query_signals' producer_asset_id input, and two platform-mcp ref_* density entries moved source_catalog_fingerprint sha256:6cb6a46 -> sha256:f00e12a (so snapshot file, capability_content_hash sha256:767da1a -> sha256:742a6ee and report_hash sha256:a12f885 -> sha256:30ec3ed). semantic_review_fingerprint and producer_contract_fingerprint coincide with v19's; no SCU, edge, proof kind or availability disposition changed - all six metrics are identical to v19; no acceptance logic or criterion changed. evaluated_source_revision is the base the working tree was cut from (the change is uncommitted at evaluation time; the PR head carries it). Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}

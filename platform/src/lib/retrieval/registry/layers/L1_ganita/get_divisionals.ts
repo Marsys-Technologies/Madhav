@@ -19,6 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
@@ -45,7 +46,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   input_schema: {
     build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     varga:        { type: 'string', description: 'Varga code (e.g. D9, D10, D12). Omit for all.' },
     graha:        { type: 'string', description: 'Graha abbreviation (e.g. SU, MO). Omit for all.' },
     offset: { type: 'number', default: 0 },
@@ -69,6 +70,13 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 80, always_include: false },
+  },
+  // §N.6 serving-density contract (DENS-SERVED): paged by `limit` / `offset` (continuation via `more_available` / `next_offset`); filters are the
+  // facets below; an empty result carries `empty_reason`; every served row carries its own `verification_pass_status` (SELECT * of the table).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'varga', 'graha'],
+    empty_reason: true,
   },
   async handler(args, _ctx) {
     try {
@@ -94,10 +102,11 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         params.push(buildIds)
       }
 
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // PR-2 (N-339/N-342): omitted -> Lahiri; "all" -> pooled. The six ayanamsha-independent
+      // scope-cap sentinel rows are stored under ayanamsha_id='INVARIANT' (ga_vargas_writer), so
+      // the primary filter reads IN ($n,'INVARIANT') and keeps them.
+      const aya = resolveHandlerAyanamsha(args)
+      sql += pushAyanamshaFilter(aya, params, { includeInvariant: true })
       if (args.varga) {
         sql += ` AND varga = $${params.length + 1}`
         params.push(args.varga as string)
@@ -112,7 +121,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       // chart_id is fixed by this query, so the remaining terms (fact_subject included: rows that
       // differ only by subject would otherwise tie and OFFSET paging could duplicate or skip them)
       // make offset pagination repeatable for a fixed filtered snapshot.
-      sql += ` ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT $2 OFFSET $3`
+      sql += ` ORDER BY varga, ${ayanamshaServeOrderBy()}, graha, fact_category, fact_key, fact_subject LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const fetchedRows = result.rows ?? []
@@ -148,6 +157,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...ayanamshaScopeEcho(aya),
           build_id: buildId,
           source_table: 'chart_divisionals',
           rows: rowsWithHouse,
@@ -155,6 +165,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
           // The continuation offset uses the effective server page size, not
           // an omitted or over-large client limit that the handler normalizes.
           next_offset: moreAvailable ? offset + rows.length : null,
+          ...(rows.length === 0
+            ? { empty_reason: `No divisional rows matched for chart ${chartId} (ayanamsha_id=${aya.id ?? 'any'}, varga=${(args.varga as string) ?? 'any'}, graha=${(args.graha as string) ?? 'any'}, offset=${offset}).` }
+            : {}),
         },
         is_error: false,
       }

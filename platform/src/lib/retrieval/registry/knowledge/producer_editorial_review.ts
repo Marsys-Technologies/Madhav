@@ -216,6 +216,12 @@ export const PRODUCER_SEMANTIC_REVIEW: readonly ProducerSemanticReviewGroup[] = 
     asset_ids: ['bo_pratijna'],
   },
   {
+    target_scu_id: 'scu.catalog.query_pratijna',
+    relation: 'supports_same_semantic_domain',
+    rationale: 'Derived identity index (graha / house / varga / sign parsed from chart_facts) read only at build time by ChartReaderV4 while bo_pratijna is built; no served capability reads chart_fact_identity, so this is same-domain support for the pratijna output, not direct service.',
+    asset_ids: ['ga_fact_identity'],
+  },
+  {
     target_scu_id: 'scu.catalog.query_manifestation_grammar',
     rationale: 'Supplies Samskara and Sankalpa pattern evidence for manifestation grammar retrieval.',
     asset_ids: ['bo_samskara', 'mi_sankalpa'],

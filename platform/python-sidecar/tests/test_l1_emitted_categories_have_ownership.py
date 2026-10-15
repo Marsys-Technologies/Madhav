@@ -19,8 +19,10 @@ tuples / dict.items(), f-strings (including a parameter filled by literals at th
 constants. Anything it cannot resolve to literals is reported as UNRESOLVED and FAILS the test: a new dynamic category cannot
 be silently ignored.
 
-What it does NOT see (three known blind spots; no current writer uses any of them; post-window hardening):
-  (1) a Python tuple row bound through INSERT ... VALUES (%s, %s, ...) (the category is then a bound parameter, not a literal);
+What it does NOT see (three known blind spots; post-window hardening; (1) is used by exactly one current post-pass, see below):
+  (1) a Python tuple row bound through INSERT ... VALUES (%s, %s, ...) (the category is then a bound parameter, not a literal;
+      ga_writers/ga_daridra_postpass.py inserts its one daridra row this way (~line 86), so the extractor cannot see that row: its
+      category, dosha_label, is owned by ga_structural (1219) and is checked through ga_structural_writer.py's own emission);
   (2) variable-key assignments such as row[k] = ... (only a constant 'fact_category' subscript key is recognised);
   (3) INSERT ... SELECT 'literal' (a select list is not parsed; only a parenthesised VALUES tuple is).
 A writer that adopts one of these shapes would not be enumerated by this test.
@@ -281,6 +283,16 @@ def sql_literals(s):
         return {"?SQL:" + vals[idx].strip()}
     return set()
 
+def is_slice_descriptor(node, tree):
+    """A dict literal that DESCRIBES a slice of a table (the frozen post_pass_evidence/1 `slice`) is not a chart_facts row. The predicate is
+    deliberately narrow, so it cannot hide a real row shape: the dict's constant string keys are EXACTLY {table, fact_category, fact_subject},
+    it has NO spread (``**x`` shows as a None key; a spread could supply fact_key), and it is the VALUE of a module-level assignment (the frozen
+    descriptor constant), not an expression inside a function that builds and returns a row."""
+    keys = {k.value for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+    return (None not in node.keys and keys == {'table', 'fact_category', 'fact_subject'}
+            and any(isinstance(st, (ast.Assign, ast.AnnAssign)) and st.value is node for st in tree.body))
+
+
 def extract(trees=None):
     trees = trees or parse_all()
     sinks, imap = sink_functions(trees)
@@ -311,6 +323,7 @@ def extract(trees=None):
             for x in b: unresolved.append((f.name, node.lineno, why, x))
         for node in ast.walk(t):
             if isinstance(node, ast.Dict):
+                if is_slice_descriptor(node, t): continue
                 for k, v in zip(node.keys, node.values):
                     if isinstance(k, ast.Constant) and k.value == 'fact_category': emit(v, node, 'dict')
             elif isinstance(node, ast.Assign):
@@ -486,3 +499,56 @@ def test_mutation_a_new_writer_file_emitting_chart_facts_is_not_ignored():
     res, _, _ = extract(trees)
     with pytest.raises(AssertionError, match="not mapped to an L1 asset"):
         emitted_by_asset(res)
+
+
+def test_the_frozen_slice_descriptor_is_not_an_emission_and_the_postpass_file_is_absent_from_the_extraction():
+    """ga_daridra_postpass.POST_PASS_SLICE is the frozen evidence `slice` ({table, fact_category, fact_subject}) assigned at module level; it names a slice,
+    it emits nothing. The daridra row itself is written by ga_vichara's post-pass (own subject-scoped DELETE + tuple-bound INSERT, ga_vichara's build id);
+    only the row BUILDER (_build_dosha_rows) is ga_structural's, and dosha_label is a ga_structural-owned category. Mapping the file to ga_vichara would demand
+    an ownership row ga_vichara must not have (1219 asserts no row is counted by two assets), so the fix is on the extractor side."""
+    res, _, _ = extract(parse_all())
+    assert "ga_daridra_postpass.py" not in res
+
+
+_ROW_SHAPES_THAT_MUST_STILL_BE_READ = {
+    "descriptor-lookalike with fact_key in a spread": "def f(base):\n    return {'table': 'chart_facts', 'fact_category': 'zz_cat', 'fact_subject': 'S', **base}\n",
+    "table/fact_category/fact_subject then fact_key assigned": "def f():\n    row = {'table': 'chart_facts', 'fact_category': 'zz_cat', 'fact_subject': 'S'}\n    row['fact_key'] = 'k'\n    return row\n",
+    "table/chart_id/fact_category/fact_value_text": "def f(c):\n    return {'table': 'chart_facts', 'chart_id': c, 'fact_category': 'zz_cat', 'fact_value_text': 'v'}\n",
+    "exact descriptor keys but built inside a function": "def f():\n    return {'table': 'chart_facts', 'fact_category': 'zz_cat', 'fact_subject': 'S'}\n",
+    "plain row with fact_key": "def f():\n    return {'fact_category': 'zz_cat', 'fact_key': 'k'}\n",
+    "table key plus fact_key": "def f():\n    return {'table': 'chart_facts', 'fact_category': 'zz_cat', 'fact_key': 'k'}\n",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_ROW_SHAPES_THAT_MUST_STILL_BE_READ))
+def test_a_real_row_shape_is_still_read_and_never_taken_for_a_slice_descriptor(shape):
+    trees = parse_all()
+    fake = R / "ga_writers" / "ga_zz_row_probe.py"
+    trees[fake] = ast.parse(_ROW_SHAPES_THAT_MUST_STILL_BE_READ[shape])
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_row_probe.py"]) == {"zz_cat"}, shape
+
+
+def test_a_module_level_dict_with_a_spread_or_extra_keys_is_still_read():
+    """The two loosenings the function-level mutants cannot see, at MODULE level: a spread (could supply fact_key) and a key SUPERSET."""
+    trees = parse_all()
+    fake = R / "ga_writers" / "ga_zz_module_probe.py"
+    trees[fake] = ast.parse("BASE = {'fact_key': 'k'}\n"
+                            "WITH_SPREAD = {'table': 'chart_facts', 'fact_category': 'zz_spread', 'fact_subject': 'S', **BASE}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_spread"}
+    trees[fake] = ast.parse("EXTRA_KEYS = {'table': 'chart_facts', 'fact_category': 'zz_extra', 'fact_subject': 'S', 'fact_value_text': 'v'}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_extra"}
+    trees[fake] = ast.parse("MISSING_KEY = {'table': 'chart_facts', 'fact_category': 'zz_missing'}\n")
+    res, _, _ = extract(trees)
+    assert set(res["ga_zz_module_probe.py"]) == {"zz_missing"}      # a key SUBSET is not the frozen descriptor either
+
+
+def test_only_a_module_level_exact_key_descriptor_is_skipped():
+    trees = parse_all()
+    fake = R / "ga_writers" / "ga_zz_descriptor_probe.py"
+    trees[fake] = ast.parse("SLICE = {'table': 'chart_facts', 'fact_category': 'zz_slice', 'fact_subject': 'S'}\n"
+                            "TYPED: dict = {'table': 'chart_facts', 'fact_category': 'zz_typed', 'fact_subject': 'S'}\n")
+    res, _, _ = extract(trees)
+    assert "ga_zz_descriptor_probe.py" not in res

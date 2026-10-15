@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.command/1",
+  "title": "KĀLA-YANTRA v3 cockpit command, run/commands/<UTC yyyymmddThhmmssZ>-<id>.json (relaunch plan v2.7 §4a.1, §4a.5)",
+  "description": "One owner command, written QUEUED by the cockpit (kycommands.py submit) and settled exactly once — APPLIED or REJECTED — by the fenced owner of the addressed role, in filename order. A veto is addressed to the veto role, pause/resume to the campaign role. `from` records the submitting session together with the pid and start identity of the process that wrote the file: a record of origin for later examination, NOT a proof of it — until the fleet has an enforced write boundary for run/commands, that only the owner's cockpit submits is a convention. Shape only: that the file name carries this id, that the applier was the owner process of the role lock, and that the order was respected is enforced by kycommands.py, not by this schema. Timestamps are UTC ISO-8601 ('Z' or '+00:00').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "id", "created_at", "from", "role", "command", "args", "state", "applied_by", "applied_at", "result"
+  ],
+  "properties": {
+    "schema": {"const": "ky.command/1"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"},
+    "created_at": {"$ref": "#/$defs/utc"},
+    "from": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "session_id"],
+      "properties": {
+        "kind": {"const": "cockpit"},
+        "session_id": {"type": "string", "minLength": 1},
+        "pid": {"description": "The submitting process, as it saw itself (written by submit).", "type": "integer", "minimum": 1},
+        "process_start": {"description": "Its start identity (`ps -o lstart=`), null when it could not be read.", "type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "role": {"enum": ["planner", "conductor", "dispatcher", "veto", "campaign"]},
+    "command": {
+      "enum": ["status", "veto", "decide", "pause", "resume", "priority", "builders", "verifiers", "loops",
+               "approve-window", "handoff"]
+    },
+    "args": {"type": "object"},
+    "state": {"enum": ["QUEUED", "APPLIED", "REJECTED"]},
+    "applied_by": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/actor"}]},
+    "applied_at": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "result": {"type": ["object", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"state": {"const": "QUEUED"}}, "required": ["state"]},
+      "then": {
+        "properties": {"applied_by": {"type": "null"}, "applied_at": {"type": "null"}, "result": {"type": "null"}}
+      }
+    },
+    {
+      "if": {"properties": {"state": {"enum": ["APPLIED", "REJECTED"]}}, "required": ["state"]},
+      "then": {
+        "properties": {"applied_by": {"type": "object"}, "applied_at": {"type": "string"}, "result": {"type": "object"}}
+      }
+    },
+    {
+      "if": {"properties": {"state": {"const": "REJECTED"}}, "required": ["state"]},
+      "then": {
+        "properties": {
+          "result": {"type": "object", "required": ["reason"], "properties": {"reason": {"type": "string", "minLength": 1}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"enum": ["status", "pause", "resume", "handoff"]}}, "required": ["command"]},
+      "then": {"properties": {"args": {"type": "object", "additionalProperties": false, "properties": {}}}}
+    },
+    {
+      "if": {"properties": {"command": {"enum": ["pause", "resume"]}}, "required": ["command"]},
+      "then": {"properties": {"role": {"const": "campaign"}}}
+    },
+    {
+      "if": {"properties": {"command": {"const": "veto"}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "role": {"const": "veto"},
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["decision_id"],
+            "properties": {"decision_id": {"type": "string", "pattern": "^SD-[0-9]{8}T[0-9]{6}Z-[0-9]+$"}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"const": "decide"}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["awaiting_id", "answer"],
+            "properties": {
+              "awaiting_id": {"type": "string", "pattern": "^AW-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+$"},
+              "answer": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"const": "priority"}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item"],
+            "properties": {"item": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"enum": ["builders", "verifiers"]}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["n"],
+            "properties": {"n": {"type": "integer", "minimum": 1}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"const": "loops"}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["op", "loop"],
+            "properties": {
+              "op": {"enum": ["start", "stop", "status"]},
+              "loop": {"enum": ["dispatcher", "planner", "conductor", "veto", "all"]}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"command": {"const": "approve-window"}}, "required": ["command"]},
+      "then": {
+        "properties": {
+          "args": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {"id": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "actor": {
+      "description": "The fenced owner of the role that settled the command.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "holder_kind"],
+      "properties": {
+        "role": {"enum": ["planner", "conductor", "dispatcher", "veto", "campaign"]},
+        "holder_kind": {"enum": ["cockpit", "controller", "supervisor"]},
+        "session_id": {"type": "string", "minLength": 1},
+        "controller_id": {"type": "string", "minLength": 1}
+      },
+      "anyOf": [{"required": ["session_id"]}, {"required": ["controller_id"]}]
+    }
+  }
+}

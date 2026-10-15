@@ -22,10 +22,25 @@ class OntologyWriter(WriterBase):
         counts = seed_ontology(ctx.db_conn, ctx.build_id, dry_run=ctx.dry_run, autocommit=False)
         # counts is {'total': N, 'inserted': N, 'skipped': N, 'by_class': {...}}
         inserted = counts.get('inserted', 0) if isinstance(counts, dict) else int(counts or 0)
+        # WFIX-A: report the rows PRESENT in brahma_ontology (registry count_sql: whole table), not the
+        # rows this run newly inserted -- 0 on every converged rerun against 728 live rows. A dry run
+        # writes nothing, so it keeps the seeder's own figure.
+        present = inserted
+        if not ctx.dry_run:
+            from pipeline.orchestrator.writers._rows_present import present_count
+            with ctx.db_conn.cursor() as cur:
+                cur.execute(ROWS_PRESENT_SQL)
+                present = present_count(cur.fetchone())
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=inserted,
+            rows_inserted=present,
             rows_skipped=counts.get('skipped', 0) if isinstance(counts, dict) else 0,
             duration_seconds=time.time() - t0,
-            notes=f'brahma_ontology: {counts}',
+            notes=f'brahma_ontology: {counts}; newly_inserted={inserted}',
         )
+
+
+# WFIX-A: the rows-present statement is a literal at the module end (resolved at call time) so no line above it shifts and
+# the writer-line citations in the declarations keep pointing at the same code; the census scans it as the asset's own read.
+# The declared produced-table set: registry count_sql SELECT count(*) FROM brahma_ontology.
+ROWS_PRESENT_SQL = "SELECT count(*) AS n FROM brahma_ontology"

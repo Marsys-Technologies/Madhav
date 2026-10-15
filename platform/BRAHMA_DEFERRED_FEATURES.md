@@ -64,21 +64,21 @@ piecemeal.
 
 **Created:** 2026-06-04, WS-0C Sub-C.
 
-### 3a. `lib/forensic/snapshot.ts` — `getForensicSnapshot`
+### 3a. `lib/forensic/snapshot.ts` — `getForensicSnapshot` (REMOVED)
 
 **What it was.** Queried `chart_facts` for planet positions, house signs, lagna, and
-dasha_balance rows to build a `ForensicChart` struct displayed in the client profile
-page (`clients/[id]/page.tsx`), `RasiChartSVG`, `ChartHero`, and `ProfileSideRail`.
+dasha_balance rows to build a `ForensicChart` struct for the client profile page.
 
-**Current state.** The function body returns `buildAbhisekFallback()` immediately
-(hardcoded canonical Abhisek chart from chart_facts/forensic_render.ts; FORENSIC v8.0 chart data, §4 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
-Consumers compile and render correctly — they display the native's chart. The stub
-will serve all new clients with an empty-ish chart until WS-2.
+**Current state.** `getForensicSnapshot` and its hard-coded canonical-chart fallback
+(`buildAbhisekFallback`) were removed (SS N-342 item 10, "no birth data in code"): the
+function had no caller and returned one native's chart for every chart_id. The file now
+holds only the `ForensicChart` / `PlanetPlacement` types that `RasiChartSVG`, `ChartHero`,
+`ProfileSideRail`, `journey1` and `workspaceSummary` import. Charts are built from the
+chart actually supplied (`lib/charts/journey1.ts`, `lib/charts/workspaceSummary.ts`).
 
-**Rebuild trigger.** WS-2 Brahma depth-build: repoint to `ganita_positions` +
-`ganita_dashas` (schema differs from `chart_facts` — fact_id/category model replaced by
-typed planet/dasha rows). Parsing logic was in the original function (see git history
-commit 01c32903 for the original SQL). Adapt column names.
+**Rebuild trigger.** None. If a snapshot query is ever needed again, write it against
+`ganita_positions` + `ganita_dashas` and fail loudly (typed error / explicit not-available)
+when no chart data exists; never embed chart data in code.
 
 ### 3b. `lib/tools/multi_school_signal_lookup.ts` — Tool 27
 

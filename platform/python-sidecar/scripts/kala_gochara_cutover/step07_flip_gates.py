@@ -47,6 +47,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import connect, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
+# Standalone scripts need the ledger's sidecar packages, just like step06b.
+if str(SIDECAR) not in sys.path:
+    sys.path.insert(0, str(SIDECAR))
 
 
 def main() -> int:

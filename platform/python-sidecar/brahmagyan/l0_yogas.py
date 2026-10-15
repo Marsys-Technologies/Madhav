@@ -2134,10 +2134,10 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
                 if rm:
                     sig_text = rm.group(0).strip()[:300]
                     break
-            if not sig_text:
-                sig_text = raw_clause[:200] if raw_clause else name_en
+            # WFIX-A: an honest value or an honest empty, never an invented fallback (helpers at module end)
+            sig_text = _signification_text(sig_text, raw_clause)
 
-            formation_text = raw_clause if raw_clause else f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})"
+            formation_text = _formation_text(raw_clause, formation_rule_jsonb)
 
             extracted[cid] = {
                 "canonical_id": cid,
@@ -2307,7 +2307,7 @@ def seed_yogas(conn, build_id: str | None = None,
                     y["name_en"],
                     y["name_sa"],
                     _yoga_synonyms(y),
-                    y["significations_text"][:150],
+                    y["significations_text"][:150] or None,  # WFIX-A: empty signification -> NULL description, never ''
                     _yoga_citation(y),
                 ))
                 if cur.rowcount > 0:
@@ -2387,3 +2387,36 @@ def check_volume(conn) -> dict:
             actual = 0
     status = "green" if actual >= floor else ("amber" if actual > 0 else "empty")
     return {"brahma_yoga_catalog": {"actual": actual, "floor": floor, "status": status}}
+
+
+# ── WFIX-A: no invented fallback sentences (kept at module end so the line citations above stay put) ──
+
+def _formation_text(raw_clause: str, formation_rule_jsonb: dict) -> str:
+    """The formation sentence of a corpus-extracted yoga: the verbatim verse clause when the chunk
+    has one, else a deterministic RESTATEMENT OF THE CITED STRUCTURED RULE itself.
+
+    WFIX-A / CLAUDE.md N.7 item 6 (an honest null beats an invented judgment): this used to fall
+    back to f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})" -- a sentence that
+    claims a formation exists "per" a verse while stating none (4 live rows, e.g. vajra_sar:
+    'Vajra Yoga (Saravali) Yoga: formation per PG358:C1 (bphs Ch.358)'; the chapter label even
+    names a different text than the yoga's). brahma_yoga_catalog.formation_text is NOT NULL, so
+    the fallback restates the row's own structured rule (the data the row already holds and the
+    detector consumes) instead of inventing prose; the verse is still cited by classical_citations.
+    """
+    if raw_clause:
+        return raw_clause
+    return "Structured formation rule: " + json.dumps(formation_rule_jsonb, sort_keys=True, ensure_ascii=False)
+
+
+def _signification_text(result_sentence: str, raw_clause: str) -> str:
+    """The signification text of a corpus-extracted yoga: a result sentence found in the chunk, else
+    the verbatim defining clause, else EMPTY.
+
+    WFIX-A / N.7 item 6: the last fallback used to be the yoga's NAME (name_en), which presented a
+    label as the yoga's signification (3 live rows). The column is NOT NULL, so absence is the empty
+    string -- an honest 'the chunk states no result' -- never an invented one. (Relaxing the column
+    to NULL is a migration, out of scope for a writer lane.)
+    """
+    if result_sentence:
+        return result_sentence
+    return raw_clause[:200] if raw_clause else ""

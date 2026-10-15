@@ -3,10 +3,14 @@ import { fetchBuildState } from '@/lib/build/dataSource'
 import { parseUsageFilter, usageSummary } from '@/lib/metering/queries'
 import { meteringEnabled } from '@/lib/metering/types'
 import { getFlag } from '@/lib/config'
+import { requireSuperAdminPage } from '@/lib/auth/super-admin-page-guard'
 
 export const dynamic = 'force-dynamic'
 
 export default async function BuildCockpitPage() {
+  // Guard INSIDE the page: this page shows GLOBAL spend (ownerId: null), and the
+  // layout guard alone can be skipped by a crafted RSC request (SS N-373).
+  await requireSuperAdminPage()
   const now = new Date()
   let activity: Awaited<ReturnType<typeof usageSummary>> | null = null
   let feed: 'current' | 'delayed' = 'delayed'

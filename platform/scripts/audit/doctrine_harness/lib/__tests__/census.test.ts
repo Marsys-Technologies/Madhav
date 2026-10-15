@@ -76,6 +76,24 @@ describe('census — synthesizeCensusArgs', () => {
     }
     expect(synthesizeCensusArgs(tool, 'CHART-1')).toBeNull()
   })
+
+  it('never fabricates birth details: SKIPPED without caller-supplied birth params, filled with them', () => {
+    const tool: McpToolDescriptor = {
+      name: 't',
+      inputSchema: {
+        properties: { chart_id: { type: 'string' }, dob: { type: 'string' }, latitude: { type: 'number' }, longitude: { type: 'number' } },
+        required: ['chart_id', 'dob', 'latitude', 'longitude'],
+      },
+    }
+    expect(synthesizeCensusArgs(tool, 'CHART-1')).toBeNull()
+    const birth = { datetimeIso: '2000-01-01T00:00:00+00:00', latitude: 1.5, longitude: 2.5 }
+    expect(synthesizeCensusArgs(tool, 'CHART-1', birth)).toEqual({
+      chart_id: 'CHART-1',
+      dob: birth.datetimeIso,
+      latitude: 1.5,
+      longitude: 2.5,
+    })
+  })
 })
 
 describe('census — probe classification', () => {

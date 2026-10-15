@@ -4,11 +4,18 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table.
 
-Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B
-convergence search, inserts ranked windows into kala_convergence.
+Consumes explicitly licensed jury fixture inputs. Default production dispatch
+retains Mode A-D behind the legacy shim until a qualified build-safe retirement.
+Stored legacy rows remain available to readers; fixture output is not live jury
+admission or a retirement claim.
 """
+
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
 import hashlib
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date
 
@@ -25,13 +32,13 @@ from services.ka_sangam.engine import (
     relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
-    _NAK_NAME_TO_IDX,
     _SIGN_NAME_TO_IDX,
     EnrichmentContext,
     NativeChartContext,
     derive_sade_sati_signs,
     derive_sade_sati_severity,
 )
+from brahmagyan.nakshatra_vocabulary import nakshatra_index, nakshatra_number  # SS N-548: ONE normaliser for the Moon's stored nakshatra name
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
@@ -222,9 +229,8 @@ def _select_top_predicates_with_class_quota(
     return selected[:limit]
 
 
-@register('ka_sangam')
 @records_swiss_backend
-class KaSangamWriter(WriterBase):
+class _LegacyKaSangamWriter(WriterBase):
     """
     Convergence engine: Mode A (daśā-prior funnel) + Mode B (off-daśā sweep).
     Inserts into kala_convergence with full rigor-stratum columns.
@@ -287,6 +293,8 @@ class KaSangamWriter(WriterBase):
                     FROM kala_activation_predicates p
                     LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                     WHERE p.chart_id = %s
+                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                 ),
                 ranked AS (
                     SELECT *,
@@ -420,23 +428,15 @@ class KaSangamWriter(WriterBase):
         # this method only returns a (possibly shorter) substep list).
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         self._resume_skipped = 0
+        self._reset_pending = False
         if getattr(ctx, 'dry_run', False):
             return steps  # dry runs never delete data or touch the ledger
 
         completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
         if completed is None:
-            # First run, or a prior/changed build (fingerprint mismatch). Delete-and-
-            # replan-all: clear EVERY kala_convergence row for this chart + the stale
-            # ledger, then run all substeps fresh — no stale accretion possible. (These
-            # deletes ride the orchestrator's ambient transaction and commit atomically
-            # with the first substep; if the connection dies before that commit they
-            # roll back, leaving the prior data intact for the next attempt.)
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
-                cur.execute(
-                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                    (chart_id,),
-                )
+            # Planning/re-probing is read-only. The first executing substep owns
+            # reset and replacement in the same orchestrator transaction.
+            self._reset_pending = True
             logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
             return steps
 
@@ -455,11 +455,21 @@ class KaSangamWriter(WriterBase):
         chart_id = self._chart_id
         dry_run  = getattr(ctx, 'dry_run', False)
 
+        if self._reset_pending and not dry_run:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute(
+                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                    (chart_id,),
+                )
         if step.key == 'near':
-            return self._substep_near(conn, chart_id, dry_run)
-
-        idx = int(step.key.split(':', 1)[1])
-        return self._substep_lifetime(conn, chart_id, idx, dry_run)
+            result = self._substep_near(conn, chart_id, dry_run)
+        else:
+            idx = int(step.key.split(':', 1)[1])
+            result = self._substep_lifetime(conn, chart_id, idx, dry_run)
+        if not dry_run:
+            self._reset_pending = False
+        return result
 
     # ── resumption helpers (migration 436) ────────────────────────────────────
 
@@ -782,7 +792,7 @@ class KaSangamWriter(WriterBase):
                 elif fact_key == 'sign':
                     moon_sign = fact_value_text
 
-        if not moon_nakshatra or moon_nakshatra not in _NAK_NAME_TO_IDX:
+        if not moon_nakshatra or nakshatra_number(moon_nakshatra) is None:  # SS N-548: canonical, legacy-L1 (Mula) and lexicon aliases all resolve; anything else raises below
             raise RuntimeError(
                 f"ka_sangam: could not resolve Moon nakshatra for chart {chart_id} "
                 f"from chart_facts (fact_subject='MOON', fact_key='nakshatra', "
@@ -797,7 +807,7 @@ class KaSangamWriter(WriterBase):
                 "Refusing to fall back to another chart's Moon sign (CR-87)."
             )
 
-        janma_nakshatra_idx = _NAK_NAME_TO_IDX[moon_nakshatra]
+        janma_nakshatra_idx = nakshatra_index(moon_nakshatra) - 1  # 0-based into _NAKSHATRAS_ORDERED; 'Mula' and 'Moola' both -> 18
         sade_sati_signs    = derive_sade_sati_signs(moon_sign)
         sade_sati_severity = derive_sade_sati_severity(sade_sati_signs)
 
@@ -868,10 +878,10 @@ class KaSangamWriter(WriterBase):
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
+            execute_governed_dasha_query(
+                conn, chart_id, dasha_query('sangam_birth_anchor'),
                 (chart_id,),
-            )
+             ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             row = cur.fetchone()
             if row and row['birth_date']:
                 return row['birth_date'].year
@@ -889,6 +899,7 @@ class KaSangamWriter(WriterBase):
 
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
+        store_tier = has_stored_verification(cur, 'kala_convergence')
         rows_inserted = 0
         # JL-014: within-chart relative tier, computed once over this batch's
         # convergence_score distribution (additive to I-21's absolute confidence_label).
@@ -933,7 +944,7 @@ class KaSangamWriter(WriterBase):
                 icc = independent_current_count(currents)
 
                 cur.execute(
-                    """
+                    f"""
                     INSERT INTO kala_convergence (
                         chart_id, window_start, window_end, convergence_score,
                         constituent_factors, source_citation, computed_at,
@@ -941,7 +952,7 @@ class KaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis
+                        confidence_label_relative, tier_basis{", verification_pass_status" if store_tier else ""}
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -949,7 +960,7 @@ class KaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s
+                        %s, %s{", %s" if store_tier else ""}
                     )
                     """,
                     (
@@ -974,6 +985,7 @@ class KaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        *((UNVERIFIED_DEFAULT,) if store_tier else ()),
                     ),
                 )
                 rows_inserted += 1
@@ -1166,3 +1178,37 @@ class KaSangamWriter(WriterBase):
             house: _SIGN_LORDS[(lagna_num + house - 2) % 12 + 1]
             for house in range(1, 13)
         }
+
+
+@register('ka_sangam')
+class KaSangamWriter(_LegacyKaSangamWriter):
+    """Per-class fixture consumer with a build-safe legacy production shim.
+
+    (I) INTERPRETATION: retirement is deferred until qualified live inputs and
+    a build-safe cutover exist. An empty plan would misclassify stored legacy
+    rows as completed jury output; an unavailable pending step would fail a
+    whole-layer run (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2/§7.1;
+    CLAUDE.md §N.8.4). Keep real legacy production rather than claiming either.
+    """
+
+    def plan_substeps(self, ctx) -> list[SubStep]:
+        if 'jury_fixture_inputs' not in ctx.config:
+            return super().plan_substeps(ctx)
+        from services.ka_sangam.jury import candidate
+        inputs = candidate.class_inputs(ctx.config['jury_fixture_inputs'])
+        generation = candidate.bind_candidate(ctx, lock=False)
+        for value in inputs.values():
+            candidate.validate_binding(ctx, value, generation)
+        self._jury_inputs = inputs
+        self._jury_turning_points = candidate.joint_turning_points(inputs.values())
+        return [SubStep(key='class:' + name) for name in sorted(inputs)]
+
+    def run_substep(self, ctx, step: SubStep) -> WriterResult:
+        if 'jury_fixture_inputs' not in ctx.config:
+            return super().run_substep(ctx, step)
+        from services.ka_sangam.jury import candidate
+        if not step.key.startswith('class:') or step.key[6:] not in self._jury_inputs:
+            raise ValueError('unplanned jury class substep')
+        count = candidate.write_candidate(ctx, self._jury_inputs[step.key[6:]],
+                                          joint_points=self._jury_turning_points)
+        return WriterResult('ka_sangam', count, notes='fixture consumer; live producer bindings unadmitted')

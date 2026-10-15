@@ -48,6 +48,7 @@ import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../../generation/served_generation'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
@@ -279,7 +280,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id:      { type: 'string',  description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5." },
+    ayanamsha_id:      { type: 'string',  description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     mechanism_class:   { type: 'string',  description: 'Filter by a single mechanism_class. Omit for all.' },
     valence:           { type: 'string',  description: 'Filter by valence (benefic|malefic|mixed|neutral). Omit for all.' },
     chain_circuit_only:{ type: 'boolean', description: 'When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, dispositor_cycle, house_lordship_cycle). Default false.' },
@@ -311,7 +312,16 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    // null = the explicit 'all' opt-out; it also enters the page-cursor filter fingerprint, so a cursor
+    // minted under one ayanamsha scope can never continue under another.
+    const ayanamsha_id = aya.id
     const mechanism_class = args['mechanism_class'] ? String(args['mechanism_class']) : null
     const valence = args['valence'] ? String(args['valence']) : null
     const chain_circuit_only = args['chain_circuit_only'] === true || args['chain_circuit_only'] === 'true'
@@ -349,15 +359,16 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
 
     const filters: string[] = ['d.chart_id = $1::uuid']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id)    { filters.push(`d.ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params, { column: 'd.ayanamsha_id' })
+    let p = params.length + 1
     if (mechanism_class) { filters.push(`d.mechanism_class = $${p++}`); params.push(mechanism_class) }
     if (valence)         { filters.push(`d.valence = $${p++}`);         params.push(valence) }
     if (chain_circuit_only) {
       filters.push(`d.mechanism_class = ANY($${p++})`)
       params.push([...CHAIN_CIRCUIT_CLASSES])
     }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
+    const filterParamCount = params.length      // the filter binds above; the tier-count read below reuses exactly these
 
     // The writer deletes every chart row before it inserts a replacement build. A bare offset
     // could therefore join two generations or mistake a partial deletion for exhaustion. Select
@@ -450,6 +461,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                   d.edge_strength_avg AS order_edge_strength_avg,
                   COALESCE(array_length(d.member_node_ids_array, 1), 0) AS order_member_node_count,
                   d.mechanism_name AS order_mechanism_name,
+                  d.ayanamsha_id AS order_ayanamsha_id,
                   d.mechanism_id::text AS order_mechanism_id
              FROM bodha_mechanisms d
              JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
@@ -458,6 +470,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                      d.edge_strength_avg DESC NULLS LAST,
                      COALESCE(array_length(d.member_node_ids_array, 1), 0) DESC,
                      d.mechanism_name ASC,
+                     ${ayanamshaServeOrderBy('d.ayanamsha_id')},
                      d.mechanism_id ASC
             LIMIT $${p} OFFSET $${p + 1}
          ), facet_rows AS (
@@ -481,6 +494,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
                     page_rows.order_edge_strength_avg DESC NULLS LAST,
                     page_rows.order_member_node_count DESC,
                     page_rows.order_mechanism_name ASC,
+                    ${ayanamshaServeOrderBy('page_rows.order_ayanamsha_id')},
                     page_rows.order_mechanism_id ASC)
                     FROM page_rows
                 ), '[]'::jsonb) AS rows,
@@ -524,7 +538,34 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       }
       const varga_scope = buildVargaScopeDisclosure(wealthEntry)
 
+      // §N.6 (DENS-A): the verification tier of the matching rows, counted over the SAME filter and pinned to the SAME
+      // fresh/proven build the page was read from (activeBuildId), so a consumer layers by verification_pass_status
+      // without re-deriving it from the page. A failed ancillary read degrades to null (an honest gap), never fails the page.
+      // It is a separate statement from the page read, so a replacement landing between them could make the counts disagree with total_matching:
+      // the counts are then null (checked below against total_matching), never a wrong number.
+      let by_verification_pass_status: Record<string, number> | null = null
+      try {
+        const tierRes = await query<{ verification_pass_status: string | null; n: string }>(
+          `SELECT d.verification_pass_status, COUNT(*)::text AS n
+             FROM bodha_mechanisms d
+            WHERE ${where} AND d.build_id = $${filterParamCount + 1}::uuid
+            GROUP BY d.verification_pass_status
+            ORDER BY d.verification_pass_status`,
+          [...params.slice(0, filterParamCount), activeBuildId],
+        )
+        by_verification_pass_status = {}
+        for (const t of tierRes.rows ?? []) {
+          const key = t.verification_pass_status ?? 'unset'
+          by_verification_pass_status[key] = (by_verification_pass_status[key] ?? 0) + Number(t.n)
+        }
+      } catch {
+        by_verification_pass_status = null
+      }
+
       const total_matching = Number(pageSnapshot.total_matching ?? 0)
+      if (by_verification_pass_status !== null && Object.values(by_verification_pass_status).reduce((a, b) => a + b, 0) !== total_matching) {
+        by_verification_pass_status = null
+      }
       const fetchedRows = Array.isArray(pageSnapshot.rows) ? pageSnapshot.rows : []
       const rows = fetchedRows.slice(0, limit)
       // The L+1 probe is the page-local continuation proof; total_matching and
@@ -551,6 +592,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           rows,
           count: rows.length,
           total_matching,
@@ -565,6 +607,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
             by_mechanism_class,
             by_valence,
             chain_circuit_classes: [...CHAIN_CIRCUIT_CLASSES],
+            by_verification_pass_status,
           },
           empty_reason,
           // F-107: scope honesty — these rows are D1-only, and the envelope says so.

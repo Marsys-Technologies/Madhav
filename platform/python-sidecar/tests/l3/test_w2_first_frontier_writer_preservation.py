@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+
 import pipeline.orchestrator.writers.ka_avadhi as avadhi
 import pipeline.orchestrator.writers.ka_yojaka as yojaka
 import services.ka_gochara_resonance.writer as resonance
@@ -238,49 +240,57 @@ def test_daily_writers_delete_only_after_complete_horizon(
     assert conn.mutations[-1][0] == "executemany"
 
 
-def _dasha_row(system: str, level: int):
-    row = {
-        "chart_id": "chart-1",
-        "system_id": system,
-        "lord_graha": "Sun",
-        "period_start": date(2026, 1, 1),
-        "period_end": date(2027, 1, 1),
-        "level_n": level,
-    }
-    if level == 2:
-        row["parent_lord_graha"] = "Sun"
-    return row
-
-
-def test_avadhi_requires_canonical_md_and_ad_coverage(monkeypatch):
-    systems = sorted(avadhi.ALL_DASHA_SYSTEMS)
-    md_rows = [_dasha_row(system, 1) for system in systems]
-    ad_rows = [_dasha_row(system, 2) for system in systems[:-1]]
-    conn = RecordingConnection([md_rows, ad_rows])
-
+def test_avadhi_preserves_published_rows_without_build_candidate():
+    conn = RecordingConnection()
     result = avadhi.KaAvdhiWriter().run(_ctx(conn))
 
-    assert "chara_karaka" in avadhi._DASHA_SYSTEMS
-    assert "chara" not in avadhi._DASHA_SYSTEMS
     assert result.asset_id == "ka_avadhi"
     assert result.rows_inserted == 0
-    assert "AD=" in result.notes
+    assert "published rows preserved" in result.notes
+    assert conn.calls == []
     assert conn.mutations == []
 
 
-def test_avadhi_deletes_only_after_complete_canonical_md_and_ad(monkeypatch):
-    systems = sorted(avadhi.ALL_DASHA_SYSTEMS)
-    md_rows = [_dasha_row(system, 1) for system in systems]
-    ad_rows = [_dasha_row(system, 2) for system in systems]
-    conn = RecordingConnection([md_rows, ad_rows, []])
-    monkeypatch.setattr(avadhi, "_table_exists", lambda *_: False)
+@pytest.mark.parametrize(
+    ("tier", "row_build", "error_type", "message"),
+    [
+        (TWO_PASS_VERIFIED, "f2-build", RuntimeError,
+         "pinned chart_dashas row has a non-positive period"),
+        ("L1", "f2-build", avadhi.clocks.ClockUnavailable, "tier_unavailable"),
+        (TWO_PASS_VERIFIED, "other-build", avadhi.clocks.ClockUnavailable, "build_not_pinned"),
+    ],
+    ids=["invalid-period", "unsupported-tier-first", "wrong-build-first"],
+)
+def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message, monkeypatch):
+    # This oracle starts with F2 projection rows and exercises admission of
+    # their tier/build/interval before output mutation, after settlement.
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(avadhi, "execute_governed_dasha_query", emulated_projection)
+    pins = {
+        "f2": {"build_id": "f2-build", "ayanamsha_id": "lahiri",
+               "tier": tier, "systems": ["vimshottari"]},
+        "natal": {"build_id": "natal-build", "ayanamsha_id": "lahiri", "tier": TWO_PASS_VERIFIED},
+        "node_model": "mean",
+    }
+    invalid = {"system_id": "vimshottari", "level_n": 1,
+               "dasha_row_id": "period-1", "start_iso": "2027-01-01T00:00:00Z",
+               "end_iso": "2026-01-01T00:00:00Z",
+               "build_id": row_build, "ayanamsha_id": "lahiri",
+               "verification_pass_status": TWO_PASS_VERIFIED}
+    conn = RecordingConnection([
+        [{"generation": "candidate-1", "state": "building", "conventions": pins}],
+        [], [invalid], [], [],
+    ])
+    ctx = _ctx(conn)
+    ctx.build_id = "candidate-build"
 
-    result = avadhi.KaAvdhiWriter().run(_ctx(conn))
+    # (I) INTERPRETATION: admit the F2 tier/build before inspecting its
+    # intervals (ALGO v1.1 §3.1). A malformed admitted row is rejected by
+    # the clock reader before the writer can construct its index or mutate.
+    with pytest.raises(error_type, match=f"^{message}$"):
+        avadhi.KaAvdhiWriter().run(ctx)
 
-    assert result.asset_id == "ka_avadhi"
-    assert result.rows_inserted == len(md_rows) + len(ad_rows)
-    assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
-    assert conn.mutations[-1][0] == "executemany"
+    assert conn.mutations == []
 
 
 def test_computed_writers_preserve_partition_when_candidate_build_interrupts(monkeypatch):
@@ -344,15 +354,19 @@ def test_computed_writers_delete_only_after_complete_candidate(monkeypatch):
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
 
 
-def test_yojaka_empty_input_preserves_partition():
+def test_yojaka_legacy_fixture_empty_input_preserves_partition():
     conn = RecordingConnection([[]])
-    result = yojaka.KaYojakaWriter().run(_ctx(conn))
+    # The historical template is retained for regression evidence; production
+    # candidate F1 replacement is exercised by the K2-1b database oracles.
+    ctx = _ctx(conn)
+    ctx.config["candidate_generation"] = "candidate:CODEX-w2"
+    result = yojaka.KaYojakaWriter().legacy_testimony_fixture(ctx)
     assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 0
     assert conn.mutations == []
 
 
-def test_yojaka_deletes_only_after_complete_candidate(monkeypatch):
+def test_yojaka_legacy_fixture_deletes_only_after_complete_candidate(monkeypatch):
     signal = {
         "signal_id": "signal-1",
         "chart_id": "chart-1",
@@ -386,9 +400,12 @@ def test_yojaka_deletes_only_after_complete_candidate(monkeypatch):
     monkeypatch.setattr(yojaka, "_extract_primary_graha", lambda *_: None)
     monkeypatch.setattr(yojaka, "_infer_signal_domain", lambda *_: "general")
 
-    result = yojaka.KaYojakaWriter().run(_ctx(conn))
+    ctx = _ctx(conn)
+    ctx.config["candidate_generation"] = "candidate:CODEX-w2"
+    result = yojaka.KaYojakaWriter().legacy_testimony_fixture(ctx)
 
     assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 1
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
+    assert conn.mutations[0][2] == ("chart-1", "candidate:CODEX-w2")
     assert conn.mutations[-1][0] == "executemany"
