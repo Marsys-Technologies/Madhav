@@ -2314,6 +2314,14 @@ jobs:
           # sidecar-owned writer hashes. Any Python writer change must regenerate
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
+          # Required Governance Gates: both mappings use the shared production
+          # validator; missing semantic evidence must fail without a DB or skips.
+          if [ "${{ matrix.shard }}" = "1" ]; then
+            python -m pytest tests/l3/test_certification_validation.py \
+              tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
+              tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
+              -q -p no:cacheprovider
+          fi
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
           # the writer digest inventory check above stays (it keeps generated writer hashes honest).
           PYTHONPATH="$sidecar_shard_plugin_dir" pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
