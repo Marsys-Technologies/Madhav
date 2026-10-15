@@ -215,7 +215,7 @@ class TestDynamicInvariance:
         conn = FakeConn(F.build_tables(life_event_rows=life_event_rows))
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        for step in writer.plan_substeps(ctx):
+        for step in writer._plan_reference_substeps(ctx):
             writer.run_substep(ctx, step)
         return conn
 
@@ -273,7 +273,7 @@ class TestDynamicInvariance:
         conn = FakeConn(tables)
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        for step in writer.plan_substeps(ctx):
+        for step in writer._plan_reference_substeps(ctx):
             writer.run_substep(ctx, step)
         assert (base.tables['kala_field_snapshots'][0]['field_content_hash']
                 != conn.tables['kala_field_snapshots'][0]['field_content_hash'])

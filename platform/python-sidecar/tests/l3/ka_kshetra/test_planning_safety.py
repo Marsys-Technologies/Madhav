@@ -25,6 +25,8 @@ def _mutating_statements(conn: FakeConn) -> list[str]:
 def _plan(conn: FakeConn, *, dry_run: bool = False):
     ctx = FakeCtx(conn, F.CHART_ID, dry_run=dry_run)
     writer = W.KaKshetraWriter()
+    # This suite drives the retained dense oracle, including the real driver.
+    writer.plan_substeps = writer._plan_reference_substeps
     return writer, ctx, writer.plan_substeps(ctx)
 
 

@@ -91,7 +91,7 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
              patch('services.ka_kshetra.engine_config.ENGINE_VERSION', engine_version), \
              patch('services.ka_kshetra.writer.S4.resolve_weights_pin',
                    return_value=('w-v1', {})):
-            steps = writer.plan_substeps(ctx)
+            steps = writer._plan_reference_substeps(ctx)
 
         return steps
 
@@ -184,7 +184,7 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
              patch('services.ka_kshetra.engine_config.ENGINE_VERSION', 'sampled'), \
              patch('services.ka_kshetra.writer.S4.resolve_weights_pin',
                    return_value=('w-v1', {})):
-            steps = writer.plan_substeps(ctx)
+            steps = writer._plan_reference_substeps(ctx)
 
         return steps
 
@@ -246,6 +246,8 @@ class TestRunStage5DharaRouting:
 
         ctx = MagicMock()
         ctx.db_conn = MagicMock()
+        ctx.config = {'chart_id':'00000000-0000-0000-0000-000000000001',
+                      'birth_params':{'datetime_iso':'2000-01-01T12:00:00+00:00'}}
 
         from pipeline.orchestrator.writers import SubStep
         step = SubStep(key='stage5dhara:CAREER:1', label='dhara null CAREER')
@@ -274,6 +276,8 @@ class TestRunStage5DharaRouting:
 
         ctx = MagicMock()
         ctx.db_conn = MagicMock()
+        ctx.config = {'chart_id':'00000000-0000-0000-0000-000000000001',
+                      'birth_params':{'datetime_iso':'2000-01-01T12:00:00+00:00'}}
 
         from pipeline.orchestrator.writers import SubStep
         step = SubStep(key='stage5dhara:CAREER:2', label='dhara windows CAREER')

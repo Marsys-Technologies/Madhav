@@ -269,7 +269,7 @@ class TestPreparationBoundary:
 
     def test_writer_declares_prepare_first_and_owns_delete(self) -> None:
         writer_src = _src('writer.py')
-        plan_src = _fn_body(writer_src, 'plan_substeps')
+        plan_src = _fn_body(writer_src, '_plan_reference_substeps')
         prepare_src = _fn_body(writer_src, '_run_prepare_replace')
         assert "key='prepare:replace'" in plan_src
         assert '_delete_prior_rows' in prepare_src

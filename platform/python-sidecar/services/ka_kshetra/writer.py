@@ -15,7 +15,13 @@ Nothing in this file changes the orchestrator. If a future stage appears to need
 a contract change, STOP and raise with the native (§N.2 — the freeze is
 deliberate).
 
-── W0 PRESERVATION + IDEMPOTENCY (§N.3) ────────────────────────────────
+── PRE-BUILD COMPACT DISPATCH (K5-2b, SR-A4-01) ──────────────────────────
+Public dispatch is inactive unless kshetra_compact_candidate explicitly selects
+an existing build-bound mutable G1 candidate. It projects coefficients into the
+additive compact table and never runs dense preparation or publishes a head.
+The dense pipeline below remains an offline test/reference implementation.
+
+── RETAINED W0 REFERENCE (§N.3) ────────────────────────────────────────
 This schema has no immutable candidate/publication generation boundary. During
 DP-SD-017 W0, `prepare:replace` therefore takes a transaction-scoped chart lock
 and FAILS CLOSED before DELETE when any writer-owned output already exists. A
@@ -277,6 +283,13 @@ class KaKshetraWriter(WriterBase):
     # ── plan ─────────────────────────────────────────────────────────────────
 
     def plan_substeps(self, ctx) -> list[SubStep]:
+        # PRE-BUILD SR-A4-01: activation is explicit; no ordinary dispatch can
+        # delete/rebuild a dense or published slice. K5-G1a owns source stages.
+        from services.ka_kshetra.compact_field import plan_substeps
+        return plan_substeps(ctx)
+
+    def _plan_reference_substeps(self, ctx) -> list[SubStep]:
+        """Retained dense numerical/wiring reference, outside live dispatch."""
         conn = ctx.db_conn
         self._chart_id = ctx.config['chart_id']
         self._dry_run = bool(getattr(ctx, 'dry_run', False))
@@ -489,6 +502,9 @@ class KaKshetraWriter(WriterBase):
     # ── dispatch ─────────────────────────────────────────────────────────────
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
+        if step.key.startswith('compact:'):
+            from services.ka_kshetra.compact_field import run_substep
+            return run_substep(ctx, step)
         conn = ctx.db_conn
         kind = step.key.split(':', 1)[0]
         if kind == 'prepare':

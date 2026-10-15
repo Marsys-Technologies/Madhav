@@ -87,7 +87,7 @@ def _run_full_build(tables) -> tuple[W.KaKshetraWriter, FakeConn]:
     conn = FakeConn(tables)
     ctx = FakeCtx(conn, F.CHART_ID)
     writer = W.KaKshetraWriter()
-    for step in writer.plan_substeps(ctx):
+    for step in writer._plan_reference_substeps(ctx):
         writer.run_substep(ctx, step)
     return writer, conn
 
@@ -97,7 +97,7 @@ def _run_full_build(tables) -> tuple[W.KaKshetraWriter, FakeConn]:
 class TestPlan:
     def test_plan_is_stage_ordered(self):
         conn = FakeConn(F.build_tables())
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         kinds = [s.key.split(':', 1)[0] for s in steps]
         # asset_runner._run_substeps iterates plan_substeps(ctx) IN ORDER, so
         # emitting the stages in dependency order is what makes stage 5 able to
@@ -114,7 +114,7 @@ class TestPlan:
 
     def test_ten_decade_slices_per_event_class(self):
         conn = FakeConn(F.build_tables())
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         s4 = [s for s in steps if s.key.startswith('stage4:')]
         assert len(s4) == W.DECADES
         assert {s.key.rsplit(':', 1)[1] for s in s4} == {str(d) for d in range(W.DECADES)}
@@ -126,7 +126,7 @@ class TestPlan:
         # 'sampled' here keeps regression coverage for the sampled plan shape.
         monkeypatch.setattr(W, '_engine_version', lambda: 'sampled')
         conn = FakeConn(F.build_tables())
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         blocks = [s for s in steps if s.key.startswith('stage5:')]
         assert len(blocks) == S5.DEFAULT_REPLICATES // S5.DEFAULT_BLOCK_SIZE
 
@@ -137,7 +137,7 @@ class TestPlan:
         tables = F.build_tables()
         tables['bodha_pratijna'] = []
         conn = FakeConn(tables)
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         assert [step.key for step in steps] == ['prepare:replace']
 
     def test_denied_pratijna_rows_do_not_count_as_event_classes(self):
@@ -153,7 +153,7 @@ class TestPlan:
             {'chart_id': F.CHART_ID, 'event_class_id': 'never_promised', 'status': 'denied'},
         ]
         conn = FakeConn(tables)
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         assert [step.key for step in steps] == ['prepare:replace']
 
     def test_idempotency_delete_happens_exactly_once_in_prepare_substep(self):
@@ -202,7 +202,7 @@ class TestFrozenContract:
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID, dry_run=True)
         writer = W.KaKshetraWriter()
-        for step in writer.plan_substeps(ctx):
+        for step in writer._plan_reference_substeps(ctx):
             writer.run_substep(ctx, step)
         assert conn.inserts == {}
         assert conn.deletes == []
@@ -401,7 +401,7 @@ class TestReconciliationAtWriteTime:
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
         for step in steps:
             if step.key.startswith('stage5finalize'):
                 monkeypatch.setattr(H, 'evaluate', lossy)
@@ -421,7 +421,7 @@ class TestUpstreamGuard:
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
         block = next(s for s in steps if s.key.startswith('stage5dhara:'))
         with pytest.raises(S4.UpstreamStageIncomplete):
             writer.run_substep(ctx, block)     # no stage-4 substep has run
@@ -435,7 +435,7 @@ class TestUpstreamGuard:
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
         for s in steps:
             if s.key.startswith('stage4:'):
                 writer.run_substep(ctx, s)
@@ -494,7 +494,7 @@ class TestDeterminism:
         prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
 
         with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
             writer.run_substep(ctx, steps[0])
@@ -520,7 +520,7 @@ class TestDeterminism:
 class TestStage6Salience:
     def test_the_plan_reaches_stages_6_65_and_8_before_the_snapshot(self):
         conn = FakeConn(F.build_tables())
-        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        steps = W.KaKshetraWriter()._plan_reference_substeps(FakeCtx(conn, F.CHART_ID))
         keys = [s.key for s in steps]
         kinds = [k.split(':', 1)[0] for k in keys]
         # §2's pipeline order. The snapshot is last because the content hash is
@@ -606,7 +606,7 @@ class TestStage65Insights:
         prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
         assert conn.deletes == [], 'planning must be read-only'
         assert steps[0].key == 'prepare:replace'
         with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
@@ -642,7 +642,7 @@ class TestStage65Insights:
         conn = FakeConn(tables)
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
-        steps = writer.plan_substeps(ctx)
+        steps = writer._plan_reference_substeps(ctx)
         for step in steps:
             if step.key == 'stage65':
                 # Wipe the salience layer stage 6 just wrote: every insight_score
@@ -839,6 +839,6 @@ class TestA1GochaCorpusPin:
         conn_after = FakeConn(tables_after)
         writer_before = W.KaKshetraWriter()
         writer_after = W.KaKshetraWriter()
-        writer_before.plan_substeps(FakeCtx(conn_before, F.CHART_ID))
-        writer_after.plan_substeps(FakeCtx(conn_after, F.CHART_ID))
+        writer_before._plan_reference_substeps(FakeCtx(conn_before, F.CHART_ID))
+        writer_after._plan_reference_substeps(FakeCtx(conn_after, F.CHART_ID))
         assert writer_before._snapshot_id != writer_after._snapshot_id

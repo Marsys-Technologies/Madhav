@@ -55,7 +55,7 @@ def _run_full_build(tables) -> tuple[W.KaKshetraWriter, FakeConn]:
     conn = FakeConn(tables)
     ctx = FakeCtx(conn, F.CHART_ID)
     writer = W.KaKshetraWriter()
-    for step in writer.plan_substeps(ctx):
+    for step in writer._plan_reference_substeps(ctx):
         writer.run_substep(ctx, step)
     return writer, conn
 
