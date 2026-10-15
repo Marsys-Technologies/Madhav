@@ -3,10 +3,11 @@
 The mapping is audited from the repository, never required by sidecar runtime
 (which does not ship web sources). It awards no unmeasured certification PASS.
 """
-import ast
 import hashlib
 import json
 from pathlib import Path
+
+from services.kala_core.certification import read_detector_registry
 
 from .ranker import KaTulanaService, WindowInput, KNOWN_DOMAINS
 
@@ -428,15 +429,9 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
         digest = hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         if digest != mapping.get("declaration_sha256"):
             errors.append("stale ka_tulana declaration")
-        tree = ast.parse((root / mapping["registry_path"]).read_text())
-        revision = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
-                        and any(isinstance(t, ast.Name) and t.id == "REGISTRY_REVISION" for t in n.targets))
+        revision, criteria = read_detector_registry(root / mapping["registry_path"])
         if revision != mapping.get("registry_revision"):
             errors.append("stale detector registry revision")
-        registry = next(n.value for n in tree.body if isinstance(n, ast.AnnAssign)
-                        and isinstance(n.target, ast.Name) and n.target.id == "CRITERION_REGISTRY")
-        criteria = {ast.literal_eval(k): {x.arg: ast.literal_eval(x.value) for x in v.keywords
-                    if x.arg in {"revision", "detector"}} for k, v in zip(registry.keys, registry.values)}
         if set(mapping.get("detectors", {})) != set(CERTIFICATION_MAPPING["detectors"]):
             errors.append("missing detector binding")
         for key, evidence in mapping.get("detectors", {}).items():

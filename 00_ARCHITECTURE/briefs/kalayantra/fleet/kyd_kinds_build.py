@@ -68,7 +68,7 @@ REWORK     an item in review at a registered head H of its open PR (pr.head = H,
              T  the tier of the item's last BUILD/REWORK model job that ended `done` (its state.json `model`);
                 none on record → sonnet: an unknown builder gets no Opus credit (I)
              N  the unbroken run of such jobs at tier T (at least 1) — the loops this tier has used (I)
-             M  the packet's max_loops, else that job's, else 3 (plan §8)
+             M  the packet's max_loops, else that job's, else 2 (owner Amendment A2 D-17 §2.6)
              K  REJECTED verdicts at the heads (digests) that run produced; an `invalidated:` rejection is the
                 controller's, not a reviewer's, and is not counted (I)
            header.loop = that job's loop + 1 (2 when none is on record: the head exists, so one loop has run).
@@ -129,7 +129,7 @@ MIGRATIONS = "platform/migrations/"
 CHECK_GREEN = ("SUCCESS",)
 CHECK_NOT_RUN = ("SKIPPED", "NEUTRAL")
 CHECK_PENDING = ("PENDING", "QUEUED", "IN_PROGRESS", "EXPECTED", "WAITING", "REQUESTED")
-DEFAULT_MAX_LOOPS = 3
+DEFAULT_MAX_LOOPS = 2  # Owner Amendment A2 D-17 §2.6 supersedes plan §8.
 ASSESSMENT_AUTHOR = "dispatcher:admission"
 
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
@@ -736,7 +736,7 @@ def _ready(ctx, row):
     return [_intent("BUILD", item, stream="K", pool="builder", runner="model", claim="K", locks=["item." + item],
                     tier=packet["build_tier"], evidence_fp=fingerprint({"packet_sha256": packet["sha256"]}),
                     card=_fleet(ctx, CARD_BUILDER), packet=packet["path"],
-                    header={"loop": 1, "max_loops": packet["max_loops"]})]
+                    header={"loop": 1, "max_loops": packet["max_loops"] or DEFAULT_MAX_LOOPS})]
 
 
 # ── start ───────────────────────────────────────────────────────────────────────────────────────────────────────

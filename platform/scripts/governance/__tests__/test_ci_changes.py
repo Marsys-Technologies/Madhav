@@ -555,6 +555,49 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
 
 
+def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(jobs):
+    suite = "tests/l3/ka_bhavishya_lekha/test_certification_mapping.py"
+    assert not jobs["kala-db-tests"].get("continue-on-error")
+    steps = [step for step in jobs["kala-db-tests"]["steps"]
+             if suite in _pytest_suites(str(step.get("run", "")))]
+    assert steps, "K6-5 certification mapping oracle must run in the mandatory Kāla DB command"
+    for step in steps:
+        run = str(step["run"])
+        assert "tests/l3/kala_db" in run.split()
+        assert str(step["env"]["KALA_REQUIRE_DB"]) == "1"
+        assert step["env"].get("KALA_ADMIN_DSN")
+        assert not step.get("continue-on-error")
+        assert not step.get("if")
+        args = run.split()[run.split().index("pytest") + 1:]
+        assert not any(token.split("=")[0] in _FORBIDDEN_FLAGS for token in args)
+        assert not any(token in run.split() for token in ("||", ";", "|"))
+
+
+@pytest.mark.parametrize('suite', [
+    'tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py',
+    'tests/l3/kala_db/issued_forecast/test_lifecycle.py',
+    'tests/l3/kala_db/idempotency/test_immutable_issue.py',
+])
+def test_kala_k6_5_regression_suites_run_in_the_mandatory_db_command(jobs, suite):
+    """Identity, ontology and lifecycle regressions must travel with the mapping oracle."""
+    job = jobs['kala-db-tests']
+    assert not job.get('continue-on-error')
+    steps = [step for step in job['steps']
+             if 'tests/l3/ka_bhavishya_lekha/test_certification_mapping.py'
+             in _pytest_suites(str(step.get('run', '')))]
+    assert steps
+    for step in steps:
+        selected = [token for token in str(step.get('run', '')).split()
+                    if token.startswith('tests/')]
+        assert (ROOT / 'platform/python-sidecar' / suite).is_file()
+        assert any(Path(suite).is_relative_to(Path(path)) for path in selected), suite
+        assert not step.get('if') and not step.get('continue-on-error')
+        assert str(step['env']['KALA_REQUIRE_DB']) == '1'
+        assert step['env'].get('KALA_ADMIN_DSN')
+        args = str(step['run']).split()[str(step['run']).split().index('pytest') + 1:]
+        assert not any(token.split('=')[0] in _FORBIDDEN_FLAGS for token in args)
+
+
 def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(jobs):
     """TCP port publishing reports a bridge address; the dump fixture requires a local socket."""
     job = jobs["gochara-a55-measuring-build"]
