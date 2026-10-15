@@ -2330,6 +2330,10 @@ jobs:
           # K6-5 / SR-A4-03: the seven independent-review survivors (empty
           # contract data and contradictory Idem PASS) are mandatory here.
           if [ "${{ matrix.shard }}" = "1" ]; then
+            # K5-2 pre-build: exercise the compact numerical-contract detectors,
+            # including a failed trial retaining the dense path. A passing test
+            # suite is not D-COMPACT approval or permission to activate.
+            python -m pytest tests/l3/ka_kshetra/compact -q -p no:cacheprovider
             python -m pytest tests/l3/test_certification_validation.py \
               tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
               tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
