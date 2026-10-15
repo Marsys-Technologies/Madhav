@@ -533,8 +533,10 @@ class TestB3GrahaPopulatedInConfig(unittest.TestCase):
         )
         config = json.loads(row["configuration_jsonb"])
         self.assertIn("graha", config, "yoga_fires signal must have 'graha' in configuration_jsonb")
-        self.assertEqual(config["graha"], "JUP",
-                         f"Expected graha=JUP; got {config.get('graha')}")
+        # The composed configuration_jsonb.graha is spelled in the Title family
+        # (_compose_graha_name); the working tags['graha'] stays the code.
+        self.assertEqual(config["graha"], "Jupiter",
+                         f"Expected graha=Jupiter; got {config.get('graha')}")
 
     def test_dosha_fires_mangal_has_graha(self):
         fact_row = {
@@ -565,7 +567,7 @@ class TestB3GrahaPopulatedInConfig(unittest.TestCase):
         )
         config = json.loads(row["configuration_jsonb"])
         self.assertIn("graha", config, "dosha_fires signal must have 'graha' in config")
-        self.assertEqual(config["graha"], "MAR")
+        self.assertEqual(config["graha"], "Mars")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

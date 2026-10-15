@@ -58,6 +58,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const STRUCTURAL_SIGNAL_CATEGORIES = [
   'sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
@@ -98,7 +100,7 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
     'residual-coverage complement to those. Covers 19 fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     domain: {
       type: 'string',
       description: 'Filter by domain: relational | graph | special_point | per_varga | dosha.',
@@ -141,38 +143,37 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
       const countParams: unknown[] = [chartId, categories]
       let countSql = `SELECT COUNT(*)::text AS total FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-        countSql += ` AND ayanamsha_id = $${countParams.length + 1}`
-        countParams.push(args.ayanamsha_id as string)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4`
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
+      countSql += kp.filter(countParams)
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key LIMIT $3 OFFSET $4`
 
       const [result, countResult] = await Promise.all([
         query<Record<string, unknown>>(sql, params),
         query<{ total: string }>(countSql, countParams),
       ])
-      const rows = result.rows ?? []
+      const rows = kp.label(normalizeNarrationRows(result.rows))
       // `total` stays the PAGE length (existing callers read it); the real matching size is `total_matching`.
       const total_matching = Number(countResult.rows?.[0]?.total ?? rows.length)
 
       return {
         content: {
           chart_id: chartId,
+          ...kp.echo(rows),
           categories,
           rows,
           total: rows.length,
           total_matching,
           more_available: offset + rows.length < total_matching,
           ...(rows.length === 0
-            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${(args.ayanamsha_id as string) ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
+            ? { empty_reason: `No structural-signal facts matched for chart ${chartId} (domain=${(args.domain as string) ?? 'any'}, ayanamsha_id=${kp.aya.id ?? 'any'}, ${categories.length} categories, offset=${offset}, total_matching=${total_matching}).` }
             : {}),
         },
         is_error: false,

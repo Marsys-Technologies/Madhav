@@ -99,3 +99,13 @@ def kala_db_dsn() -> str:
             admin.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s", (name,))
             admin.execute(f'DROP DATABASE IF EXISTS "{name}"')
         admin.close()
+
+
+@pytest.fixture(scope="module")
+def isolated_kala_db_dsn() -> str:
+    """Use the same guarded lifecycle with a fresh DB for persistent module schemas.
+
+    Storage suites that commit their setup must not share table names with
+    other suites discovered by the dedicated DB job.
+    """
+    yield from kala_db_dsn.__wrapped__()

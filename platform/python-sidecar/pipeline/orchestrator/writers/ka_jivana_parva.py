@@ -18,6 +18,8 @@ birth are dropped outright (never experienced); rows straddling birth have their
 served start_year raised to birth_date.year (experienced portion only).
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from collections import Counter
 from datetime import date, datetime
@@ -53,6 +55,12 @@ def _parse_birth_date(birth_params) -> date | None:
 @register('ka_jivana_parva')
 class KaJivanaParvaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        from pipeline.orchestrator.writers.ka_read_model_integrity import bind_integrity_target
+        bind_integrity_target(ctx)
+        # KYD-140 fixture preparation only; the default legacy path is retained.
+        if 'kala_read_model_fixture' in ctx.config:
+            from pipeline.orchestrator.writers.k6_candidate import run_candidate
+            return run_candidate(ctx, 'ka_jivana_parva')
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
         # Single temporal anchor for the entire build — prevents midnight-crossing divergence
@@ -201,6 +209,7 @@ class KaJivanaParvaWriter(WriterBase):
                 high_conv_count,
                 avg_score,
                 f"ka_jivana_parva:v2.0:MD={md_planet}",
+                UNVERIFIED_DEFAULT,
             ))
 
             # D7: AD sub-chapters — antardashas whose start_date falls within this MD span
@@ -263,6 +272,7 @@ class KaJivanaParvaWriter(WriterBase):
                     ad_high_cnt,
                     ad_avg_score,
                     f"ka_jivana_parva:v2.0:MD={md_planet}:AD={ad_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # O6: Pratyantar-dasha level-3 — additive, current AD only.
@@ -339,18 +349,20 @@ class KaJivanaParvaWriter(WriterBase):
                     pd_high_cnt,
                     pd_avg_score,
                     f"ka_jivana_parva:v2.0:PD={pd_planet}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
             with conn.cursor() as cur:
-                cur.executemany("""
+                store_tier = has_stored_verification(cur, 'kala_jivana_parva')
+                cur.executemany(f"""
                     INSERT INTO kala_jivana_parva (
                         chart_id, parva_index, parva_level, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
-                        source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
+                        source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})
+                """, rows if store_tier else [row[:-1] for row in rows])
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 

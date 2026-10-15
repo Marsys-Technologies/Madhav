@@ -3,13 +3,12 @@
 REQUEST-PREP · PRE-ACCEPT · EXECUTE · POST-READBACK, §8, §14).
 
 An adapter is the reviewed script a table entry of executor_ops.json names. The executor launches it (executor.py
-`execute`: fixed_args, then the request's args as `--key value`) and writes the receipt; the dispatcher
-(kyd_kinds_ops.py) prepares, has the request accepted, submits it and has the receipt's digest judged. This module
+`execute`: fixed_args, then the request's args as `--key value`) and writes the receipt. The fast lane prepares and accepts the request and independently judges the receipt digest. This module
 changes none of that and enables nothing: it holds the parts each adapter would otherwise write again, and the reads
 by which an item says whether its operation is complete. Importing it runs nothing; standard library only.
 
   the mode            add_mode_arguments / resolve_mode / parse_request_args — an explicit `--dry-run` and an explicit
-                      `--execute`; neither is a dry run
+                      `--execute`; omitting both defaults to a dry run
   the launch          launch_argv — the executor's argv for an entry and a request, as a statement to compare with
   the remote          remote_execute_argv / remote_launch — the one fixed build-job launch, its principal checked
                       first, planned identically in both modes and submitted in one
@@ -25,29 +24,26 @@ the reason or None instead. Nothing here starts a process, opens a connection, r
 run/ops, or touches the production fence (executor.py run/ops/PRODUCTION_PENDING.json: the owner surrogate's alone).
 
 INTERPRETATIONS (what the packet leaves open, and what is done here):
-  A-1  The record an adapter prints (`ky.op_adapter/1`) is the adapter's OUTPUT — the body the executor stores as
+  (I) INTERPRETATION A-1: The record an adapter prints (`ky.op_adapter/1`) is the adapter's OUTPUT — the body the executor stores as
        <operation_id>.output.txt and digests in its receipt. It is not a receipt and replaces no receipt field.
-  A-2  Only the build job's launch is stated by a pinned source (dispatch_v5_small_test_job.py: `gcloud run jobs
-       execute brahma-build-pipeline-job --args=--run-id,<run_id>`), so it is the only remote launch here. The project
-       and region are the installed gcloud configuration's (CLOUDSDK_CONFIG); no flag is added. The Gochara
-       verification job has a principal binding here and no launch; a whole-layer job has neither — both are their
-       items' prerequisites, and one never stands for the other.
-  A-3  The principal check reads a job definition the adapter's transport fetched (`describe`): the metadata name, the
+  (I) INTERPRETATION A-2: The build launch uses the fixed project/region, async flag and execution-name format of the current
+       smalltest_launch.py cloud_launcher (Wave 4, #3527), independent of ambient gcloud defaults. The Gochara
+       verifier has a principal binding here and no launch; whole-layer job bindings remain their items' prerequisites.
+  (I) INTERPRETATION A-3: The principal check reads a job definition the adapter's transport fetched (`describe`): the metadata name, the
        one service account and the secret references by NAME, compared with data-plane-secret-isolation-preflight.ts's
        bindings (a test reads them from that file). A `run.googleapis.com/secrets` alias annotation, or a secret
        qualified by a project number, is not resolved here: it refuses.
-  A-4  The item's terminal observation is `ky.op_observation/1` {operation_id, request_sha256, receipt_sha256,
+  (I) INTERPRETATION A-4: The item's terminal observation is `ky.op_observation/1` {operation_id, request_sha256, receipt_sha256,
        terminal, outcome, source}: `terminal` true and `outcome` "succeeded" | "failed", read by the item from the
        remote or the database after the receipt, and bound to the ACTUAL receipt file's sha256. None is unknown.
-  A-5  A rehearsal's disposable lane database is one of local_db.sh's: host 127.0.0.1, database `ky_<name>`.
-  A-6  The executor appends `--key value` in the request's own key order, and the request digest (sorted keys) does
+  (I) INTERPRETATION A-5: A rehearsal's disposable lane database is one of local_db.sh's: host 127.0.0.1, database `ky_<name>`.
+  (I) INTERPRETATION A-6: The executor appends `--key value` in the request's own key order, and the request digest (sorted keys) does
        not bind that order: an adapter reads its arguments by name, in any order, and nothing positional.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import pathlib
@@ -93,7 +89,7 @@ def add_mode_arguments(parser):
 
 
 def resolve_mode(dry_run=False, execute=False):
-    """"dry_run" or "execute". Execution is only ever asked for explicitly; neither flag is a dry run."""
+    """"dry_run" or "execute". Execution is only ever asked for explicitly; omitting both flags defaults to dry-run."""
     if not isinstance(dry_run, bool) or not isinstance(execute, bool):
         raise Refusal("mode", "the mode flags are not booleans")
     if dry_run and execute:
@@ -255,7 +251,8 @@ def remote_execute_argv(job, run_id):
         raise Refusal("remote_target", "no launch of %r is stated; the only remote launch is %s's" % (job, BUILD_JOB))
     if not isinstance(run_id, str) or not RUN_ID.match(run_id):
         raise Refusal("run_id", "the run id is not one staged run's id")
-    return ["gcloud", "run", "jobs", "execute", job, "--args=--run-id," + run_id]
+    return ["gcloud", "run", "jobs", "execute", job, "--project=madhav-astrology", "--region=asia-south1",
+            "--args=--run-id," + run_id, "--async", "--format=value(metadata.name)"]
 
 
 def remote_launch(mode, run_id, transport, *, job=BUILD_JOB, project=DEFAULT_PROJECT, environ=None):
@@ -266,6 +263,8 @@ def remote_launch(mode, run_id, transport, *, job=BUILD_JOB, project=DEFAULT_PRO
     `remote_terminal` is always None: that a submission was taken says nothing of how the run ends (see `completion`)."""
     if mode not in MODES:
         raise Refusal("mode", "the mode is neither dry_run nor execute")
+    if project != DEFAULT_PROJECT:
+        raise Refusal("remote_target", "the launch project is fixed to the reviewed build job project")
     argv = remote_execute_argv(job, run_id)
     definition = transport.describe(job)
     why = principal_refusal(job, definition, project)
@@ -375,25 +374,44 @@ def scope_record(mode, kind, *, scope, preflight, identity):
 
 # ───────────────────────────────────────── completion ─────────────────────────────────────────
 
-_DISPATCHER = None
+EVENT_KINDS = {"item", "decision", "heartbeat", "note", "metric", "message", "ack", "claim", "verdict"}
 
 
-def _dispatcher():
-    """kyd_kinds_ops.py beside this file: its receipt and verdict reads are used as they are, not copied."""
-    global _DISPATCHER
-    if _DISPATCHER is None:
-        spec = importlib.util.spec_from_file_location("ky_operation_adapters_kyd_kinds_ops",
-                                                      pathlib.Path(__file__).resolve().parent / "kyd_kinds_ops.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        _DISPATCHER = module
-    return _DISPATCHER
+def _receipt(run, prepared):
+    """Read the executor's wire receipt and measure its complete output without importing a retired job engine."""
+    path = run / "ops" / "receipts" / (prepared["request"]["operation_id"] + ".json")
+    try:
+        body = path.read_bytes()
+        doc = json.loads(body)
+    except FileNotFoundError:
+        return None, None, "incomplete", "no executor receipt"
+    except (OSError, ValueError):
+        return None, None, "unknown", "the executor receipt could not be read"
+    if not isinstance(doc, dict):
+        return None, None, "unknown", "the executor receipt could not be read"
+    if doc.get("status") == "RUNNING":
+        return None, None, "incomplete", "the executor receipt is RUNNING"
+    valid = (doc.get("status") == "COMPLETED" and type(doc.get("exit_code")) is int and doc["exit_code"] == 0
+             and doc.get("operation_id") == prepared["request"]["operation_id"]
+             and doc.get("item_id") == prepared["item"] and doc.get("request_sha256") == prepared["request_sha256"])
+    output, digest = doc.get("output_file"), doc.get("output_sha256")
+    if valid and isinstance(output, str) and output and isinstance(digest, str) and HEX64.fullmatch(digest):
+        out_path = pathlib.Path(output)
+        if not out_path.is_absolute():
+            out_path = path.parent / out_path
+        try:
+            measured = out_path.read_bytes()
+            if measured and hashlib.sha256(measured).hexdigest() == digest:
+                return doc, hashlib.sha256(body).hexdigest(), None, None
+        except OSError:
+            pass
+    return None, None, "refused", "the executor receipt is not a COMPLETED, measured receipt of this request (status %r)" % doc.get("status")
 
 
 def completion(run, prepared, events, observation):
     """(state, reason) of one prepared operation: "complete" only when all three hold —
 
-      · the executor's receipt is COMPLETED and measured, for this request, item and operation (the dispatcher's read);
+      · the executor's receipt is COMPLETED and measured, for this request, item and operation (read directly from the executor wire format);
       · the item's terminal observation (A-4) is bound to the request and to that receipt file's sha256, is terminal
         and succeeded;
       · the latest artifact verdict at that same receipt sha256 is ACCEPTED (`events`: the item's tracker events).
@@ -401,21 +419,11 @@ def completion(run, prepared, events, observation):
     "incomplete": not there yet (no receipt, RUNNING, staged or still running, no verdict). "unknown": something that
     must be read was not (no observation, unreadable events or receipt). "failed": the observation is terminal and
     failed. "refused": evidence that is there and is not this operation's, or a verdict that is not ACCEPTED."""
-    kinds = _dispatcher()
     run = pathlib.Path(str(run))
     request = prepared["request"]
-    found = kinds._b_receipt(run, prepared)
-    if found is None:
-        path = kinds._receipt_path(run, request["operation_id"])
-        if not os.path.lexists(str(path)):
-            return "incomplete", "no executor receipt"
-        receipt = kinds.read_json(path)
-        if not isinstance(receipt, dict):
-            return "unknown", "the executor receipt could not be read"
-        if receipt.get("status") == "RUNNING":
-            return "incomplete", "the executor receipt is RUNNING"
-        return "refused", "the executor receipt is not a COMPLETED, measured receipt of this request (status %r)" % (receipt.get("status"),)
-    _, receipt_sha = found
+    _, receipt_sha, state, reason = _receipt(run, prepared)
+    if state:
+        return state, reason
     if observation is None:
         return "unknown", "no terminal semantic observation of this operation"
     if not isinstance(observation, dict) or observation.get("schema") != OBSERVATION_SCHEMA:
@@ -429,9 +437,10 @@ def completion(run, prepared, events, observation):
         return "refused", "the observation states no terminal outcome"
     if observation["outcome"] == "failed":
         return "failed", "the operation is observed terminal and failed"
-    if not isinstance(events, list) or not all(isinstance(e, dict) and e.get("kind") in kinds.EVENT_KINDS for e in events):
+    if not isinstance(events, list) or not all(isinstance(e, dict) and e.get("kind") in EVENT_KINDS for e in events):
         return "unknown", "the item's events could not be read"
-    verdicts = kinds._verdicts(events, "artifact", digest=receipt_sha)
+    verdicts = [e for e in events if e.get("kind") == "verdict" and e.get("item") == prepared["item"]
+                and e.get("phase") == "artifact" and e.get("artifact_digest") == receipt_sha]
     if not verdicts:
         return "incomplete", "no artifact verdict at the receipt's sha256"
     if verdicts[-1].get("result") != "ACCEPTED":

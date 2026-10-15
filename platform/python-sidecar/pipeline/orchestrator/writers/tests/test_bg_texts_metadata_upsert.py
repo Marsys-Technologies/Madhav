@@ -195,3 +195,46 @@ def test_additive_mode_reports_rows_present_for_an_exact_existing_text(monkeypat
     assert result.rows_inserted == 1459 + 15
     assert "chunks_inserted_this_run=0" in result.notes
     assert "bphs:1459" in result.notes
+
+
+class _LegacyRowCursor(_ModeCursor):
+    """Models the one legacy classical_texts row the 15-entry registry does not own."""
+
+    def __init__(self, legacy: dict) -> None:
+        super().__init__()
+        self.legacy = legacy                      # the stored jaimini_sutram row; None once deleted
+
+    def execute(self, sql: str, params: tuple | None = None) -> None:
+        super().execute(sql, params)
+        if sql.strip().startswith("UPDATE classical_texts") and "'jaimini_sutram'" in sql:
+            assert "tradition = %s" in sql and "source_edition = NULL" in sql
+            if self.legacy is not None:
+                self.legacy["tradition"] = params[0]
+                self.legacy["source_edition"] = None
+        if sql.strip().startswith("DELETE FROM classical_texts") and "jaimini_sutram" in sql:
+            self.legacy = None
+
+
+def test_metadata_only_converges_legacy_jaimini_sutram_row_into_closed_vocabulary():
+    """The legacy MCP-schema row is kept (chunks / citations reference it) but its tradition and
+    source_edition must leave the classical_texts closed sets: tradition = the registry value, edition NULL.
+    Fails on a writer that leaves the row untouched."""
+    legacy = {"text_id": "jaimini_sutram", "tradition": "jyotisha_legacy", "source_edition": "legacy edition line"}
+    cursor = _LegacyRowCursor(legacy)
+    conn = _RecordingConnection(cursor)
+    assert {t["tradition"] for t in TEXTS} == {"vedic"}
+
+    for _ in range(2):                            # idempotent: a second run leaves the same state
+        TextsWriter().run(ContextSpec(
+            asset_id="bg_texts",
+            build_id="legacy-jaimini-sutram",
+            db_conn=conn,
+            config={"rebuild_mode": "metadata_only"},
+        ))
+        assert cursor.legacy is legacy, "the jaimini_sutram row must never be deleted"
+        assert legacy["tradition"] == "vedic"
+        assert legacy["source_edition"] is None
+
+    statements = [sql for sql, _ in cursor.calls]
+    assert not any("DELETE FROM classical_texts" in sql and "jaimini_sutram" in sql for sql in statements)
+    assert not any("DELETE FROM classical_text_chunks" in sql for sql in statements)

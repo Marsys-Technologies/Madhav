@@ -6,6 +6,7 @@ consumer value.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import fields
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -25,11 +26,8 @@ from services.ka_moorti_nirnaya.writer import KaMoortiNirnayaWriter
 from services.ka_sudarshana_varsha.writer import KaSudarshanaVarshaWriter
 from services.ka_tithi_pravesha.writer import KaTithiPraveshaWriter
 from services.ka_tulana.ranker import (
-    AttentionMap,
-    CompareVerdict,
-    FactorBreakdown,
+    CompareRequest,
     KaTulanaService,
-    RankedWindow,
     WindowInput,
 )
 from services.ka_vedha_gochara.writer import KaVedhaGocharaWriter
@@ -45,25 +43,35 @@ def _field_names(cls: type) -> tuple[str, ...]:
     return tuple(field.name for field in fields(cls))
 
 
-def _window(window_id: str = "w1", **changes) -> WindowInput:
+def _window(window_id: str = "w1", **changes) -> dict:
     values = {
+        "chart_id": "chart-1",
         "window_id": window_id,
-        "mode": "A",
-        "peak_date": REF + timedelta(days=30),
+        "field_snapshot_id": "snapshot-1",
         "window_start": REF + timedelta(days=20),
         "window_end": REF + timedelta(days=40),
-        "convergence_score": 0.8,
-        "confidence_label": "high",
-        "rarity_years": 15.0,
-        "net_label": "auspicious",
-        "domains": ["career"],
-        "signal_id": "signal-1",
-        "source_citation": "fixture:v1",
-        "has_dissonance": False,
-        "dissonance_domains": [],
+        "precision_regime": "day_grade",
+        "event_class": "career-event",
+        "event_domain": "career",
+        "confidence_tier": "concurrent",
+        "jury": {
+            "assertion_id": "jury:" + window_id,
+            "generation": "candidate:fixture",
+            "dw": 0.62,
+            "anchor_days": 30,
+            "provenance": {"fact_ids": ["fixture-fact-1"]},
+        },
+        "jury_binding": {
+            "chart_id": "chart-1",
+            "window_id": window_id,
+            "field_snapshot_id": "snapshot-1",
+            "assertion_id": "jury:" + window_id,
+            "generation": "candidate:fixture",
+        },
+        "contest_rows": 0,
     }
     values.update(changes)
-    return WindowInput(**values)
+    return values
 
 
 class _FailingDashaConnection:
@@ -101,23 +109,41 @@ def test_w2_service_payload_shapes_are_exact_and_immutable():
     assert _field_names(MuhuratWindow) == (
         "event", "start_utc", "end_utc", "star_rating", "score", "breakdown",
     )
-    assert _field_names(WindowInput) == (
-        "window_id", "mode", "peak_date", "window_start", "window_end",
-        "convergence_score", "confidence_label", "rarity_years", "net_label",
-        "domains", "signal_id", "source_citation", "has_dissonance",
-        "dissonance_domains",
+    # K7-4 replaces only Tulana's retired scalar payloads (ALGO §3.10).
+    assert tuple(WindowInput.model_fields) == (
+        "chart_id", "window_id", "field_snapshot_id", "window_start", "window_end",
+        "precision_regime", "event_class", "event_domain", "confidence_tier",
+        "weakest_link", "robustness", "jury", "jury_binding", "obstruction",
+        "contest_rows", "lambda_peak", "null_p", "factor_informativeness",
+        "factor_consequence",
     )
-    assert _field_names(FactorBreakdown) == (
-        "convergence_score", "rarity_norm", "confidence_score",
-        "proximity_factor", "composite", "decisive_factor",
+    assert tuple(CompareRequest.model_fields) == (
+        "windows", "date_from", "date_to", "question_frame", "preference",
     )
-    assert _field_names(RankedWindow) == ("rank", "window", "factors", "rationale")
-    assert _field_names(CompareVerdict) == (
-        "winner", "loser", "winner_factors", "loser_factors",
-        "decisive_factor", "confidence_label", "rationale", "dissonance_note",
-        "recommendation",
-    )
-    assert _field_names(AttentionMap) == ("ranked", "by_domain", "horizon_days")
+    result = KaTulanaService().compare_windows([_window()], date_from=REF)
+    assert set(result) == {
+        "contract_version", "evidence", "comparisons", "front", "ordered",
+        "rejected", "order_policy", "question_frame", "entity_not_evaluated",
+        "tolerances", "empty_reason", "front_rule", "dominance_cycles",
+    }
+    assert result["front_rule"] == "undominated_or_cycle_member"
+    assert result["dominance_cycles"] == []
+    evidence = result["evidence"]["w1"]
+    assert set(evidence) == {"axes", "anchor_days", "annotations"}
+    assert set(evidence["axes"]) == {"nearest", "strongest", "most_robust"}
+    for axis in evidence["axes"].values():
+        assert set(axis) == {"state", "value", "reason"}
+    assert set(evidence["annotations"]) == {
+        "confidence_tier", "weakest_link", "robustness", "lambda_peak", "null_p",
+        "factor_informativeness", "factor_consequence", "strongest_qualification",
+        "strongest_coverage", "strongest_provenance", "witness_signature",
+        "obstruction", "contest_rows", "dissonance",
+    }
+    pair = KaTulanaService().compare(_window("a"), _window("b"), REF)
+    assert set(pair) == {"A", "B", "axes", "relation", "reason"}
+    assert pair["relation"] == "tie"
+    for axis in pair["axes"].values():
+        assert set(axis) == {"A", "B", "relation", "tolerance"}
 
 
 def test_ephemeris_legacy_constructor_preserves_fields_without_fabricating_metadata():
@@ -178,55 +204,118 @@ def test_ka_dasha_kala_rejects_ambiguous_query_contracts(systems, start, end, me
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"convergence_score": float("nan")}, "convergence_score must be finite"),
-        ({"rarity_years": -1.0}, "rarity_years must be non-negative"),
-        ({"confidence_label": "unknown"}, "unknown confidence_label"),
-        ({"mode": "NOT_A_MODE"}, "unknown mode"),
-        ({"domains": ["invented-domain"]}, "unknown domains"),
-        ({"dissonance_domains": ["invented-domain"]}, "unknown dissonance domains"),
-        ({"has_dissonance": 1}, "has_dissonance must be a boolean"),
-        ({"window_start": REF + timedelta(days=50)}, "window_start must not be after peak_date"),
-        ({"window_end": REF + timedelta(days=10)}, "window_end must not be before peak_date"),
+        ({"lambda_peak": float("nan")}, "finite number"),
+        ({"null_p": float("inf")}, "finite number"),
+        ({"contest_rows": -1}, "greater than or equal to 0"),
+        ({"contest_rows": True}, "valid integer"),
+        ({"confidence_tier": "unknown"}, "unknown confidence_tier"),
+        ({"mode": "NOT_A_MODE"}, "Extra inputs are not permitted"),
+        ({"convergence_score": 0.8}, "Extra inputs are not permitted"),
+        ({"window_start": REF + timedelta(days=50)}, "invalid window span"),
+        ({"window_end": REF + timedelta(days=10)}, "invalid window span"),
+        ({"jury_binding": {"chart_id": "other-chart"}}, "outside chart/window/snapshot/generation"),
+        ({"jury": None}, "jury binding without jury evidence"),
     ],
 )
 def test_ka_tulana_rejects_unqualified_window_inputs(changes, message):
     with pytest.raises(ValueError, match=message):
-        KaTulanaService().rank_windows([_window(**changes)], REF)
+        KaTulanaService().compare_windows([_window(**changes)], date_from=REF)
+
+
+@pytest.mark.parametrize("field,value,message", [
+    ("dw", float("nan"), "finite signed D"),
+    ("dw", True, "finite signed D"),
+    ("dw", None, "null D"),
+    ("anchor_days", -1, "positive finite jury anchor_days"),
+    ("anchor_days", 0, "positive finite jury anchor_days"),
+])
+def test_ka_tulana_rejects_unqualified_jury_inputs(field, value, message):
+    window = _window()
+    window["jury"][field] = value
+    with pytest.raises(ValueError, match=message):
+        KaTulanaService().compare_windows([window], date_from=REF)
+
+
+def test_ka_tulana_unknown_domain_is_unavailable_and_contest_is_bound():
+    a, b = _window("a", event_domain="invented-domain"), _window("b")
+    result = KaTulanaService().compare_windows(
+        [a, b], date_from=REF, question_frame={"domain": "career"},
+    )
+    assert result["evidence"]["a"]["axes"]["best_suited"] == {
+        "state": "information_unavailable", "value": None,
+        "reason": "event_class_not_in_ontology",
+    }
+    assert result["comparisons"][0]["relation"] == "incomparable"
+    assert result["front"] == ["a", "b"]
+    a["contest_rows"] = 2
+    b["contest_rows"] = 2
+    b["jury_binding"] = None
+    result = KaTulanaService().compare_windows([a, b], date_from=REF)
+    assert result["evidence"]["a"]["annotations"]["dissonance"] is True
+    assert result["evidence"]["b"]["annotations"]["dissonance"] is None
+    assert result["evidence"]["b"]["annotations"]["contest_rows"] is None
 
 
 def test_ka_tulana_rejects_duplicate_window_identity():
     with pytest.raises(ValueError, match="duplicate window_id"):
-        KaTulanaService().rank_windows([_window("same"), _window("same")], REF)
+        KaTulanaService().compare_windows([_window("same"), _window("same")], date_from=REF)
 
 
-def test_ka_tulana_rejects_negative_attention_horizon():
-    with pytest.raises(ValueError, match="horizon_days must be non-negative"):
-        KaTulanaService().attention_map([_window()], REF, horizon_days=-1)
+@pytest.mark.parametrize("horizon_days", [-1, 0])
+def test_ka_tulana_rejects_nonpositive_comparison_horizon(horizon_days):
+    with pytest.raises(ValueError, match="date_to must exceed date_from"):
+        KaTulanaService().compare_windows(
+            [_window()], date_from=REF, date_to=REF + timedelta(days=horizon_days),
+        )
 
 
-def test_ka_tulana_fixture_scores_remain_content_bound():
+def test_ka_tulana_fixture_evidence_and_dominance_remain_content_bound():
     service = KaTulanaService()
-    window_a = _window("fixture-a", peak_date=REF, window_start=None, window_end=None)
+    window_a = _window("fixture-a", window_start=REF)
     window_b = _window(
         "fixture-b",
-        peak_date=date(2026, 6, 1),
-        window_start=None,
-        window_end=None,
-        convergence_score=0.5,
-        confidence_label="moderate",
-        rarity_years=5.0,
+        window_start=date(2026, 6, 1),
+        window_end=date(2026, 6, 30),
+        confidence_tier="structural_prior",
     )
-
-    ranked = service.rank_windows([window_b, window_a], REF)
+    window_b["jury"]["dw"] = 0.50
+    original = deepcopy([window_b, window_a])
+    result = service.compare_windows([window_b, window_a], date_from=REF)
     verdict = service.compare(window_a, window_b, REF)
+    assert result["front"] == ["fixture-a"]
+    assert result["ordered"] == ["fixture-a", "fixture-b"]
+    assert verdict["relation"] == "A_dominates"
+    assert verdict["reason"] is None
+    for axis, a_value, b_value, tolerance in (
+        ("nearest", 0, 151, 1),
+        ("strongest", 0.62, 0.50, 1 / 30),
+        ("most_robust", 1, 0, 0),
+    ):
+        assert verdict["axes"][axis] == {
+            "A": {"state": "evaluated", "value": a_value, "reason": None},
+            "B": {"state": "evaluated", "value": b_value, "reason": None},
+            "relation": "A_better", "tolerance": tolerance,
+        }
+    assert result["evidence"]["fixture-a"]["annotations"]["strongest_provenance"] == {
+        "fact_ids": ["fixture-fact-1"],
+    }
+    assert [window_b, window_a] == original
 
-    assert [(item.window.window_id, item.factors.composite) for item in ranked] == [
-        ("fixture-a", 0.795),
-        ("fixture-b", 0.4234),
-    ]
-    assert verdict.winner.window_id == "fixture-a"
-    assert verdict.decisive_factor == "proximity_factor"
-    assert verdict.recommendation == "proceed"
+
+def test_ka_tulana_fixture_tradeoff_and_preference_never_rewrite_evidence():
+    service = KaTulanaService()
+    a = _window("a", window_start=REF, confidence_tier="structural_prior")
+    b = _window("b")
+    default = service.compare_windows([a, b], date_from=REF)
+    nearest = service.compare_windows([a, b], date_from=REF, preference=["nearest"])
+    assert default["front"] == nearest["front"] == ["a", "b"]
+    assert default["comparisons"][0]["relation"] == "incomparable"
+    assert default["comparisons"][0]["reason"] == "tradeoff"
+    assert default["ordered"] == ["b", "a"]
+    assert nearest["ordered"] == ["a", "b"]
+    assert nearest["order_policy"] == ["nearest", "most_robust", "strongest"]
+    assert default["evidence"] == nearest["evidence"]
+    assert default["comparisons"] == nearest["comparisons"]
 
 
 class _NoAccessConnection:

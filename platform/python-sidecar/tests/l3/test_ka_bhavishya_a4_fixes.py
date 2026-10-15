@@ -1,3 +1,4 @@
+# Historical legacy implementation oracles; default registrar cutover is tested separately.
 """
 A4 remediation tests for ka_bhavishya_lekha (B4-consume) and mi_bhavisya (O2).
 
@@ -21,18 +22,21 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from tests._insert_capture import insert_bindings
+
 
 # ---------------------------------------------------------------------------
 # Helpers — lightweight mock DB cursor / connection
 # ---------------------------------------------------------------------------
 
-def _make_cursor(rows=None, *, row_factory=None):
-    """Return a mock cursor whose fetchall() yields `rows`."""
+def _make_cursor(rows=None, *, row_factory=None, fetchone=None):
+    """Return a mock cursor with explicit fetchall() and fetchone() answers."""
     cur = MagicMock()
     cur.__enter__ = lambda s: s
     cur.__exit__ = MagicMock(return_value=False)
     cur.fetchall = MagicMock(return_value=rows or [])
-    cur.fetchone = MagicMock(return_value=None)
+    cur.fetchone = MagicMock(return_value=fetchone)
     return cur
 
 
@@ -59,11 +63,28 @@ def _make_conn(*cursor_sequence):
 # B4-consume — ka_bhavishya_lekha inherits domain from convergence column
 # ---------------------------------------------------------------------------
 
+@pytest.mark.parametrize("stored_verification_present", [False, True],
+                         ids=["before-1376", "after-1376"])
 class TestB4ConsumeKaBhavishya:
     """
     B4-consume: bhavishya row domain comes from kc.domain (convergence column),
     not from keyword inference against signal_type_id.
     """
+
+    def _assert_stored_verification(self, probe, insert, present):
+        probe.execute.assert_called_once()
+        probe.fetchone.assert_called_once()
+        probe_sql, probe_params = probe.execute.call_args.args
+        assert "FROM pg_attribute" in probe_sql
+        assert "attname = 'verification_pass_status'" in probe_sql
+        assert probe_params == ('kala_bhavishya',)
+        insert_sql, rows = insert.executemany.call_args.args
+        assert ('verification_pass_status' in insert_sql) is present
+        for row in rows:
+            bound = insert_bindings(insert_sql, row)
+            assert ('verification_pass_status' in bound) is present
+            if present:
+                assert bound['verification_pass_status'] == UNVERIFIED_DEFAULT
 
     def _make_darshana_row(self, domain_col_value):
         """
@@ -91,27 +112,28 @@ class TestB4ConsumeKaBhavishya:
         }
         return row
 
-    def test_domain_inherited_from_convergence(self):
+    def test_domain_inherited_from_convergence(self, stored_verification_present):
         """
         B4-consume: bhavishya row gets domain='relationship' from kc.domain,
         even though the signal_type_id contains no relationship-domain keywords.
         Previously this would fall to 'general'; now it reads the column directly.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         # Darshana row with kc.domain = 'relationship'
         darshana_row = self._make_darshana_row('relationship')
 
-        # Cursor sequence (writer order: timeout, lock, existing, probe, SELECT, signals, INSERT):
+        # Cursor sequence (writer order: timeout, lock, existing, domain probe, SELECT, signals, tier probe, INSERT):
         # 0. SET LOCAL statement_timeout = 0
         # 1. transaction-scoped per-chart advisory lock
         # 2. SELECT existing projection rows
         # 3. schema probe (information_schema.columns) -> domain col present
         # 4. SELECT darshana + convergence JOIN  -> returns our row with domain col
         # 5. SELECT signal_type_id from bodha_msr_signals  -> machine code, no keyword match
-        # 6. INSERT genuinely new kala_bhavishya identity
+        # 6. stored-verification probe (pg_attribute) -> explicit present boolean
+        # 7. INSERT genuinely new kala_bhavishya identity
         cur_timeout = _make_cursor()
         cur_lock = _make_cursor()
         # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
@@ -122,9 +144,10 @@ class TestB4ConsumeKaBhavishya:
         cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
         cur_darshana = _make_cursor([darshana_row])
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:gochara:0042'}])
+        cur_tier_probe = _make_cursor(fetchone={"present": stored_verification_present})
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_tier_probe, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -137,6 +160,7 @@ class TestB4ConsumeKaBhavishya:
         assert result.rows_inserted == 1, f"Expected 1 row, got {result.rows_inserted}"
 
         # Inspect the inserted row tuple: position 3 is `domain`
+        self._assert_stored_verification(cur_tier_probe, cur_insert, stored_verification_present)
         inserted_rows = cur_insert.executemany.call_args[0][1]
         assert len(inserted_rows) == 1
         inserted_domain = inserted_rows[0][3]  # (chart_id, rank, tier, domain, ...)
@@ -145,25 +169,26 @@ class TestB4ConsumeKaBhavishya:
             "B4-consume fix may not be reading kc.domain correctly."
         )
 
-    def test_domain_falls_back_to_keyword_when_convergence_domain_is_null(self):
+    def test_domain_falls_back_to_keyword_when_convergence_domain_is_null(self, stored_verification_present):
         """
         B4-consume: when kc.domain IS NULL, keyword inference is used as fallback.
         signal_type_id contains 'kalatra' -> should map to 'relationship' via keyword.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         darshana_row = self._make_darshana_row(None)  # domain IS NULL
 
-        # Cursor sequence (writer order: timeout, lock, existing, probe, SELECT, signals, INSERT):
+        # Cursor sequence (writer order: timeout, lock, existing, domain probe, SELECT, signals, tier probe, INSERT):
         # 0. SET LOCAL statement_timeout = 0
         # 1. transaction-scoped per-chart advisory lock
         # 2. SELECT existing projection rows
         # 3. schema probe -> domain col present (but value in row is NULL, so keyword kicks in)
         # 4. SELECT darshana + convergence JOIN
         # 5. SELECT signal_type_id from bodha_msr_signals
-        # 6. INSERT genuinely new kala_bhavishya identity
+        # 6. stored-verification probe (pg_attribute) -> explicit present boolean
+        # 7. INSERT genuinely new kala_bhavishya identity
         cur_timeout = _make_cursor()
         cur_lock = _make_cursor()
         # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
@@ -175,9 +200,10 @@ class TestB4ConsumeKaBhavishya:
         cur_darshana = _make_cursor([darshana_row])
         # Signal type contains 'kalatra' -> keyword match -> 'relationship'
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'kalatra_yoga_v1'}])
+        cur_tier_probe = _make_cursor(fetchone={"present": stored_verification_present})
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_tier_probe, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -187,19 +213,20 @@ class TestB4ConsumeKaBhavishya:
         writer = KaBhavishyaLekhaWriter()
         result = writer.run(ctx)
 
+        self._assert_stored_verification(cur_tier_probe, cur_insert, stored_verification_present)
         inserted_rows = cur_insert.executemany.call_args[0][1]
         inserted_domain = inserted_rows[0][3]
         assert inserted_domain == 'relationship', (
             f"Expected keyword fallback to 'relationship' when kc.domain IS NULL, got '{inserted_domain}'"
         )
 
-    def test_relationship_domain_now_possible_not_general(self):
+    def test_relationship_domain_now_possible_not_general(self, stored_verification_present):
         """
         Regression: with keyword-only inference, machine-code signal_type_ids always
         fell to 'general'. B4-consume allows non-general domains when kc.domain is set.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         domains_seen = set()
@@ -214,9 +241,10 @@ class TestB4ConsumeKaBhavishya:
             cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
             cur_darshana = _make_cursor([darshana_row])
             cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:0001'}])
+            cur_tier_probe = _make_cursor(fetchone={"present": stored_verification_present})
             cur_insert = _make_cursor()
 
-            conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_insert)
+            conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_tier_probe, cur_insert)
             ctx = SimpleNamespace(
                 db_conn=conn,
                 config={'chart_id': 'chart-abc', 'birth_params': {}},
@@ -225,6 +253,7 @@ class TestB4ConsumeKaBhavishya:
             writer = KaBhavishyaLekhaWriter()
             writer.run(ctx)
 
+            self._assert_stored_verification(cur_tier_probe, cur_insert, stored_verification_present)
             inserted_rows = cur_insert.executemany.call_args[0][1]
             domains_seen.add(inserted_rows[0][3])
 
@@ -232,7 +261,7 @@ class TestB4ConsumeKaBhavishya:
         assert 'relationship' in domains_seen
         assert 'spirituality' in domains_seen
 
-    def test_schema_probe_used_when_column_absent(self):
+    def test_schema_probe_used_when_column_absent(self, stored_verification_present):
         """
         BLOCKING-1 fix: when kc.domain column doesn't exist yet (pre-A3 migration),
         the writer uses the information_schema.columns probe (fetchone returns None)
@@ -245,13 +274,14 @@ class TestB4ConsumeKaBhavishya:
           3. schema probe -> fetchone() returns None (column absent)
           4. SELECT darshana with NULL AS domain -> returns rows
           5. SELECT signal_type_id from bodha_msr_signals
-          6. INSERT genuinely new kala_bhavishya identity
+          6. stored-verification probe -> explicit present boolean
+          7. INSERT genuinely new kala_bhavishya identity
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
-        # Row does not have 'domain' key — simulates NULL AS domain from query
+        # Row has a null domain — simulates NULL AS domain from the query
         darshana_row_no_domain = {
             'convergence_id': 'conv-001',
             'signal_id': 'sig-001',
@@ -279,9 +309,10 @@ class TestB4ConsumeKaBhavishya:
         cur_probe.fetchone = MagicMock(return_value=None)  # column absent
         cur_darshana = _make_cursor([darshana_row_no_domain])
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'raja_yoga_v1'}])
+        cur_tier_probe = _make_cursor(fetchone={"present": stored_verification_present})
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_lock, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_tier_probe, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -292,9 +323,18 @@ class TestB4ConsumeKaBhavishya:
         result = writer.run(ctx)
 
         assert result.rows_inserted == 1, f"Expected 1 row, got {result.rows_inserted}"
+        cur_probe.execute.assert_called_once()
+        cur_probe.fetchone.assert_called_once()
+        domain_probe_sql = cur_probe.execute.call_args.args[0]
+        assert 'information_schema.columns' in domain_probe_sql
+        assert "column_name = 'domain'" in domain_probe_sql
+        darshana_sql = cur_darshana.execute.call_args.args[0]
+        assert 'NULL AS domain' in darshana_sql
+        assert 'kc.domain' not in darshana_sql
         # CRITICAL: conn.rollback() must NEVER be called (FROZEN orchestrator contract)
         conn.rollback.assert_not_called()
         # Domain should come from keyword inference ('raja_yoga_v1' -> 'career')
+        self._assert_stored_verification(cur_tier_probe, cur_insert, stored_verification_present)
         inserted_rows = cur_insert.executemany.call_args[0][1]
         assert inserted_rows[0][3] == 'career', (
             f"Expected 'career' from keyword inference, got '{inserted_rows[0][3]}'"

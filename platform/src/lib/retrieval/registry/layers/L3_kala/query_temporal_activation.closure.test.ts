@@ -32,10 +32,10 @@ const ROWS = [
 ]
 
 /** Route query mocks by source SQL rather than the handler's call order. */
-function routeQueries(options: { activations: Record<string, unknown>[]; totalMatching: number; sourceTotal?: number; sourceDated?: number }) {
+function routeQueries(options: { activations: Record<string, unknown>[]; totalMatching: number; sourceTotal?: number; sourceDated?: number; predicates?: Record<string, unknown>[] }) {
   queryMock.mockImplementation((sql: unknown) => {
     const text = typeof sql === 'string' ? sql : ''
-    if (text.includes('FROM kala_activation_predicates')) return Promise.resolve({ rows: [] })
+    if (text.includes('FROM kala_activation_predicates')) return Promise.resolve({ rows: options.predicates ?? [] })
     if (text.includes('SELECT id, signal_id, ayanamsha_id, signature_class')) {
       return Promise.resolve({ rows: options.activations.map((row) => ({ ...row, total_matching: options.totalMatching })) })
     }
@@ -85,6 +85,79 @@ const wealthScope: ScopeTuple = {
 beforeEach(() => queryMock.mockReset())
 
 describe('query_temporal_activation bounded temporal closure', () => {
+  it.each([
+    ['partial_defeat_unassessed', 'two_pass_verified'],
+    ['contestation_unassessed', 'two_pass_verified'],
+    ['partial_defeat_unassessed', null],
+    ['contestation_unassessed', null],
+    ['missing_defeat_facts', 'two_pass_verified'],
+    ['missing_defeat_facts', null],
+    ['conditions_unassessed', 'two_pass_verified'],
+    ['conditions_unassessed', null],
+    ['defeat_evidence_missing', 'two_pass_verified'],
+    ['defeat_evidence_missing', null],
+    ['defeat_evidence_ambiguous', 'two_pass_verified'],
+    ['defeat_evidence_ambiguous', null],
+  ])('preserves %s with yoga tier %s in the unavailable layer', async (reason, tier) => {
+    const evidence = { null_reason: reason, conclusion_ids: ['c:for', 'c:against'], defeat_ids: ['d:1'] }
+    const yoga = { id: 'a-unassessed', signature_class: 'YOGA', derivation_ledger_jsonb: {
+      canonical_id: 'sunapha', fact_ids: ['f1'], constituent_fact_tiers: { f1: 'two_pass_verified' },
+      yoga_tier: tier, effective_state: 'unresolved', scored: false,
+      null_reason: reason, effective_reason: evidence, judgment_flags: [reason],
+    } }
+    const assessed = { id: 'z-assessed', derivation_ledger_jsonb: {
+      fact_ids: ['f2'], constituent_fact_tiers: { f2: 'two_pass_verified' },
+    } }
+    routeQueries({ activations: ROWS, totalMatching: 2, predicates: [yoga, assessed] })
+    const result = await handler({ chart_id: CHART_ID, date_from: '2026-01-01', date_to: '2026-12-31' })
+    const predicates = result.content['predicates'] as Record<string, unknown>[]
+    expect(predicates.map(r => r['id'])).toEqual(['z-assessed', 'a-unassessed'])
+    expect(predicates[1]?.['derivation_ledger_jsonb']).toMatchObject({
+      effective_state: 'unresolved', scored: false, null_reason: reason, effective_reason: evidence,
+    })
+    expect(result.content['judgment_flags']).toContain(reason)
+    expect(yoga.derivation_ledger_jsonb.judgment_flags).toEqual([reason])
+  })
+
+  it('serves unknown yoga tiers behind verified fact mechanisms and discloses the gap', async () => {
+    const yoga = { id: 'yoga', signature_class: 'YOGA', derivation_ledger_jsonb: {
+      canonical_id: 'sunapha', fact_ids: ['f1'], constituent_fact_tiers: { f1: 'two_pass_verified' },
+      yoga_tier: null,
+    } }
+    const structural = { id: 'structure', signature_class: 'CLASSIFY_RESIDUAL', derivation_ledger_jsonb: {
+      fact_ids: ['f2'], constituent_fact_tiers: { f2: 'two_pass_verified' },
+    } }
+    routeQueries({ activations: ROWS, totalMatching: 2, predicates: [yoga, structural] })
+    const result = await handler({ chart_id: CHART_ID, date_from: '2026-01-01', date_to: '2026-12-31' })
+    const predicates = result.content['predicates'] as Record<string, unknown>[]
+    expect(predicates.map(r => r['id'])).toEqual(['structure', 'yoga'])
+    expect(predicates[1]?.['derivation_ledger_jsonb']).toMatchObject({
+      yoga_tier: null, null_reason: 'ga_yoga_firings_carries_no_verification_tier',
+      judgment_flags: ['yoga_tier_unavailable'],
+    })
+    expect(result.content['judgment_flags']).toContain('yoga_tier_unavailable')
+    // Serving never writes metadata into cached DB records supplied by a caller.
+    expect(yoga.derivation_ledger_jsonb).not.toHaveProperty('null_reason')
+  })
+
+  it('does not claim a yoga-tier gap when only fact-backed predicates are served', async () => {
+    routeQueries({ activations: ROWS, totalMatching: 2, predicates: [{ id: 'fact', signature_class: 'CLASSIFY_RESIDUAL' }] })
+    const result = await handler({ chart_id: CHART_ID, date_from: '2026-01-01', date_to: '2026-12-31' })
+    expect(result.content['judgment_flags']).toEqual([])
+  })
+
+  it('does not let a single-pass yoga borrow verified constituent tiers for ordering', async () => {
+    routeQueries({ activations: ROWS, totalMatching: 2, predicates: [
+      { id: 'a-yoga', signature_class: 'YOGA', derivation_ledger_jsonb: {
+        canonical_id: 'sunapha', yoga_tier: 'single', fact_ids: ['f1'], constituent_fact_tiers: { f1: 'two_pass_verified' },
+      } },
+      { id: 'z-fact', derivation_ledger_jsonb: { fact_ids: ['f2'], constituent_fact_tiers: { f2: 'two_pass_verified' } } },
+    ] })
+    const result = await handler({ chart_id: CHART_ID, date_from: '2026-01-01', date_to: '2026-12-31' })
+    expect((result.content['predicates'] as Record<string, unknown>[]).map(r => r['id'])).toEqual(['z-fact', 'a-yoga'])
+    expect(result.content['judgment_flags']).toEqual([])
+  })
+
   it('returns the first ranked page with an exact filter-bound closure basis', async () => {
     routeQueries({ activations: ROWS, totalMatching: 2 })
 

@@ -377,11 +377,20 @@ def _intent(ctx, kind, item, *, stream, runner, evidence_fp, pool=None, tier=Non
     key = job_key(kind, item, ident, evidence_fp)
     all_locks = ["job." + key] + list(locks)
     model = runner == "model"
+    selected_model = OPUS if model else None
+    if model:
+        import kyd_admit as admit
+        if kind == "SURROGATE":
+            cfg, _ = admit.surrogate_config(ctx)
+            selected_model = cfg["model"] if cfg is not None else None  # admission refuses a missing/invalid template
+            effort = "high"
+        elif admit.job_engine(ctx, kind) == "codex":
+            selected_model, effort = admit.CODEX_MODEL, "high"
     return {
         "kind": kind, "item": item, "key": key, "stream": stream, "role": kind.lower(), "pool": pool, "runner": runner,
         "queue": None, "claim": claim, "locks": all_locks, "tier": tier, "not_slot": not_slot, "head": head, "digest": digest,
         "verdict_phase": verdict_phase, "evidence_fp": evidence_fp, "card": card, "packet": packet,
-        "header": {"model": OPUS if model else None, "effort": effort if model else None, "card_path": card,
+        "header": {"model": selected_model, "effort": effort if model else None, "card_path": card,
                    "packet_path": packet, "head": head, "digest": digest, "verdict_phase": verdict_phase,
                    "evidence_fp": evidence_fp, "locks": all_locks},
     }

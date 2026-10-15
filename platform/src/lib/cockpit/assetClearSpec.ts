@@ -199,6 +199,26 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: 'DELETE FROM mimamsa_signal_families' },
   ],
 
+  // bg_prashna_rules is a GLOBAL L0 static-reference writer (no chart_id column on any of its tables)
+  // that seeds FIVE tables (brahmagyan/l0_prashna.py seed_prashna_rules: lagna_methods, tajik_yogas,
+  // significators, fructification_rules, special_techniques; convergent ON CONFLICT DO UPDATE, so a
+  // rebuild re-seeds all five). Migration 1357 sets its registry target_table to bg_prashna_tajik_yogas
+  // (the one table its declaration names), and from then on the generic target_table fallback in
+  // clear/execute/route.ts and build/assetInvalidation.ts would run only
+  // `DELETE FROM bg_prashna_tajik_yogas` and leave the other four tables populated — an inconsistent
+  // rule set. (Before 1357 the asset resolved to no clear spec at all: its summed count_sql cannot be
+  // auto-derived and it had no target_table.) This entry clears all five together; the route runs one
+  // asset's ops in one SAVEPOINT, so the set is cleared atomically. No foreign keys exist among the
+  // five tables (migration 261), so order is free; writer order is kept. Unscoped on purpose, like
+  // mi_kula: the tables carry no chart_id.
+  bg_prashna_rules: [
+    { sql: 'DELETE FROM bg_prashna_lagna_methods' },
+    { sql: 'DELETE FROM bg_prashna_tajik_yogas' },
+    { sql: 'DELETE FROM bg_prashna_significators' },
+    { sql: 'DELETE FROM bg_prashna_fructification_rules' },
+    { sql: 'DELETE FROM bg_prashna_special_techniques' },
+  ],
+
   // mi_seva's count_sql is the un-scoped `SELECT count(*) FROM mimamsa_preferences`
   // (no WHERE chart_id = $1), so deriveDeleteSqlFromCountSql() would transform it into
   // an unscoped `DELETE FROM mimamsa_preferences` — wiping EVERY user's preferences on

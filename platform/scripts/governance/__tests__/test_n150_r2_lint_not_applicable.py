@@ -29,7 +29,7 @@ LN = dict(why="the writer selects no chart_facts by fact_category and writes no 
 NINE = {"L0": ("bg_compendium_index", "bg_remedies"), "L1": ("ga_positions", "ga_sensitive", "ga_strength"),
         "L2": ("bo_anveshana", "bo_cdlm_summary", "bo_cgm_motifs", "bo_sangati")}
 E57_L2_LINT_NONE = ("bo_cgm_paths", "bo_samskara", "bo_chart_gestalt", "bo_grounding", "bo_pramana_mapa")     # E5.7 L2 fill: lint_none declared (the scan agrees); not in the rev-25 committed census
-E57_LINT_NONE = {"L0": ("bg_vedha_malefic_scale",)}     # SS 2026-10-05: lint_none declared (the scan agrees); not in the rev-25 committed census
+E57_LINT_NONE = {"L0": ("bg_vedha_malefic_scale", "bg_rules")}     # SS 2026-10-05: lint_none declared (the scan agrees); not in the rev-25 committed census. bg_rules: lint_none added by the N-431 declarations walk (R1, reworded SS N-457), the scan agrees
 CENSUS = {"L0": "193639", "L1": "194909", "L2": "195251"}
 GOOD_SQL = "def f(c):\n    return c.execute(\"SELECT fact_value_text FROM chart_facts WHERE fact_category = 'x' AND fact_key = 'k' ORDER BY fact_id LIMIT 1\")\n"
 

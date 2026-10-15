@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v27",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "SS-N431-VOCAB-ROUND-ENGINE-STACK-OSR-010",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v26.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:feda7ac45b23b88b4645a447d5223a56e3e0a306c554c8d6de95551a13b147f6",
+        "report_hash": "sha256:0596e9e00f64c24d4613b40512455c40cd6115abcf1cd9b6fecf7b2d2b98dcc6"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-10-02",
+    "evaluated_source_revision": "4a7bd85ef22b5271fa318eb18feab30cd2e439b1",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-10-02T02:18:40.000Z",
+        "snapshot_file_sha256": "sha256:1dd842f7c9a1aadb8ca77ad4cfada13407f146991862a51acb3bb4681ed29db7",
+        "capability_content_hash": "sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85",
+        "source_catalog_fingerprint": "sha256:49e53ed3e426e7e7b12af47a54d28b4b9758e62c1a9b0d4f37fbc6d75f10c215",
+        "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
+        "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f"
+    },
+    "capability_content_hash": "sha256:fbc5bf44e8960a1188e6383c27c5cf5d1b244046e898432b002a32c899c48f85",
+    "report_hash": "sha256:9f745aea6b55837f6d1e174e40412ed83cf7c3cfcd4f8fabea4e75cdd9edb7e0",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "OSR-010 (relayed by SS N-580), packet SS-N431-VOCAB-ROUND-ENGINE-STACK-OSR-010: source-provenance successor of v26 for the vocabulary-round combined stack (suvarna/vocab-round-combined at cb2234bc2c84dd0f1c71040b4b5953a1f6faf129), with origin/main 4a7bd85ef22b5271fa318eb18feab30cd2e439b1 merged in (the merge-base; origin/main is still 4a7bd85ef22b5271fa318eb18feab30cd2e439b1). The stack changes no corpus, evaluator or metric assertion. Measured against v26 by recomputation from the catalog: moved capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256; unchanged semantic_review_fingerprint, producer_contract_fingerprint. Attribution, each tested by restoring the named change to origin/main, recomputing capability_content_hash, source_catalog_fingerprint, semantic_review_fingerprint, producer_contract_fingerprint and the snapshot file sha256 from the descriptor catalog, and restoring it: capability_content_hash, source_catalog_fingerprint, snapshot_file_sha256 return to their v26 values when platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts alone is restored to origin/main 4a7bd85ef (change: 72ae74031 Release-green fixes (Engine integration findings B and C); 70d5b6475 Serving name fixes: get_dashas lord_graha resolves to the stored form (unknown value = structured error); bridge picks the Arudha Lagna by its exact stored subject); within the file only the hunk @@ -431 +462 @@ (first added line: \"lord_graha:    { type: 'string', description: 'Filter by dasha lord. Accepts a graha code, alias or name (SU,...\") is the cause, restoring that hunk alone returns the same values. capability_content_hash and the snapshot file sha256 follow from source_catalog_fingerprint: a direct comparison of the committed snapshots shows the top-level fields that differ between the merge-base and the stack are exactly content_hash, source_catalog_fingerprint (all SCUs, edges, concept universe, producer bindings and census are byte-identical). Restoring each of these alone changes none of the five values (no effect): generated/envelope.ts; muhurta_finder.ts; registry_bridge.ts; CHART_FACTS_SCHEMA.json; asset_declarations.json; asset_registry_seed.ts; intent_classifier.ts; retrieval/envelope.ts; query_nakshatra_medical.ts; the generated census and writer-digest aggregates. Control: restoring all 12 changed catalog-input files at once returns all five v26 values. The writer-digest inventory (nirmana-writer-digests.json) rotates 44 writer digests; it and the census are inputs of none of the five values (tested above); restoring events.py alone returns 24 of them to the base digest (2439f01f6 ga_vichara Option A: persist_event is the ONE evidence path; add writer.post_pass_evaluated to the durable-event allowlist (owner-approved, ORCHESTRATOR_CONVERGENCE_CLOSE 7.3)); restoring ga_medical_writer.py alone returns 1 of them to the base digest (468cbca93 L1: the emitting ga_* writers apply the lexicon's nakshatra spelling at the emitter boundary; pyjhora_adapter/_names.py byte-identical (SS N-548)); restoring ga_nakshatra_emitters.py alone returns 1 of them to the base digest (552412256 N-568 / N-570: readers of stored legacy spellings normalise on read; 1364 names only its own asset (md5 recomputed); the third CHART_FACTS_SCHEMA copy; ga_nakshatra conjunction subject); 18 rotated digests are not returned by any single-file restore (not individually isolated). Commits that landed on origin/main between v26's evaluated_source_revision 67afae086018d53abcd2248f54f08a15baf7aeb2 and the merged main 4a7bd85ef22b5271fa318eb18feab30cd2e439b1: 4a7bd85ef [PREPARATION] feat(kala): isolate candidate jury readers (K4-2b) (#3390); 0ea26647d feat(kala): published views and legacy public-name contracts (K7-1a) (#3333). The origin/main snapshot at 4a7bd85ef22b5271fa318eb18feab30cd2e439b1 carries exactly v26's five recorded values (direct comparison), and the control above recomputes them from the main descriptor catalog, so none of these commits moved a v26-recorded value. PR labels (taken from the stack commit messages, not independently verified; the file/commit attribution above is what was recomputed): the lord_graha descriptor change is the #3448 serving fix (commit 1993af23c); the events.py durable-event allowlist line is #3448; the nakshatra vocabulary changes are #3460 (same commit message). Every v26 corpus metric is equal as a JSON value: routes 34/34, omission 0/25, edges 9/9, novel 13/13, long-inquiry 1/1, abstention 3/3. v2-v26 artifacts remain byte-identical to origin/main, with v26 preserved at sha256:ffe465e3d25d796c0c657123112a2ac1dab9b9e2c163f0a3f7c78cb2eae963de. This successor is synthetic source-local evidence only: SOURCE_ONLY_NOT_LIVE, candidate_validation NOT_RUN, deployed_route_validation NOT_RUN, production_validation NOT_RUN, empirical_answer_quality NOT_RUN and the existing claim ceiling are retained. The authorization for this successor is the OSR-010 ruling as relayed by SS N-580; the minting session has not verified that ruling. The stack will be regenerated again before merge; if so this artifact is re-minted by the runbook. If another v27 lands first, this artifact is renamed to the next number and its predecessor becomes that landed artifact."
+}

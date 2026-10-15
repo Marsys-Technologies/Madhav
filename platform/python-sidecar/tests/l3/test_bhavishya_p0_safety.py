@@ -1,3 +1,4 @@
+# Historical legacy implementation oracles; default registrar cutover is tested separately.
 """DP-SD-017 BHAV-P0: identity/history-safe ka_bhavishya_lekha refresh."""
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import pytest
 
 from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
     _PARTITION_LOCK_SQL,
-    KaBhavishyaLekhaWriter,
+    _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
     _assign_tier,
     _build_falsifiability,
     _build_projection_narrative,
@@ -121,6 +122,9 @@ class _StrictCursor:
             assert statement.endswith("ORDER BY id FOR UPDATE")
             self._rows = deepcopy(self.conn.rows)
             return
+        if "FROM pg_attribute" in statement:
+            self._one = self.conn.db.execute(sql, params).fetchone() if self.conn.db is not None else {"present": self.conn.has_tier}
+            return
         if statement.startswith("SELECT 1 FROM information_schema.columns"):
             self._one = (1,)
             return
@@ -158,9 +162,12 @@ class _StrictCursor:
         param_rows = list(param_rows)
         self.conn.sql.append((statement, tuple(param_rows)))
 
+        if not self.conn.has_tier and "verification_pass_status" in statement:
+            from psycopg.errors import UndefinedColumn
+            raise UndefinedColumn("column verification_pass_status does not exist")
         if statement.startswith("UPDATE kala_bhavishya SET projection_rank"):
             for values in param_rows:
-                assert len(values) == 17
+                assert len(values) == (18 if self.conn.has_tier else 17)
                 chart_id, row_id = values[-2:]
                 assert chart_id == CHART_ID
                 row = next(row for row in self.conn.rows if row["id"] == row_id)
@@ -180,13 +187,14 @@ class _StrictCursor:
                     "outcome_recorded": values[12],
                     "outcome_notes": values[13],
                     "source_citation": values[14],
+                    **({"verification_pass_status": values[15]} if self.conn.has_tier else {}),
                 })
             return
         if statement.startswith("INSERT INTO kala_bhavishya"):
             if self.conn.fail_insert:
                 raise RuntimeError("injected insert failure")
             for values in param_rows:
-                assert len(values) == 16
+                assert len(values) == (17 if self.conn.has_tier else 16)
                 self.conn.next_id += 1
                 self.conn.rows.append({
                     "id": self.conn.next_id,
@@ -205,6 +213,7 @@ class _StrictCursor:
                     "outcome_recorded": values[13],
                     "outcome_notes": values[14],
                     "source_citation": values[15],
+                    **({"verification_pass_status": values[16]} if self.conn.has_tier else {}),
                 })
             return
         raise AssertionError(f"unmodeled executemany SQL: {statement}")
@@ -217,6 +226,8 @@ class _StrictCursor:
 
 
 class _StrictConnection:
+    has_tier = True
+    db = None
     def __init__(
         self, *, rows=None, candidates=None, phala_refs=None, phala_table_exists=True,
         fail_insert=False,

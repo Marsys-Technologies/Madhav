@@ -14,6 +14,7 @@
  */
 
 import { query } from '@/lib/db/client'
+import { qualifyStoryConvergence } from './story_source'
 import type { CapabilityDescriptor } from '../../types'
 
 export const queryLifeArcCapability: CapabilityDescriptor = {
@@ -170,7 +171,8 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
         SELECT id, parva_index, dasha_planet, dominant_signal_class,
                start_year, end_year, parva_quality, theme_keywords,
                high_convergence_count, avg_effective_score,
-               narrative, source_citation, computed_at
+               narrative, source_citation, computed_at,
+               EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid) AS convergence_source_available
         FROM deduped
         ORDER BY parva_index
         LIMIT ${topKPh} OFFSET ${offsetPh}
@@ -181,10 +183,10 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          parvas:       result.rows,
+          parvas:       result.rows.map(qualifyStoryConvergence),
           parva_count:  result.rows.length,
           filters: { mahadasha_lord, quality_label, domain, date_from, date_to, top_k, offset },
-          provenance: { tables: ['kala_jivana_parva'] },
+          provenance: { tables: ['kala_jivana_parva', 'kala_convergence'] },
         },
         is_error: false,
       }

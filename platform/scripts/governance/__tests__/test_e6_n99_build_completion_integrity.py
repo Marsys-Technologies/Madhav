@@ -267,12 +267,43 @@ def test_an_unbound_parameter_is_an_error_as_in_the_engine(pg, monkeypatch, tmp_
 
 
 def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_path):
-    monkeypatch.setattr(ac, "INTEGRITY_TIMEOUT_SECONDS", 1)
-    t0 = time.time()
+    """The claim: the SERVER-side budget (SET LOCAL statement_timeout of the integrity transaction) cancels the declared statement, so it never runs to the
+    client kill (budget + 30 s) and the census continues. Three independent, wall-clock-free or wall-clock-loose proofs (a tight wall-clock margin lost this
+    test to loaded CI runners three times: 7.2 s, 18 s, 6.0 s):
+      1. WHAT WAS SENT: the integrity transaction carries `SET LOCAL statement_timeout = 1000` (budget 1 s x 1000), recorded at the psql runner: a wrong
+         multiplier or a missing SET is caught deterministically, with no clock;
+      2. WHO CANCELLED IT: the cell text carries the SERVER's `57014: canceling statement due to statement timeout` and the `cut off at the budget` mark;
+         a client kill (CheckTimeout) carries neither;
+      3. A LOOSE CLOCK BOUND: the statement ended before the client kill (budget + 30 s) minus a wide margin (< 20 s): this alone would not tell a 6 s
+         cancel from a 10 s one, which is exactly why (1) exists.
+    Mutations (checked by hand): `SET LOCAL statement_timeout` removed -> the statement runs to the client kill (~31 s): (1), (2) and (3) all fail;
+    the budget multiplier changed (x10000) -> the server cancels at 10 s: (1) fails; the budget not applied -> same as the first."""
+    monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
+    seen, sent = [], []
+    real, real_run = ac.psql_read_only, ac._psql_run
+
+    def timed(sql, *a, **k):
+        t = time.time()
+        try:
+            return real(sql, *a, **k)
+        finally:
+            seen.append((str(sql), time.time() - t))
+
+    def spy_run(cmds, *a, **k):
+        sent.append(list(cmds))
+        return real_run(cmds, *a, **k)
+    monkeypatch.setattr(ac, "psql_read_only", timed)
+    monkeypatch.setattr(ac, "_psql_run", spy_run)
     census = _run(monkeypatch, tmp_path, "SELECT count(*) > 0 FROM generate_series(1, 2000000000)", extra={"ph_y": _reg_row("ph_y", "SELECT true")})
-    assert time.time() - t0 < 7, "the timeout did not bound the run"
+    slow = [sec for sql, sec in seen if "generate_series" in sql]
+    assert len(slow) == 1, seen
+    txs = [cmds for cmds in sent if any("generate_series" in c for c in cmds)]
+    assert len(txs) == 1 and "SET LOCAL statement_timeout = 1000" in txs[0], txs                                    # (1) what was sent
     c = _cell(census, "ph_x")
-    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"] and ("timeout" in c["measured"].lower() or "canceling" in c["measured"]), c
+    assert c["v"] == ac.PARTIAL and "could NOT be run" in c["measured"], c
+    assert "57014" in c["measured"] and "canceling statement due to statement timeout" in c["measured"], c            # (2) the server cancelled it
+    assert "cut off at the budget" in c["measured"], c
+    assert slow[0] < 20, f"the statement ran {slow[0]:.1f} s: it was not cancelled by the 1 s budget (the client kill is ~31 s)"          # (3) loose clock bound
     assert _cell(census, "ph_y")["v"] == ac.PASS
 
 
@@ -371,11 +402,15 @@ def test_the_allow_list_refuses_everything_else(sql, frag):
     assert why is not None and frag in why, (sql, why)
 
 
+_CONCATENATION = r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*\|\|"
+
+
 def _dollar_blobs(text):
-    """Every dollar-quoted body in `text`, recursing into each (a `DO $$ ... dasha_check := $check$ SELECT ... $check$ ... $$` nests)."""
+    """Complete dollar-quoted bodies, including nested DO queries; omit concatenated prefixes."""
     import re
     for m in re.finditer(r"(\$[A-Za-z_]*\$)(.*?)\1", text, re.S):
-        yield m.group(2)
+        if not re.match(_CONCATENATION, text[m.end():], re.S):
+            yield m.group(2)
         yield from _dollar_blobs(m.group(2))
 
 
@@ -397,9 +432,8 @@ def _migration_literals(migration_dir=None):
         got = [b for b in _dollar_blobs(t) if _SELECTISH.match(b)]
         # A concatenated prefix is not the complete registered query. Its
         # read/modify/write result is validated by the stored-SQL DB tests.
-        concatenation = r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*\|\|"
         got += [m.group(1).replace("''", "'") for m in re.finditer(r"integrity_check_sql\s*=\s*'((?:[^']|'')*)'", t)
-                if not re.match(concatenation, t[m.end():], re.S)]
+                if not re.match(_CONCATENATION, t[m.end():], re.S)]
         lits += [(f.name, b) for b in got]
         if not got and re.search(r"\bintegrity_check_sql\s*=(?!=)", re.sub(r"--[^\n]*", "", t)):
             unresolved.append(f.name)
@@ -407,16 +441,35 @@ def _migration_literals(migration_dir=None):
 
 
 @pytest.mark.parametrize("separator", [" || ", "\n  || ", " /* retained contract */ || "])
-def test_concatenated_integrity_prefix_is_derived_not_a_complete_sql_literal(tmp_path, separator):
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_concatenated_integrity_prefix_is_derived_not_a_complete_sql_literal(tmp_path, separator, quote):
     migration = tmp_path / "9999_derived_check.sql"
     migration.write_text("UPDATE asset_registry SET integrity_check_sql = "
-                         "'WITH retained AS (SELECT 1)'" + separator + "old_check;")
+                         + quote + "WITH retained AS (SELECT 1) SELECT (" + quote + separator + "old_check;")
     assert _migration_literals(tmp_path) == ([], [migration.name])
 
 
-def test_complete_integrity_sql_literal_remains_subject_to_validation(tmp_path):
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_complete_integrity_sql_literal_remains_subject_to_validation(tmp_path, quote):
     migration = tmp_path / "9999_complete_check.sql"
-    migration.write_text("UPDATE asset_registry SET integrity_check_sql = 'SELECT true';")
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = " + quote + "SELECT true" + quote + ";")
+    assert _migration_literals(tmp_path) == ([(migration.name, "SELECT true")], [])
+
+
+@pytest.mark.parametrize("quote", ["'", "$target$", "$$"])
+def test_incomplete_standalone_integrity_literal_is_still_validated(tmp_path, quote):
+    migration = tmp_path / "9999_incomplete_check.sql"
+    migration.write_text("UPDATE asset_registry SET integrity_check_sql = " + quote + "SELECT (" + quote + ";")
+    literals, unresolved = _migration_literals(tmp_path)
+    assert literals == [(migration.name, "SELECT (")] and unresolved == []
+    assert "unbalanced" in ac.integrity_sql_problem(literals[0][1])
+
+
+def test_nested_do_block_retains_complete_dollar_sql_and_skips_derived_prefix(tmp_path):
+    migration = tmp_path / "9999_nested_check.sql"
+    migration.write_text("DO $$ BEGIN UPDATE asset_registry SET integrity_check_sql = "
+                         "$target$WITH retained AS (SELECT 1) SELECT ($target$ || old_check; "
+                         "UPDATE asset_registry SET integrity_check_sql = $check$SELECT true$check$; END $$;")
     assert _migration_literals(tmp_path) == ([(migration.name, "SELECT true")], [])
 
 
@@ -479,7 +532,7 @@ def test_count_integrity_stays_a_presence_check_and_does_not_double_define():
     e = ac.CRITERION_REGISTRY["Build.count_integrity"]
     assert e["revision"] == 1 and "present" in e["applicability"] or "always" in e["applicability"]
     src = pathlib.Path(ac.__file__).read_text(encoding="utf-8")
-    assert src.count("psql_read_only(_stmt)") == 1, "the integrity SQL must be run from ONE helper"
+    assert src.count("psql_read_only(_stmt, timeout=budget)") == 1, "the integrity SQL must be run from ONE helper"
 
 
 def test_consumers_read_the_census_cell_not_a_second_count_equality():
@@ -1255,12 +1308,13 @@ def test_mutation_final_write_removed_a_forger_can_forge_holds(pg_np, monkeypatc
 def test_both_the_server_and_the_client_timeout_are_in_what_is_sent(monkeypatch):
     sent = {}
     monkeypatch.setattr(ac, "_psql_run", lambda cmds, sep, limit, *a, **k: sent.update(cmds=cmds, limit=limit) or [["none"]])
-    ac.psql_read_only("SELECT true", timeout=7)
-    assert sent["limit"] == 7 and "SET LOCAL statement_timeout = 6300" in sent["cmds"], sent
-    assert sent["cmds"][:3] == ["SET default_transaction_read_only = on", "BEGIN READ ONLY", "SET LOCAL statement_timeout = 6300"] and sent["cmds"][-1] == "ROLLBACK"
+    ac.psql_read_only("SELECT true", timeout=7)                  # N-431: `timeout` is the BUDGET: the server timeout is exactly it, the client kill is budget + margin
+    assert sent["limit"] == 7 + ac.INTEGRITY_CLIENT_MARGIN_SECS and "SET LOCAL statement_timeout = 7000" in sent["cmds"], sent
+    assert sent["cmds"][:3] == ["SET default_transaction_read_only = on", "BEGIN READ ONLY", "SET LOCAL statement_timeout = 7000"] and sent["cmds"][-1] == "ROLLBACK"
 
 
 def test_the_client_side_kill_is_the_backstop_when_the_server_timeout_is_gone(pg, monkeypatch):
+    monkeypatch.setattr(ac, "INTEGRITY_CLIENT_MARGIN_SECS", 0)                      # N-431: no margin, so the 1 s budget is also the client kill
     src = textwrap.dedent(inspect.getsource(ac.psql_read_only))
     old = 'f"SET LOCAL statement_timeout = {ms}"'
     assert old in src

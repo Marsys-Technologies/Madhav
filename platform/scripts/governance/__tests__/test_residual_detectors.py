@@ -40,10 +40,11 @@ def test_d1_the_real_writers_that_motivated_it_now_parse_complete(aid):
     assert s["reads"], aid                                         # and it did read something: complete is not empty
 
 
-@pytest.mark.parametrize("aid", ["bo_pramana_mapa"])        # bg_concordance moved out: its two gaps were a closure SQL name and a prose f-string (test_ss_reads_scan_residual.py, D5/D6)
-def test_d1_a_genuinely_dynamic_writer_stays_incomplete(aid):
-    s = ac.reads_scan(aid, ac.registered_ids("")[aid])
-    assert s["incomplete"], aid                                    # a table named dynamically / SQL built at run time is not a literal: still reported
+def test_d1_a_genuinely_dynamic_writer_stays_incomplete(monkeypatch, tmp_path):
+    # bo_pramana_mapa was the real example (bg_concordance moved out earlier: test_ss_reads_scan_residual.py, D5/D6) until its SQL became literal module constants; the premise is kept on a
+    # synthetic writer whose table name is an f-string interpolation: a table named dynamically / SQL built at run time is not a literal, still reported.
+    _side(monkeypatch, tmp_path, 'def _read(conn, table):\n    return conn.execute(f"SELECT x FROM {table} WHERE chart_id = %s", (1,))\n' + _CLS + '        _read(ctx.db_conn, ctx.table)\n')
+    assert ac.reads_scan("ka_up", ["ka_up.py"])["incomplete"], "a dynamic table name must keep the parse incomplete"
 
 
 _CLS = '@register("ka_up")\nclass KaUp(WriterBase):\n    def run(self, ctx):\n'

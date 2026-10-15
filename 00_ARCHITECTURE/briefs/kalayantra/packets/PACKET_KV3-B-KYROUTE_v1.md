@@ -9,7 +9,7 @@
 "plan_version":"2.7",
 "spec_sources":[
 {"path":"00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md","revision":"e709f60d7fcd4559227a25a4d5d83d6431c396b6","section_range":"§3; §8.2; §9; §14 B-1","sha256":"96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c"},
-{"path":"00_ARCHITECTURE/control/kalayantra/plan_model.json","revision":"e709f60d7fcd4559227a25a4d5d83d6431c396b6","section_range":"KA-1e, K1-2, K6-4","sha256":"cd2d0c462977f7bf4e73a13e3bd267c4a3529563c0954cb1aa20690d58179ce5"}],
+{"path":"00_ARCHITECTURE/control/kalayantra/plan_model.json","revision":"7ee8f2af278e9b09868968a593db25ac835457e1","section_range":"KA-1e, K1-2, K6-4","sha256":"64c6b291670cea2226e322d804fbf238980ae2864d19f34e6a1a05229f231edf"}],
 "schema_receipt_id":null,
 "pw_mechanism_version":null,
 "release_pins":"not_applicable: bootstrap",
@@ -27,15 +27,16 @@
 "a missing, empty or malformed manifest: exit 66",
 "an item owning only platform/src/components/ paths stays sonnet",
 "a prose owns entry routes to opus"]},
-"packet_sha256":"f6743d180a6e14aa0b70775e43dfd73a04421e0b58cd34f819541958b9107346"}
+"packet_sha256":"f9211eb9e973c785ed1b5a070199871f8ee8571566cb579a6514ff07dd83d05e"}
 ```
 # KV3-B-KYROUTE: `kyroute.py`, `FROZEN_PATHS.txt`
 
 F = `00_ARCHITECTURE/briefs/kalayantra/fleet`; O = `platform/python-sidecar/pipeline/orchestrator`.
 
-**Pins.** Plan v2.7 at e709f60d7; base = the reviewed B-0c head in the job header.
+**Pins.** Plan at e709f60d7; model at 7ee8f2af27; historical base = B-0c job head.
+Version 1.0; status: preparation; changelog: refreshed model pin.
 
-**Owns.** Create `F/kyroute.py`, `F/FROZEN_PATHS.txt`, `F/tests/test_kyroute.py`, `F/tests/fixtures/kyroute/items.json`; nothing else (`F/precheck.sh` is KV3-B-PRECHECK's). Prohibited: the files the manifest lists.
+**Owns.** Create `F/kyroute.py`, `F/FROZEN_PATHS.txt`, `F/tests/test_kyroute.py`, `F/tests/fixtures/kyroute/items.json`; nothing else (`F/precheck.sh` is KV3-B-PRECHECK's). Manifest files prohibited.
 
 **Spec** (verbatim).
 ```excerpt plan §9
@@ -84,7 +85,6 @@ kyroute.py escalate --tier sonnet|opus --red-loops N --max-loops M --rejected K
 - Decisions. `STOP`, tier null, exit 3: an entry or changed path is in the manifest (`rule` `freeze`). `REQUEUE_OPUS_REWORK`, exit 1: `diff` with `--built-tier sonnet` hits an Opus rule; `head` is preserved for the dispatcher to re-queue. Else `ROUTE`, exit 0: `tier` is opus when `packet_tier` or `computed_tier` is opus, else sonnet (a packet may raise the tier, never lower it).
 - `escalate` prints `{"decision": "CONTINUE" | "OPUS_REWORK" | "BLOCK"}`, exit 0: sonnet with `rejected` ≥ 1 or `red-loops` ≥ `max-loops`: `OPUS_REWORK`; opus with `rejected` ≥ 2: `BLOCK`; INTERPRETATION: opus with `red-loops` ≥ `max-loops`: `BLOCK`; else `CONTINUE`. The dispatcher acts on it; escalation grants no authority (plan §3).
 - Exit 0 · 1 re-queue · 3 STOP · 64 usage · 66 an input (the manifest included) is missing, unreadable or invalid; no tier is printed on 3, 64, 66. Environment: `KY_GIT` (default `/usr/bin/git`).
-- No B-0c code calls `kyroute.py` or reads the manifest.
 
 **Depends on.** Wave 1; none. KV3-B-PRECHECK (same wave) may assume A; the dispatcher packets (KV3-B-KYD*) B: routing recomputed at admission (plan §6), the diff run before VERIFY.
 
@@ -92,6 +92,6 @@ kyroute.py escalate --tier sonnet|opus --red-loops N --max-loops M --rejected K
 
 **Evidence.** `$JOB_SCRATCH/result.json` (BS-16): commands, exit codes, pushed `head_sha`, interpretations in `notes`.
 
-**Branch and PR.** `kalayantra/kv3-b-kyroute`; one PR to `main`: `KĀLA-YANTRA v3 KV3-B-KYROUTE: kyroute.py + FROZEN_PATHS.txt`; never merged by the job (hold).
+**Branch and PR.** `kalayantra/kv3-b-kyroute`; one PR to main. Fleet merges under KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A1_FULL_AUTONOMY.md:26–33; job never merges.
 
 **Do not.** Edit outside `d1_paths` or any frozen file; rebase or force-push; touch credentials, production, the plan, cards, schemas or other packets. Never: the real launchctl; a signal to a process this job's test did not itself start; a tracker-state ky verb; a write under /Users/Dev/kalayantra.

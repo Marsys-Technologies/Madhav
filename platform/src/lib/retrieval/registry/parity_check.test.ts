@@ -97,7 +97,7 @@ describe("GT-36 — bridge-failure invariant (pure decision function)", () => {
 });
 
 describe("L0 producer inventory parity", () => {
-  it("derives the complete 36-writer plus four-non-writer inventory", () => {
+  it("derives the complete 37-writer plus three-non-writer inventory", () => {
     expect(L0_BRAHMAGYAN_ASSETS).toHaveLength(40);
     expect(new Set(L0_BRAHMAGYAN_ASSETS).size).toBe(40);
     expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_ontology");
@@ -105,6 +105,14 @@ describe("L0 producer inventory parity", () => {
     expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_panchanga");
     expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_gochara_citation_resolution");
     expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_sarvatobhadra_grid");
+  });
+
+  it("counts the newly dispatchable citation asset once despite its historical non-writer pin", () => {
+    expect(
+      L0_BRAHMAGYAN_ASSETS.filter(
+        (id) => id === "bg_gochara_citation_resolution",
+      ),
+    ).toEqual(["bg_gochara_citation_resolution"]);
   });
 });
 

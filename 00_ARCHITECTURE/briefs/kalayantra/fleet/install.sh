@@ -1669,10 +1669,32 @@ def adopt_pr(ctx, pr, reg, claim_rows):
 
 # ---- step 8-9: loop plists and qualifications
 # Conventional qualification identities for installed job-role templates (not the launched jobs).
+# Stream and pool from kyd_kinds_build.py:485, :686, :695, :737 and
+# kyd_kinds_ops.py:729, :862, :1137, :1305, :1368, :1497, :1657.
+# (I) INTERPRETATION: representative b1/v1 slots follow the existing installer
+# convention; qualification has its own controller and never claims a real item.
 QUALIFICATION_JOB_ENV = {
-    "build": {"KY_STREAM": "K", "KY_LANE": "b1", "KY_CONTROLLER_ID": "CTL-qualification"},
-    "verify": {"KY_STREAM": "K", "KY_LANE": "v1", "KY_CONTROLLER_ID": "CTL-qualification"},
+    role: {"KY_STREAM": stream, "KY_LANE": lane, "KY_CONTROLLER_ID": "CTL-qualification"}
+    for role, stream, lane in (
+        ("build", "K", "b1"), ("rework", "K", "b1"), ("verify", "V", "v1"),
+        ("artifact", "V", "v1"), ("pre-accept", "V", "v1"), ("post-readback", "V", "v1"),
+        ("ruling", "N", "b1"), ("request-prep", "N", "b1"), ("model", "S", "b1"),
+        ("plan", "S", "b1"), ("surrogate", "steward", "b1"))
 }
+
+
+def qualification_tag(cfg, doc):
+    """Distinct installed-template receipt/evidence names; the role itself stays unchanged."""
+    name = os.path.basename(cfg)
+    if not name.startswith("LAUNCH_CONFIG."):
+        return doc["role"]              # generated planner/conductor configuration
+    match = re.fullmatch(r"LAUNCH_CONFIG\.([a-z][a-z0-9-]*)(\.chart)?(\.tests)?(\.codex)?\.json", name)
+    if (not match or match[1] != doc["role"]
+            or bool(match[4]) != (doc.get("engine", "claude") == "codex")
+            or doc.get("engine", "claude") not in ("claude", "codex")):
+        raise Failed(9, "launch template name disagrees with role/engine: " + cfg)
+    return doc["role"] + ("-chart" if match[2] else "") + ("-tests" if match[3] else "")
+
 
 
 def plist_facts(path, label, kind):
@@ -1741,7 +1763,11 @@ def step_qualify(ctx):
                 raise ValueError("unsafe name")
         except (OSError, ValueError, KeyError, TypeError) as e:
             raise Failed(9, "launch configuration unreadable or without role/model: %s (%s)" % (cfg, type(e).__name__))
-        receipt = os.path.join(ctx.run_dir, "QUALIFICATIONS", "%s-%s.json" % (role, model))
+        tag = qualification_tag(cfg, doc)
+        if role not in QUALIFICATION_JOB_ENV and any(n in doc.get("env_names", [])
+                for n in ("KY_STREAM", "KY_LANE", "KY_CONTROLLER_ID")):
+            raise Failed(9, "no conventional qualification identity for role " + role)
+        receipt = os.path.join(ctx.run_dir, "QUALIFICATIONS", "%s-%s.json" % (tag, model))
         check = py + [qual, "check", receipt, "--config", cfg, "--require-context", "launchd", "--verify-evidence"]
         qualification_env = child_env(ctx)
         qualification_env.update(QUALIFICATION_JOB_ENV.get(role, {}))
@@ -1749,7 +1775,7 @@ def step_qualify(ctx):
         requalified = False
         if done.rc != 0:
             requalified = True
-            evidence = os.path.join(work, "qualify-%s-%s" % (role, model))
+            evidence = os.path.join(work, "qualify-%s-%s" % (tag, model))
             os.makedirs(evidence, exist_ok=True)
             q = run(py + [qual, "qualify", "--config", cfg, "--context", "launchd", "--control", "--evidence-dir", evidence, "--out", receipt],
                     qualification_env, timeout=3 * 3600)
@@ -1763,7 +1789,7 @@ def step_qualify(ctx):
             pass
         if done.rc != 0 or result != "PASS":
             raise Failed(9, "qualification of %s %s is not PASS (check exit %s, receipt result %r)" % (role, model, done.rc, result))
-        ctx.changed["qualified:%s-%s" % (role, model)] = requalified
+        ctx.changed["qualified:%s-%s" % (tag, model)] = requalified
         rows.append({"role": role, "model": model, "config": cfg, "config_sha256": sha_file(cfg), "receipt": receipt,
                      "receipt_sha256": sha_file(receipt), "context": "launchd", "result": "PASS",
                      "checked_with": "kyqualify.py check --require-context launchd --verify-evidence (exit 0)"})

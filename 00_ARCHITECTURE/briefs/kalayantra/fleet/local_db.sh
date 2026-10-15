@@ -53,6 +53,8 @@
 #   v2.0 review round 2 (2026-10-12, B-01, B-02): close with a container present also removes S's storage outside the
 #   container's store and observes its absence; up no longer discards a hand-over record while the storage it names
 #   exists (refused for another session's, removed and seen gone for S's own).
+#   KV3-PREFLIGHT-VARIANTS: up waits at most ten one-second intervals for an observed compatible container's
+#   removal and its matching hand-over cleanup, then retries creation once; foreign containers never qualify.
 set -uo pipefail
 export LC_ALL=C
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; KY_RUN="${KY_RUN:-$KY_ROOT/run}"
@@ -127,7 +129,7 @@ def below(path, root):
 
 def judge(root, port, image, pgdata):
     """stdin: `docker inspect` of the container. Lines: compatible|incompatible, why, id, running, session label,
-    resolved PGDATA mount source, the direct child of <root>/db holding it."""
+    resolved PGDATA mount source, the direct child of <root>/db holding it, removal-in-progress."""
     c = json.load(sys.stdin)
     if isinstance(c, list) and len(c) == 1:
         c = c[0]
@@ -163,8 +165,10 @@ def judge(root, port, image, pgdata):
     if why:
         src = store = ""
     running = (c.get("State") or {}).get("Running") is True
+    state = c.get("State") or {}
+    removing = state.get("Status") == "removing"
     out("incompatible" if why else "compatible", "; ".join(why), c["Id"], "true" if running else "false",
-        labels.get("ky.session"), src, store)
+        labels.get("ky.session"), src, store, "true" if removing else "false")
 
 
 def sha(*paths):
@@ -336,14 +340,20 @@ wait_server() { local i; for i in $(seq 1 30); do pg -d postgres -At -c 'select 
 
 observe() {   # what docker says about ky-pg now: C_STATE = absent | present | unobservable, and, when present, its judgement
   local ids json out
-  C_STATE=unobservable; C_OK=""; C_WHY=""; C_ID=""; C_RUNNING=""; C_LABEL=""; C_MOUNT=""; C_STORE=""
+  C_STATE=unobservable; C_OK=""; C_WHY=""; C_ID=""; C_RUNNING=""; C_LABEL=""; C_MOUNT=""; C_STORE=""; C_REMOVING=""
   ids="$("$DOCKER" ps -a --no-trunc --filter "name=^/${CONT}\$" --format '{{.ID}}' 2>/dev/null </dev/null)" || return 0
-  if [ -z "$ids" ]; then C_STATE=absent; return 0; fi
+  if [ -z "$ids" ]; then
+    C_STATE=absent
+    # Only a proven removal or a name-conflict path asks for the optional lookup:
+    # Docker may omit a removing container from ps while still reserving its name.
+    [ -n "${1:-}" ] || return 0
+    ids="$1"
+  fi
   case "$ids" in *"$NL"*) return 0;; esac
   json="$("$DOCKER" inspect --type container --format '{{json .}}' "$ids" 2>/dev/null </dev/null)" || return 0
   out="$(printf '%s' "$json" | py judge "$R" "$PORT" "$IMAGE" "$PGDATA_DIR")" || return 0
   { IFS= read -r C_OK; IFS= read -r C_WHY; IFS= read -r C_ID; IFS= read -r C_RUNNING; IFS= read -r C_LABEL
-    IFS= read -r C_MOUNT; IFS= read -r C_STORE; } <<EOF
+    IFS= read -r C_MOUNT; IFS= read -r C_STORE; IFS= read -r C_REMOVING; } <<EOF
 $out
 EOF
   [ -n "$C_ID" ] && C_STATE=present
@@ -383,6 +393,29 @@ EOF
   return 0
 }
 
+wait_previous_removal() {
+  local id0="$C_ID" store="$C_STORE" rec="$KY_RUN/local_db/container.json" owner="" i=0
+  [ "$C_OK" = compatible ] && [ "$C_REMOVING" = true ] || return 1
+  if read_record "$rec" && [ "$REC_STORAGE" = "$store" ]; then owner="$REC_OWNER"; fi
+  # (I) INTERPRETATION: ten one-second intervals are a bounded teardown grace, only after Docker
+  # proves this exact compatible container is being removed. No foreign storage is deleted.
+  while :; do
+    if [ "$C_STATE" = unobservable ]; then note "docker cannot be observed during removal"; return 1; fi
+    if [ "$C_STATE" = present ]; then
+      if [ "$C_OK" != compatible ]; then report_incompatible; return 2; fi
+      [ "$C_ID" = "$id0" ] && [ "$C_REMOVING" = true ] || { note "the container changed during removal"; return 1; }
+    elif [ -z "$owner" ] || ! present_path "$rec"; then
+      return 0
+    else
+      read_record "$rec" && [ "$REC_STORAGE" = "$store" ] && [ "$REC_OWNER" = "$owner" ] \
+        || { note "refused: the hand-over record changed during removal; nothing changed"; return 2; }
+      ! present_path "$store" && return 0
+    fi
+    [ "$i" -lt 10 ] || { note "$CONT removal or its hand-over cleanup did not finish after ten one-second waits"; return 1; }
+    sleep 1; i=$((i + 1)); observe "$id0"
+  done
+}
+
 ensure_up() {   # 0 = a compatible ky-pg is running and its server answers; 1 = not observed; 2 = refused, nothing changed
   local want="$R/db/$S/pgdata" rec="$KY_RUN/local_db/container.json" held="" p err
   observe
@@ -406,14 +439,28 @@ ensure_up() {   # 0 = a compatible ky-pg is running and its server answers; 1 = 
     py unlink "$rec"                                      # its container is gone and so is the storage it names
     ! present_path "$rec" || { note "the hand-over record $rec could not be removed"; return 1; }
     mkdir -p "$want" || return 1
-    err="$("$DOCKER" run -d --name "$CONT" --label campaign=kalayantra --label "ky.session=$S" -e "POSTGRES_PASSWORD=$PW" \
-           -p "127.0.0.1:$PORT:5432" --mount "type=bind,source=$want,target=$PGDATA_DIR" "$IMAGE" 2>&1 >/dev/null </dev/null)" \
-      || { note "docker run failed: $(printf '%s' "$err" | head -1)"; return 1; }
+    if ! err="$("$DOCKER" run -d --name "$CONT" --label campaign=kalayantra --label "ky.session=$S" -e "POSTGRES_PASSWORD=$PW" \
+           -p "127.0.0.1:$PORT:5432" --mount "type=bind,source=$want,target=$PGDATA_DIR" "$IMAGE" 2>&1 >/dev/null </dev/null)"; then
+      case "$err" in *'container name '*"$CONT"*'already in use'*)
+        observe "$CONT"
+        if [ "$C_STATE" = present ] && [ "$C_OK" != compatible ]; then report_incompatible; return 2; fi
+        if [ "${1:-0}" = 0 ] && [ "$C_STATE" = present ] && [ "$C_OK" = compatible ] && [ "$C_REMOVING" = true ]; then
+          wait_previous_removal || return $?
+          ensure_up 1; return $?
+        fi ;;
+      esac
+      note "docker run failed: $(printf '%s' "$err" | head -1)"; return 1
+    fi
     observe
     if [ "$C_STATE" != present ] || [ "$C_OK" != compatible ] || [ "$C_MOUNT" != "$want" ] || [ "$C_LABEL" != "$S" ]; then
       note "the container just started is not the one asked for${C_WHY:+: $C_WHY}"; return 1; fi
   else
     if [ "$C_OK" != compatible ]; then report_incompatible; return 2; fi
+    if [ "$C_REMOVING" = true ]; then
+      [ "${1:-0}" = 0 ] || { note "$CONT is still being removed after the bounded wait"; return 1; }
+      wait_previous_removal || return $?
+      ensure_up 1; return $?
+    fi
     if [ "$C_RUNNING" != true ]; then "$DOCKER" start "$C_ID" >/dev/null 2>&1 </dev/null || { note "the container could not be started"; return 1; }; fi
   fi
   wait_server || { note "the database server did not answer"; return 1; }

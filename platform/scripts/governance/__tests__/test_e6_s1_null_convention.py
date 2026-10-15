@@ -595,13 +595,16 @@ def test_the_cap_line_and_its_fail_through_stay_in_the_source_the_tracker_reads(
 
 def test_no_null_na_rule_or_cause_is_declared_n_22_row_33_stands():
     # N-150 R1 (pin 26): the two Null rules exist, released ONLY through the checked prose_none block (the rollup refuses a record without it): see test_n150_prose_none
-    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == ["Null.blank_rows#measured:no-prose-declared", "Null.blank_rows#measured:no-table-no-prose", "Null.schema_default#measured:no-prose-declared", "Null.schema_default#measured:no-table-no-prose"]      # + SS 2026-10-05 no-table-no-prose
-    assert ac.NA_CAUSES["Null.schema_default"] == ("no-prose-declared", "no-table-no-prose") and ac.NA_CAUSES["Null.blank_rows"] == ("no-prose-declared", "no-table-no-prose")
+    assert sorted(i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")) == ["Null.blank_rows#measured:corpus-derived", "Null.blank_rows#measured:no-prose-declared", "Null.blank_rows#measured:no-table-no-prose", "Null.schema_default#measured:corpus-derived", "Null.schema_default#measured:no-prose-declared", "Null.schema_default#measured:no-table-no-prose"]      # + SS 2026-10-05 no-table-no-prose; + SS N-431 / N-457 (registry revision 28) corpus-derived: the ONLY rows beyond the two N-150 R1 forms, released only beside an UNDECLARED prose_fields (mode 1) and only with the verified corpus_derived block, never for the n22-row-33 situation (a prose / null-convention asset)
+    assert ac.NA_CAUSES["Null.schema_default"] == ("no-prose-declared", "no-table-no-prose", "corpus-derived") and ac.NA_CAUSES["Null.blank_rows"] == ("no-prose-declared", "no-table-no-prose", "corpus-derived")
     for crit in (SD, BR):
         assert ac.CRITERION_REGISTRY[crit]["columns_any"] is None and ac.CRITERION_REGISTRY[crit]["asset_kinds"] is None
     # a measured N/A on a Null check is never released, declared convention or not
     c = ac._check_contribution(SD, "L0", dict(v=NA, cause="no-prose-declared", measured="x"), None)
     assert c["v"] == NO_DET
+    # ... and the corpus-derived N/A is likewise never released without its verified corpus_derived block (SS N-431)
+    for crit in (SD, BR):
+        assert ac._check_contribution(crit, "L0", dict(v=NA, cause="corpus-derived", measured="x"), None)["v"] == NO_DET
 
 
 # ───────────────────────── measure(): the glue ─────────────────────────

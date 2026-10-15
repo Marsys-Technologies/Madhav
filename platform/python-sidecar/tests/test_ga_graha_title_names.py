@@ -83,7 +83,8 @@ _STRUCT = Path(__file__).resolve().parents[1] / "ga_writers" / "ga_structural_wr
 
 def test_structural_relationship_value_goes_through_the_graha_ssot_source_pin():
     src = _STRUCT.read_text(encoding="utf-8")
-    m = re.search(r'nak_lord = (\w+)\(graha_lord_name\.get\(graha_subj, NAKSHATRA_LORDS\.get\(nak, ""\)\)\)', src)
+    # SS N-548: the NAKSHATRA_LORDS fallback is keyed by the canonical name, so the stored L1 spelling is folded through the ONE normaliser first
+    m = re.search(r'nak_lord = (\w+)\(graha_lord_name\.get\(graha_subj, NAKSHATRA_LORDS\.get\(_canonical_nakshatra\(nak\) or "", ""\)\)\)', src)
     assert m, "nakshatra_lord_relationship must normalise the lord through the graha SSoT"
     assert m.group(1) == "_graha_to_title"
     assert "canonical_graha_title as _graha_to_title" in src

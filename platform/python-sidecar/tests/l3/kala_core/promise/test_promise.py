@@ -1,4 +1,5 @@
 import pytest
+from dataclasses import replace
 
 from services.kala_core.promise import (
     AttachmentInput, AttachmentSource, Conclusion, Defeat, EdgePolarity,
@@ -75,3 +76,91 @@ def test_defeat_alters_only_its_target_conclusion_and_keeps_formation_present():
     subject.defeats.append(Defeat("c:career", (FACT_ID,), "L0:R-2"))
     assert subject.effective_state("c:career", {FACT_ID}) is EffectiveState.DEFEATED
     assert subject.effective_state("c:other", {FACT_ID}) is EffectiveState.IN_FORCE
+
+
+@pytest.mark.parametrize('state', [FactState.EVALUATED_EMPTY, FactState.MISSING_FACT])
+def test_empty_candidate_never_in_force(state):
+    subject = graph()
+    subject.conclusions['c:career'] = Conclusion('c:career', 'm:career', state, (FACT_ID,))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.UNRESOLVED
+
+
+def test_additional_unknown_defeat_does_not_weaken_full_defeat():
+    subject = graph()
+    subject.add_defeat(Defeat('c:career', (FACT_ID,), 'full'))
+    subject.add_defeat(Defeat('c:career', ('missing',), 'unknown'))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.DEFEATED
+
+
+def test_unknown_defeating_evidence_is_unresolved_not_in_force():
+    subject = graph()
+    subject.add_defeat(Defeat('c:career', ('missing',), 'unknown'))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.UNRESOLVED
+
+
+@pytest.mark.parametrize('pattern', ['partial', 'contested'])
+def test_partial_or_contested_evidence_reads_unresolved_with_typed_reason(pattern):
+    """Ruling 16: promoting the unassessed gate to in_force must fail."""
+    subject = graph()
+    roots = (FACT_ID, 'ga.graha.saturn')
+    subject.add_node(PromiseNode('graha:Sa', 'graha', (roots[1],)))
+    subject.add_mechanism(Mechanism('m:pair', MechanismRoute.ADMITTED,
+        'career_change', ('graha:Ju', 'graha:Sa'), roots, 'fixture:rule'))
+    subject.conclusions['c:career'] = Conclusion('c:career', 'm:pair',
+        FactState.PRESENT, roots)
+    if pattern == 'partial':
+        subject.add_defeat(Defeat('c:career', (FACT_ID,), 'fixture:subset'))
+        expected_reason = 'partial_defeat_unassessed'
+        expected_conclusions = ('c:career',)
+        expected_defeats = ('fixture:subset',)
+    else:
+        subject.conclusions['c:career'] = replace(subject.conclusions['c:career'],
+            target_id='graha:Ju', valence=EdgePolarity.SUPPORTS)
+        subject.add_conclusion(Conclusion('c:opposed', 'm:pair', FactState.PRESENT,
+            roots, target_id='graha:Ju', valence=EdgePolarity.OPPOSES))
+        # All defeat evidence remains visible, even when it is ungrounded.
+        subject.add_defeat(Defeat('c:opposed', ('missing',), 'fixture:unknown'))
+        expected_reason = 'contestation_unassessed'
+        expected_conclusions = ('c:career', 'c:opposed')
+        expected_defeats = ('fixture:unknown',)
+
+    for cid in expected_conclusions:
+        assert subject.effective_state(cid, iter(roots)) is EffectiveState.UNRESOLVED
+        result = subject.effective_result(cid, iter(roots))
+        assert result.state is EffectiveState.UNRESOLVED
+        assert result.null_reason == expected_reason
+        assert result.conclusion_ids == expected_conclusions
+        assert result.defeat_ids == expected_defeats
+    assert set(subject.conclusions) == set(expected_conclusions)
+    assert subject.fact_state('m:pair', roots) is FactState.PRESENT
+
+
+def test_subset_coverage_keeps_all_defeat_ids_even_with_extra_roots_and_full_defeat():
+    subject = graph()
+    roots = (FACT_ID, 'ga.graha.saturn')
+    subject.conclusions['c:career'] = replace(subject.conclusions['c:career'], fact_ids=roots)
+    subject.add_defeat(Defeat('c:career', (FACT_ID, 'f:affliction'), 'fixture:rule', defeat_id='d:partial'))
+    subject.add_defeat(Defeat('c:career', roots, 'fixture:rule', defeat_id='d:full'))
+    subject.add_defeat(Defeat('c:career', ('missing',), 'fixture:rule', defeat_id='d:unknown'))
+    result = subject.effective_result('c:career', (*roots, 'f:affliction'))
+    assert result.state is EffectiveState.UNRESOLVED
+    assert result.null_reason == 'partial_defeat_unassessed'
+    assert result.conclusion_ids == ('c:career',)
+    assert result.defeat_ids == ('d:full', 'd:partial', 'd:unknown')
+
+
+@pytest.mark.parametrize('difference', ['target', 'event_class', 'valence', 'missing_fact', 'empty_candidate'])
+def test_conclusions_without_grounded_opposition_do_not_create_contestation(difference):
+    subject = graph()
+    subject.conclusions['c:career'] = replace(subject.conclusions['c:career'],
+        target_id='graha:Ju', valence=EdgePolarity.SUPPORTS)
+    subject.add_mechanism(Mechanism('m:other', MechanismRoute.ADMITTED,
+        'major_gain' if difference == 'event_class' else 'career_change',
+        ('graha:Ju',), (FACT_ID,), 'fixture:rule'))
+    subject.add_conclusion(Conclusion('c:other', 'm:other',
+        FactState.EVALUATED_EMPTY if difference == 'empty_candidate' else FactState.PRESENT,
+        ('missing',) if difference == 'missing_fact' else (FACT_ID,),
+        target_id='graha:Sa' if difference == 'target' else 'graha:Ju',
+        valence=EdgePolarity.SUPPORTS if difference == 'valence' else EdgePolarity.OPPOSES))
+    assert subject.effective_state('c:career', {FACT_ID}) is EffectiveState.IN_FORCE
+    assert subject.effective_result('c:career', {FACT_ID}).null_reason is None

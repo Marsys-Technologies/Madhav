@@ -16,12 +16,16 @@ import layerPins from "../../../generated/nirmana-analysis-layer-pins.json";
 // The previous literal froze the historical 12-asset Phase-alpha picture and
 // could report confidence while omitting 28 current identities. Derive the
 // producer description from the two checked-in generated authorities used by
-// the execution foundation: 36 bg_* writers plus four named non-writers.
+// the execution foundation. K-CERT-2 promoted the citation asset to a writer;
+// the retired analysis pins retain its historical non-writer identity, so the
+// current digest inventory takes precedence for that overlapping identity.
 const l0Writers = Object.keys(writerDigests.writers).filter((id) =>
   id.startsWith("bg_"),
 );
-const l0NonWriters = layerPins.layers.L0.non_writer_assets;
-if (l0Writers.length !== 36 || l0NonWriters.length !== 4) {
+const l0NonWriters = layerPins.layers.L0.non_writer_assets.filter(
+  (id) => !l0Writers.includes(id),
+);
+if (l0Writers.length !== 37 || l0NonWriters.length !== 3) {
   throw new Error(
     `L0 generated inventory mismatch: writers=${l0Writers.length}, non_writers=${l0NonWriters.length}`,
   );

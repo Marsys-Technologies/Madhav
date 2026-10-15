@@ -57,7 +57,7 @@ INTERPRETATION (the packet's "(I)", and what packet and plan leave open; each er
   * A job of the intent's key that has not ended, or its handled record backed by its ended done job, is
     `refused:open` without calling J.open. An unreadable or unbacked handled record is unknown (`wait:stale`).
   * Pool sizes: the integer 1–8 in $KY_RUN/KY_WORKERS / KY_VERIFIERS; absent → 6 / 4; anything else → 0 (no
-    capacity is never guessed). limits.copies = 10. Ready work that finds every slot of its pool in use raises
+    capacity is never guessed). limits.copies = 16 (owner Amendment A1 D-16). Ready work that finds every slot of its pool in use raises
     ctx.awaiting("capacity-above-max", …) while the pool is below 8.
   * Backoff: a job that ended with failure_fp `quota` steps 5 → 10 → 20 → 30 min (once per job) and no model
     runner is launched before `until`; a model job that ended without it resets the steps.
@@ -147,7 +147,7 @@ TRACKER_URL = "http://127.0.0.1:8767"
 LOOPBACK = re.compile(r"^http://(127\.0\.0\.1|localhost):[0-9]{1,5}\Z")
 POOLS = {"builder": ("b", "KY_WORKERS", 6), "verifier": ("v", "KY_VERIFIERS", 4)}
 POOL_MAX = 8                # owner direction of 2026-10-12 (PLANNER_STATE active.owner_directions_20261012)
-COPIES = 10
+COPIES = 16
 BACKOFF_MINUTES = (5, 10, 20, 30)
 BOOTSTRAP_PREFIX = "KV3-B-"
 NO_PLAN_ITEM = ("RULING", "SURROGATE", "PLAN")      # kinds whose intent names no item of the plan model

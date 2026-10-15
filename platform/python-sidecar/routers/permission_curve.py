@@ -49,6 +49,7 @@ import swisseph as swe
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID, StoredAyanamshaId
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar import resonance_map as RM
 from services.gochara_intensity.enrichment import enrich_targets
@@ -108,7 +109,13 @@ class PermissionCurveRequest(BaseModel):
     t_end: datetime
     step_days: float = Field(5.0, gt=0, le=90, description="Sampling step; matches curve.ts's own 5-day default")
     window_days: float = Field(15.0, gt=0, le=90, description="compute_permission's own +/- search window for the point-primitive-sourced generators")
-    ayanamsha_id: str = "lahiri_chitrapaksha"
+    ayanamsha_id: StoredAyanamshaId = Field(
+        PRIMARY_AYANAMSHA_ID,
+        description="One of the five stored ayanamsha ids (422 otherwise); default lahiri_chitrapaksha "
+                    "(primary, Lahiri-primary N-339). Lahiri-transit frame: transit longitudes are "
+                    "always computed in the Lahiri frame; this id selects the natal substrate "
+                    "(dasha periods, targets, sade-sati rows) only.",
+    )
     system_ids: Optional[list[str]] = Field(
         None,
         description="Optional filter: only include these PERMISSION system_ids in the response "

@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+import shlex
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -58,10 +60,12 @@ def _db_calls(source: str) -> set[str]:
 
 def _campaign_db_free_tests():
     # Fixtures and helpers can open the connection before a test body runs.
-    for directory in ("kala", "kala_core"):
-        yield from (TESTS / "l3" / directory).rglob("*.py")
-    for path in (TESTS / "l3").rglob("test_kala_*.py"):
-        if "kala_db" not in path.parts and "kala" not in path.parts:
+    for path in TESTS.rglob("*.py"):
+        parts = path.relative_to(TESTS).parts
+        if "kala_db" in parts:
+            continue
+        if (any(part in {"kala", "kala_core"} or part.startswith("ka_") for part in parts[:-1])
+                or path.name.startswith(("test_kala_", "test_ka_"))):
             yield path
 
 
@@ -101,6 +105,21 @@ def test_guard_rejects_connections_in_kala_core_subdirectories(monkeypatch, tmp_
         test_kala_database_connections_stay_in_kala_db()
 
 
+@pytest.mark.parametrize("relative", [
+    "l3/ka_kshetra/test_hazard.py", "l3/ka_avadhi/conftest.py",
+    "test_ka_kshetra_stage3_clocks.py", "l3/other/test_kala_reader.py",
+])
+def test_guard_rejects_connections_across_campaign_test_areas(monkeypatch, tmp_path, relative):
+    tests = tmp_path / "tests"
+    planted = tests / relative
+    planted.parent.mkdir(parents=True)
+    planted.write_text("import psycopg2\npsycopg2.connect('dsn')\n", encoding="utf-8")
+    monkeypatch.setitem(globals(), "ROOT", tmp_path)
+    monkeypatch.setitem(globals(), "TESTS", tests)
+    with pytest.raises(AssertionError, match=planted.name):
+        test_kala_database_connections_stay_in_kala_db()
+
+
 @pytest.mark.parametrize("source", [
     "import psycopg as pg\npg.connect('dsn')",
     "from psycopg import connect as open_db\nopen_db('dsn')",
@@ -118,4 +137,45 @@ def test_ci_collects_canary_and_entire_db_directory():
     assert (TESTS / "l3" / "kala" / "test_ci_canary.py").is_file()
     assert "kala-db-tests:" in workflow
     assert "KALA_REQUIRE_DB: '1'" in workflow
-    assert "python -m pytest tests/l3/kala_db -q -rs" in workflow
+    # Additional explicit test targets must not invalidate directory discovery.
+    steps = yaml.safe_load(workflow)["jobs"]["kala-db-tests"]["steps"]
+    commands = [shlex.split(step["run"]) for step in steps if "run" in step]
+    assert any(
+        command[:3] == ["python", "-m", "pytest"]
+        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command[3:])
+        for command in commands
+    )
+
+
+@pytest.mark.parametrize("fixture_name", ["kala_db_dsn", "isolated_kala_db_dsn"])
+def test_required_database_fixture_refuses_missing_access(monkeypatch, fixture_name):
+    from tests.l3.kala_db import conftest as db
+    monkeypatch.setenv("KALA_REQUIRE_DB", "1")
+    monkeypatch.delenv("KALA_ADMIN_DSN", raising=False)
+    with pytest.raises(pytest.fail.Exception, match="KALA_ADMIN_DSN is absent"):
+        next(getattr(db, fixture_name).__wrapped__())
+
+
+@pytest.mark.parametrize("fixture_name", ["kala_db_dsn", "isolated_kala_db_dsn"])
+def test_required_database_fixture_refuses_unreachable_access(monkeypatch, fixture_name):
+    from tests.l3.kala_db import conftest as db
+    monkeypatch.setenv("KALA_REQUIRE_DB", "1")
+    monkeypatch.setenv("KALA_ADMIN_DSN", "host=localhost port=5432 dbname=postgres user=postgres")
+
+    def unavailable(*args, **kwargs):
+        raise db.psycopg.OperationalError("test disposable server unavailable")
+
+    monkeypatch.setattr(db.psycopg, "connect", unavailable)
+    with pytest.raises(pytest.fail.Exception, match="disposable Postgres is unreachable"):
+        next(getattr(db, fixture_name).__wrapped__())
+
+
+def test_required_database_job_rejects_skips(monkeypatch):
+    from types import SimpleNamespace
+    from tests.l3.kala_db.conftest import pytest_sessionfinish
+    monkeypatch.setenv("KALA_REQUIRE_DB", "1")
+    reporter = SimpleNamespace(stats={"skipped": [object()]})
+    session = SimpleNamespace(exitstatus=0, config=SimpleNamespace(
+        pluginmanager=SimpleNamespace(get_plugin=lambda name: reporter)))
+    pytest_sessionfinish(session, 0)
+    assert session.exitstatus == pytest.ExitCode.TESTS_FAILED

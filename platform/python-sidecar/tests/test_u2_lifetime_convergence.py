@@ -23,6 +23,7 @@ from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
+from tests._insert_capture import insert_bindings
 
 import pipeline.orchestrator.writers.ka_sangam as ks_mod
 from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
@@ -60,8 +61,10 @@ class FakeCursor:
     def execute(self, sql, params=None):
         self._last_sql = sql
         low = sql.lower()
-        if 'insert into kala_convergence' in low:
-            # Capture the horizon_tier (last positional param) + score
+        if 'from pg_attribute' in low:
+            self._result = [(True,)]
+        elif 'insert into kala_convergence' in low:
+            # Capture the emitted SQL and binds, including horizon_tier + score
             self._store['inserts'].append({'sql': sql, 'params': params})
             self._result = []
         elif 'delete from' in low:
@@ -216,9 +219,8 @@ def _run(store):
     conn = FakeConn(store)
     writer = KaSangamWriter()
     result = writer.run(FakeCtx(conn))
-    # INSERT tuple tail: ..., horizon_tier, domain, confidence_label_relative, tier_basis
-    # (JL-014 appended the last two — see test_ka_sangam_a3_fixes.py for the same fix).
-    tiers = [ins['params'][-4] for ins in store['inserts']]
+    tiers = [insert_bindings(ins['sql'], ins['params'])['horizon_tier']
+             for ins in store['inserts']]
     return result, conn, tiers
 
 

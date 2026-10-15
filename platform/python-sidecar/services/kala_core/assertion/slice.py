@@ -7,6 +7,9 @@ The orchestrator owns the transaction; a build without a candidate is a no-op.
 from datetime import datetime, time, timezone
 from types import SimpleNamespace
 
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
+
 from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
@@ -68,9 +71,14 @@ def _run_fixture_slice(ctx, conn) -> int:
             raise ValueError("assertion disagrees with the fixture judge's raw axes")
     if ctx.dry_run:
         return 0
+    obstruction_tier = ({"verification_pass_status": UNVERIFIED_DEFAULT}
+                        if has_stored_verification(conn, "kala_obstruction") else {})
+    darshana_tier = ({"verification_pass_status": UNVERIFIED_DEFAULT}
+                    if has_stored_verification(conn, "kala_darshana") else {})
     payload = derived
     encoded = Jsonb(row.model_dump(mode="json"))
     replace_candidate_partition(conn, "kala_obstruction", chart, generation, None, [{
+        **obstruction_tier,
         "chart_id": chart, "generation": generation, "assertion_id": row.assertion_id, "assertion": encoded,
         "exposure": payload.exposure, "knowledge": payload.knowledge, "rule_conclusion": payload.rule_conclusion,
         "defeat_state": payload.defeat_state, "effective_state": payload.effective_state,
@@ -87,6 +95,7 @@ def _run_fixture_slice(ctx, conn) -> int:
         DARSHANA_SQL, (chart, generation)
     ).fetchall():
         rows.append({
+            **darshana_tier,
             "chart_id": str(chart_id), "generation": gen, "assertion_id": assertion_id,
             "assertion": Jsonb(assertion), "candidate_effective_state": state,
             "source_assertion_ids": [assertion_id], "interval_start": t0, "interval_end": t1,

@@ -135,6 +135,7 @@ PERMISSION_MODES = ("default", "acceptEdits", "plan", "bypassPermissions")
 CANARY_TOOLS = ("Read", "Write", "Edit", "Bash")
 BASE_ENV_NAMES = ("HOME", "USER", "LANG", "TERM", "PATH", "TMPDIR")
 FIXED_ENV_NAMES = BASE_ENV_NAMES + ("ZDOTDIR", "JOB_SCRATCH")
+OPTIONAL_ENV_NAMES = ("TESTS",)       # packet-pinned newline paths; qualification-only conventional list
 PER_RUN_ENV_NAMES = ("TMPDIR", "JOB_SCRATCH")       # absolute directories inside that run's own evidence directory
 FORBIDDEN_FLAGS = {
     "--bare": "it never reads the stored sign-in (plan §7 P-1)",
@@ -594,7 +595,7 @@ def validate_config(doc, check_disk=True):
         for n in names:
             if kyprobe.CRED_NAME.match(n):
                 errs.append("env_names: credential variable name %s is never passed to a job" % n)
-            elif n not in FIXED_ENV_NAMES and not n.startswith("KY_"):
+            elif n not in FIXED_ENV_NAMES + OPTIONAL_ENV_NAMES and not n.startswith("KY_"):
                 errs.append("env value policy unknown: %s" % n)
     if errs or not check_disk:
         return errs
@@ -743,7 +744,7 @@ def validate_codex_config(doc, check_disk=True):
         for n in names:
             if kyprobe.CRED_NAME.match(n) or CODEX_CRED_NAME.match(n):
                 errs.append("env_names: credential variable name %s is never passed to a job" % n)
-            elif n not in FIXED_ENV_NAMES and not n.startswith("KY_"):
+            elif n not in FIXED_ENV_NAMES + OPTIONAL_ENV_NAMES and not n.startswith("KY_"):
                 errs.append("env value policy unknown: %s" % n)
     if errs or not check_disk:
         return errs
@@ -789,7 +790,8 @@ def resolve_env(cfg, caller):
     """({name: value}, [reasons]) for exactly env_names. TMPDIR and JOB_SCRATCH are None here and filled per run
     (each run's own directories). HOME/USER come from the caller; LANG, TERM, PATH and ZDOTDIR are fixed by plan
     §7; KY_* take their conventional value unless the caller's environment sets them (KY_SCRATCH: the campaign
-    scratch root); any other name has no value policy and refuses."""
+    scratch root); TESTS preserves a bounded caller list or uses a fixed qualification list;
+    any other name has no value policy and refuses."""
     home, user = caller_identity(caller)
     root = ky_root(caller)
     fixed = {"HOME": home, "USER": user, "LANG": "en_US.UTF-8", "TERM": "dumb", "PATH": cfg["child_path"],
@@ -805,6 +807,19 @@ def resolve_env(cfg, caller):
             env[name] = fixed[name]
             if name in ("HOME", "USER") and not fixed[name]:
                 errs.append("env value unknown: %s is not set for the caller" % name)
+        elif name == "TESTS":
+            # (I) INTERPRETATION: names are receipt-bound, paths remain per-job inputs.
+            # Qualification exercises tools, not the item's test runner; use a stable
+            # installed test path when no packet list is supplied. Never trim a caller list.
+            value = caller.get("TESTS", "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py")
+            paths = value.split("\n") if isinstance(value, str) else []
+            if (not paths or len(paths) > 256 or len(value.encode("utf-8")) > 65536
+                    or any(not path or path.startswith("/") or ".." in path.split("/")
+                           or os.path.normpath(path) != path
+                           or any(ord(c) < 32 or ord(c) == 127 for c in path) for path in paths)):
+                errs.append("env value policy TESTS: requires 1..256 normalised relative paths, at most 65536 bytes")
+            else:
+                env[name] = value
         elif name.startswith("KY_") and caller.get(name):
             env[name] = caller[name]
         elif name in conventional:
@@ -3296,7 +3311,7 @@ def via_launchd(cfg, ev, a, home, user):
     used, _replaced, gate, _error = kyprobe.launchctl_choice(os.environ)
     # KY_* overrides of the caller reach the agent through a file: the plist carries PATH/HOME/USER/LANG only.
     write_json_atomic(os.path.join(directory, "caller_env.json"),
-                      {n: os.environ[n] for n in cfg["env_names"] if n.startswith("KY_") and os.environ.get(n)})
+                      {n: os.environ[n] for n in cfg["env_names"] if (n.startswith("KY_") or n == "TESTS") and os.environ.get(n)})
     args = [a.python, "-u", os.path.realpath(__file__), "launchd-inner", "--config", os.path.join(ev, "launch_config.json"),
             "--evidence-dir", ev, "--label", label, "--run-timeout", str(a.run_timeout),
             "--probe-timeout", str(a.probe_timeout), "--probe-wait", str(a.probe_wait),
@@ -3385,7 +3400,7 @@ def cmd_inner(a):
         codex_credentials(cfg, os.environ)
         overrides, _ = load_json_strict(os.path.join(directory, "caller_env.json"))
         caller = dict(os.environ)
-        caller.update({k: v for k, v in (overrides or {}).items() if k.startswith("KY_") and isinstance(v, str)})
+        caller.update({k: v for k, v in (overrides or {}).items() if (k.startswith("KY_") or k == "TESTS") and isinstance(v, str)})
         part = qualify_here(cfg, os.path.realpath(a.evidence_dir), a, caller)
         write_json_atomic(os.path.join(directory, "receipt.inner.json"), part)
         record["complete"] = True

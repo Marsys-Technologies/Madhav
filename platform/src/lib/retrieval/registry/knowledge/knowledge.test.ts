@@ -11,6 +11,9 @@ import type { CapabilityDescriptor } from '../types'
 import { buildPlannerCapabilityKnowledgeProjection } from './planner_projection'
 
 describe('planner capability knowledge', () => {
+  // N-428 / K7-1a: numeric pins below were extracted from the canonical snapshot
+  // and census generators (regenerate_generated.sh fixed provenance arguments).
+  // Exactly fourteen L3 view SCUs are additive; pre-existing SCU entries are unchanged.
   const catalog = getCatalog()
   const snapshot = compileCapabilityKnowledge(catalog, '2026-09-13T00:00:00.000Z')
 
@@ -24,7 +27,8 @@ describe('planner capability knowledge', () => {
     // statically-proven sav_bav_gating default) — 186 -> 187 — and synergy_pipeline gained a
     // second binding for its dry_run (plan) mode, alongside its now-contracted executed
     // (answer) default — 187 -> 188. SS N-373: ephemeris_cache_native_lifetime retired — 188 -> 187.
-    expect(snapshot.census.executable_bindings).toBe(187)
+    // N-428 admits the fourteen additive K7-1a view bindings — 187 -> 201.
+    expect(snapshot.census.executable_bindings).toBe(201)
     expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
@@ -44,17 +48,17 @@ describe('planner capability knowledge', () => {
 
   it('joins every registry binding to the reviewed full-profile route authority', () => {
     const routes = estateCensus.details.descriptor_route_contracts
-    expect(routes).toHaveLength(185)
-    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_exposed')).toHaveLength(71)
-    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(114)
+    expect(routes).toHaveLength(199)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_exposed')).toHaveLength(78)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(121)
     expect(snapshot.census).toMatchObject({
-      reviewed_route_descriptors: 185,
-      reviewed_public_descriptors: 71,
-      reviewed_nonpublic_descriptors: 114,
+      reviewed_route_descriptors: 199,
+      reviewed_public_descriptors: 78,
+      reviewed_nonpublic_descriptors: 121,
     })
     const bindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     const bindingByUri = new Map(bindings.map((binding) => [binding.capability_uri, binding]))
-    expect(bindingByUri.size).toBe(181)
+    expect(bindingByUri.size).toBe(195)
     expect(routes.filter((route) => !bindingByUri.has(route.capability_uri)).map((route) => route.capability_uri).sort())
       .toEqual(snapshot.census.exclusions.map((item) => item.capability_uri).sort())
     for (const route of routes.filter((candidate) => bindingByUri.has(candidate.capability_uri))) {
@@ -68,21 +72,21 @@ describe('planner capability knowledge', () => {
 
   it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
     const routes = estateCensus.details.descriptor_route_contracts
-    expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(100)
+    expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(112)
     expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(5)
-    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(95)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(107)
     expect(snapshot.census).toMatchObject({
-      reviewed_pagination_dispositions: 185,
-      reviewed_paginated_descriptors: 100,
+      reviewed_pagination_dispositions: 199,
+      reviewed_paginated_descriptors: 112,
       exhaustible_reviewed_descriptors: 5,
-      non_exhaustible_descriptors: 95,
+      non_exhaustible_descriptors: 107,
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
-    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(100)
+    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(112)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(101)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(96)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(113)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(108)
   })
 
   it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
@@ -208,7 +212,7 @@ describe('planner capability knowledge', () => {
         editorial_sources?: readonly { source_ref: string; source_fields: readonly string[] }[]
       })[]
     }
-    expect(enriched.census.editorial_scus).toBe(181)
+    expect(enriched.census.editorial_scus).toBe(195)
     expect(enriched.census.derived_scus).toBe(0)
     expect(enriched.scus.every((scu) => scu.editorial)).toBe(true)
     expect(enriched.scus.every((scu) => ['authored_declaration', 'descriptor_metadata_review'].includes(scu.editorial_method ?? ''))).toBe(true)
@@ -320,8 +324,9 @@ describe('planner capability knowledge', () => {
     // and one proof_kind) to authored_declaration (so each can carry its own second, distinct
     // per-mode binding) — 173 -> 171 reviewed, 9 -> 11 authored. SS N-373: the retired
     // ephemeris_cache_native_lifetime SCU was a reviewed one — 171 -> 170.
+    // N-428 admits fourteen authored K7-1a view declarations — 11 -> 25.
     expect(reviewed).toHaveLength(170)
-    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(11)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(25)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

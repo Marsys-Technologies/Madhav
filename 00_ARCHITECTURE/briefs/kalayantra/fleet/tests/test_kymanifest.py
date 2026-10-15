@@ -483,3 +483,36 @@ def test_loop_roles_constant_equals_the_controllers_roles():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert tuple(km.LOOP_ROLES) == tuple(mod.ROLES)
+
+
+@pytest.mark.parametrize("engine", [None, "claude", "codex"])
+@pytest.mark.parametrize("chart,tests", [(False, True), (True, False), (True, True)])
+def test_variant_receipt_selects_its_bound_template(rig, engine, chart, tests, monkeypatch):
+    suffix = (".chart" if chart else "") + (".tests" if tests else "") + (".codex" if engine == "codex" else "")
+    expected = km.FLEET + "/templates/LAUNCH_CONFIG.build" + suffix + ".json"
+    doc = {"result": "PASS", "role": "build", "model": "fixture", "context": "launchd", "binds": {
+        "env_names": ["HOME", "TESTS"] if tests else ["HOME"],
+        "argv": ["claude", "--mcp-config", "/installed/mcp.marsys-only.json"] if chart else ["agent"]}}
+    if engine is not None: doc["engine"] = engine
+    assert km.launch_config_of(doc) == expected
+    # A filename cannot grant a variant; derive from bound launch inputs, then call the real checker interface.
+    rig.receipt.unlink()
+    receipt = rig.run / "QUALIFICATIONS" / "misleading-plain-name.json"
+    receipt.write_text(json.dumps(doc))
+    (rig.repo / expected).write_text("variant configuration")
+    with pytest.raises(km.Refused, match="not a bound component"):
+        km.observe_qualifications(str(rig.repo), str(rig.run), bound=set())
+    calls = []
+    def checked(argv, **kwargs):
+        calls.append(argv)
+        assert argv[argv.index("--config") + 1] == str(rig.repo / expected)
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(km.subprocess, "run", checked)
+    rows = km.observe_qualifications(str(rig.repo), str(rig.run), bound={expected})
+    assert rows[0]["config"] == expected and len(calls) == 1
+
+
+@pytest.mark.parametrize("doc", [{"role": "../escape"}, {"role": "build", "engine": "unknown"},
+                                    {"role": "build", "binds": {"env_names": "TESTS"}}])
+def test_variant_mapping_refuses_unsafe_identity(doc):
+    assert km.launch_config_of(doc) is None

@@ -1,14 +1,20 @@
 """ka_kala_darshana writer — display-ready temporal view synthesizer."""
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-@register('ka_kala_darshana')
-class KaKalaDarshanaWriter(WriterBase):
+# Legacy implementation retained until the qualified K9-4b cutover.
+class _LegacyKaKalaDarshanaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        # KYD-140 fixture preparation only; the default legacy path is retained.
+        if 'kala_read_model_fixture' in ctx.config:
+            from pipeline.orchestrator.writers.k6_candidate import run_candidate
+            return run_candidate(ctx, 'ka_kala_darshana')
         if 'kala_assertion_fixture' in ctx.config:
             from services.kala_core.assertion.slice import run_fixture_slice
             return WriterResult(asset_id='ka_kala_darshana', rows_inserted=run_fixture_slice(ctx),
@@ -131,17 +137,19 @@ class KaKalaDarshanaWriter(WriterBase):
                 json.dumps(obs_summary),
                 json.dumps(narrative),
                 f"ka_kala_darshana:v1.0:conv={conv_id}",
+                UNVERIFIED_DEFAULT,
             ))
 
         if rows:
             with conn.cursor() as cur:
+                store_tier = has_stored_verification(cur, 'kala_darshana')
                 cur.executemany(
-                    """INSERT INTO kala_darshana (
+                    f"""INSERT INTO kala_darshana (
                         chart_id, convergence_id, signal_id,
                         effective_score, net_label, peak_date, window_start, window_end,
-                        obstruction_summary, narrative, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_summary, narrative, source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                    rows if store_tier else [row[:-1] for row in rows],
                 )
 
         return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))
@@ -236,3 +244,20 @@ def _build_narrative(mode: str, effective_score: float, net_label: str,
             caution = f"Moderate obstruction: {moderate[0]['type']}. Intensity reduced."
 
     return {'headline': headline, 'context': context, 'caution': caution}
+
+
+@register('ka_kala_darshana')
+class KaKalaDarshanaWriter(_LegacyKaKalaDarshanaWriter):
+    """Explicit fixture preparation; default legacy computation stays intact."""
+
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
+
+    def run(self, ctx) -> WriterResult:
+        from pipeline.orchestrator.writers.ka_read_model_integrity import bind_integrity_target
+        bind_integrity_target(ctx)
+        if 'jury_reader_generation' in ctx.config:
+            from services.ka_sangam.jury.reader import preparation_result
+            return preparation_result(ctx, 'ka_kala_darshana')
+        return super().run(ctx)

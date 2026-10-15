@@ -1,16 +1,8 @@
-"""KV3-B-OPS-CONTRACT (relaunch plan v2.7 §6 REQUEST-PREP … POST-READBACK, §8, §14): the shared operation-adapter helper.
-
-What runs here, and what does not:
-  · the REAL chain: `kyd_kinds_ops` (its candidates, `start`, `finish`, `static_validate`, `required_checks`) and
-    `executor.py` (`validate`, `run_one`, `execute`, `receipt`, `lease_live`, `fence_quiescent`) are imported from this
-    working copy and called as functions — never a `main`, never the running executor;
-  · FAKES only at the edges: the git handle (`FakeGit`: fetch / show / merge-base / worktree, no repository is written),
-    the lease table it shows, the capabilities, the child process (`run_group` → the fixture wrapper, in process), the
-    engine's ctx and the remote (`FakeRemote`: one job definition, a count of what was submitted, a settable state);
-  · the table on disk is never edited: a case that needs an enabled production kind enables a COPY that only the fake
-    git handle shows. The protected sources and the table are hashed before and after the whole module.
-
-Fakes qualify the mechanics. A real database or remote postcondition is each item's to prove; nothing here claims one."""
+"""Executor operation-adapter acceptance harness. Real validate/run_one/execute/receipt,
+with in-process fake Git, child and remote boundaries; no dispatcher, daemon, Git writes,
+credentials, cloud or production connections. Only copied fixture entries are enabled.
+SQLite exercises DB-API rollback mechanics; it does not qualify a production DB operation.
+"""
 import argparse
 import copy
 import datetime as dt
@@ -32,21 +24,12 @@ FLEET = HERE.parent
 REPO = FLEET.parents[3]
 ADAPTERS_PY = FLEET / "operation_adapters.py"
 EXECUTOR_PY = FLEET / "executor.py"
-KINDS_PY = FLEET / "kyd_kinds_ops.py"
 OPS_FILE = FLEET / "executor_ops.json"
 DISPATCH_PY = REPO / "platform" / "scripts" / "dispatch_v5_small_test_job.py"
 PREFLIGHT_TS = REPO / "platform" / "scripts" / "data-plane-secret-isolation-preflight.ts"
 OPS_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
-SOURCE_PIN = "102e4fdf549909eb71d620dc95930c208ffc9f9f"
-PINS = {  # the packet's spec_sources, measured at SOURCE_PIN
-    "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py": "37929a82aef5f15fa3d143c39d8d75f8162071291ae86460b843411a4d0f73db",
-    OPS_REL: "eb9877fe3c7c5a933a2b6863282d9b28a6f996c4de6e68c1eca8a18b0e347477",
-    "00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_ops.py": "712d47f9e57c63245c0892b1da2181112adb60ec99c22e34f723030fdcca40ed",
-    "platform/scripts/dispatch_v5_small_test_job.py": "9419471ff84f40e4a80f5134116f2b09fe4caad1d97992734beea22ebae16081",
-    "platform/scripts/data-plane-secret-isolation-preflight.ts": "8d07175c3a8bd2d46b6f53ff59a763615efde07d0d6d7d8fe37b2ce51a681822",
-}
-PROTECTED = [EXECUTOR_PY, OPS_FILE, KINDS_PY, DISPATCH_PY, PREFLIGHT_TS]
+PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
 ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
@@ -66,8 +49,6 @@ VERIFIER_SA = "gochara-verifier-runtime@%s.iam.gserviceaccount.com" % PROJECT
 ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 
 
-def sha_file(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def _load(path, name):
@@ -76,10 +57,10 @@ def _load(path, name):
     spec.loader.exec_module(mod)
     return mod
 
-
 A = _load(ADAPTERS_PY, "ky_operation_adapters_under_test")
-K = _load(KINDS_PY, "ky_kinds_ops_for_adapters")
 
+def sha_file(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 @pytest.fixture(scope="module", autouse=True)
 def protected_sources_unchanged():
@@ -88,12 +69,8 @@ def protected_sources_unchanged():
     yield
     assert {str(p): sha_file(p) for p in PROTECTED} == before, "a protected source or the table changed during the tests"
 
-
-# ───────────────────────────── the fakes ─────────────────────────────
-
 def real_table():
     return json.loads(OPS_FILE.read_text())["ops"]
-
 
 def fixture_table():
     """A COPY of the table in which the two orchestrator-rebuild kinds stand for an eventual reviewed mapping: enabled,
@@ -103,7 +80,6 @@ def fixture_table():
         table[kind] = dict(table[kind], enabled=True, script=WRAPPER_REL, fixed_args=[mode], required_rows=["2", "3"])
     return table
 
-
 def lease_text(rows):
     ist = dt.timezone(dt.timedelta(hours=5, minutes=30))
     lines = ["# coordination", "## 1. Leases", "| id | campaign | scope | from | expiry | status |", "|---|---|---|---|---|---|"]
@@ -111,7 +87,6 @@ def lease_text(rows):
         expiry = (dt.datetime.now(ist) + dt.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
         lines.append("| %s | kalayantra | build | now | %s IST | %s |" % (lease_id, expiry, status))
     return "\n".join(lines + ["## 2. History", ""])
-
 
 class FakeGit:
     """executor.git: answers from memory. `worktree add` lays the reviewed scripts under the path; nothing is a repository."""
@@ -154,7 +129,6 @@ class FakeGit:
             return done(0)
         return done(129)
 
-
 class FakeRemote:
     """The remote as an adapter's transport sees it: one job definition (non-secret metadata), what was submitted, and
     a state a test sets. `execute` returning 0 says the submission was taken — never that the run ended."""
@@ -179,7 +153,6 @@ class FakeRemote:
     def fingerprint(self):
         return hashlib.sha256(json.dumps([self.submissions, self.state], sort_keys=True).encode()).hexdigest()
 
-
 def fixture_wrapper(argv, env, remote):
     """What an item's wrapper does with the helper: explicit mode, order-free arguments, one planned remote launch."""
     parser = argparse.ArgumentParser(prog="fixture_adapter.py")
@@ -191,137 +164,42 @@ def fixture_wrapper(argv, env, remote):
     except A.Refusal as refusal:
         return 2, "REFUSAL %s: %s" % (refusal.code, refusal)
 
+def step(kind, opid, **more):
+    expires = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=2)).isoformat(timespec="seconds")
+    base = {"kind": kind, "operation_id": opid, "kyd": "kyd-fixture", "args": {"assets": "ka_fixture", "run-id": RUN_ID},
+            "lease_id": LEASE, "reviewed_commit": MERGED, "expires_at": expires}
+    base.update(more)
+    return base
+
+DRY = lambda **more: step("orchestrator_rebuild_dryrun", "OP-FIX-s1", **more)
+RUN = lambda **more: step("orchestrator_rebuild", "OP-FIX-s2", **more)
+
 
 class Bench:
-    """One temporary KY_ROOT with the real executor module bound to it, the real dispatcher module on a ctx double,
-    and the fakes between them."""
-
-    def __init__(self, tmp_path, monkeypatch, table=None):
+    """A temporary executor root; all effects beyond it are in-process fakes."""
+    def __init__(self, tmp_path, monkeypatch):
         self.root = tmp_path / "ky"
+        self.scratch = tmp_path
         monkeypatch.setenv("KY_ROOT", str(self.root))
         monkeypatch.setenv("KY_SOURCE_REPO", str(tmp_path / "no-repository"))
         monkeypatch.setenv("KY_BUILDER_DATABASE_URL", DSN)
         monkeypatch.setenv("KY_OWNER_DATABASE_URL", DSN)
-        self.X = X = _load(EXECUTOR_PY, "ky_executor_for_adapters_%s" % uuid.uuid4().hex)
+        self.X = X = _load(EXECUTOR_PY, "ky_executor_for_adapters_" + uuid.uuid4().hex)
         for d in (X.REQ, X.REC, X.DONE, X.ACC, X.INFLIGHT, X.TMP, X.EXEC, X.KY_ROOT / "logs"):
             d.mkdir(parents=True, exist_ok=True)
-        self.git = FakeGit(fixture_table() if table is None else table)
-        self.remote = FakeRemote()
-        self.launched = []
+        self.git, self.remote = FakeGit(fixture_table()), FakeRemote()
+        self.launched, self.event_log = [], {}
         self.wrapper = fixture_wrapper
-        X.git = self.git
-        X.capabilities = lambda table_on_main: dict(ALL_CAPS)
-        X.run_group = self.process
+        X.git, X.capabilities, X.run_group = self.git, lambda _: dict(ALL_CAPS), self.process
         self.run = X.RUN
-        self.fleet = tmp_path / "fleet"
-        self.repo = tmp_path / "repo"
-        self.scratch = tmp_path / "scratch"
-        self.model = str(self.repo / "plan_model.json")
-        for d in (self.fleet, self.repo, self.scratch):
-            d.mkdir(parents=True, exist_ok=True)
-        self.next = {"stream": "", "version": 1, "running": [], "ready": [], "blocked": []}
-        self.event_log = {}
-        self.journalled = []
-        self.raised = []
-        self.shells = []
-        self.jobs = 0
 
-    # -- the fake child process (executor.run_group)
     def process(self, argv, cwd, env, timeout):
         self.launched.append({"argv": list(argv), "cwd": str(cwd), "env": dict(env)})
-        assert Path(argv[1]).exists(), "the executor launched a script that is not in its operation worktree"
+        assert Path(argv[1]).exists()
         rc, out = self.wrapper(argv[2:], env, self.remote)
         return subprocess.CompletedProcess(argv, rc, out, "")
 
-    # -- the engine's ctx (kyd_kinds_ops)
-    def sh(self, argv, env=None, cwd=None, timeout=120):
-        argv = list(argv)
-        self.shells.append(argv)
-        if argv[:2] == ["git", "-C"] and argv[3:] == ["show", "origin/main:" + OPS_REL]:
-            return 0, json.dumps({"ops": self.git.table}), ""
-        if argv[:1] == ["bash"] and argv[1].endswith("kyboundary.sh") and argv[2] == "check":
-            return 0, "", ""
-        if argv[2:4] == [str(self.fleet / "kyverdicts.py"), "snapshot"]:
-            return 0, "", ""
-        if argv[2:4] == [str(self.fleet / "kyverdicts.py"), "publish"]:      # the publisher's effect: one verdict event
-            opt = dict(zip(argv[4::2], argv[5::2]))
-            verdict = json.loads(Path(opt["--result"]).read_text())["proposed_verdict"]["verdict"]
-            self.event_log.setdefault(opt["--item"], []).append(
-                {"kind": "verdict", "item": opt["--item"], "phase": opt["--phase"], "artifact_digest": opt["--artifact-digest"],
-                 "result": verdict, "actor": "stream-V:" + opt["--vslot"]})
-            return 0, json.dumps({"published": True, "result": verdict, "action_id": "VERDICT-fixture"}), ""
-        return 127, "", "unanswered in the test double"
-
-    def act(self, action_id, kind, inputs, target, effect, observer):
-        verdict, observed = observer({"action_id": action_id})
-        if verdict == "unknown":
-            return "unknown", {}
-        return "done", (observed if verdict == "done" else effect())
-
-    def events(self, item):
-        return list(self.event_log.get(item, []))
-
-    def pr(self, item):
-        return None
-
-    def journal(self, event, text):
-        self.journalled.append((event, text))
-
-    def awaiting(self, slug, question, options, evidence, item, class_hint):
-        self.raised.append(slug)
-
-    def now(self):
-        return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # -- driving the real chain
-    def plan(self, steps, item=ITEM):
-        Path(self.model).write_text(json.dumps({"items": [{"id": item, "completion_kind": "operation", "brief": {"op": steps}}]}))
-        self.next["ready"] = [{"id": item, "owner": "N", "status": "ready"}]
-
-    def owed(self, kind):
-        unknown = []
-        return [intent for intent, _ in K.CANDIDATES[kind](self, unknown)], unknown
-
-    def job(self, intent, **more):
-        self.jobs += 1
-        scratch = self.scratch / ("J-%d" % self.jobs)
-        scratch.mkdir(parents=True, exist_ok=True)
-        return dict(intent, job_id="J-%d" % self.jobs, controller_id="c1", job_scratch=str(scratch),
-                    result_path=str(scratch / "result.json"), worktree=str(self.repo), **more)
-
-    def prepare(self):
-        intents, unknown = self.owed("REQUEST-PREP")
-        assert len(intents) == 1 and intents[0]["runner"] == "script", (intents, unknown)
-        assert K.start(self, self.job(intents[0]))["outcome"] == "done"
-        docs = [doc for _, doc in K.all_prepared(self.run) if doc["request_sha256"] == intents[0]["digest"]]
-        assert len(docs) == 1
-        return docs[0]
-
-    def accept(self, prepared, slot="v1", checks=None, rows=None, **changes):
-        intents, _ = self.owed("PRE-ACCEPT")
-        intent = next(i for i in intents if i["digest"] == prepared["request_sha256"])
-        job = self.job(intent, slot=slot, exit_code=0)
-        assert K.start(self, job) is None
-        req = prepared["request"]
-        proposed = {"result": "ACCEPTED", "operation_id": req["operation_id"], "request_sha256": prepared["request_sha256"],
-                    "by": slot, "reviewed_commit": req.get("reviewed_commit"),
-                    "checks": {"backup_taken": True, "restore_verified": True, "dry_run_passed": True} if checks is None else checks,
-                    "rows": {"2": True, "3": True} if rows is None else rows}
-        proposed.update(changes)
-        (Path(job["job_scratch"]) / "acceptance.json").write_text(json.dumps(proposed))
-        return K.finish(self, job)
-
-    def submit(self, prepared):
-        intents, unknown = self.owed("EXECUTE")
-        intent = next((i for i in intents if i["digest"] == prepared["request_sha256"]), None)
-        assert intent is not None, unknown
-        assert K.start(self, self.job(intent))["outcome"] == "done"
-        path = self.X.REQ / (prepared["request"]["operation_id"] + ".json")
-        return path, json.loads(path.read_text())
-
     def execute(self, path, req):
-        """The executor's own steps for one request (its `main` loop, function by function): validate, fence, mark,
-        move in flight, RUNNING receipt, run_one."""
         X = self.X
         table = X.load_table()
         why = X.validate(req, table, dict(ALL_CAPS))
@@ -333,90 +211,53 @@ class Bench:
         shutil.move(str(path), flight)
         X.receipt(req, "RUNNING", "accepted; in flight")
         X.run_one(flight, req, table[req["kind"]])
-        return None
 
     def receipt(self, opid):
         path = self.X.REC / (opid + ".json")
         return path, json.loads(path.read_text())
 
-    def verdict(self, prepared, slot="v2", verdict="ACCEPTED", **changes):
-        intents, unknown = self.owed("POST-READBACK")
-        intent = next((i for i in intents if i["item"] == prepared["item"] and i["verdict_phase"] == "artifact"), None)
-        assert intent is not None, unknown
-        job = self.job(intent, slot=slot, exit_code=0)
-        assert K.start(self, job) is None
-        Path(job["result_path"]).write_text(json.dumps({"schema": "ky.job_result/1", "status": "done",
-                                                        "proposed_verdict": {"verdict": verdict}}))
-        job.update(changes)
-        return K.finish(self, job), intent
+    def events(self, item):
+        return list(self.event_log.get(item, []))
+
+    def verdict(self, prepared):
+        self.event_log.setdefault(ITEM, []).append({"kind": "verdict", "item": ITEM, "phase": "artifact",
+            "artifact_digest": sha_file(self.X.REC / (prepared["operation_id"] + ".json")),
+            "result": "ACCEPTED", "actor": "stream-V:v2"})
 
     def observation(self, prepared, **fields):
-        """The item's own terminal observation of the remote, bound to the request and to the ACTUAL receipt."""
-        opid = prepared["request"]["operation_id"]
-        doc = {"schema": A.OBSERVATION_SCHEMA, "operation_id": opid, "request_sha256": prepared["request_sha256"],
-               "receipt_sha256": sha_file(self.X.REC / (opid + ".json")), "terminal": True, "outcome": "succeeded",
-               "source": "fake remote"}
-        doc.update(fields)
-        return doc
+        return dict({"schema": A.OBSERVATION_SCHEMA, "operation_id": prepared["operation_id"],
+            "request_sha256": prepared["request_sha256"], "terminal": True, "outcome": "succeeded",
+            "receipt_sha256": sha_file(self.X.REC / (prepared["operation_id"] + ".json")), "source": "fake remote"}, **fields)
 
-
-def step(kind, opid, **more):
-    expires = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=2)).isoformat(timespec="seconds")
-    base = {"kind": kind, "operation_id": opid, "kyd": "kyd-fixture", "args": {"assets": "ka_fixture", "run-id": RUN_ID},
-            "lease_id": LEASE, "reviewed_commit": MERGED, "expires_at": expires}
-    base.update(more)
-    return base
-
-
-DRY = lambda **more: step("orchestrator_rebuild_dryrun", "OP-FIX-s1", **more)
-RUN = lambda **more: step("orchestrator_rebuild", "OP-FIX-s2", **more)
-
+def accepted_request(bench, steps=None):
+    spec = (steps or [RUN()])[0]
+    req = dict(spec, item_id=ITEM, idempotency_key=spec["operation_id"], requested_by="adhikarin", chart_id=CANONICAL_CHART)
+    digest = bench.X.request_digest(req)
+    prepared = {"schema": "ky.op_prepared/1", "operation_id": req["operation_id"], "item": ITEM, "step": 1,
+        "request": copy.deepcopy(req), "request_sha256": digest, "prepared_by": "controller:fixture", "prepared_by_slot": None}
+    acc = bench.X.ACC / (req["operation_id"] + ".json")
+    acc.write_text(json.dumps({"result": "ACCEPTED", "operation_id": req["operation_id"], "request_sha256": digest,
+        "reviewed_commit": MERGED, "by": "v1", "ts": bench.X.now(), "rows": {"2": True, "3": True},
+        "checks": {"backup_taken": True, "restore_verified": True, "dry_run_passed": True}}))
+    req["acceptance_receipt"] = str(acc)
+    path = bench.X.REQ / (req["operation_id"] + ".json")
+    path.write_text(json.dumps(req))
+    return prepared, path, req
 
 @pytest.fixture
 def bench(tmp_path, monkeypatch):
     return Bench(tmp_path, monkeypatch)
-
-
-def accepted_request(bench, steps=None, **accept):
-    """Prepared, accepted and submitted through the real dispatcher: (prepared, request path, request)."""
-    bench.plan(steps or [RUN()])
-    prepared = bench.prepare()
-    assert bench.accept(prepared, **accept)["outcome"] == "done"
-    return (prepared,) + bench.submit(prepared)
-
-
-# ───────────────────────────── pins, table and the copied constants ─────────────────────────────
-
-@pytest.mark.parametrize("rel", sorted(PINS))
-def test_the_spec_sources_are_the_packets_at_the_source_pin(rel):
-    p = subprocess.run(["git", "-C", str(REPO), "show", "%s:%s" % (SOURCE_PIN, rel)], capture_output=True)
-    assert p.returncode == 0, "cannot read %s at the source pin: %s" % (rel, p.stderr.decode()[-200:])
-    assert hashlib.sha256(p.stdout).hexdigest() == PINS[rel]
-
-
-def test_the_table_is_unchanged_twenty_entries_and_exactly_four_enabled():
-    assert sha_file(OPS_FILE) == PINS[OPS_REL]
-    ops = real_table()
-    assert len(ops) == 20
-    assert all(e["enabled"] is True or e["enabled"] is False for e in ops.values())
-    assert {k for k, e in ops.items() if e["enabled"]} == ENABLED_KINDS
-    disabled = {k: e for k, e in ops.items() if not e["enabled"]}
-    assert len(disabled) == 16
-    assert len([k for k, e in disabled.items() if "TO_BE_SET" in e["script"]]) == 14
-    assert sorted(k for k, e in disabled.items() if "TO_BE_SET" not in e["script"]) == ["smalltest_dispatch", "smalltest_dispatch_dryrun"]
-
 
 def test_the_fixture_table_differs_from_the_table_in_the_two_fixture_entries_only():
     real, fixture = real_table(), fixture_table()
     assert list(real) == list(fixture)
     assert {k for k in real if real[k] != fixture[k]} == {"orchestrator_rebuild_dryrun", "orchestrator_rebuild"}
 
-
 def test_the_helpers_copied_constants_are_the_sources(bench):
     X = bench.X
     assert A.CHILD_ENV_ALLOW == X.CHILD_ENV_ALLOW
     assert [r.pattern for r in A.SECRET_VALUE] == [r.pattern for r in X.REDACT]
-    assert A.CANONICAL_CHART == X.CANONICAL_CHART == K.CANONICAL_CHART == CANONICAL_CHART
+    assert A.CANONICAL_CHART == X.CANONICAL_CHART == CANONICAL_CHART
     ts = PREFLIGHT_TS.read_text()
     assert "process.env.GOOGLE_CLOUD_PROJECT ?? '%s'" % A.DEFAULT_PROJECT in ts
     names = dict(re.findall(r"export const (\w+) = [`']([^`']+)[`']", ts))
@@ -427,97 +268,6 @@ def test_the_helpers_copied_constants_are_the_sources(bench):
     assert (names["BUILDER_SECRET"], names["VERIFIER_SECRET"], names["VERIFIER_JOB"]) == (build_secret, verifier_secret, A.VERIFIER_JOB)
     assert "surface.kind === 'job' && surface.name === '%s'" % A.BUILD_JOB in ts
     assert set(A.JOB_BINDINGS) == {A.BUILD_JOB, A.VERIFIER_JOB}
-    launch = " ".join(A.remote_execute_argv(A.BUILD_JOB, RUN_ID)).replace(RUN_ID, "<run_id>")
-    assert "\n  %s\n" % launch in DISPATCH_PY.read_text()
-
-
-# ───────────────────────────── the positive chain ─────────────────────────────
-
-def test_prepare_accept_submit_receipt_terminal_readback_and_verdict_in_step_order(bench):
-    bench.plan([DRY(), RUN()])
-    dry = bench.prepare()
-    assert (dry["schema"], dry["step"], dry["item"], dry["operation_id"]) == ("ky.op_prepared/1", 1, ITEM, "OP-FIX-s1")
-    assert set(dry) == {"schema", "operation_id", "item", "step", "request", "request_sha256", "prepared_by", "prepared_by_slot"}
-    assert dry["request_sha256"] == bench.X.request_digest(dry["request"]) == K.request_digest(dry["request"])
-    assert bench.owed("REQUEST-PREP")[0] == [], "step 2 is owed before step 1 has an accepted receipt digest"
-    bench.event_log[ITEM] = [None]                         # with no receipt there is no digest to ask a verdict of:
-    assert bench.owed("REQUEST-PREP") == ([], []), "step 2 waits on the receipt, and the events were read without one"
-    del bench.event_log[ITEM]
-
-    # a dry-run kind needs no dry_run_passed and no rows (executor.validate and required_checks agree)
-    assert K.required_checks("orchestrator_rebuild_dryrun") == (["backup_taken", "restore_verified"], False)
-    assert bench.accept(dry, checks={"backup_taken": True, "restore_verified": True}, rows={})["outcome"] == "done"
-    acceptance = json.loads((bench.X.ACC / "OP-FIX-s1.json").read_text())
-    assert set(acceptance) == {"result", "operation_id", "by", "reviewed_commit", "ts", "request_sha256", "rows", "checks"}
-    path, req = bench.submit(dry)
-    assert {k: v for k, v in req.items() if k != "acceptance_receipt"} == dry["request"]
-    assert req["acceptance_receipt"] == str(bench.X.ACC / "OP-FIX-s1.json")
-    assert bench.execute(path, req) is None
-    rpath, receipt = bench.receipt("OP-FIX-s1")
-    assert (receipt["status"], receipt["exit_code"], receipt["request_sha256"]) == ("COMPLETED", 0, dry["request_sha256"])
-    dry_record = json.loads(Path(receipt["output_file"]).read_text())
-    assert (dry_record["mode"], dry_record["submitted"], dry_record["remote_terminal"]) == ("dry_run", False, None)
-    assert bench.remote.submissions == [] and bench.remote.described == [A.BUILD_JOB]
-    assert A.dry_run_refusal(dry_record, submissions=len(bench.remote.submissions),
-                             before=FakeRemote().fingerprint(), after=bench.remote.fingerprint()) is None
-
-    assert bench.owed("REQUEST-PREP")[0] == [], "step 2 is owed before the receipt's digest has a verdict"
-    assert A.completion(bench.run, dry, bench.events(ITEM), bench.observation(dry))[0] == "incomplete"
-    result, intent = bench.verdict(dry)
-    assert result["outcome"] == "done" and intent["digest"] == sha_file(rpath)
-    assert A.completion(bench.run, dry, bench.events(ITEM), bench.observation(dry)) == ("complete", None)
-
-    run = bench.prepare()                                  # only now is step 2 prepared
-    assert (run["step"], run["operation_id"]) == (2, "OP-FIX-s2")
-    assert bench.accept(run, checks={"backup_taken": True, "restore_verified": True}, rows={"2": True, "3": True})["outcome"] == "failed"
-    assert bench.accept(run)["outcome"] == "done"
-    path, req = bench.submit(run)
-    assert bench.execute(path, req) is None
-    rpath, receipt = bench.receipt("OP-FIX-s2")
-    assert receipt["status"] == "COMPLETED"
-    record = json.loads(Path(receipt["output_file"]).read_text())
-    assert (record["mode"], record["submitted"], record["submit_exit"], record["remote_terminal"]) == ("execute", True, 0, None)
-
-    # the dry run planned exactly what the execution submitted, with the same principal and run
-    for key in ("planned_argv", "job", "project", "principal", "secrets", "run_id", "env_names"):
-        assert record[key] == dry_record[key], key
-    assert [s["argv"] for s in bench.remote.submissions] == [record["planned_argv"]]
-    assert record["planned_argv"] == ["gcloud", "run", "jobs", "execute", "brahma-build-pipeline-job", "--args=--run-id," + RUN_ID]
-    assert record["principal"] == BUILDER_SA and record["secrets"] == ["data-plane-builder-db-url"]
-
-    # the launcher's argv is the table's fixed_args then the request's --key value, as the helper states it
-    for launched, prepared, entry in zip(bench.launched, (dry, run), ("orchestrator_rebuild_dryrun", "orchestrator_rebuild")):
-        wt = bench.X.EXEC / ("op-" + prepared["request"]["operation_id"])
-        assert launched["argv"] == A.launch_argv(bench.git.table[entry], prepared["request"], py=bench.X.PY, script_path=str(wt / WRAPPER_REL))
-        assert launched["argv"][2:] == [bench.git.table[entry]["fixed_args"][0], "--assets", "ka_fixture", "--run-id", RUN_ID]
-        assert launched["env"]["DATABASE_URL"] == DSN and set(launched["env"]) <= A.CHILD_ENV_ALLOW | {"DATABASE_URL", "SE_EPHE_PATH", "KY_ROOT"}
-        assert not wt.exists(), "the operation worktree was left behind"
-    # the builder connection the child was given reaches neither gcloud nor any record
-    assert all("DATABASE_URL" not in s["env"] and set(s["env"]) <= A.CHILD_ENV_ALLOW for s in bench.remote.submissions)
-    for written in list(bench.X.REC.iterdir()) + list(bench.X.DONE.iterdir()) + list(bench.X.ACC.iterdir()):
-        assert "fixture_pw" not in written.read_text(), written
-
-    # submitted and receipted with exit 0, the remote still running: not complete; then terminal, then the verdict
-    assert bench.remote.state[RUN_ID] == "RUNNING"
-    assert A.completion(bench.run, run, bench.events(ITEM), None)[0] == "unknown"
-    running = bench.observation(run, terminal=False, outcome=None)
-    assert A.completion(bench.run, run, bench.events(ITEM), running)[0] == "incomplete"
-    bench.remote.state[RUN_ID] = "SUCCEEDED"
-    observed = bench.observation(run)
-    assert A.completion(bench.run, run, bench.events(ITEM), observed)[0] == "incomplete"      # no independent verdict yet
-    result, intent = bench.verdict(run)
-    assert result["outcome"] == "done" and intent["digest"] == sha_file(rpath)
-    assert A.completion(bench.run, run, bench.events(ITEM), observed) == ("complete", None)
-
-    # the adapter never releases the production fence; quiescence is the verifier's request-bound record
-    fence = json.loads(bench.X.FENCE.read_text())
-    assert (fence["operation_id"], fence["request_sha256"]) == ("OP-FIX-s2", run["request_sha256"])
-    assert bench.X.fence_quiescent() is False
-    proof = {"result": "ACCEPTED", "operation_id": "OP-FIX-s2", "request_sha256": dry["request_sha256"], "by": "v2", "ts": bench.X.now()}
-    (bench.X.ACC / "OP-FIX-s2.quiescence.json").write_text(json.dumps(proof))
-    assert bench.X.fence_quiescent() is False, "a quiescence record of another request freed the fence"
-    (bench.X.ACC / "OP-FIX-s2.quiescence.json").write_text(json.dumps(dict(proof, request_sha256=run["request_sha256"])))
-    assert bench.X.fence_quiescent() is True and bench.X.FENCE.exists()
 
 
 def test_a_read_only_kind_launches_as_the_helper_states_it(bench):
@@ -527,13 +277,12 @@ def test_a_read_only_kind_launches_as_the_helper_states_it(bench):
     bench.wrapper = lambda argv, env, remote: (0, "rows\n")
     req = {"operation_id": "OP-READ", "kind": "migration_readback", "item_id": ITEM, "idempotency_key": "OP-READ",
            "requested_by": "v1", "kyd": "kyd-fixture", "args": {"migration": "0412"}}
-    assert bench.X.validate(req, table, dict(ALL_CAPS)) is None and K.static_validate(req, table["migration_readback"]) is None
+    assert bench.X.validate(req, table, dict(ALL_CAPS)) is None
     assert bench.X.execute(req, table["migration_readback"])[0] == 0
     launched = bench.launched[0]
     assert launched["argv"] == A.launch_argv(table["migration_readback"], req, py=bench.X.PY,
                                              script_path=str(bench.X.TMP / "OP-READ.readback_sql.sh"))
     assert launched["argv"][0] == "bash" and "DATABASE_URL" not in launched["env"]
-
 
 @pytest.mark.parametrize("entry,expected", [
     ({"script": "a/b.py", "fixed_args": ["seed"], "production": True}, ["PY", "/wt/a/b.py", "seed", "--k", "v"]),
@@ -544,44 +293,26 @@ def test_a_read_only_kind_launches_as_the_helper_states_it(bench):
 def test_launch_argv_forms(entry, expected):
     assert A.launch_argv(entry, {"args": {"k": "v"}}, py="PY", script_path="/wt/" + entry["script"]) == expected
 
-
-# ───────────────────────────── negative 1: entry, requester, arguments ─────────────────────────────
-
 def test_a_disabled_or_placeholder_entry_an_unauthorised_requester_or_disallowed_args_refuses(bench):
     X, fixture = bench.X, fixture_table()
     real = real_table()
     base = RUN()
     req = dict({k: base[k] for k in ("kind", "operation_id", "kyd", "args", "lease_id", "reviewed_commit", "expires_at")},
                item_id=ITEM, idempotency_key="OP-FIX-s2", requested_by="adhikarin", chart_id=CANONICAL_CHART)
-    both = lambda r, table: (X.validate(r, table, dict(ALL_CAPS)), K.static_validate(r, table.get(r["kind"])))
-
-    # the table as it stands: every production kind is disabled, whichever one a request names
     for kind, entry in real.items():
         if entry["production"]:
-            executor, static = both(dict(req, kind=kind, args={}), real)
-            assert executor.startswith("kind %s is not enabled" % kind) and static == "kind %s is not enabled" % kind
-    for kind in ("smalltest_dispatch", "smalltest_dispatch_dryrun"):       # a script is named, and it is still disabled
-        assert "TO_BE_SET" not in real[kind]["script"] and both(dict(req, kind=kind, args={}), real)[0].startswith("kind")
-    # enabled by mistake while its script is a placeholder
+            assert X.validate(dict(req, kind=kind, args={}), real, ALL_CAPS).startswith("kind %s is not enabled" % kind)
     placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True))
-    assert both(dict(req, kind="publish_head", args={}), placeholder) == ("operation script not yet reviewed/landed",) * 2
-    assert both(dict(req, kind="no_such_kind"), fixture)[0] == "unknown kind no_such_kind"
+    assert X.validate(dict(req, kind="publish_head", args={}), placeholder, ALL_CAPS) == "operation script not yet reviewed/landed"
+    for changes, reason in [
+        ({"kind": "no_such_kind"}, "unknown kind"),
+        ({"requested_by": "b1"}, "requested_by"),
+        ({"args": {"sql": "x"}}, "disallowed args"),
+        ({"args": {"assets": "ka_fixture; unsafe"}}, "an argument value"),
+        ({"chart_id": "other"}, "chart_id"),
+    ]:
+        assert X.validate(dict(req, **changes), fixture, ALL_CAPS).startswith(reason)
 
-    assert both(dict(req, requested_by="b1"), fixture) == ("requested_by b1 may not request orchestrator_rebuild",) * 2
-    assert both(dict(req, requested_by="v1"), fixture) == ("requested_by v1 may not request orchestrator_rebuild",) * 2
-    assert both(dict(req, args={"assets": "ka_fixture", "sql": "x"}), fixture) == ("disallowed args ['sql']",) * 2
-    assert both(dict(req, args={"assets": "ka_fixture; rm -rf x"}), fixture) == ("an argument value has unsafe characters",) * 2
-    assert both(dict(req, chart_id="362f9f17-0000-0000-0000-000000000000"), fixture) == ("chart_id is not the canonical chart",) * 2
-    assert K.static_validate(req, fixture["orchestrator_rebuild"]) is None       # the request itself is well formed
-
-    # the dispatcher prepares nothing for a listed-but-disabled kind, and says nothing is unknown about it
-    bench.git.table = real
-    bench.plan([RUN()])
-    assert bench.owed("REQUEST-PREP") == ([], [])
-    assert not (bench.run / "ops" / "prepared").exists()
-
-
-# ───────────────────────────── negative 2: request, head, expiry, checks ─────────────────────────────
 
 def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_refuses(bench):
     X = bench.X
@@ -642,7 +373,6 @@ def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_ref
     assert bench.receipt("OP-FIX-s2")[1]["status"] == "COMPLETED"
     assert validate(req) == "idempotency key already used"
 
-
 def test_run_one_refuses_when_the_definition_or_the_approval_changed_after_queueing(bench):
     prepared, path, req = accepted_request(bench)
     X = bench.X
@@ -655,44 +385,6 @@ def test_run_one_refuses_when_the_definition_or_the_approval_changed_after_queue
     (X.KY_ROOT / "HOLD").write_text("")
     X.run_one(X.DONE / path.name, req, op)
     assert bench.receipt("OP-FIX-s2")[1]["reason"] == "HOLD set before execution" and bench.launched == []
-
-
-@pytest.mark.parametrize("accept,code", [
-    ({"checks": {"backup_taken": True, "restore_verified": True}}, "attestation_missing"),
-    ({"checks": {"backup_taken": True, "restore_verified": True, "dry_run_passed": 1}}, "attestation_missing"),
-    ({"rows": {"2": True}}, "rows_not_true"),
-    ({"request_sha256": "0" * 64}, "acceptance_not_bound"),
-    ({"reviewed_commit": OTHER_MERGED}, "acceptance_not_bound"),
-    ({"by": "v2"}, "acceptance_not_bound"),
-    ({"result": "REJECTED"}, "not_accepted"),
-    ({"slot": "b1"}, "slot_unknown"),
-])
-def test_the_dispatcher_writes_no_acceptance_for_an_unbound_or_incomplete_one(bench, accept, code):
-    bench.plan([RUN()])
-    prepared = bench.prepare()
-    result = bench.accept(prepared, **accept)
-    assert result["outcome"] == "failed" and result["detail"].startswith(code + ":")
-    assert not (bench.X.ACC / "OP-FIX-s2.json").exists()
-    assert all(i["digest"] != prepared["request_sha256"] for i in bench.owed("EXECUTE")[0]), "an unaccepted request is submittable"
-
-
-def test_a_prepared_request_changed_on_disk_is_unknown_and_is_not_submitted(bench):
-    bench.plan([RUN()])
-    prepared = bench.prepare()
-    assert bench.accept(prepared)["outcome"] == "done"
-    path = bench.run / "ops" / "prepared" / "OP-FIX-s2.json"
-    doc = json.loads(path.read_text())
-    doc["request"]["args"]["assets"] = "ka_other"
-    path.write_text(json.dumps(doc))
-    intents, unknown = bench.owed("EXECUTE")
-    assert intents == [] and any("is not a valid ky.op_prepared/1" in u for u in unknown)
-    doc["request_sha256"] = K.request_digest(doc["request"])              # re-stamped: a different request than the accepted one
-    path.write_text(json.dumps(doc))
-    intents, unknown = bench.owed("EXECUTE")
-    assert intents == [] and any("is not an ACCEPTED record of the prepared request" in u for u in unknown)
-
-
-# ───────────────────────────── negative 3: principal, remote target, credentials ─────────────────────────────
 
 @pytest.mark.parametrize("remote,code", [
     (dict(service_account="amjis-web-runtime@%s.iam.gserviceaccount.com" % PROJECT), "principal"),
@@ -708,7 +400,6 @@ def test_a_wrong_runtime_principal_refuses_in_both_modes_and_submits_nothing(rem
         with pytest.raises(A.Refusal) as refused:
             A.remote_launch(mode, RUN_ID, fake, environ={"PATH": "/usr/bin"})
         assert refused.value.code == code and fake.submissions == []
-
 
 def test_an_absent_unreadable_or_ambiguous_principal_refuses():
     spec = lambda d: d["spec"]["template"]["spec"]["template"]["spec"]
@@ -737,7 +428,6 @@ def test_an_absent_unreadable_or_ambiguous_principal_refuses():
     layer = FakeRemote(service_account=VERIFIER_SA, secret_ref="gochara-verifier-db-url", name="kala-layer-verify-job").definition
     assert "no existing principal binding" in A.principal_refusal("kala-layer-verify-job", layer)
 
-
 @pytest.mark.parametrize("job", ["gochara-verification-job", "kala-layer-verify-job", "brahma-build-pipeline-job --region=x",
                                  "projects/another/locations/x/jobs/brahma-build-pipeline-job", "", None])
 def test_an_arbitrary_remote_target_refuses(job):
@@ -749,13 +439,11 @@ def test_an_arbitrary_remote_target_refuses(job):
         A.remote_launch("execute", RUN_ID, fake, job=job, environ={})
     assert fake.submissions == []
 
-
 @pytest.mark.parametrize("run_id", ["", None, "latest", RUN_ID + ",--chart-id,other", RUN_ID.upper(), "--run-id", RUN_ID + " "])
 def test_a_run_id_that_is_not_one_staged_run_refuses(run_id):
     with pytest.raises(A.Refusal) as refused:
         A.remote_execute_argv(A.BUILD_JOB, run_id)
     assert refused.value.code == "run_id"
-
 
 @pytest.mark.parametrize("value", CREDENTIAL_SHAPES, ids=["dsn", "short_dsn", "pgpassword", "token", "api_key", "secret"])
 def test_a_credential_in_argv_or_in_an_agent_job_output_refuses(value):
@@ -767,7 +455,6 @@ def test_a_credential_in_argv_or_in_an_agent_job_output_refuses(value):
     assert refused.value.code == "secret_value" and value not in str(refused.value)
     assert A.secret_refusal({"secrets": ["data-plane-builder-db-url"], "principal": BUILDER_SA, "env_names": ["PATH"]}) is None
 
-
 def test_the_remote_environment_is_the_allow_list_and_never_a_connection():
     environ = {"PATH": "/usr/bin", "HOME": "/h", "CLOUDSDK_CONFIG": "/c", "DATABASE_URL": DSN, "KY_BUILDER_DATABASE_URL": DSN,
                "KY_OWNER_DATABASE_URL": DSN, "SE_EPHE_PATH": "/e", "KY_ROOT": "/k", "AWS_SECRET_ACCESS_KEY": "x"}
@@ -776,9 +463,6 @@ def test_the_remote_environment_is_the_allow_list_and_never_a_connection():
     record = A.remote_launch("execute", RUN_ID, fake, environ=environ)
     assert fake.submissions[0]["env"] == A.remote_env(environ) and record["env_names"] == ["CLOUDSDK_CONFIG", "HOME", "PATH"]
     assert "fixture_pw" not in A.emit(record)
-
-
-# ───────────────────────────── negative 4: the mandatory dry run ─────────────────────────────
 
 def test_the_mode_is_explicit_and_defaults_to_a_dry_run():
     parser = argparse.ArgumentParser()
@@ -794,8 +478,7 @@ def test_the_mode_is_explicit_and_defaults_to_a_dry_run():
     with pytest.raises(A.Refusal):
         A.remote_launch("EXECUTE", RUN_ID, FakeRemote(), environ={})
 
-
-def test_request_arguments_are_read_in_any_order_and_nothing_else_is_read():
+def test_request_arguments_are_read_in_any_order_and_nothing_else_is_read(bench):
     """The executor appends --key value in the request's own key order, which the request digest does not bind."""
     def parse(argv):
         parser = argparse.ArgumentParser()
@@ -804,7 +487,7 @@ def test_request_arguments_are_read_in_any_order_and_nothing_else_is_read():
 
     forward = {"assets": "ka_fixture", "run-id": RUN_ID}
     backward = dict(reversed(list(forward.items())))
-    assert K.request_digest({"args": forward}) == K.request_digest({"args": backward})
+    assert bench.X.request_digest({"args": forward}) == bench.X.request_digest({"args": backward})
     entry = {"script": "w.py", "fixed_args": ["--execute"], "production": True}
     one = A.launch_argv(entry, {"args": forward}, py="PY", script_path="/wt/w.py")
     two = A.launch_argv(entry, {"args": backward}, py="PY", script_path="/wt/w.py")
@@ -815,7 +498,6 @@ def test_request_arguments_are_read_in_any_order_and_nothing_else_is_read():
         with pytest.raises(A.Refusal) as refused:
             parse(bad)
         assert refused.value.code in ("arguments", "mode"), bad
-
 
 def test_a_dry_run_that_submits_or_leaves_changed_state_fails():
     environ = {"PATH": "/usr/bin"}
@@ -848,7 +530,6 @@ def test_a_dry_run_that_submits_or_leaves_changed_state_fails():
     assert A.dry_run_refusal(dict(record, planned_argv=[]), **ok) is not None
     assert A.dry_run_refusal(None, **ok) is not None
 
-
 LANE = {"host": "127.0.0.1", "port": 55433, "database": "ky_b1"}
 PROBES = {"rows": "SELECT id, state FROM runs ORDER BY id", "count": "SELECT count(*) FROM runs"}
 HEAD = "SELECT generation FROM head"
@@ -867,10 +548,8 @@ def lane(tmp_path):
     yield conn
     conn.close()
 
-
 def lane_state(conn):
     return conn.execute("SELECT id, state FROM runs ORDER BY id").fetchall(), conn.execute(HEAD).fetchall()
-
 
 def test_a_database_rehearsal_runs_the_statements_rolls_back_and_compares(lane):
     record = A.rehearse(lane, STATEMENTS, PROBES, HEAD, target=LANE, identity=IDENTITY)
@@ -887,7 +566,6 @@ def test_a_database_rehearsal_runs_the_statements_rolls_back_and_compares(lane):
     same_count = [("UPDATE runs SET state = ? WHERE id = ?", ("failed", "r1"))]
     assert A.rehearse(lane, same_count, PROBES, HEAD, target=LANE, identity=IDENTITY)["rolled_back"] is True
 
-
 class Committing:
     """A connection whose rollback keeps the work (what an autocommitting or mis-wired handle does)."""
 
@@ -899,7 +577,6 @@ class Committing:
 
     def rollback(self):
         self.conn.commit()
-
 
 class Inert:
     """Fake SQL: every statement 'succeeds' and nothing happens."""
@@ -922,7 +599,6 @@ class Inert:
 
     def rollback(self):
         self.conn.rollback()
-
 
 def test_a_rehearsal_that_proves_no_rollback_refuses(lane):
     def refused(*args, **kwargs):
@@ -948,7 +624,6 @@ def test_a_rehearsal_that_proves_no_rollback_refuses(lane):
     assert refused(lane, broken, PROBES, HEAD, target=LANE, identity=IDENTITY) == "statement_failed"
     assert lane.execute("SELECT count(*) FROM runs").fetchall() == [(2,)], "a failed rehearsal left its statements behind"
 
-
 def test_a_backup_or_restore_dry_run_claims_preflight_and_scope_and_nothing_about_restore_correctness():
     record = A.scope_record("dry_run", "backup_restore_verify", scope={"label": "pre-k9"}, preflight={"target_reachable": True},
                             identity=IDENTITY)
@@ -961,9 +636,6 @@ def test_a_backup_or_restore_dry_run_claims_preflight_and_scope_and_nothing_abou
     with pytest.raises(A.Refusal):
         A.scope_record("execute", "backup_restore_verify", scope={"label": "x"}, preflight={"ok": True}, identity=IDENTITY)
 
-
-# ───────────────────────────── negative 5: staging or exit 0 is not completion ─────────────────────────────
-
 def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_complete(bench):
     prepared, path, req = accepted_request(bench)
     events = lambda: bench.events(ITEM)
@@ -971,7 +643,6 @@ def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_c
 
     bench.X.receipt(req, "RUNNING", "accepted; in flight")                        # still running
     assert A.completion(bench.run, prepared, events(), bench.observation(prepared))[0] == "incomplete"
-    assert [i for i in bench.owed("POST-READBACK")[0] if i["item"] == ITEM] == []
 
     bench.wrapper = lambda argv, env, remote: (0, json.dumps({"staged_run_id": RUN_ID}))        # staged only; exit 0
     assert bench.execute(path, req) is None
@@ -982,7 +653,7 @@ def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_c
     assert A.completion(bench.run, prepared, events(), staged)[0] == "incomplete"
 
     # even the verifier's ACCEPTED verdict at the receipt digest does not stand in for the terminal observation
-    assert bench.verdict(prepared)[0]["outcome"] == "done"
+    bench.verdict(prepared)
     assert A.completion(bench.run, prepared, events(), None)[0] == "unknown"
     assert A.completion(bench.run, prepared, events(), staged)[0] == "incomplete"
     for loose in (dict(terminal="true"), dict(terminal=1), dict(outcome="SUCCEEDED"), dict(outcome=True), dict(schema="other/1")):
@@ -994,34 +665,16 @@ def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_c
     assert A.completion(bench.run, prepared, [{"kind": "mystery"}], bench.observation(prepared))[0] == "unknown"
     assert A.completion(bench.run, prepared, events(), bench.observation(prepared)) == ("complete", None)
 
-
-@pytest.mark.parametrize("rc,status", [(1, "FAILED"), (2, "FAILED")])
-def test_a_failed_local_exit_raises_one_owner_wait_and_no_second_submission(bench, rc, status):
-    prepared, path, req = accepted_request(bench)
-    bench.wrapper = lambda argv, env, remote: (rc, "REFUSAL principal: mismatch")
-    assert bench.execute(path, req) is None
-    assert bench.receipt("OP-FIX-s2")[1]["status"] == status
-    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))[0] == "refused"
-    intents, _ = bench.owed("EXECUTE")
-    assert len(intents) == 1 and K.start(bench, bench.job(intents[0]))["outcome"] == "done"
-    assert len(bench.raised) == 1 and bench.raised[0].startswith("exec-op-fix-s2-")
-    assert not (bench.X.REQ / "OP-FIX-s2.json").exists() and bench.owed("POST-READBACK")[0] == []
-
-
-# ───────────────────────────── negative 6: output, receipt identity, receipt-digest verdict ─────────────────────────────
-
 def completed(bench):
     prepared, path, req = accepted_request(bench)
     assert bench.execute(path, req) is None
     rpath, receipt = bench.receipt("OP-FIX-s2")
     return prepared, rpath, receipt
 
-
 @pytest.mark.parametrize("damage", ["missing_output", "empty_output", "changed_output", "other_request", "other_item", "other_operation",
                                     "no_output_digest", "nonzero_exit", "true_exit"])
 def test_a_missing_empty_or_changed_output_or_a_wrong_receipt_identity_refuses(bench, damage):
     prepared, rpath, receipt = completed(bench)
-    assert K._b_receipt(bench.run, prepared) is not None
     out = Path(receipt["output_file"])
     if damage == "missing_output":
         out.unlink()
@@ -1034,13 +687,8 @@ def test_a_missing_empty_or_changed_output_or_a_wrong_receipt_identity_refuses(b
                   "other_operation": {"operation_id": "OP-FIX-s1"}, "no_output_digest": {"output_sha256": None},
                   "nonzero_exit": {"exit_code": 1}, "true_exit": {"exit_code": False}}[damage]
         rpath.write_text(json.dumps(dict(receipt, **change)))
-    assert K._b_receipt(bench.run, prepared) is None
     state, reason = A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))
     assert state == "refused" and "measured" in reason
-    intents, unknown = bench.owed("POST-READBACK")
-    assert intents == [], "an unmeasured receipt was offered for a verdict"
-    if damage != "other_request":
-        assert any("carries no measured readback" in u for u in unknown)
 
 
 def test_a_verdict_at_another_digest_or_a_rejected_one_does_not_complete(bench):
@@ -1065,57 +713,97 @@ def test_a_verdict_at_another_digest_or_a_rejected_one_does_not_complete(bench):
     assert A.completion(bench.run, prepared, stale, bench.observation(prepared))[0] == "incomplete"
 
 
-@pytest.mark.parametrize("mutant,outcome,code", [
-    ("digest", "failed", "receipt_digest_mismatch"),
-    ("output_digest", "failed", "receipt_digest_mismatch"),
-    ("quiescence_added", "failed", "evidence_changed"),
-    ("receipt_changed", "failed", "receipt_digest_mismatch"),
-    ("no_verdict", "failed", "no_semantic_verdict"),
-    ("job_failed", "failed", "job_exit_nonzero"),
-    ("builder_slot", "failed", "slot_unknown"),
-    ("phase", "failed", "unknown_phase"),
-])
-def test_the_verdict_binds_the_actual_receipt_digest_and_its_quiescence_evidence(bench, mutant, outcome, code):
-    prepared, rpath, receipt = completed(bench)
-    intents, _ = bench.owed("POST-READBACK")
-    assert len(intents) == 1 and intents[0]["digest"] == sha_file(rpath) and intents[0]["verdict_phase"] == "artifact"
-    job = bench.job(intents[0], slot="v2", exit_code=0)
-    assert K.start(bench, job) is None
-    Path(job["result_path"]).write_text(json.dumps({"status": "done", "proposed_verdict": {"verdict": "ACCEPTED"}}))
-    if mutant == "digest":
-        job["digest"] = "0" * 64
-    elif mutant == "output_digest":
-        job["digest"] = receipt["output_sha256"]
-    elif mutant == "quiescence_added":
-        (bench.X.ACC / "OP-FIX-s2.quiescence.json").write_text(json.dumps({"result": "ACCEPTED"}))
-    elif mutant == "receipt_changed":
-        rpath.write_text(json.dumps(dict(receipt, reason="edited"), indent=1))
-    elif mutant == "no_verdict":
-        Path(job["result_path"]).write_text(json.dumps({"status": "done"}))
-    elif mutant == "job_failed":
-        job["exit_code"] = 1
-    elif mutant == "builder_slot":
-        job["slot"] = "b1"
-    elif mutant == "phase":
-        job["verdict_phase"] = "review"
-    result = K.finish(bench, job)
-    assert result["outcome"] == outcome and result["detail"].startswith(code + ":")
-    assert bench.events(ITEM) == [], "a verdict was published"
-    assert not any(argv[3:4] == ["publish"] for argv in bench.shells)
 
 
-def test_changed_quiescence_evidence_is_a_new_fingerprint_and_an_unchanged_one_publishes(bench):
-    prepared, rpath, receipt = completed(bench)
-    first = bench.owed("POST-READBACK")[0][0]
-    (bench.X.ACC / "OP-FIX-s2.quiescence.json").write_text(json.dumps({"result": "ACCEPTED", "by": "v3"}))
-    second = bench.owed("POST-READBACK")[0][0]
-    assert first["digest"] == second["digest"] == sha_file(rpath)
-    assert first["evidence_fp"] != second["evidence_fp"] and first["key"] != second["key"]
-    result, intent = bench.verdict(prepared)
-    assert result["outcome"] == "done" and intent["key"] == second["key"]
-    published = [argv for argv in bench.shells if argv[3:4] == ["publish"]]
-    assert len(published) == 1
-    opt = dict(zip(published[0][4::2], published[0][5::2]))
-    assert (opt["--phase"], opt["--artifact-digest"], opt["--artifact-path"]) == ("artifact", sha_file(rpath), str(rpath))
-    assert (opt["--author-id"], opt["--reviewer-id"]) == ("controller:c1", "stream-V:v2")
-    assert bench.owed("POST-READBACK")[0] == []
+
+
+def test_dry_run_and_execution_share_the_plan_and_only_terminal_readback_completes(bench):
+    dry, path, req = accepted_request(bench, [DRY()])
+    before = bench.remote.fingerprint()
+    assert bench.execute(path, req) is None
+    dry_record = json.loads(Path(bench.receipt(dry["operation_id"])[1]["output_file"]).read_text())
+    assert A.dry_run_refusal(dry_record, submissions=len(bench.remote.submissions), before=before,
+        after=bench.remote.fingerprint()) is None
+    prepared, path, req = accepted_request(bench)
+    assert bench.execute(path, req) is None
+    receipt = bench.receipt(prepared["operation_id"])[1]
+    record = json.loads(Path(receipt["output_file"]).read_text())
+    assert record["planned_argv"] == dry_record["planned_argv"] == bench.remote.submissions[0]["argv"]
+    assert record["submitted"] is True and dry_record["submitted"] is False
+    assert "DATABASE_URL" not in bench.remote.submissions[0]["env"]
+    assert A.completion(bench.run, prepared, [], None)[0] == "unknown"
+    assert A.completion(bench.run, prepared, [], bench.observation(prepared, terminal=False, outcome=None))[0] == "incomplete"
+    bench.remote.state[RUN_ID] = "SUCCEEDED"
+    bench.verdict(prepared)
+    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared)) == ("complete", None)
+    assert bench.X.FENCE.exists() and not bench.X.fence_quiescent()
+    proof = {"operation_id": prepared["operation_id"], "request_sha256": prepared["request_sha256"],
+        "result": "ACCEPTED", "by": "v2", "ts": bench.X.now()}
+    quiescence = bench.X.ACC / (prepared["operation_id"] + ".quiescence.json")
+    quiescence.write_text(json.dumps(dict(proof, request_sha256="0" * 64)))
+    assert not bench.X.fence_quiescent() and bench.X.FENCE.exists()
+    quiescence.write_text(json.dumps(proof))
+    assert bench.X.fence_quiescent() and bench.X.FENCE.exists()
+
+
+def test_completion_works_without_the_retired_dispatcher(bench, monkeypatch):
+    prepared, _, _ = completed(bench)
+    bench.verdict(prepared)
+    real = importlib.util.spec_from_file_location
+    def no_dispatcher(name, path, *args, **kwargs):
+        assert Path(path).name != "kyd_kinds_ops.py", "executor contract depends on retired dispatcher"
+        return real(name, path, *args, **kwargs)
+    monkeypatch.setattr(importlib.util, "spec_from_file_location", no_dispatcher)
+    adapter = _load(ADAPTERS_PY, "ky_independent_adapter")
+    assert adapter.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared)) == ("complete", None)
+
+
+def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
+    wrapper = _load(FLEET / "smalltest_launch.py", "ky_current_smalltest_launcher")
+    seen = []
+    def execute(argv, **kwargs):
+        seen.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "brahma-build-pipeline-job-fixture", "")
+    monkeypatch.setattr(wrapper.subprocess, "run", execute)
+    wrapper.cloud_launcher(RUN_ID, 20)
+    assert A.remote_execute_argv(A.BUILD_JOB, RUN_ID) == seen[0]
+
+
+def test_production_kinds_stay_disabled_and_wave4_launch_stays_bound(bench):
+    table = real_table()
+    assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
+    assert all(not v["enabled"] for v in table.values() if v["production"])
+    entry = table["smalltest_dispatch"]
+    assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
+    for kind in ("smalltest_dispatch",):
+        fixture = copy.deepcopy(bench.git.table)
+        fixture[kind]["enabled"] = True
+        caps = dict(ALL_CAPS, gcloud=False)
+        assert bench.X.validate(dict(RUN(), item_id=ITEM, idempotency_key="id", requested_by="adhikarin",
+            kind=kind, args={}), fixture, caps) == "capability_missing: gcloud"
+
+
+
+def test_another_items_verdict_cannot_complete_this_operation(bench):
+    prepared, rpath, _ = completed(bench)
+    events = [{"kind": "verdict", "item": "K9-OTHER", "phase": "artifact",
+               "artifact_digest": sha_file(rpath), "result": "ACCEPTED"}]
+    assert A.completion(bench.run, prepared, events, bench.observation(prepared))[0] == "incomplete"
+
+
+def test_remote_launch_refuses_another_project_even_with_its_matching_principal():
+    fake = FakeRemote(service_account="data-plane-builder-runtime@another-project.iam.gserviceaccount.com")
+    with pytest.raises(A.Refusal):
+        A.remote_launch("execute", RUN_ID, fake, project="another-project", environ={})
+    assert fake.submissions == []
+
+
+@pytest.mark.parametrize("exit_code", [1, 2])
+def test_failed_execution_is_receipted_and_cannot_be_retried_automatically(bench, exit_code):
+    prepared, path, req = accepted_request(bench)
+    bench.wrapper = lambda argv, env, remote: (exit_code, "REFUSAL principal: mismatch")
+    assert bench.execute(path, req) is None
+    assert bench.receipt(prepared["operation_id"])[1]["status"] == "FAILED"
+    assert A.completion(bench.run, prepared, [], bench.observation(prepared))[0] == "refused"
+    assert bench.X.validate(req, bench.X.load_table(), ALL_CAPS) == "idempotency key already used"
+    assert bench.remote.submissions == [] and bench.X.FENCE.exists()

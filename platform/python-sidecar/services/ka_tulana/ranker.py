@@ -1,428 +1,313 @@
-"""
-services.ka_tulana.ranker — Cross-pattern prioritization engine (L3 Kāla, QT-4).
+"""K7-4: Pareto comparison of forecaster windows; no scalar or fixed weights.
 
-I-11 composite weights (NATIVE-RATIFIED 2026-06-21):
-  convergence_score : 0.40  — primary rigor quality signal
-  rarity_years      : 0.25  — cost-of-omission (rarer = more attention)
-  confidence_score  : 0.20  — discounts speculative findings
-  proximity_factor  : 0.15  — slightly favors sooner windows for actionability
-
-NEVER writes to DB. NEVER calls conn.commit() / .rollback().
-NEVER restates or recomputes kala_convergence / kala_darshana scores — reads only.
-G13/PA-4 (R17): domain vocabulary sourced from brahmagyan.domain_vocabulary (13-domain
-canonical SSoT) — formerly a local 7-domain list mirroring bo_sangati.KNOWN_DOMAINS.
+Authority: OWNER_RULINGS_K7-4_TABLE.md Part B (lines 26–60), ALGO §3.10.
+(I) INTERPRETATION: explicit identity bindings are fixture preparation only;
+production callers supply no jury/negative-space bridge until admitted.
 """
 from __future__ import annotations
 
+import copy
 import math
-import logging
-from dataclasses import dataclass, field
-from datetime import date
-from typing import Any, Optional
+from dataclasses import dataclass
+from datetime import date, timedelta
+from itertools import combinations
+from typing import Any
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
 
-logger = logging.getLogger(__name__)
-
-# G13/PA-4 (R17): local 7-domain list deleted; import canonical 13-domain vocabulary
-# from brahmagyan.domain_vocabulary (the L0 SSoT).
-# KNOWN_DOMAINS was a literal ["career", "wealth", "health", "relationship",
-#                               "spirituality", "character", "general"] (7 domains).
-# The ranker now buckets by all 13 canonical domains.
-# Public name kept for backward compatibility with existing callers / tests that
-# import `KNOWN_DOMAINS` from this module.
 KNOWN_DOMAINS = CANONICAL_DOMAINS
-_KNOWN_DOMAINS = CANONICAL_DOMAINS  # private alias used internally
-
-# I-11 ratified composite weights (native sign-off 2026-06-21)
-I11_WEIGHTS = {
-    'convergence_score': 0.40,
-    'rarity_years':      0.25,
-    'confidence_score':  0.20,
-    'proximity_factor':  0.15,
-}
-
-# Rarity normalization cap: Saturn conjunction ≈ 29.5yr is the practical ceiling
-_RARITY_CAP_YR = 30.0
-
-# Confidence label → numeric score mapping
-_CONFIDENCE_NUMERIC = {'high': 1.0, 'moderate': 0.6, 'speculative': 0.2}
-
-# Net-label dissonance detection — these indicate cross-domain tension
-_DISSONANCE_LABELS = {'obstructed', 'obstructed_severe', 'mixed', 'neutral'}
+TIERS = {"structural_prior": 0, "concurrent": 1, "calibrated_provisional": 2, "calibrated": 3}
+VERSION = "k7-4:pareto:v1"
 
 
-def _validate_window(window: "WindowInput") -> None:
-    """Fail closed when a ranking input cannot satisfy the typed S1 contract."""
-    if not isinstance(window.window_id, str) or not window.window_id.strip():
-        raise ValueError("window_id must be a non-empty string")
-    if not isinstance(window.peak_date, date):
-        raise ValueError("peak_date must be a date")
-    if window.mode not in {"A", "B"}:
-        raise ValueError(f"unknown mode: {window.mode!r}")
-    if window.window_start is not None:
-        if not isinstance(window.window_start, date):
-            raise ValueError("window_start must be a date or None")
-        if window.window_start > window.peak_date:
-            raise ValueError("window_start must not be after peak_date")
-    if window.window_end is not None:
-        if not isinstance(window.window_end, date):
-            raise ValueError("window_end must be a date or None")
-        if window.window_end < window.peak_date:
-            raise ValueError("window_end must not be before peak_date")
-
-    if (
-        isinstance(window.convergence_score, bool)
-        or not isinstance(window.convergence_score, (int, float))
-        or not math.isfinite(float(window.convergence_score))
-    ):
-        raise ValueError("convergence_score must be finite")
-    if window.confidence_label not in _CONFIDENCE_NUMERIC:
-        raise ValueError(f"unknown confidence_label: {window.confidence_label!r}")
-    if window.rarity_years is not None:
-        if (
-            isinstance(window.rarity_years, bool)
-            or not isinstance(window.rarity_years, (int, float))
-            or not math.isfinite(float(window.rarity_years))
-        ):
-            raise ValueError("rarity_years must be finite or None")
-        if window.rarity_years < 0:
-            raise ValueError("rarity_years must be non-negative")
-
-    if not isinstance(window.domains, list) or not all(
-        isinstance(domain, str) for domain in window.domains
-    ):
-        raise ValueError("domains must be a list of strings")
-    unknown_domains = sorted(set(window.domains) - set(_KNOWN_DOMAINS))
-    if unknown_domains:
-        raise ValueError("unknown domains: " + ", ".join(unknown_domains))
-    if not isinstance(window.dissonance_domains, list) or not all(
-        isinstance(domain, str) for domain in window.dissonance_domains
-    ):
-        raise ValueError("dissonance_domains must be a list of strings")
-    unknown_dissonance_domains = sorted(
-        set(window.dissonance_domains) - set(_KNOWN_DOMAINS)
-    )
-    if unknown_dissonance_domains:
-        raise ValueError(
-            "unknown dissonance domains: " + ", ".join(unknown_dissonance_domains)
-        )
-    if not isinstance(window.has_dissonance, bool):
-        raise ValueError("has_dissonance must be a boolean")
+class WindowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    chart_id: str = Field(min_length=1)
+    window_id: str = Field(min_length=1)
+    field_snapshot_id: str = Field(min_length=1)
+    window_start: date | None = None
+    window_end: date | None = None
+    precision_regime: str = "day_grade"
+    event_class: str | None = None
+    event_domain: str | None = None
+    confidence_tier: str | None = None
+    weakest_link: str | None = None
+    robustness: dict | None = None
+    jury: dict | None = None
+    jury_binding: dict | None = None
+    obstruction: dict | None = None
+    contest_rows: int | None = Field(default=None, ge=0, strict=True)
+    lambda_peak: float | None = Field(default=None, allow_inf_nan=False)
+    null_p: float | None = Field(default=None, allow_inf_nan=False)
+    factor_informativeness: float | None = Field(default=None, allow_inf_nan=False)
+    factor_consequence: float | None = Field(default=None, allow_inf_nan=False)
 
 
-def _validate_window_set(windows: list["WindowInput"]) -> None:
-    seen: set[str] = set()
-    for window in windows:
-        _validate_window(window)
-        if window.window_id in seen:
-            raise ValueError(f"duplicate window_id: {window.window_id}")
-        seen.add(window.window_id)
+def _available(value):
+    return {"state": "evaluated", "value": value, "reason": None}
 
 
-@dataclass
-class WindowInput:
+def _unavailable(reason):
+    return {"state": "information_unavailable", "value": None, "reason": reason}
+
+
+def _binding(w: WindowInput) -> bool:
+    if not w.jury_binding:
+        return False
+    if not w.jury:
+        raise ValueError("jury binding without jury evidence")
+    expected = {"chart_id": w.chart_id, "window_id": w.window_id,
+                "field_snapshot_id": w.field_snapshot_id,
+                "assertion_id": w.jury.get("assertion_id"), "generation": w.jury.get("generation")}
+    if any(not value or w.jury_binding.get(key) != value for key, value in expected.items()):
+        raise ValueError("jury outside chart/window/snapshot/generation binding")
+    # No live mapping exists in the K4-2b reader contract.
+    if not str(expected["generation"]).startswith("candidate:"):
+        raise ValueError("live jury mapping unadmitted")
+    return True
+
+
+def _evidence(w, ref, end, frame):
+    bound = _binding(w)
+    axes = {"nearest": _available(max(0, (w.window_start - ref).days))
+            if w.window_start and w.precision_regime == "day_grade" else _unavailable("start_not_day_grade")}
+    anchor = None
+    if bound:
+        dw, anchor = w.jury.get("dw"), w.jury.get("anchor_days")
+        if type(anchor) not in (float, int) or not math.isfinite(anchor) or anchor <= 0:
+            raise ValueError("positive finite jury anchor_days required")
+        if dw is not None and (type(dw) not in (int, float) or not math.isfinite(dw)):
+            raise ValueError("finite signed D(W) required")
+        if dw is None and not w.jury.get("null_reason"):
+            raise ValueError("null D(W) requires null_reason")
+        axes["strongest"] = _available(dw) if dw is not None else _unavailable(w.jury["null_reason"])
+    else:
+        axes["strongest"] = _unavailable("stage_to_reader_mapping_unadmitted")
+    axes["most_robust"] = (_available(TIERS[w.confidence_tier]) if w.confidence_tier in TIERS
+                           else _unavailable("robustness_not_computed"))
+    if w.confidence_tier is not None and w.confidence_tier not in TIERS:
+        raise ValueError("unknown confidence_tier")
+    if frame is not None:
+        if frame.get("domain") is not None and frame["domain"] not in KNOWN_DOMAINS:
+            axes["best_suited"] = _unavailable("frame_domain_unknown")
+        elif w.event_domain not in KNOWN_DOMAINS:
+            axes["best_suited"] = _unavailable("event_class_not_in_ontology")
+        elif not w.window_start or not w.window_end or w.precision_regime != "day_grade":
+            axes["best_suited"] = _unavailable("start_not_day_grade")
+        else:
+            from services.ka_kshetra.stage6_salience import compute_relevance, QuestionFrame
+            # (I) INTERPRETATION I2: stored DATE end is inclusive; producer
+            # relevance consumes half-open intervals. Entity is echoed only.
+            relevance = compute_relevance(w.event_domain, w.window_start.toordinal(),
+                (w.window_end + timedelta(days=1)).toordinal(), frozenset(),
+                QuestionFrame(domain=frame.get("domain"), horizon_start=ref.toordinal(), horizon_end=end.toordinal()))
+            axes["best_suited"] = _available(relevance)
+    annotations = {key: getattr(w, key) for key in ("confidence_tier", "weakest_link", "robustness",
+        "lambda_peak", "null_p", "factor_informativeness", "factor_consequence")}
+    annotations.update(strongest_qualification=w.jury.get("conditional_null") if bound else None,
+        strongest_coverage=w.jury.get("coverage") if bound else None,
+        strongest_provenance=w.jury.get("provenance") if bound else None,
+        witness_signature=w.jury.get("witness_signature") if bound else None,
+        obstruction=w.obstruction or _unavailable("negative_space_bridge_unadmitted"),
+        contest_rows=w.contest_rows if bound else None,
+        dissonance=(w.contest_rows > 0) if bound and w.contest_rows is not None else None)
+    return {"axes": axes, "anchor_days": anchor, "annotations": annotations}
+
+
+def _pair(a_id, b_id, a, b, horizon):
+    axes = {}
+    for name in a["axes"]:
+        av, bv = a["axes"][name], b["axes"][name]
+        tol = (1 if name == "nearest" else 0 if name == "most_robust" else 0.3/horizon
+               if name == "best_suited" else 1/min(a["anchor_days"], b["anchor_days"])
+               if a["anchor_days"] and b["anchor_days"] else None)
+        if av["value"] is None or bv["value"] is None:
+            relation = "unavailable"
+        else:
+            delta = av["value"] - bv["value"]
+            # Stable <= at one-day relevance boundary; no additional tie band.
+            if abs(delta) <= tol:
+                relation = "tie"
+            elif (delta < 0) == (name == "nearest"):
+                relation = "A_better"
+            else:
+                relation = "B_better"
+        axes[name] = {"A": av, "B": bv, "relation": relation, "tolerance": tol}
+    relations = {axis["relation"] for axis in axes.values()}
+    reason = None
+    if "unavailable" in relations:
+        relation, reason = "incomparable", "unavailable"
+    elif {"A_better", "B_better"} <= relations:
+        relation, reason = "incomparable", "tradeoff"
+    elif "A_better" in relations:
+        relation = "A_dominates"
+    elif "B_better" in relations:
+        relation = "B_dominates"
+    else:
+        relation = "tie"
+    return {"A": a_id, "B": b_id, "axes": axes, "relation": relation, "reason": reason}
+
+
+def _dominance_cycles(identities, comparisons):
+    """Return nontrivial strongly connected components, without recursion.
+
+    Pairwise tolerance ties need not be transitive. Preserve the actual pair
+    verdicts, and disclose every cyclic group rather than choosing a winner.
+    Two graph walks take O(V + E) beyond the existing pair comparisons.
     """
-    Normalised window record fed into ka_tulana from kala_convergence /
-    kala_darshana. All fields optional except convergence_score + peak_date.
-    """
-    window_id: str
-    mode: str                                # 'A' or 'B'
-    peak_date: date
-    window_start: Optional[date] = None
-    window_end: Optional[date] = None
-    convergence_score: float = 0.0
-    confidence_label: str = 'speculative'    # 'high'|'moderate'|'speculative'
-    rarity_years: Optional[float] = None
-    net_label: Optional[str] = None          # from kala_darshana
-    domains: list[str] = field(default_factory=list)
-    signal_id: Optional[str] = None
-    source_citation: Optional[str] = None
-    # Dissonance: True when another domain is in danger for this window
-    has_dissonance: bool = False
-    dissonance_domains: list[str] = field(default_factory=list)
+    edges = {identity: [] for identity in sorted(identities)}
+    reverse = {identity: [] for identity in edges}
+    for pair in comparisons:
+        if pair["relation"] == "A_dominates":
+            winner, loser = pair["A"], pair["B"]
+        elif pair["relation"] == "B_dominates":
+            winner, loser = pair["B"], pair["A"]
+        else:
+            continue
+        edges[winner].append(loser)
+        reverse[loser].append(winner)
+    visited, finished = set(), []
+    for root in edges:
+        if root in visited:
+            continue
+        visited.add(root)
+        stack = [(root, iter(edges[root]))]
+        while stack:
+            node, children = stack[-1]
+            child = next(children, None)
+            if child is None:
+                finished.append(node)
+                stack.pop()
+            elif child not in visited:
+                visited.add(child)
+                stack.append((child, iter(edges[child])))
+    visited, cycles = set(), []
+    for root in reversed(finished):
+        if root in visited:
+            continue
+        component, pending = [], [root]
+        visited.add(root)
+        while pending:
+            node = pending.pop()
+            component.append(node)
+            for parent in reverse[node]:
+                if parent not in visited:
+                    visited.add(parent)
+                    pending.append(parent)
+        if len(component) > 1:
+            cycles.append(sorted(component))
+    return sorted(cycles)
 
-
-@dataclass
-class FactorBreakdown:
-    convergence_score: float
-    rarity_norm: float       # normalised to [0,1]
-    confidence_score: float  # numeric from label
-    proximity_factor: float
-    composite: float
-    # Which factor drove the difference in a head-to-head comparison
-    decisive_factor: Optional[str] = None
-
-
-@dataclass
-class RankedWindow:
-    rank: int
-    window: WindowInput
-    factors: FactorBreakdown
-    rationale: str  # human-readable "why" (structured; LLM narrates from this)
-
-
-@dataclass
-class CompareVerdict:
-    winner: WindowInput
-    loser: WindowInput
-    winner_factors: FactorBreakdown
-    loser_factors: FactorBreakdown
-    decisive_factor: str
-    confidence_label: str  # label of the winner
-    rationale: str
-    dissonance_note: Optional[str] = None  # CF.L3.5 / I-23 dissonance note
-    recommendation: str = 'proceed'        # 'proceed'|'defer'|'proceed_with_mitigation'
-
-
-@dataclass
-class AttentionMap:
-    """
-    Ranked list of windows across all domains — "what matters most" map
-    for the native's attention budget (QT-4 multi-domain use case).
-    """
-    ranked: list[RankedWindow]              # global rank order
-    by_domain: dict[str, list[RankedWindow]]  # top window per known domain
-    horizon_days: int
-
-
-# ── Scoring helpers ───────────────────────────────────────────────────────────
-
-def _normalise_rarity(rarity_years: Optional[float]) -> float:
-    """Map rarity_years → [0,1]; None → 0.5 neutral."""
-    if rarity_years is None:
-        return 0.5
-    return max(0.0, min(1.0, rarity_years / _RARITY_CAP_YR))
-
-
-def _proximity_factor(peak_date: date, reference_date: date) -> float:
-    """
-    Sooner windows score higher for actionability.
-    30d  → 1.0
-    90d  → 0.5  (interpolated linearly between 30–90)
-    365d → 0.1
-    >1yr → 0.05 (floor)
-    """
-    days = (peak_date - reference_date).days
-    if days < 0:
-        return 0.05  # past window
-    if days <= 30:
-        return 1.0
-    if days <= 90:
-        return 1.0 - 0.5 * (days - 30) / 60.0
-    if days <= 365:
-        return 0.5 - 0.4 * (days - 90) / 275.0
-    return 0.05
-
-
-def _composite(w: WindowInput, reference_date: date) -> FactorBreakdown:
-    """Compute I-11 composite score for a single window."""
-    cs  = max(0.0, min(1.0, w.convergence_score))
-    rar = _normalise_rarity(w.rarity_years)
-    con = _CONFIDENCE_NUMERIC.get(w.confidence_label, 0.2)
-    prx = _proximity_factor(w.peak_date, reference_date)
-
-    composite = (
-        I11_WEIGHTS['convergence_score'] * cs +
-        I11_WEIGHTS['rarity_years']      * rar +
-        I11_WEIGHTS['confidence_score']  * con +
-        I11_WEIGHTS['proximity_factor']  * prx
-    )
-    return FactorBreakdown(
-        convergence_score=round(cs, 4),
-        rarity_norm=round(rar, 4),
-        confidence_score=round(con, 4),
-        proximity_factor=round(prx, 4),
-        composite=round(composite, 4),
-    )
-
-
-def _rationale(w: WindowInput, fb: FactorBreakdown, rank: int) -> str:
-    """Build a structured rationale string for a ranked window."""
-    parts = [
-        f"Rank #{rank}:",
-        f"convergence={fb.convergence_score:.2f} (weight 40%)",
-        f"rarity_norm={fb.rarity_norm:.2f} (~{w.rarity_years or 'unknown'}yr cycle, weight 25%)",
-        f"confidence={fb.confidence_score:.2f} ({w.confidence_label}, weight 20%)",
-        f"proximity={fb.proximity_factor:.2f} (peak {w.peak_date}, weight 15%)",
-        f"→ composite={fb.composite:.3f}",
-    ]
-    if w.has_dissonance and w.dissonance_domains:
-        parts.append(
-            f"[DISSONANCE: favorable for {','.join(w.domains or ['?'])} "
-            f"but danger in {','.join(w.dissonance_domains)}]"
-        )
-    return " | ".join(parts)
-
-
-# ── Core API ─────────────────────────────────────────────────────────────────
 
 class KaTulanaService:
-    """
-    Cross-pattern prioritization service (L3 Kāla, QT-4).
-
-    Pure ranking logic over already-computed kala_convergence windows.
-    No DB writes. No commit/rollback.
-    """
-
-    def rank_windows(
-        self,
-        windows: list[WindowInput],
-        reference_date: Optional[date] = None,
-    ) -> list[RankedWindow]:
-        """
-        Rank windows by I-11 composite score (desc).
-
-        Parameters
-        ----------
-        windows : list[WindowInput]
-            Windows from kala_convergence / kala_darshana for this chart.
-        reference_date : date | None
-            The "today" for proximity computation. Defaults to date.today().
-
-        Returns
-        -------
-        list[RankedWindow]  — ordered best-first; includes per-factor breakdown + rationale.
-        """
-        ref = reference_date or date.today()
-        _validate_window_set(windows)
-        scored = []
-        for w in windows:
-            fb = _composite(w, ref)
-            scored.append((fb.composite, w, fb))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-
-        result: list[RankedWindow] = []
-        for rank, (_, w, fb) in enumerate(scored, start=1):
-            fb.decisive_factor = None  # single-window ranking has no "vs" context
-            result.append(RankedWindow(
-                rank=rank,
-                window=w,
-                factors=fb,
-                rationale=_rationale(w, fb, rank),
-            ))
-        return result
-
-    def compare(
-        self,
-        window_a: WindowInput,
-        window_b: WindowInput,
-        reference_date: Optional[date] = None,
-    ) -> CompareVerdict:
-        """
-        Head-to-head comparison of two windows (QT-4 explicit compare).
-
-        Returns the winner, per-factor breakdown, decisive factor, and
-        dissonance-aware recommendation (proceed / defer / proceed_with_mitigation).
-        """
-        ref = reference_date or date.today()
-        _validate_window(window_a)
-        _validate_window(window_b)
-        if window_a.window_id == window_b.window_id:
-            raise ValueError(f"duplicate window_id: {window_a.window_id}")
-        fb_a = _composite(window_a, ref)
-        fb_b = _composite(window_b, ref)
-
-        # Determine decisive factor: largest per-factor difference
-        factor_deltas = {
-            'convergence_score': abs(fb_a.convergence_score - fb_b.convergence_score),
-            'rarity_years':      abs(fb_a.rarity_norm      - fb_b.rarity_norm),
-            'confidence_score':  abs(fb_a.confidence_score - fb_b.confidence_score),
-            'proximity_factor':  abs(fb_a.proximity_factor - fb_b.proximity_factor),
-        }
-        decisive = max(factor_deltas, key=factor_deltas.get)
-
-        if fb_a.composite >= fb_b.composite:
-            winner, loser, wfb, lfb = window_a, window_b, fb_a, fb_b
-        else:
-            winner, loser, wfb, lfb = window_b, window_a, fb_b, fb_a
-
-        wfb.decisive_factor = decisive
-        lfb.decisive_factor = decisive
-
-        # Dissonance-aware recommendation (I-23)
-        dissonance_note = None
-        recommendation = 'proceed'
-        if winner.has_dissonance and winner.dissonance_domains:
-            danger_doms = ', '.join(winner.dissonance_domains)
-            favorable = ', '.join(winner.domains or ['the target domain'])
-            if winner.confidence_label == 'speculative':
-                recommendation = 'defer'
-                dissonance_note = (
-                    f"TENSION: window is favorable for {favorable} but danger exists "
-                    f"in {danger_doms}. Low confidence → defer."
-                )
+    def compare_windows(self, windows, *, date_from=None, date_to=None, question_frame=None, preference=None):
+        ref = date.fromisoformat(date_from) if isinstance(date_from, str) else date_from or date.today()
+        end = date.fromisoformat(date_to) if isinstance(date_to, str) else date_to or ref + timedelta(days=90)
+        horizon = (end-ref).days
+        if horizon < 1:
+            raise ValueError("date_to must exceed date_from by at least one day")
+        if question_frame is not None and (not isinstance(question_frame, dict) or
+            any(key not in {"domain", "entity", "horizon", "intent_verb", "stakes", "comparison_target"}
+                or not isinstance(value, str) for key, value in question_frame.items())):
+            raise ValueError("invalid question_frame")
+        default = (["best_suited"] if question_frame is not None else []) + ["most_robust", "strongest", "nearest"]
+        preference = [] if preference is None else preference
+        if not isinstance(preference, list) or any(p not in default for p in preference) or len(set(preference)) != len(preference):
+            raise ValueError("preference must name unique active axes")
+        policy = preference + [axis for axis in default if axis not in preference]
+        parsed = [WindowInput.model_validate(w) if not isinstance(w, WindowInput) else w for w in windows]
+        if len({w.window_id for w in parsed}) != len(parsed):
+            raise ValueError("duplicate window_id")
+        if len({(w.chart_id, w.field_snapshot_id) for w in parsed}) > 1:
+            raise ValueError("mixed chart/field snapshot")
+        evidence, rejected = {}, []
+        for w in parsed:
+            if w.window_start and w.window_end and w.window_end < w.window_start:
+                raise ValueError("invalid window span")
+            if w.window_end and w.window_end < ref:
+                rejected.append({"window_id": w.window_id, "reason": "window_elapsed"})
             else:
-                recommendation = 'proceed_with_mitigation'
-                dissonance_note = (
-                    f"TENSION: window is favorable for {favorable} but danger exists "
-                    f"in {danger_doms}. Proceed with mitigation for {danger_doms} "
-                    f"(→ ph_pratikara remediation layer)."
-                )
+                evidence[w.window_id] = _evidence(w, ref, end, question_frame)
+        generations = {w.jury["generation"] for w in parsed if _binding(w)}
+        if len(generations) > 1:
+            raise ValueError("mixed jury generation")
+        comparisons = [_pair(a,b,evidence[a],evidence[b],horizon) for a,b in combinations(sorted(evidence),2)]
+        dominated = {p["B"] if p["relation"] == "A_dominates" else p["A"]
+                     for p in comparisons if p["relation"] in {"A_dominates","B_dominates"}}
+        cycles = _dominance_cycles(evidence, comparisons)
+        # (I) INTERPRETATION K7-B1: front = undominated OR cycle member.
+        # Even an externally dominated cycle retains all of its alternatives;
+        # pairwise evidence and caller presentation preferences remain intact.
+        cycle_members = {identity for cycle in cycles for identity in cycle}
+        front = sorted((set(evidence) - dominated) | cycle_members)
+        def order_key(identity):
+            key = []
+            for axis in policy:
+                value = evidence[identity]["axes"][axis]["value"]
+                key.extend([value is None, 0 if value is None else value if axis == "nearest" else -value])
+            return (*key, identity)
+        return copy.deepcopy({"contract_version": VERSION, "evidence": evidence, "comparisons": comparisons,
+            "front": front, "dominance_cycles": cycles, "front_rule": "undominated_or_cycle_member",
+            "ordered": sorted(evidence, key=order_key),
+            "rejected": sorted(rejected, key=lambda r: r["window_id"]), "order_policy": policy,
+            "question_frame": question_frame, "entity_not_evaluated": bool(question_frame and "entity" in question_frame),
+            "tolerances": {"nearest_days":1, "most_robust":0, "best_suited":0.3/horizon,
+                           "strongest":"per_pair_anchor_days"},
+            "empty_reason": None if front else "no_candidate_windows" if not evidence else "dominance_front_unresolved"})
 
-        # Build rationale
-        win_label = _CONFIDENCE_NUMERIC.get(winner.confidence_label, 0.2)
-        lose_label = _CONFIDENCE_NUMERIC.get(loser.confidence_label, 0.2)
-        rationale_parts = [
-            f"Winner: window {winner.window_id} (peak {winner.peak_date}) over "
-            f"window {loser.window_id} (peak {loser.peak_date}).",
-            f"Decisive factor: {decisive} "
-            f"(Δ={factor_deltas[decisive]:.3f}).",
-            f"Composite: winner={wfb.composite:.3f} vs loser={lfb.composite:.3f}.",
-        ]
-        if dissonance_note:
-            rationale_parts.append(dissonance_note)
-        rationale_parts.append(f"Recommendation: {recommendation}.")
+    def compare(self, window_a, window_b, reference_date=None, **kwargs):
+        """Compatibility entry name: now returns a dominance table, never a fabricated winner."""
+        result = self.compare_windows([window_a, window_b], date_from=reference_date, **kwargs)
+        a = WindowInput.model_validate(window_a) if not isinstance(window_a, WindowInput) else window_a
+        b = WindowInput.model_validate(window_b) if not isinstance(window_b, WindowInput) else window_b
+        if a.window_id not in result["evidence"] or b.window_id not in result["evidence"]:
+            raise ValueError("elapsed window has no comparison")
+        pair = result["comparisons"][0]
+        if pair["A"] == a.window_id:
+            return pair
+        mirror = {"A_better": "B_better", "B_better": "A_better", "A_dominates": "B_dominates",
+                  "B_dominates": "A_dominates", "tie": "tie", "unavailable": "unavailable", "incomparable": "incomparable"}
+        return {**pair, "A": a.window_id, "B": b.window_id, "relation": mirror[pair["relation"]],
+            "axes": {name: {**axis, "A": axis["B"], "B": axis["A"], "relation": mirror[axis["relation"]]}
+                     for name, axis in pair["axes"].items()}}
 
-        return CompareVerdict(
-            winner=winner,
-            loser=loser,
-            winner_factors=wfb,
-            loser_factors=lfb,
-            decisive_factor=decisive,
-            confidence_label=winner.confidence_label,
-            rationale=' '.join(rationale_parts),
-            dissonance_note=dissonance_note,
-            recommendation=recommendation,
-        )
+    def read_jury(self, ctx, *, generation=None):
+        from services.ka_sangam.jury.reader import read_jury
+        return read_jury(ctx, generation=generation)
 
-    def attention_map(
-        self,
-        windows: list[WindowInput],
-        reference_date: Optional[date] = None,
-        horizon_days: int = 365,
-    ) -> AttentionMap:
-        """
-        Multi-domain attention budget: rank all windows globally + per-domain.
-        Answers "of my N windows across ALL domains, where should attention go?"
+    def rank_jury_candidates(self, ctx, *, generation):
+        from services.ka_sangam.jury.reader import JuryView
+        result = self.read_jury(ctx, generation=generation)
+        if result.source != "candidate" or any(not isinstance(row, JuryView) for row in result.rows):
+            raise ValueError("candidate ranking cannot pool legacy values")
+        rows = sorted(result.rows, key=lambda row: (row.dw is None, -row.dw if row.dw is not None else 0,
+                                                   row.event_class, row.assertion_id))
+        return tuple(RankedJuryWindow(i,row) for i,row in enumerate(rows,1))
 
-        Only windows within horizon_days of reference_date are included.
-        """
-        ref = reference_date or date.today()
-        if isinstance(horizon_days, bool) or not isinstance(horizon_days, int):
-            raise ValueError("horizon_days must be an integer")
-        if horizon_days < 0:
-            raise ValueError("horizon_days must be non-negative")
-        _validate_window_set(windows)
 
-        # Filter to horizon
-        in_horizon = [
-            w for w in windows
-            if 0 <= (w.peak_date - ref).days <= horizon_days
-        ]
+@dataclass(frozen=True)
+class RankedJuryWindow:
+    rank: int
+    window: Any
 
-        ranked = self.rank_windows(in_horizon, ref)
 
-        # Top window per known domain — G13/PA-4: over all 13 canonical domains
-        by_domain: dict[str, list[RankedWindow]] = {d: [] for d in _KNOWN_DOMAINS}
-        for rw in ranked:
-            for domain in (rw.window.domains or ['general']):
-                if domain in by_domain:
-                    by_domain[domain].append(rw)
+class CompareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    windows: list[WindowInput]
+    date_from: date | None = None
+    date_to: date | None = None
+    question_frame: dict[str,str] | None = None
+    preference: list[str] | None = None
 
-        return AttentionMap(
-            ranked=ranked,
-            by_domain=by_domain,
-            horizon_days=horizon_days,
-        )
+
+router = APIRouter()
+
+
+@router.post("/tulana_compare")
+def tulana_compare(request: CompareRequest):
+    try:
+        return KaTulanaService().compare_windows(**request.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -31,9 +31,12 @@ describe('get_nakshatra pagination order', () => {
     expect(mockQuery).toHaveBeenCalledTimes(1)
     const sql = String(mockQuery.mock.calls[0][0]).replace(/\s+/g, ' ')
     expect(sql).toMatch(/SELECT [^]*\bformula_id\b[^]* FROM chart_facts/)
-    expect(sql).toContain(
-      'ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4',
+    // PR-2: the Lahiri primary filter is $5 (after LIMIT/OFFSET $3/$4); the ayanamsha sort key is
+    // the AYANAMSHA_SERVE_ORDER expression (Lahiri first), not alphabetical.
+    expect(sql).toMatch(
+      /ORDER BY fact_category, array_position\(ARRAY\[[^\]]*\]::text\[\], ayanamsha_id::text\), ayanamsha_id, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT \$3 OFFSET \$4/,
     )
+    expect(sql).toContain("ayanamsha_id IN ($5, 'INVARIANT')")
   })
 
   it('serves canonical and strict variant rows with distinct formula_id values', async () => {

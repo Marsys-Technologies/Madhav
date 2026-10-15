@@ -39,12 +39,13 @@ def ctx(tmp_path):
     return c
 
 
-def claude_receipt(c, role='build'):
-    binds = dict(model='claude-opus-5-5', effort='high', permission_mode='bypassPermissions', max_turns=60,
+def claude_receipt(c, role='build', model='claude-opus-5-5'):
+    binds = dict(model=model, effort='high', permission_mode='bypassPermissions',
+                 max_turns=min(60, A.TURN_CAPS.get(role.upper(), 60)),
                  deadline_seconds=3600, claude_bin='/fake/claude',
                  mcp_config_sha256=ka.sha_file(Path(c.fleet) / 'mcp.none.json'), extra_flags=[], disallowed_tools=[])
     doc = dict(schema='ky.qualification/1', role=role, model=binds['model'], result='PASS', context='launchd', binds=binds)
-    ka.write_json(Path(c.run) / 'QUALIFICATIONS' / (role + '-claude-opus-5-5.json'), doc)
+    ka.write_json(Path(c.run) / 'QUALIFICATIONS' / (role + '-' + model + '.json'), doc)
     return binds
 
 
@@ -76,7 +77,7 @@ def launch(c, kind='BUILD', chart=False):
     ('build=codex\n','BUILD'), ('build=codex\n','REWORK'), ('rework=codex\n','REWORK'),
     ('build=claude\nverify=codex\n','VERIFY')])
 def test_switch_selects_codex_receipt_and_pins_role(ctx, content, kind):
-    role = 'verify' if kind == 'VERIFY' else 'build'
+    role = kind.lower()
     cfg, receipt = codex_receipt(ctx, role)
     (Path(ctx.run) / 'JOB_ENGINE').write_text(content)
     refusals, got = launch(ctx, kind)

@@ -7,6 +7,8 @@
  * Idempotency: delete-then-insert per chart_id (§N.3 L4+).
  *
  * Body: { chart_id: string, ayanamsha_id?: string }
+ *   ayanamsha_id: omitted = lahiri_chitrapaksha (primary, N-339); short ids are normalised
+ *   by the PR-1 helper; unknown ids and "all" are HTTP 400 (the engines read one ayanamsha).
  * Returns: { ok: true, domains: 5, analysis_rows: 35, convergence_rows: 5 }
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,6 +19,7 @@ import {
   buildSchoolSignals,
   DOMAIN_AUTHORITY_WEIGHTS,
 } from '@/lib/schools/chart_data_adapter'
+import { PRIMARY_AYANAMSHA, resolveAyanamshaArg } from '@/lib/retrieval/chart_facts_helpers'
 import { runSchoolsForDomain } from '@/lib/schools/school_runner'
 import type { Domain, SchoolName, SignalScore } from '@/lib/schools/types'
 
@@ -42,10 +45,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'chart_id required' }, { status: 400 })
   }
 
-  const { chart_id, ayanamsha_id = 'lahiri' } = body as {
+  const { chart_id, ayanamsha_id: rawAyanamsha } = body as {
     chart_id: string
     ayanamsha_id?: string
   }
+
+  // Normalise at the boundary: omitted -> Lahiri (stored long id), aliases -> stored id.
+  const resolved = resolveAyanamshaArg(rawAyanamsha)
+  if (!resolved.ok) {
+    return NextResponse.json(
+      { error: resolved.message, code: 'invalid_ayanamsha_id', stored_ids: resolved.stored_ids },
+      { status: 400 },
+    )
+  }
+  if (resolved.ayanamsha_id === null) {
+    return NextResponse.json(
+      { error: 'school consensus runs on one ayanamsha; "all" is not valid here', code: 'invalid_ayanamsha_id' },
+      { status: 400 },
+    )
+  }
+  const ayanamsha_id: string = resolved.ayanamsha_id ?? PRIMARY_AYANAMSHA
 
   // Step 1: Build live ChartData from L1 (chart_facts + chart_dashas)
   const chartData = await buildChartData(chart_id, ayanamsha_id)

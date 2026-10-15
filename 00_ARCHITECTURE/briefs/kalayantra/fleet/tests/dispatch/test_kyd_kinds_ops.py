@@ -133,6 +133,9 @@ class Double:
         self.scratch = self.base / "scratch"
         for d in (self.run, self.fleet, self.repo, self.scratch):
             d.mkdir(parents=True, exist_ok=True)
+        (self.fleet / "templates").mkdir(exist_ok=True)
+        (self.fleet / "templates/LAUNCH_CONFIG.surrogate.json").write_bytes(
+            (FLEET / "templates/LAUNCH_CONFIG.surrogate.json").read_bytes())
         self.spec = spec
         self.table = table
         self.calls = []

@@ -13,6 +13,8 @@ const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_RULES_TEST_DATABASE_URL
 const PRODUCTION_DIGEST = '87b697041c73359e12daf8258cfdd6e85a38eb5c63fa39865e42f5b46e610dbd'
 const CANONICAL_EXPLANATION = '3,002 deterministic regex-extracted rules from the frozen 10,651-chunk corpus after canonicalizing Pattern 27 planet order and duplicate suppression across Python hash seeds.'
+// The CURRENT seed (migration 1368, #3442): 8 rules with no consequence are no longer kept, 3,002 -> 2,994. Migration 618 itself (above) still pins the history.
+const SEED_EXPLANATION = '2,994 deterministic regex-extracted rules from the frozen 10,651-chunk corpus after canonicalizing Pattern 27 planet order and duplicate suppression across Python hash seeds; a match whose consequence has no word character is not kept (8 of the earlier 3,002 were blank or dash-only).'
 const LEGACY_EXPLANATION = '2,912 rules = honest count from actual build against 10,651-chunk corpus.'
 
 describe('migration 618 — rules integrity contract', () => {
@@ -25,8 +27,8 @@ describe('migration 618 — rules integrity contract', () => {
     expect(ASSETS.find(asset => asset.asset_id === 'bg_rules')).toMatchObject({
       sort_order: 6,
       target_table: 'sutravali_rules',
-      target_floor: 3002,
-      volume_explanation: CANONICAL_EXPLANATION,
+      target_floor: 2994,
+      volume_explanation: SEED_EXPLANATION,
       depends_on: ['bg_texts', 'bg_yogas', 'bg_dasha_systems'],
     })
   })

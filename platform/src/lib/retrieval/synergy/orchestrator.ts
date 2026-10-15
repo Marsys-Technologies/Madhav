@@ -19,6 +19,7 @@
  */
 
 import { getCapability } from '../registry/index'
+import { PRIMARY_AYANAMSHA } from '../registry/constants'
 import type {
   SynergyQueryClass,
   WholeChartReadResult,
@@ -533,14 +534,14 @@ async function runTemporalStep(
  * no drift by construction.
  *
  * @param chartId      - Chart UUID (required; error if missing)
- * @param ayanamshaId  - Ayanamsha filter (default: 'LAHIRI')
+ * @param ayanamshaId  - Ayanamsha (default: 'lahiri_chitrapaksha', the primary reading; a stored id)
  * @param queryClass   - Query class for conditional enrichment
  * @param queryText    - Optional query text for provenance
  * @param ctx          - DB context + LEL flag
  */
 export async function runWholeChartRead(
   chartId: string,
-  ayanamshaId: string = 'LAHIRI',
+  ayanamshaId: string = PRIMARY_AYANAMSHA,
   queryClass: SynergyQueryClass = 'holistic',
   queryText: string | undefined,
   ctx: SynergyContext

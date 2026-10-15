@@ -200,3 +200,26 @@ def test_promise_subject_sign_fact_resolves_to_real_graha():
         binding={'frame': 'moon', 'rule_id': 'r1'}, source='L1')])
     # A sign fact without its longitude stays unavailable, not a zero-degree object.
     assert [(e.resolution_state, e.object_id) for e in result.edges] == [('unavailable', None)]
+
+
+def test_fifth_star_target_accepts_actual_l1_fact_contract():
+    source = facts() + [fact('birth-star', 'NAKSHATRA_MOON_BIRTH', 'panchanga_nakshatra_moon', 'number', 25),
+        fact('venus-sign', 'VEN', 'graha_sign_attributes', 'sign_num', 1),
+        fact('yamaka-sign', 'YAMAKANTAKA', 'sensitive_point_gulika_mandi', 'sign', None, 'Gemini')]
+    result = api().resolve_relationships('bereavement', facts=source, sign_lords={}, signature={})
+    edge = next(e for e in result.edges if e.target_ref == 'panchama_tara_lord_minus_yamakantaka')
+    assert edge.resolution_state == 'resolved'
+    target = next(o for o in result.objects if o.object_id == edge.object_id)
+    assert target.sign_num == 10
+    assert set(target.fact_ids) == {'birth-star', 'venus-sign', 'yamaka-sign'}
+
+
+def test_unrelated_fact_does_not_change_derived_target_roots():
+    source = facts() + [fact('legacy-star','MOON','graha_nakshatra','nakshatra_id',25), fact('birth-star', 'NAKSHATRA_MOON_BIRTH', 'panchanga_nakshatra_moon', 'number', 25),
+        fact('venus-sign', 'VEN', 'graha_sign_attributes', 'sign_num', 1),
+        fact('yamaka-sign', 'YAMAKANTAKA', 'sensitive_point_gulika_mandi', 'sign', None, 'Gemini')]
+    def derived(source):
+        result=api().resolve_relationships('bereavement', facts=source, sign_lords={}, signature={})
+        edge=next(e for e in result.edges if e.target_ref=='panchama_tara_lord_minus_yamakantaka')
+        return next(o for o in result.objects if o.object_id==edge.object_id)
+    assert derived(source)==derived(source+[fact('unrelated','SAT','graha_dignity_per_varga','dignity_state',None,'own')])

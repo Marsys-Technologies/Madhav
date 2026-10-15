@@ -630,7 +630,12 @@ def check_prompt(state):
 def check_qualification(state, own, env, argv, facts, deadline):
     """plan §7 KV-06 (kyboot.py's receipt check): only a PASS receipt earned under launchd that binds exactly this
     launch qualifies it. Returns (the receipt's binds, the receipt's sha256). Nothing is executed here."""
-    path = os.path.join(own["KY_RUN"], "QUALIFICATIONS", "%s-%s.json" % (state["role"], state["model"]))
+    # Chart variants must be selected here as well as at admission (same role, distinct receipt).
+    variant = "-chart" if os.path.basename(state["mcp_config"]) == "mcp.marsys-only.json" else ""
+    if state["role"] in ("build", "rework", "verify") and state["tests"]:
+        variant += "-tests"
+    path = os.path.join(own["KY_RUN"], "QUALIFICATIONS", "%s%s-%s.json"
+                        % (state["role"], variant, state["model"]))
     if not os.path.isfile(path):
         raise Refuse(65, "qualification: no receipt at %s; role %s with model %s is not a qualified launch "
                          "configuration" % (path, state["role"], state["model"]))

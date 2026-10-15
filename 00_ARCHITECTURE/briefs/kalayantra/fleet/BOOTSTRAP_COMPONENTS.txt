@@ -65,7 +65,9 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_codex_kind_templates.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh
@@ -229,6 +231,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboundary.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate_waiver.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kypacket.py
@@ -277,12 +280,49 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/staged_preinstall.jsonl
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.reviewed.json.gz
 
-# tranche: deferred — the final-receipt tool is in fix loop 2 (review finding S1, 2026-10-13): listed and pinned,
-#   not bound by this bootstrap manifest and not installed; it is bound again by the install that precedes finalisation.
-# tranche: deferred
 
-# area: final-receipt — final manifest and final-mode installation receipt
-00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
+# area: assembly — runtime/test census and newly qualifiable job templates
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_open_fixes.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.json
+
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.codex.json
+
+# area: executor-operations — shared adapter contract and current Wave 4 preparation
+00_ARCHITECTURE/briefs/kalayantra/fleet/OPS_CONTRACT.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/W4_EXECUTOR_BINDINGS.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
+
+# tranche: deferred
+# Listed and hash-pinned, but not installed or launch-authorising.
+# Final receipt tools retain their existing deferred status.
+# Chart variants: missing reviewed MCP definition; harness requires mcp_none.
+# Codex artifact/request-prep/model/plan: completion adapters refuse.
+# Codex pre-accept/ruling: constructors lack packet_path; post-readback operation variant likewise.
 00_ARCHITECTURE/briefs/kalayantra/fleet/kybackfill.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/rehearsal_results.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.artifact.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.chart.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.model.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.plan.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.pre-accept.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.request-prep.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.chart.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.tests.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyfinal.py

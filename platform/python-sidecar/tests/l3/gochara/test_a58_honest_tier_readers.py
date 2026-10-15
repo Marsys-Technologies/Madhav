@@ -331,5 +331,8 @@ def test_unavailable_changes_no_permission_value_and_marks_the_result_partial():
     assert d_part["permission_partial"] is True
     assert {u["system_id"] for u in d_part["systems_unavailable"]} == (
         set(perm.DASHA_SYSTEM_IDS) - {"mudda", "narayana"})
+    # SS N-412 (6): the sade_sati entry reports state "no_data" (with an explicit empty_reason) when its facts were not read;
+    # every dasha-system entry still carries one of the three honest states.
     assert all(s["state"] in ("active", "inactive", "unavailable")
+               or (s["state"] == "no_data" and s["system_id"] == "sade_sati" and s.get("empty_reason"))
                for s in d_part["systems"] if "state" in s)

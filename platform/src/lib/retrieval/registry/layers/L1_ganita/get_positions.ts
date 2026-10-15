@@ -48,11 +48,15 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 import {
   resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
-import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
+import { CROSS_CHECK_KEY } from '../../../ayanamsha_cross_check'
+import { fetchPositionsCrossCheck } from '../../../ayanamsha_cross_check_reads'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -102,7 +106,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: 'Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.',
+      description: KP_AWARE_AYANAMSHA_ID_TEXT,
     },
     categories: {
       type: 'array',
@@ -143,6 +147,15 @@ export const getPositionsCapability: CapabilityDescriptor = {
       enum: FRAME_VALUES,
       default: 'lagna',
     },
+    include_cross_check: {
+      type: 'boolean',
+      description: 'Lahiri-primary PR-3: when true, adds `ayanamsha_cross_check` — the sign and nakshatra of every ' +
+        'graha on this page under the other four ayanamshas, as a LABELLED cross-check ("Cross-check, not the ' +
+        'reading"; categorical equality only, degrees shown never compared). Default false. Independently of ' +
+        'this flag, a page that serves the Lagna or the Moon always carries the compact identity cross-check ' +
+        '(Lagna sign, Moon sign, Moon nakshatra). Not applied under ayanamsha_id:"all" (that is the raw multi-row option).',
+      default: false,
+    },
     offset: { type: 'number', description: 'Pagination offset (default 0)', default: 0 },
     limit:  { type: 'number', description: 'Rows per page (default 200, max 1000)', default: 200 },
   },
@@ -180,7 +193,11 @@ export const getPositionsCapability: CapabilityDescriptor = {
           is_error: true,
         }
       }
-      const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      const aya = kp.aya
+      // The frame's reference sign is read under ONE ayanamsha: the requested one, else Lahiri (also under "all").
+      const frameAyanamsha = aya.id ?? DEFAULT_AYANAMSHA
       const planet = (args.planet as string | undefined)?.trim() || undefined
       const buildFence = classifyBuildFence(args.build_id)
       if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_positions', chartId)
@@ -189,15 +206,14 @@ export const getPositionsCapability: CapabilityDescriptor = {
       const params: unknown[] = [chartId, categories]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1
           AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      // includeInvariant: the opt-in category nakshatra_cross_ayanamsha is stored under the
+      // ayanamsha_id='INVARIANT' sentinel (ga_nakshatra); a bare equality filter would drop it.
+      sql += kp.filter(params, { includeInvariant: true })
       if (buildIds) {
         sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
         params.push(buildIds)
@@ -227,7 +243,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       // multi-category list), grahas + Lagna still LEAD the ordering — upagraha_position/
       // aprakasha_position sort after graha_position rather than interleaving alphabetically
       // (plain `fact_category` ASC would put aprakasha_position BEFORE graha_position).
-      sql += ` ORDER BY ayanamsha_id,
+      sql += ` ORDER BY ${ayanamshaServeOrderBy()},
                  CASE fact_category
                    WHEN 'graha_position' THEN 0
                    WHEN 'upagraha_position' THEN 1
@@ -238,7 +254,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
                LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      let rows = result.rows ?? []
+      let rows = kp.label(normalizeNarrationRows(result.rows))
 
       let frameNote: string | undefined
       // F-159: populated only for frame:'chandra' — see resolveFrameReferenceSign's own doc.
@@ -305,9 +321,27 @@ export const getPositionsCapability: CapabilityDescriptor = {
         }
       }
 
+      // Lahiri-primary PR-3 (SS N-342): the labelled cross-check. The primary answer above is final and
+      // is never reordered or merged with it. Always-on, compact, for the identity facts this page serves
+      // (Lagna sign, Moon sign, Moon nakshatra); the full per-graha form is opt-in via include_cross_check.
+      // Not applied under the raw "all" option (the caller already has every ayanamsha's rows).
+      let crossCheck: Awaited<ReturnType<typeof fetchPositionsCrossCheck>> | undefined
+      if (aya.id !== null && (AYANAMSHA_SERVE_ORDER as readonly string[]).includes(aya.id)) {
+        const subjects = [...new Set(rows
+          .filter(r => r.fact_category === 'graha_position' && typeof r.fact_subject === 'string')
+          .map(r => r.fact_subject as string))]
+        const identitySubjects = subjects.filter(s => s === 'LAGNA' || s === 'MOON')
+        if (args.include_cross_check === true && subjects.length > 0) {
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects, identityOnly: false, mode: 'full', buildIds })
+        } else if (identitySubjects.length > 0) {
+          crossCheck = await fetchPositionsCrossCheck(chartId, aya.id, { subjects: identitySubjects, identityOnly: true, mode: 'compact', buildIds })
+        }
+      }
+
       return {
         content: {
-          chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
+          chart_id: chartId, ...kp.echo(rows), categories, frame, planet: planet ?? null, rows, total: rows.length,
+          ...(crossCheck ? { [CROSS_CHECK_KEY]: crossCheck } : {}),
           include_upagrahas: includeUpagrahas,
           // DENS-F: an explicit `categories` list may name categories this asset does not own (another asset's rows of chart_facts).
           // They are served unchanged (never dropped, B.10) but disclosed here so a caller cannot read the page as only this asset's rows.
@@ -315,7 +349,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No position fact for chart ${chartId} in categories [${categories.join(', ')}]${aya.id ? ` at ayanamsha '${aya.id}'` : ''}${planet ? ` for planet '${planet}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
           ...(frameNote ? { frame_note: frameNote } : {}),
           // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5

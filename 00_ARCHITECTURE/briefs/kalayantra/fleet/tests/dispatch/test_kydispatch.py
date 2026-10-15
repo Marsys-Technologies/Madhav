@@ -511,6 +511,9 @@ class World:
         os.symlink(sys.executable, self.bin / "python3")
         shutil.copy(FLEET / "kylock.sh", self.fleet / "kylock.sh")           # the real instance lock
         shutil.copy(FLEET / "mcp.none.json", self.fleet / "mcp.none.json")
+        (self.fleet / "templates").mkdir()
+        shutil.copy(FLEET / "templates/LAUNCH_CONFIG.surrogate.json",
+                    self.fleet / "templates/LAUNCH_CONFIG.surrogate.json")
         for card in ("KARAKA.md", "PARIKSAKA.md", "ADHIKARIN.md", "OWNER_SURROGATE.md"):
             (self.fleet / "cards" / card).write_text("card %s\n" % card, encoding="utf-8")
         (self.run / "EVENTS.jsonl").write_text("", encoding="utf-8")
@@ -577,7 +580,8 @@ class World:
             self.loop(enabled=True, controller={"id": CTL, "pid": 1})
             for role in ("build", "rework", "verify", "artifact", "pre-accept", "post-readback", "ruling", "surrogate",
                          "plan", "model", "request-prep"):
-                for model in ("claude-sonnet-5-5", "claude-opus-5-5"):
+                for model in (("claude-fable-5-1",) if role == "surrogate" else
+                              ("claude-sonnet-5-5", "claude-opus-5-5")):
                     self.qualification(role, model, setup.get("deadline_seconds", 3600))
             for item, front in DOC["defaults"]["packets"].items():
                 self.packet(item, front)

@@ -1,0 +1,602 @@
+{
+  "chart_snapshot_default": {
+    "content": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "vargas": [
+        "D1"
+      ],
+      "snapshot_text": "D1 — Lagna Ari\n 1 Ari [L] -\n 2 Tau     -\n 3 Gem     -\n 4 Can     -\n 5 Leo     -\n 6 Vir     -\n 7 Lib     Sa 4°30'\n 8 Sco     -\n 9 Sag     -\n10 Cap     Su 22°11'\n11 Aqu     Mo 29°46'\n12 Pis     -",
+      "byte_length": 198,
+      "within_budget": true,
+      "grids": {
+        "D1": [
+          {
+            "sign": "Aries",
+            "lagna": true,
+            "occupants": []
+          },
+          {
+            "sign": "Taurus",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Gemini",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Cancer",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Leo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Virgo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Libra",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Sa",
+                "degree_in_sign": 4.5
+              }
+            ]
+          },
+          {
+            "sign": "Scorpio",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Sagittarius",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Capricorn",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Su",
+                "degree_in_sign": 22.195
+              }
+            ]
+          },
+          {
+            "sign": "Aquarius",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Mo",
+                "degree_in_sign": 29.772
+              }
+            ]
+          },
+          {
+            "sign": "Pisces",
+            "lagna": false,
+            "occupants": []
+          }
+        ]
+      },
+      "additional_vargas": [],
+      "unresolved_vargas": [],
+      "grounding": {
+        "fact_ids": [
+          "d-lagna",
+          "d-moon",
+          "d-sat",
+          "d-sun"
+        ],
+        "table": "chart_divisionals",
+        "fact_category": "varga_position"
+      },
+      "provenance": {
+        "note": "Positions rendered verbatim from chart_divisionals (varga_position); no new computation. D9 included only when include_navamsa=true was explicitly passed. Any vargas requested via the `vargas` param are served additively in `additional_vargas`, never replacing D1/D9."
+      }
+    },
+    "is_error": false
+  },
+  "chart_snapshot_navamsa_vargas": {
+    "content": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "vargas": [
+        "D1",
+        "D9"
+      ],
+      "snapshot_text": "D1 — Lagna Ari\n 1 Ari [L] -\n 2 Tau     -\n 3 Gem     -\n 4 Can     -\n 5 Leo     -\n 6 Vir     -\n 7 Lib     Sa 4°30'\n 8 Sco     -\n 9 Sag     -\n10 Cap     Su 22°11'\n11 Aqu     Mo 29°46'\n12 Pis     -\n\nD9\n 1 Ari     -\n 2 Tau     -\n 3 Gem     -\n 4 Can     -\n 5 Leo     -\n 6 Vir     -\n 7 Lib     -\n 8 Sco     -\n 9 Sag     -\n10 Cap     -\n11 Aqu     -\n12 Pis     -",
+      "byte_length": 358,
+      "within_budget": true,
+      "grids": {
+        "D1": [
+          {
+            "sign": "Aries",
+            "lagna": true,
+            "occupants": []
+          },
+          {
+            "sign": "Taurus",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Gemini",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Cancer",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Leo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Virgo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Libra",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Sa",
+                "degree_in_sign": 4.5
+              }
+            ]
+          },
+          {
+            "sign": "Scorpio",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Sagittarius",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Capricorn",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Su",
+                "degree_in_sign": 22.195
+              }
+            ]
+          },
+          {
+            "sign": "Aquarius",
+            "lagna": false,
+            "occupants": [
+              {
+                "graha": "Mo",
+                "degree_in_sign": 29.772
+              }
+            ]
+          },
+          {
+            "sign": "Pisces",
+            "lagna": false,
+            "occupants": []
+          }
+        ],
+        "D9": [
+          {
+            "sign": "Aries",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Taurus",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Gemini",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Cancer",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Leo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Virgo",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Libra",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Scorpio",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Sagittarius",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Capricorn",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Aquarius",
+            "lagna": false,
+            "occupants": []
+          },
+          {
+            "sign": "Pisces",
+            "lagna": false,
+            "occupants": []
+          }
+        ]
+      },
+      "additional_vargas": [
+        {
+          "varga": "D10",
+          "text": "D10\n 1 Ari     -\n 2 Tau     -\n 3 Gem     -\n 4 Can     -\n 5 Leo     -\n 6 Vir     -\n 7 Lib     -\n 8 Sco     -\n 9 Sag     -\n10 Cap     -\n11 Aqu     -\n12 Pis     -",
+          "byte_length": 159,
+          "rashis": [
+            {
+              "sign": "Aries",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Taurus",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Gemini",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Cancer",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Leo",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Virgo",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Libra",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Scorpio",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Sagittarius",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Capricorn",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Aquarius",
+              "lagna": false,
+              "occupants": []
+            },
+            {
+              "sign": "Pisces",
+              "lagna": false,
+              "occupants": []
+            }
+          ]
+        }
+      ],
+      "unresolved_vargas": [
+        {
+          "varga": "D10",
+          "reason": "\"D10\" is a recognized varga code, but no varga_position rows were found in chart_divisionals for this chart_id/ayanamsha_id — not a rendering error, an honest data gap."
+        }
+      ],
+      "grounding": {
+        "fact_ids": [
+          "d-lagna",
+          "d-moon",
+          "d-sat",
+          "d-sun"
+        ],
+        "table": "chart_divisionals",
+        "fact_category": "varga_position"
+      },
+      "provenance": {
+        "note": "Positions rendered verbatim from chart_divisionals (varga_position); no new computation. D9 included only when include_navamsa=true was explicitly passed. Any vargas requested via the `vargas` param are served additively in `additional_vargas`, never replacing D1/D9."
+      }
+    },
+    "is_error": false
+  },
+  "graha_portrait_Saturn": {
+    "content": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Saturn",
+      "graha_code": "SAT",
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "position": {
+        "rows": [
+          {
+            "fact_id": "p-SAT",
+            "fact_category": "graha_position",
+            "fact_subject": "SAT",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "sign",
+            "fact_value_text": "Libra",
+            "fact_value_num": null
+          }
+        ],
+        "count": 1
+      },
+      "dignity": {
+        "operative_vargas": [
+          "D1",
+          "D9",
+          "D10",
+          "D60"
+        ],
+        "operative_varga_rows": [
+          {
+            "fact_id": "dg-SAT",
+            "fact_category": "graha_dignity_per_varga",
+            "fact_subject": "SAT",
+            "fact_key": "dignity_state",
+            "fact_value_text": "neutral",
+            "fact_value_jsonb": {
+              "varga": "D1"
+            }
+          }
+        ],
+        "all_varga_rows": [
+          {
+            "fact_id": "dg-SAT",
+            "fact_category": "graha_dignity_per_varga",
+            "fact_subject": "SAT",
+            "fact_key": "dignity_state",
+            "fact_value_text": "neutral",
+            "fact_value_jsonb": {
+              "varga": "D1"
+            }
+          }
+        ],
+        "other_rows": [],
+        "count": 1
+      },
+      "functional_nature": {
+        "rows": [],
+        "count": 0
+      },
+      "strength": {
+        "rows": [],
+        "count": 0
+      },
+      "avasthas": {
+        "rows": [],
+        "count": 0
+      },
+      "yogas": {
+        "parivartana_exchanges": [],
+        "parivartana_count": 0,
+        "catalog_yoga_matches": [],
+        "catalog_dosha_matches": [],
+        "count": 0,
+        "note": "L1 yoga_fires: 0 confirmed-firing row(s) for this graha (0 is EXPECTED — yoga_fires/dosha_fires are 0 rows for both canonical charts; they are a requires_pass CATALOG, not confirmed firings — JL-004, restated here rather than re-litigated). parivartana_exchanges is real chart-specific data (structural planetary exchanges). catalog_yoga_matches/catalog_dosha_matches are signal_type_class=yoga/dosha MSR rows mentioning this graha — same catalog shape as L1, served for completeness but NOT confirmed firings; treat as candidate classifications to verify, not findings."
+      },
+      "dashas": {
+        "system": "vimshottari",
+        "level": "maha",
+        "rows": [],
+        "count": 0,
+        "note": "Mahadasha-level (level=1) periods where this graha is lord, across a wide 1900-2100 window (not the tool's ±5y default) so past AND next occurrences both surface. Pass include without \"dashas\" + call get_dashas directly with a narrower window/level for Antardasha-level detail."
+      },
+      "cgm_neighborhood": {
+        "nodes": [],
+        "edges": [],
+        "node_count": 0,
+        "edge_count": 0,
+        "about_resolution": null
+      },
+      "completeness": {
+        "position": "✓",
+        "dignity": "✓",
+        "functional_nature": "zero_rows",
+        "strength": "zero_rows",
+        "avasthas": "zero_rows",
+        "yogas": "zero_rows",
+        "dashas": "zero_rows",
+        "cgm_neighborhood": "zero_rows"
+      },
+      "notes": [],
+      "components_unavailable": [],
+      "component_failures": [],
+      "generation_fence": {
+        "fenced": true,
+        "build_ids": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "code": null,
+        "note": "generation-sensitive components were read fenced to the chart's served build set"
+      },
+      "provenance": {
+        "synthesis_of": [
+          "marsys://tool/L1/get_positions",
+          "marsys://tool/L1/get_dignity",
+          "marsys://tool/L1/get_strength",
+          "marsys://tool/L1/get_avasthas",
+          "marsys://tool/L1/get_yoga_dosha",
+          "marsys://tool/L1/get_dashas",
+          "marsys://tool/L2/query_signals",
+          "marsys://tool/L2/traverse_chart_graph"
+        ],
+        "design_ref": "RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §28.2"
+      }
+    },
+    "is_error": false
+  },
+  "graha_portrait_Moon": {
+    "content": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Moon",
+      "graha_code": "MOON",
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "position": {
+        "rows": [
+          {
+            "fact_id": "p-MOON",
+            "fact_category": "graha_position",
+            "fact_subject": "MOON",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "sign",
+            "fact_value_text": "Aquarius",
+            "fact_value_num": null
+          }
+        ],
+        "count": 1
+      },
+      "dignity": {
+        "operative_vargas": [
+          "D1",
+          "D9",
+          "D10",
+          "D60"
+        ],
+        "operative_varga_rows": [
+          {
+            "fact_id": "dg-MOON",
+            "fact_category": "graha_dignity_per_varga",
+            "fact_subject": "MOON",
+            "fact_key": "dignity_state",
+            "fact_value_text": "neutral",
+            "fact_value_jsonb": {
+              "varga": "D1"
+            }
+          }
+        ],
+        "all_varga_rows": [
+          {
+            "fact_id": "dg-MOON",
+            "fact_category": "graha_dignity_per_varga",
+            "fact_subject": "MOON",
+            "fact_key": "dignity_state",
+            "fact_value_text": "neutral",
+            "fact_value_jsonb": {
+              "varga": "D1"
+            }
+          }
+        ],
+        "other_rows": [],
+        "count": 1
+      },
+      "functional_nature": {
+        "rows": [],
+        "count": 0
+      },
+      "strength": {
+        "rows": [],
+        "count": 0
+      },
+      "avasthas": {
+        "rows": [],
+        "count": 0
+      },
+      "yogas": {
+        "parivartana_exchanges": [],
+        "parivartana_count": 0,
+        "catalog_yoga_matches": [],
+        "catalog_dosha_matches": [],
+        "count": 0,
+        "note": "L1 yoga_fires: 0 confirmed-firing row(s) for this graha (0 is EXPECTED — yoga_fires/dosha_fires are 0 rows for both canonical charts; they are a requires_pass CATALOG, not confirmed firings — JL-004, restated here rather than re-litigated). parivartana_exchanges is real chart-specific data (structural planetary exchanges). catalog_yoga_matches/catalog_dosha_matches are signal_type_class=yoga/dosha MSR rows mentioning this graha — same catalog shape as L1, served for completeness but NOT confirmed firings; treat as candidate classifications to verify, not findings."
+      },
+      "dashas": {
+        "system": "vimshottari",
+        "level": "maha",
+        "rows": [],
+        "count": 0,
+        "note": "Mahadasha-level (level=1) periods where this graha is lord, across a wide 1900-2100 window (not the tool's ±5y default) so past AND next occurrences both surface. Pass include without \"dashas\" + call get_dashas directly with a narrower window/level for Antardasha-level detail."
+      },
+      "cgm_neighborhood": {
+        "nodes": [],
+        "edges": [],
+        "node_count": 0,
+        "edge_count": 0,
+        "about_resolution": null
+      },
+      "completeness": {
+        "position": "✓",
+        "dignity": "✓",
+        "functional_nature": "zero_rows",
+        "strength": "zero_rows",
+        "avasthas": "zero_rows",
+        "yogas": "zero_rows",
+        "dashas": "zero_rows",
+        "cgm_neighborhood": "zero_rows"
+      },
+      "notes": [],
+      "components_unavailable": [],
+      "component_failures": [],
+      "generation_fence": {
+        "fenced": true,
+        "build_ids": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "code": null,
+        "note": "generation-sensitive components were read fenced to the chart's served build set"
+      },
+      "provenance": {
+        "synthesis_of": [
+          "marsys://tool/L1/get_positions",
+          "marsys://tool/L1/get_dignity",
+          "marsys://tool/L1/get_strength",
+          "marsys://tool/L1/get_avasthas",
+          "marsys://tool/L1/get_yoga_dosha",
+          "marsys://tool/L1/get_dashas",
+          "marsys://tool/L2/query_signals",
+          "marsys://tool/L2/traverse_chart_graph"
+        ],
+        "design_ref": "RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §28.2"
+      }
+    },
+    "is_error": false
+  }
+}

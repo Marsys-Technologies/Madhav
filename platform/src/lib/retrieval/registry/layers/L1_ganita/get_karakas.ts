@@ -19,6 +19,11 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import {
+  resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
+  planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
+  KP_AWARE_AYANAMSHA_ID_TEXT,
+} from '../../handler_ayanamsha'
 
 const KARAKA_CATEGORIES = [
   'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada',
@@ -56,11 +61,14 @@ export const getKarakasCapability: CapabilityDescriptor = {
     'available on request (not on the default page — large per-varga/per-house-pair row sets): ' +
     '`karaka_web_per_varga` (karaka relationships recomputed per divisional chart) and ' +
     '`karaka_bhava_concordance` (per-house karaka concordance) — pass ' +
-    'categories:["karaka_web_per_varga"] / ["karaka_bhava_concordance"] explicitly to fetch them.',
+    'categories:["karaka_web_per_varga"] / ["karaka_bhava_concordance"] explicitly to fetch them. ' +
+    'Frames: the Jaimini/other categories are read at the requested ayanamsha (omitted = lahiri_chitrapaksha, ' +
+    'the Lahiri primary); the KP categories (kp_cuspal_significators, kp_ruling_planets_natal, system=kp) are ' +
+    'always read at krishnamurti and labelled "KP frame (Krishnamurti ayanamsha)" whatever ayanamsha_id is passed.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
-    system:       { type: 'string', description: 'Filter by system: jaimini | kp. Omit for all.', enum: ['jaimini', 'kp'] },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
+    system:       { type: 'string', description: 'Filter by system: jaimini | kp. Omit for both. system=kp is always read at krishnamurti ("KP frame (Krishnamurti ayanamsha)"), whatever ayanamsha_id is passed.', enum: ['jaimini', 'kp'] },
     categories:   {
       type: 'array',
       description: 'Explicit category list — overrides the default page entirely. Also the only ' +
@@ -95,31 +103,46 @@ export const getKarakasCapability: CapabilityDescriptor = {
       if (args.system === 'jaimini') {
         categories = categories.filter(c => c.startsWith('karaka') || c.startsWith('jaimini') || ['swamsa_position', 'karakamsa_position', 'arudha_pada', 'karakatva_strength_per_significance'].includes(c))
       }
-      if (args.system === 'kp') {
+      // KP branch (SS N-357): Krishnamurti Paddhati has one frame by doctrine. system=kp is read at
+      // the Krishnamurti ayanamsha whatever id/scope the caller passed (Lahiri primary, "all",
+      // alias, nonsense); the non-KP branches keep the Lahiri default and the "all" opt-out.
+      const isKp = args.system === 'kp'
+      if (isKp) {
         categories = categories.filter(c => c.startsWith('kp'))
       }
 
+      // KP categories (SS N-358): "a KP category is served in the KP frame". The default page names
+      // kp_cuspal_significators + kp_ruling_planets_natal, so it is a MIXED page: those rows are read
+      // at krishnamurti, every other category at the requested/default ayanamsha. An explicit list
+      // naming only KP categories is read wholly at krishnamurti (like system=kp). No KP category in
+      // the list = the previous path, unchanged.
+      const plan = planKpCategories(categories)
+      const mixed = !isKp && plan.mode === 'mixed'
+      const kpOnly = isKp || plan.mode === 'kp_only'
+
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
-        filterParams.push(args.ayanamsha_id as string)
-      }
+      const kpFrame = kpOnly ? resolveKpFrameAyanamsha(args) : null
+      const aya = kpFrame ? kpFrame.aya : resolveHandlerAyanamsha(args)
+      where += mixed ? pushMixedKpAyanamshaFilter(aya, filterParams) : pushAyanamshaFilter(aya, filterParams)
       const pageSql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
 
       const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
       const countResult = await query<{ total: string }>(countSql, filterParams)
+      const pageRows = result.rows ?? []
+      const rows = kpOnly ? labelKpFrameRows(pageRows, true) : mixed ? labelKpFrameRows(pageRows) : pageRows
+      const mixedEcho = mixed ? mixedKpFrameEcho(args, plan.kp, rows.some((r) => r['frame_label'] !== undefined)) : null
       return {
         content: {
-          chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0),
+          chart_id: chartId, ...(kpFrame ? kpFrame.echo : ayanamshaScopeEcho(aya)), ...(mixedEcho ?? {}), categories, rows, total: Number(countResult.rows?.[0]?.total ?? 0),
           // §N.6: density signaling is data, not narration — machine-readable pointer to the
           // real categories this tool can reach but does not include on the default page.
           opt_in_categories_available: KARAKA_OPT_IN_CATEGORIES,

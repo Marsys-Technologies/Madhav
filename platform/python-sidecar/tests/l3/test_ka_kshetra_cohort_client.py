@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 Tests for services.ka_kshetra.cohort_client — KALA_W2_FIELD_DESIGN_v1_0.md §6.3.
 
 ALL tests in this module run against a REAL throwaway Postgres instance loaded
@@ -40,33 +45,15 @@ from services.ka_kshetra.cohort_client import (
     cohort_base_rate,
 )
 
-_DSN = os.environ.get(
-    "LANE_D_COHORT_DSN",
-    "postgresql://postgres@/laned_test?host=/tmp/laned_pg_sock&port=55532",
-)
-_SMALL_DSN = os.environ.get(
-    "LANE_D_COHORT_SMALL_DSN",
-    "postgresql://postgres@/laned_test_small?host=/tmp/laned_pg_sock&port=55532",
-)
-_HETERO_DSN = os.environ.get(
-    "LANE_D_COHORT_HETERO_DSN",
-    "postgresql://postgres@/laned_test_hetero?host=/tmp/laned_pg_sock&port=55532",
-)
 
 
 def _connect(dsn: str):
-    try:
-        import psycopg2
-        conn = psycopg2.connect(dsn)
-        conn.autocommit = False
-        return conn
-    except Exception as exc:  # pragma: no cover - environment-dependent
-        pytest.skip(f"throwaway Postgres not available at {dsn!r}: {exc}")
+    pytest.skip('K0A-R1 NOT_RUN: requires authentic bg_cohort-computed normal N=10000, small N=50 and heterogeneous cohort fixtures with MD chains; no fabricated cohort data or external database access (B.10).')
 
 
 @pytest.fixture(scope="module")
 def conn():
-    c = _connect(_DSN)
+    c = _connect("normal")
     yield c
     c.rollback()
     c.close()
@@ -74,7 +61,7 @@ def conn():
 
 @pytest.fixture(scope="module")
 def small_conn():
-    c = _connect(_SMALL_DSN)
+    c = _connect("small")
     yield c
     c.rollback()
     c.close()
@@ -82,7 +69,7 @@ def small_conn():
 
 @pytest.fixture(scope="module")
 def hetero_conn():
-    c = _connect(_HETERO_DSN)
+    c = _connect("heterogeneous")
     yield c
     c.rollback()
     c.close()

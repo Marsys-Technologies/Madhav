@@ -28,6 +28,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
+import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
@@ -58,7 +60,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
     'Covers 22 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    ayanamsha_id: { type: 'string', description: KP_AWARE_AYANAMSHA_ID_TEXT },
     tradition:    {
       type: 'string',
       description: 'Filter by tradition: esoteric | bhrigu | lal_kitab | maharsi | arabic_parts | saturn.',
@@ -110,18 +112,17 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
-               verification_pass_status, citation_ref
+               verification_pass_status, citation_ref, ${CITATION_HUMAN_SELECT}
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, formula_id LIMIT $3 OFFSET $4`
+      // SS N-358: a KP category in an explicit list is read at krishnamurti (the default page has none).
+      const kp = planKpAwareRead(args, categories)
+      sql += kp.filter(params)
+      sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = kp.label(normalizeNarrationRows(result.rows))
 
       // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────
       // Group the served rows by (category, subject, ayanamsha, fact_key); any group with >1
@@ -159,6 +160,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId,
+          ...kp.echo(rows),
           categories,
           rows,
           total: rows.length,
@@ -168,7 +170,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
             ? { categories_outside_asset: foreign(categories), categories_outside_asset_note: 'These requested categories belong to another asset; their rows are served but are not this surface\'s own layer.' }
             : {}),
           ...(rows.length === 0
-            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${args.ayanamsha_id ? ` at ayanamsha '${String(args.ayanamsha_id)}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
+            ? { empty_reason: `No sensitive-point fact for chart ${chartId} in ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}${kp.aya.id ? ` at ayanamsha '${kp.aya.id}'` : ''}${offset > 0 ? ` (offset ${offset})` : ''}.` }
             : {}),
           // WP-1.8: never collapse multi-formula points — both rows are in `rows`; this block
           // names the divergence explicitly so a downstream key→value pivot cannot hide it.

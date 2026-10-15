@@ -1595,16 +1595,21 @@ def scan(units, entries, holders, *, is_placeholder, sql_texts, parse_entry, bey
                                 acc.sources += 1
                                 an.expr(x, acc)
         if path is not None:
-            leaf = [k for k in path if k != "[*]"][-1]
-            srcs = scope.key_sources(leaf)
-            opaque = scope.opaque({(scope.unit_of.get(id(x)) or {}).get("rel") for x in srcs}, leaf)
-            if not srcs:
-                acc.unres(f"JSON path entry {e}: no assignment to the nested key {leaf!r} in the scanned scope")
-            elif opaque:
-                acc.unres(f"JSON path entry {e}: dynamic row construction in scope could also supply the nested key ({opaque[0]})")
-            for s in srcs:
-                acc.sources += 1
-                an.expr(s, acc)
+            # a wildcard segment ([*] array elements, * object members) is not a key of the writer's dict: the leaf is the last real key (SS N-448/N-450)
+            keys = [k for k in path if k not in ("[*]", "*")]
+            if not keys:
+                acc.unres(f"JSON path entry {e}: every member value of the column is declared, so there is no nested key to trace to a write")
+            else:
+                leaf = keys[-1]
+                srcs = scope.key_sources(leaf)
+                opaque = scope.opaque({(scope.unit_of.get(id(x)) or {}).get("rel") for x in srcs}, leaf)
+                if not srcs:
+                    acc.unres(f"JSON path entry {e}: no assignment to the nested key {leaf!r} in the scanned scope")
+                elif opaque:
+                    acc.unres(f"JSON path entry {e}: dynamic row construction in scope could also supply the nested key ({opaque[0]})")
+                for s in srcs:
+                    acc.sources += 1
+                    an.expr(s, acc)
         if found == 0:
             acc.unres(f"no statement in the scanned scope writes the column {col!r} of {', '.join(holders.get(col, [])) or 'its table'} (INSERT column list / UPDATE SET)")
         per_entry[e] = dict(writes=found, sources=acc.sources, problems=acc.problems, unresolved=acc.unresolved)

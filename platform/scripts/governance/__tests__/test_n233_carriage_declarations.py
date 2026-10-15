@@ -39,7 +39,6 @@ D3 = ["bg_kp_sublord_division", "bg_parihara_rules", "ga_nakshatra", "ga_sensiti
 TEN = D1 + D3
 JUDG = ["bg_class_priors", "bg_class_lifetime_counts", "bg_formula_constants", "bg_ghatana"]            # N-235 (b): ratified_judgment
 REFUSED = {
-    "bg_sarvatobhadra_grid": "not built (no rows): there is nothing to declare a carriage of",
     "bg_ephemeris_engine": "service probe owning no table: no carriage form exists for it",
     "bg_panchanga": "service probe owning no table: no carriage form exists for it",
 }
@@ -166,11 +165,11 @@ def test_ga_sensitive_two_pass_exists_only_in_the_solar_upagraha_branch_and_ever
     src = _src(rel)
     calls = [n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "two_pass_verdict"]
     assert len(calls) == 1 and "upagraha_agree" in src                                                   # ONE call site: the upagraha branch
-    assert _line(rel, 3193).strip().startswith("single = [r for r in rows if r.get(\"verification_pass_status\") == UNVERIFIED_DEFAULT]")
+    assert _line(rel, 3202).strip().startswith("single = [r for r in rows if r.get(\"verification_pass_status\") == UNVERIFIED_DEFAULT]")
     assert "`single` is a permitted tier for" in src or "permitted tier" in src
     c = DECLS["ga_sensitive"]["carriage"]
     assert "EXCEPT the five solar upagraha" in c["why"] and "ARE independently re-derived" in c["why"] and "NOT claimed" in c["why"] and "does not measure" in c["why"]      # the exception is stated first, and single-derivation is disclaimed for those rows
-    assert _line(rel, 675).strip() == "verdict = two_pass_verdict(True, upagraha_agree)" and c["evidence"].endswith("ga_sensitive_writer.py:675")
+    assert _line(rel, 684).strip() == "verdict = two_pass_verdict(True, upagraha_agree)" and c["evidence"].endswith("ga_sensitive_writer.py:684")
 
 
 def test_ga_medical_reads_stored_condition_scores_and_the_l0_mapping_and_computes_no_position():

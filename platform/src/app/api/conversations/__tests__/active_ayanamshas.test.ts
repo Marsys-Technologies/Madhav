@@ -35,12 +35,14 @@ import { query } from '@/lib/db/client'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Lahiri-primary (N-339): the default list is the five STORED ids, Lahiri first
+// (it used to be short ids plus the non-stored `yukteshwar`).
 const CANONICAL_AYANAMSHAS = [
-  'lahiri',
-  'raman',
-  'krishnamurti',
-  'yukteshwar',
+  'lahiri_chitrapaksha',
   'true_chitra',
+  'krishnamurti',
+  'raman',
+  'surya_siddhanta_classical',
 ]
 
 function makeCtx(id: string) {
@@ -262,4 +264,36 @@ describe('GET /api/conversations/[id]/active-ayanamshas', () => {
 
     expect(body.conversation_id).toBe('conv-xyz')
   })
+
+  // ── 14. Lahiri-primary (N-339): primary field + cross-check set (additive) ─────
+  it('reports Lahiri as primary and the other four as the cross-check set by default', async () => {
+    vi.mocked(getServerUser).mockResolvedValue({ uid: 'user-1' } as never)
+    mockQuerySequence(false, { id: 'conv-1', user_id: 'user-1', chart_id: null })
+
+    const body = await (await GET(makeRequest(), makeCtx('conv-1'))).json()
+
+    expect(body.primary).toBe('lahiri_chitrapaksha')
+    expect(body.cross_check_ayanamshas).toEqual(['true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical'])
+    expect(body.active_ayanamshas).not.toContain('yukteshwar') // not a stored ayanamsha
+    // backward compatible: the original keys are all still present
+    for (const k of ['conversation_id', 'active_ayanamshas', 'source', 'chart_id', 'chart_build_ayanamshas']) {
+      expect(body).toHaveProperty(k)
+    }
+  })
+
+  it('Lahiri stays primary even when the explicit list excludes it; aliases normalise, junk is skipped', async () => {
+    vi.mocked(getServerUser).mockResolvedValue({ uid: 'user-1' } as never)
+    mockQuerySequence(true, {
+      id: 'conv-1', user_id: 'user-1', chart_id: null,
+      active_ayanamshas: ['raman', 'kp', 'yukteshwar'],
+    })
+
+    const body = await (await GET(makeRequest(), makeCtx('conv-1'))).json()
+
+    expect(body.source).toBe('explicit')
+    expect(body.active_ayanamshas).toEqual(['raman', 'kp', 'yukteshwar']) // echoed as stored
+    expect(body.primary).toBe('lahiri_chitrapaksha')
+    expect(body.cross_check_ayanamshas).toEqual(['krishnamurti', 'raman']) // serve order, stored ids, junk skipped
+  })
 })
+

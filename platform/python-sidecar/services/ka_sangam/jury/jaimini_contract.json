@@ -1,0 +1,22 @@
+{
+  "contract_version": "k4-2a:jaimini_method_output:v1",
+  "scope": "KYD-137 fixture consumer; live producer and doctrine admission remain unqualified",
+  "inputs": {
+    "clock": "upstream F2 chara DashaMethod",
+    "cara_refs": "nonempty pinned upstream Cara input references",
+    "rasi_refs": "nonempty pinned directed rasi-drishti input references",
+    "contacts": "root_id, caster, target, half-open interval; no reverse expansion"
+  },
+  "assertion": {
+    "fields": ["rule_ref", "interval", "roots", "conclusion"],
+    "conclusions": ["supportive", "adverse", "obstructed", "conditionally_deferred", "denied", "defeated", "none"]
+  },
+  "output": {
+    "fields": ["contract_version", "event_class", "horizon", "clock", "cara_refs", "rasi_refs", "review_refs", "coverage", "contacts", "assertions", "complete"],
+    "coverage": "complete horizon and every assertion interval covered by each required directed contact",
+    "admission": "exact contract version, typed conclusions, complete method, input provenance, coverage, and independent method review references required",
+    "missing": "information_unavailable with named reason; no support or opinions",
+    "semantics": "support vectors record evidence activity; opinions retain conclusions separately; defeated and none assertions provide no corroboration"
+  },
+  "live_missing": "complete producer, event-class predicates, served locators, source/field/state mappings and independent method qualification remain due"
+}

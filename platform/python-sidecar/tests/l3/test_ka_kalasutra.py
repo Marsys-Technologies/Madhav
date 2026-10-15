@@ -236,6 +236,8 @@ class _Ctx:
     def __init__(self, conn, chart_id):
         self.db_conn = conn
         self.config = {"chart_id": chart_id}
+        self.build_id = '00000000-0000-0000-0000-000000000602'
+        self.dry_run = False
 
 
 def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():

@@ -86,6 +86,7 @@ describe('getVastuDirectionsCapability — F-E11 classical remedy join', () => {
     const rowsParams = mockQuery.mock.calls[0][1] as unknown[]
     expect(rowsSql).toMatch(/m\.chart_id = \$1/)
     expect(rowsSql).toMatch(/m\.direction = \$2/)
-    expect(rowsParams).toEqual([CHART_ID, 'East', 50])
+    // PR-2: omitted ayanamsha_id = the primary reading (Lahiri)
+    expect(rowsParams).toEqual([CHART_ID, 'East', 'lahiri_chitrapaksha', 50])
   })
 })

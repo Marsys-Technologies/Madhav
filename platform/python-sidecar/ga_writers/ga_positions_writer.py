@@ -30,7 +30,7 @@ from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
-
+from brahmagyan.nakshatra_vocabulary import normalize_nakshatra  # SS N-548: the lexicon's spelling is applied HERE, at emission; the adapter's name table stays byte-identical
 from brahmagyan.graha_vocabulary import norm_graha
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -282,7 +282,7 @@ def _build_position_rows(
         lon_sid = float(g.get("longitude_deg", g.get("lon", 0)))
         sign = g.get("sign", "")
         sign_lord = g.get("sign_lord", "")
-        nakshatra = g.get("nakshatra", "")
+        nakshatra = normalize_nakshatra(g["nakshatra"]) if g.get("nakshatra") else ""  # SS N-548: adapter spelling (Mrigashira/Mula/Dhanishta) -> lexicon spelling; an unregistered name raises, never a default
         nakshatra_lord = g.get("nakshatra_lord", "")
         pada = int(g.get("pada", g.get("nakshatra_pada", 0)))
         house_d1 = int(g.get("house", 0))

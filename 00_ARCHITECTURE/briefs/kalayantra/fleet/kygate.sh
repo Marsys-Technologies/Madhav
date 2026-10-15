@@ -1,8 +1,8 @@
 #!/bin/bash
 # kygate.sh — the KĀLA-YANTRA v3 release gate (relaunch plan v2.7 §10; packet KV3-B-KYGATE).
 #
-#   kygate.sh                the full gate: OPEN only with the release receipt, final Wave B acceptance, no global
-#                            HOLD and a matching N-467 resume record
+#   kygate.sh                the full gate: OPEN only with the release receipt, final Wave B acceptance (or the
+#                            owner waiver below), no global HOLD and a matching N-467 resume record
 #   kygate.sh --pre-resume   the same without the resume record: READY_TO_START only when that record is the sole
 #                            thing missing
 #   anything else: usage, exit 64, nothing on stdout.
@@ -21,6 +21,9 @@
 #   reason=<code>: <detail>   one per failed check; any reason line means WAIT
 #   note=<code>: <detail>     --pre-resume only: what is wrong with a resume record that does not satisfy N (it is
 #                             reported and does not block)
+#   final_acceptance=waived_by_owner  only with the valid OWNER_RESUME.waiver below
+#   bootstrap_manifest_digest=       its recomputed digest, used for N instead of A2
+#   waived=<code>: <detail>   A findings under that waiver; these alone never mean WAIT
 #
 # Env: KY_ROOT (default /Users/Dev/kalayantra), KY_RUN (default $KY_ROOT/run), KY_FLEET (default: this script's
 # directory), KY_SOURCE_REPO (the git checkout; default as kyctl.sh). All four must be absolute.
@@ -60,7 +63,14 @@
 #                                                 resume_ts_not_utc
 #      Full gate: N must hold. --pre-resume: a record satisfying N is WAIT `already_resumed`; one that is there
 #      and cannot be read is WAIT `resume_unreadable` (it might be the satisfying one).
-#   The four records are read once; one that differs when the gate has finished is WAIT `inputs_changed`.
+#   Owner waiver: OWNER_RESUME.waiver = {final_acceptance: true, decided_by: {kind: "owner", id}, reason, ts}.
+#      Its schema is inline below (there is no existing OWNER_RESUME schema); malformed waiver = resume_malformed,
+#      also in --pre-resume. (I) INTERPRETATION: both the resume and waiver deciders must be owner; a surrogate
+#      cannot delegate the waiver. A1-A6 are reported as waived; final-mode A7 is replaced with REQUIRED
+#      kyversion.sh --bootstrap (bootstrap_acceptance_unverified). N approves the recomputed digest of
+#      VERSIONS.bootstrap.json, which must say bootstrap and state that digest (bootstrap_manifest_invalid).
+#      All other N/R/H rules, including already_resumed in --pre-resume, remain in force.
+#   The records are read once; one that differs when the gate has finished is WAIT `inputs_changed`.
 set -u
 
 usage() {
@@ -99,6 +109,7 @@ if [ -z "$PY" ]; then unknown "python3 not found on PATH"; fi
 "$PY" -I -B - "$MODE" "$KY_ROOT" "$KY_RUN" "$KY_FLEET" "$KY_SOURCE_REPO" <<'PYEOF'
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -113,6 +124,21 @@ RELEASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 TS_UTC = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,6})?(Z|\+00:00)")
 BINDING = "N-467"
 DECIDERS = ("owner", "surrogate_decision")
+# Only this optional field is schema-validated: the existing N checks and legacy outputs stay unchanged.
+WAIVER_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "required": ["final_acceptance", "decided_by", "reason", "ts"],
+    "properties": {
+        "final_acceptance": {"type": "boolean"},
+        "decided_by": {
+            "type": "object", "additionalProperties": False, "required": ["kind", "id"],
+            "properties": {"kind": {"enum": list(DECIDERS)},
+                           "id": {"type": "string", "pattern": "\\S"}},
+        },
+        "reason": {"type": "string", "pattern": "\\S"},
+        "ts": {"type": "string", "pattern": "^" + TS_UTC.pattern + "$"},
+    },
+}
 KYVERSION_TIMEOUT_S = 300
 TOOL_TIMEOUT_S = 60
 # condition → the evidence fields plan §10 names for it
@@ -254,10 +280,14 @@ class Gate:
     def __init__(self, mode, root, run, fleet, repo):
         self.mode, self.root, self.run, self.fleet, self.repo = mode, root, run, fleet, repo
         self.reasons, self.notes = [], []
+        self.waived = []
+        self.owner_waiver = False
+        self.resume_record = None
+        self.bootstrap_digest = None
         self.read = {}                       # path → fingerprint when this gate read it
         self.release_id = None
         self.receipt_digest = None           # set by R2 only
-        self.manifest_digest = None          # set by A2 only
+        self.manifest_digest = None          # A2, or the recomputed bootstrap digest under the owner waiver
         self.git_state = None                # None = not asked yet, True = answering, False = not answering
 
     def fail(self, code, detail):
@@ -425,6 +455,41 @@ class Gate:
                           % (commit, ref, tip.stdout.strip()))
 
     # ── A: final Wave B acceptance ──────────────────────────────────────────────────────────────────────────
+    def check_waiver(self):
+        state, doc, path = self.resume_record
+        if state != "ok" or "waiver" not in doc:
+            return
+        waiver = doc["waiver"]
+        try:
+            spec = importlib.util.spec_from_file_location("kygate_schema", os.path.join(self.fleet, "kyschema.py"))
+            validator = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(validator)
+            wrong = validator.validate(WAIVER_SCHEMA, waiver)
+            if not wrong:
+                match = TS_UTC.fullmatch(waiver["ts"])
+                datetime.datetime.strptime(match.group(1), "%Y-%m-%dT%H:%M:%S")
+        except (OSError, ValueError, TypeError, AttributeError, RecursionError) as failed:
+            wrong = ["waiver validation failed (%s)" % type(failed).__name__]
+        if wrong:
+            self.fail("resume_malformed", "%s waiver: %s" % (path, "; ".join(wrong)))
+            return
+        decided = doc.get("decided_by")
+        self.owner_waiver = (waiver["final_acceptance"] is True and waiver["decided_by"]["kind"] == "owner"
+                             and isinstance(decided, dict) and decided.get("kind") == "owner")
+
+    def check_bootstrap(self):
+        state, manifest, path = self.record("VERSIONS.bootstrap.json")
+        self.manifest_digest = None
+        stated = manifest.get("manifest_sha256") if manifest is not None else None
+        computed = digest_without(manifest, "manifest_sha256") if manifest is not None else None
+        if (state == "ok" and manifest.get("mode") == "bootstrap" and is_hex64(stated)
+                and stated == computed):
+            self.manifest_digest = self.bootstrap_digest = computed
+        else:
+            self.fail("bootstrap_manifest_invalid", "%s is %s, mode %s, hashes to %s and states %s"
+                      % (path, state, show(manifest.get("mode") if manifest is not None else None),
+                         computed or "nothing computable", show(stated)))
+
     def check_acceptance(self):
         receipt_state, receipt, receipt_path = self.record("INSTALL_RECEIPT.json")
         manifest_state, manifest, manifest_path = self.record("VERSIONS.json")
@@ -486,15 +551,15 @@ class Gate:
         if validated is not True:
             self.fail("backfill_unvalidated", "backfill.validated is %s, not true" % show(validated))
 
-    def check_kyversion(self, args):                                                                    # A7
+    def check_kyversion(self, args, failure_code="final_acceptance_unverified"):                         # A7
         """`args` None = there is nothing this mode may hand kyversion.sh, so it is not run"""
         script = os.path.join(self.fleet, "kyversion.sh")
         if args is None:
-            self.fail("final_acceptance_unverified", "the resume record gives no approved_bundle_digest to hand "
+            self.fail(failure_code, "the resume record gives no approved_bundle_digest to hand "
                       "kyversion.sh --expected-manifest-digest; it was not run")
             return
         if not os.path.isfile(script):
-            self.fail("final_acceptance_unverified", "kyversion.sh is missing: %s" % script)
+            self.fail(failure_code, "kyversion.sh is missing: %s" % script)
             return
         limit = KYVERSION_TIMEOUT_S
         override = os.environ.get("KY_GATE_KYVERSION_TIMEOUT_S", "")
@@ -507,7 +572,7 @@ class Gate:
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, cwd="/",
                                      start_new_session=True)
         except (OSError, ValueError) as failed:
-            self.fail("final_acceptance_unverified", "kyversion.sh could not be run (%s)" % type(failed).__name__)
+            self.fail(failure_code, "kyversion.sh could not be run (%s)" % type(failed).__name__)
             return
         try:
             rc = child.wait(timeout=limit)
@@ -517,10 +582,10 @@ class Gate:
             except (ProcessLookupError, PermissionError):
                 pass
             child.wait()
-            self.fail("final_acceptance_unverified", "kyversion.sh %s timed out after %d s" % (" ".join(args), limit))
+            self.fail(failure_code, "kyversion.sh %s timed out after %d s" % (" ".join(args), limit))
             return
         if rc != 0:
-            self.fail("final_acceptance_unverified", "kyversion.sh %s ended rc=%d" % (" ".join(args), rc))
+            self.fail(failure_code, "kyversion.sh %s ended rc=%d" % (" ".join(args), rc))
 
     # ── N: the N-467 resume record ──────────────────────────────────────────────────────────────────────────
     def resume_problems(self, doc, path):
@@ -542,8 +607,9 @@ class Gate:
         if "approved_bundle_digest" not in doc:
             missing("approved_bundle_digest")
         elif self.manifest_digest is None or doc["approved_bundle_digest"] != self.manifest_digest:
-            out.append(("resume_bundle_mismatch", "the record approves bundle %s; the final manifest's digest is %s"
-                        % (show(doc["approved_bundle_digest"]), self.manifest_digest or "unknown")))
+            out.append(("resume_bundle_mismatch", "the record approves bundle %s; the %s manifest's digest is %s"
+                        % (show(doc["approved_bundle_digest"]), "bootstrap" if self.owner_waiver else "final",
+                           self.manifest_digest or "unknown")))
         if "decided_by" not in doc:
             missing("decided_by")
         elif not isinstance(doc["decided_by"], dict):
@@ -574,7 +640,7 @@ class Gate:
 
     def check_resume(self):
         """the arguments kyversion.sh takes in this mode, or None when the full gate has no digest to hand it"""
-        state, doc, path = self.record("OWNER_RESUME.json")
+        state, doc, path = self.resume_record
         pre = self.mode == "pre-resume"
         if state == "unreadable":
             self.fail("resume_unreadable", "%s is there and cannot be read%s"
@@ -607,8 +673,20 @@ class Gate:
 
     def decide(self):
         self.check_release()
+        self.resume_record = self.record("OWNER_RESUME.json")
+        self.check_waiver()
+        before = len(self.reasons)
         self.check_acceptance()
-        self.check_kyversion(self.check_resume())
+        final_digest = self.manifest_digest
+        if self.owner_waiver:
+            self.waived.extend(self.reasons[before:])
+            del self.reasons[before:]
+            self.check_bootstrap()
+            self.check_resume()
+            self.waived.append(("final_acceptance_unverified", "final-mode kyversion.sh replaced by kyversion.sh --bootstrap"))
+            self.check_kyversion(["--bootstrap"], "bootstrap_acceptance_unverified")
+        else:
+            self.check_kyversion(self.check_resume())
         for path in sorted(self.read):
             if fingerprint(path) != self.read[path]:
                 self.fail("inputs_changed", "%s changed while the gate ran: %s" % (os.path.basename(path), path))
@@ -616,10 +694,13 @@ class Gate:
         word = "WAIT" if self.reasons else ("READY_TO_START" if self.mode == "pre-resume" else "OPEN")
         lines = [word, "release_id=%s" % (self.release_id or ""),
                  "release_receipt_digest=%s" % (self.receipt_digest or ""),
-                 "final_manifest_digest=%s" % (self.manifest_digest or ""),
+                 "final_manifest_digest=%s" % (final_digest or ""),
                  "hold_merges=%s" % hold_merges, "unobserved=%s" % UNOBSERVED]
         lines += ["reason=%s: %s" % (code, one_line(detail)) for code, detail in self.reasons]
         lines += ["note=%s: %s" % (code, one_line(detail)) for code, detail in self.notes]
+        if self.owner_waiver:
+            lines += ["final_acceptance=waived_by_owner", "bootstrap_manifest_digest=%s" % (self.bootstrap_digest or "")]
+            lines += ["waived=%s: %s" % (code, one_line(detail)) for code, detail in self.waived]
         return lines, (EXIT_WAIT if self.reasons else 0)
 
 

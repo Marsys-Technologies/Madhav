@@ -35,7 +35,7 @@ BAD_SESSIONS = ["", "..", "a..b", "a/b", "/abs", "a'b", 'a"b', "-a", ".a", "a b"
 # One program plays every external tool; the name it is started under selects the part. State lives in world.json,
 # every call is appended to calls.jsonl with the names (never the values) of the connection variables it was given.
 FAKE_SRC = r'''
-import hashlib, json, os, re, sys
+import hashlib, json, os, re, shutil, sys
 HOME = os.path.dirname(os.path.abspath(__file__))
 WORLD = os.path.join(HOME, "world.json"); CALLS = os.path.join(HOME, "calls.jsonl")
 PGDATA = "/var/lib/postgresql/data"
@@ -62,16 +62,30 @@ def docker(argv, w):
     verb, rest, c = (argv[0] if argv else ""), argv[1:], w["container"]
     if verb == "ps":
         if "-a" not in rest or "name=^/ky-pg$" not in rest: die(64, "fake docker: unexpected ps " + repr(rest))
+        if c and c.get("removing"):
+            if m.get("removal_polls", 0) == 0:
+                w["container"] = c = None; w["dbs"] = {}
+            else:
+                m["removal_polls"] -= 1
+            save(w)
+        elif not c and m.get("cleanup_polls"):
+            m["cleanup_polls"] -= 1
+            if m["cleanup_polls"] == 0:
+                shutil.rmtree(m["cleanup_storage"])
+                os.unlink(m["cleanup_record"])
+            save(w)
+        if m.get("hide_removing") and c and c.get("removing"): return 0
         if c: print(c["id"])
         return 0
     if verb == "inspect":
         if not c or rest[-1] not in (c["id"], "ky-pg"): die(1, "Error: No such object")
-        print(json.dumps({"Id": c["id"], "Name": "/ky-pg", "State": {"Running": c["running"]},
+        print(json.dumps({"Id": c["id"], "Name": "/ky-pg", "State": {"Running": c["running"],
+                          "Status": "removing" if c.get("removing") else ("running" if c["running"] else "exited")},
                           "Config": {"Image": c["image"], "Labels": c["labels"], "Env": ["POSTGRES_PASSWORD=postgres"]},
                           "HostConfig": {"PortBindings": c["ports"]}, "Mounts": c["mounts"]}))
         return 0
     if verb == "run":
-        if c: die(125, "Conflict. The container name is already in use")
+        if c: die(125, 'Conflict. The container name "/ky-pg" is already in use')
         if m.get("run_fail"): die(125, "fake docker: run failed")
         labels, ports, mounts, i, image = {}, {}, [], 0, None
         while i < len(rest):
@@ -109,6 +123,8 @@ def docker(argv, w):
             if m.get("rm_fail"): die(1, "fake docker: cannot remove")
             if m.get("rm_noop"): return 0
             if c["running"] and "-f" not in rest: die(1, "cannot remove a running container")
+            if m.get("rm_delay"):
+                c["removing"] = True; save(w); return 0
             w["container"] = None; w["dbs"] = {}
         save(w); return 0
     die(64, "fake docker: unsupported verb " + verb)
@@ -1518,3 +1534,55 @@ def test_no_output_or_file_holds_a_password_or_url_across_a_whole_life(lab):
     assert len(lab.outputs) == 10 and any("READY" in out for _, out, _ in lab.outputs)
     files = [p for root in (lab.run_dir, lab.scratch_real) for p in root.rglob("*") if p.is_file()]
     assert len(files) >= 8
+
+
+@pytest.mark.parametrize("hidden", [False, True])
+def test_up_waits_for_previous_compatible_removal_and_name_release(lab, hidden):
+    old = lab.plant_container(session="PREVIOUS", running=False)
+    lab.modes(rm_delay=True, removal_polls=3, hide_removing=hidden)
+    subprocess.run([str(lab.fake / "docker"), "rm", old["id"]], check=True, capture_output=True)
+    lab.forget_calls()
+    p = lab.run("up", "--session", "S1")
+    assert p.returncode == 0, p.stdout + p.err
+    c = lab.world()["container"]
+    assert c["id"] != old["id"] and c["labels"]["ky.session"] == "S1"
+    assert c["mounts"][0]["Source"] == str(lab.R / "db" / "S1" / "pgdata")
+    assert not {"start", "stop", "rm", "rename"} & set(docker_verbs(lab.calls()))
+
+
+def test_up_waits_for_preceding_removal_record_cleanup(lab):
+    old = lab.plant_container(session="PREVIOUS", running=False)
+    store = lab.R / "db" / "PREVIOUS"
+    lab.record_path().parent.mkdir(parents=True)
+    lab.record_path().write_text(json.dumps({"owner": "PREVIOUS", "from": "OLDER", "storage": str(store)}))
+    lab.modes(rm_delay=True, removal_polls=2, cleanup_polls=2,
+              cleanup_storage=str(store), cleanup_record=str(lab.record_path()))
+    subprocess.run([str(lab.fake / "docker"), "rm", old["id"]], check=True, capture_output=True)
+    lab.forget_calls()
+    p = lab.run("up", "--session", "S1")
+    assert p.returncode == 0, p.stdout + p.err
+    assert not store.exists() and not lab.record_path().exists()
+    assert lab.world()["container"]["labels"]["ky.session"] == "S1"
+
+
+def test_up_removal_wait_is_bounded_and_never_starts_the_removing_container(lab):
+    old = lab.plant_container(session="PREVIOUS", running=False)
+    w = lab.world(); w["container"]["removing"] = True; lab.save(w)
+    lab.modes(removal_polls=1000)
+    p = lab.run("up", "--session", "S1")
+    assert p.returncode == 1, p.stdout + p.err
+    assert "removal" in p.err
+    assert lab.world()["container"]["id"] == old["id"]
+    assert mutating(lab.calls()) == []
+    assert len([c for c in lab.calls() if c["tool"] == "docker" and c["argv"][0] == "ps"]) <= 12
+
+
+def test_up_never_waits_for_or_touches_a_foreign_removing_container(lab):
+    lab.plant_container(image="postgres:16", running=False)
+    w = lab.world(); w["container"]["removing"] = True; lab.save(w)
+    lab.modes(removal_polls=1000)
+    before = lab.tree()
+    p = lab.run("up", "--session", "S1")
+    assert p.returncode == 2 and "INCOMPATIBLE" in p.err
+    assert lab.tree() == before and mutating(lab.calls()) == []
+    assert docker_verbs(lab.calls()) == ["ps", "inspect"]

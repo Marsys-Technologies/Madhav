@@ -377,7 +377,8 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           .map(r => r.signal_id).filter(Boolean) as string[]
       )]
 
-      let predicates: unknown[] = []
+      let predicates: Record<string, unknown>[] = []
+      const judgment_flags: string[] = []
       if (predSignalIds.length > 0) {
         const predPhs = predSignalIds.map((_, i) => `$${i + 3}`).join(', ')
         const predSql = `
@@ -391,7 +392,37 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
             AND signal_id IN (${predPhs})
         `
         const predResult = await query<Record<string, unknown>>(predSql, [chart_id, ayanamsha_id, ...predSignalIds])
-        predicates = predResult.rows
+        const ranked = predResult.rows.map(row => {
+          const raw = row['derivation_ledger_jsonb']
+          const ledger: Record<string, unknown> = raw && typeof raw === 'object' && !Array.isArray(raw)
+            ? raw as Record<string, unknown> : {}
+          const isYoga = Boolean(ledger['canonical_id']) || row['signature_class'] === 'YOGA'
+          const unknownYogaTier = isYoga && ledger['yoga_tier'] == null
+          const unverifiedYogaTier = isYoga && ledger['yoga_tier'] !== 'two_pass_verified'
+          const ids = Array.isArray(ledger['fact_ids']) ? ledger['fact_ids'] as unknown[] : []
+          const rawTiers = ledger['constituent_fact_tiers']
+          const tiers = rawTiers && typeof rawTiers === 'object' && !Array.isArray(rawTiers)
+            ? rawTiers as Record<string, unknown> : {}
+          const factVerified = ids.length > 0 && ids.every(id => tiers[String(id)] === 'two_pass_verified')
+          const unassessedReason = ledger['null_reason'] === 'partial_defeat_unassessed'
+            || ledger['null_reason'] === 'contestation_unassessed'
+            || ledger['null_reason'] === 'missing_defeat_facts'
+            || ledger['null_reason'] === 'defeat_evidence_missing'
+            || ledger['null_reason'] === 'defeat_evidence_ambiguous'
+            || ledger['null_reason'] === 'conditions_unassessed' ? ledger['null_reason'] as string : null
+          const rank = unassessedReason ? 2 : factVerified && !unverifiedYogaTier ? 0 : unverifiedYogaTier ? 1 : 2
+          if (unassessedReason && !judgment_flags.includes(unassessedReason)) judgment_flags.push(unassessedReason)
+          if (!unknownYogaTier) return { row, rank }
+          if (!judgment_flags.includes('yoga_tier_unavailable')) judgment_flags.push('yoga_tier_unavailable')
+          const priorFlags = Array.isArray(ledger['judgment_flags']) ? ledger['judgment_flags'] as string[] : []
+          return { rank, row: { ...row, derivation_ledger_jsonb: {
+            ...ledger, yoga_tier: null,
+            null_reason: unassessedReason ?? 'ga_yoga_firings_carries_no_verification_tier',
+            judgment_flags: [...new Set([...priorFlags, 'yoga_tier_unavailable'])],
+          } } }
+        })
+        predicates = ranked.sort((a, b) => a.rank - b.rank
+          || String(a.row['id']).localeCompare(String(b.row['id']))).map(item => item.row)
       }
 
       // Collect signal_id references
@@ -619,6 +650,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           // semantically different kala_bhavishya fallback.
           forward_window_status,
           predicates,
+          judgment_flags,
           predicate_count:   predicates.length,
           signal_id_refs:    signalRefs,
           filters: {
