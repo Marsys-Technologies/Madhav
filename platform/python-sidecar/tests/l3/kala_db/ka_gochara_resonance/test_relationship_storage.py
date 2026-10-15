@@ -245,3 +245,32 @@ def test_relationship_dasha_lords_hash_refuses_changed_inputs(db, mutation):
     with pytest.raises(ValueError, match='input'):
         api().build_candidate_projection(context)
     assert db.execute('SELECT * FROM kala_f1_relationship ORDER BY edge_id').fetchall() == before
+
+
+@pytest.mark.parametrize('end', ['2002-01-01Z', '2001-12-31Z', None])
+def test_malformed_period_refuses_before_persisting_resolved_dasha_role(db, end):
+    """J4P-B5: port the independent review's full candidate-writer probe."""
+    from services.gochara_kernel.dasha_read import DashaBuildRefused
+
+    seed_candidate_sources(db)
+    db.execute("""INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,
+        lord_graha,build_id,start_iso,end_iso) VALUES
+        (%s,%s,'vimshottari',1,'Venus',%s,'2002-01-01Z',%s)""", (CHART, AYAN, BUILD, end))
+    ctx = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'},
+                          build_id=BUILD, dry_run=False)
+    with pytest.raises(DashaBuildRefused, match='dasha_period_malformed'):
+        api().build_candidate_projection(ctx)
+    assert db.execute('SELECT * FROM kala_f1_relationship').fetchall() == []
+    assert db.execute('SELECT target_ref, weight FROM gochara_resonance_map').fetchall() == [('legacy', .8)]
+
+
+def test_valid_period_preserves_persisted_resolved_dasha_role(db):
+    seed_candidate_sources(db)
+    db.execute("""INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,
+        lord_graha,build_id,start_iso,end_iso) VALUES
+        (%s,%s,'vimshottari',1,'Venus',%s,'2002-01-01Z','2003-01-01Z')""", (CHART, AYAN, BUILD))
+    ctx = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'},
+                          build_id=BUILD, dry_run=False)
+    api().build_candidate_projection(ctx)
+    assert db.execute("""SELECT object_id,resolution_state FROM kala_f1_relationship
+        WHERE role='dasha_lord_portfolio'""").fetchall() == [('graha:VEN', 'resolved')]

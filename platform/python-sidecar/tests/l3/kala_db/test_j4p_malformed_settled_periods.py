@@ -1,4 +1,4 @@
-"""J4P-B4: real PostgreSQL must not erase malformed ordinary F2 periods.
+"""J4P-B4/B5: real PostgreSQL must refuse malformed ordinary periods.
 
 Ported from the independent review's test_review_clock_sql.py (two required
 refusals and one valid control). Intervals are synthetic; only settlement
@@ -88,7 +88,8 @@ def test_valid_settled_clock_still_has_both_boundaries(db):
 @pytest.mark.parametrize("end", ["2026-01-01Z", "2025-12-31Z"])
 def test_malformed_period_must_refuse_instead_of_being_silently_erased(db, end, path):
     add_period(db, end)
-    with pytest.raises(clocks.ClockUnavailable, match="non-positive period"):
+    # B5 moves this refusal before projection, at the shared reader boundary.
+    with pytest.raises(reader.DashaBuildRefused, match="dasha_period_malformed.*non-positive period"):
         read(db, path)
 
 
@@ -96,7 +97,7 @@ def test_malformed_period_must_refuse_instead_of_being_silently_erased(db, end, 
 @pytest.mark.parametrize("start,end", [(None, END), (START, None)])
 def test_missing_boundary_must_refuse(db, path, start, end):
     add_period(db, end, start=start)
-    with pytest.raises(clocks.ClockUnavailable, match="no datetime boundary"):
+    with pytest.raises(reader.DashaBuildRefused, match="dasha_period_malformed.*no datetime boundary"):
         read(db, path)
 
 

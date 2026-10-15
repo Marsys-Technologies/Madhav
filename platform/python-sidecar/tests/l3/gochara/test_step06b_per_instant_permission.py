@@ -769,8 +769,9 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
     class _C:
         def execute(self, sql, params):
             seen["sql"], seen["params"] = sql, params
-            rows = [["r1", "vimshottari", 1, None, "Jupiter", "2020-01-01", "2030-01-01", "b1", "two_pass_verified"],
-                    ["r2", "vimshottari", 2, "r1", "Saturn", "2020-01-01", "2021-01-01", "b1", None]]
+            # Mirror chart_dashas timestamptz operands, including their zone.
+            rows = [["r1", "vimshottari", 1, None, "Jupiter", "2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z", "b1", "two_pass_verified"],
+                    ["r2", "vimshottari", 2, "r1", "Saturn", "2020-01-01T00:00:00Z", "2021-01-01T00:00:00Z", "b1", None]]
 
             class _X:
                 def fetchall(self_inner):

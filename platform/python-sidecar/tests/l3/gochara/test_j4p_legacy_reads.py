@@ -227,3 +227,27 @@ def test_legacy_projection_cannot_widen_the_vote_tier():
         DR.execute_governed_dasha_query(conn, CHART, DR.dasha_query('permission_spine'),
                                        (), clock_tier='single')
     assert not conn.calls
+
+
+@pytest.mark.parametrize('start,end', [
+    ('2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+    ('2026-02-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+    (None, '2026-02-01T00:00:00Z'),
+    ('2026-01-01T00:00:00Z', None),
+    ('malformed', '2026-02-01T00:00:00Z'),
+    ('2026-01-01', '2026-02-01'),
+])
+@pytest.mark.parametrize('path', ['preloaded', 'multilevel', 'period_rows_for'])
+def test_every_live_operand_entrypoint_refuses_malformed_bounds(start, end, path):
+    row = population_row('vimshottari', BUILD)
+    row.update(start_iso=start, end_iso=end)
+    conn = ScopedPopulation([row])
+    with pytest.raises(DR.DashaBuildRefused, match='dasha_period_malformed'):
+        if path == 'preloaded':
+            perm.compute_permission(swe, conn, CHART, 'marriage', [],
+                swe.julday(2026, 1, 9, 0), dasha_periods=[row])
+        elif path == 'multilevel':
+            DD.fetch_dasha_periods_multilevel(conn, CHART)
+        else:
+            rows_for, _ = DR.make_period_rows_for(conn, CHART)
+            rows_for('Saturn')

@@ -18,7 +18,9 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
   * the candidate manifest's input vector, every component.
 HEAD must equal it except the evaluation implementation identity. Geometry and
 window identities must remain equal. Exactly one state-guard SELECT is checked
-per non-dry-run substep and excluded from both SQL summaries.
+per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
+one invalid-period guard SELECT to inventory:marriage; its complete shape and
+parameter count are checked separately, preserving the stored baseline.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs. Two captures on main agree exactly after that."""
 from __future__ import annotations
@@ -45,6 +47,17 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+PERIOD_GUARD_SELECT = " ".join("""
+    WITH governed_chart_dashas AS (
+        SELECT * FROM public.chart_dashas
+        WHERE chart_id = %s AND ayanamsha_id = %s AND build_id = %s
+          AND system_id = ANY(%s) AND level_n BETWEEN 1 AND 4
+          AND (verification_pass_status = %s
+               OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))
+               OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))))
+    SELECT dasha_row_id, start_iso, end_iso FROM governed_chart_dashas
+    WHERE start_iso IS NULL OR end_iso IS NULL OR end_iso <= start_iso LIMIT 1
+""".split())
 
 
 class _Rec:
@@ -172,9 +185,11 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the pre-B4 baseline"
         assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the pre-B4 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
-        rest = [s for s in raw[key] if s != [GUARD_SELECT, 2]]
+        period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
+        assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
+        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the state guard's differ from the pre-B4 baseline"
+        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the pre-B4 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
