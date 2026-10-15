@@ -32,6 +32,7 @@ import swisseph as swe
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from brahmagyan import verification_vocab as V  # noqa: E402
+from services.gochara_kernel import dasha_read
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
 from services.gochara_grammar import read_tier_policy as RTP  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
@@ -164,8 +165,8 @@ def _ids(rows):
 
 def test_on_todays_rows_the_policy_read_is_identical_to_the_strict_read_per_system_and_level():
     rows = _rows_from(TODAY)
-    strict = DD.fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
-    policy = DD.fetch_dasha_periods_multilevel(
+    strict = dasha_read._fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
+    policy = dasha_read._fetch_dasha_periods_multilevel(
         _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
     assert strict and _ids(strict) == _ids(policy)
     # and the strict read is what the DR-14 plurality sees TODAY: vimshottari L1-3,
@@ -177,9 +178,9 @@ def test_on_todays_rows_the_policy_read_is_identical_to_the_strict_read_per_syst
 
 def test_after_the_relabel_level_one_of_mudda_and_narayana_still_comes_back_carrying_its_tier():
     rows = _rows_from(AFTER)
-    strict = DD.fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
+    strict = dasha_read._fetch_dasha_periods_multilevel(_Conn(rows), "c", systems=SYSTEMS)
     assert {r["system_id"] for r in strict} == {"vimshottari"}      # the defect
-    policy = DD.fetch_dasha_periods_multilevel(
+    policy = dasha_read._fetch_dasha_periods_multilevel(
         _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
     # the SAME (system, level) set as today — nothing deeper started voting
     assert {(r["system_id"], r["level_n"]) for r in policy} == {
@@ -193,7 +194,7 @@ def test_after_the_relabel_level_one_of_mudda_and_narayana_still_comes_back_carr
 
 def test_default_read_stays_strict_equality_on_the_contract_tier():
     conn = _Conn(_rows_from(TODAY))
-    DD.fetch_dasha_periods_multilevel(conn, "c", systems=["vimshottari"])
+    dasha_read._fetch_dasha_periods_multilevel(conn, "c", systems=["vimshottari"])
     sql, params = conn.calls[0]
     assert "AND verification_pass_status = %s" in sql and "ANY(%s)\n" not in sql.split(
         "AND verification_pass_status =")[1][:12] + "\n"
@@ -205,7 +206,7 @@ def test_default_read_stays_strict_equality_on_the_contract_tier():
     "external_computation_required", None, "PASS", "made_up_tier"])
 def test_policy_read_still_refuses_floored_divergent_pending_unknown_null(refused):
     rows = [_row("m1", "mudda", refused, lord="Mars")]
-    assert DD.fetch_dasha_periods_multilevel(
+    assert dasha_read._fetch_dasha_periods_multilevel(
         _Conn(rows), "c", systems=["mudda"], level_tier_policy=True) == []
 
 
@@ -222,7 +223,7 @@ def test_backstop_drops_a_row_that_escapes_the_predicate():
     rows = [_row("m1", "mudda", V.DIVERGENT_FLAGGED), _row("m2", "mudda", RTP.SINGLE, level=2, parent="m1x",
             start="2031-01-01T00:00:00+00:00", end="2032-01-01T00:00:00+00:00"),
             _row("m3", "mudda", CM, start="2033-01-01T00:00:00+00:00", end="2034-01-01T00:00:00+00:00")]
-    out = DD.fetch_dasha_periods_multilevel(
+    out = dasha_read._fetch_dasha_periods_multilevel(
         _Leaky(rows), "c", systems=["mudda"], level_tier_policy=True)
     assert [r["dasha_row_id"] for r in out] == ["m3"]   # divergent L1 and single L2 both dropped
 
@@ -287,7 +288,9 @@ class _CountConn:
 
     def execute(self, sql, params=None):
         self.sql.append(sql)
-        if "GROUP BY" in sql:
+        if "SELECT DISTINCT coalesce" in sql:
+            out = [("ca17639b-f3cf-42c7-9866-0a61f3855802",)] if self.rows else []
+        elif "GROUP BY" in sql:
             agg = {}
             for r in self.rows:
                 k = (r[1], r[2], r[8])
@@ -306,16 +309,16 @@ class _CountConn:
 def test_availability_document_says_why_a_system_has_no_readable_row():
     mod = _load_step06a()
     rows = _rows_from(TODAY)
-    read = DD.fetch_dasha_periods_multilevel(
+    read = dasha_read._fetch_dasha_periods_multilevel(
         _Conn(rows), "c", systems=SYSTEMS, level_tier_policy=True)
-    av = mod.dasha_availability(_CountConn(rows), "c", read)
+    av = mod.dasha_availability(_CountConn(rows), dasha_read.load_dasha_settlement("482012f1-710e-4a25-994a-93821f5871aa")["chart_id"], read)
     assert av["vimshottari"]["state"] == av["mudda"]["state"] == av["narayana"]["state"] == "available"
     for sid in ("yogini", "ashtottari", "chara_karaka", "naisargika", "kalachakra"):
         assert av[sid]["state"] == "unavailable", sid
         assert av[sid]["reason"] == "all_stored_rows_refused_by_tier_policy"
         assert av[sid]["observed_rows_by_level_tier"]            # states what exists
     # a system with nothing stored is a different reason
-    av2 = mod.dasha_availability(_CountConn([]), "c", [])
+    av2 = mod.dasha_availability(_CountConn([]), "482012f1-710e-4a25-994a-93821f5871aa", [])
     assert {v["reason"] for v in av2.values()} == {"no_rows_stored"}
 
 

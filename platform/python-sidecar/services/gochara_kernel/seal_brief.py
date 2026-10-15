@@ -27,7 +27,7 @@ from typing import Any
 SCHEMA = "seal_approval_payload/1"
 SEAL_IS_NOT_A_FLIP = "A seal is not a flip: sealing a generation publishes it for replay and serves nothing."
 #: the migrations whose ledger evidence the payload carries (filename prefix)
-LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1241")
+LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1378")
 _DIGEST = re.compile(r"^[0-9a-f]{64}\Z")
 
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering

@@ -1,11 +1,12 @@
 ---
 artifact: ISSUED_FORECAST_LIFECYCLE_CONTRACT
-version: "1.0"
-status: IMPLEMENTED — fixture/rehearsal contract; protected production application and registrar cutover pending
+version: "1.1"
+status: IMPLEMENTED — default registrar dispatch switched; live source admission and protected production application unproved
 item: K6-5a
 authority: D-R11 / KYD-5; PLAN sections 8 and 12 R-11; ALGO section 3.8
-produced_on: 2026-10-10
+produced_on: 2026-10-15
 changelog:
+  - "1.1 (2026-10-15): K6-5 default registrar dispatch reflected; additive 1380 repairs installed narrowed/missing lifecycle guards, with DB-backed identity, ontology and independent immutability oracles."
   - "1.0 (2026-10-10): additive L5 issue/outcome storage, immutable retries, restrictive reference protection, legacy L4 compatibility oracles."
 ---
 
@@ -14,8 +15,10 @@ changelog:
 L5 beside Samīkṣā owns delivered history and observed outcomes. L3 supplies the
 registrar interface and the referenced Kāla manifest. This contract adds
 `public.issued_forecast` and `public.issued_forecast_outcome`; it registers no
-new asset. The existing `ka_bhavishya_lekha` writer and L4 protective read remain
-active. K6-5b owns registrar integration and any later replacement of that read.
+new asset. K6-5 switched the default `ka_bhavishya_lekha` dispatch to the immutable
+registrar. The historical legacy implementation retains its L4 protective read
+for compatibility tests. Live source admission and downstream acceptance are
+not established by this source-level switch; legacy served output is unchanged.
 
 ## Three identities
 
@@ -25,9 +28,9 @@ active. K6-5b owns registrar integration and any later replacement of that read.
 | Episode | `(chart_id, event_class, phase, affected_person, episode)` | The event identity used to cluster outcome credit across refinements and different issue ids. |
 | Delivery | `delivery_channel`, `delivered_at` | Named delivery to the native, provided by the registrar after transport confirms delivery. |
 
-An evaluated or generated candidate creates no issue by itself. This item has
-no issuer, automatic candidate copy, backfill, delivery dispatcher or live
-scoring path. The future registrar must receive actual delivery confirmation;
+An evaluated or generated candidate creates no issue by itself. This lifecycle has
+no automatic candidate copy, backfill, delivery dispatcher or live scoring path.
+The default registrar requires explicit delivery confirmation;
 fixture channel names prove the storage contract, not delivery to a person.
 
 ## Exact issue columns
@@ -53,7 +56,7 @@ column or server default adds a hidden field to its equality check.
 | `falsifier` | JSON object with nonblank string `ontology_locator` and `observation_predicate`; extra source-backed predicate parameters can remain in this object. |
 
 The referenced manifest row cannot be deleted or have its identity rewritten
-while an issue references it. The future registrar must pin the completed
+while an issue references it. The registrar must pin the completed
 manifest's actual qualification and source fields before delivery; this FK
 establishes referential identity and does not certify producer qualification or
 allow publication of an unverified candidate.
@@ -110,19 +113,29 @@ timestamp endpoints as well as open unbounded ranges. It rewrites no row.
 Both migrations travel in this item; the necessary follow-up is disclosed
 despite the brief's original single-migration ownership entry.
 
-Both files are `NEEDS-PROTECTED-WINDOW`. Both the routine runner and protected
+Guard-numbered supplemental migration
+`1380_issued_forecast_immutability_guard.sql` restores the full-table UPDATE,
+DELETE and independent TRUNCATE guards on both lifecycle tables. Unlike 1351's
+name-only `IF NOT EXISTS` checks, it replaces installed guards, repairing a
+narrowed UPDATE trigger or missing TRUNCATE trigger. It locks both tables in
+one caller-owned transaction, rewrites no stored row, and is safe to reapply.
+The DB oracle first reproduces the repair failure under 1351/1352 alone, then
+checks the supplemental migration and repeat application preserve history.
+
+All three files are `NEEDS-PROTECTED-WINDOW`. Both the routine runner and protected
 deploy job now consume `platform/scripts/kala_protected_migrations.txt`; that
-single list receives both filenames in this PR. The brief's former two inline
+single list includes all three filenames. The brief's former two inline
 array sites have already been consolidated, so no runner or workflow source
 change is necessary. The routine production runner skips the pending file;
 the operator/conductor uses the existing Kāla protected window under the
 campaign's production gates. No production application is performed by k4.
 
-In particular `phala_anchors.bhavishya_id -> kala_bhavishya.id` and the existing
-writer's protective query remain intact. A planted stale projection referenced
-by L4 still makes that writer refuse before deletion. An L5 FK is not evidence
-that every L4 reference has been migrated; removal awaits explicit registrar
-cutover and downstream acceptance.
+In particular `phala_anchors.bhavishya_id -> kala_bhavishya.id` and the
+historical legacy writer's protective query remain intact. A planted stale
+projection referenced by L4 still makes that writer refuse before deletion.
+An L5 FK is not evidence that every L4 reference has been migrated; the default
+registrar uses the lifecycle contract, while live downstream acceptance remains
+a separate campaign gate.
 
 ## Tests and implementation sequence
 

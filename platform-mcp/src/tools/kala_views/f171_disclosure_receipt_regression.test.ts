@@ -17,6 +17,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Principal } from '../../types.js'
 import { registerKalaPriorityTool } from './priority.js'
+import { registerP1AliasTools } from '../register_p1_aliases.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
@@ -105,19 +107,59 @@ function mockPriorityFetch(capabilityContent: Record<string, unknown>) {
   })
 }
 
-async function invokePriority(capabilityContent: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function invokePriorityResult(
+  capabilityContent: Record<string, unknown>,
+  params: Record<string, unknown> = {},
+): Promise<unknown> {
   vi.stubGlobal('fetch', mockPriorityFetch(capabilityContent))
   try {
     const handler = captureRegisteredHandler(
       registerKalaPriorityTool as unknown as (server: { tool: (...args: unknown[]) => void }, principal: Principal) => void,
       TEST_PRINCIPAL,
     )
-    const mcpResult = await handler({ chart_id: TEST_CHART_ID })
-    return extractContent(mcpResult)
+    return await handler({ chart_id: TEST_CHART_ID, ...params })
   } finally {
     vi.unstubAllGlobals()
   }
 }
+
+async function invokePriority(capabilityContent: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return extractContent(await invokePriorityResult(capabilityContent))
+}
+
+describe('K7-4-R1: public PRIORITY preserves comparator refusals', () => {
+  it.each([
+    ['mixed snapshot', 'Error: Tulana comparison refused: mixed or unavailable field snapshot', {}],
+    ['invalid preference (HTTP 422)', 'Error: Tulana comparison refused (422)', { preference: ['nearest', 'nearest'] }],
+    ['unavailable sidecar', 'Error: Tulana comparison unavailable: sidecar not configured', {}],
+    ['invalid comparator response', 'Error: Tulana comparison refused: incompatible response', {}],
+  ])('%s remains a refusal in both MCP outputs', async (_case, reason, params) => {
+    // The real dispatcher wraps this ToolResult in HTTP {ok:true, content:...}.
+    // Reverting the is_error guard in priority.ts must fail on ok:false.
+    const mcpResult = await invokePriorityResult({
+      is_error: true, content: { chart_id: TEST_CHART_ID, error: reason },
+    }, params as Record<string, unknown>) as { isError?: boolean; structuredContent: { object: unknown } }
+    const content = extractContent(mcpResult)
+    expect(content.ok).toBe(false)
+    expect(mcpResult.isError).toBe(true)
+    expect(mcpResult.structuredContent.object).toEqual(content)
+    expect(content.error).toBe(reason)
+    expect(content.chart_id).toBe(TEST_CHART_ID)
+    expect(content.judgment_flags).toContain(reason)
+    expect(content.empty_reason).toBe(reason)
+    expect(content.density_contract).toEqual({ paginated: true, facets: ['domain', 'domains'], empty_reason: true })
+    expect(content).not.toHaveProperty('reading')
+    expect(content).not.toHaveProperty('ranked_signals')
+  })
+
+  it('refuses without inventing a cause when the registry supplies no reason', async () => {
+    const content = await invokePriority({ is_error: true, content: { chart_id: TEST_CHART_ID } })
+    expect(content.ok).toBe(false)
+    expect(content.error).toBe('Priority ranking unavailable: registry refused without a reason')
+    expect(content.judgment_flags).toContain(content.error)
+    expect(content.empty_reason).toBe(content.error)
+  })
+})
 
 describe('F-171: kala_priority_get forwards the F-131 disclosure receipt and narrates from curated labels', () => {
   it('MUST-FAIL-TODAY: a capability payload carrying excluded_internal_marker_count:3 is reflected in the served content', async () => {
@@ -220,4 +262,49 @@ describe('F-171: kala_priority_get forwards the F-131 disclosure receipt and nar
     const reading = content['reading'] as { evidence: Array<{ claim: string }> }
     expect(reading.evidence[0]?.claim).toContain('CATALOG-ONLY')
   })
+})
+
+it('K7-4 PRIORITY thesis follows Tulana while old scalar receipts remain intact', async () => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: ['B','A'], front: ['A','B'],
+    comparisons: [{ A: 'A', B: 'B', relation: 'incomparable', reason: 'unavailable' }],
+    evidence: { B: { axes: { strongest: { state: 'information_unavailable', value: null } } } },
+    order_policy: ['most_robust','strongest','nearest'], rejected: [] }
+  const fetchMock = mockPriorityFetch({ is_error: false, content: capabilityPayload({ comparison, ordered_windows: ['B','A'], legacy_scalar: true }) })
+  vi.stubGlobal('fetch', fetchMock)
+  const handler = captureRegisteredHandler(registerKalaPriorityTool, TEST_PRINCIPAL)
+  const result = extractContent(await handler({ chart_id: TEST_CHART_ID, question_frame: { domain: 'career' }, preference: ['nearest'] }))
+  expect(result.comparison).toEqual(comparison)
+  expect(result.legacy_scalar).toBe(true)
+  expect(JSON.stringify(result.reading)).toContain('B')
+  expect(JSON.stringify(result.reading)).toContain('incomparable')
+  const bodies = fetchMock.mock.calls.filter(call => (call[1] as { body?: string })?.body)
+    .map(call => JSON.parse((call[1] as { body: string }).body))
+  expect(JSON.stringify(bodies)).toContain('nearest')
+})
+
+it('K7-B1 PRIORITY discloses tolerance cycles and carries every alternative', async () => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: ['B', 'A', 'C'], front: ['A', 'B', 'C'],
+    comparisons: [{ A: 'A', B: 'B', relation: 'A_dominates' },
+      { A: 'A', B: 'C', relation: 'B_dominates' }, { A: 'B', B: 'C', relation: 'A_dominates' }],
+    dominance_cycles: [['A', 'B', 'C']], front_rule: 'undominated_or_cycle_member',
+    order_policy: ['best_suited', 'most_robust', 'strongest', 'nearest'], evidence: {}, rejected: [] }
+  vi.stubGlobal('fetch', mockPriorityFetch({ is_error: false, content: capabilityPayload({ comparison }) }))
+  const handler = captureRegisteredHandler(registerKalaPriorityTool, TEST_PRINCIPAL)
+  const result = extractContent(await handler({ chart_id: TEST_CHART_ID }))
+  expect(result.comparison).toEqual(comparison)
+  expect(JSON.stringify(result.reading)).toContain('tolerance cycle')
+  expect(JSON.stringify(result.reading)).toContain('all cycle members remain on the front')
+})
+
+it('K7-4 Compatibility: the real old kala_priority_ranking_get alias still returns its golden scalar shape', async () => {
+  const handlers = new Map<string, (params: Record<string, unknown>) => Promise<unknown>>()
+  const server = { tool: (...args: unknown[]) => handlers.set(String(args[0]), args[args.length - 1] as (params: Record<string, unknown>) => Promise<unknown>) }
+  registerP1AliasTools(server as unknown as McpServer, TEST_PRINCIPAL)
+  const payload = capabilityPayload({ legacy_scalar: true })
+  vi.stubGlobal('fetch', mockPriorityFetch(payload))
+  const result = extractContent(await handlers.get('kala_priority_ranking_get')!({ chart_id: TEST_CHART_ID, top_k: 1 }))
+  const content = (result.content ?? result) as Record<string, unknown>
+  expect(content.ranked_signals).toEqual(payload.ranked_signals)
+  expect(content.signal_count).toBe(1)
+  expect(content.legacy_scalar).toBe(true)
 })

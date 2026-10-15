@@ -139,7 +139,7 @@ def test_reference_rows_are_remeasured_from_the_new_build_by_position():
 def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeypatch, tmp_path):
     assert T.main(["--new-build-id", T.reference_build_id()], conn=FakeConn()) == 2
     # the DB stand-in: no rows for the new build ⇒ the new build is absent ⇒ STOP (exit 3), nothing applied
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     assert T.main(["--new-build-id", "11111111-1111-4111-8111-111111111111"], conn=FakeConn()) == 3          # an EMPTY read is a STOP (never 'nothing changed')
@@ -316,7 +316,7 @@ def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_w
     assert T.main(["--new-build-id", new, "--apply"], conn=FakeConn()) == 2
     assert "ST-SL1-HOLD" in capsys.readouterr().err
     assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--settled-received", "M1"], conn=FakeConn()) == 2
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     out = tmp_path / "evidence.md"
@@ -411,7 +411,7 @@ def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone
     rows_new = T.norm_rows(ref_rows("new", 6993))
     cap = tmp_path / "old.json"
     write_old_cap(cap)
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])    # the old build is GONE from the DB
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])    # the old build is GONE from the DB
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
     notice = tmp_path / "n.json"
@@ -436,12 +436,12 @@ def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows
     rows = T.norm_rows(ref_rows("old"))
     monkeypatch.setattr(T, "read_natal", lambda conn, chart: natal_dicts())
     monkeypatch.setattr(T, "capture_census", lambda conn, chart: {"chart_dashas_build_ids": [OLDB], "partitions_non_scope": 45, "partitions_scope_cap": 1, "asset_throughput": {"ga_dashas": "lit", "ga_positions": "lit"}})
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [dict(r) for r in rows])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, **kw: [dict(r) for r in rows])
     p = tmp_path / "cap.json"
     assert T.main(["--capture-old", str(p)], conn=FakeConn()) == 0 and p.exists()
     got = T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB)
     assert [{k: v for k, v in r.items() if not k.startswith("trunc_")} for r in got] == rows and all(r["trunc_start"] is False and r["trunc_end"] is False for r in got)
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, **kw: [])
     q = tmp_path / "none.json"
     assert T.main(["--capture-old", str(q)], conn=FakeConn()) == 3 and not q.exists()
 
@@ -483,7 +483,7 @@ def test_the_tool_refuses_another_system_or_level_4_and_reads_only_levels_1_to_3
     seen = []
     def fake(conn, chart, **kw):
         seen.append(kw.get("levels")); return []
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", fake)
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", fake)
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     T.main(["--new-build-id", new, "--dry-run"], conn=FakeConn())
@@ -563,7 +563,7 @@ def census_answer(sql):
 
 
 class Psycopg3Shaped:
-    """Exposes ONLY psycopg3's surface (`execute()` -> cursor with fetchall()) — the REAL reader (`DD.fetch_dasha_periods_multilevel`) is NOT mocked."""
+    """Exposes ONLY psycopg3's surface (`execute()` -> cursor with fetchall()) — the REAL reader (`T.fetch_capture_dasha_periods`) is NOT mocked."""
     def __init__(self, by_build, natal=True):
         self.by_build, self.sql, self.natal = by_build, [], natal
 
@@ -625,7 +625,7 @@ def test_an_empty_level_is_a_STOP_that_quotes_the_readers_own_logged_reason(tmp_
 def test_a_dasha_read_conflict_is_a_named_refusal(monkeypatch, capsys):
     def boom(conn, chart, **kw):
         raise T.DD.DashaReadConflict("two rows, one identity, different contract fields")
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", boom)
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", boom)
     assert T.main(["--capture-old", "/nonexistent/x.json"], conn=FakeConn()) == 3
     assert "dasha read conflict" in capsys.readouterr().err
 
@@ -879,7 +879,7 @@ def test_per_level_row_totals_must_be_equal(tmp_path):
 def test_the_notice_must_name_the_same_build_as_the_cli_and_the_output_binds_the_notice_and_forensic_hashes(monkeypatch, tmp_path, capsys):
     rows_new = T.norm_rows(ref_rows("new", 6993))
     cap = tmp_path / "old.json"; write_old_cap(cap)
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
     fr = tmp_path / "f.md"; fr.write_text("anchors")
@@ -937,7 +937,7 @@ def test_every_mode_combination_is_validated_BEFORE_any_capture_or_connection_an
 
 
 def test_a_dry_run_writes_nothing_on_every_dispatch_path(monkeypatch, tmp_path):
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, **kw: [])
     out = tmp_path / "evidence.md"
     assert T.main(["--new-build-id", NEWB, "--dry-run", "--out", str(out)], conn=FakeConn()) == 3
     assert not out.exists() and not list(tmp_path.iterdir())
@@ -1179,7 +1179,7 @@ def _clip_cli(monkeypatch, tmp_path, new_rows, notice_over=None):
     old = clipped_world("old")
     cap = tmp_path / "old.json"; write_old_cap(cap, T.norm_rows([dict(r) for r in old]) if False else old)
     new_plain = [dict(r) for r in new_rows]
-    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: [{k: v for k, v in r.items() if not k.startswith("trunc_")} for r in new_plain] if build_id == NEWB else [])
+    monkeypatch.setattr(T, "fetch_capture_dasha_periods", lambda conn, chart, build_id=None, **kw: [{k: v for k, v in r.items() if not k.startswith("trunc_")} for r in new_plain] if build_id == NEWB else [])
     monkeypatch.setattr(T, "read_truncation", lambda conn, chart, build: _flags_of(new_plain))
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: len(new_plain)})
     monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)

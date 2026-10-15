@@ -68,7 +68,9 @@ def seed(conn, *, migrate=True):
 
 
 @pytest.fixture
-def db(kala_db_dsn):
+def db(kala_db_dsn, tmp_path, monkeypatch):
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART, build_id=DASHA)
     with psycopg.connect(kala_db_dsn) as conn:
         seed(conn)
         yield conn
@@ -178,7 +180,7 @@ def test_one_f2_sql_read_for_hundreds_of_period_dossiers(db):
                 def __enter__(self): self.cur=db.cursor(**kwargs); return self
                 def __exit__(self, *args): self.cur.close()
                 def execute(self, query, params):
-                    if 'FROM chart_dashas' in query: owner.clock_reads += 1
+                    if 'FROM governed_chart_dashas' in query: owner.clock_reads += 1
                     return self.cur.execute(query, params)
                 def fetchall(self): return self.cur.fetchall()
             return Cursor()

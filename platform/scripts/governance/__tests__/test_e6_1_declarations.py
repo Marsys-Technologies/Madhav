@@ -316,11 +316,11 @@ NARR_CITES = {
     "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 117, "_build_narrative("), (_WR + "ka_kala_darshana.py", 150, "obstruction_summary, narrative"),
                          (_WR + "ka_kala_darshana.py", 246, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 195, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 446, "summary = ("),
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 191, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 153, "narrative, source_citation")],
-    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 333, "_build_projection_narrative("),
-                           (_WR + "ka_bhavishya_lekha.py", 327, "_build_falsifiability("),
-                           (_WR + "ka_bhavishya_lekha.py", 543, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 544, "deny = f"),
+    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 334, "_build_projection_narrative("),
+                           (_WR + "ka_bhavishya_lekha.py", 328, "_build_falsifiability("),
+                           (_WR + "ka_bhavishya_lekha.py", 544, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 545, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
@@ -330,8 +330,8 @@ NARR_CITES = {
                       (_WR + "ka_vighnakara.py", 913, "'reason': ("), (_WR + "ka_vighnakara.py", 969, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 292, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
-    "ka_avadhi": [(_WR + "ka_avadhi.py", 204, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
-                  (_WR + "ka_avadhi.py", 327, "dossier=Jsonb(dossier)"),
+    "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
+                  (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
     "ph_nimitta": [(_SC + "services/ph_nimitta/engine.py", 237, "def as_text"), (_SC + "services/ph_nimitta/engine.py", 552, "falsifier=sf.as_text()"),
                    (_WR + "ph_nimitta.py", 279, "a.falsifier"), (_L + "L4_phala/query_predictive_anchors.ts", 137, "falsifier, source_citation")],
@@ -701,7 +701,7 @@ def _avadhi_dossier_prose_report(src):
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
-    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(204, True)]
+    assert _avadhi_dossier_prose_report(_read(_WR + "ka_avadhi.py")) == [(198, True)]
 
 
 @pytest.mark.parametrize("old,new", [

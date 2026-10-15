@@ -88,6 +88,7 @@ from services.gochara_intensity import permission as perm  # noqa: E402
 from services.gochara_intensity._dbutil import savepoint_scope  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
 from services.gochara_kernel import dasha_read as _dasha_read  # noqa: E402
+from services.gochara_kernel.dasha_read import DashaBuildRefused  # noqa: E402
 
 CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
                   "over MD/AD/PD periods; union over t_exact instants kept as "
@@ -137,6 +138,8 @@ def fetch_av_donor_matrix(conn, chart_id: str,
                 "   AND fact_category = 'ashtakavarga_bindu_contributor'"
                 "   AND fact_key = 'bindus'",
                 [chart_id, ayanamsha_id]).fetchall()
+    except DashaBuildRefused:
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.info("[step06a] AV donor-matrix read failed for chart %s — "
                     "no key resolves: %s", chart_id, exc)
@@ -184,6 +187,8 @@ def fetch_chart_operands(conn, chart_id: str,
                 "  OR (fact_category = 'panchanga_tithi' AND fact_key = 'paksha')"
                 "  OR (fact_category = 'saham_position' AND fact_key = 'day_birth'))",
                 [chart_id, ayanamsha_id]).fetchall()
+    except DashaBuildRefused:
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.info("[step06a] chart operand read failed for chart %s: %s",
                     chart_id, exc)
@@ -241,18 +246,7 @@ def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[
     own. Before filtering, every Vimśottarī tier and level must share one
     non-NULL build, enforced by the kernel's shared guard.
     Returns (periods, contract)."""
-    _dasha_read.assert_single_pinned_build(conn, chart_id)
-    raw_vim = DD.fetch_dasha_periods_multilevel(
-        conn, chart_id, systems=["vimshottari"], canonicalize=False)
-    contract = select_dasha_read_contract(chart_id, raw_vim)
-    contract["raw_vimshottari_rows"] = len(raw_vim)
-    if contract["build_id"] is not None:
-        vim = DD.fetch_dasha_periods_multilevel(
-            conn, chart_id, systems=["vimshottari"], build_id=contract["build_id"])
-    else:
-        vim = []
-    contract["rows_excluded_by_build_pin"] = len(raw_vim) - len(
-        [r for r in raw_vim if str(r.get("build_id")) == str(contract["build_id"])])
+    vim, contract = _dasha_read.load_pinned_vimshottari(conn, chart_id)
     others = [s for s in systems if s != "vimshottari"]
     # the non-pinned DR-14 systems only VOTE in the plurality: read under the
     # per-(system, level) tier policy (read_tier_policy.LEVEL_TIER_POLICY —
@@ -293,18 +287,16 @@ def dasha_availability(conn, chart_id: str, periods: list[dict]) -> dict:
     observed: dict[str, dict[str, int]] = {}
     try:
         with savepoint_scope(conn, "dasha_availability"):
-            cur = conn.execute(
-                "SELECT system_id, level_n, verification_pass_status, count(*) AS n"
-                " FROM chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
-                " AND system_id = ANY(%s) AND level_n = ANY(%s)"
-                " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
-                (chart_id, AV_DONOR_AYANAMSHA, list(perm.DASHA_SYSTEM_IDS),
-                 list(DD.DEFAULT_LEVELS)))
+            cur = _dasha_read.observe_dasha_tiers(
+                conn, chart_id, AV_DONOR_AYANAMSHA,
+                perm.DASHA_SYSTEM_IDS, DD.DEFAULT_LEVELS)
             for r in cur.fetchall():
                 sid, lvl, tier, n = (r if not isinstance(r, dict) else
                                      (r["system_id"], r["level_n"],
                                       r["verification_pass_status"], r["n"]))
                 observed.setdefault(sid, {})[f"L{lvl}/{tier}"] = int(n)
+    except DashaBuildRefused:
+        raise
     except Exception as exc:  # noqa: BLE001 — a failed COUNT must not fail the build
         logger.info("[step06a] dasha availability count failed: %s", exc)
     out = {}

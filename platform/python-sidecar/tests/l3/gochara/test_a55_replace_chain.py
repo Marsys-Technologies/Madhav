@@ -418,7 +418,8 @@ def test_a_retry_after_a_mid_build_failure_is_a_whole_plan_replay_and_equals_a_f
     try:
         w.conn.execute("CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text, state text,"
                        " last_built_at timestamptz, rows_written integer, last_error text)")
-        w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s::uuid, %s, 'dormant', now(), 0, NULL)",
+        # `building`: what `run_asset` commits before the first substep (this test drives `_drive_substeps` directly, and the writer's state guard reads the row)
+        w.conn.execute("INSERT INTO public.asset_throughput VALUES (%s::uuid, %s, 'building', now(), 0, NULL)",
                        (CHART_ID, writer_mod.ASSET_ID))
         conn = psycopg.connect(w.dsn, autocommit=False, row_factory=dict_row, connect_timeout=3)   # the orchestrator's connection
         writer = _Replay()

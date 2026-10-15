@@ -7966,6 +7966,17 @@
             "description": "MC-024: filter to signals affecting ANY of these life domains (OR/overlap match against domains_affected_array, case-insensitive). Ignored if `domain` is also given.",
             "type": "array"
           },
+          "preference": {
+            "description": "Unique active axes in caller presentation order; remaining defaults appended.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "question_frame": {
+            "description": "Declared question frame used for best_suited; entities echoed only.",
+            "type": "object"
+          },
           "top_k": {
             "description": "Max signals to return (default: 20, max: 100).",
             "type": "number"
@@ -8639,6 +8650,13 @@
             "type": "string"
           },
           "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "preference": {
+            "description": "Declared Tulana presentation order.",
             "items": {
               "type": "string"
             },
@@ -22223,7 +22241,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "d5b606c8528e3ecd9a05a5062f405a27741764726a9c1cafd797957f4f477a41"
+        "sha256": "0b88c31db28b907947e8c50da29da384ad39df1b525c9fca3f921a818b0e1cf9"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22668,7 +22686,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "814ae2eea664f8d411b4484f13fbcd28576f1d258297e881fd315dff6647f4a4"
+            "sha256": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
@@ -22836,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "4f761ad65c5a2de1b938cf1961361c194db5ca5db595ea29208bfc6983143203"
+        "sha256": "8caa015056c842d7cccfe0d5fe962efbafe53952703dc91bbd9a738e6d4d57e2"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23426,7 +23444,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "0995059e19b3c28ec16c96b13d207110558f2134f0dc13f78d9caa444fd7993d"
+            "sha256": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support.ts",
@@ -23510,7 +23528,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "ac1cfc979a8733c4f728f6fcc20c54746813aa9d0fdeb2ebdf30bd4b13d9e336"
+            "sha256": "89f21cf3247c95bb1d0dcafcbf2cd8585ce764b545d4d3936fb349b47a8f101e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23726,7 +23744,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "bdff9b47c88fa53502bab2e3ac4a89791a909d1da058fd7d7fd4fa1b9635f3e8"
+        "sha256": "14fc04c4223a8d7818946d6de6a65e35ebc0264fd2cca1a03cb4e44e49d015b6"
       },
       {
         "id": "service_effect_contracts",
@@ -23746,7 +23764,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "e0870a8f602da4661c848aaac10d71b472b1dde2b91fdb794442791b4491a90a"
+        "sha256": "93084935c3c63381f951e60e1021de44a6e73afe7b1ed34f0f9a8f0cdd2603b7"
       }
     ]
   },

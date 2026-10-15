@@ -53,6 +53,7 @@ const legacySchemas: Record<ViewName, InputSchema> = {
     date_from: { type: 'string', description: 'YYYY-MM-DD; legacy default today.' },
     date_to: { type: 'string', description: 'YYYY-MM-DD; legacy default today+90 days.' },
     top_k: { type: 'number', description: 'Integer 1..100; legacy default 20.' },
+    preference: { type: 'array', items: { type: 'string' }, description: 'Declared Tulana presentation order.' },
     domain: { type: 'string' }, domains: { type: 'array', items: { type: 'string' } } },
   elect: { ...legacyCommon, ...budget,
     undertaking: { type: 'string', enum: [...MUHURTA_UNDERTAKINGS], description: 'Legacy default general.' },

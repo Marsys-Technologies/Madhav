@@ -11,6 +11,17 @@ import pytest
 
 ROOT = Path(__file__).parents[3]
 
+# Independent regression floor, never the lint's source of table ownership.
+# ka_kshetra/writer.py:_OWNED_TABLES; ka_bhavishya_lekha.py's SQL targets.
+EXPECTED_FORECASTER_TABLES = {
+    'kala_field_provenance', 'kala_field_salience', 'kala_insights',
+    'kala_timeline_spec', 'kala_field_windows', 'kala_field_null', 'kala_field',
+    'kala_field_snapshots', 'kala_field_primitives', 'kala_field_boundaries',
+    'kala_field_clocks', 'kala_field_routes', 'kala_field_promise_edges',
+    'kala_field_promise_nodes', 'kala_field_kinematics', 'kala_bhavishya',
+    'issued_forecast',
+}
+
 
 def api():
     assert importlib.util.find_spec('services.ka_vighnakara.model') is not None, 'K3 typed model missing'
@@ -248,12 +259,59 @@ def _writer_lint_nodes(tree, legacy):
             or node.name not in legacy or node.name in reachable] + list(methods)
 
 
+def _forecaster_output_tables():
+    """Read ownership as data, without importing/registering downstream writers."""
+    tree = ast.parse((ROOT/'services/ka_kshetra/writer.py').read_text())
+    inventories = {}
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.target.id in {'_OWNED_TABLES', '_HASHED_TABLES'}:
+                inventories[node.target.id] = ast.literal_eval(node.value)
+    tables = {table for table, _ in inventories['_OWNED_TABLES']}
+    assert tables and set(inventories['_HASHED_TABLES']) <= tables, 'field ownership inventory drift'
+
+    declarations = json.loads((ROOT.parent/'scripts/governance/asset_declarations.json').read_text())
+    family = re.compile(r'(?:^|_)(?:forecaster|bhavishya|insights?|timeline)(?:_|$)')
+    for asset_id, declaration in declarations['assets'].items():
+        if not asset_id.startswith('ka_') or not (asset_id == 'ka_kshetra' or family.search(asset_id)):
+            continue
+        # (I) INTERPRETATION: the registrar and any declared insight/timeline
+        # family are downstream too; a shared output table is forbidden whole.
+        if declaration.get('read_table'):
+            tables.add(declaration['read_table'])
+        writer = ROOT/f'pipeline/orchestrator/writers/{asset_id}.py'
+        if not writer.is_file():
+            assert declaration.get('read_table'), f'{asset_id}: no output ownership evidence'
+            continue
+        for node in ast.walk(ast.parse(writer.read_text())):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                # Writer SQL declares targets absent from the serving inventory.
+                tables.update(re.findall(r'\bINSERT\s+INTO\s+([a-z_][a-z_0-9]*)',
+                                         node.value, re.IGNORECASE))
+            if (isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute))
+                    and (node.func.id if isinstance(node.func, ast.Name) else node.func.attr)
+                    in {'insert_immutable_checked', 'replace_candidate_partition'}):
+                # Both helpers' actual contract has table at positional index 1.
+                assert len(node.args) > 1, f'{asset_id}: output target must be explicit'
+                table = ast.literal_eval(node.args[1])
+                assert isinstance(table, str), f'{asset_id}: output target must be a literal table'
+                tables.add(table)
+    assert all(re.fullmatch(r'[a-z_][a-z_0-9]*', table) for table in tables)
+    return tables
+
+
+def test_derived_inventory_covers_every_current_forecaster_output():
+    assert EXPECTED_FORECASTER_TABLES <= _forecaster_output_tables()
+
+
 def test_no_downstream_reads_or_multiplier_in_new_path():
     api()
     paths=list((ROOT/'services/ka_vighnakara').rglob('*.py'))+[
         ROOT/'services/kala_trigger/negative_space.py',
         ROOT/'pipeline/orchestrator/writers/ka_vighnakara.py']
-    prohibited=re.compile(r'\b(?:kala_field\w*|ka_kshetra\w*|kala_convergence|compose_with_ka_sangam)\b')
+    table_names = '|'.join(re.escape(table) for table in sorted(_forecaster_output_tables()))
+    prohibited=re.compile(r'\b(?:'+table_names+r'|kala_field\w*|ka_kshetra\w*|kala_convergence|compose_with_ka_sangam)\b',
+                          re.IGNORECASE)
     weights={'severity_score','override_score','weight','multiplier'}
     for path in paths:
         tree=ast.parse(path.read_text())
@@ -281,6 +339,63 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
                 assert (path == ROOT/'services/ka_vighnakara/storage.py'
                         and node.arg in {'severity_score','override_score'}
                         and isinstance(node.value,ast.Constant) and node.value.value == 0), (path,node.lineno)
+
+
+@pytest.mark.parametrize('table', sorted(EXPECTED_FORECASTER_TABLES))
+def test_every_forecaster_output_read_is_rejected(monkeypatch, table):
+    """Execute the reviewer's real storage mutant before requiring rejection."""
+    from services.ka_vighnakara import storage
+    from tests.l3.ka_vighnakara.test_storage_unit import CandidateCursor
+
+    sql = f'SELECT * FROM {table}'
+    if table == 'kala_insights':
+        sql += ' WHERE lel_derived = FALSE'
+    target = ROOT/'services/ka_vighnakara/storage.py'
+    original = Path.read_text
+    source = original(target)
+    marker = "    chart = str(ctx.config['chart_id'])"
+    assert source.count(marker) == 1
+    mutated = source.replace(marker, '    ctx.db_conn.execute('+repr(sql)+')\n'+marker)
+    namespace = dict(vars(storage))
+    namespace['replace_candidate_partition'] = lambda *args: 0
+    exec(compile(mutated, '<forecaster output read mutant>', 'exec'), namespace)
+    observed = []
+    ctx = SimpleNamespace(dry_run=False, config={'chart_id':str(finding().chart_id)},
+        build_id='fixture:build', db_conn=SimpleNamespace(
+            execute=observed.append, cursor=lambda **kwargs: CandidateCursor()))
+    assert namespace['write_fixture_candidate'](ctx, []) == 0
+    assert observed == [sql]
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    with pytest.raises(AssertionError):
+        test_no_downstream_reads_or_multiplier_in_new_path()
+
+
+@pytest.mark.parametrize('inventory', ['owned', 'declaration', 'immutable_target'])
+def test_new_forecaster_output_automatically_becomes_forbidden(monkeypatch, inventory):
+    """An output outside every old naming family must still trip the lint."""
+    table = 'new_prediction_output'
+    original = Path.read_text
+    if inventory == 'owned':
+        target = ROOT/'services/ka_kshetra/writer.py'
+        tree = ast.parse(original(target))
+        owned = next(node for node in tree.body
+                     if isinstance(node, ast.AnnAssign) and node.target.id == '_OWNED_TABLES')
+        owned.value.elts.append(ast.parse(repr((table, None)), mode='eval').body)
+        mutated = ast.unparse(ast.fix_missing_locations(tree))
+    elif inventory == 'declaration':
+        target = ROOT.parent/'scripts/governance/asset_declarations.json'
+        declarations = json.loads(original(target))
+        declarations['assets']['ka_forecaster_future'] = {'read_table': table}
+        mutated = json.dumps(declarations)
+    else:
+        target = ROOT/'pipeline/orchestrator/writers/ka_bhavishya_lekha.py'
+        mutated = original(target) + f'\ninsert_immutable_checked(None, {table!r}, {{}}, {{}})\n'
+    monkeypatch.setattr(Path, 'read_text',
+        lambda path, *args, **kwargs: mutated if path == target else original(path, *args, **kwargs))
+    # Baseline is clean; rejection below must be for the actual new read.
+    test_no_downstream_reads_or_multiplier_in_new_path()
+    test_every_forecaster_output_read_is_rejected(monkeypatch, table)
 
 
 @pytest.mark.parametrize('exposure',['outside_risk_set','method_inapplicable'])

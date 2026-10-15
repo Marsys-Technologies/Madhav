@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-10-02T02:18:40.000Z",
-  "content_hash": "sha256:ce4bf90ad8c7f4a4cd49641b3af9555a8c14019ee4b262ea2f7e7301e4497d00",
-  "source_catalog_fingerprint": "sha256:e2542f7fca83aa1e93d9e0acf261b309a30449332b55e26c40c4734e5c7347a5",
+  "content_hash": "sha256:cfdaf6e52c2665b8cb272c8e1aa14d582cb457aa46d0192912e9464079418cda",
+  "source_catalog_fingerprint": "sha256:fb3d6ec665ad27170aa8718c37490ec47262d2d6881fb58dc9e6f5d2bd8cd97d",
   "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
   "producer_contract_fingerprint": "sha256:343fa80e3d2b18f83b813fdfacc5ff15c776d84f8beebb80aff6563f91fd420f",
   "scus": [
@@ -2137,7 +2137,7 @@
       "scu_id": "scu.catalog.call_priority_ranking",
       "version": 1,
       "label": "Call Priority Ranking",
-      "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Calls the Tulana Pareto comparator over forecaster windows; scalar signals remain legacy context. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied. Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
@@ -2166,6 +2166,8 @@
         "date_to",
         "domain",
         "domains",
+        "preference",
+        "question_frame",
         "top_k"
       ],
       "outputs": [
@@ -2217,6 +2219,8 @@
             "date_to": "string:optional",
             "domain": "string:optional",
             "domains": "array:optional",
+            "preference": "array:optional",
+            "question_frame": "object:optional",
             "top_k": "number:optional"
           },
           "output_contract": {
@@ -12610,6 +12614,7 @@
         "date_to?",
         "domain?",
         "domains?",
+        "preference?",
         "question_frame?",
         "top_k?"
       ],
@@ -12656,6 +12661,7 @@
             "date_to": "string:optional",
             "domain": "string:optional",
             "domains": "array:optional",
+            "preference": "array:optional",
             "question_frame": "object:optional",
             "top_k": "number:optional"
           },

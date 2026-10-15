@@ -85,7 +85,8 @@ def _planned_claim(row: tuple) -> dict:
     }
 
 
-# Legacy implementation retained until the qualified K9-4b cutover.
+# Legacy implementation retained for historical safety oracles only.
+# It is not a registered/default build path: legacy served rows remain untouched.
 class _LegacyKaBhavishyaLekhaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or rollback
@@ -762,9 +763,12 @@ def _registrar_row(ctx, value: RegistrarInput) -> tuple[dict | None, str]:
     }, 'fixture_ready'
 
 
-def _run_fixture_registrar(ctx) -> WriterResult:
-    """Explicit consumer preparation; never writes candidates or served rows."""
-    values = ctx.config['registrar_fixture_inputs']
+def _run_registrar(ctx, values) -> WriterResult:
+    """Append delivered issues under K6-5a; never mutate legacy served rows.
+
+    Source admission remains fail-closed in _registrar_row. The fixture input
+    alias and default path share this exact immutable insertion contract.
+    """
     if not isinstance(values, (tuple, list)):
         return WriterResult('ka_bhavishya_lekha', 0, notes='information_unavailable:typed_input_sequence_required')
     prepared = [_registrar_row(ctx, value) for value in values]
@@ -784,8 +788,13 @@ def _run_fixture_registrar(ctx) -> WriterResult:
 
 
 @register('ka_bhavishya_lekha')
-class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
-    """Explicit fixture preparation; default legacy computation stays intact."""
+class KaBhavishyaLekhaWriter(WriterBase):
+    """Default append-only registrar; K6-5a owns issue reference protection.
+
+    No delivery input means no issue and no legacy rebuild. Until live source
+    bindings are admitted, typed inputs still require the existing fixture
+    qualification boundary; this dispatch change grants no live admission.
+    """
 
     def read_jury(self, ctx, *, generation=None):
         from services.ka_sangam.jury.reader import read_jury
@@ -793,8 +802,8 @@ class KaBhavishyaLekhaWriter(_LegacyKaBhavishyaLekhaWriter):
 
     def run(self, ctx) -> WriterResult:
         if 'registrar_fixture_inputs' in ctx.config:
-            return _run_fixture_registrar(ctx)
+            return _run_registrar(ctx, ctx.config['registrar_fixture_inputs'])
         if 'jury_reader_generation' in ctx.config:
             from services.ka_sangam.jury.reader import preparation_result
             return preparation_result(ctx, 'ka_bhavishya_lekha')
-        return super().run(ctx)
+        return _run_registrar(ctx, ctx.config.get('registrar_inputs', ()))

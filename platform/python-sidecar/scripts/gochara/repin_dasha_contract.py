@@ -477,8 +477,41 @@ def read_truncation(conn, chart_id: str, build_id: str) -> dict:
     return {str(r[0]): (bool(r[1]), bool(r[2])) for r in cur.fetchall()}
 
 
+def fetch_capture_dasha_periods(conn, chart_id: str, *, systems, build_id: str, levels) -> list[dict]:
+    """Offline acquisition only; never a live settlement-authorized operand.
+
+    (I) INTERPRETATION: historical/proposed builds need a separately pinned
+    acquisition query. The public reader now correctly refuses those builds.
+    Keep the shared pure §4.0 canonicalizer and validate every returned row
+    before canonicalization, rather than silently discarding foreign rows.
+    """
+    sql = """
+        SELECT dasha_row_id, system_id, level_n, parent_row_id,
+               lord_graha, start_iso, end_iso, build_id, verification_pass_status
+        FROM chart_dashas
+        WHERE chart_id = %s AND ayanamsha_id = %s
+          AND system_id = ANY(%s) AND level_n = ANY(%s)
+          AND verification_pass_status = %s AND build_id = %s
+        ORDER BY system_id, level_n, start_iso
+    """
+    try:
+        rows = conn.execute(sql, (chart_id, CANONICAL_AYANAMSHA, systems,
+                                 list(levels), PERM.DASHA_READ_CONTRACT["tier"], build_id)).fetchall()
+    except Exception as exc:
+        logging.getLogger("services.gochara_grammar.dasha_data").info(
+            "offline capture read failed: %s", exc)
+        return []
+    keys = ("dasha_row_id", "system_id", "level_n", "parent_row_id", "lord_graha",
+            "start_iso", "end_iso", "build_id", "verification_pass_status")
+    parsed = [r if isinstance(r, dict) else dict(zip(keys, r)) for r in rows]
+    problems = row_contract_problems(parsed, build_id, "capture read")
+    if problems:
+        raise DD.DashaReadConflict("; ".join(problems))
+    return DD.canonicalize_multilevel_rows(parsed)
+
+
 def read_levels(conn, chart_id: str, build_id: str, label: str) -> list[dict]:
-    """The Vimśottarī Lahiri levels 1–3 of ONE build through the REAL §4.0 reader — with three guards the reader itself does not give (Fable F-R17-1): (1) the connection must be psycopg (v3) — the reader
+    """The Vimśottarī Lahiri levels 1–3 of ONE build through the offline acquisition reader and shared §4.0 canonicalizer — with three guards (Fable F-R17-1): (1) the connection must be psycopg (v3) — the reader
     calls `conn.execute()` and SWALLOWS any exception (an AttributeError on a psycopg2 connection included) into `[]`; (2) a `DashaReadConflict` is a named refusal; (3) an EMPTY read for any level the tool
     expects is a STOP quoting the reader's own logged reason — an empty read must never look like 'nothing changed'."""
     if not hasattr(conn, "execute"):
@@ -489,7 +522,7 @@ def read_levels(conn, chart_id: str, build_id: str, label: str) -> list[dict]:
     lg.addHandler(collector); lg.setLevel(logging.INFO)
     try:
         try:
-            rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=["vimshottari"], build_id=build_id, levels=LEVELS_IN_SCOPE))
+            rows = norm_rows(fetch_capture_dasha_periods(conn, chart_id, systems=["vimshottari"], build_id=build_id, levels=LEVELS_IN_SCOPE))
         except DD.DashaReadConflict as exc:
             raise ReaderRefused(f"{label}: dasha read conflict for build {build_id}: {exc}") from exc
     finally:

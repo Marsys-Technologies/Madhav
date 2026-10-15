@@ -5,6 +5,9 @@ No domains, scores, quality labels or rule conclusions are invented here.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 from dataclasses import asdict
 from bisect import bisect_right
 from datetime import timezone
@@ -23,16 +26,7 @@ from services.kala_core.vocab import LordKind, NullReason, YOGINI_GRAHA, period_
 
 FORMULA_VERSION = 'K1-2/ALGO3.2/v1'
 
-_PERIOD_SQL = """
-SELECT dasha_row_id, system_id, level_n, lord_graha, parent_row_id,
-       start_iso, end_iso, start_date, end_date, lord_to_parent_relationship,
-       build_id, ayanamsha_id, verification_pass_status, applies_to_this_chart_flag,
-       is_truncated_at_window_start, is_truncated_at_window_end
-FROM chart_dashas
-WHERE chart_id=%s AND ayanamsha_id=%s
-  AND system_id=ANY(%s) AND level_n BETWEEN 1 AND 4
-ORDER BY system_id, level_n, start_iso, dasha_row_id
-"""
+_PERIOD_SQL = dasha_query('avadhi_periods')
 # Keep the measured M4 category/subject contract; no phantom key or silent cap.
 _FETCH_FACT_REFS_SQL = """
 SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text,
@@ -254,15 +248,7 @@ class PinnedClockIndex:
             if index >= 0:
                 row = self.groups[key][index]
                 if instant < row['end_iso']: active.append(row)
-        owner = self
-        class Slice:
-            def execute(self, query, params):
-                expected = [owner.chart, system, owner.pin['ayanamsha_id']]
-                if list(params) != expected:
-                    raise ValueError('cached F2 slice cannot answer another pin')
-                return self
-            def fetchall(self): return active
-        return Slice()
+        return active
 
 
 @register('ka_avadhi')
@@ -288,15 +274,17 @@ class KaAvdhiWriter(WriterBase):
         f2, natal = pins['f2'], pins['natal']
         if f2['ayanamsha_id'] != natal['ayanamsha_id']:
             raise ValueError('F2 and natal conventions must agree')
-        raw_periods = _read(conn, _PERIOD_SQL, (chart, f2['ayanamsha_id'], f2['systems']))
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as dasha_cur:
+            execute_governed_dasha_query(conn, chart, _PERIOD_SQL,
+                (chart, f2['ayanamsha_id'], f2['systems']),
+                ayanamsha_id=f2['ayanamsha_id'], cursor=dasha_cur, clock_tier=f2['tier'])
+            raw_periods = dasha_cur.fetchall()
         # One complete read per requested namespace, before tier/build filtering.
         periods = []
         for system in f2['systems']:
-            class Rows:
-                def execute(self, query, params): return self
-                def fetchall(self): return [r for r in raw_periods if r['system_id'] == system]
-            periods.extend(clocks._read_rows(Rows(), chart, system,
-                build_id=f2['build_id'], ayanamsha_id=f2['ayanamsha_id'], tier=f2['tier']))
+            periods.extend(clocks.validate_clock_rows(
+                [r for r in raw_periods if r['system_id'] == system],
+                build_id=f2['build_id'], tier=f2['tier']))
         if not periods:
             raise clocks.ClockUnavailable('F2 pin unavailable; candidate preserved')
         facts = _read(conn, _FETCH_FACT_REFS_SQL, (chart, natal['build_id'], natal['ayanamsha_id'], natal['tier']))
@@ -308,7 +296,7 @@ class KaAvdhiWriter(WriterBase):
         rows = []
         # F2 itself validates the hierarchy and computes only its admitted σ.
         for period in periods:
-            context = clocks.period_context(index.at(period['start_iso'], period['system_id']),
+            context = clocks.period_context_from_rows(index.at(period['start_iso'], period['system_id']),
                 chart, period['start_iso'], period['system_id'], build_id=f2['build_id'],
                 ayanamsha_id=f2['ayanamsha_id'], tier=f2['tier'],
                 uncertainty=uncertainty, scenario_id=f2.get('scenario_id'))

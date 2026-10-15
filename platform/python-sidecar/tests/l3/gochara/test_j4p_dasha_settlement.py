@@ -91,7 +91,7 @@ def invoke(request, monkeypatch):
                     conn.pins.append(build_id)
                 return [row(b) for b in builds if tier == "two_pass_verified"
                         and (build_id is None or b == build_id)]
-            monkeypatch.setattr(DD, "fetch_dasha_periods_multilevel", fetch)
+            monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
             rows, contract = reader.load_pinned_vimshottari(conn, chart)
             return contract["build_id"], conn.pins
         def forbidden(*args, **kwargs):

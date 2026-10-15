@@ -1,9 +1,9 @@
 ---
 artifact: PACKET_J-W4-P04_v1
-version: "1.2"
+version: "1.3"
 status: PREPARED_OFFLINE — source landing proposed; operational J-4a acceptance unearned
 produced_on: 2026-10-15
-changelog: "v1.2: verify merged governed loader without an overlay and make inherited AM-10 DB oracles mandatory/fail-closed (P04-B4/B5). v1.1: fix P04-B1/B2/B3; depend on J-4p's governed loader and historical reference export. v1.0: carry PRs 2903/3116, strengthen R4, record residual dispositions."
+changelog: "v1.3: merge final J-4p and preserve explicitly pinned offline AM-10 acquisition. v1.2: verify merged governed loader without an overlay and make inherited AM-10 DB oracles mandatory/fail-closed (P04-B4/B5). v1.1: fix P04-B1/B2/B3; depend on J-4p's governed loader and historical reference export. v1.0: carry PRs 2903/3116, strengthen R4, record residual dispositions."
 ---
 
 # P04 — settled-L1 intake and repin
@@ -97,3 +97,34 @@ Local verification: **555 passed, 4 DB cases deferred to CI, 8 inherited xfails*
 (I) INTERPRETATION I-FP04C-1: `done` means this source preparation and permitted local verification are complete. Independent review and mandatory live DB/CI evidence at the final committed head, including after any J-4p re-merge, remain cockpit obligations. Q5/Q7, all historical residual dispositions and B5.4's independent prerequisite remain unchanged.
 
 (I) INTERPRETATION I-FP04C-2: the job's absolute Git-write prohibition also covers scratch repositories created by governance tests. Therefore `test_cli_on_a_real_git_diff`, `test_cli_a_real_git_rename_of_a_pinned_document_is_not_docs_only`, and `test_cli_fails_closed` are deferred to CI; their implementations/assertions were not changed. This is a disclosed local verification limit, not a green result for those three tests.
+
+
+## v1.3 — final J-4p merge compatibility
+
+Resolve the four J-4p source/test conflicts entirely from incoming main; the
+three deliberate P04 commits (`57b1fc78b`, `d9d6e01d2`, `710c4c46c`) contain no
+P04 edits to those files. Main's governed loader, settlement guard and tests
+remain intact. Take main's generated outputs and regenerate with the tools.
+
+Final J-4p guards the public `fetch_dasha_periods_multilevel` entry point by
+the live receipt. The existing AM-10 historical/proposed-build acquisition
+therefore failed eleven inherited tests, including both real DB oracles.
+(I) INTERPRETATION: offline capture requires its own explicitly build/tier-pinned
+query; it cannot use the live settlement reader to acquire an older or proposed
+build. `repin_dasha_contract.py` now uses `fetch_capture_dasha_periods`, validates
+every returned row with the existing contract detector before the shared pure
+canonicalizer, and retains capture/census/snapshot/rollback/close validation.
+The alternative is to refuse historical acquisition, which defeats AM-10's
+existing capture contract. No live loader or settlement authority is changed.
+Tests patch the new acquisition boundary; inherited assertions remain intact.
+
+Fresh targeted verification: **336 passed**, including both guarded disposable
+AM-10 DB cases on the local cluster; two legacy step06a WP6 integration cases
+report their database unavailable and remain deferred to CI. Governance CI
+suites: **266 passed**, with the three Git-writing CLI cases excluded under this
+job's prohibition. A job-folder tree copy with only the offline-reader fix
+reverted produces **two assertion failures** (real-reader historical capture and
+real-DB comparison); the same tests pass on the fixed tree. Job-folder logs and
+`result.json` carry the commands, exit codes and copy path. Q5/Q7 and historical
+operational dispositions remain as above; this merge earns no production or
+aggregate J-4a acceptance.
