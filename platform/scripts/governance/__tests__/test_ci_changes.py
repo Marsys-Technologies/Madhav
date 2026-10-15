@@ -232,7 +232,7 @@ def test_cli_fails_closed(tmp_path):
 
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-a55-measuring-build")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
@@ -360,7 +360,7 @@ def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
 # ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
 
 A55_PREFIX = "gochara-a55-"                      # EVERY job with this prefix is a real-database Gochara job and is hardened below (CI-A55-SPLIT)
-A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
+A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-a55-measuring-build")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
 A55_MAX_TIMEOUT_MINUTES = 45                     # the old single job reached this limit; no job may be given more (split it instead)
 _FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
 GOCHARA_TESTS = Path(__file__).resolve().parents[3] / "python-sidecar" / "tests" / "l3" / "gochara"
@@ -553,3 +553,18 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
         expected = tuple(_job_suites(job))
         for name, mutated in _mutations(job).items():
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
+
+
+def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(jobs):
+    """TCP port publishing reports a bridge address; the dump fixture requires a local socket."""
+    job = jobs["gochara-a55-measuring-build"]
+    peer = jobs["gochara-a55-replace-chain"]
+    service = job["services"]["postgres"]
+    for key in ("image", "env", "ports", "options"):
+        assert service[key] == peer["services"]["postgres"][key]
+    step = next(s for s in job["steps"] if "GOCHARA_EVAL_TEST_ADMIN_DSN" in s.get("env", {}))
+    dsn = step["env"]["GOCHARA_EVAL_TEST_ADMIN_DSN"]
+    socket_dir = dsn.split("?host=", 1)[1]
+    assert socket_dir == "/var/run/postgresql"
+    assert f"{socket_dir}:/var/run/postgresql" in service["volumes"]
+    assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]
