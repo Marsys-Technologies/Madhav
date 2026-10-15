@@ -122,11 +122,11 @@ class TestEvaluateApplicability:
     def test_unknown_system_raises(self):
         conn = _FakeConn()
         with pytest.raises(ValueError):
-            SC.evaluate_applicability(CHART_ID, "not_a_real_system", conn)
+            SC.evaluate_applicability(CHART_ID, "not_a_real_system", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
 
     def test_no_chart_dashas_rows_is_not_computed(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 0}])
-        result = SC.evaluate_applicability(CHART_ID, "vimshottari", conn)
+        result = SC.evaluate_applicability(CHART_ID, "vimshottari", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "not_computed"
         assert result.exclusion_reason == "no chart_dashas rows for system"
         assert result.competence_class == "fruition"
@@ -135,14 +135,14 @@ class TestEvaluateApplicability:
 
     def test_ashtottari_is_not_computed_no_quality_rule(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 12}])
-        result = SC.evaluate_applicability(CHART_ID, "ashtottari", conn)
+        result = SC.evaluate_applicability(CHART_ID, "ashtottari", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "not_computed"
         assert result.exclusion_reason == "no quality rule defined"
         assert result.is_predictive is True
 
     def test_naisargika_is_applicable_with_quality_one(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 9}])
-        result = SC.evaluate_applicability(CHART_ID, "naisargika", conn)
+        result = SC.evaluate_applicability(CHART_ID, "naisargika", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality == 1.0
         assert result.competence_class == "life_stage"
@@ -154,20 +154,20 @@ class TestEvaluateApplicability:
             .when("SELECT COUNT(*)", [{"n": 45}])
             .when("longitude_sidereal", [{"fact_value_num": 0.25}])
         )
-        result = SC.evaluate_applicability(CHART_ID, "vimshottari", conn)
+        result = SC.evaluate_applicability(CHART_ID, "vimshottari", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality == pytest.approx(0.5)
         assert "moon_nakshatra_margin" in result.quality_basis
 
     def test_mudda_quality_one_when_covering_row_exists(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 30}]).when("LIMIT 1", [1])
-        result = SC.evaluate_applicability(CHART_ID, "mudda", conn)
+        result = SC.evaluate_applicability(CHART_ID, "mudda", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality == 1.0
 
     def test_mudda_quality_zero_when_no_covering_row(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 30}])  # no LIMIT-1 rule -> empty
-        result = SC.evaluate_applicability(CHART_ID, "mudda", conn)
+        result = SC.evaluate_applicability(CHART_ID, "mudda", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality == 0.0
 
@@ -180,7 +180,7 @@ class TestEvaluateApplicability:
                 {"fact_subject": "MOON", "fact_value_num": 2.0},
             ])
         )
-        result = SC.evaluate_applicability(CHART_ID, "chara_karaka", conn)
+        result = SC.evaluate_applicability(CHART_ID, "chara_karaka", conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality == pytest.approx(1.0)  # min(2.0,28.0)=2.0 -> clamp01(2/1)=1.0
 
@@ -188,7 +188,7 @@ class TestEvaluateApplicability:
 class TestApplicableSystems:
     def test_returns_every_registered_system_sorted(self):
         conn = _FakeConn().when("SELECT COUNT(*)", [{"n": 0}])
-        results = SC.applicable_systems(CHART_ID, conn)
+        results = SC.applicable_systems(CHART_ID, conn, reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert [r.system_id for r in results] == sorted(SC.SYSTEM_META.keys())
         # 7 classical systems + vimshottari_kp (W3K G-4)
         assert len(results) == 8
@@ -261,7 +261,7 @@ class TestKpJurisdiction:
         rows = [{"level_n": 2, "has_twin": True}] * 4
         result = SC.evaluate_applicability(
             CHART_ID, SC.KP_SYSTEM_ID, _kp_conn(twin_rows=rows), birth_dt=BIRTH_DT,
-        )
+         reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "excluded_by_condition"
         assert result.quality is None
         assert "boundary-identical to vimshottari" in result.exclusion_reason
@@ -272,7 +272,7 @@ class TestKpJurisdiction:
         `not_computed`, not a silent admission to S_pred(e)."""
         result = SC.evaluate_applicability(
             CHART_ID, SC.KP_SYSTEM_ID, _kp_conn(twin_rows=[{"level_n": 2, "has_twin": True}]),
-        )
+         reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "not_computed"
         assert "undecidable without the chart's birth instant" in result.exclusion_reason
 
@@ -326,7 +326,7 @@ class TestKpSubQuality:
         conn = _kp_conn(twin_rows=[{"level_n": 2, "has_twin": False}], boundaries=None)
         result = SC.evaluate_applicability(
             CHART_ID, SC.KP_SYSTEM_ID, conn, birth_dt=BIRTH_DT,
-        )
+         reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "not_computed"
         assert result.exclusion_reason == "no quality rule defined"
         assert result.quality is None
@@ -342,7 +342,7 @@ class TestKpSubQuality:
         )
         result = SC.evaluate_applicability(
             CHART_ID, SC.KP_SYSTEM_ID, conn, birth_dt=BIRTH_DT,
-        )
+         reference_dt=datetime(2020,1,1,tzinfo=timezone.utc))
         assert result.applicability_state == "applicable"
         assert result.quality is not None and 0.0 <= result.quality <= 1.0
         assert "kp_sub_margin=" in result.quality_basis

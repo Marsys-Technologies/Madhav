@@ -178,8 +178,8 @@ def test_assemble_knot_set_deduplicates():
 # Test 3: knot set excludes kinematics roots (extra_breakpoints)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_knot_set_excludes_kinematics_roots():
-    """extra_breakpoints (kinematics roots) must NOT appear in K."""
+def test_knot_set_keeps_kinematics_roots():
+    """extra_breakpoints (kinematics roots) must appear in K (G1 full set)."""
     kinematics_root = 42.7
     ev = _make_evaluator(
         horizon_days=100.0,
@@ -190,9 +190,9 @@ def test_knot_set_excludes_kinematics_roots():
 
     K = assemble_knot_set(ev)
 
-    # Neither kinematics root should be in K
-    assert kinematics_root not in K
-    assert 55.0 not in K
+    # G1(g) keeps both kinematics roots
+    assert kinematics_root in K
+    assert 55.0 in K
     # But envelope knots should be
     assert 20.0 in K
     assert 80.0 in K

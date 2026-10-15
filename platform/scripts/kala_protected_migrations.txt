@@ -29,3 +29,6 @@
 1380_issued_forecast_immutability_guard.sql
 1383_ka_3a_vedha_candidate_intervals.sql
 1384_ka_3b_contested_candidates.sql
+
+# K5-G1a pre-build SR-A4-01; additive candidate output, activation separately gated.
+1385_k5_g1a_candidate_field.sql

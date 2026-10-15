@@ -485,7 +485,7 @@ class TestDeterminism:
         hb = b.tables['kala_field_snapshots'][0]['field_content_hash']
         assert ha == hb
 
-    def test_a_fresh_rebuild_over_existing_rows_is_held_until_w7(self):
+    def test_ordinary_rebuild_preserves_existing_rows(self):
         tables = F.build_tables()
         _, conn = _run_full_build(tables)
         conn.tables['build_substep_progress'] = []
@@ -494,10 +494,10 @@ class TestDeterminism:
         prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
+        ctx.config.pop('kshetra_g1_candidate',None)
         steps = writer.plan_substeps(ctx)
 
-        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
-            writer.run_substep(ctx, steps[0])
+        writer.run_substep(ctx, steps[0])
 
         assert conn.tables == prior_slice
         assert conn.deletes == []
@@ -584,7 +584,7 @@ class TestStage65Insights:
         assert all(r['insight_type'] != 'biographical_echo' for r in rows)
         assert all(r['field_snapshot_id'] == writer._snapshot_id for r in rows)
 
-    def test_a_lane_E_biographical_row_survives_a_held_populated_rebuild(self):
+    def test_a_lane_E_biographical_row_survives_ordinary_dispatch(self):
         # THE SHARED-TABLE HAZARD. `kala_insights` is written by two authors; a
         # blanket per-chart delete on a field rebuild would silently destroy
         # Lane E's LEL-derived rows, which are outside this writer's authorship
@@ -606,11 +606,11 @@ class TestStage65Insights:
         prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
+        ctx.config.pop('kshetra_g1_candidate',None)
         steps = writer.plan_substeps(ctx)
         assert conn.deletes == [], 'planning must be read-only'
-        assert steps[0].key == 'prepare:replace'
-        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
-            writer.run_substep(ctx, steps[0])
+        assert steps[0].key == 'prebuild:inactive'
+        writer.run_substep(ctx, steps[0])
         assert conn.tables == prior_slice
         assert conn.deletes == []
         assert not any(re.match(r'\s*(?:DELETE|INSERT|UPDATE|TRUNCATE)\b', sql, re.I)

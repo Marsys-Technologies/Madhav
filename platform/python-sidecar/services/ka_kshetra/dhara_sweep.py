@@ -63,10 +63,8 @@ def assemble_knot_set(evaluator: "FieldEvaluator") -> np.ndarray:
     K_e: evaluator.envelopes.breakpoints() — the envelope primitive knot times.
     K  : sorted, deduped union, float64.
 
-    EXCLUDES extra_breakpoints (kinematics roots): those are astronomical event
-    times used only to improve sampling density in the adaptive scheme. Between
-    consecutive K_c / K_e knots, ln lambda is already exactly linear (or concave),
-    so adding kinematics roots provides no information to DHARA.
+    G1(g) retains extra_breakpoints (kinematic roots, scenario and mask edges).
+    No compact subset is admitted without PLAN §6.2 item 4's numeric contract.
 
     Returns a float64 numpy array of monotonically increasing knot times.
     """
@@ -93,6 +91,8 @@ def assemble_knot_set(evaluator: "FieldEvaluator") -> np.ndarray:
     # contiguity invariant and incorrect ln-lambda evaluation at the seam.
     for d in range(1, 10):
         K_c.add(d * H / 10)
+
+    K_e.update(float(t) for t in getattr(evaluator, "extra_breakpoints", ()) if math.isfinite(t))
 
     # Union, clip to [0, H], sort, deduplicate via np.unique.
     merged = [t for t in (K_c | K_e) if 0.0 <= t <= H]
