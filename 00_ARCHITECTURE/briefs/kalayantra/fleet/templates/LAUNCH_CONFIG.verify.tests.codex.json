@@ -37,5 +37,5 @@
  ],
  "child_path": "/Users/Dev/kalayantra/bin:/Users/Dev/.nvm/versions/node/v24.14.0/bin:/opt/homebrew/bin:/usr/bin:/bin",
  "writable_dirs": [],
- "_note": "Derived from accepted bootstrap-reviewer.codex and job-role launcher environment (no test commits/ephemeris). Qualify with KY_STREAM, KY_LANE, KY_CONTROLLER_ID. Dispatcher checks PASS/launchd against this installed template and adapts only per-job worktree/prompt paths. Builder: no Git writes, network off, launcher commits/pushes/opens PR. Verifier: job-rooted, source and Git read-only under kyboundary; scratch pytest only. gpt-6.1-sol/high; default locked mode. Requalify after template/card/binary/harness/instruction/zdotdir changes."
+ "_note": "Verifier uses native Codex workspace-write, network off, -C JOB_SCRATCH, no added writable roots and job-local CODEX_HOME. kyboundary prepares a sibling read-only view outside that root and validates the native launch without an outer Seatbelt wrapper. Qualification measures source/Git write refusal, source reads and job writes using exactly this arrangement. Requalify after installation; no old outer-boundary receipt authorises launch."
 }

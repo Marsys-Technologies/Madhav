@@ -458,6 +458,110 @@ def test_a_job_rooted_run_writes_only_its_own_folder(rig):
     assert argv == expected_argv(rig.reviewer(), "/j")
 
 
+def fleet_verifier(rig):
+    """The existing fake with Codex's CODEX_HOME behaviour and job-local diagnostic output."""
+    body = FAKE_CODEX.replace('os.path.join(home, ".codex", ',
+                             'os.path.join(os.environ.get("CODEX_HOME", os.path.join(home, ".codex")), ')
+    body = body.replace('os.path.join(here, "calls.jsonl")',
+                        'os.path.join(os.environ["JOB_SCRATCH"], "calls.jsonl")')
+    body = body.replace('"signed_in"', '"auth.json"')
+    (rig.bindir / 'codex').write_text(body)
+    (rig.home / '.codex' / 'auth.json').write_text('fake auth fixture, not a credential\n')
+    return rig.config(rig.reviewer(role='verify'))
+
+
+def test_codex_verifier_qualification_exposes_native_sandbox_leaks(rig):
+    cfg = fleet_verifier(rig)
+    rig.configure(sandbox_leaks=True)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None, r.stderr
+    assert receipt['checks']['item_write_denied']['result'] == 'fail'
+    assert receipt['checks']['git_write_denied']['result'] == 'fail'
+
+
+def test_codex_verifier_qualification_does_not_nest_seatbelt(rig):
+    cfg = fleet_verifier(rig)
+    body = (rig.bindir / 'codex').read_text()
+    probe = '''
+if a != ["--version"]:
+    check = subprocess.run(["/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)", "/usr/bin/true"])
+    if check.returncode:
+        sys.exit(check.returncode)
+'''
+    (rig.bindir / 'codex').write_text(body.replace('assert a[0] == "exec"', probe + '\nassert a[0] == "exec"'))
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None and receipt['result'] == 'PASS', r.stderr
+
+
+def test_fleet_verifier_qualifies_inside_the_live_boundary(rig):
+    cfg = fleet_verifier(rig)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None, r.stderr
+    assert receipt['result'] == 'PASS', receipt['checks']
+    assert receipt['checks']['no_tty_prompt']['observed']['verifier_boundary']['enforced'] is True
+    assert kyschema.validate(kyschema.load_json(SCHEMAS / 'qualification_codex.json'), receipt) == []
+    for run in (evidence / 'runs').iterdir():
+        record = json.loads((run / 'run.json').read_text())
+        assert record['boundary']['mechanism'] == 'codex-workspace-write/1'
+        assert record['boundary']['configured'] is True and record['boundary']['outer_sandbox'] is False
+        assert 'CODEX_HOME' in record['env_names']
+        assert record['rollout'] is not None or run.name in ('neg-auth', 'neg-timeout', 'neg-term')
+        store = run / 'job_scratch' / 'program'
+        assert not (store / 'hooks.json').exists() and not (store / 'AGENTS.md').exists()
+        assert (store / 'auth.json').exists() == (run.name != 'neg-auth')
+    assert rig.check(out, cfg, '--verify-evidence')[0].returncode == 0
+
+
+def test_fleet_verifier_native_sandbox_write_leak_refuses_qualification(rig):
+    cfg = fleet_verifier(rig)
+    rig.configure(sandbox_leaks=True)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is not None, r.stderr
+    assert receipt['checks']['item_write_denied']['result'] == 'fail'
+    assert receipt['checks']['outside_write_denied']['result'] == 'fail'
+    assert receipt['result'] == 'FAIL'
+
+
+def test_fleet_verifier_shared_store_startup_failure_never_qualifies(rig):
+    cfg = fleet_verifier(rig)
+    target = rig.home / '.codex' / 'hooks.json'
+    rig.configure(write={str(target): 'unredirected startup'})
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt is None and r.returncode != 0 and 'bound inputs changed' in r.stderr
+
+
+def test_fleet_verifier_boundary_evidence_is_rejudged(rig):
+    cfg = fleet_verifier(rig)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt['result'] == 'PASS', r.stderr
+    path = evidence / 'runs' / 'base' / 'boundary.canary.json'
+    record = json.loads(path.read_text())
+    record['configured'] = False
+    path.write_text(json.dumps(record))
+    # Updating its file hash must not turn a false observation into a passing receipt.
+    receipt['evidence']['files'][str(path.relative_to(evidence))] = sha(path)
+    out.write_text(json.dumps(receipt))
+    checked, detail = rig.check(out, cfg, '--verify-evidence')
+    assert checked.returncode != 0
+    assert any('boundary' in reason for reason in detail['reasons'])
+
+
+@pytest.mark.parametrize('stale', ['missing', 'script-changed'])
+def test_fleet_verifier_old_or_changed_boundary_receipt_refuses_admission(rig, stale):
+    cfg = fleet_verifier(rig)
+    r, receipt, evidence, out = rig.qualify(cfg)
+    assert receipt['result'] == 'PASS', r.stderr
+    observed = receipt['checks']['no_tty_prompt']['observed']
+    if stale == 'missing':
+        observed.pop('verifier_boundary')
+    else:
+        observed['verifier_boundary']['kyboundary_sha256'] = '0' * 64
+    out.write_text(json.dumps(receipt))
+    checked, detail = rig.check(out, cfg)
+    assert checked.returncode != 0
+    assert any('verifier boundary' in reason for reason in detail['reasons'])
+
+
 def test_a_builder_gets_no_git_directory_no_network_and_says_the_launcher_commits(rig):
     """cockpit ruling E7"""
     assert refusals(rig, rig.doc()) == []

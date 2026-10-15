@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kyboundary.sh v1.2 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
+# kyboundary.sh v1.3 (plan v2.7 §7 "Verifier boundary", §6 "Verdict publication"; packet KV3-B-KYBOUNDARY) — the ENFORCED
 # verifier boundary. A qualification PASS is not this boundary (kyqualify.py BOUNDARY); this is.
 # Status: DRAFT — pending independent review (KV3-B-KYBOUNDARY loop 3).
 #
@@ -15,13 +15,14 @@
 # nothing else. $KY_ROOT, $KY_RUN, $KY_FLEET and $HOME come from the caller's environment (plan §7 defaults); $HOME
 # only names places that are never writable.
 #
-# THE MECHANISM: "seatbelt-file-write-deny/1" — the job runs under /usr/bin/sandbox-exec with a profile generated from the
+# CLAUDE MECHANISM: "seatbelt-file-write-deny/1" — the job runs under /usr/bin/sandbox-exec with a profile generated from the
 # record at every `exec` (never stored, so there is no profile file to tamper with):
 #     (allow default) (deny file-write*) (allow file-write* <writable[]> <a few /dev nodes>)
 #     (deny file-write* <the view> <S itself> <S/boundary.json> <S/boundary.check.json> <S/snapshot.json>
 #                       <S/boundary.json.tmp.*> <S/boundary.check.json.tmp.*>)
-# The kernel applies it to the process and to every descendant; a sandboxed process cannot drop or loosen it (a nested
-# sandbox-exec only adds rules). file-write* covers data, create, unlink, rename, mode, flags, xattr, times and link, so
+# For Claude, the kernel applies it to the process and every descendant; the process cannot drop or loosen it.
+# Nested sandbox_apply is refused on this host; Codex uses its native boundary (v1.3 note below).
+# file-write* covers data, create, unlink, rename, mode, flags, xattr, times and link, so
 # chmod, chflags, replace-by-rename, delete-and-recreate and hard links are denied by the same rule as a plain edit. It
 # is path-based, so it protects the view AND every path outside writable[]: the item worktree, the shared repository,
 # $KY_RUN, $KY_FLEET, $KY_ROOT/bin, other jobs' scratch, ~/Library/LaunchAgents. "S itself" is denied (its children are
@@ -31,7 +32,7 @@
 # and its .git is a directory inside the view, so the Git metadata the job sees is under the same deny rule.
 #   writable[] is exactly: S, S/cache (the named cache directory), tmp_path (TMPDIR), and S/program — the model
 # program's own config and session store, made by `prepare` for this job alone (kyjob.sh points the program at it,
-# for Claude Code CLAUDE_CONFIG_DIR=S/program inside its `env -i`). Every entry is this job's own. NOTHING under $HOME is
+# Codex CODEX_HOME=S/program inside its `env -i`; Claude temp uses CLAUDE_CODE_TMPDIR=S/tmp). Every entry is this job's own. NOTHING under $HOME is
 # writable: not $HOME/.claude.json, and no part of $HOME/.claude — its settings.json would let a job plant a hook or an
 # MCP server, and its shell-snapshots, session-env, projects/*/memory and file-history are sourced, loaded or restored
 # by every unconfined session of the same user, so a write there runs the job's code OUTSIDE the boundary (review
@@ -93,6 +94,16 @@
 # through a link planted at its predictable temporary name (write_json, the probe); the profile denies those names.
 # v1.2 (2026-10-12) review KB-R2-01: writable[] no longer grants the shared $HOME/.claude/* directories; the program's
 # store is the per-job S/program, and $HOME/.claude and $HOME/.claude.json join the paths no writable may overlap.
+# KV3-CODEX-VERIFY-BOUNDARY (2026-10-14): shared ~/.codex is protected too; canary runs the same profile/probe
+# around fleet verifier qualification without making a Git checkout or touching the actual reviewed source.
+# v1.3 (2026-10-14) KV3-VERIFIERS-RUN: Claude keeps the outer profile with job-local
+# CLAUDE_CODE_TMPDIR (auth/config reads retain their existing namespace; shared writes stay denied).
+# Codex exec validates the native job-rooted workspace-write launch and applies NO outer profile.
+# Its view is S-view and immutable record S-boundary.json, outside the only writable root S.
+# prepare/exec/check bind the native CLI to its measured qualification; the unused outer profile is not probed.
+# release removes both native sibling artifacts. Full-mode read-only Codex jobs are refused.
+# WB-01 (2026-10-14): pin native realpath/hash, qualification and launch-config bytes;
+# refuse changed or unreadable proof/executable, including immediately before exec.
 set -u
 PY=/opt/homebrew/bin/python3
 [ -x "$PY" ] || PY=/usr/bin/python3
@@ -101,7 +112,8 @@ import datetime, hashlib, json, os, re, secrets, shutil, stat, subprocess, sys
 
 SCHEMA, CHECK_SCHEMA = "ky.boundary/1", "ky.boundary_check/1"
 MECHANISM = "seatbelt-file-write-deny/1"
-ACCEPTED = (MECHANISM,)          # the mechanisms the fixtures accepted; anything else is never ready and never intact
+CODEX_MECHANISM = "codex-workspace-write/1"
+ACCEPTED = (MECHANISM, CODEX_MECHANISM)          # the mechanisms the fixtures accepted; anything else is never ready and never intact
 SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 if os.environ.get("KY_BOUNDARY_TEST_OVERRIDE") == "1" and os.environ.get("KY_BOUNDARY_SANDBOX_EXEC"):
     SANDBOX_EXEC = os.environ["KY_BOUNDARY_SANDBOX_EXEC"]
@@ -151,7 +163,9 @@ def load(job_id):
         raise NotEstablished("state: unreadable (%s)" % e)
     if not isinstance(st, dict):
         raise NotEstablished("state: not an object")
-    p = {"job_id": job_id, "head": st.get("head")}
+    p = {"job_id": job_id, "head": st.get("head"), "native_codex": st.get("engine") == "codex",
+         "launch_config_path": st.get("launch_config_path"), "sandbox_mode": st.get("sandbox_mode", "locked"),
+         "qualification_dir": os.path.join(ky_run, "QUALIFICATIONS")}
     for key in ("worktree", "job_scratch", "tmp_path"):
         v = st.get(key)
         if not isinstance(v, str) or not os.path.isabs(v) or re.search(r"[\x00-\x1f]", v):
@@ -166,10 +180,17 @@ def load(job_id):
     S = p["job_scratch"]
     p["view"], p["cache"], p["program"] = os.path.join(S, "view"), os.path.join(S, "cache"), os.path.join(S, "program")
     p["record"], p["check"] = os.path.join(S, "boundary.json"), os.path.join(S, "boundary.check.json")
+    if p["native_codex"]:
+        # (I) INTERPRETATION: native workspace-write grants its whole -C directory.
+        # The controller's source copy and immutable record must be siblings of S,
+        # never children of the only writable root. One source copy per job.
+        p["view"], p["record"] = S + "-view", S + "-boundary.json"
+        if p["sandbox_mode"] != "locked" or not inside(p["tmp_path"], S):
+            raise NotEstablished("Codex verifier requires locked mode and job-local TMPDIR")
     p["writable"] = [S, p["cache"], p["tmp_path"], p["program"]]          # this job's own, nothing shared (KB-R2-01)
     p["protected"] = [p["worktree"], ky_run, ky_fleet, os.path.join(ky_root, "bin"),
                       os.path.join(home, "Library", "LaunchAgents"), os.path.join(home, ".claude"),
-                      os.path.join(home, ".claude.json")]
+                      os.path.join(home, ".claude.json"), os.path.join(home, ".codex")]
     return p
 
 
@@ -339,6 +360,100 @@ def read_record(p):
     return rec if isinstance(rec, dict) else None
 
 
+def mechanism(p):
+    return CODEX_MECHANISM if p.get("native_codex") and MECHANISM in ACCEPTED else MECHANISM
+
+
+def bound_json(path):
+    """Parse and hash the same regular-file bytes; a FIFO never blocks the controller."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError("not a regular file: %s" % path)
+        data = f.read()
+    return json.loads(data), hashlib.sha256(data).hexdigest()
+
+
+def codex_executable(cfg):
+    try:
+        path = os.path.realpath(cfg["codex_bin"])
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as f:
+            if not stat.S_ISREG(os.fstat(f.fileno()).st_mode) or not os.access(path, os.X_OK):
+                raise OSError("not a readable executable regular file")
+            h = hashlib.sha256()
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+        return {"codex_bin_realpath": path, "codex_bin_sha256": h.hexdigest()}
+    except OSError as e:
+        raise NotEstablished("?Codex executable is unreadable: %s" % e) from e
+
+
+def native_binding(p):
+    """Use the admission receipt's existing binary hash and native effect detectors.
+
+    (I) INTERPRETATION: admission adapts only worktree/prompt (kyd_jobs.py:772-788).
+    Pin their launch-config bytes here; retain the receipt's exact native argv/env
+    contract and measured source/Git refusals. No engine program runs in this check.
+    """
+    try:
+        sys.path.insert(0, abs_env("KY_FLEET", ""))
+        import kyqualify as q
+        cfg, config_hash = bound_json(p["launch_config_path"])
+        if (q.validate_codex_config(cfg, check_disk=False) or not q.codex_verifier(cfg) or not q.job_rooted(cfg)
+                or cfg["worktree"] != p["worktree"] or cfg["sandbox"] != "workspace-write"
+                or cfg["network"] is not False or cfg["writable_dirs"]):
+            raise NotEstablished("unqualified native Codex configuration")
+        binary = codex_executable(cfg)
+        for root in p["writable"]:
+            if inside(binary["codex_bin_realpath"], root) or inside(p["qualification_dir"], root):
+                raise NotEstablished("native Codex executable/qualification overlaps writable scratch")
+        variant = "-tests" if "TESTS" in cfg["env_names"] else ""
+        path = os.path.join(p["qualification_dir"], "%s%s-%s.json" % (cfg["role"], variant, cfg["model"]))
+        doc, receipt_hash = bound_json(path)
+        if (not isinstance(doc, dict) or (doc.get("schema"), doc.get("engine"), doc.get("role"), doc.get("model"),
+                doc.get("result"), doc.get("context")) !=
+                ("ky.qualification/1", "codex", cfg["role"], cfg["model"], "PASS", "launchd")):
+            raise NotEstablished("native Codex qualification is not PASS/launchd for this role/model")
+        binds = doc.get("binds") or {}
+        if (binds.get("codex_bin") != cfg["codex_bin"]
+                or binds.get("codex_bin_sha256") != binary["codex_bin_sha256"]):
+            raise NotEstablished("Codex executable does not match the admitted qualification hash/path")
+        expected = q.build_argv(cfg)
+        wanted = {key: cfg[key] for key in ("model", "effort", "sandbox", "network", "writable_dirs",
+                                           "deadline_seconds", "child_path")}
+        wanted.update(engine="codex", work_root="job", env_names=sorted(cfg["env_names"]), argv=expected,
+                      argv_sha256=hashlib.sha256(json.dumps(expected, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest(),
+                      output_schema_sha256=file_sha256(cfg["output_schema"]) if cfg.get("output_schema") else "absent",
+                      harness_sha256=q.harness_hashes()["kyqualify_sha256"])
+        if any(json.dumps(binds.get(k), sort_keys=True) != json.dumps(v, sort_keys=True) for k, v in wanted.items()):
+            raise NotEstablished("native Codex qualification does not bind this argv/environment/configuration")
+        checks, probes = doc.get("checks") or {}, doc.get("negative_probes") or {}
+        lr = doc.get("launchd_receipt") or {}
+        if (q.overall(checks, probes, cfg, "launchd") != "PASS" or doc.get("boundary") != q.boundary_of(cfg)
+                or doc.get("harness") != q.harness_hashes() or None in q.harness_hashes().values()
+                or q.launchd_verdict(lr, q.LABEL_PREFIX + cfg["role"])["result"] != "pass"
+                or lr.get("launchctl") != q.SYSTEM_LAUNCHCTL or lr.get("label") != q.LABEL_PREFIX + cfg["role"]
+                or lr.get("bootstrap_exit") != 0 or lr.get("finished") is not True):
+            raise NotEstablished("native Codex qualification has missing/stale measured proof")
+        boundary = (checks["no_tty_prompt"].get("observed") or {}).get("verifier_boundary") or {}
+        runs = boundary.get("runs") or {}
+        if (boundary.get("enforced") is not True or boundary.get("kyboundary_sha256") != file_sha256(__file_boundary())
+                or boundary.get("codex_home_policy") != "JOB_SCRATCH/program; auth.json only; engine-owned CODEX_HOME"
+                or not runs or any(b.get("mechanism") != CODEX_MECHANISM or b.get("configured") is not True
+                                  or b.get("outer_sandbox") is not False for b in runs.values())):
+            raise NotEstablished("native Codex qualification has missing/stale source/Git refusal evidence")
+        return cfg, dict(binary, launch_config_path=p["launch_config_path"], launch_config_sha256=config_hash,
+                         qualification_path=path, qualification_sha256=receipt_hash)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, ImportError) as e:
+        raise NotEstablished("?native Codex qualification/configuration is unreadable: %s" % e) from e
+
+
+def __file_boundary():
+    # The embedded Python has no __file__; KY_FLEET names the installed script.
+    return os.path.join(abs_env("KY_FLEET", ""), "kyboundary.sh")
+
+
 def record_faults(p, rec):
     """why the record is not the boundary this state describes ([] = it is)"""
     if rec is None:
@@ -346,7 +461,7 @@ def record_faults(p, rec):
     faults = []
     if rec.get("schema") != SCHEMA:
         faults.append("schema is not %s" % SCHEMA)
-    if rec.get("mechanism") != MECHANISM or MECHANISM not in ACCEPTED:
+    if rec.get("mechanism") != mechanism(p) or MECHANISM not in ACCEPTED:
         faults.append("mechanism %r is not the accepted %r" % (rec.get("mechanism"), ACCEPTED[0]))
     if rec.get("view") != p["view"]:
         faults.append("view is not %s" % p["view"])
@@ -380,9 +495,17 @@ def view_faults(p, rec, files=True):
         faults.append("?the view's Git metadata cannot be read")
     elif meta != rec["git_state"].get("view_git_sha256"):
         faults.append("the view's Git metadata changed")
-    e = enforces(p, p["writable"])
-    if e is not True:
-        faults.append(("?the sandbox probe could not be run" if e is None else "sandbox-exec does not enforce the profile"))
+    if p.get("native_codex"):
+        try:
+            _, binding = native_binding(p)
+            if rec.get("native_binding") != binding:
+                faults.append("native Codex executable/qualification/configuration changed after preparation")
+        except NotEstablished as e:
+            faults.append(str(e))
+    else:
+        e = enforces(p, p["writable"])
+        if e is not True:
+            faults.append(("?the sandbox probe could not be run" if e is None else "sandbox-exec does not enforce the profile"))
     return faults
 
 
@@ -429,6 +552,7 @@ def write_json(path, doc):
 def prepare(job_id):
     try:
         p = load(job_id)
+        binding = native_binding(p)[1] if p.get("native_codex") else None
         if GIT is None:
             raise NotEstablished("git not found")
         if os.path.lexists(p["view"]):                 # verified, never rebuilt over
@@ -484,13 +608,15 @@ def prepare(job_id):
             raise NotEstablished("the view's Git metadata cannot be read")
         if MECHANISM not in ACCEPTED:
             say("prepare: tests-only override in force: mechanism %s" % MECHANISM)
-        e = enforces(p, p["writable"])
-        if e is not True:
-            raise NotEstablished("sandbox-exec does not enforce the profile on this host (probe: %s)" % ("not run" if e is None else "the view was writable"))
+        if not p.get("native_codex"):
+            e = enforces(p, p["writable"])
+            if e is not True:
+                raise NotEstablished("sandbox-exec does not enforce the profile on this host (probe: %s)" % ("not run" if e is None else "the view was writable"))
         write_json(p["record"], {
-            "schema": SCHEMA, "mechanism": MECHANISM, "view": p["view"], "writable": p["writable"], "head": head,
+            "schema": SCHEMA, "mechanism": mechanism(p), "view": p["view"], "writable": p["writable"], "head": head,
             "tracked_sha256": v["tracked"], "prepared_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-            "git_state": {"view_git_sha256": meta, "worktree_head_ref": w["ref"]}})
+            "git_state": {"view_git_sha256": meta, "worktree_head_ref": w["ref"]},
+            **({"native_binding": binding} if binding else {})})
         if MECHANISM not in ACCEPTED:
             raise NotEstablished("mechanism %s is not an accepted boundary" % MECHANISM)
         return 0
@@ -515,8 +641,31 @@ def exec_(job_id, argv):
         os.chdir(p["view"])
         sys.stdout.flush()
         sys.stderr.flush()
+        if p.get("native_codex"):
+            # No outer sandbox_apply: the qualified Codex executable enforces tools.
+            sys.path.insert(0, abs_env("KY_FLEET", ""))
+            import kyqualify as q
+            cfg, binding = native_binding(p)
+            if rec.get("native_binding") != binding:
+                raise NotEstablished("native Codex launch binding changed before exec")
+            expected = q.build_argv(cfg, p["job_scratch"])
+            if (argv[:2] != ["/usr/bin/env", "-i"] or argv[-len(expected):] != expected
+                    or cfg["sandbox"] != "workspace-write" or cfg["network"] is not False or cfg["writable_dirs"]):
+                raise NotEstablished("native Codex argv does not preserve the verifier sandbox")
+            pairs = argv[2:-len(expected)]
+            env = dict(pair.split("=", 1) for pair in pairs)
+            if (len(env) != len(pairs) or set(env) != set(cfg["env_names"]) | {"CODEX_HOME"}
+                    or env.get("JOB_SCRATCH") != p["job_scratch"] or env.get("TMPDIR") != p["tmp_path"]
+                    or env.get("CODEX_HOME") != p["program"] or env.get("PATH") != cfg["child_path"]
+                    or env.get("HOME") != abs_env("HOME", "")):
+                raise NotEstablished("native Codex environment is not job-local")
+            if codex_executable(cfg) != {k: binding[k] for k in ("codex_bin_realpath", "codex_bin_sha256")}:
+                raise NotEstablished("Codex executable changed immediately before exec")
+            # Execute the checked resolved path, avoiding a second symlink resolution.
+            argv[-len(expected)] = binding["codex_bin_realpath"]
+            os.execv(argv[0], argv)
         os.execv(SANDBOX_EXEC, [SANDBOX_EXEC, "-p", profile(p, p["writable"])] + argv)
-    except (NotEstablished, OSError) as e:
+    except (NotEstablished, OSError, ValueError, TypeError, KeyError) as e:
         say("exec: the prepared boundary is absent or altered: %s" % e)
     return 70
 
@@ -581,13 +730,56 @@ def check(job_id):
 def release(job_id):
     try:
         p = load(job_id)
-        return 0 if remove_view(p) else 1
+        removed = remove_view(p)
+        if p.get("native_codex") and os.path.lexists(p["record"]):
+            os.unlink(p["record"])
+        return 0 if removed else 1
     except (NotEstablished, OSError) as e:
         say("release: the view is not verifiably absent: %s" % e)
         return 1
 
 
+def canary(scratch, view, record, argv):
+    """Qualification-only source stand-in; the live profile and enforcement detector, no Git writes.
+
+    (I) INTERPRETATION: qualification needs the exact confinement mechanism, not a
+    second registered job/view. The controller owns the evidence path outside S.
+    CLAUDE_CODE_TMPDIR and TMPDIR must be the same job-local locations as a live verifier.
+    """
+    try:
+        for path in (scratch, view, record):
+            if not os.path.isabs(path) or os.path.realpath(path) != path or re.search(r"[\x00-\x1f]", path):
+                raise NotEstablished("canary paths must be canonical and absolute")
+        if inside(scratch, "/tmp") or inside(scratch, "/private/tmp") or re.search(r'[\[\]\\^\"]', scratch):
+            raise NotEstablished("canary scratch cannot be expressed safely")
+        if ((inside(view, scratch) and view != os.path.join(scratch, "view"))
+                or inside(scratch, view) or inside(record, scratch)):
+            raise NotEstablished("canary source/evidence overlaps writable scratch")
+        home = abs_env("HOME", "")
+        for protected in (os.path.join(home, ".codex"), os.path.join(home, ".claude"), os.path.join(home, ".claude.json")):
+            if inside(scratch, protected) or inside(protected, scratch):
+                raise NotEstablished("canary writable scratch overlaps a shared program store")
+        p = {"job_scratch": scratch, "view": view}
+        writable = [scratch, os.path.join(scratch, "cache"), os.path.join(scratch, "tmp"), os.path.join(scratch, "program")]
+        if (os.environ.get("CLAUDE_CODE_TMPDIR") != writable[-2]
+                or os.environ.get("TMPDIR") != writable[-2]):
+            raise NotEstablished("canary CLAUDE_CODE_TMPDIR/TMPDIR is not job-local")
+        if not os.path.isdir(scratch) or not os.path.isdir(view) or MECHANISM not in ACCEPTED:
+            raise NotEstablished("canary source/scratch or accepted mechanism absent")
+        if enforces(p, writable) is not True:
+            raise NotEstablished("canary profile does not enforce")
+        policy = profile(p, writable)
+        write_json(record, {"mechanism": MECHANISM, "enforced": True, "view": view, "writable": writable,
+                            "claude_code_tmpdir": writable[-2], "profile_sha256": hashlib.sha256(policy.encode()).hexdigest()})
+        os.execv(SANDBOX_EXEC, [SANDBOX_EXEC, "-p", policy] + argv)
+    except (NotEstablished, OSError) as e:
+        say("canary: not established: %s" % e)
+    return 70
+
+
 def main(a):
+    if len(a) >= 6 and a[0] == "canary" and a[4] == "--":
+        return canary(a[1], a[2], a[3], a[5:])
     if len(a) < 2 or a[0] not in ("prepare", "exec", "check", "release") or not JOB_ID.match(a[1]):
         usage()
     if a[0] == "exec":

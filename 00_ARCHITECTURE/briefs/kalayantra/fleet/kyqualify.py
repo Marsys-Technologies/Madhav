@@ -94,6 +94,7 @@ import shlex
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import threading
@@ -865,7 +866,8 @@ def build_codex_argv(cfg, job_dir=None):
 
 def build_argv(cfg, job_dir=None):
     """the plan §7 launch line; for the loop roles it equals kyloop.py's Controller.argv(). A Codex configuration
-    gets build_codex_argv (job_dir: see there; a Claude line has no per-job part)."""
+    gets build_codex_argv. Fleet Claude verifiers add their own job folder for tool access;
+    the receipt binds <JOB_DIR>, substituted exactly once per production/canary job."""
     if engine_of(cfg) == "codex":
         return build_codex_argv(cfg, job_dir)
     argv = [cfg["claude_bin"], "-p", "--setting-sources", "project", "--permission-mode", cfg["permission_mode"],
@@ -877,6 +879,8 @@ def build_argv(cfg, job_dir=None):
     argv += ["--output-format", "stream-json", "--verbose"]
     for directory in cfg["add_dirs"]:
         argv += ["--add-dir", directory]
+    if fleet_verifier(cfg):
+        argv += ["--add-dir", job_dir or JOB_DIR]
     return argv
 
 
@@ -936,6 +940,54 @@ def codex_home(caller):
     return os.path.join(caller_identity(caller)[0] or "", ".codex")
 
 
+def fleet_verifier(cfg):
+    return cfg["role"] in ("verify", "pre-accept", "post-readback")
+
+
+def codex_verifier(cfg):
+    """Fleet Codex reviewer roles required to use kyjob.sh's BOUNDED_KINDS boundary."""
+    return engine_of(cfg) == "codex" and fleet_verifier(cfg)
+
+
+def seed_codex_home(job_dir, home):
+    """Launcher-side opaque FILE copy, never parsed, hashed, logged or placed in evidence.
+
+    (I) INTERPRETATION: only auth.json is needed for file-backed sign-in. Do not copy
+    config, hooks, skills, instructions, databases or sessions; keychain-only sign-in
+    must earn the bounded sign_in canary before this configuration can be used.
+    CODEX_HOME is engine-owned, derived from JOB_SCRATCH, never caller-configurable.
+    """
+    store = os.path.join(job_dir, "program")
+    if os.path.realpath(job_dir) != os.path.abspath(job_dir):
+        raise ValueError("Codex job directory must be canonical")
+    os.makedirs(store, mode=0o700, exist_ok=True)
+    if os.path.islink(store) or not os.path.isdir(store) or os.path.realpath(store) != store:
+        raise ValueError("Codex program store must be a job-local directory, never a link")
+    source, target = os.path.join(home, ".codex", "auth.json"), os.path.join(store, "auth.json")
+    if os.path.lexists(target) and (os.path.islink(target) or not os.path.isfile(target)):
+        raise ValueError("Codex authentication destination must be a regular file")
+    try:
+        fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        if os.path.lexists(target):
+            os.unlink(target)
+        return store                         # missing auth is exercised by the negative canary
+    tmp = None
+    try:
+        with os.fdopen(fd, "rb") as src:
+            if not stat.S_ISREG(os.fstat(src.fileno()).st_mode):
+                raise ValueError("Codex authentication source must be a regular file")
+            tmp = os.path.join(store, ".auth-copy-" + secrets.token_hex(16))
+            out = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(out, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            os.replace(tmp, target)
+    finally:
+        if tmp and os.path.lexists(tmp):
+            os.unlink(tmp)
+    return store
+
+
 def compute_codex_binds(cfg, caller):
     """what a Codex receipt binds, recomputed from the configuration and the files on disk:
       engine "codex"; the program (codex_bin, codex_bin_sha256 of its real path, codex_version as `--version`
@@ -947,7 +999,7 @@ def compute_codex_binds(cfg, caller):
       $HOME/.codex/hooks.json), each a sha256 or "absent"; zdotdir_sha256; harness_sha256."""
     argv = build_codex_argv(cfg)
     home = codex_home(caller)
-    return {"engine": "codex", "codex_bin": cfg["codex_bin"],
+    binds = {"engine": "codex", "codex_bin": cfg["codex_bin"],
             "codex_bin_sha256": sha_or_none(os.path.realpath(cfg["codex_bin"])),
             "codex_version": codex_version_text(cfg["codex_bin"]), "argv": argv,
             "argv_sha256": sha_bytes(json.dumps(argv, ensure_ascii=False, separators=(",", ":")).encode("utf-8")),
@@ -968,6 +1020,7 @@ def compute_codex_binds(cfg, caller):
             "user_codex_hooks_sha256": file_digest(os.path.join(home, "hooks.json")),
             "zdotdir_sha256": directory_digest(ky_root(caller) + "/zdotdir"),
             "harness_sha256": sha_or_none(os.path.realpath(__file__))}
+    return binds
 
 
 def harness_hashes():
@@ -1237,6 +1290,8 @@ def run_child(spec, base_env, grace):
     """one launch of the configuration; returns (record, full reply text)"""
     directory = spec["dir"]
     per_run = {"TMPDIR": os.path.join(directory, "tmp"), "JOB_SCRATCH": os.path.join(directory, "job_scratch")}
+    if spec.get("verifier_boundary"):
+        per_run["TMPDIR"] = os.path.join(per_run["JOB_SCRATCH"], "tmp")
     for path in per_run.values():
         os.makedirs(path, exist_ok=True)
     paths = {"prompt_path": os.path.join(directory, "prompt.txt"), "stdout_path": os.path.join(directory, "stdout.jsonl"),
@@ -1250,6 +1305,23 @@ def run_child(spec, base_env, grace):
     env.update(spec.get("env_override") or {})
     for name in spec.get("env_remove") or []:
         env.pop(name, None)
+    command = spec["argv"]
+    if spec.get("verifier_boundary"):
+        job = per_run["JOB_SCRATCH"]
+        boundary_path = os.path.join(directory, "boundary.canary.json")
+        if spec.get("engine") == "codex":
+            env["CODEX_HOME"] = seed_codex_home(job, env["HOME"])
+            # The CLI applies its native sandbox to tools; never nest sandbox_apply.
+            # This records the arrangement only. The judge earns enforcement from
+            # the actual writable/readable/denied effects, including Git metadata.
+            write_json_atomic(boundary_path, {"mechanism": "codex-workspace-write/1", "outer_sandbox": False,
+                              "configured": True, "view": spec["verifier_boundary"], "writable": [job],
+                              "codex_home": env["CODEX_HOME"], "argv": command})
+        else:
+            # Only temp is redirected: config redirection changes Claude's auth namespace.
+            env["CLAUDE_CODE_TMPDIR"] = per_run["TMPDIR"]
+            command = ["/bin/bash", os.path.join(os.path.dirname(__file__), "kyboundary.sh"), "canary",
+                       job, spec["verifier_boundary"], boundary_path, "--"] + command
     marker = spec.get("live_marker")
     started, t0 = kyprobe.utc(), time.time()
     code = pgid = launch_error = family = kids = survivors = live_seen = ended_after = None
@@ -1262,7 +1334,7 @@ def run_child(spec, base_env, grace):
             interrupted = True
         else:
             try:
-                proc = subprocess.Popen(spec["argv"], cwd=spec["cwd"], env=env, stdin=fin, stdout=fout, stderr=ferr,
+                proc = subprocess.Popen(command, cwd=spec["cwd"], env=env, stdin=fin, stdout=fout, stderr=ferr,
                                         start_new_session=True)
             except OSError as e:
                 launch_error = type(e).__name__
@@ -1309,7 +1381,7 @@ def run_child(spec, base_env, grace):
     rec.update(paths)
     for key in ("tool", "canary", "nonce", "digest", "old", "target", "command", "env_difference", "term_after",
                 "live_marker", "after_live", "kill", "project", "outside", "label", "port", "job_dir", "item",
-                "item_before", "git_before"):
+                "item_before", "git_before", "git_tree"):
         if spec.get(key) is not None:
             rec[key] = spec[key]
     rec.update({
@@ -1323,6 +1395,8 @@ def run_child(spec, base_env, grace):
     reader = codex_stream_record if spec.get("engine") == "codex" else stream_record
     stream, text = reader(paths["stdout_path"], paths["stderr_path"])
     rec.update(stream)
+    if spec.get("verifier_boundary"):
+        rec["boundary"], _ = load_json_strict(boundary_path)
     return rec, text
 
 
@@ -1424,6 +1498,28 @@ def plan_runs(cfg, ev, a):
         spec = {"id": run_id, "kind": kind, "prompt": prompt, "cwd": cwd, "argv": list(argv), "argv_difference": [],
                 "timeout": timeout, "dir": os.path.join(ev, "runs", run_id)}
         spec.update(more)
+        if fleet_verifier(cfg):
+            if cwd == cfg["worktree"]:
+                view = scratch("view-" + run_id, project=True)
+                source = os.path.join(cwd, "CLAUDE.md")
+                if os.path.isfile(source):
+                    shutil.copyfile(source, os.path.join(view, "CLAUDE.md"))
+                spec["cwd"] = view
+            # Exact production layout: protected view inside the writable job root,
+            # with an explicit profile deny for that subtree (Claude only).
+            job = os.path.join(spec["dir"], "job_scratch")
+            source, view = spec["cwd"], os.path.join(job, "view")
+            os.makedirs(job, exist_ok=True)
+            shutil.copytree(source, view, symlinks=True)
+            for key in ("prompt", "command", "target"):
+                if key in spec:
+                    spec[key] = spec[key].replace(source, view)
+            spec["cwd"] = spec["verifier_boundary"] = view
+            spec["argv"] = [job if arg == JOB_DIR else arg for arg in spec["argv"]]
+            if "before" in spec:
+                spec["before"] = snapshot(view)
+            if "git_before" in spec:
+                spec["git_before"] = git_state(view)
         os.makedirs(spec["dir"], exist_ok=True)
         specs[run_id] = spec
         return spec
@@ -1447,6 +1543,13 @@ def plan_runs(cfg, ev, a):
 
     add("base", "context", kyprobe.PROMPT_CTX, cfg["worktree"])
     add("empty", "context", kyprobe.PROMPT_CTX, scratch("empty"))
+    if fleet_verifier(cfg):
+        mark = "KYQ-" + secrets.token_hex(8)
+        script = "import os,sys; from pathlib import Path; assert sys.argv[1] == os.environ['JOB_SCRATCH']; Path(sys.argv[1], 'CANARY_JOB.txt').write_text(%r)" % mark
+        line = "python3 -B -c " + shlex.quote(script) + ' "$JOB_SCRATCH"'
+        target = os.path.join(ev, "runs", "job-scratch", "job_scratch", "CANARY_JOB.txt")
+        add("job-scratch", "job_scratch", PROMPT_COMMAND % {"command": line}, scratch("job-scratch", project=True),
+            command=line, target=target, nonce=mark, project=True)
     for tool in cfg["intended_tools"]:
         canary("tool-" + tool.lower(), "intended", tool)
     for tool in cfg["denied_tools"]:
@@ -1820,9 +1923,24 @@ def judge(cfg, recs, texts, facts):
     watched = {i: {"exited_by_itself": not (r["timed_out"] or r["terminated_by_signal"]) and r["exit_code"] is not None,
                    "result_event": r["result_event"]}
                for i, r in recs.items()
-               if r["kind"] in ("context", "intended", "denied", "denied_bash", "hooks", "shell", "restart")}
-    put("no_tty_prompt", "pass" if all(w["exited_by_itself"] and w["result_event"] for w in watched.values()) else "fail",
-        {"run_timeout_seconds": base["timeout_seconds"], "runs": watched}, files_of(*watched))
+               if r["kind"] in ("context", "intended", "denied", "denied_bash", "hooks", "shell", "restart", "job_scratch")}
+    observed_boundary, ready = {}, True
+    if fleet_verifier(cfg):
+        observed = {name: rec.get("boundary") for name, rec in recs.items()}
+        ready = bool(observed) and all(isinstance(b, dict) and b.get("enforced") is True
+                                      and b.get("mechanism") == "seatbelt-file-write-deny/1"
+                                      and b.get("claude_code_tmpdir") == os.path.join(b["writable"][0], "tmp")
+                                      for b in observed.values())
+        job_write = recs.get("job-scratch") or {}
+        writable = bool((job_write.get("disk") or {}).get("target_is_nonce") is True
+                        and job_write.get("command") in job_write.get("bash_commands", [])
+                        and not job_write.get("permission_denials") and completed(job_write))
+        ready = bool(ready and writable)
+        observed_boundary = {"verifier_boundary": {"runs": observed, "enforced": ready, "job_folder_write": writable,
+                              "kyboundary_sha256": facts.get("verifier_boundary_sha256")}}
+    put("no_tty_prompt", "pass" if ready and all(w["exited_by_itself"] and w["result_event"] for w in watched.values()) else "fail",
+        {"run_timeout_seconds": base["timeout_seconds"], "runs": watched, **observed_boundary},
+        files_of(*watched) + (["runs/%s/boundary.canary.json" % name for name in sorted(recs)] if observed_boundary else []))
 
     # project CLAUDE.md: the footer token read from disk is in the reply, and the empty directory does not show it
     token = facts["project_footer"]
@@ -2067,6 +2185,8 @@ def required_checks(cfg, context):
         if job_rooted(cfg):             # no project instructions are loaded from a job folder: reported only
             names.remove("project_instructions_visible")
             names += ["item_read", "item_write_denied", "item_worktree_unchanged"]
+            if codex_verifier(cfg):
+                names.append("git_write_denied")
         elif cfg["sandbox"] == "workspace-write":
             names.append("git_write_denied")
         return names + (["launchd_context"] if context == "launchd" else [])
@@ -2382,12 +2502,13 @@ def codex_rollout_file(path, thread_id):
             "persistent_mode_seen": persistent, "instructions": instructions, "commands": commands}
 
 
-def rollout_record(home, thread_id, copy_to=None):
+def rollout_record(home, thread_id, copy_to=None, program_home=None):
     """Find the program's actual thread record. Copy it into evidence before parsing so
     --verify-evidence can recompute the observations without the user's session store."""
     if not isinstance(thread_id, str) or not CODEX_THREAD_RE.match(thread_id) or not home:
         return None
-    found = sorted(glob.glob(os.path.join(home, ".codex", "sessions", "*", "*", "*", "rollout-*%s.jsonl" % thread_id)))
+    store = program_home or os.path.join(home, ".codex")
+    found = sorted(glob.glob(os.path.join(store, "sessions", "*", "*", "*", "rollout-*%s.jsonl" % thread_id)))
     if len(found) != 1:
         return None
     path = found[0]
@@ -2436,9 +2557,9 @@ def observe_codex_after(spec, rec):
             time.sleep(0.3)                 # a request still being read when the run ended is counted too
         seen["network_hits"] = listener.hits() if listener is not None else None
     if spec["kind"] in ("git_commit", "git_dir_write"):
-        out = run_git(spec["cwd"], "log", "-1", "--format=%s")
+        out = run_git(spec.get("git_tree", spec["cwd"]), "log", "-1", "--format=%s")
         seen["git_head_subject"] = out.decode("utf-8", "replace").strip() if out is not None else None
-        seen["git_after"] = git_guard(spec["cwd"])
+        seen["git_after"] = git_guard(spec.get("git_tree", spec["cwd"]))
     if spec["kind"] == "item_write":
         seen["item_after"] = worktree_guard(spec["item"])
     if spec["kind"] == "slash_tmp":
@@ -2449,7 +2570,11 @@ def observe_codex_after(spec, rec):
             except OSError:
                 pass
     home = (spec.get("env_override") or {}).get("HOME") or spec.get("home")
-    seen["rollout"] = rollout_record(home, rec.get("thread_id"), os.path.join(spec["dir"], "rollout.jsonl"))
+    if spec.get("verifier_boundary"):
+        seen["rollout"] = rollout_record(home, rec.get("thread_id"), os.path.join(spec["dir"], "rollout.jsonl"),
+                                         os.path.join(spec["job_dir"], "program"))
+    else:
+        seen["rollout"] = rollout_record(home, rec.get("thread_id"), os.path.join(spec["dir"], "rollout.jsonl"))
     return seen
 
 
@@ -2603,6 +2728,12 @@ def plan_codex_runs(cfg, ev, a, home):
     launchctl_path = kyprobe.launchctl_choice(os.environ)[0]
     rooted = job_rooted(cfg)
     specs = {}
+    bounded = codex_verifier(cfg)
+    if bounded:
+        # (I) INTERPRETATION: use a scratch source stand-in for the profile's view;
+        # no qualification probe may modify the actual reviewed working tree.
+        view = os.path.join(ev, "canary", "verifier-view")
+        os.makedirs(view)
 
     def repository(run_id):
         cwd = os.path.join(ev, "canary", run_id)
@@ -2633,6 +2764,22 @@ def plan_codex_runs(cfg, ev, a, home):
                 "argv": build_codex_argv(variant_cfg, job), "argv_difference": difference, "timeout": timeout,
                 "dir": directory, "job_dir": job}
         spec.update(more)
+        if bounded:
+            # Same sibling view as live kyboundary, never below the writable -C root.
+            source, review = spec.get("item", view), job + "-view"
+            os.makedirs(os.path.dirname(review), exist_ok=True)
+            shutil.copytree(source, review, symlinks=True)
+            spec["verifier_boundary"] = review
+            if "item" in spec:
+                for key in ("prompt", "command", "target"):
+                    if key in spec:
+                        spec[key] = spec[key].replace(source, review)
+                spec["item"] = review
+                if "item_before" in spec:
+                    spec["item_before"] = worktree_guard(review)
+                if "git_tree" in spec:
+                    spec["git_tree"] = review
+                    spec["git_before"] = git_guard(review)
         os.makedirs(directory, exist_ok=True)
         specs[run_id] = spec
         return spec
@@ -2688,6 +2835,20 @@ def plan_codex_runs(cfg, ev, a, home):
         target = os.path.join(item, "CANARY_ITEM.txt")
         command("item-write", "item_write", "printf %s " + mark + " > " + shlex.quote(target), place("item-write"),
                 nonce=mark, target=target, item=item, item_before=worktree_guard(item))
+        if bounded:
+            for run_id, kind in (("git-commit", "git_commit"), ("git-dir-write", "git_dir_write")):
+                git_before = git_guard(item)
+                mark = nonce()
+                if git_before is None:
+                    raise Refusal(65, "verifier canary Git metadata cannot be read")
+                cwd = place(run_id)
+                if kind == "git_commit":
+                    line = "git -C %s commit --allow-empty -q -m %s" % (shlex.quote(item), mark)
+                    command(run_id, kind, line, cwd, nonce=mark, git_before=git_before, git_tree=item, item=item)
+                else:
+                    target = os.path.join(git_before["own"]["git_dir"], mark + ".canary")
+                    command(run_id, kind, "printf %s " + mark + " > " + shlex.quote(target), cwd,
+                            nonce=mark, target=target, before=snapshot(cwd), git_before=git_before, git_tree=item, item=item)
     elif cfg["sandbox"] == "workspace-write":
         # a builder writes no git directory (cockpit ruling E7): in a scratch linked worktree — the shape of a real
         # item working copy — a commit and a direct write into the worktree's git dir must both be refused
@@ -2868,9 +3029,22 @@ def judge_codex(cfg, recs, texts, facts):
                for i, r in recs.items() if r["kind"] in ("context", "workspace_write", "outside_write", "launchctl",
                                                          "network", "network_control", "git_commit", "git_dir_write", "item_read",
                                                          "item_write", "slash_tmp", "restart")}
-    put("no_tty_prompt", {"result": "pass" if all(w["exited_by_itself"] and w["turn_completed"] for w in watched.values())
-                          else "fail", "run_timeout_seconds": base["timeout_seconds"], "runs": watched},
-        files_of(*watched))
+    ready, boundary = True, {}
+    if codex_verifier(cfg):
+        # (I) INTERPRETATION: keep ky.qualification/1's closed schema. The native
+        # arrangement and measured tool effects belong to required no_tty_prompt.
+        observed = {name: rec.get("boundary") for name, rec in recs.items()}
+        ready = bool(observed) and all(
+            isinstance(b, dict) and b.get("mechanism") == "codex-workspace-write/1"
+            and b.get("configured") is True and b.get("outer_sandbox") is False and b.get("codex_home") == os.path.join(recs[name]["job_dir"], "program")
+            for name, b in observed.items())
+        boundary = {"verifier_boundary": {"runs": observed, "enforced": ready,
+                    "kyboundary_sha256": facts.get("verifier_boundary_sha256"),
+                    "codex_home_policy": "JOB_SCRATCH/program; auth.json only; engine-owned CODEX_HOME"}}
+    put("no_tty_prompt", {"result": "pass" if ready and all(w["exited_by_itself"] and w["turn_completed"]
+                                                          for w in watched.values()) else "fail",
+                          "run_timeout_seconds": base["timeout_seconds"], "runs": watched, **boundary},
+        files_of(*watched) + (["runs/%s/boundary.canary.json" % name for name in sorted(recs)] if boundary else []))
 
     token = facts["project_agents_footer"]
     hit = codex_in_context(base, token, "NO_PROJECT_INSTRUCTIONS")
@@ -2957,7 +3131,7 @@ def judge_codex(cfg, recs, texts, facts):
                                               "the canary cannot show a network path here")
     put("network", seen, files_of("network", *(["network-control"] if "network-control" in recs else [])))
 
-    if codex_builder(cfg):
+    if codex_builder(cfg) or codex_verifier(cfg):
         parts = {}
         rec = recs["git-commit"]
         subject = rec.get("git_head_subject")
@@ -2965,6 +3139,11 @@ def judge_codex(cfg, recs, texts, facts):
                                                  "a commit made from inside the builder's sandbox")
         rec = recs["git-dir-write"]
         landed, anything = disk(rec)
+        if codex_verifier(cfg):
+            # Job-local rollout/log files contain the attempted nonce legitimately.
+            # Judge only the protected target, then the independent Git guards.
+            target_disk = rec.get("disk") or {}
+            anything = bool(target_disk.get("target_is_nonce") or target_disk.get("target_changed"))
         parts["git-dir-write"] = judge_codex_effect(rec, False, rec["nonce"], anything,
                                                     "a file written into the working copy's git directory")
         moved = {i: git_guard_changes(recs[i].get("git_before"), recs[i].get("git_after")) for i in parts}
@@ -3087,6 +3266,15 @@ def judge_codex(cfg, recs, texts, facts):
     else:
         result, why = "unknown", "the run neither succeeded nor failed recognisably"
     probe("restart", "a normal run succeeds", result, seen, why)
+    if codex_verifier(cfg):
+        effect_checks = ("workspace_write", "outside_write_denied", "slash_tmp_write_denied", "network",
+                         "item_read", "item_write_denied", "git_write_denied")
+        measured = all(checks[name]["result"] == "pass" for name in effect_checks)
+        observed = checks["no_tty_prompt"]["observed"]["verifier_boundary"]
+        observed["enforced"] = bool(observed["enforced"] and measured)
+        observed["effect_checks"] = list(effect_checks)
+        if not observed["enforced"]:
+            checks["no_tty_prompt"]["result"] = "fail"
     return checks, probes
 
 
@@ -3163,6 +3351,9 @@ def qualify_here(cfg, ev, a, caller):
     if errs:
         raise Refusal(65, "; ".join(errs))
     binds = compute_binds(cfg, caller)
+    boundary_hash = sha_or_none(os.path.join(os.path.dirname(__file__), "kyboundary.sh")) if fleet_verifier(cfg) else None
+    if fleet_verifier(cfg) and boundary_hash is None:
+        raise Refusal(65, "fleet verifier boundary cannot be bound")
     codex = engine_of(cfg) == "codex"
     require_program(cfg, binds[program_version_key(cfg)] or "unknown")
     unbound = sorted(k for k, v in binds.items() if v is None)
@@ -3193,11 +3384,15 @@ def qualify_here(cfg, ev, a, caller):
     if STOP.is_set():
         raise Refusal(130, "interrupted: every child process group was ended; no receipt is written")
     after = compute_binds(cfg, caller)
+    if fleet_verifier(cfg) and boundary_hash != sha_or_none(os.path.join(os.path.dirname(__file__), "kyboundary.sh")):
+        raise Refusal(74, "verifier boundary changed during qualification; requalify")
     if after != binds:
         raise Refusal(74, "bound inputs changed during the run (%s); requalify" % ", ".join(
             sorted(k for k in set(after) | set(binds) if after.get(k) != binds.get(k))))
     facts = gather_codex_facts(cfg, env["HOME"], ev, guards_before, codex_guards(cfg)) if codex else \
         gather_facts(cfg, env["HOME"], ev)
+    if fleet_verifier(cfg):
+        facts["verifier_boundary_sha256"] = boundary_hash
     write_json_atomic(os.path.join(ev, "facts.json"), facts)
     recs, facts = as_json(recs), as_json(facts)     # judged in the form the evidence files hold
     checks, probes = judge(cfg, recs, texts, facts)
@@ -3452,6 +3647,11 @@ def rejudge(doc, cfg):
             if rollout != stored.get("rollout"):
                 reasons.append("evidence: runs/%s/rollout.jsonl does not match its recorded observations" % run_id)
             recs[run_id]["rollout"] = rollout
+        if fleet_verifier(cfg):
+            boundary, _ = load_json_strict(os.path.join(directory, "boundary.canary.json"))
+            if boundary != stored.get("boundary"):
+                reasons.append("evidence: runs/%s/boundary.canary.json does not match its recorded observations" % run_id)
+            recs[run_id]["boundary"] = boundary
         if stored.get("project") and stored.get("project_settings_copy") != (doc.get("binds") or {}).get("project_settings_sha256"):
             reasons.append("evidence: runs/%s did not run under the bound project settings" % run_id)
     try:
@@ -3519,6 +3719,23 @@ def check_receipt(doc, cfg, require_context=None, verify_evidence=False, environ
                        "configuration" % earned)
     if doc.get("boundary") != boundary_of(cfg):
         reasons.append("boundary: the receipt does not carry the statement of what it is (%r)" % boundary_of(cfg))
+    if fleet_verifier(cfg):
+        observed = (checks.get("no_tty_prompt") or {}).get("observed") or {}
+        boundary = observed.get("verifier_boundary") if isinstance(observed, dict) else None
+        current = sha_or_none(os.path.join(os.path.dirname(__file__), "kyboundary.sh"))
+        if (not isinstance(boundary, dict) or boundary.get("enforced") is not True or current is None
+                or boundary.get("kyboundary_sha256") != current
+                or (not codex and boundary.get("job_folder_write") is not True)
+                or not boundary.get("runs")
+                or any(not isinstance(b, dict)
+                       or b.get("mechanism") != ("codex-workspace-write/1" if codex else "seatbelt-file-write-deny/1")
+                       or (b.get("configured") is not True or b.get("outer_sandbox") is not False if codex
+                           else b.get("enforced") is not True) for b in boundary["runs"].values())
+                or (codex and (boundary.get("codex_home_policy") != "JOB_SCRATCH/program; auth.json only; engine-owned CODEX_HOME"
+                               or any(checks.get(name, {}).get("result") != "pass" for name in
+                                      ("workspace_write", "outside_write_denied", "slash_tmp_write_denied", "network",
+                                       "item_read", "item_write_denied", "git_write_denied"))))):
+            reasons.append("verifier boundary: missing, unproved or changed; requalify under the current boundary")
     lr = doc.get("launchd_receipt")
     if context == "launchd":
         inner = lr.get("inner") if isinstance(lr, dict) and isinstance(lr.get("inner"), dict) else {}

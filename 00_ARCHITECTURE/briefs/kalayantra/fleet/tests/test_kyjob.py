@@ -283,7 +283,10 @@ class World:
                 "worktree": s["worktree"], "env": self.expected_env()}
 
     def expected_argv(self) -> list:
-        return kyboot.build_launch(self.kyboot_launch())["argv"]
+        argv = kyboot.build_launch(self.kyboot_launch())["argv"]
+        if self.state.get("boundary") is not None:
+            argv += ["--add-dir", str(self.job_scratch)]
+        return argv
 
     def receipt(self) -> dict:
         s = self.state
@@ -1053,12 +1056,22 @@ def test_a_verifier_job_is_prepared_then_executed_inside_the_boundary(world):
     assert calls[0] == f"prepare {w.job_id}"
     assert len(calls) == 2
     assert calls[1].startswith(f"exec {w.job_id} -- /usr/bin/env -i HOME={w.home} PATH=")
-    assert calls[1].endswith(f"--add-dir {w.root}")
+    assert calls[1].endswith(f"--add-dir {w.job_scratch}")
     record = w.record()
     assert record["pid"] == done.pid                           # still one process: exec all the way down
     assert [w.state["claude_bin"]] + record["argv"] == w.expected_argv()
-    assert dict(entry.split("=", 1) for entry in record["env"]) == w.expected_env()
+    assert dict(entry.split("=", 1) for entry in record["env"]) == dict(w.expected_env(),
+        CLAUDE_CODE_TMPDIR=str(w.job_scratch / "tmp"))
     assert record["stdin"].encode() == w.prompt()
+
+
+def test_claude_verifier_receives_supported_private_temp_override(world):
+    w = verifier(world).build()
+    done = w.launch()
+    assert done.code == 0, done.err
+    env = dict(entry.split('=', 1) for entry in w.record()['env'])
+    assert env['CLAUDE_CODE_TMPDIR'] == str(w.job_scratch / 'tmp')
+    assert 'CLAUDE_CONFIG_DIR' not in env
 
 
 @pytest.mark.parametrize("code", [1, 64, 70, 2])
@@ -1367,3 +1380,19 @@ def test_explicit_invalid_engine_refuses_before_claude(world, engine):
     w.state['engine'] = engine
     write_json(w.state_path, w.state)
     assert_refused(w.launch(), 65, 'engine:')
+
+
+@pytest.mark.parametrize("value", ["relative/result.json", "/elsewhere/result.json", None])
+def test_header_cannot_redirect_the_proposal_file(world, value):
+    world.header["result_path"] = value
+    assert_refused(world.build().launch(), 65, "prompt: ")
+
+
+def test_claude_verifier_keeps_auth_namespace_and_grants_job_tool_access(world):
+    w = verifier(world).build()
+    done = w.launch()
+    assert done.code == 0, done.err
+    record = w.record()
+    env = dict(entry.split('=', 1) for entry in record['env'])
+    assert 'CLAUDE_CONFIG_DIR' not in env
+    assert record['argv'][-2:] == ['--add-dir', str(w.job_scratch)]

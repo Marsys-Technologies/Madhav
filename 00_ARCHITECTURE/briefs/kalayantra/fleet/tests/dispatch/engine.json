@@ -1652,7 +1652,7 @@
    "note": "kyregen.sh's own exit decides: an exit it does not name is refused; the item lock is free afterwards"
   },
   {
-   "name": "request_prep_of_a_ready_operation",
+   "name": "packetless_request_prep_is_refused_before_open",
    "covers": [
     "REQUEST-PREP"
    ],
@@ -1680,14 +1680,15 @@
        "kind": "REQUEST-PREP",
        "item": "N-OP-1",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     }
-   ]
+   ],
+   "note": "The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
-   "name": "pre_accept_of_a_prepared_production_request",
+   "name": "packetless_pre_accept_is_refused_before_open",
    "covers": [
     "PRE-ACCEPT"
    ],
@@ -1726,11 +1727,12 @@
        "kind": "PRE-ACCEPT",
        "item": "N-PUB-1",
        "pool": "verifier",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     }
-   ]
+   ],
+   "note": "The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
    "name": "execute_submits_a_prepared_read_only_request",
@@ -1810,7 +1812,7 @@
    }
   },
   {
-   "name": "post_readback_of_a_receipted_operation",
+   "name": "packetless_post_readback_is_refused_before_open",
    "covers": [
     "POST-READBACK"
    ],
@@ -1844,14 +1846,15 @@
        "kind": "POST-READBACK",
        "item": "N-RB-1",
        "pool": "verifier",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     }
-   ]
+   ],
+   "note": "The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
-   "name": "model_work_of_the_s_stream",
+   "name": "packetless_model_work_is_refused_before_open",
    "covers": [
     "MODEL"
    ],
@@ -1879,14 +1882,15 @@
        "kind": "MODEL",
        "item": "S-1",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     }
-   ]
+   ],
+   "note": "The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
-   "name": "ruling_for_an_unread_message",
+   "name": "packetless_ruling_is_refused_before_open",
    "covers": [
     "RULING"
    ],
@@ -1912,14 +1916,15 @@
        "kind": "RULING",
        "item": "msg.M-1",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     }
-   ]
+   ],
+   "note": "The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
-   "name": "surrogate_decides_an_owner_wait_first",
+   "name": "packetless_surrogate_leaves_owner_wait_unhandled",
    "covers": [
     "SURROGATE",
     "done"
@@ -1949,24 +1954,12 @@
        "kind": "SURROGATE",
        "item": "AW-20261012T100000Z-check",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     },
     {
-     "mutate": {
-      "files": {
-       "$RUN/local_db/b1.json": null
-      }
-     }
-    },
-    {
      "session": [
-      "tick",
-      "tick",
-      {
-       "wait_jobs": 120
-      },
       "tick",
       "tick",
       "stop"
@@ -1977,7 +1970,7 @@
         "kind": "SURROGATE",
         "item": "AW-20261012T100000Z-check",
         "pool": "builder",
-        "decision": "wait:slot"
+        "decision": "refused:packet"
        }
       ],
       [
@@ -1985,57 +1978,34 @@
         "kind": "SURROGATE",
         "item": "AW-20261012T100000Z-check",
         "pool": "builder",
-        "decision": "launch"
+        "decision": "refused:packet"
        }
-      ],
-      [],
-      []
+      ]
      ]
     }
    ],
    "expect": {
-    "jobs": [
-     {
-      "kind": "SURROGATE",
-      "item": "AW-20261012T100000Z-check",
-      "slot": "b1",
-      "phase": "ended",
-      "outcome": "done",
-      "stream": "steward",
-      "model": "claude-fable-5-1",
-      "locks": [
-       "awaiting.AW-20261012T100000Z-check"
-      ]
-     }
-    ],
+    "jobs": [],
     "files": {
-     "$RUN/handled/awaiting.AW-20261012T100000Z-check.json": {
-      "kind": "awaiting",
-      "decision_id": "SD-20261012T000000Z-1",
-      "class": "routine"
-     }
-    },
-    "call_counts": {
-     "kyjob.sh": 1
-    },
-    "journal": [
-     "[surrogate decision] AW-20261012T100000Z-check"
-    ],
-    "notify": [
-     "surrogate decision"
-    ],
-    "notify_counts": {
-     "surrogate decision": 1
+     "$RUN/awaiting/AW-20261012T100000Z-check.json": true,
+     "$RUN/handled/awaiting.AW-20261012T100000Z-check.json": false
     },
     "no_calls": [
+     "kyjob.sh",
      "ky decide",
-     "ky claim"
+     "ky claim",
+     "local_db.sh db"
+    ],
+    "no_journal": [
+     "[surrogate decision]",
+     "[hard stop]"
     ],
     "lock": false
-   }
+   },
+   "note": "The packetless model cannot launch: leave the awaiting item unhandled, open no job, and publish no decision. Surrogate semantic handling is separately exercised by test_kyd_kinds_ops.py."
   },
   {
-   "name": "a_hard_stop_decision_is_notified_at_its_own_level",
+   "name": "packetless_surrogate_publishes_no_hard_stop_decision",
    "covers": [
     "SURROGATE",
     "messaging"
@@ -2060,12 +2030,17 @@
    },
    "steps": [
     {
-     "session": [
-      "tick",
-      "tick",
+     "dry": [
       {
-       "wait_jobs": 120
-      },
+       "kind": "SURROGATE",
+       "item": "AW-20261012T100000Z-check",
+       "pool": "builder",
+       "decision": "refused:packet"
+      }
+     ]
+    },
+    {
+     "session": [
       "tick",
       "tick",
       "stop"
@@ -2076,7 +2051,7 @@
         "kind": "SURROGATE",
         "item": "AW-20261012T100000Z-check",
         "pool": "builder",
-        "decision": "wait:slot"
+        "decision": "refused:packet"
        }
       ],
       [
@@ -2084,46 +2059,34 @@
         "kind": "SURROGATE",
         "item": "AW-20261012T100000Z-check",
         "pool": "builder",
-        "decision": "launch"
+        "decision": "refused:packet"
        }
-      ],
-      [],
-      []
+      ]
      ]
     }
    ],
    "expect": {
-    "jobs": [
-     {
-      "kind": "SURROGATE",
-      "outcome": "done"
-     }
-    ],
-    "call_counts": {
-     "kyjob.sh": 1
-    },
-    "journal": [
-     "[hard stop] owner-only decision SD-20261012T000000Z-1",
-     "[surrogate decision] AW-20261012T100000Z-check"
-    ],
-    "notify": [
-     "\"--level\", \"hard_stop\"",
-     "\"--level\", \"decision\""
-    ],
-    "notify_counts": {
-     "hard stop": 1
-    },
+    "jobs": [],
     "files": {
-     "$RUN/awaiting/AW-20261012T100000Z-check.json": true
+     "$RUN/awaiting/AW-20261012T100000Z-check.json": true,
+     "$RUN/handled/awaiting.AW-20261012T100000Z-check.json": false
     },
     "no_calls": [
-     "ky decide"
-    ]
+     "kyjob.sh",
+     "ky decide",
+     "ky claim",
+     "local_db.sh db"
+    ],
+    "no_journal": [
+     "[surrogate decision]",
+     "[hard stop]"
+    ],
+    "lock": false
    },
-   "note": "the item stays open for the owner; no second SURROGATE job is launched on unchanged evidence"
+   "note": "The packetless model cannot launch: leave the awaiting item unhandled, open no job, and publish no decision. Surrogate semantic handling is separately exercised by test_kyd_kinds_ops.py."
   },
   {
-   "name": "plan_at_a_repacket_request_and_at_the_wave_boundary",
+   "name": "packetless_plan_requests_are_refused_before_open",
    "covers": [
     "PLAN"
    ],
@@ -2144,7 +2107,7 @@
        "kind": "PLAN",
        "item": "REPACKET",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     },
@@ -2172,7 +2135,7 @@
        "kind": "PLAN",
        "item": "WAVE-BOUNDARY",
        "pool": "builder",
-       "decision": "launch"
+       "decision": "refused:packet"
       }
      ]
     },
@@ -2187,7 +2150,7 @@
         "kind": "PLAN",
         "item": "WAVE-BOUNDARY",
         "pool": "builder",
-        "decision": "wait:slot"
+        "decision": "refused:packet"
        }
       ]
      ]
@@ -2201,7 +2164,7 @@
      "[wave complete]"
     ]
    },
-   "note": "A boundary PLAN intent while K-1 is blocked is not a detector of wave completion."
+   "note": "A boundary PLAN intent while K-1 is blocked is not a detector of wave completion. The launcher requires a packet; packetless model admission refuses before opening a job."
   },
   {
    "name": "stop_dispatcher_ends_the_tick_before_anything",

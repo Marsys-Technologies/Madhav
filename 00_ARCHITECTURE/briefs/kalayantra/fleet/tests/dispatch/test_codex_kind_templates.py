@@ -112,8 +112,11 @@ def test_ops_header_respects_codex_policy_and_readonly_mapping(ctx, role, tmp_pa
     (Path(ctx.run) / 'JOB_ENGINE').write_text(role + '=codex')
     A.refresh_job_engine(ctx)
     parent, _, _, stream, pool = ROLES[role]
+    packet = tmp_path / 'packet.md'
+    packet.write_text('# Fixture packet for the admitted model role\n')
     intent = O._intent(ctx, role.upper(), 'KV3-T', stream=stream, runner='model', pool=pool,
-                       tier='opus', evidence_fp='evidence', effort='xhigh' if parent == 'build' else 'high')
+                       packet=str(packet), tier='opus', evidence_fp='evidence',
+                       effort='xhigh' if parent == 'build' else 'high')
     assert intent['header']['model'] == A.CODEX_MODEL and intent['header']['effort'] == 'high'
     refusals, admitted = launch(ctx, role.upper())
     assert refusals == []
@@ -218,12 +221,17 @@ def test_new_readonly_mapping_refuses_missing_snapshot_packet(role, monkeypatch)
 
 
 @pytest.mark.parametrize('role', ['build', 'verify'])
-def test_existing_codex_templates_are_byte_identical_to_assembly_head(role):
+def test_existing_codex_templates_preserve_assembly_launch_contract(role):
     path = FLEET / 'templates' / ('LAUNCH_CONFIG.' + role + '.codex.json')
     rel = str(path.relative_to(FLEET.parents[3]))
     read = subprocess.run(['/usr/bin/git', '-C', str(FLEET), 'show', 'HEAD:' + rel],
                           env={'PATH': '/usr/bin:/bin', 'GIT_OPTIONAL_LOCKS': '0'}, capture_output=True, check=True)
-    assert path.read_bytes() == read.stdout
+    # Startup policy is engine-owned; the verifier note documents it. The
+    # template's executable configuration must still match the accepted head.
+    current, accepted = json.loads(path.read_bytes()), json.loads(read.stdout)
+    current.pop('_note', None)
+    accepted.pop('_note', None)
+    assert current == accepted
 
 
 @pytest.mark.parametrize('role', ['pre-accept', 'post-readback', 'ruling', 'request-prep', 'model', 'plan'])

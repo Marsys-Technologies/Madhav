@@ -299,7 +299,13 @@ def test_full_autonomy_copy_limits_are_owner_authorised():
 def test_live_missing_receipt_has_a_qualifiable_role_template(role,parent,cap,card):
     cfg=json.loads((FLEET/'templates'/('LAUNCH_CONFIG.'+role+'.json')).read_text())
     baseline=json.loads((FLEET/'templates'/('LAUNCH_CONFIG.'+parent+'.json')).read_text())
-    assert cfg == dict(baseline,role=role,max_turns=cap,prompt_path='/Users/Dev/kalayantra/fleet_live/cards/'+card)
+    expected = dict(baseline,role=role,max_turns=cap,prompt_path='/Users/Dev/kalayantra/fleet_live/cards/'+card)
+    if role == 'post-readback':
+        # VERIFY alone gained named path-check permissions; post-readback keeps its existing policy.
+        expected['extra_flags'] = json.loads((FLEET/'templates/LAUNCH_CONFIG.bootstrap-reviewer.json').read_text())['extra_flags']
+        assert isinstance(cfg.pop('_note'), str)
+        expected.pop('_note')
+    assert cfg == expected
 
 
 @pytest.mark.parametrize('role', ['build','rework','verify'])

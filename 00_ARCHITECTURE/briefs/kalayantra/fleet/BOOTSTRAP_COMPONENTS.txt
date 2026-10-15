@@ -51,7 +51,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
@@ -65,6 +64,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_codex_kind_templates.py
@@ -283,12 +283,10 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 
 # area: assembly — runtime/test census and newly qualifiable job templates
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_open_fixes.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_verify_publish.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.codex.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json
-00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.json
 
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.codex.json
@@ -299,6 +297,11 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 # Chart variants: missing reviewed MCP definition; harness requires mcp_none.
 # Codex artifact/request-prep/model/plan: completion adapters refuse.
 # Codex pre-accept/ruling: constructors lack packet_path; post-readback operation variant likewise.
+# Claude verifier-role templates: the Claude seatbelt boundary does not yet pass live qualification
+# (job_folder_write false); verification runs on Codex (JOB_ENGINE verify=codex).
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/kybackfill.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/rehearsal_results.json

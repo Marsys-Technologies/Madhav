@@ -243,7 +243,8 @@ def test_derived_template_runs_through_accepted_launcher(tmp_path, verifier):
     completed = w.launch()
     assert completed.code == 0, completed.err
     recorded = json.loads((w.job_scratch / 'kyjob.launch.json').read_text())
-    assert recorded['engine'] == 'codex' and recorded['env_names'] == sorted(cfg['env_names'])
+    names = cfg['env_names'] + (['CODEX_HOME'] if verifier else [])
+    assert recorded['engine'] == 'codex' and recorded['env_names'] == sorted(names)
     args = recorded['argv']
     assert args[args.index('-m') + 1] == 'gpt-6.1-sol'
     assert args[args.index('-C') + 1] == str(w.job_scratch if verifier else w.worktree)

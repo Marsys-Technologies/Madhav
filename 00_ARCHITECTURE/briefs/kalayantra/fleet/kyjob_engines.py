@@ -7,6 +7,7 @@ interpretation: linked worktrees, exact file scope, no unproved action replay.
 Changelog: v1.0 (2026-10-13): engine selection, guarded landing and silence timeout.
 Campaign add-on (2026-10-13): launch-pinned kyroute owns/shared scope and blocking landing checks.
 Fix B1 (2026-10-13): unreadable persisted activity/log or launch/landing checkpoints hold; no invented replay.
+WB-01 (2026-10-14): native boundary preparation binds the CLI before its version check.
 """
 from __future__ import annotations
 
@@ -108,6 +109,8 @@ def launch_config(job, env):
             or job.get('extra_lean_flags') or job.get('disallowed_tools'):
         raise Refusal('mixed Claude launch fields in a Codex job')
     verifier = job['kind'] in READ_ONLY_KINDS
+    if verifier and job.get('sandbox_mode', 'locked') != 'locked':
+        raise Refusal('read-only Codex roles require their native workspace-write sandbox; full is refused')
     if verifier != qualify.job_rooted(cfg):
         raise Refusal('VERIFY must be job-rooted; builders must be worktree-rooted'
                           if job['kind'] in ('BUILD', 'REWORK', 'VERIFY') else
@@ -132,6 +135,8 @@ def argv(cfg, job):
     """Only the cockpit's three full-mode changes to the reviewed base builder."""
     out = qualify.build_argv(cfg, job['job_scratch'])
     if job.get('sandbox_mode', 'locked') == 'full':
+        if job.get('kind') in READ_ONLY_KINDS:
+            raise Refusal('full would remove the verifier boundary')
         if out.count('-s') != 1 or out[out.index('-s') + 1] != 'workspace-write':
             raise Refusal('the reviewed base argv has no unique workspace-write sandbox')
         out[out.index('-s') + 1] = 'danger-full-access'
@@ -153,6 +158,8 @@ def plan(job, own, helper):
     deadline = helper['parse_deadline'](job['deadline'])
     if deadline is None or not time.time() < deadline <= time.time() + cfg['deadline_seconds']:
         raise Refusal('Codex deadline is missing, past or exceeds configured duration')
+    # Native preparation binds the measured CLI before even its version code runs.
+    prefix = helper['prepare_boundary'](job['job_id'], own) if bounded else []
     version = qualify.codex_version_text(cfg['codex_bin'])
     found = qualify.version_tuple(version)
     minimum = qualify.version_tuple(cfg['codex_min_version'])
@@ -164,12 +171,14 @@ def plan(job, own, helper):
     if before:
         if cfg_hash != before.get('config_sha256') or pointer(job) != before.get('pointer'):
             raise Refusal('Codex launch inputs changed after controller preparation')
-    prefix = helper['prepare_boundary'](job['job_id'], own) if bounded else []
     pairs = [(n, env[n]) for n in cfg['env_names']]
+    if bounded:
+        store = qualify.seed_codex_home(job['job_scratch'], own['HOME'])
+        pairs.append(('CODEX_HOME', store))
     parts = ['ky.jobplan/1', job['worktree'], job['prompt_path'], job['stdout_path'], job['stderr_path']]
     parts += prefix + ['/usr/bin/env', '-i'] + ['%s=%s' % p for p in pairs] + command
     record = dict(job_id=job['job_id'], cwd=job['worktree'], argv=command,
-                  env_names=sorted(cfg['env_names']), launch_config_path=job['launch_config_path'],
+                  env_names=sorted(n for n, _ in pairs), launch_config_path=job['launch_config_path'],
                   launch_config_sha256=cfg_hash, at=helper['utc_now_text'](), **metadata(job))
     if before:
         # Controller checkpoint is prepared before spawn (fleet/kyd_jobs.py:683-690, 782-787).

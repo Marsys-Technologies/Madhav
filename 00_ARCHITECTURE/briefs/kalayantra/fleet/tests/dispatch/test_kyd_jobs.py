@@ -1239,3 +1239,58 @@ def test_claude_survivors_keep_legacy_recovery(world, monkeypatch):
     assert J.recover(world.ctx) == [] and J.supervise(world.ctx) == []
     assert J._fresh(world.ctx, job)['controller_id'] == job['controller_id']
     assert len(world.log.awaiting) == 1
+
+
+@pytest.mark.parametrize("kind", ["VERIFY", "ARTIFACT"])
+def test_review_plan_prompt_and_collection_keep_one_result_path(world, kind):
+    job = opened(world, kind=kind, claim=None, verdict_phase="pre_merge" if kind == "VERIFY" else "artifact")
+    expected = str(Path(job["job_scratch"]) / "result.json")
+    header = json.loads(Path(job["prompt_path"]).read_text().split("--- job header ---\n")[1])
+    assert job["result_path"] == header["result_path"] == expected
+    # An absent or malformed proposal is diagnosed by the publisher, never erased into an unknown path.
+    for raw in (None, "{invalid"):
+        if raw is not None: Path(expected).write_text(raw)
+        J._collect(world.ctx, job)
+        assert job["result_path"] == expected
+
+
+def test_three_launcher_refusals_are_counted_once_across_restart(world):
+    intent = world.intent({"item": "K-1", "claim": None, "evidence_fp": "e" * 64})
+    for n in range(3):
+        assert not J.attempts(world.ctx, intent)["blocked"]
+        job = J.open(world.ctx, intent, "b1", world.facts(None))
+        Path(job["job_scratch"], "kyjob.refusal.json").write_text(json.dumps({
+            "job_id": job["job_id"], "code": 65, "reason": "state: packet_path is not a non-empty text",
+            "at": "2026-10-14T00:00:00Z"}))
+        J._collect(world.ctx, job)
+        assert job["outcome"] == "refused" and job["failure_fp"] == "launcher_state_65"
+        J._save(world.ctx, job)
+        assert J.close(world.ctx, job)["phase"] == "ended"
+        J.close(world.ctx, job)
+    restarted = Ctx(world, "controller-restart")
+    assert J.attempts(restarted, intent) == {"attempt": 4, "blocked": True}
+    table = json.loads((world.run / "jobs" / "failures.json").read_text())
+    assert table["K-1"]["launcher_state_65"]["count"] == 3
+    assert not J.attempts(restarted, dict(intent, evidence_fp="changed"))["blocked"]
+
+
+def test_packetless_model_is_refused_without_reserving_job_or_claim(world):
+    intent = world.intent({"item": "msg.fixture", "kind": "RULING", "packet": None, "claim": None})
+    assert J.open(world.ctx, intent, "b1", world.facts(None)) is None
+    assert J.load(world.ctx) == []
+    assert not list((world.scratch / "jobs").glob("*")) if (world.scratch / "jobs").exists() else True
+    assert world.log.ky == []
+
+
+@pytest.mark.parametrize('bad', ['missing', 'symlink', 'fifo'])
+def test_review_checkpoint_does_not_hash_an_unvalidated_proposal(world, monkeypatch, bad):
+    job = opened(world, kind='VERIFY', claim=None)
+    path = Path(job['job_scratch'], 'result.json')
+    if bad == 'symlink':
+        target = Path(job['job_scratch'], 'other.json'); target.write_text('not a job result')
+        path.symlink_to(target)
+    if bad == 'fifo': os.mkfifo(path)
+    monkeypatch.setattr(ka, 'sha_file', lambda path: pytest.fail('unvalidated proposal was opened for hashing'))
+    assert J._step_result(world.ctx, job, {'outcome': 'failed', 'failure_fp': 'publish_result_invalid'})
+    assert job['checkpoint']['result_path'] == str(path)
+    assert job['checkpoint']['result_sha256'] is None

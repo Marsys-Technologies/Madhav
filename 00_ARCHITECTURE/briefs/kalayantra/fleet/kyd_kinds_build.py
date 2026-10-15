@@ -1090,10 +1090,16 @@ def _publish(ctx, job):
     if scratch is None or not isinstance(job_id, str) or not ID_RE.match(job_id) or not isinstance(item, str):
         return _result("failed", "the job carries no absolute job_scratch or no job id: nothing published",
                        "job_scratch_unknown")
-    rc, _, _ = ctx.sh(["bash", _fleet(ctx, "kyboundary.sh"), "check", job_id])
-    if rc != 0:
-        return _result("failed", "kyboundary check exit %r: nothing published" % (rc,),
-                       "boundary_violated" if rc == 1 else "boundary_unknown")
+    steps = (job.get("checkpoint") or {}).get("steps") or {}
+    released = job.get("phase") == "ended" and "boundary" in steps
+    # (I) INTERPRETATION: terminal release removes the verifier view. Replaying check would destroy its
+    # original attestation. For an ended/released job, publish validates the preserved boundary evidence
+    # and freshly observes the worktree against the pre-job snapshot; never rebuild a verifier view here.
+    if not released:
+        rc, _, _ = ctx.sh(["bash", _fleet(ctx, "kyboundary.sh"), "check", job_id])
+        if rc != 0:
+            return _result("failed", "kyboundary check exit %r: nothing published" % (rc,),
+                           "boundary_violated" if rc == 1 else "boundary_unknown")
     phase = {"VERIFY": "pre_merge", "ARTIFACT": "artifact"}[kind]
     try:
         events = _events(ctx, item)
@@ -1121,7 +1127,10 @@ def _publish(ctx, job):
         return _result("failed", "what the job reviewed is no longer what the item registers: nothing published",
                        "registration_changed")
     slot, worktree, exit_code = job.get("slot"), job.get("worktree"), job.get("exit_code")
-    result_path, controller = job.get("result_path"), job.get("controller_id")
+    # Older prepared/ended states did not carry this lifecycle value. The prompt has always named this
+    # file; keep its identity even when absent or invalid so publish can report the precise requirement.
+    result_path = job.get("result_path") or os.path.join(scratch, "result.json")
+    controller = job.get("controller_id")
     if (job.get("verdict_phase") != phase or not isinstance(slot, str) or not slot
             or not isinstance(worktree, str) or not os.path.isabs(worktree) or type(exit_code) is not int
             or not isinstance(result_path, str) or not os.path.isabs(result_path)
@@ -1136,4 +1145,13 @@ def _publish(ctx, job):
                          "--boundary", os.path.join(scratch, "boundary.check.json"), "--as", controller])
     if rc == 0:
         return _result("done", "verdict published for %s (%s)" % (item, phase))
+    try:
+        said = json.loads(out)
+    except (ValueError, TypeError):
+        said = None
+    reasons = said.get("reasons") if isinstance(said, dict) else None
+    if (isinstance(reasons, list) and reasons
+            and all(isinstance(r, str) and re.fullmatch(r"[a-z][a-z0-9_]*", r) for r in reasons)):
+        return _result("failed", "kyverdicts publish exit %r: %s: nothing published" % (rc, ", ".join(reasons)),
+                       "publish_" + reasons[0])
     return _result("failed", "kyverdicts publish exit %r: nothing published" % (rc,), "publish_exit_%s" % (rc,))

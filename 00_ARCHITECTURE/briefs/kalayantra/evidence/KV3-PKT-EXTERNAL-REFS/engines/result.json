@@ -1,0 +1,88 @@
+// Source: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/result.json
+// Original sha256: a812696b55095bf960f55ad155a7608ef38d0cf4d40f0abbb9050a9c37371e70; date: 2026-10-14
+{
+ "schema": "ky.job_result/1",
+ "job_id": "review-engines-r4",
+ "item": "KV3-B-0C",
+ "status": "done",
+ "branch": "kalayantra/b0c-engines",
+ "head_sha": null,
+ "pr_number": null,
+ "tests": [
+  {
+   "cmd": "cd /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b0c-engines && python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/pytest-1",
+   "exit": 0,
+   "summary": "556 passed in 285.72s; ran to its summary line"
+  },
+  {
+   "cmd": "cd /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b0c-engines && python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/pytest-2",
+   "exit": 0,
+   "summary": "150 passed in 211.59s; ran to its summary line"
+  },
+  {
+   "cmd": "cd /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b0c-engines && python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/pytest-3",
+   "exit": 0,
+   "summary": "87 passed in 238.19s; ran to its summary line"
+  },
+  {
+   "cmd": "cd /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b0c-engines && python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kymanifest.py -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/pytest-4",
+   "exit": 0,
+   "summary": "35 passed in 59.67s; ran to its summary line"
+  },
+  {
+   "cmd": "cd /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-b0c-engines && python3 -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/pytest-5",
+   "exit": 0,
+   "summary": "2 passed in 8.38s; ran to its summary line"
+  },
+  {
+   "cmd": "mutated copy under /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/mut: test_kyqualify_codex.py -k builder",
+   "exit": 1,
+   "summary": "2 failed, 19 passed: dropping git_write_denied from the required checks is killed; dropping the git-directory-changed clause of its judge was not separately shown killed"
+  },
+  {
+   "cmd": "mutated copy under /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/reviews/b0c-engines/jobs/review-engines-r4/mut: test_kyboot.py -k codex_builder_gets_no_git/launcher_commit/changes_the_common_git/included_config",
+   "exit": 1,
+   "summary": "4 failed, 8 passed: awaiting_launcher_commit ignoring guard failures is killed; removing the builder network finding in _codex_findings survived (the launch-input schema still refuses network true, checked directly)"
+  }
+ ],
+ "blocked_reason": null,
+ "notes": "Round 4 review of area engines at e4693d8ee1ea46697e18bcaf28cb948039c2f811. All five test files ran to their summary lines in separate foreground runs: 830 passed, 0 failed. 23 input hashes match. Head and clean status unchanged before and after. Claude launch line, required checks and config validation compared base against head for the fixture and the four Claude templates: equal. No write outside the job scratch by any command of mine.",
+ "proposed_verdict": {
+  "verdict": "ACCEPTED",
+  "head": "e4693d8ee1ea46697e18bcaf28cb948039c2f811",
+  "findings": [
+   {
+    "id": "N1",
+    "blocking": false,
+    "file": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py",
+    "line": 2271,
+    "defect": "awaiting_launcher_commit does not look at the supervisor exit status, termination, group_gone or supervisor_error; a timed-out or killed builder that had written a done result reads true while kyboot exits non-zero",
+    "required_change": "non-blocking: add code == EXIT_OK and group_gone to the conjunction; until then the launcher finisher must require kyboot exit 0 as well"
+   },
+   {
+    "id": "N2",
+    "blocking": false,
+    "file": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyboot.py",
+    "line": 958,
+    "defect": "the builder network finding in _codex_findings has no test of its own: removing it leaves every test green because the schema refuses first",
+    "required_change": "non-blocking: add a test that reaches the finding with the schema check bypassed, or accept the schema as the single enforcer"
+   },
+   {
+    "id": "N3",
+    "blocking": false,
+    "file": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyqualify.py",
+    "line": 2820,
+    "defect": "the git-directory-changed clause of git_write_denied was not shown killed on its own; qualification never attempts to rewrite the .git pointer",
+    "required_change": "non-blocking: add a fake that only rewrites the pointer"
+   },
+   {
+    "id": "N4",
+    "blocking": false,
+    "file": "inputs",
+    "line": null,
+    "defect": "read permission was refused for the brief, the rulings file and the three cockpit launchers; hashes of the brief and rulings match; rulings E2 and E7 were judged from the job text and the code",
+    "required_change": "none"
+   }
+  ]
+ }
+}

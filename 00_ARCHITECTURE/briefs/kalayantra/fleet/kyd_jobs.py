@@ -549,6 +549,8 @@ def _plan(ctx, intent, slot, facts):
     header, launch = intent.get("header") or {}, facts.get("launch") or {}
     if not isinstance(header, dict) or not isinstance(launch, dict):
         return None, "intent.header and facts.launch must be objects"
+    if intent.get("runner") == "model" and not _text(intent.get("packet")):
+        return None, "packet: the model launcher requires a non-empty packet_path"
     managed_codex = launch.get("codex_config")
     if managed_codex is not None:
         for k in LAUNCH_FACTS + engines.FIELDS + ("role",):
@@ -648,6 +650,8 @@ def _reserve(ctx, state):
         job = dict(state, job_id=job_id, job_scratch=str(scratch), prompt_path=str(scratch / "prompt.md"),
                    stdout_path=str(scratch / "stdout.jsonl"), stderr_path=str(scratch / "stderr.log"),
                    tmp_path=str(scratch / "tmp"))
+        if job["kind"] in ("VERIFY", "ARTIFACT"):
+            job["result_path"] = str(scratch / "result.json")
         os.mkdir(scratch / "tmp")
         for k in ("prompt_path", "stdout_path", "stderr_path"):
             io.open(job[k], "xb").close()
@@ -1100,7 +1104,8 @@ def _collect(ctx, job):
     """What a job whose group is gone left behind, into its state (not saved here)."""
     child = _CHILDREN.pop(job["job_id"], None)
     job["exit_code"] = child.poll() if child is not None else None       # null for a job this process adopted
-    job["result_path"] = os.path.join(job["job_scratch"], "result.json") if _result(job) is not None else None
+    job["result_path"] = (os.path.join(job["job_scratch"], "result.json")
+                          if job["kind"] in ("VERIFY", "ARTIFACT") or _result(job) is not None else None)
     if job.get("engine") == "codex":
         job["provider_session_id"] = job.get("provider_session_id") or engines.boot.first_thread_id(job["stdout_path"])
         job["result_event"] = engines.boot.final_codex_turn(job["stdout_path"])
@@ -1110,6 +1115,16 @@ def _collect(ctx, job):
     refusal = os.path.join(job["job_scratch"], "kyjob.refusal.json")
     if job.get("outcome") is None and os.path.isfile(refusal) and not os.path.islink(refusal):
         job["outcome"] = "refused"
+        doc, err = ka.read_json(refusal)
+        job["failure_fp"] = "launcher_refused"
+        if (not err and isinstance(doc, dict) and doc.get("job_id") == job["job_id"]
+                and _real_int(doc.get("code")) and _text(doc.get("reason"))):
+            # (I) INTERPRETATION: the launcher's named check and exit code are the failure class;
+            # free text (paths, values, timestamps) must not create a fresh retry class each tick.
+            check = doc["reason"].split(":", 1)[0]
+            if re.fullmatch(r"[a-z_]+", check):
+                job["failure_fp"] = "launcher_%s_%d" % (check, doc["code"])
+            _checkpoint(job)["launcher_refusal"] = {"code": doc["code"], "reason": ka.flat(doc["reason"], 1000)}
     if kyloop.detect_quota(job["stdout_path"], job["stderr_path"])["refusal"]:
         job["failure_fp"] = QUOTA
     _checkpoint(job)["collected"] = _stamp()
@@ -1339,7 +1354,8 @@ def _step_result(ctx, job, result):
     _checkpoint(job).update(at=_stamp(), outcome=outcome, failure_fp=fp, exit_code=job.get("exit_code"),
                             detail=None if detail is None else ka.flat(detail, 2000),
                             result_path=job.get("result_path"),
-                            result_sha256=ka.sha_file(job["result_path"]) if job.get("result_path") else None)
+                            result_sha256=(ka.sha_file(job["result_path"])
+                                           if job.get("result_path") and _result(job) is not None else None))
     _account(ctx, job)
     return True
 

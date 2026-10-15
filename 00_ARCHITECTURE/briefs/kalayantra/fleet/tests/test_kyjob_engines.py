@@ -124,6 +124,9 @@ def test_claude_bytes_changed(tmp_path,explicit):
 def test_full_argv_or_record_changed(tmp_path,mode,verifier):
     w,cfg=codex_world(tmp_path,mode,verifier)
     done=w.launch()
+    if mode == 'full' and verifier:
+        assert done.code == 65
+        return
     assert done.code==0,done.err
     actual=(w.job_scratch/'tmp/fake_argv.txt').read_text().splitlines()
     expected=Q.build_argv(cfg,str(w.job_scratch))[1:]
@@ -148,6 +151,90 @@ def test_full_without_explicit_selection(tmp_path):
     cfg['sandbox']='danger-full-access'
     legacy.write_json(w.state['launch_config_path'],cfg)
     assert w.launch().code==65
+
+
+def test_full_mode_cannot_remove_a_codex_verifiers_only_sandbox(tmp_path):
+    w, cfg = codex_world(tmp_path, 'full', verifier=True)
+    assert w.launch().code == 65
+
+
+@pytest.mark.parametrize('mode', ['locked'])
+def test_codex_verifier_startup_uses_private_authenticated_store(tmp_path, mode):
+    w, cfg = codex_world(tmp_path, mode, verifier=True)
+    shared = w.home / '.codex'
+    shared.mkdir()
+    (shared / 'auth.json').write_text('fake authentication; not a credential\n')
+    (shared / 'config.toml').write_text('must never be copied\n')
+    (shared / 'hooks.json').write_text('must never be copied\n')
+    body = w.program.read_text()
+    check = '''
+store="${CODEX_HOME:?verifier startup requires CODEX_HOME}"
+[ "$store" = "$JOB_SCRATCH/program" ] || exit 91
+[ -f "$store/auth.json" ] || exit 92
+[ ! -e "$store/config.toml" ] && [ ! -e "$store/hooks.json" ] || exit 93
+mkdir -p "$store/tmp/arg0" "$store/sessions" "$store/log"
+printf 'started\\n' > "$store/startup.txt"
+'''
+    w.program.write_text(body.replace('out="${TMPDIR:?TMPDIR is not set}"', check + '\nout="${TMPDIR:?TMPDIR is not set}"'))
+    done = w.launch()
+    assert done.code == 0, done.err
+    store = w.job_scratch / 'program'
+    assert (store / 'startup.txt').read_text() == 'started\n'
+    assert (store / 'auth.json').read_bytes() == (shared / 'auth.json').read_bytes()
+    assert (store / 'auth.json').stat().st_mode & 0o777 == 0o600
+    assert not (shared / 'sessions').exists()
+    record = json.loads((w.job_scratch / 'kyjob.launch.json').read_text())
+    assert 'CODEX_HOME' in record['env_names']
+
+
+def test_native_boundary_checks_the_binary_before_its_version_program_runs(tmp_path, monkeypatch):
+    w, cfg = codex_world(tmp_path, verifier=True)
+    E = adapter()
+    versions = []
+    def version(path):
+        versions.append(path)
+        return '0.162.0'
+    def refuse(*args):
+        raise E.Refusal('Codex executable changed after admission')
+    monkeypatch.setattr(Q, 'codex_version_text', version)
+    helper = dict(check_prompt=lambda job: None, check_boundary_form=lambda job: True,
+                  job_environment=lambda job, own: list(w.expected_env().items()),
+                  parse_deadline=lambda text: time.time() + 60, prepare_boundary=refuse)
+    with pytest.raises(E.Refusal, match='Codex executable changed'):
+        E.plan(w.state, {}, helper)
+    assert versions == [], 'an unbound version program ran before native preparation'
+
+
+def test_codex_verifier_refuses_linked_program_store(tmp_path):
+    w, cfg = codex_world(tmp_path, verifier=True)
+    outside = w.base / 'outside-store'
+    outside.mkdir()
+    (w.job_scratch / 'program').symlink_to(outside, target_is_directory=True)
+    assert w.launch().code == 65
+    assert not list(outside.iterdir())
+
+
+@pytest.mark.parametrize('unsafe', ['source-link', 'destination-link', 'source-directory', 'source-fifo'])
+def test_codex_authentication_copy_refuses_links_and_nonfiles(tmp_path, unsafe):
+    home, job = tmp_path / 'home', tmp_path / 'job'
+    (home / '.codex').mkdir(parents=True)
+    (job / 'program').mkdir(parents=True)
+    source, target = home / '.codex' / 'auth.json', job / 'program' / 'auth.json'
+    sentinel = tmp_path / 'sentinel'
+    sentinel.write_text('fake sentinel; not a credential\n')
+    if unsafe == 'source-link':
+        source.symlink_to(sentinel)
+    elif unsafe == 'destination-link':
+        source.write_text('fake auth\n')
+        target.symlink_to(sentinel)
+    elif unsafe == 'source-directory':
+        source.mkdir()
+    else:
+        os.mkfifo(source)
+    with pytest.raises((OSError, ValueError)):
+        Q.seed_codex_home(str(job), str(home))
+    assert sentinel.read_text() == 'fake sentinel; not a credential\n'
+    assert not list((job / 'program').glob('.auth-copy-*'))
 
 
 @pytest.mark.parametrize('field,value',[('engine','claude'),('model','wrong'),('effort','xhigh'),('network',True),('writable_dirs',['/tmp'])])

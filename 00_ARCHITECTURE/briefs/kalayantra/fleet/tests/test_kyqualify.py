@@ -2224,7 +2224,10 @@ def test_live_bootstrap_job_templates_match_the_actual_launcher(role, parent, ca
     assert kyqualify.validate_config(cfg, check_disk=False) == []
     for key in ("effort", "permission_mode", "max_turns", "deadline_seconds", "extra_flags", "disallowed_tools",
                 "intended_tools", "denied_tools", "add_dirs", "shell_canary", "bash_canary", "denied_bash"):
-        assert cfg.get(key) == baseline.get(key)
+        if key == 'extra_flags' and role == 'verify':
+            assert cfg[key][0].startswith(baseline[key][0] + ',')
+        else:
+            assert cfg.get(key) == baseline.get(key)
     assert cfg["role"] == role and cfg["model"] == "claude-opus-5-5"
     assert cfg["worktree"] == "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
     assert cfg["mcp_config"] == "/Users/Dev/kalayantra/fleet_live/mcp.none.json"
@@ -2261,7 +2264,7 @@ def test_live_bootstrap_job_templates_match_the_actual_launcher(role, parent, ca
     state.update(claude_bin=cfg["claude_bin"], model=cfg["model"], effort=cfg["effort"],
                  permission_mode=cfg["permission_mode"], max_turns=cfg["max_turns"], mcp_config=cfg["mcp_config"],
                  extra_lean_flags=cfg["extra_flags"], disallowed_tools=cfg["disallowed_tools"], KY_ROOT=own["KY_ROOT"])
-    assert launcher["build_argv"](state) == kyqualify.build_argv(cfg)
+    assert launcher["build_argv"](state) == kyqualify.build_argv(cfg, state["job_scratch"])
     assert kymanifest.launch_config_of({"role": role}) == str(
         (TEMPLATES / ("LAUNCH_CONFIG.%s.json" % role)).relative_to(FLEET.parents[3]))
     assert kymanifest.launch_config_of({"role": role}) in (FLEET / "BOOTSTRAP_COMPONENTS.txt").read_text().splitlines()
@@ -2343,3 +2346,57 @@ def test_tests_caller_value_survives_launchd_with_exact_receipt_names(rig):
     assert "TESTS" in receipt["binds"]["env_names"]
     calls = [c for c in rig.calls() if "TESTS" in c["env_names"]]
     assert calls and all(c["tests"] == value for c in calls)
+
+
+def test_claude_verifier_qualification_uses_live_temp_and_boundary(rig):
+    body = (rig.bindir / 'claude').read_text()
+    body = body.replace('os.path.join(here, "calls.jsonl")', 'os.path.join(os.environ["JOB_SCRATCH"], "calls.jsonl")')
+    body = body.replace('os.path.join(here, "sleep_pids")', 'os.path.join(os.environ["JOB_SCRATCH"], "sleep_pids")')
+    probe = '''
+root = os.environ.get("CLAUDE_CODE_TMPDIR", "/private/tmp")
+assert root == os.environ["JOB_SCRATCH"] + "/tmp"
+assert "CLAUDE_CONFIG_DIR" not in os.environ
+assert any(a[i:i+2] == ["--add-dir", os.environ["JOB_SCRATCH"]] for i in range(len(a)-1))
+temp = os.path.join(root, "claude-" + str(os.getuid()), os.getcwd().replace("/", "-"))
+os.makedirs(temp, exist_ok=True)
+subprocess.run(["/bin/sh", "-c", "echo cache > \\\"$JOB_SCRATCH/cache-proof\\\""], check=True)
+# No source/git write may succeed under the same live outer profile.
+for target in [os.path.join(os.getcwd(), "CANARY_SOURCE.txt"), os.path.join(os.getcwd(), ".git", "index")]:
+    try:
+        with open(target, "w") as stream: stream.write("leaked")
+    except OSError:
+        pass
+    else:
+        raise AssertionError("verifier boundary leaked: " + target)
+'''
+    body = body.replace('def opt(name):', probe + '\ndef opt(name):')
+    (rig.bindir / 'claude').write_text(body)
+    rig.user_settings(USER_HOOKS)
+    cfg = rig.config(**dict(REVIEWER, role='verify'))
+    out = rig.tmp / "verifier-receipt.json"
+    r, receipt, evidence = rig.qualify(cfg, out=out)
+    assert receipt is not None and receipt['result'] == 'PASS', r.stderr
+    boundary = receipt['checks']['no_tty_prompt']['observed']['verifier_boundary']
+    assert boundary['enforced'] is True
+    assert boundary['job_folder_write'] is True
+    for run in (evidence / 'runs').iterdir():
+        record = json.loads((run / 'run.json').read_text())
+        assert record['boundary']['mechanism'] == 'seatbelt-file-write-deny/1'
+        assert 'CLAUDE_CODE_TMPDIR' in record['env_names'] and 'CLAUDE_CONFIG_DIR' not in record['env_names']
+        assert record['cwd'] == str(run / 'job_scratch' / 'view')
+    assert rig.check(out, cfg, '--verify-evidence')[0].returncode == 0
+
+
+def test_verify_templates_allow_card_path_checks_and_pytest_without_env_dump():
+    import fnmatch
+    for filename in ['LAUNCH_CONFIG.verify.json', 'LAUNCH_CONFIG.verify.tests.json']:
+        cfg = json.loads((TEMPLATES / filename).read_text())
+        rules = cfg['extra_flags'][0].split('=', 1)[1].split(',')
+        def allowed(command):
+            return any(fnmatch.fnmatchcase(command, r[5:-1]) or (r.endswith(':*)') and command.startswith(r[5:-3]))
+                       for r in rules)
+        for command in ['printenv JOB_SCRATCH', 'printenv KY_SCRATCH', 'printenv KY_FLEET', 'printenv TMPDIR',
+                        'echo rc_job=$?', 'date -u +%FT%TZ', 'pwd', 'git rev-parse HEAD', 'git ls-files -z',
+                        'python3 -B -m pytest tests/test_packet.py -p no:cacheprovider --basetemp="$JOB_SCRATCH/pytest"']:
+            assert allowed(command), (filename, command)
+        assert not allowed('printenv') and not allowed('printenv ANTHROPIC_API_KEY')
