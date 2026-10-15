@@ -32,6 +32,8 @@ import re
 import sys
 from pathlib import Path
 
+from services.gochara_kernel.dasha_read import observe_dasha_tiers
+
 from .freeze import (EPHEMERIS_KEYS, FreezeRefused, bind_dump_run, ephemeris_component_problems,  # noqa: F401
                      require_stage1)
 
@@ -73,12 +75,6 @@ SQL_AV_DONOR_IDENTITY = """SELECT a.ayanamsha_id, COUNT(c.fact_id) AS n,
   FROM (SELECT DISTINCT ayanamsha_id FROM chart_facts WHERE chart_id = %s) a
   LEFT JOIN chart_facts c ON c.chart_id = %s AND c.ayanamsha_id = a.ayanamsha_id AND c.fact_category = 'ashtakavarga_bindu_contributor'
  GROUP BY a.ayanamsha_id ORDER BY a.ayanamsha_id"""
-
-
-SQL_DASHA_TIERS = """SELECT system_id, level_n, verification_pass_status, COUNT(*) FROM chart_dashas
- WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
-   AND system_id IN ('vimshottari','yogini','ashtottari','chara_karaka','naisargika','mudda','kalachakra','narayana')
- GROUP BY 1, 2, 3 ORDER BY 1, 2, 3"""
 
 
 SQL_COVERAGE_SUMMARY = """SELECT partition_kind, COUNT(*) AS partitions,
@@ -165,9 +161,10 @@ def read_dasha_tiers(conn, *, chart_id: str) -> list[dict]:
     """The OBSERVED per-(system, level) verification tiers and row counts of the eight DR-14 daśā systems for the chart (frozen as
     `dasha_plurality_tier_policy.observed_tiers`; the '4.1' run must observe the same — DR-15(d))."""
     _require_read_only(conn)
-    with conn.cursor() as cur:
-        cur.execute(SQL_DASHA_TIERS, (chart_id,))
-        rows = cur.fetchall()
+    rows = observe_dasha_tiers(
+        conn, chart_id, 'lahiri_chitrapaksha',
+        ('vimshottari', 'yogini', 'ashtottari', 'chara_karaka', 'naisargika',
+         'mudda', 'kalachakra', 'narayana'), levels=None).fetchall()
     return [{"system": r[0], "level": int(r[1]), "tier": r[2], "count": int(r[3])} for r in rows]
 
 

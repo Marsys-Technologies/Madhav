@@ -19,6 +19,7 @@ from services.gochara_eval import dump_extract as dx
 from . import _disposable_guard as guard
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+DASHA_BUILD = "00000000-0000-4000-8000-000000000901"
 
 ADMIN = os.environ.get("GOCHARA_EVAL_TEST_ADMIN_DSN")
 pytestmark = pytest.mark.skipif(not ADMIN, reason="GOCHARA_EVAL_TEST_ADMIN_DSN not set")
@@ -31,7 +32,7 @@ CREATE TABLE kala_gochara_publication (chart_id uuid, generation text, status te
 CREATE TABLE chart_facts (fact_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,
   fact_key text, fact_value_num double precision);
 CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, system_id text, level_n int,
-  verification_pass_status text);
+  verification_pass_status text, build_id uuid);
 CREATE TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text,
   requested_horizon tstzrange, completed_horizon tstzrange, targets_requested int, targets_resolved int,
   targets_unresolved int, unsearched_reason text);
@@ -143,15 +144,19 @@ def test_av_donor_identity_runs_the_real_sql_counts_and_digests_per_ayanamsha(co
     assert dx.read_av_donor_identity(reader(conn), chart_id=CHART_ID)["per_ayanamsha"]["lahiri_chitrapaksha"]["digest"] != first["lahiri_chitrapaksha"]["digest"]
 
 
-def test_dasha_tiers_runs_the_real_sql_per_system_level_and_tier(conn):
+def test_dasha_tiers_runs_the_real_sql_per_system_level_and_tier(conn, tmp_path, monkeypatch):
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART_ID, build_id=DASHA_BUILD)
     """Only the eight DR-14 systems, only the candidate's ayanamsha, grouped by (system, level, tier) with counts (vimshottari_kp and other ayanamshas excluded)."""
-    rows = ([("vimshottari", 1, "two_pass_verified")] * 3 + [("mudda", 1, "classical_match")] * 2 + [("mudda", 2, "single")] * 5 + [("vimshottari_kp", 2, "single")])
+    rows = ([("vimshottari", 1, "two_pass_verified")] * 3 + [("mudda", 1, "classical_match")] * 2 + [("mudda", 2, "single")] * 5 + [("vimshottari_kp", 2, "single"), ("mudda", 5, "unknown")])
     for sysid, lv, tier in rows:
         conn.execute("INSERT INTO chart_dashas(chart_id, ayanamsha_id, system_id, level_n, verification_pass_status) VALUES (%s,'lahiri_chitrapaksha',%s,%s,%s)",
                      (CHART_ID, sysid, lv, tier))
     conn.execute("INSERT INTO chart_dashas(chart_id, ayanamsha_id, system_id, level_n, verification_pass_status) VALUES (%s,'raman','vimshottari',1,'single')", (CHART_ID,))
+    conn.execute("UPDATE chart_dashas SET build_id=%s", (DASHA_BUILD,))
     assert dx.read_dasha_tiers(reader(conn), chart_id=CHART_ID) == [{"system": "mudda", "level": 1, "tier": "classical_match", "count": 2},
                                          {"system": "mudda", "level": 2, "tier": "single", "count": 5},
+                                         {"system": "mudda", "level": 5, "tier": "unknown", "count": 1},
                                          {"system": "vimshottari", "level": 1, "tier": "two_pass_verified", "count": 3}]
 
 
@@ -179,12 +184,15 @@ def fresh():
 def test_the_cli_read_backs_and_the_baseline_extraction_run_on_psycopgs_default_connection(fresh, monkeypatch, tmp_path, capsys):
     """Codex R11-5: the REAL `_connect` (psycopg.connect(dsn), autocommit=False) through main(): every read-back and the extraction (here the baseline
     re-dump) complete in one read-only transaction — they raised ProgrammingError before the transaction characteristics were configured once up front."""
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART_ID, build_id=DASHA_BUILD)
     c, dsn = fresh
     D = dt.date
     add(c, "3.0", [("marriage", D(2000, 1, 1), D(2000, 2, 1), D(2000, 1, 9), 0.5, 0.5, "gain", False, "day", "interval")])
     c.execute("INSERT INTO kala_gochara_publication VALUES (%s,'4.1','candidate',%s)", (CHART_ID, json.dumps({"orb_max_deg": 5.0, "orb_ruling": "x", "ephemeris": None})))
     c.execute("INSERT INTO chart_facts(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num) VALUES (%s,'lahiri_chitrapaksha','graha_position','SUN','longitude_sidereal',291.9)", (CHART_ID,))
     c.execute("INSERT INTO chart_dashas(chart_id, ayanamsha_id, system_id, level_n, verification_pass_status) VALUES (%s,'lahiri_chitrapaksha','mudda',1,'classical_match')", (CHART_ID,))
+    c.execute("UPDATE chart_dashas SET build_id=%s", (DASHA_BUILD,))
     monkeypatch.setenv(dx.DSN_ENV, dsn)
     for flag in ("--read-manifest-orb", "--read-coverage-summary", "--read-av-donor-rows", "--read-dasha-tiers"):
         assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", flag]) == 0, flag
@@ -196,3 +204,30 @@ def test_the_cli_read_backs_and_the_baseline_extraction_run_on_psycopgs_default_
     rc = dx.main(["--chart-id", CHART_ID] + ["--generation", "3.0", "--requalify-3-0", "0" * 64, "--pinned-at", "2026-10-05", "--out", str(out)])
     assert out.exists() and json.loads(out.read_bytes())["row_count"] == 1 and rc in (0, 1)
     assert "rows=1" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('damage,code', [
+    ('missing_receipt', 'settlement_missing'),
+    ('malformed_receipt', 'settlement_malformed'),
+    ('other_chart', 'chart_not_settled'),
+    ('wrong_build', 'settled_build_absent'),
+    ('null_build', 'dasha_build_null'),
+    ('mixed_build', 'settled_build_ambiguous'),
+])
+def test_dasha_tier_readback_refuses_ungoverned_population(fresh, tmp_path, monkeypatch, damage, code):
+    from services.gochara_kernel.dasha_read import DashaBuildRefused
+    from tests.l3._dasha_settlement import settle_fixture_chart
+
+    conn, _ = fresh
+    receipt = settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART_ID, build_id=DASHA_BUILD)
+    conn.execute("INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,verification_pass_status,build_id) "
+                 "VALUES (%s,'lahiri_chitrapaksha','mudda',2,'single',%s)", (CHART_ID, DASHA_BUILD))
+    if damage == 'missing_receipt': receipt.unlink()
+    elif damage == 'malformed_receipt': receipt.write_text('{}')
+    elif damage == 'wrong_build': conn.execute("UPDATE chart_dashas SET build_id=gen_random_uuid()")
+    elif damage == 'null_build': conn.execute("UPDATE chart_dashas SET build_id=NULL")
+    elif damage == 'mixed_build':
+        conn.execute("INSERT INTO chart_dashas SELECT gen_random_uuid(),chart_id,ayanamsha_id,system_id,5,'unknown',gen_random_uuid() FROM chart_dashas")
+    requested_chart = '00000000-0000-4000-8000-000000000902' if damage == 'other_chart' else CHART_ID
+    with pytest.raises(DashaBuildRefused, match=code):
+        dx.read_dasha_tiers(reader(conn), chart_id=requested_chart)

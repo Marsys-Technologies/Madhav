@@ -22,6 +22,15 @@ from ._candidate_oracles import (CAMPAIGN_MEASUREMENT, EXTRACT_3_0, EXTRACT_3_0_
                                  pinned_candidate_oracles, requires_pinned_oracles)
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+DASHA_BUILD = "00000000-0000-4000-8000-000000000901"
+
+
+@pytest.fixture(autouse=True)
+def settled_chart(tmp_path, monkeypatch):
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART_ID, build_id=DASHA_BUILD)
+
+
 COMMIT = "a" * 40
 SIDECAR = Path(__file__).resolve().parents[3]
 
@@ -272,7 +281,7 @@ class FakeCursor:
     def __init__(self, conn): self.conn = conn
     def __enter__(self): return self
     def __exit__(self, *a): return False
-    def execute(self, sql, params=()): self.conn.executed.append((sql, params)); self.conn.in_txn = True; self.last = sql   # the first query OPENS the transaction (autocommit=False)
+    def execute(self, sql, params=()): self.conn.executed.append((sql, params)); self.conn.in_txn = True; self.last = sql; return self   # the first query OPENS the transaction (autocommit=False)
     def fetchone(self):
         if "sign_mismatch" in self.last:
             return self.conn.sign
@@ -280,6 +289,8 @@ class FakeCursor:
             return None
         return (self.conn.outside,)
     def fetchall(self):
+        if "SELECT DISTINCT coalesce" in self.last:
+            return [(DASHA_BUILD,)]
         if "chart_dashas" in self.last:
             return self.conn.tiers
         if "ashtakavarga_bindu_contributor" in self.last:
@@ -308,6 +319,7 @@ class FakeConn:
     @isolation_level.setter
     def isolation_level(self, v): self._guard("isolation_level"); self._isolation = v
     def cursor(self): return FakeCursor(self)
+    def execute(self, sql, params=()): return self.cursor().execute(sql, params)
     def rollback(self): self.in_txn = False
     def close(self): self.closed = True
 

@@ -455,6 +455,11 @@ WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = 'vimshottari' AND leve
                 WHERE chart_id = %s AND level_n = 1 AND system_id = 'vimshottari'
                 ORDER BY start_date
                 """,
+    'avadhi_integrity_periods': '''
+SELECT * FROM chart_dashas WHERE chart_id=%s AND build_id=%s
+  AND ayanamsha_id=%s AND verification_pass_status=%s AND system_id=ANY(%s)
+  AND level_n BETWEEN 1 AND 4 ORDER BY system_id,level_n,start_iso,dasha_row_id
+''',
     'avadhi_periods': """
 SELECT dasha_row_id, system_id, level_n, lord_graha, parent_row_id,
        start_iso, end_iso, start_date, end_date, lord_to_parent_relationship,
@@ -485,7 +490,8 @@ def execute_governed_dasha_query(
     otherwise erase provenance. Uses the caller's transaction and cursor.
     """
     if clock_tier is not None:
-        if sql not in (_DASHA_QUERIES["clock_rows"], _DASHA_QUERIES["avadhi_periods"]):
+        if sql not in (_DASHA_QUERIES["clock_rows"], _DASHA_QUERIES["avadhi_periods"],
+                       _DASHA_QUERIES["avadhi_integrity_periods"]):
             raise DashaBuildRefused("read_contract_mismatch", "explicit clock tiers belong to F2 projections")
         if clock_tier not in RESTRICTED_TABLE_VOCAB or clock_tier == DIVERGENT_FLAGGED:
             raise DashaBuildRefused("dasha_tier_refused", "F2 tier is not an admitted honest tier")
@@ -517,16 +523,23 @@ def execute_governed_dasha_query(
 
 
 def observe_dasha_tiers(conn, chart_id, ayanamsha_id, systems, levels):
-    """Settlement-bound diagnostic counts include rejected tiers, never lords."""
+    """Settlement-bound diagnostic counts include rejected tiers, never lords.
+
+    ``levels=None`` observes every stored depth, preserving diagnostic counts
+    without turning those rows into eligible period operands.
+    """
     _require_governed_ayanamsha(ayanamsha_id)
     settlement = load_dasha_settlement(chart_id)
     _assert_governed_system_builds(conn, chart_id, ayanamsha_id, systems, settlement["run_id"])
+    level_sql = " AND level_n = ANY(%s)" if levels is not None else ""
+    params = [chart_id, ayanamsha_id, list(systems), settlement["run_id"]]
+    if levels is not None:
+        params.append(list(levels))
     return conn.execute(
         "SELECT system_id, level_n, verification_pass_status, count(*) AS n"
         " FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
-        " AND system_id = ANY(%s) AND level_n = ANY(%s) AND build_id = %s"
-        " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
-        (chart_id, ayanamsha_id, list(systems), list(levels), settlement["run_id"]))
+        " AND system_id = ANY(%s) AND build_id = %s" + level_sql +
+        " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3", params)
 
 
 def validate_live_dasha_periods(chart_id, periods, ayanamsha_id):

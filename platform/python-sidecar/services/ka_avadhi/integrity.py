@@ -15,6 +15,7 @@ import json
 import psycopg.rows
 
 from brahmagyan.graha_vocabulary import norm_graha
+from services.gochara_kernel.dasha_read import dasha_query, execute_governed_dasha_query
 from services.kala_core.vocab import LordKind, NullReason, YOGINI_GRAHA, period_lord
 
 
@@ -117,10 +118,12 @@ def inspect_candidate(conn, chart_id: str, build_id: str) -> CandidateInspection
             raise ValueError('incomplete or mixed pins')
     except (KeyError, TypeError, ValueError):
         return CandidateInspection(False, gen, 0, ('invalid_candidate_pins',))
-    periods = _read(conn, '''SELECT * FROM chart_dashas WHERE chart_id=%s AND build_id=%s
-        AND ayanamsha_id=%s AND verification_pass_status=%s AND system_id=ANY(%s)
-        AND level_n BETWEEN 1 AND 4 ORDER BY system_id,level_n,start_iso,dasha_row_id''',
-        (chart_id, f2['build_id'], f2['ayanamsha_id'], f2['tier'], f2['systems']))
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        execute_governed_dasha_query(
+            conn, chart_id, dasha_query('avadhi_integrity_periods'),
+            (chart_id, f2['build_id'], f2['ayanamsha_id'], f2['tier'], f2['systems']),
+            ayanamsha_id=f2['ayanamsha_id'], cursor=cur, clock_tier=f2['tier'])
+        periods = cur.fetchall()
     facts = _read(conn, '''SELECT * FROM chart_facts WHERE chart_id=%s AND build_id=%s
         AND ayanamsha_id=%s AND verification_pass_status=%s
         ORDER BY fact_subject,fact_category,fact_key,fact_id''',

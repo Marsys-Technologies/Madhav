@@ -1,10 +1,18 @@
 """An extract must query and describe the requested chart, with no native default."""
 import json
 
+import pytest
+
 from services.gochara_eval import dump_extract as dx
-from .test_freeze_and_dump import ROWS, RO, GOOD_EPH, OUT, conn_for, make_stage1
+from .test_freeze_and_dump import DASHA_BUILD, ROWS, RO, GOOD_EPH, OUT, conn_for, make_stage1
 
 CHART = "11111111-1111-4111-8111-111111111111"
+
+
+@pytest.fixture(autouse=True)
+def settled_chart(tmp_path, monkeypatch):
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART, build_id=DASHA_BUILD)
 
 
 def test_dump_and_readbacks_use_the_requested_chart_in_every_sql_predicate():
