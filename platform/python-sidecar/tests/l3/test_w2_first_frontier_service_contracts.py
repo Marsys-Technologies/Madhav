@@ -124,8 +124,10 @@ def test_w2_service_payload_shapes_are_exact_and_immutable():
     assert set(result) == {
         "contract_version", "evidence", "comparisons", "front", "ordered",
         "rejected", "order_policy", "question_frame", "entity_not_evaluated",
-        "tolerances", "empty_reason",
+        "tolerances", "empty_reason", "front_rule", "dominance_cycles",
     }
+    assert result["front_rule"] == "undominated_or_cycle_member"
+    assert result["dominance_cycles"] == []
     evidence = result["evidence"]["w1"]
     assert set(evidence) == {"axes", "anchor_days", "annotations"}
     assert set(evidence["axes"]) == {"nearest", "strongest", "most_robust"}
