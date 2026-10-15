@@ -1,5 +1,5 @@
 {
-  "probe_digest": "be22dc1db9d0f1273cc646e5d7e5f64a04e606fe5e42dbccbcdaa6115ce5a033",
+  "probe_digest": "c065a46e4357a819f65579247a936e9625043910626ed842926464b7d6065104",
   "version": "nirmana-writer-digest-inventory/v1",
   "writers": {
     "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
@@ -102,7 +102,7 @@
     "ka_sudarshana_varsha": "944788406a64acf42c599996087d6afa91831bb91a703068245a9cdf2c1d72ba",
     "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
     "ka_tithi_pravesha": "826e8181255ad50fc0d27b8a3f0bcecb0cd800d989638ddb07d833aab88612bd",
-    "ka_tulana": "22d886c71a59f2701bdf67c8284cd2a8a9f00a2366825bd4c034108325244622",
+    "ka_tulana": "3d583a6a21149e01ad513e85d647a4343c85ad3c6f4667cc4bbf80174b5878f5",
     "ka_vedha_gochara": "05785beb47a12acebef467effd63694ef748788f7a229efcde26a68d1a63c6d1",
     "ka_vighnakara": "dd57f0ed2330a9ef2aabd14153a52475ed044f7fe39d1c4440a94961646c287e",
     "ka_yojaka": "0420096d84dc231afc4cf6e73d7e0f5700dfe42fd9ad6a34a6581a5b5f191406",
