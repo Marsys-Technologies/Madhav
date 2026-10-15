@@ -66,6 +66,14 @@ def add_session(box, pid, status="idle", proc_start="Thu Oct 15 07:37:15 2026"):
         {"pid": pid, "sessionId": SID, "procStart": proc_start, "status": status}))
 
 
+def answer(box, when, role="assistant"):
+    """Append one transcript message (the model's reply by default) timestamped at `when`."""
+    with open(box["transcript"], "a") as fh:
+        fh.write(json.dumps({"timestamp": when.isoformat().replace("+00:00", "Z"),
+                             "message": {"role": role, "content": [{"type": "text", "text": "ok"}]}}) + "\n")
+    set_mtime(box["transcript"], when)
+
+
 class Waker:
     def __init__(self, result=None):
         self.calls = []
@@ -201,10 +209,22 @@ def test_answered_wake_resets_failure_count(box):
     run(box, w, now=t2)  # first wake unanswered → counted
     state = json.loads((box["root"] / "run" / "watchdog" / "state.json").read_text())
     assert state["failed_wakes"] == 1
-    set_mtime(box["transcript"], t2 + dt.timedelta(minutes=1))  # the session answered
+    answer(box, t2 + dt.timedelta(minutes=1))  # the model replied after the wake
     run(box, w, now=t2 + dt.timedelta(minutes=40))
     state = json.loads((box["root"] / "run" / "watchdog" / "state.json").read_text())
     assert state["failed_wakes"] == 0
+
+
+def test_wake_prompt_alone_does_not_count_as_answered(box):
+    """The wake writes a USER line into the transcript; only an ASSISTANT reply resets the failure count."""
+    add_job(box, "X-running")
+    w = Waker()
+    t = NOW
+    run(box, w, now=t)
+    answer(box, t + dt.timedelta(seconds=5), role="user")  # what a wake itself leaves behind
+    run(box, w, now=t + dt.timedelta(minutes=15))
+    state = json.loads((box["root"] / "run" / "watchdog" / "state.json").read_text())
+    assert state["failed_wakes"] == 1
 
 
 def test_daily_ceiling(box):
@@ -215,7 +235,7 @@ def test_daily_ceiling(box):
     for _ in range(2):
         # the session "answers" each wake, so only the daily ceiling can stop it
         run(box, w, now=t)
-        set_mtime(box["transcript"], t + dt.timedelta(minutes=1))
+        answer(box, t + dt.timedelta(minutes=1))
         t = t + dt.timedelta(minutes=30)
     rec = run(box, w, now=t)
     assert rec["reason"].startswith("daily wake ceiling") and len(w.calls) == 2

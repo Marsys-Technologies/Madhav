@@ -138,7 +138,7 @@ def test_the_verifier_derives_every_included_path_so_a_class_without_its_contact
                         ).fetchone()[0] == 0
 
 
-def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
+def test_a_formerly_h_unknown_class_plans_under_the_final_rule_version(run):
     step, conn = run
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
               writer_mod.SNAPSHOT_SUBSTEP):
@@ -149,9 +149,10 @@ def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
         "SELECT path_id, exclusion_reason, ruling_ref FROM public.ka_gochara_search_path_pin"
         " WHERE generation = %s AND event_class = 'spiritual_turn' AND disposition = 'excluded'"
         " ORDER BY path_id", (GEN,)).fetchall()
-    assert rows == [("P1", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
-                    ("P3", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
-                    ("P4", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
+    # P06 final rules (registry.py ND_H_VERSION 1.2.0) supersede the older H-unknown versions.
+    assert rows == [("P1", "superseded_by_version", None),
+                    ("P3", "superseded_by_version", None),
+                    ("P4", "superseded_by_version", None),
                     ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
 
 

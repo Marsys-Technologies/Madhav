@@ -282,6 +282,20 @@ it('K7-4 PRIORITY thesis follows Tulana while old scalar receipts remain intact'
   expect(JSON.stringify(bodies)).toContain('nearest')
 })
 
+it('K7-B1 PRIORITY discloses tolerance cycles and carries every alternative', async () => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: ['B', 'A', 'C'], front: ['A', 'B', 'C'],
+    comparisons: [{ A: 'A', B: 'B', relation: 'A_dominates' },
+      { A: 'A', B: 'C', relation: 'B_dominates' }, { A: 'B', B: 'C', relation: 'A_dominates' }],
+    dominance_cycles: [['A', 'B', 'C']], front_rule: 'undominated_or_cycle_member',
+    order_policy: ['best_suited', 'most_robust', 'strongest', 'nearest'], evidence: {}, rejected: [] }
+  vi.stubGlobal('fetch', mockPriorityFetch({ is_error: false, content: capabilityPayload({ comparison }) }))
+  const handler = captureRegisteredHandler(registerKalaPriorityTool, TEST_PRINCIPAL)
+  const result = extractContent(await handler({ chart_id: TEST_CHART_ID }))
+  expect(result.comparison).toEqual(comparison)
+  expect(JSON.stringify(result.reading)).toContain('tolerance cycle')
+  expect(JSON.stringify(result.reading)).toContain('all cycle members remain on the front')
+})
+
 it('K7-4 Compatibility: the real old kala_priority_ranking_get alias still returns its golden scalar shape', async () => {
   const handlers = new Map<string, (params: Record<string, unknown>) => Promise<unknown>>()
   const server = { tool: (...args: unknown[]) => handlers.set(String(args[0]), args[args.length - 1] as (params: Record<string, unknown>) => Promise<unknown>) }

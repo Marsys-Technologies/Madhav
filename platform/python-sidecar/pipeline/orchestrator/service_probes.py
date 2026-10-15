@@ -789,9 +789,8 @@ def _probe_graha_sancara(probe_spec: dict) -> dict[str, Any]:
 _TULANA_PARETO_REQUIRED_FIELDS = frozenset({"contract_version", "date_from", "date_to", "windows",
     "expected_order", "expected_front", "expected_relation", "expected_reason", "expected_axes"})
 
-# Historical schema introspection for immutable migration 849. This validator
-# cannot dispatch, score or green the current service; the runtime accepts only
-# the versioned Pareto contract below.
+# Historical schema validation for immutable migration 849. An absent version
+# selects a scoped compatibility detector; an explicit unknown version refuses.
 _TULANA_REQUIRED_FIELDS = frozenset({"forensic_reference_date", "forensic_window_a", "forensic_window_b",
     "forensic_expected_composite_a", "forensic_expected_composite_b",
     "forensic_expected_winner_window_id", "forensic_expected_decisive_factor"})
@@ -820,15 +819,47 @@ def _validated_tulana_probe_config(probe_spec: dict) -> dict[str, Any]:
     return dict(probe_spec)
 
 
+def _tulana_probe_oracle(probe_spec):
+    """Select by the stored contract, never by the code's deployment date.
+
+    (I) INTERPRETATION K7-B2: before 1377, the legacy dates/identities exercise
+    current comparison through a single-day synthetic projection. Confidence,
+    convergence and rarity are NOT substitutes for current axes. Historical
+    weighted expectations are retired and explicitly outside this signal.
+    """
+    from datetime import date, timedelta
+    from services.ka_tulana.ranker import VERSION, CompareRequest
+
+    if "contract_version" in probe_spec:
+        missing = sorted(_TULANA_PARETO_REQUIRED_FIELDS - probe_spec.keys())
+        if missing or probe_spec["contract_version"] != VERSION:
+            raise ValueError(f"unsupported/incomplete tulana probe contract: {missing}")
+        request = CompareRequest.model_validate({k: probe_spec[k] for k in ("windows", "date_from", "date_to")})
+        return request, probe_spec, VERSION, "versioned Pareto front/order/relations"
+
+    config = _validated_tulana_probe_config(probe_spec)
+    ref = date.fromisoformat(config["forensic_reference_date"])
+    windows = sorted((config["forensic_window_a"], config["forensic_window_b"]), key=lambda w: w["window_id"])
+    projected = [dict(chart_id="probe:849", field_snapshot_id="probe:849", window_id=w["window_id"],
+                      window_start=w["peak_date"], window_end=w["peak_date"]) for w in windows]
+    days = {w["window_id"]: max(0, (date.fromisoformat(w["peak_date"]) - ref).days) for w in windows}
+    a, b = [w["window_id"] for w in windows]
+    nearest = "tie" if abs(days[a] - days[b]) <= 1 else "A_better" if days[a] < days[b] else "B_better"
+    expected = dict(expected_order=sorted(days, key=lambda identity: (days[identity], identity)),
+                    expected_front=sorted(days), expected_relation="incomparable", expected_reason="unavailable",
+                    expected_axes={"nearest": nearest, "strongest": "unavailable", "most_robust": "unavailable"})
+    request = CompareRequest(windows=projected, date_from=ref, date_to=ref + timedelta(days=90))
+    return request, expected, "849:unversioned", (
+        "849 compatibility: synthetic date/identity projection, nearest and unavailable axes; "
+        "retired weighted scores/winner/decisive factor are not measured")
+
+
 def _probe_tulana(probe_spec: dict) -> dict[str, Any]:
-    """Same probe_type, replacement Pareto oracle; never accept the weighted contract."""
+    """Same dispatcher, earned detectors on both sides of migration 1377."""
     checks, failures = [], []
     try:
-        from services.ka_tulana.ranker import KaTulanaService, VERSION, CompareRequest
-        missing = sorted(_TULANA_PARETO_REQUIRED_FIELDS - probe_spec.keys())
-        if missing or probe_spec.get("contract_version") != VERSION:
-            raise ValueError(f"missing/retired tulana probe contract: {missing}")
-        request = CompareRequest.model_validate({k:probe_spec[k] for k in ("windows","date_from","date_to")})
+        from services.ka_tulana.ranker import KaTulanaService
+        request, oracle, version, scope = _tulana_probe_oracle(probe_spec)
         if len(request.windows) != 2:
             raise ValueError("two fixed forensic windows required")
         _add_check(checks, failures, "probe_config_valid", True)
@@ -840,23 +871,24 @@ def _probe_tulana(probe_spec: dict) -> dict[str, Any]:
     try:
         result = KaTulanaService().compare_windows(**request.model_dump())
         pair = result["comparisons"][0]
-        axes_ok = {k:v["relation"] for k,v in pair["axes"].items()} == probe_spec["expected_axes"]
-        ok = (result["ordered"] == probe_spec["expected_order"]
-              and result["front"] == probe_spec["expected_front"]
-              and pair["relation"] == probe_spec["expected_relation"]
-              and pair["reason"] == probe_spec["expected_reason"] and axes_ok)
-        _add_check(checks, failures, "forensic_front_and_order", ok, "Pareto front/order/relation mismatch" if not ok else "")
+        axes_ok = {k:v["relation"] for k,v in pair["axes"].items()} == oracle["expected_axes"]
+        ok = (result["ordered"] == oracle["expected_order"]
+              and result["front"] == oracle["expected_front"]
+              and pair["relation"] == oracle["expected_relation"]
+              and pair["reason"] == oracle["expected_reason"] and axes_ok)
+        _add_check(checks, failures, "forensic_front_and_order", ok, "Pareto front/order/relation mismatch" if not ok else "", scope=scope)
     except Exception as exc:
-        _add_check(checks, failures, "forensic_front_and_order", False, str(exc))
+        _add_check(checks, failures, "forensic_front_and_order", False, str(exc), scope=scope)
     try:
         pair = KaTulanaService().compare(request.windows[0], request.windows[1],
             reference_date=request.date_from, date_to=request.date_to)
-        ok = (pair["relation"] == probe_spec["expected_relation"] and pair["reason"] == probe_spec["expected_reason"]
-              and {k:v["relation"] for k,v in pair["axes"].items()} == probe_spec["expected_axes"])
-        _add_check(checks, failures, "forensic_compare_verdict", ok, "dominance table mismatch" if not ok else "")
+        ok = (pair["relation"] == oracle["expected_relation"] and pair["reason"] == oracle["expected_reason"]
+              and {k:v["relation"] for k,v in pair["axes"].items()} == oracle["expected_axes"])
+        _add_check(checks, failures, "forensic_compare_verdict", ok, "dominance table mismatch" if not ok else "", scope=scope)
     except Exception as exc:
-        _add_check(checks, failures, "forensic_compare_verdict", False, str(exc))
-    return _aggregate(checks, failures)
+        _add_check(checks, failures, "forensic_compare_verdict", False, str(exc), scope=scope)
+    return {**_aggregate(checks, failures), "stored_contract_version": version,
+            "scope": scope, "retired_expectations_measured": False}
 
 
 # ── ka_dasha_kala probe (DB-free PROXY check — D-CND-34 ruling, #2071/#2067) ─────────

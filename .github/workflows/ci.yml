@@ -346,7 +346,12 @@ jobs:
         env:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           KALA_REQUIRE_DB: '1'
-        run: python -m pytest tests/l3/kala_db -q -rs
+        # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
+        # dispatch and broken-detector negatives in both migration states.
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py -q -rs
+      - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
+        working-directory: platform/python-sidecar
+        run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
 
   db-integration-tests:
     needs: changes
@@ -1557,7 +1562,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py tests/l3/gochara/test_w4_launch_bridge.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-g12-mutations:
     # P06 G12 snapshot-copy baseline and SQL mutations (four isolated slices).
@@ -2474,6 +2479,14 @@ jobs:
           # sidecar-owned writer hashes. Any Python writer change must regenerate
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
+          # Required Governance Gates: both mappings use the shared production
+          # validator; missing semantic evidence must fail without a DB or skips.
+          if [ "${{ matrix.shard }}" = "1" ]; then
+            python -m pytest tests/l3/test_certification_validation.py \
+              tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
+              tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
+              -q -p no:cacheprovider
+          fi
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
           # the writer digest inventory check above stays (it keeps generated writer hashes honest).
           PYTHONPATH="$sidecar_shard_plugin_dir" pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \

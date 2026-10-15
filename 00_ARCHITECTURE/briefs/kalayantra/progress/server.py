@@ -15,13 +15,13 @@ from urllib.request import urlopen
 
 UTC = timezone.utc
 ROOT = Path(__file__).resolve().parent
-STATUSES = {'done', 'not_applicable', 'running', 'review', 'ready', 'waiting', 'blocked', 'parked'}
+STATUSES = {'done', 'not_applicable', 'running', 'review', 'ready', 'waiting', 'blocked', 'parked', 'unknown'}
 GROUPS = {'done': 'done', 'not_applicable': 'done', 'running': 'in_progress',
           'review': 'in_progress', 'ready': 'ready', 'waiting': 'waiting',
-          'blocked': 'stuck', 'parked': 'stuck'}
+          'blocked': 'stuck', 'parked': 'stuck', 'unknown': 'waiting'}
 LABELS = {'done': 'Done', 'not_applicable': 'Not needed', 'running': 'In progress',
           'review': 'Being checked', 'ready': 'Ready to start', 'waiting': 'Waiting on earlier work',
-          'blocked': 'Stuck', 'parked': 'Set aside'}
+          'blocked': 'Stuck', 'parked': 'Set aside', 'unknown': 'Not yet measured'}
 # (I) INTERPRETATION: presentation-only summaries of the tracker titles; never used for counts.
 TITLES = dict(line.split('|', 1) for line in '''B-0|Check the campaign specifications
 B-4|Record the campaign opening and coordination
@@ -265,16 +265,45 @@ def validate_state(state):
             raise ValueError('Incomplete owner decision')
 
 
-def compute_summary(state, first_done, now):
+def wave_group(item):
+    # J-W4-* joins are included by the same J- prefix rule (D-21).
+    return 'wave4' if item['id'].startswith('J-') else 'rest'
+
+
+def closure_class(item):
+    if item['id'].startswith('V-'):
+        return 'verdict'
+    if item['id'].startswith('J-0'):
+        return 'planning'
+    # (I) INTERPRETATION: only tracker-declared code earns capability credit.
+    # Untyped joins, decisions and registration records conservatively count as planning.
+    return 'capability' if item.get('completion_kind') == 'code' else 'planning'
+
+
+SCOPE_CHANGE = {'at': '2026-10-14T19:04:00+00:00', 'before': 152, 'after': 213,
+                'label': 'Scope grew: 152 → 213 items · 14 Oct 19:04 UTC'}
+
+
+def compute_summary(state, first_done, now, first_complete=None, effort=None, scope_changes=()):
     validate_state(state)
     items = [present_item(i) for t in state['tracks'] for i in t['items']]
     counts = {s: sum(i['status'] == s for i in items) for s in STATUSES}
+    raw_items = {i['id']: i for t in state['tracks'] for i in t['items']}
     completed = counts['done'] + counts['not_applicable']
+    progress_lines = []
+    for key, label in (('wave4', 'Wave 4 · Gochara 5.0'), ('rest', 'Everything else'), ('total', 'Total')):
+        rows = [i for i in items if key == 'total' or wave_group(i) == key]
+        progress_lines.append({'id': key, 'label': label, 'complete': sum(i['group'] == 'done' for i in rows),
+                               'total': len(rows)})
     metrics = {'total': len(items), 'done': counts['done'], 'not_applicable': counts['not_applicable'],
                'complete': completed, 'percent': round(completed * 100 / len(items), 1) if items else None,
                'in_progress': counts['running'] + counts['review'], 'ready': counts['ready'],
-               'waiting': counts['waiting'], 'stuck': counts['blocked'] + counts['parked'],
+               'waiting': counts['waiting'] + counts['unknown'], 'stuck': counts['blocked'] + counts['parked'],
                'completed_24h': None, 'completed_7d': None, 'pace_per_day': None, 'projected_finish': None}
+    metrics.update(closures_24h=None, closures_7d=None,
+                   agent_hours_24h=effort['agent_hours_24h'] if effort is not None else None,
+                   agent_hours_7d=effort['agent_hours_7d'] if effort is not None else None,
+                   agent_hours_per_closure_24h=None, agent_hours_per_closure_7d=None)
     tracks = []
     for track in state['tracks']:
         rows = [present_item(i) for i in track['items']]
@@ -289,26 +318,54 @@ def compute_summary(state, first_done, now):
         dated = [(i, first_done[i['id']]) for i in items
                  if i['status'] == 'done' and i['id'] in first_done and first_done[i['id']] <= now]
         dated.sort(key=lambda row: row[1], reverse=True)
-        metrics['completed_24h'] = sum(now - timedelta(hours=24) <= dt <= now for _, dt in dated)
-        metrics['completed_7d'] = sum(now - timedelta(days=7) <= dt <= now for _, dt in dated)
+        for window, delta in (('24h', timedelta(hours=24)), ('7d', timedelta(days=7))):
+            closed = [i for i, dt in dated if now - delta <= dt <= now]
+            metrics['completed_' + window] = len(closed)
+            metrics['closures_' + window] = {
+                kind: sum(closure_class(raw_items[i['id']]) == kind for i in closed)
+                for kind in ('capability', 'verdict', 'planning')}
+            hours = metrics['agent_hours_' + window]
+            if hours is not None and closed:
+                metrics['agent_hours_per_closure_' + window] = hours / len(closed)
         pace = metrics['completed_7d'] / 7
         metrics['pace_per_day'] = pace
         remaining = len(items) - completed
         if pace > 0:
             metrics['projected_finish'] = (now + timedelta(days=math.ceil(remaining / pace))).date().isoformat()
-        start = min((dt.date() for _, dt in dated), default=now.date()) - timedelta(days=1)
-        daily = {}
-        for _, dt in dated:
-            daily[dt.date()] = daily.get(dt.date(), 0) + 1
-        series, cumulative, day = [], 0, start
-        while day <= now.date():
-            cumulative += daily.get(day, 0)
-            series.append({'date': day.isoformat(), 'done': cumulative, 'total': len(items)})
+        complete_dates = first_complete if first_complete is not None else first_done
+        dated_complete = [(i, complete_dates[i['id']]) for i in items
+                          if i['group'] == 'done' and i['id'] in complete_dates and complete_dates[i['id']] <= now]
+        changes = [dict(c) for c in (SCOPE_CHANGE, *scope_changes) if parse_time(c['at']) <= now]
+        changes.sort(key=lambda c: parse_time(c['at']))
+        start = min((dt for _, dt in dated_complete), default=now)
+        if changes:
+            start = min(start, parse_time(changes[0]['at']))
+        day = datetime.combine(start.date() - timedelta(days=1), datetime.min.time(), UTC)
+        # Day-end observations plus exact scope-change instants, with an explicit current observation.
+        instants = {now}
+        while day.date() <= now.date():
+            instants.add(min(day + timedelta(days=1, microseconds=-1), now))
             day += timedelta(days=1)
+        instants.update(parse_time(c['at']) for c in changes)
+        series = []
+        for at in sorted(instants):
+            wave4 = sum(wave_group(i) == 'wave4' and dt <= at for i, dt in dated_complete)
+            rest = sum(wave_group(i) == 'rest' and dt <= at for i, dt in dated_complete)
+            # Historical scope is only known where the amendment or observed changes establish it.
+            scope = changes[0]['before'] if changes else None
+            for change in changes:
+                if parse_time(change['at']) <= at:
+                    scope = change['after']
+            if at == now:
+                scope = len(items)
+            series.append({'date': at.date().isoformat(), 'at': at.isoformat(),
+                           'done': sum(dt <= at for _, dt in dated), 'complete': wave4 + rest,
+                           'wave4': wave4, 'rest': rest, 'total': scope})
         history = {'series': series, 'undated_done': counts['done'] - len(dated), 'dated_done': len(dated),
-                   'timezone': 'UTC', 'not_applicable': counts['not_applicable']}
+                   'undated_complete': completed - len(dated_complete), 'dated_complete': len(dated_complete),
+                   'timezone': 'UTC', 'not_applicable': counts['not_applicable'], 'scope_changes': changes}
         recent = [{**i, 'completed_at': dt.isoformat()} for i, dt in dated[:20]]
-    return {'observed_at': state['generated_at'], 'metrics': metrics, 'tracks': tracks, 'history': history,
+    return {'observed_at': state['generated_at'], 'metrics': metrics, 'progress_lines': progress_lines, 'tracks': tracks, 'history': history,
             'working_items': [i for i in items if i['status'] in ('running', 'review')],
             'up_next': [i for i in items if i['status'] == 'ready'],
             'attention': [i for i in items if i['status'] in ('blocked', 'parked')],
@@ -321,19 +378,20 @@ def compute_summary(state, first_done, now):
 
 
 class EventHistory:
-    """Keep only first done timestamps and a byte offset; no disk cache or full-log retention."""
+    """Keep first done/complete timestamps and a byte offset; no disk cache or full-log retention."""
     def __init__(self, path):
         self.path = Path(path)
         self.identity = None
         self.offset = 0
         self.first_done = {}
+        self.first_complete = {}
 
     def read(self):
         with self.path.open('rb') as stream:
             stat = os.fstat(stream.fileno())
             identity = (stat.st_dev, stat.st_ino)
             if identity != self.identity or stat.st_size < self.offset:
-                self.identity, self.offset, self.first_done = identity, 0, {}
+                self.identity, self.offset, self.first_done, self.first_complete = identity, 0, {}, {}
             stream.seek(self.offset)
             while True:
                 position = stream.tell()
@@ -344,11 +402,13 @@ class EventHistory:
                     event = json.loads(line)
                     if not isinstance(event, dict):
                         raise ValueError('Invalid event record')
-                    if event.get('kind') == 'item' and event.get('state') == 'done':
+                    if event.get('kind') == 'item' and event.get('state') in ('done', 'not_applicable'):
                         dt, item = parse_time(event.get('ts')), event.get('item')
                         if not dt or not isinstance(item, str):
                             raise ValueError('Invalid completion record')
-                        self.first_done.setdefault(item, dt)
+                        self.first_complete[item] = min(dt, self.first_complete.get(item, dt))
+                        if event['state'] == 'done':
+                            self.first_done[item] = min(dt, self.first_done.get(item, dt))
                 except (ValueError, UnicodeError) as exc:
                     self.offset = position
                     raise ValueError('Completion history contains an unreadable record') from exc
@@ -376,6 +436,34 @@ def process_rows(processes):
 def job_start(name):
     match = re.match(r'[XJ]-(\d{8}T\d{6}Z)', name)
     return datetime.strptime(match[1], '%Y%m%dT%H%M%SZ').replace(tzinfo=UTC) if match else None
+
+
+def job_effort(directory, now):
+    """(I) INTERPRETATION: all finished direct jobs in the window, including rework/reviews.
+
+    This measures campaign effort / recorded closures, as in A2's 45 hours / 8 items;
+    it does not attribute a multi-item job to a guessed item. Whole durations belong
+    to the window containing DONE, not to the day of launch. Active jobs are excluded.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        raise OSError('Job timing unavailable')
+    hours = {'agent_hours_24h': 0.0, 'agent_hours_7d': 0.0}
+    for job in directory.glob('X-*'):
+        done = job / 'DONE'
+        if not job.is_dir() or not done.is_file():
+            continue
+        end = datetime.fromtimestamp(done.stat().st_mtime, UTC)
+        if not now - timedelta(days=7) <= end <= now:
+            continue
+        start = job_start(job.name)
+        if start is None or end < start:
+            raise ValueError('Invalid job timing')
+        duration = (end - start).total_seconds() / 3600
+        hours['agent_hours_7d'] += duration
+        if end >= now - timedelta(hours=24):
+            hours['agent_hours_24h'] += duration
+    return hours
 
 
 def job_label(path):
@@ -477,7 +565,7 @@ def fetch_state():
     parsed = urlsplit(url)
     if parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost', '::1') or parsed.username:
         raise ValueError('Tracker must be an unauthenticated loopback URL')
-    with urlopen(url, timeout=3) as response:
+    with urlopen(url, timeout=120) as response:
         state = json.load(response)
     validate_state(state)
     return state
@@ -497,6 +585,7 @@ class Dashboard:
         self.fetch_tracker, self.process_list = fetch_tracker, process_list
         self.cache_seconds = max(0, min(cache_seconds, 5))
         self.cache, self.cached_at, self.failures = None, 0, {}
+        self.last_scope, self.scope_changes = None, []
 
     def summary(self, now=None):
         if self.cache is not None and time.monotonic() - self.cached_at < self.cache_seconds:
@@ -519,18 +608,28 @@ class Dashboard:
             return value
         state = read('tracker', tracker)
         first_done = read('events', self.events.read)
+        effort = read('job_timing', lambda: job_effort(self.direct_jobs, now))
         processes = read('processes', lambda: process_rows(self.process_list()))
         dr = read('direct_jobs', lambda: scan_direct(self.direct_jobs, processes or {}, now))
         fr = read('fleet_jobs', lambda: scan_fleet(self.fleet_jobs, processes or {}, now))
         if state is not None:
             try:
-                result = compute_summary(state, first_done, now)
+                total = sum(len(t['items']) for t in state['tracks'])
+                observation = parse_time(state['generated_at'])
+                if self.last_scope and observation > self.last_scope[0] and total != self.last_scope[1]:
+                    before = self.last_scope[1]
+                    self.scope_changes.append({'at': observation.isoformat(), 'before': before, 'after': total,
+                                               'label': f'Scope changed: {before} → {total} items (observed)'})
+                if self.last_scope is None or observation > self.last_scope[0]:
+                    self.last_scope = (observation, total)
+                result = compute_summary(state, first_done, now, first_complete=self.events.first_complete,
+                                         effort=effort, scope_changes=self.scope_changes)
             except (ValueError, KeyError, TypeError):
                 sources['tracker'] = {'available': False, 'checked_at': now.isoformat(),
                                       'unavailable_since': self.failures.setdefault('tracker', now.isoformat())}
                 state = None
         if state is None:
-            result = {k: None for k in ('observed_at', 'metrics', 'tracks', 'history', 'working_items',
+            result = {k: None for k in ('observed_at', 'metrics', 'progress_lines', 'tracks', 'history', 'working_items',
                                        'up_next', 'attention', 'owner_decisions', 'milestones',
                                        'recently_completed', 'engine_status')}
         running = (dr[0] if dr else []) + (fr[0] if fr else []) if processes is not None else []

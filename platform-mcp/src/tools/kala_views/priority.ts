@@ -415,9 +415,11 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           const ordered = Array.isArray(comparison.ordered) ? comparison.ordered as string[] : []
           const pairs = Array.isArray(comparison.comparisons) ? comparison.comparisons as Array<Record<string, unknown>> : []
           const incomparable = pairs.some(pair => pair.relation === 'incomparable')
+          const cyclic = Array.isArray(comparison.dominance_cycles) && comparison.dominance_cycles.length > 0
           reading.thesis = ordered.length
             ? `Tulana presents window ${ordered[0]} first by declared order ${(comparison.order_policy as string[]).join(', ')}; ` +
-              (incomparable ? 'incomparable alternatives remain on the Pareto front; this is no winner claim.' : 'see the dominance table for ties and dominance.')
+              (cyclic ? 'a tolerance cycle prevents a winner claim; all cycle members remain on the front; see dominance_cycles and the pairwise evidence.'
+                : incomparable ? 'incomparable alternatives remain on the Pareto front; this is no winner claim.' : 'see the dominance table for ties and dominance.')
             : 'No candidate forecaster windows; see the declared comparison gap.'
           reading.verdict.statement = reading.thesis
           // Existing signal references and disclosures remain legacy context.

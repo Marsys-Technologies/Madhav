@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+import shlex
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -135,7 +137,14 @@ def test_ci_collects_canary_and_entire_db_directory():
     assert (TESTS / "l3" / "kala" / "test_ci_canary.py").is_file()
     assert "kala-db-tests:" in workflow
     assert "KALA_REQUIRE_DB: '1'" in workflow
-    assert "python -m pytest tests/l3/kala_db -q -rs" in workflow
+    # Additional explicit test targets must not invalidate directory discovery.
+    steps = yaml.safe_load(workflow)["jobs"]["kala-db-tests"]["steps"]
+    commands = [shlex.split(step["run"]) for step in steps if "run" in step]
+    assert any(
+        command[:3] == ["python", "-m", "pytest"]
+        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command[3:])
+        for command in commands
+    )
 
 
 @pytest.mark.parametrize("fixture_name", ["kala_db_dsn", "isolated_kala_db_dsn"])

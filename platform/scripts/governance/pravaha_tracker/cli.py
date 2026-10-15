@@ -290,6 +290,55 @@ def cmd_guarded_done(a, actor: str) -> int:
         return 2
 
 
+def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str) -> None:
+    """Bind a file_contains step to the canonical receipt and its source evidence."""
+    declared_path = spec.get("path")
+    if (not isinstance(declared_path, str) or not declared_path
+            or os.path.realpath(path) != os.path.realpath(declared_path)):
+        raise CompletionError("step evidence path does not match the declared receipt")
+    receipt = json.loads(raw)
+    if not isinstance(receipt, dict):
+        raise CompletionError("step receipt must be a canonical JSON object")
+    canonical = json.dumps(receipt, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    if raw not in (canonical, canonical + b"\n"):
+        raise CompletionError("step receipt must use canonical JSON (sorted keys, no spaces or duplicate fields)")
+    if receipt.get("item") != item or receipt.get("step") != step:
+        raise CompletionError("step receipt item/step does not match the command")
+
+    artifact_bound = False
+    if "artifact_sha256" in receipt:
+        artifact = receipt.get("artifact_path")
+        if not isinstance(artifact, str) or not artifact:
+            raise CompletionError("step receipt artifact_sha256 needs an artifact_path")
+        if not os.path.isabs(artifact):
+            artifact = os.path.join(os.path.dirname(os.path.realpath(path)), artifact)
+        with open(artifact, "rb") as handle:
+            digest = hashlib.file_digest(handle, "sha256").hexdigest()
+        if receipt["artifact_sha256"] != digest:
+            raise CompletionError("step receipt artifact_sha256 does not match its artifact")
+        artifact_bound = True
+
+    if "review_job" in receipt:
+        job = receipt["review_job"]
+        if (not isinstance(job, str) or not job or job in (".", "..")
+                or "/" in job or "\\" in job):
+            raise CompletionError("step receipt review_job must name a single job directory")
+        jobs = os.path.realpath(os.environ.get(
+            "PRAVAHA_REVIEW_JOBS", "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs"))
+        result_path = os.path.realpath(os.path.join(jobs, job, "result.json"))
+        if os.path.commonpath((jobs, result_path)) != jobs:
+            raise CompletionError("step receipt review_job result escapes the jobs directory")
+        with open(result_path, encoding="utf-8") as handle:
+            result = json.load(handle)
+        if not isinstance(result, dict) or result.get("item") != item:
+            raise CompletionError("step receipt review result does not match the item")
+        steps = result.get("steps")
+        matching = ([row for row in steps if isinstance(row, dict) and row.get("step") == step]
+                    if isinstance(steps, list) else [])
+        if not artifact_bound and (len(matching) != 1 or matching[0].get("verdict") != "MET"):
+            raise CompletionError("step receipt review result does not say MET for this step")
+
+
 def cmd_step(a, actor: str) -> int:
     """Record a step. In a model that declares its items (relaunch plan v2.7 §6 STEP) only after the step's own
     named detector passed in the live tracker, with the evidence file's absolute path and SHA-256."""
@@ -320,7 +369,12 @@ def cmd_step(a, actor: str) -> int:
             raise CompletionError(f"the detector of step {a.step_name} has not passed")
         path = os.path.abspath(a.evidence)
         with open(path, "rb") as handle:
-            digest = hashlib.file_digest(handle, "sha256").hexdigest()
+            if spec.get("type") == "file_contains":
+                raw = handle.read()
+                _check_step_receipt(raw, path, spec, a.item, a.step_name)
+                digest = hashlib.sha256(raw).hexdigest()
+            else:
+                digest = hashlib.file_digest(handle, "sha256").hexdigest()
     except (CompletionError, OSError, ValueError, AttributeError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2

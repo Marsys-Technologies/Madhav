@@ -215,7 +215,7 @@ def _fresh_contact_reconstruct_cache():
 # test_g8_class_census.py additionally scans this tree recursively and fails if the set of opted-out files differs from the list. Only the census step
 # is set aside; everything else the job does runs.
 G8_OPT_OUT_ALLOWLIST = frozenset({
-    "test_a53_verification_job.py", "test_a53_r10_runner_gate.py", "test_a53_r10_record_results.py", "test_a53_r10_locking.py",
+    "test_a53_r10_boundary_contract.py", "test_a53_verification_job.py", "test_a53_r10_runner_gate.py", "test_a53_r10_record_results.py", "test_a53_r10_locking.py",
     "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
     "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
     "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
