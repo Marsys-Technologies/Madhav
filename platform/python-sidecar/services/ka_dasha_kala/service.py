@@ -8,6 +8,9 @@ Read-only: the caller owns the connection and transaction.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query, DashaBuildRefused)
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -220,6 +223,8 @@ class KaDashaKalaService:
                     "[ka_dasha_kala] system=%s found %d eligible intervals",
                     sys_id, len(intervals),
                 )
+            except DashaBuildRefused:
+                raise
             except Exception as exc:
                 # A result that lists a failed system in ``systems_queried`` is
                 # indistinguishable from complete evidence to callers.  The L3
@@ -302,14 +307,8 @@ class KaDashaKalaService:
         Return a dict of {system_id: row_count} for the given chart+ayanamsha.
         Used by health-check and self-test.
         """
-        sql = """
-            SELECT system_id, COUNT(*) AS cnt
-            FROM chart_dashas
-            WHERE chart_id = %s AND ayanamsha_id = %s
-            GROUP BY system_id
-            ORDER BY system_id
-        """
-        rows = self._conn.execute(sql, [chart_id, ayanamsha_id]).fetchall()
+        sql = dasha_query('dasha_system_counts')
+        rows = execute_governed_dasha_query(self._conn, chart_id, sql, [chart_id, ayanamsha_id], ayanamsha_id=ayanamsha_id).fetchall()
         if not rows:
             return {}
         if isinstance(rows[0], dict):

@@ -53,6 +53,7 @@ def _load_writer():
 
 w = _load_writer()
 
+from services.gochara_kernel import dasha_read
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
 
 
@@ -85,7 +86,7 @@ def test_identical_duplicates_collapse_and_record_source_ids():
         _row("r1", "Jupiter", "2020-01-01", "2030-01-01"),
         _row("r2", "Jupiter", "2020-01-01", "2030-01-01"),
     ])
-    rows = DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+    rows = dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
     assert len(rows) == 1
     assert sorted(rows[0]["merged_row_ids"]) == ["r1", "r2"]
 
@@ -98,7 +99,7 @@ def test_conflicting_duplicates_raise_never_silently_pick():
         _row("r2", "Saturn", "2020-01-01", "2030-01-01"),  # lord differs
     ])
     with pytest.raises(DD.DashaReadConflict):
-        DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+        dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
 
 
 def test_db_shape_surprise_is_honest_empty_not_crash():
@@ -106,7 +107,7 @@ def test_db_shape_surprise_is_honest_empty_not_crash():
         def execute(self, *_a):
             raise RuntimeError("relation chart_dashas does not exist")
 
-    assert DD.fetch_dasha_periods_multilevel(_BrokenConn(), "chart-x") == []
+    assert dasha_read._fetch_dasha_periods_multilevel(_BrokenConn(), "chart-x") == []
 
 
 def test_distinct_levels_and_parents_survive():
@@ -115,7 +116,7 @@ def test_distinct_levels_and_parents_survive():
         _row("ad1", "Saturn", "2020-01-01", "2021-06-01", level=2,
              parent="md1"),
     ])
-    rows = DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+    rows = dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
     assert {r["dasha_row_id"] for r in rows} == {"md1", "ad1"}
     assert rows[1]["parent_row_id"] == "md1"
 
@@ -277,7 +278,7 @@ from tests.l3.gochara_rules.conftest import LAGNA_DEG, NATAL  # noqa: E402
 CHART = {"lagna_deg": LAGNA_DEG, "natal": dict(NATAL),
          "day_birth": True, "paksha": "Shukla",
          "chart_id": RP.DASHA_READ_CONTRACT["chart_id"]}
-BUILD = RP.DASHA_READ_CONTRACT["build_id"]
+BUILD = RP.REFERENCE_DASHA_BUILD_ID
 TIER = RP.DASHA_READ_CONTRACT["tier"]
 T1 = datetime(2019, 8, 1, tzinfo=UTC)             # MD Mercury / AD Mars / PD Saturn
 T2 = datetime(2021, 1, 1, tzinfo=UTC)             # MD Mercury / AD Rahu / PD Saturn
@@ -590,16 +591,19 @@ def test_step06a_chart_operands_are_title_cased_from_l1_codes():
     assert "Sun" not in ch3["natal"]
 
 
-def test_step06a_read_contract_pins_the_frozen_build_or_refuses():
+def test_step06a_read_contract_selects_one_settled_build_and_refuses_mixed_builds():
     mod = _load_step06a()
     rows = _l1_rows() + _l1_rows(build="other-build")
-    c = mod.select_dasha_read_contract(CHART["chart_id"], rows)
-    assert c["build_id"] == BUILD and "pinned" in c["basis"]
-    c1 = mod.select_dasha_read_contract("some-other-chart", _l1_rows(build="b1"))
-    assert c1["build_id"] == "b1"
+    c = mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="ca17639b-f3cf-42c7-9866-0a61f3855802"))
+    assert c["build_id"] == "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    with pytest.raises(DD.DashaReadConflict):
+        mod.select_dasha_read_contract(CHART["chart_id"], rows)
+    with pytest.raises(DD.DashaReadConflict, match="chart_not_settled"):
+        mod.select_dasha_read_contract("some-other-chart", _l1_rows(build="b1"))
     with pytest.raises(DD.DashaReadConflict):
         mod.select_dasha_read_contract("some-other-chart", rows)
-    assert mod.select_dasha_read_contract("x", [])["build_id"] is None
+    with pytest.raises(DD.DashaReadConflict, match="chart_not_settled"):
+        mod.select_dasha_read_contract("x", [])
 
 
 # ── ASTRA v1.1 P1-2: the frozen daśā read contract and C5 identity ───────────
@@ -614,15 +618,17 @@ def _l1row(rid, level, parent, lord, start, end, *, build=BUILD, tier=TIER,
             "end_iso": end, "build_id": build, "verification_pass_status": tier}
 
 
-def test_canonical_chart_refuses_a_wrong_sole_build_and_null_builds():
+def test_canonical_chart_accepts_a_rebuilt_population_but_refuses_absent_and_null_builds():
     mod = _load_step06a()
-    with pytest.raises(DD.DashaReadConflict, match="pins build"):
-        mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="wrong-build"))
-    with pytest.raises(DD.DashaReadConflict, match="pins build"):
+    assert mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="ca17639b-f3cf-42c7-9866-0a61f3855802"))["build_id"] == "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    with pytest.raises(DD.DashaReadConflict):
         mod.select_dasha_read_contract(CHART["chart_id"], [])
-    # a non-canonical chart with a single build is accepted; NULL builds refused
-    assert mod.select_dasha_read_contract("other", _l1_rows(build="b1"))["build_id"] == "b1"
-    with pytest.raises(DD.DashaReadConflict, match="NULL build_id"):
+    with pytest.raises(DD.DashaReadConflict, match="dasha_build_null"):
+        mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build=None))
+    # No settlement entry licenses another chart, even if rows are populated.
+    with pytest.raises(DD.DashaReadConflict, match="chart_not_settled"):
+        mod.select_dasha_read_contract("other", _l1_rows(build="b1"))
+    with pytest.raises(DD.DashaReadConflict, match="chart_not_settled"):
         mod.select_dasha_read_contract("other", _l1_rows(build=None))
 
 
@@ -770,7 +776,7 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
                 def fetchall(self_inner):
                     return rows
             return _X()
-    out = DD.fetch_dasha_periods_multilevel(_C(), "chart-x", build_id="b1")
+    out = dasha_read._fetch_dasha_periods_multilevel(_C(), "chart-x", build_id="b1")
     assert "AND build_id = %s" in seen["sql"] and seen["params"][-1] == "b1"
     assert seen["params"][4] == DD.READ_CONTRACT_TIER  # tier pinned before duplicates
     assert [r["dasha_row_id"] for r in out] == ["r1"]  # NULL-tier row rejected
@@ -780,9 +786,9 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
 
 
 class _DashaConn:
-    """Stub chart_dashas: answers the RAW tier-pinned read (no build
-    predicate) with rows of every build, and the build-PINNED read with the
-    pinned build's rows only — the two reads main() now performs."""
+    """Stub chart_dashas: answers the all-build guard, the RAW tier-pinned
+    read with rows of every build, and the build-PINNED read with only the
+    pinned build's rows — the three Vimśottarī reads main() performs."""
 
     def __init__(self, rows_by_build: dict):
         self._rows = rows_by_build
@@ -790,6 +796,16 @@ class _DashaConn:
 
     def execute(self, sql, params):
         self.queries.append((sql, params))
+        if "SELECT DISTINCT" in sql:
+            _chart, system, _ayan = params
+            builds = sorted({str(build) if build is not None else "NULL"
+                             for build, rows in self._rows.items()
+                             if any(r["system_id"] == system for r in rows)})
+
+            class _Builds:
+                def fetchall(self_inner):
+                    return [(build,) for build in builds]
+            return _Builds()
         systems = params[2]
         pinned = params[-1] if "AND build_id = %s" in sql else None
         out = []
@@ -809,36 +825,39 @@ class _DashaConn:
 
 
 def test_actual_main_path_pins_the_build_before_canonicalization():
-    """The reviewer's mixed-build reproduction: an UNRELATED build whose MD
-    row overlaps the pinned build's MD would be rejected as a (level,
-    parent, index) conflict if all builds were canonicalized first. main()'s
-    load_pinned_dasha_periods selects the pin from a RAW read and
-    canonicalizes only the pinned rows — the foreign build never enters the
-    conflict pass."""
+    """A single settled build is selected raw, then fetched with an explicit
+    build predicate before duplicate handling. Mixed populations still refuse.
+    """
     mod = _load_step06a()
+    settled = "ca17639b-f3cf-42c7-9866-0a61f3855802"
     foreign = [_l1row("md-foreign", 1, None, "Venus", "2005-01-01T00:00:00Z",
                       "2025-01-01T00:00:00Z", build="other-build")]
-    conn = _DashaConn({BUILD: _l1_rows(), "other-build": foreign})
+    conn = _DashaConn({settled: _l1_rows(build=settled)})
     periods, contract = mod.load_pinned_dasha_periods(
         conn, CHART["chart_id"], ["vimshottari", "yogini"])
-    assert contract["build_id"] == BUILD and contract["basis"].endswith("pinned build")
-    assert contract["raw_vimshottari_rows"] == len(_l1_rows()) + 1
-    assert contract["rows_excluded_by_build_pin"] == 1
-    assert {str(p["build_id"]) for p in periods if p["system_id"] == "vimshottari"} == {BUILD}
+    assert contract["build_id"] == settled and contract["builds_seen"] == [settled]
+    assert contract["raw_vimshottari_rows"] == len(_l1_rows())
+    assert contract["rows_excluded_by_build_pin"] == 0
+    assert {str(p["build_id"]) for p in periods if p["system_id"] == "vimshottari"} == {settled}
     assert not any(p["dasha_row_id"] == "md-foreign" for p in periods)
     # the raw read carried no build predicate; the pinned read did
-    raw_sql, raw_params = conn.queries[0]
-    pinned_sql, pinned_params = conn.queries[1]
+    guard_sql, guard_params = conn.queries[0]
+    assert "SELECT DISTINCT" in guard_sql
+    assert guard_params == (CHART["chart_id"], "vimshottari", "lahiri_chitrapaksha")
+    raw_sql, raw_params = conn.queries[1]
+    pinned_sql, pinned_params = conn.queries[2]
     assert "AND build_id = %s" not in raw_sql and raw_params[2] == ["vimshottari"]
-    assert "AND build_id = %s" in pinned_sql and pinned_params[-1] == BUILD
+    assert "AND build_id = %s" in pinned_sql and pinned_params[-1] == settled
     # and the C5 licence evaluates on the pinned set at t₁ (Mars AD scored)
     ctx = w.frozen_c5_permission_context(periods, w.jd_of(T1), "marriage", CHART,
                                          pinned_build_id=contract["build_id"],
                                          tier=contract["tier"])
     assert ctx["period_context"]["ad"]["lord"] == "Mars"
-    # mutation: canonicalizing every build first raises on the foreign overlap
-    with pytest.raises(DD.DashaReadConflict):
-        DD.canonicalize_multilevel_rows(_l1_rows() + foreign)
+    # A foreign overlapping build is refused by the shared build rule.
+    with pytest.raises(DD.DashaReadConflict, match="mixed L1 state"):
+        mod.load_pinned_dasha_periods(
+            _DashaConn({settled: _l1_rows(build=settled), "other-build": foreign}),
+            CHART["chart_id"], ["vimshottari", "yogini"])
 
 
 def test_main_calls_the_pinned_loader_and_never_the_unpinned_fetch():
