@@ -40,6 +40,7 @@
     "scope": "marriage",
     "source_citation": "Muhūrta Cintāmaṇi, Vivāha v.88 reconstructed mūla (PG115:C2); damaged text reconstructed from the following ṭīkā",
     "source_chunk_id": "muhurta_chintamani_pg0115_c02",
+    "source_verse": 88,
     "cancellation_condition_text": "if Bhauma (Mars) is debilitated or combust, no doṣa arises even in the eighth",
     "predicate": {
       "op": "all_of",
