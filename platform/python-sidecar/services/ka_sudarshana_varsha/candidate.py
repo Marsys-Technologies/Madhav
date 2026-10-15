@@ -34,5 +34,6 @@ def build_candidate(*, ctx: AdapterContext, birth_date, years, coverage, year_an
                 'year_anchor':year_anchor,'anchor_source_status':'declared_convention',
                 'calendar_boundary':'civil_date_at_00:00_UT', 'nested_periods':None})
     return envelope('sudarshana_varsha',ctx,coverage,entries,required=required,
-                    sources={'birth_date':birth_date.isoformat(),'years':years,'year_anchor':year_anchor},
+                    sources={'birth_date':birth_date.isoformat(),'years':years,'year_anchor':year_anchor,
+                             'searched_years':tuple(r['year'] for r in entries)},
                     null_reason=NullReason.INFORMATION_UNAVAILABLE if gap else None)

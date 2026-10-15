@@ -40,5 +40,6 @@ def build_candidate(*, ctx: AdapterContext, birth_dt, years, coverage, ephe_path
                 'annual_object_identity_admitted':False,'year_anchor':'civil_birthday',
                 'birth_instant_utc':birth_dt.astimezone(timezone.utc).isoformat()})
     return envelope('tithi_pravesha',ctx,coverage,entries,
-                    sources={'birth_datetime':birth_dt.isoformat(),'years':years},
+                    sources={'birth_datetime':birth_dt.isoformat(),'years':years,
+                             'searched_years':tuple(r['year'] for r in entries)},
                     null_reason=NullReason.INFORMATION_UNAVAILABLE if gap else None)

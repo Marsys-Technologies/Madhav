@@ -110,6 +110,33 @@ def envelope(family, ctx, coverage, entries, *, sources=None, required=(('MOON',
     elif not coverage.complete and null_reason is None:
         null_reason = NullReason.INFORMATION_UNAVAILABLE
     cov['method_gaps'] = [(r['t_in'], r['t_out']) for r in entries if r.get('null_reason')]
+    if family in ('sudarshana_varsha', 'tithi_pravesha'):
+        # Annual search provenance is earned by successful evaluations, never
+        # by the requested years or sky availability. Older envelopes without
+        # this provenance cannot certify a searched absence.
+        searched = (sources or {}).get('searched_years', ())
+        entries = tuple(r for r in entries if r['year'] in searched)
+        cov['searched_years'] = tuple(sorted({r['year'] for r in entries}))
+        intervals = []
+        for lo, hi in sorted((r['t_in'], r['t_out']) for r in entries if not r.get('null_reason')):
+            if intervals and lo <= intervals[-1][1]:
+                intervals[-1] = (intervals[-1][0], max(hi, intervals[-1][1]))
+            else:
+                intervals.append((lo, hi))
+        cov['method_intervals'] = tuple(intervals)
+        # (I) INTERPRETATION: a computed lunar return certifies only its
+        # declared one-second support, not the rest of that annual chart.
+        # Sudarshana entries already carry their computed annual intervals.
+        cursor, end = coverage.requested
+        cov['method_gaps'] = []
+        for lo, hi in intervals:
+            if cursor < lo:
+                cov['method_gaps'].append((cursor, lo))
+            cursor = max(cursor, hi)
+        if cursor < end:
+            cov['method_gaps'].append((cursor, end))
+        cov['complete'] = coverage.complete and not cov['method_gaps'] and bool(intervals)
+        cov['search_state'] = 'searched' if cov['complete'] else 'partial' if intervals else 'unsearched'
     if cov['method_gaps'] and null_reason is None:
         null_reason = NullReason.INFORMATION_UNAVAILABLE
     if null_reason is not None:
@@ -135,12 +162,20 @@ def testimony(payload, *, at, view='NOW', chart_id=None, generation=None, finger
         raise ValueError('adapter identity/fingerprint mismatch')
     covered = payload.coverage['covered']
     inside = covered is not None and covered[0] <= at < covered[1]
+    method_intervals = payload.coverage.get('method_intervals')
+    if method_intervals is not None:
+        inside = inside and any(lo <= at < hi for lo, hi in method_intervals)
     entries = [r for r in payload.entries if inside and r['t_in'] <= at < r['t_out']]
+    reason = payload.null_reason if inside else NullReason.INFORMATION_UNAVAILABLE
+    if inside and method_intervals is not None:
+        # A gap elsewhere in a sparse annual request does not invalidate the
+        # successfully computed object at this instant.
+        reason = next((r['null_reason'] for r in entries if r.get('null_reason')), None)
     # No numeric factor bridge: contested values are structured testimony only.
     return {'value': None, 'operator_role': OperatorRole.TESTIMONY,
             'method_qualification': payload.method_qualification, 'entries': entries,
             'coverage': payload.coverage, 'upstream_fingerprint': payload.upstream_fingerprint,
-            'null_reason': payload.null_reason if inside else NullReason.INFORMATION_UNAVAILABLE,
+            'null_reason': reason,
             'external_computation_required': payload.external_computation_required}
 
 
