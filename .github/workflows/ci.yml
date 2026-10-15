@@ -651,6 +651,14 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_resonance_writer.py -q --tb=short
 
+      - name: L0-M — typed source preparation against real Postgres (required)
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        run: |
+          cd python-sidecar
+          python -m pytest tests/l3/l0_parihara -q -rs --tb=short -p no:cacheprovider
+
       - name: TI-l1-panchanga-moon-sign-001 — ga_panchanga birth-Moon-sign position-fact read against real Postgres
         # The chandra_bala_natal_baseline birth Moon sign is READ from the upstream
         # ga_positions fact (graha_position | MOON | sign) with a DISTINCT ON ... total
