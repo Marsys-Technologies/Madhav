@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -17765,6 +17765,49 @@
           "Rewrite the pin tests inside existing tests/l3/gochara/test_a53_dasha_read.py (already in the ci.yml explicit list, ci.yml:468); a NEW tests/l3/gochara file is not collected unless ci.yml is edited, which this item does not own."
         ],
         "contract": "Settled build to accept: L1_SETTLED v1 (campaign-coordination, 2026-10-07T22:25Z) `dash_build=ca17639b` = run ca17639b-f3cf-42c7-9866-0a61f3855802; the old pin 75524b3e is unreadable (replace_prior_chart_dashas deleted it). chart_dashas has no tier column — tier is verification_pass_status (two_pass_verified for classical vimshottari levels 1–4)."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J-4p-B4",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Malformed settled daśā periods refuse instead of being filtered (finding J4P-B4)",
+      "owner": "K",
+      "depends_on": [
+        "J-4p"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j-4p-b4"
+      },
+      "brief": {
+        "spec": [
+          "origin/kalayantra/velocity-a2:00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3 (D-17: every non-severe open finding becomes a tracked child; reviewer rule unchanged)",
+          "/Users/Dev/kalayantra/run/reviews/J4P_REVIEW_ded58f355.md:5-13 (J4P-B4: platform/python-sidecar/services/gochara_kernel/dasha_read.py:504 filters zero-length/inverted ordinary periods before F2 validation, so malformed settled data returns successful partial boundaries)",
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:6 (SR-A2-01: J-4p accepted as it stands at ded58f3550623f41adf71a3d91666f504fcf634f; non-severe J4P-B4 carried forward as J-4p-B4, landing separately after J-4p merges)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/gochara_kernel/dasha_read.py",
+          "platform/python-sidecar/tests/l3/gochara/test_a53_dasha_read.py"
+        ],
+        "tests": [
+          "real-SQL regression: an admitted ordinary zero-length or inverted period alongside valid settled rows refuses through F2 instead of returning successful partial boundaries",
+          "valid settled periods still return the expected boundaries; explicit scope-cap markers remain excluded under the existing contract",
+          "per-finding fail-on-revert proof: the regression fails on a job-local copy with the reader fix reverted and passes with the fix (Amendment A2 §2.4)"
+        ],
+        "compat": "retain the existing F2 non-positive-period refusal and explicit scope-cap exclusion; valid settled reads and snapshot identity/content binding remain unchanged",
+        "notes": [
+          "D-17 carries this finding forward without reopening J-4p or making the accepted parent depend on this child; the independent reviewer rule remains J-4p's.",
+          "(I) INTERPRETATION: mirror J-4p's declaration without adding steps; the tracker derives waiting/ready from depends_on rather than a stored status. Keep reader regressions in the existing test_a53_dasha_read.py already named by J-4p."
+        ],
+        "contract": "J4P_REVIEW_ded58f355.md:13 requires malformed ordinary admitted periods to reach the existing refusal detector (or an equivalent refusal before exclusion), while preserving explicit scope-cap exclusion; no production-data corruption claim is made."
       },
       "completion_kind": "code",
       "producer": "K",
