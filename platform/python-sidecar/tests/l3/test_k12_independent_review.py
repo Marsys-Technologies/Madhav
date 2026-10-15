@@ -60,3 +60,12 @@ def test_facade_forwards_applicability_evidence_to_boundary_reader():
     assert expected
     actual=KaDashaKalaService(conn).boundaries(CHART,'ashtottari',as_of=T0,method_facts=evidence,**METHODS_PIN)
     assert actual==expected
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; J4P tests retain real settlement/refusal coverage."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)
