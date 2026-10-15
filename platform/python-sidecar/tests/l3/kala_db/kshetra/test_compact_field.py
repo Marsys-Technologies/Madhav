@@ -12,7 +12,7 @@ from services.ka_kshetra.writer import KaKshetraWriter
 from tests.l3.ka_kshetra.test_compact_field import source_rows
 
 ROOT = Path(__file__).resolve().parents[6]
-MIGRATION = ROOT / 'platform/migrations/1387_k5_2b_compact_field.sql'
+MIGRATION = ROOT / 'platform/migrations/1391_k5_2b_compact_field.sql'
 CHART, BUILD = str(uuid.uuid4()), str(uuid.uuid4())
 GEN = 'candidate:compact-fixture'
 

@@ -1,5 +1,5 @@
--- Migration 1387: K5-2b compact candidate field. PRE-BUILD, SR-A4-01. NEEDS-PROTECTED-WINDOW; no activation or source DML.
--- Allocated after origin/main + all 188 kalayantra/* remote heads (highest 1386).
+-- Migration 1391: K5-2b compact candidate field. PRE-BUILD, SR-A4-01. NEEDS-PROTECTED-WINDOW; no activation or source DML.
+-- Centrally allocated to K5-2b by R-2026-10-16-01 (1391; 1387 belongs to K5-3).
 -- (I) INTERPRETATION: a lossless coefficient projection beside G1 candidate rows.
 -- No knot coalescing; risk-set eligibility is unknown until ALGO 3.20 G2 specifies it.
 SET LOCAL lock_timeout = '5s';
