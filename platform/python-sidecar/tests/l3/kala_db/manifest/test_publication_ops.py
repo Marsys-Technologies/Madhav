@@ -158,7 +158,7 @@ def test_verify_refuses_builder_without_receipt(db):
 def test_readonly_rebuild_inspection_does_not_run_or_mutate(db):
     ops=operations(); c=prepare(db); before=snapshot(db)
     result=ops.inspect_rebuild(db,run_id=c.build_id,assets='ka_yojaka,ka_sangam')
-    assert result['status']=='PLAN_ONLY' and result['dry_run_passed'] is False
+    assert result['status']=='PLAN_ONLY' and result['dry_run_passed'] is None
     assert result['planned_assets']==['ka_yojaka','ka_sangam'] and result['executed_assets']==[]
     assert snapshot(db)==before
     for wrong in ('ka_yojaka','ga_positions,ka_yojaka','ka_sangam,ka_yojaka'):
@@ -205,7 +205,7 @@ def test_cli_transaction_rolls_back_refusal_and_reports_plan_only(db,monkeypatch
     db.rollback()
     assert ops.main(['rebuild-dryrun','--run-id',c.build_id,'--assets','ka_yojaka,ka_sangam'])==0
     out=json.loads(capsys.readouterr().out)
-    assert out['status']=='PLAN_ONLY' and out['dry_run_passed'] is False
+    assert out['status']=='PLAN_ONLY' and out['dry_run_passed'] is None
     db.read_only=False
 
 
