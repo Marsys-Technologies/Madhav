@@ -13,7 +13,7 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window inherited P05's grants-provenance correction, pinned below) and (b) ONE extra
+HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window already matches accepted P06, pinned below) and (b) ONE extra
 read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
 characters (or a truncated id before an ellipsis) and UUIDs.
@@ -170,7 +170,7 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
     """Every component of the stored vector of a markerless run equals the golden from main's, except `implementation.*`: those MUST differ (the code changed), and the
-    differing stages are geometry/evaluation (measuring modules) and window (P05's grants provenance). No `horizon_basis` and no `test_slice` component."""
+    differing stages are geometry/evaluation (measuring modules); window already matches accepted P06. No `horizon_basis` and no `test_slice` component."""
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
 
@@ -186,11 +186,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert comparable(got) == comparable(want), "every component except the implementation identity (and, on another host, the host library's own identity) equals main's"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation", "geometry", "window"], differing
-    # P05 d9ba4934f (#3508), already present at P03's merge e5bdc641f, changed
-    # services/gochara_kernel/seal_brief.py's LEDGER_MIGRATIONS from 1241 to
-    # 1378 and verification_job.py's matching comments/privilege diagnostic.
-    # Both modules are hashed in IMPLEMENTATION_MODULES["window"]. Ordinary
-    # inputs/outcomes above still equal the original golden; pin this reviewed
-    # source identity exactly so another window-code change requires review.
-    assert got["implementation"]["window"] == "beaa23107518458b89bb8fe498a8b3682ffe67fb08951196a69c7b18db123aa4"
+    assert differing == ["evaluation", "geometry"], differing
+    # P06 (#3516): the golden recaptured at adc6b81ea already includes P06's
+    # final-rule verification/sealing changes and P05's grants provenance.
+    # Compute the window identity from this tree via implementation_digests():
+    # it equals the accepted P06 golden, rather than differing as it did from
+    # the retired P03-era baseline. Keep the source identity pinned exactly;
+    # every other manifest component and observable comparison stays exact.
+    assert got["implementation"]["window"] == "d0cf07e67f59f96de3dfe57aee9ed6b7f2946d95cb641325e351e9823abb4749"
