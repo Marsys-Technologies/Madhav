@@ -305,7 +305,7 @@
     "reaches": [
      "platform-mcp/src/lib/kala_ritual_resonance.ts:575#793c8cf1",
      "platform-mcp/src/lib/kala_ritual_resonance.ts:578#f40f8b9b",
-     "platform-mcp/src/tools/kala_views/priority.ts:468#c444ed33",
+     "platform-mcp/src/tools/kala_views/priority.ts:499#c444ed33",
      "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:21#2216951f"
     ]
    },
@@ -17515,7 +17515,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_bhavishya; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K6-5 / KYD-141 fixture registrar certification mapping (registry revision 26): platform/python-sidecar/services/ka_bhavishya_lekha/certification_mapping.json:1; append-only insert_immutable_checked into issued_forecast remains FAIL under current Idem detector, routed reviewed immutable-insertion rule R-10, never delete history to earn PASS. SQL oracles prove delivered-only immutable issue/version, no uncalibrated probability, ontology predicate and episode-clustered credit; live admission, L5/downstream reference acceptance and L4 protective-read cutover remain due",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251 reads `kala_bhavishya` (`FROM kala_bhavishya`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:333, function at :573) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:327; f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:543 and platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:544); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
+    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:334, function at :578) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:328; f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:544 and platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:545); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
    },
    "evidence_kind": "writer"
   },
@@ -17797,6 +17797,12 @@
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_tulana/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
     "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
+   },
+   "service_probe": {
+    "probe_type": "tulana_ranking_forensic",
+    "max_age_hours": 24,
+    "why": "Tulana retains its independent service probe and replaces the weighted oracle with fixed Pareto relations; freshness follows the 24 hour wired-service detector rule.",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/service_probes.py:823"
    }
   },
   "ka_vedha_gochara": {

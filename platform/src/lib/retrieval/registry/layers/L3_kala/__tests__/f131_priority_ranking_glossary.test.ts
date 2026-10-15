@@ -85,9 +85,14 @@ const LIVE_ROWS = [
 
 beforeEach(() => {
   queryMock.mockReset()
-  queryMock.mockResolvedValue({ rows: LIVE_ROWS })
+  queryMock.mockImplementation(async (sql: string) => sql.includes('kala_field_windows')
+    ? { rows: [{ windows: [], snapshots: 0 }] } : { rows: LIVE_ROWS })
+  vi.stubEnv('PYTHON_SIDECAR_URL', 'http://fixture.invalid')
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({
+    contract_version: 'k7-4:pareto:v1', ordered: [], front: [], comparisons: [], evidence: {}, rejected: [], order_policy: ['most_robust', 'strongest', 'nearest'], empty_reason: 'no_matching_windows',
+  }) })))
 })
-afterEach(() => vi.clearAllMocks())
+afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 async function run(args: Record<string, unknown> = {}) {
   const res = await callPriorityRankingCapability.handler(
@@ -147,7 +152,7 @@ describe('F-131 — abstention marker is not served as a priority signal', () =>
         'graha drik bala per varga: D5 = floored: drik_requires_varga_aspect_geometry [ga_structural]',
       abstention_marker_pattern: 'floored:',
     }
-    queryMock.mockResolvedValue({ rows: [LIVE_ROWS[0], drikRow] })
+    queryMock.mockImplementation(async (sql: string) => ({ rows: sql.includes('kala_field_windows') ? [{ windows: [], snapshots: 0 }] : [LIVE_ROWS[0], drikRow] }))
     const c = await run()
 
     expect(c.signal_count).toBe(1)
@@ -157,13 +162,13 @@ describe('F-131 — abstention marker is not served as a priority signal', () =>
       .toBe('floored:')
 
     // And the bare pattern really is still in the set the DB is asked to match on.
-    const [, params] = queryMock.mock.calls[0] as [string, unknown[]]
+    const [, params] = queryMock.mock.calls.find(([sql]) => String(sql).includes('bodha_msr_signals')) as [string, unknown[]]
     const bound = params.find(p => Array.isArray(p) && (p as string[]).includes('floored:'))
     expect(bound).toBeDefined()
   })
 
   it('reports zero-exclusions explicitly, so "none" differs from "never checked" (§N.8)', async () => {
-    queryMock.mockResolvedValue({ rows: LIVE_ROWS.filter(r => !r.abstention_marker_pattern) })
+    queryMock.mockImplementation(async (sql: string) => ({ rows: sql.includes('kala_field_windows') ? [{ windows: [], snapshots: 0 }] : LIVE_ROWS.filter(r => !r.abstention_marker_pattern) }))
     const c = await run()
     expect(c.excluded_internal_marker_count).toBe(0)
     expect(c.excluded_internal_markers).toEqual([])
@@ -172,7 +177,7 @@ describe('F-131 — abstention marker is not served as a priority signal', () =>
 
   it('asks the DB for the classification — the exclusion is not a client-side afterthought', async () => {
     await run()
-    const [sql, params] = queryMock.mock.calls[0] as [string, unknown[]]
+    const [sql, params] = queryMock.mock.calls.find(([sql]) => String(sql).includes('bodha_msr_signals')) as [string, unknown[]]
     expect(sql).toContain('abstention_marker_pattern')
     expect(sql).toContain('catalog_only_marker_pattern')
     expect(sql).toContain('WITH ORDINALITY')
@@ -185,7 +190,7 @@ describe('F-131 — abstention marker is not served as a priority signal', () =>
 
   it('serves top_k REAL signals — exclusion does not silently shrink the page', async () => {
     await run({ top_k: 20 })
-    const [sql] = queryMock.mock.calls[0] as [string]
+    const [sql] = queryMock.mock.calls.find(([sql]) => String(sql).includes('bodha_msr_signals')) as [string]
     // Servable rows are limited by their own partition rank, not by a post-LIMIT filter.
     expect(sql).toContain('PARTITION BY (s.abstention_marker_pattern IS NULL)')
     expect(sql).toMatch(/abstention_marker_pattern IS NULL\s+AND partition_rank\s+<= \$\d+/)
@@ -225,15 +230,15 @@ describe('F-131 — raw template strings are labelled, unmapped ones passed thro
   })
 
   it('serves a catalog-only row (flagged) instead of excluding it (§N.6)', async () => {
-    queryMock.mockResolvedValue({
-      rows: [{
+    queryMock.mockImplementation(async (sql: string) => ({
+      rows: sql.includes('kala_field_windows') ? [{ windows: [], snapshots: 0 }] : [{
         ...LIVE_ROWS[0],
         signal_id: 'catalog-only-row',
         signal_headline_text: 'yoga label: fire reason = requires_pass [ga_structural]',
         abstention_marker_pattern: null,
         catalog_only_marker_pattern: 'requires_pass',
       }],
-    })
+    }))
     const c = await run()
     const ranked = c.ranked_signals as Array<Record<string, unknown>>
 
@@ -248,4 +253,71 @@ describe('F-131 — raw template strings are labelled, unmapped ones passed thro
     const res = await callPriorityRankingCapability.handler({}, undefined)
     expect(res.is_error).toBe(true)
   })
+})
+
+// K7-4: real registry boundary; service order must defeat the legacy SQL scalar.
+it('K7-4 Bypass: preserves scalar alias and forwards service evidence/frame before top_k', async () => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: ['B','A'], front: ['A','B'],
+    evidence: { A: { annotations: { lambda_peak: 9 } }, B: { annotations: { lambda_peak: 2 } } },
+    comparisons: [{ relation: 'incomparable', reason: 'unavailable' }], rejected: [],
+    order_policy: ['best_suited','most_robust','strongest','nearest'], empty_reason: null }
+  const fetchMock = vi.fn(async (url: string, options: { body: string }) => {
+    expect(url).toContain('/api/compute/tulana_compare')
+    expect(JSON.parse(options.body).windows.map((w: { window_id: string }) => w.window_id)).toEqual(['A', 'B'])
+    return { ok: true, json: async () => comparison }
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  queryMock.mockImplementation(async (sql: string) => sql.includes('kala_field_windows')
+    ? { rows: [{ snapshots: 1, windows: [{ chart_id: CHART, window_id: 'A', field_snapshot_id: 's' }, { chart_id: CHART, window_id: 'B', field_snapshot_id: 's' }] }] }
+    : { rows: LIVE_ROWS })
+  const frame = { domain: 'career', entity: 'echo' }
+  const result = await run({ question_frame: frame, preference: ['nearest'], top_k: 1 })
+  expect(result.legacy_scalar).toBe(true)
+  expect(result.comparison).toEqual(comparison)
+  expect(result.ordered_windows).toEqual(['B'])
+  expect(result.front_members_omitted).toBe(1)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ question_frame: frame, preference: ['nearest'] })
+  expect(result.ranked_signals).toHaveLength(2)
+})
+it('K7-4 mixed snapshot and sidecar errors refuse the decision', async () => {
+  queryMock.mockResolvedValue({ rows: [{ windows: [], snapshots: 2 }] })
+  const result = await callPriorityRankingCapability.handler({ chart_id: CHART }, undefined)
+  expect(result.is_error).toBe(true)
+  queryMock.mockImplementation(async (sql: string) => sql.includes('kala_field_windows')
+    ? { rows: [{ windows: [], snapshots: 0 }] } : { rows: LIVE_ROWS })
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 422 })))
+  expect((await callPriorityRankingCapability.handler({ chart_id: CHART }, undefined)).is_error).toBe(true)
+})
+
+it.each([
+  { ordered: ['invented'] }, { front: ['invented'] }, { order_policy: ['hidden_weight'] },
+  { evidence: null }, { empty_reason: 0 }, { comparisons: [{ relation: 'winner' }] },
+])('K7-4 refuses incompatible comparator evidence %j', async (corruption) => {
+  const comparison = { contract_version: 'k7-4:pareto:v1', ordered: [], front: [], comparisons: [],
+    evidence: {}, rejected: [], order_policy: ['most_robust', 'strongest', 'nearest'], empty_reason: 'no_candidate_windows', ...corruption }
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => comparison })))
+  expect((await callPriorityRankingCapability.handler({ chart_id: CHART }, undefined)).is_error).toBe(true)
+})
+
+it('K7-4 missing production columns refuse; optional later columns are read through JSON only', async () => {
+  queryMock.mockRejectedValue(new Error('column field_snapshot_id does not exist'))
+  const result = await callPriorityRankingCapability.handler({ chart_id: CHART }, undefined)
+  expect(result.is_error).toBe(true)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('K7-4 no frame keeps best_suited absent and reads only the requested horizon in one snapshot', async () => {
+  await run()
+  const [sql, params] = queryMock.mock.calls.find(([sql]) => String(sql).includes('kala_field_windows')) as [string, unknown[]]
+  expect(sql).toContain('w.window_start <= $3::date')
+  expect(params[2]).toBe('2027-02-21')
+  expect(sql).toContain("to_jsonb(s)->'factor_informativeness'")
+  expect(sql).not.toMatch(/\bs\.factor_informativeness\b/)
+})
+
+it.each([{ date_from: 'junk' }, { date_from: '2026-02-31' }, { date_to: 'junk' },
+  { date_from: '2026-10-13', date_to: '2026-10-13' }])('K7-4 malformed dates refuse without SQL %j', async (dates) => {
+  const response = await callPriorityRankingCapability.handler({ chart_id: CHART, ...dates }, undefined)
+  expect(response.is_error).toBe(true)
+  expect(queryMock).not.toHaveBeenCalled()
 })

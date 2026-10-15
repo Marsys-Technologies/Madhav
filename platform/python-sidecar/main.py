@@ -152,3 +152,7 @@ app.include_router(nirmana_probe_router.router, prefix="/internal/nirmana")
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+# K7-4 authenticated, stateless forecaster-window comparator.
+from services.ka_tulana.ranker import router as tulana_router
+app.include_router(tulana_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])

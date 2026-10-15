@@ -1,3 +1,4 @@
+# Historical legacy implementation oracles; default registrar cutover is tested separately.
 """
 A4 remediation tests for ka_bhavishya_lekha (B4-consume) and mi_bhavisya (O2).
 
@@ -118,7 +119,7 @@ class TestB4ConsumeKaBhavishya:
         Previously this would fall to 'general'; now it reads the column directly.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         # Darshana row with kc.domain = 'relationship'
@@ -174,7 +175,7 @@ class TestB4ConsumeKaBhavishya:
         signal_type_id contains 'kalatra' -> should map to 'relationship' via keyword.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         darshana_row = self._make_darshana_row(None)  # domain IS NULL
@@ -225,7 +226,7 @@ class TestB4ConsumeKaBhavishya:
         fell to 'general'. B4-consume allows non-general domains when kc.domain is set.
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         domains_seen = set()
@@ -277,7 +278,7 @@ class TestB4ConsumeKaBhavishya:
           7. INSERT genuinely new kala_bhavishya identity
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
-            KaBhavishyaLekhaWriter,
+            _LegacyKaBhavishyaLekhaWriter as KaBhavishyaLekhaWriter,
         )
 
         # Row has a null domain — simulates NULL AS domain from the query

@@ -42,7 +42,7 @@ VERIFICATION_TABLES = ("ka_gochara_search_inventory_verification", "ka_gochara_e
 #: …plus the one table the verifier's `--brief` mode appends to (F-R12-4). The SEALER holds no write on it (its write surface keeps it).
 VERIFIER_WRITE_TABLES = VERIFICATION_TABLES + ("ka_gochara_seal_brief",)
 _WRITE = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
-#: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1241)
+#: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1378)
 L1_READ_TABLES = ("chart_facts", "chart_dashas")
 
 
@@ -134,7 +134,7 @@ def check_identity(conn) -> dict:
         raise VerificationRefused(
             "no_verifier_privilege",
             f"verifier lacks SELECT on {'/'.join(l1_missing)} — the L1 read ACLs belong to the data-plane owner and the "
-            "verifier/sealer grants migration (1241) does not grant them", exit_code=EXIT_PRIVILEGE)
+            "verifier/sealer grants migration (1378) does not grant them", exit_code=EXIT_PRIVILEGE)
     missing = [t for t in VERIFICATION_TABLES
                if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
                and not _one(conn.execute("SELECT has_table_privilege(current_user, %s, 'INSERT')",
@@ -442,7 +442,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
-        # candidate gate refuses until every included grain has a window verification. 1241 gives the verifier SELECT+INSERT
+        # candidate gate refuses until every included grain has a window verification. 1378 gives the verifier SELECT+INSERT
         # on the inventory verification table and NO DELETE: a re-run replaces nothing there (`write_verification` is
         # idempotent for an identical digest, and a rebuilt inventory chain removes its own verification); the 1240 rows are
         # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).

@@ -1,9 +1,9 @@
 {
- "implementation_digest": "28f8407a79638bc461ed5eb96fb6c917dcaa4fd17510745037b51f6ce2d86b5f",
+ "implementation_digest": "05eb1a1783592882784e897e7e26839db1dcb6552af314ff45dc9e8f6030e272",
  "schema": "gochara_implementation_registry/1",
  "stages": {
   "evaluation": "ee4abb8f620a9ef6c4bbda48ddbff6b27d3c7e888b15b219fde846260f018d19",
   "geometry": "e041874e977d99463be22cd2aaafab070b4901b77c89dc23bc23f26a607094af",
-  "window": "29fae81904a1e4b434ff072327a37663e5ae9c45d53450c3913224ff9befc07d"
+  "window": "beaa23107518458b89bb8fe498a8b3682ffe67fb08951196a69c7b18db123aa4"
  }
 }
