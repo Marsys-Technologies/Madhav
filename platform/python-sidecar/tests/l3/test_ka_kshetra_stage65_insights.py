@@ -52,8 +52,8 @@ class TestCircularityGuard:
     def test_biographical_echo_not_in_non_lel_types(self):
         assert "biographical_echo" not in NON_LEL_INSIGHT_TYPES
 
-    def test_seven_types_exactly(self):
-        assert len(NON_LEL_INSIGHT_TYPES) == 7
+    def test_six_enabled_types_contrast_needs_bound_baseline(self):
+        assert len(NON_LEL_INSIGHT_TYPES) == 6
 
     def test_assembled_row_always_lel_derived_false(self):
         cand = detect_concurrence(_window(clock_agreements=(
@@ -157,20 +157,20 @@ class TestDetectRarityFiring:
 
 class TestDetectAbsenceOfExpected:
     def test_fires_when_strong_promise_and_no_windows(self):
-        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 7.5 is above threshold
-        cand = detect_absence_of_expected("career_entry", 7.5, [], 0.0, 36525.0)
+        # G1 noisy-OR prior is normalized; .75 exceeds .60.
+        cand = detect_absence_of_expected("career_entry", .75, [], 0.0, 36525.0)
         assert cand is not None
         assert cand.window_id is None
         assert cand.event_class == "career_entry"
 
     def test_does_not_fire_below_promise_threshold(self):
-        # 4.0 is below the [0,10] threshold of 6.0
-        assert detect_absence_of_expected("career_entry", 4.0, [], 0.0, 36525.0) is None
+        # .4 is below the normalized threshold of .60
+        assert detect_absence_of_expected("career_entry", .4, [], 0.0, 36525.0) is None
 
     def test_does_not_fire_when_windows_exist(self):
         w = _window(event_class="career_entry")
-        # 9.0 is above threshold but windows exist, so should not fire
-        assert detect_absence_of_expected("career_entry", 9.0, [w], 0.0, 36525.0) is None
+        # .9 is above threshold but windows exist, so should not fire
+        assert detect_absence_of_expected("career_entry", .9, [w], 0.0, 36525.0) is None
 
 
 class TestDetectCompression:
@@ -217,7 +217,7 @@ class TestDetectCompression:
 class TestDetectScarcity:
     def test_fires_when_no_further_window_at_all(self):
         current = _window("w1", t_peak=1000)
-        cand = detect_scarcity(current, [])
+        cand = detect_scarcity(current, [], horizon_end=36525.)
         assert cand is not None
         assert cand.statement_params["next_window_id"] is None
 
@@ -237,7 +237,7 @@ class TestDetectScarcity:
     def test_ignores_earlier_windows(self):
         current = _window("w1", t_peak=1000, t_end=1030)
         earlier = _window("w0", t_peak=500, t_start=470, t_end=530)
-        cand = detect_scarcity(current, [earlier])
+        cand = detect_scarcity(current, [earlier], horizon_end=36525.)
         assert cand is not None  # earlier window must not count as "next"
         assert cand.statement_params["next_window_id"] is None
 
@@ -348,8 +348,8 @@ class TestAssembleInsightRow:
         assert abs(row["insight_score"] - expected) < 1e-12
 
     def test_absence_of_expected_has_null_window_and_zero_score_components(self):
-        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 8.0 is above threshold
-        cand = detect_absence_of_expected("career_entry", 8.0, [], 0.0, 36525.0)
+        # G1 normalized prior .8 exceeds .60.
+        cand = detect_absence_of_expected("career_entry", .8, [], 0.0, 36525.0)
         row = assemble_insight_row("chart-1", cand, "wv1", "snap1")
         assert row["window_id"] is None
         assert row["event_class"] == "career_entry"
@@ -411,10 +411,10 @@ class TestSynthesizeInsights:
         assert any(r["insight_type"] == "rarity_firing" for r in rows)
 
     def test_absence_of_expected_wired(self):
-        # ABSENCE_MIN_PROMISE = 6.0 (grade on [0, 10] scale); 9.0 is above threshold
+        # G1 normalized prior .9 exceeds .60.
         rows = synthesize_insights(
             "chart-1", [], "wv1", "snap1",
-            absence_candidates=[("career_entry", 9.0, 0.0, 36525.0)],
+            absence_candidates=[("career_entry", .9, 0.0, 36525.0)],
         )
         assert len(rows) == 1
         assert rows[0]["insight_type"] == "absence_of_expected"
@@ -424,7 +424,7 @@ class TestSynthesizeInsights:
         current = _window("w1", t_peak=1000, t_end=1030)
         rows = synthesize_insights(
             "chart-1", [current], "wv1", "snap1",
-            scarcity_pairs=[(current, [])],
+            scarcity_pairs=[(current, [])], horizon_end=36525.,
         )
         assert any(r["insight_type"] == "scarcity" for r in rows)
 
@@ -540,7 +540,7 @@ class TestDetectAbsenceFromPratijna:
         assert detect_absence_from_pratijna("marriage", rows, [], 0.0, 36525.0) is None
 
     def test_does_not_fire_when_windows_exist(self):
-        # 9.0 is above threshold but windows exist, so should not fire
+        # .9 is above threshold but windows exist, so should not fire
         rows = [self._pratijna(9.0)]
         w = _window(event_class="marriage")
         assert detect_absence_from_pratijna("marriage", rows, [w], 0.0, 36525.0) is None

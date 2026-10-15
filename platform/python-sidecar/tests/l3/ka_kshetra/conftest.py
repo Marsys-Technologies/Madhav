@@ -9,11 +9,16 @@ from .fake_db import FakeConn, FakeCtx
 
 @pytest.fixture(autouse=True)
 def candidate_numerical_harness(monkeypatch, request):
-    from services.ka_kshetra import candidate, g1_inputs, writer
+    from services.ka_kshetra import candidate, g1_inputs, g1_manifest, writer
     if not request.node.path.name.startswith('test_g1a'):
         monkeypatch.setattr(writer,'_candidate_engine',lambda:writer._engine_version())
     real_bind=candidate.bind_candidate
     real_load=g1_inputs.load_suppression
+    real_attest=g1_manifest.attest_snapshot
+    if not request.node.path.name.startswith(('test_g1a','test_g1b')):
+        # Historical numerical suites shrink the old replicate constant.
+        # Actual candidate count/schedule are tested by G1b and PostgreSQL.
+        monkeypatch.setattr(writer,'candidate_null_shifts',lambda:writer.S5.DEFAULT_REPLICATES)
     original=FakeCtx.__init__
     def initialize(self,*args,**kwargs):
         original(self,*args,**kwargs)
@@ -25,6 +30,9 @@ def candidate_numerical_harness(monkeypatch, request):
         return real_bind(ctx,**kwargs)
     def load(conn,*args):
         return ([],[]) if isinstance(conn,FakeConn) else real_load(conn,*args)
+    def attest(conn,**kwargs):
+        return None if isinstance(conn,FakeConn) else real_attest(conn,**kwargs)
     monkeypatch.setattr(FakeCtx,'__init__',initialize)
     monkeypatch.setattr(candidate,'bind_candidate',bind)
     monkeypatch.setattr(g1_inputs,'load_suppression',load)
+    monkeypatch.setattr(g1_manifest,'attest_snapshot',attest)

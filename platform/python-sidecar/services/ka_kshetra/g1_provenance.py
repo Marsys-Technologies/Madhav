@@ -20,7 +20,7 @@ CONSTANT_PROVENANCE = {
     'promise': 'stage2 K-shortest route/noisy-OR, ungraded conductance defaults; W2 3.3, 5.1; retained G1 engineering',
     'salience': 'stage6 salience_v0 five-factor seeded weights; W2 6.1; not calibrated',
     'selection': 'row budget=15 and decade stride=1000000; W2 6.2 / writer storage convention',
-    'insights': 'stage65 thresholds retained; K5-G1b owns repair/removal (G1 f)',
+    'insights': 'G1(f): noisy-OR prior >=0.60 (distinct from pratijna grade>=6); obstruction engagement/release at zero; scarcity requires searched 5*365.2425 days; contrast disabled without bound baseline; engineering thresholds, not calibrated negative forecasts',
     'suppression_strength': 'active vedha and in-force K3 map to u=1; G1 indicator engineering interpretation; partial/contested unknown scalar omitted with disclosure',
     'moorti': 'KA-3b testimony only; no numeric bridge admitted',
     'time_units': '86400 SI seconds/day; JD_UNIX_EPOCH=2440587.5; noon-UT ephemeris_daily samples; UTC birth origin',

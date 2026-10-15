@@ -340,7 +340,7 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
         # dispatch and broken-detector negatives in both migration states.
-        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_vedha_gochara tests/l3/ka_adapters tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py -q -rs -p no:cacheprovider
+        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_vedha_gochara tests/l3/ka_adapters tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py tests/l3/ka_kshetra/test_g1b*.py -q -rs -p no:cacheprovider
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs

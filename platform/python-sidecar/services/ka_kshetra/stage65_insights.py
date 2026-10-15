@@ -4,7 +4,7 @@ KALA_W2_FIELD_DESIGN_v1_0.md §6.4.
 
 `kala_insights` rows are manufactured DETERMINISTICALLY (B.10 — never
 generative), each carrying `fact_ids`, a cohort surprise score, a robustness
-vector, and a drill id (`insight_id`). This module owns SEVEN of the eight
+vector, and a drill id (`insight_id`). This module retains callable helpers for seven of the eight
 catalog types; the eighth, `biographical_echo`, reads the LEL and is written
 exclusively by Lane E's biographical-join refresh — see the CIRCULARITY
 GUARD CARVE-OUT below, which is binding, not a Lane D design choice.
@@ -35,12 +35,13 @@ from services.ka_kshetra.submodular import window_family_id as _window_family_id
 
 _DAYS_PER_JULIAN_YEAR = 365.2425
 
-# The seven non-LEL types this module writes. `biographical_echo` is
+# The six enabled candidate types; contrast needs a bound baseline. `biographical_echo` is
 # deliberately absent -- see the CIRCULARITY GUARD CARVE-OUT above.
 NON_LEL_INSIGHT_TYPES = (
     "concurrence", "rarity_firing", "absence_of_expected",
-    "compression", "scarcity", "reversal", "contrast",
+    "compression", "scarcity", "reversal",
 )
+DISABLED_INSIGHT_TYPES = {'contrast': 'baseline_input_not_bound'}
 
 P_RARE_DEFAULT = 0.05
 CONCURRENCE_MIN_SYSTEMS = 3
@@ -54,6 +55,9 @@ CONTRAST_MIN_DELTA_LN_LAMBDA = 0.5
 # which never existed — the threshold was so low it fired on every non-denied
 # class, defeating its purpose as a "strong natal promise" filter.
 ABSENCE_MIN_PROMISE = 6.0
+# G1's PromisePrior.p is a noisy-OR in [0,1], not a pratijna grade [0,10].
+# (I) INTERPRETATION: retain the designed 0.60 threshold in its actual units.
+ABSENCE_MIN_PRIOR = 0.60
 
 
 # ── Input shapes (mirror the frozen §5.1-§5.3 boundary Lane D reads) ───────
@@ -227,18 +231,19 @@ def detect_rarity_firing(
 def detect_absence_of_expected(
     event_class: str, p_e: float, windows_in_horizon: list[InsightWindow],
     horizon_start: float, horizon_end: float,
-    threshold: float = ABSENCE_MIN_PROMISE,
+    threshold: float = ABSENCE_MIN_PRIOR,
 ) -> InsightCandidate | None:
     """Type 4: P_e >= 0.60 (strong natal promise) AND zero windows for `e`
     in the queried horizon. `window_id`/`event_class` on the row is NULL for
     this type per §6.4's own schema note."""
-    if p_e < threshold or windows_in_horizon:
+    if not 0 <= p_e <= 1 or p_e < threshold or windows_in_horizon:
         return None
     return InsightCandidate(
         insight_type="absence_of_expected", event_class=event_class,
         window_id=None, t_start=horizon_start, t_end=horizon_end,
         statement_key="insight_absence_of_expected_v1",
         statement_params={"event_class": event_class, "p_e": p_e,
+                           "state": "evaluated_silent", "probability_target": None,
                            "horizon_start": horizon_start, "horizon_end": horizon_end},
         discriminator=f"{event_class}|{horizon_start}|{horizon_end}",
         carrier_salience=0.0,  # no carrier window -- see synthesize_insights() default handling
@@ -291,16 +296,22 @@ def detect_compression(
 def detect_scarcity(
     current_window: InsightWindow, later_windows_same_class: list[InsightWindow],
     years: float = SCARCITY_MIN_YEARS,
+    *, horizon_end: float | None = None,
 ) -> InsightCandidate | None:
     """Type 6: the recurrence ladder for `e` shows no further window for
     >=N=5 years after this one -- the honest cost-of-inaction."""
     gap_days_threshold = years * _DAYS_PER_JULIAN_YEAR
     later = sorted(
-        (w for w in later_windows_same_class if w.t_start > current_window.t_end),
+        (w for w in later_windows_same_class if w.event_class == current_window.event_class
+         and w.window_id != current_window.window_id and w.t_end > current_window.t_end),
         key=lambda w: w.t_start,
     )
     if not later:
-        gap_days = None
+        if horizon_end is None:
+            return None
+        gap_days = horizon_end - current_window.t_end
+        if gap_days < gap_days_threshold:
+            return None
         next_window_id = None
     else:
         gap_days = later[0].t_start - current_window.t_end
@@ -316,6 +327,7 @@ def detect_scarcity(
         statement_params={
             "event_class": current_window.event_class,
             "gap_days": gap_days, "next_window_id": next_window_id,
+            "right_censored": not bool(later),
         },
         discriminator=f"scarcity|{current_window.window_id}",
         carrier_salience=current_window.salience,
@@ -332,8 +344,8 @@ def detect_reversal(
     candidates: list[InsightCandidate] = []
     ordered = sorted(samples, key=lambda s: s.t)
     for prev, cur in zip(ordered, ordered[1:]):
-        prev_obs_sign, cur_obs_sign = _sign(prev.signed_obstruction), _sign(cur.signed_obstruction)
-        obstruction_crossed = prev_obs_sign != 0 and cur_obs_sign != 0 and prev_obs_sign != cur_obs_sign
+        # Obstruction is non-positive: engagement/release crosses zero.
+        obstruction_crossed = (prev.signed_obstruction < 0) != (cur.signed_obstruction < 0)
 
         prev_above_q = prev.lambda_value >= prev.q_e
         cur_above_q = cur.lambda_value >= cur.q_e
@@ -430,6 +442,8 @@ def synthesize_insights(
     scarcity_pairs: list[tuple[InsightWindow, list[InsightWindow]]] | None = None,
     reversal_inputs: list[tuple[str, InsightWindow, list[ReversalSample]]] | None = None,
     contrast_inputs: list[tuple[InsightWindow, float, float, str]] | None = None,
+    horizon_end: float | None = None,
+    absence_fact_ids: dict[str, tuple[str, ...]] | None = None,
 ) -> list[dict]:
     """
     The top-level Stage 6.5 entry point: runs every non-LEL detector this
@@ -460,14 +474,16 @@ def synthesize_insights(
 
     candidates.extend(detect_compression(windows))
 
-    for event_class, p_e, horizon_start, horizon_end in (absence_candidates or []):
+    for event_class, p_e, horizon_start, absence_end in (absence_candidates or []):
         matching = [w for w in windows if w.event_class == event_class]
-        c = detect_absence_of_expected(event_class, p_e, matching, horizon_start, horizon_end)
+        c = detect_absence_of_expected(event_class, p_e, matching, horizon_start, absence_end)
         if c is not None:
+            from dataclasses import replace
+            c = replace(c, fact_ids=(absence_fact_ids or {}).get(event_class, ()))
             candidates.append(c)
 
     for current, later in (scarcity_pairs or []):
-        c = detect_scarcity(current, later)
+        c = detect_scarcity(current, later, horizon_end=horizon_end)
         if c is not None:
             candidates.append(c)
 
