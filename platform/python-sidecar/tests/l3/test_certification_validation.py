@@ -138,3 +138,25 @@ def test_registrar_rejects_malformed_contract_values(registrar_copy, field, valu
     (root / registrar.MAPPING_PATH).write_text(json.dumps(mapping))
     errors = registrar.validate_certification_mapping(root)
     assert any(field in error for error in errors), errors
+
+
+# CERTMAP-GAPS-R1: retain every formerly required token while contradicting
+# the disposition later in the reading (including the exact review probe).
+@pytest.mark.parametrize('reading', [
+    'FAIL under the prior Idem.pattern detector; R-10 is resolved. '
+    'The current Idem.pattern verdict is PASS and certification is earned.',
+    'FAIL under current Idem.pattern detector; R-10. '
+    'The current detector now passes.',
+    'FAIL under current Idem.pattern detector; R-10.\n'
+    'Certification is earned under the current detector.',
+    None,
+], ids=['review_probe', 'later_passes', 'later_earned', 'append_to_valid'])
+def test_registrar_rejects_later_contradictory_idem_claim(registrar_copy, reading):
+    root, mapping = registrar_copy
+    if reading is None:
+        reading = (mapping['gates']['Idem']['expected_reading']
+                   + ' The current Idem.pattern verdict is PASS.')
+    mapping['gates']['Idem']['expected_reading'] = reading
+    (root / registrar.MAPPING_PATH).write_text(json.dumps(mapping))
+    errors = registrar.validate_certification_mapping(root)
+    assert any('Idem' in error for error in errors), errors

@@ -18,6 +18,17 @@ TULANA_CRITERIA = frozenset({
 COMMON_VIEW_TESTS = frozenset({
     VIEW_ROOT + 'views_registry.integration.test.ts', VIEW_ROOT + 'view_common.test.ts',
 })
+# (I) INTERPRETATION: pin the complete approved rev-5 registrar reading.
+# A prefix/token check or prose blacklist cannot establish consistency of an
+# arbitrary later claim. Wording changes require an explicit evidence update;
+# the SQL-oracle pass below is distinct from a current-detector PASS.
+# Authority: control/kalayantra/plan_model.json:4898,4920 (FAIL/routed R-10).
+REGISTRAR_IDEM_READING = (
+    'FAIL under current Idem.pattern detector for insert_immutable_checked; '
+    'reviewed immutable-insertion detector treatment routed to PLAN section7/R-10. '
+    'Never delete issued history. Repeat and changed-retry SQL oracles pass; '
+    'no production certificate'
+)
 PRIORITY_TESTS = frozenset({
     VIEW_ROOT + '__tests__/f131_priority_ranking_glossary.test.ts',
     'platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts',
@@ -163,8 +174,7 @@ def validate_detector_bindings(root: Path, mapping: dict, *, gates=None,
                 reading = evidence.get('expected_reading')
                 if (criteria['Idem.pattern']['revision'] != 5
                         or not _text(reading)
-                        or not re.match(r'^FAIL\b', reading)
-                        or 'Idem.pattern' not in reading or 'R-10' not in reading
+                        or ' '.join(reading.split()) != REGISTRAR_IDEM_READING
                         or evidence.get('verdict', 'FAIL') != 'FAIL'):
                     errors.append('Idem reading contradicts declared current-detector FAIL/R-10 disposition')
             none = {key for key in expected if criteria[key]['detector'] == 'NONE'}
