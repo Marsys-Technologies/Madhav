@@ -25,3 +25,4 @@
 1356_k6_read_model_build_scoped_detectors.sql
 1375_k6_integrity_chart_build_binding.sql
 1376_k7_stage_verification_status.sql
+1380_issued_forecast_immutability_guard.sql
