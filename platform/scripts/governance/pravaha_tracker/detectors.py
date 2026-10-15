@@ -100,7 +100,7 @@ class Detectors:
         self._fetched: dict[str, float] = {}
         # This lock protects bookkeeping only; remote I/O never holds it.
         self._fetch_lock = threading.Lock()
-        self._fetching: dict[str, Future] = {}
+        self._fetching: dict[str, tuple[Future, int]] = {}
         self._live = threading.local()
         self._verifying = 0
 
@@ -142,11 +142,12 @@ class Detectors:
 
     def verify(self, spec: dict) -> DetectorResult:
         """Measure once for a guarded completion, bypassing dashboard cache."""
+        requested_at = time.monotonic_ns()
         typ = spec.get("type", "?")
         with self._lock:
             self._verifying += 1
-        previous = getattr(self._live, "verify", False)
-        self._live.verify = True
+        previous = getattr(self._live, "verify", None)
+        self._live.verify = requested_at
         try:
             # Run on the request thread, never behind the dashboard worker pool.
             return getattr(self, "d_" + typ)(spec)
@@ -165,18 +166,28 @@ class Detectors:
 
     # -- helpers ------------------------------------------------------------------------------
     def _fetch(self, remote_branch: str) -> None:
-        with self._fetch_lock:
-            flight = self._fetching.get(remote_branch)
-            owner = flight is None
-            if owner:
-                # Only dashboard polling may reuse a completed fetch's TTL.
-                if not getattr(self._live, "verify", False) and time.time() - self._fetched.get(remote_branch, 0) < 60:
-                    return
-                flight = self._fetching[remote_branch] = Future()
-        if not owner:
-            # Same-ref callers share this measurement, including its failure.
-            flight.result()
-            return
+        requested_at = getattr(self._live, "verify", None)
+        while True:
+            with self._fetch_lock:
+                entry = self._fetching.get(remote_branch)
+                if entry is None:
+                    # Only dashboard polling may reuse a completed fetch's TTL.
+                    if requested_at is None and time.time() - self._fetched.get(remote_branch, 0) < 60:
+                        return
+                    flight = Future()
+                    self._fetching[remote_branch] = (flight, time.monotonic_ns())
+                    break
+                flight, started_at = entry
+            if requested_at is None or started_at >= requested_at:
+                # Share only a measurement that qualifies for this request.
+                flight.result()
+                return
+            # Serialize behind an older same-ref fetch, but neither its success
+            # nor its failure measures the branch for this verification request.
+            try:
+                flight.result()
+            except Exception:
+                pass
         try:
             rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
             if rc != 0:
