@@ -239,8 +239,10 @@ def test_1206_accepts_the_supersession_plan_and_flags_two_included_versions(am5,
                        " ORDER BY path_id, rule_version", (CHART_ID,)).fetchall()
     assert rows == [("P3", "1.0.0", "excluded", "superseded_by_version", None),
                     ("P3", "1.1.0", "included", None, None),
+                    ("P3", "1.2.0", "excluded", "not_applicable_to_class", None),
                     ("P4", "1.0.0", "excluded", "superseded_by_version", None),
-                    ("P4", "1.1.0", "included", None, None)]
+                    ("P4", "1.1.0", "included", None, None),
+                    ("P4", "1.2.0", "excluded", "not_applicable_to_class", None)]
     # the OLD behaviour (every sealed version included) is exactly what 1206 rejects
     two = inv.ClassInventory(event_class="marriage", horizon=good.horizon, pins=tuple(
         inv.PinPlan(p.path_id, p.rule_version, "included", _plan([(p.path_id, p.rule_version)]).obligations)

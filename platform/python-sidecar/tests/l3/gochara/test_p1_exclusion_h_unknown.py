@@ -34,6 +34,21 @@ RULING = "ST-H-UNKNOWN-20261002"
 _JD_UNIX_EPOCH = 2440587.5
 
 
+@pytest.fixture(autouse=True, scope="module")
+def legacy_h_selection():
+    """Bind and select the historical 1.0.0 catalogue before the template is seeded.
+
+    The final 1.2.0 rows resolve H. This regression exercises the earlier
+    exclusion contract; final-rule suites keep the production catalogue.
+    """
+    rr = writer_mod.gk_rule_registry
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(rr, "BOUND_PATH_REFS", tuple(ref for ref in rr.BOUND_PATH_REFS if ref[1] == "1.0.0"))
+        patch.setattr(rr, "BOUND_FACTOR_REFS", tuple(ref for ref in rr.BOUND_FACTOR_REFS if ref[1] == "1.0.0"))
+        patch.setattr(rr, "CLASS_SELECTION_OVERRIDES", {})
+        yield
+
+
 def _position_at(body, t):
     lon, _flag = calc_sidereal_lon(body.title(), t.timestamp() / 86400.0 + _JD_UNIX_EPOCH, EPHE_PATH)
     return lon
@@ -256,3 +271,24 @@ def test_the_job_already_refuses_a_record_minted_in_an_excluded_grain_so_the_exc
     _plant(world, EIGHT[0], path_id, source_path=source_path)
     with pytest.raises(vj.VerificationDisagrees, match=rf"generation_output.*record\(s\) in {EIGHT[0]}/{path_id}@.*a grain this generation's inventory does not include"):
         _verify(world, EIGHT[0])
+
+
+def test_this_exclusion_regression_selects_the_historical_rules():
+    # The final 1.2.0 rows resolve H; applying them would change this regression's premise.
+    for cls in EIGHT:
+        selected = writer_mod.gk_rule_registry.selected_versions_for(cls)
+        assert {p: selected[p] for p in ("P1", "P3", "P4")} == {
+            "P1": "1.0.0", "P3": "1.0.0", "P4": "1.0.0"}
+
+        # Exercise the real planner too: selecting an excluded historical row while
+        # still binding its final successor leaves an unaccounted catalogue grain.
+        from .test_a53_inventory import CHART, H0, H1
+        inv = writer_mod.gk_inventory
+        exclusions, unknown = inv.standing_exclusions()
+        plan = inv.plan_class_inventory(
+            event_class=cls, chart=CHART, horizon=(H0, H1),
+            sealed_paths=writer_mod.gk_rule_registry.bound_path_refs(),
+            selected_versions=selected,
+            capability=inv.SearchCapability(position_probe=True, arc_index=True),
+            path_exclusions=exclusions, h_unknown_exclusion=unknown, dasha_rows=[])
+        assert {p.path_id for p in plan.pins if p.disposition == "excluded"} >= {"P1", "P3", "P4"}

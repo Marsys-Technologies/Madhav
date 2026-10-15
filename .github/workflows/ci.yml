@@ -1706,6 +1706,8 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
+          # File-launched cutover scripts import sidecar packages through this path.
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
           python -m pytest tests/l3/gochara/test_step06_enumeration.py tests/l3/gochara/test_step06a_class_context.py tests/l3/gochara/test_step06b_windows_projection.py tests/l3/gochara/test_step3_overlay_fingerprint.py tests/l3/gochara/test_wp12_vedha_fingerprint.py tests/l3/gochara/test_wp9_stamp_columns.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:

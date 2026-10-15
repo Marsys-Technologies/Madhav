@@ -1102,7 +1102,7 @@ def test_without_1305_the_writer_builds_the_legacy_snapshot_and_the_note_says_so
                               config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
             with conn.transaction():
                 notes[k] = w.run_substep(ctx, SubStep(key=k, label=k)).notes
-        assert "LEGACY snapshot (migration 1305 is NOT applied)" in notes[writer_mod.SNAPSHOT_SUBSTEP]
+        assert "LEGACY: no L1 copy; apply snapshot-copy migration before any seal" in notes[writer_mod.SNAPSHOT_SUBSTEP]
         assert InventoryStore(conn).snapshot_copy_available() is False
         rep = staleness.sealed_generation_staleness(conn, CHART_ID, GEN)
         assert rep["self_contained"] is False and rep["drifted"] is False
@@ -1116,7 +1116,7 @@ def test_without_1305_the_writer_builds_the_legacy_snapshot_and_the_note_says_so
 def test_with_1305_the_snapshot_note_says_self_contained(g12):
     step, conn = g12
     assert InventoryStore(conn).snapshot_copy_available() is True
-    assert "SELF-CONTAINED: the snapshot owns a COPY of the consumed L1 rows" in step(writer_mod.SNAPSHOT_SUBSTEP).notes
+    assert "SELF-CONTAINED: stored L1 copy independently checked at capture (G12)" in step(writer_mod.SNAPSHOT_SUBSTEP).notes
 
 
 def test_the_gate_pins_are_the_shas_a_fresh_1206_1232_chain_produces_and_production_has():

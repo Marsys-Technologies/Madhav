@@ -112,10 +112,10 @@ def test_a_record_with_the_wrong_object_role_or_a_missing_prerequisite_row_is_re
     assert (status, stage) == ("DISAGREE", "p1_results") and "exactly the declared" in detail
 
 
-def _defective_relation(lord, event_class, chart):
+def _defective_relation(lord, event_class, chart, **kwargs):
     """A defect in the shared permission computation: it calls Saturn a TESTIMONY lord, so the builder's own rule omits every
     Saturn-anchored P1 record ('unwritable testimony')."""
-    real = _REAL(lord, event_class, chart)
+    real = _REAL(lord, event_class, chart, **kwargs)
     return dict(real, licence="testimony") if lord == "Saturn" else real
 
 

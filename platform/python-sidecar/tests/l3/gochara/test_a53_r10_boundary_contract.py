@@ -14,6 +14,10 @@ from datetime import datetime, timezone
 
 import pytest
 
+# G8: this boundary suite uses the same one-class world as complete-record tests.
+G8_CENSUS_OPT_OUT_REASON = "exercises speed-derived boundary tolerances on the deliberate one-class marriage world, independently of the class census"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import inventory_verifier as inv_v
 from services.gochara_kernel import verification_job as vj

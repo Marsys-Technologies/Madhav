@@ -1,4 +1,9 @@
 """P09 positive integration oracle: actual approval-bound seal flow and HTTP read."""
+import pytest
+
+G8_CENSUS_OPT_OUT_REASON = "exercises approval-bound seal and HTTP readback on the deliberate one-class marriage world, independently of the class census"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import seal_flow
 from routers import gochara_v5 as route
 from .test_a53_inventory import CHART_ID
