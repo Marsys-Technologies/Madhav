@@ -21,6 +21,18 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   and packet completions bind their digests, receipts and independent verdicts.
   A completed event remains durable when a detector later flaps; audit reports
   the discrepancy. S completes independently accepted N- and V-owned items.
+- `step <ID> <step> --evidence <path>` still requires the step's own live
+  detector to pass. For `file_contains` step receipts, the resolved evidence
+  path must equal the detector path. The receipt must be a JSON object encoded
+  with sorted keys and compact separators (one optional trailing newline),
+  with `item` and `step` matching the command. A named `review_job` must resolve
+  inside `PRAVAHA_REVIEW_JOBS` (default
+  `/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs`)
+  to an existing `result.json` for that item, with exactly one matching step
+  whose verdict is `MET`. Alternatively, a receipt's `artifact_sha256` may
+  prove the named `artifact_path`; relative artifact paths resolve beside the
+  receipt. A supplied artifact digest must always match, and a named review
+  result must still exist. Other step detector types keep their prior behavior.
 - `decide --outcome approved|refused|deferred|insufficient_evidence` records a
   structured outcome. Approved and refused are final. Deferred and insufficient
   evidence remain open. A final incompatible outcome makes dependent executable
