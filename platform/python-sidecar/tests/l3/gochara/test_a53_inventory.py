@@ -215,7 +215,7 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             # Stream B's record replace/finalise grants (draft PR #2940) — replaced my stand-in fixture
                             "1242_gochara_builder_record_replace_finalise_grants.sql",
                             # Stream B's verifier/sealer grants (draft PR #2949) — the faithful mirror's verifier/sealer set
-                            "1241_gochara_verifier_sealer_inventory_grants.sql")
+                            M1241_NAME)
 
 
 def create_am5_database(tag="am5", faithful=False, apply_1240=True, apply_1305=False):
@@ -308,12 +308,11 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True, apply_1305=Fal
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
                 ["1232_gochara_search_moon_scope_domain.sql"] if (faithful or apply_1305) else []) + (
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
-                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []) + (
-                ["1305_gochara_snapshot_owns_l1_copy.sql"] if apply_1305 else []):          # the PRODUCTION order: 1241's closed-ACL check runs before 1305 exists
+                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or f != M1241_NAME] if faithful else []) + (
+                ["1305_gochara_snapshot_owns_l1_copy.sql"] if apply_1305 else []):          # grants' closed-ACL check runs before 1305 exists
             if fname == M1241_NAME:
-                # 1241 is Stream B's (PR #2949). While it is not in platform/migrations on this branch
-                # (protected-window rule) the mirror applies the byte-exact, sha-pinned v7 fixture;
-                # when the real file is present the mirror applies it (same sha pin). See _migration_1241.py.
+                # PR #2949 lands as 1378. The loader pins the landing separately from
+                # the archived 1241 v7 fixture and permits only the migration renumber.
                 cur.execute(migration_1241_sql(MIGRATIONS))
             elif not (MIGRATIONS / fname).exists():
                 pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies the REAL migrations")
@@ -561,8 +560,14 @@ def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5
     function must report ONLY those two absences — not a digest, commitment, coverage or
     input fault. (A publication row must be `published` for the manifest-bound checks.)"""
     store, sky, _ = _boot(am5, "5.7")
-    plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
-                                          aspect_span_solver=True))
+    from services.gochara_kernel.rule_registry import selected_versions_for
+    # The seeded catalogue includes P06's successors; account for every version while
+    # keeping marriage's approved selection, so the test isolates the two absences below.
+    plan = inv.plan_class_inventory(
+        event_class="marriage", chart=CHART, horizon=(H0, H1),
+        sealed_paths=store.sealed_rule_paths(), selected_versions=selected_versions_for("marriage"),
+        capability=inv.SearchCapability(position_probe=True, arc_index=True, aspect_span_solver=True),
+        path_exclusions={"P5": P5_EXCL}, dasha_rows=DASHA)
     _write(am5, store, sky, "5.7", plan)
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))

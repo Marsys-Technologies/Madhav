@@ -1,8 +1,24 @@
 import { disposableSql } from './disposable_sql.test_support'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: db }))
+
+it('K7-4 mapping binds all seven registry and Vidhi identities to their actual stored-tier descriptors', async () => {
+  const source = readFileSync(new URL('../../../../../../python-sidecar/services/ka_tulana/__init__.py', import.meta.url), 'utf8')
+  const mapping = JSON.parse(source.split("CERTIFICATION_MAPPING = json.loads(r'''")[1].split("''')")[0])
+  await import('./index')
+  const { getCapability, getCatalog } = await import('../../index')
+  const { resolveWebToolBridge } = await import('../../../../../../scripts/manifest/web_tool_bridge_builder')
+  for (const entry of Object.values(mapping.views) as Array<{ stage_uri: string; public_uri: string; public_name: string; density_contract: Record<string, unknown> }>) {
+    const cap = getCapability(entry.stage_uri)!
+    expect(cap).toBeDefined()
+    expect(cap.density_contract).toMatchObject(entry.density_contract)
+    expect(getCapability(entry.public_uri)?.name).toBe(entry.public_name)
+    expect(resolveWebToolBridge([entry.public_name], getCatalog(), {}, {}, { canonical_faces: [], deprecated_aliases: {} }))
+      .toEqual([{ name: entry.public_name, uri: entry.public_uri, resolution_kind: 'catalog_name_direct', via: [] }])
+  }
+})
 it('the unchanged bridge resolves all seven public names directly without replacing internal readers', async () => {
   await import('./index')
   const { getCatalog, getCapability } = await import('../../index')

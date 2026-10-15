@@ -89,8 +89,46 @@ def _covers(outer, lo: datetime, hi: datetime) -> bool:
     return outer is not None and outer.lower <= lo and hi <= outer.upper
 
 
+def _sealed_window_attestation(conn, chart_id, generation, event_class):
+    """Use the approval-bound immutable result set; None requests the legacy replay.
+
+    1153/1155/1156/1206/1240 freeze the sealed content and verification rows.
+    The approval receipt is tied to the published manifest and immutable seal.
+    Counting the grain output also catches illicit extra rows without re-deriving
+    every contact digest. Replay remains the verification/sealing job's work.
+    """
+    bound = _one(conn.execute(
+        "SELECT TRUE FROM public.kala_gochara_publication p"
+        " JOIN public.ka_gochara_generation_seal s ON s.chart_id = p.chart_id"
+        " AND s.generation = p.generation AND s.manifest_id = p.manifest_id"
+        " JOIN public.ka_gochara_seal_approval a ON a.chart_id = p.chart_id"
+        " AND a.generation = p.generation AND a.manifest_id = p.manifest_id"
+        " WHERE p.chart_id = %s AND p.generation = %s AND p.status = 'published'"
+        " ORDER BY p.manifest_id LIMIT 1", (chart_id, generation)).fetchone())
+    if bound is None:
+        return None
+    invalid = _one(conn.execute(
+        "WITH expected AS (SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin"
+        " WHERE chart_id = %s AND generation = %s AND event_class = %s"
+        " AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4')),"
+        " results AS (SELECT path_id, rule_version, status, windows_stored, windows_expected,"
+        " windows_reproduced, windows_unverified FROM public.ka_gochara_eval_window_verification"
+        " WHERE chart_id = %s AND generation = %s AND event_class = %s),"
+        " actual AS (SELECT path_id, rule_version, count(*) AS n FROM public.ka_gochara_eval_window"
+        " WHERE chart_id = %s AND generation = %s AND event_class = %s GROUP BY path_id, rule_version)"
+        " SELECT EXISTS (SELECT 1 FROM expected e FULL JOIN results v USING (path_id, rule_version)"
+        " FULL JOIN actual w USING (path_id, rule_version)"
+        " WHERE e.path_id IS NULL OR v.path_id IS NULL OR v.status IS DISTINCT FROM 'VERIFIED'"
+        " OR v.windows_unverified IS DISTINCT FROM 0"
+        " OR v.windows_expected IS DISTINCT FROM v.windows_stored"
+        " OR v.windows_reproduced IS DISTINCT FROM v.windows_stored"
+        " OR v.windows_stored IS DISTINCT FROM coalesce(w.n, 0))",
+        (chart_id, generation, event_class) * 3).fetchone())[0]
+    return not invalid
+
+
 def _completeness(conn: Any, chart_id: str, generation: str, event_class: str,
-                  horizon: tuple[datetime, datetime] | None, manifest) -> tuple[str, list[dict], dict]:
+                  horizon: tuple[datetime, datetime] | None, manifest, *, sealed_read=False) -> tuple[str, list[dict], dict]:
     """(state, reasons, basis): derived from the requested class/horizon's own coverage, inventory and verification."""
     reasons: list[dict] = []
     basis: dict[str, Any] = {}
@@ -156,6 +194,15 @@ def _completeness(conn: Any, chart_id: str, generation: str, event_class: str,
     if not wv:
         return fail("evidence_unavailable", "window_verification_not_applied",
                     "migration 1240 is not applied: window verification cannot be established")
+    if sealed_read:
+        attested = _sealed_window_attestation(conn, chart_id, generation, event_class)
+        if attested is False:
+            return fail('unverified', 'sealed_window_attestation_incompatible',
+                        'immutable verification results do not cover the stored window grains')
+        if attested is True:
+            basis['window_verification'] = 'VERIFIED'
+            basis['verification_source'] = 'seal_bound_immutable_attestation'
+            return COMPLETE, reasons, basis
     violations = conn.execute(
         "SELECT path_id, violation FROM public.ka_gochara_window_verification_violations(%s::uuid, %s)"
         " WHERE event_class = %s", (chart_id, generation, event_class)).fetchall()
@@ -168,16 +215,24 @@ def _completeness(conn: Any, chart_id: str, generation: str, event_class: str,
     return COMPLETE, reasons, basis
 
 
-def _window_qualification(conn: Any, chart_id: str, generation: str, windows: Sequence[Any]) -> list[dict]:
+def _window_qualification(conn: Any, chart_id: str, generation: str, windows: Sequence[Any], *, batch=False) -> list[dict]:
     """Each returned window with its PERSISTED qualification provenance (1240) and, for P2, the vedha Moon-obstruction
     scope. A window without an id is passed through with `qualification: None` (never invented)."""
+    batched = {}
+    ids = [str(w['window_id']) for w in windows if isinstance(w, dict) and w.get('window_id') is not None]
+    if batch and ids:
+        rows = conn.execute(
+            "SELECT window_id::text, objective, objective_value, qualification, path_id"
+            " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
+            " AND window_id = ANY(%s::uuid[]) ORDER BY window_id", (chart_id, generation, ids)).fetchall()
+        batched = {r[0]: r[1:] for r in (_one(row) for row in rows)}
     out = []
     for w in windows:
         wid = w.get("window_id") if isinstance(w, dict) else getattr(w, "window_id", None)
         entry = {"window": w, "qualification": None, "objective": None, "vedha_moon_obstruction_scope": None}
         if wid is not None:
             try:
-                row = _one(conn.execute(
+                row = batched.get(str(wid)) if batch else _one(conn.execute(
                     "SELECT objective, objective_value, qualification, path_id FROM public.ka_gochara_eval_window"
                     " WHERE chart_id = %s AND generation = %s AND window_id = %s", (chart_id, generation, str(wid))
                 ).fetchone())
@@ -215,7 +270,8 @@ def named_limits() -> list[dict]:
 
 
 def coverage_response(conn: Any, *, chart_id: str, generation: str, event_class: str,
-                      windows: Sequence[Any], horizon: tuple[datetime, datetime] | None = None) -> dict:
+                      windows: Sequence[Any], horizon: tuple[datetime, datetime] | None = None,
+                      sealed_read: bool = False) -> dict:
     """The response for one (chart, generation, class[, requested horizon]): windows (possibly none) with their
     qualification, the scope, and the COMPLETENESS state — derived from the class/horizon's own coverage, inventory
     and verification, separately from the scope (a scope declaration alone never proves completion)."""
@@ -232,11 +288,11 @@ def coverage_response(conn: Any, *, chart_id: str, generation: str, event_class:
                    refusal_detail=str(exc), completeness_reasons=[{"code": "stored_scope_missing",
                                                                    "detail": str(exc)}])
         return out
-    state, reasons, basis = _completeness(conn, chart_id, generation, event_class, horizon, manifest)
+    state, reasons, basis = _completeness(conn, chart_id, generation, event_class, horizon, manifest, sealed_read=sealed_read)
     out.update(stored_scope=scope, scope_statement=SCOPE_STATEMENT[scope], completeness=state,
                completeness_reasons=reasons, completeness_basis=basis,
                named_limits=named_limits(),
-               window_qualification=_window_qualification(conn, chart_id, generation, windows))
+               window_qualification=_window_qualification(conn, chart_id, generation, windows, batch=sealed_read))
     return out
 
 
