@@ -384,16 +384,16 @@ def test_a_mixed_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatc
         " %s::uuid, 'single' FROM public.chart_dashas WHERE system_id = 'vimshottari' AND level_n = 1 LIMIT 1", (ANOTHER_BUILD,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     assert code == vj.EXIT_REFUSED == 2, out
-    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_builds_mixed" in out["detail"], out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "settled_build_ambiguous" in out["detail"], out
     assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}
 
 
-def test_a_single_unpinned_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
+def test_a_single_null_dasha_build_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
     w = built
-    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER_BUILD,))
+    w.conn.execute("UPDATE public.chart_dashas SET build_id = NULL")
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     assert code == vj.EXIT_REFUSED == 2, out
-    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_build_not_pinned" in out["detail"], out
+    assert out["status"] == "REFUSED" and out["code"] == "stale_inputs" and "dasha_build_null" in out["detail"], out
 
 
 def test_an_absolute_ephemeris_probe_mismatch_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):
