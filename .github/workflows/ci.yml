@@ -339,7 +339,7 @@ jobs:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           KALA_REQUIRE_DB: '1'
         run: python -m pytest tests/l3/kala_db -q -rs
-      - name: Run scoped parihara evaluator contract, route and database tests
+      - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
