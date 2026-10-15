@@ -293,6 +293,16 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.codex.json
 
+# area: executor-operations — shared adapter contract and current Wave 4 preparation
+00_ARCHITECTURE/briefs/kalayantra/fleet/OPS_CONTRACT.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/W4_EXECUTOR_BINDINGS.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
+
 # tranche: deferred
 # Listed and hash-pinned, but not installed or launch-authorising.
 # Final receipt tools retain their existing deferred status.
