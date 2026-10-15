@@ -29,7 +29,9 @@ def test_committed_certification_mapping_is_current_and_unmeasured():
 @pytest.fixture
 def evidence_copy(tmp_path):
     mapping = json.loads((ROOT / MAPPING).read_text())
-    paths = [MAPPING, REGISTRY]
+    paths = [MAPPING, REGISTRY,
+             Path('platform/src/generated/nirmana-writer-digests.json'),
+             Path('platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts')]
     paths += [Path('platform/python-sidecar') / ref.split('::')[0]
               for ref in mapping['fidelity_tests']]
     for path in paths:
