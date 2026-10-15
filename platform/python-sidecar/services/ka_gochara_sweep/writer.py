@@ -78,6 +78,9 @@ run before year 0. Two consequences, both fixed in the D-5 RED-C wave:
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query, DashaBuildRefused)
+
 import hashlib
 import json as _json
 import logging
@@ -271,6 +274,8 @@ class KaGocharaSweepWriter(WriterBase):
         try:
             import swisseph as swe
             self._swe = swe
+        except DashaBuildRefused:
+            raise
         except Exception as exc:
             logger.error("ka_gochara_sweep: swisseph unavailable, cannot plan: %s", exc)
             self._swe = None
@@ -388,6 +393,8 @@ class KaGocharaSweepWriter(WriterBase):
                 self._swe, conn, chart_id, event_class,
                 horizon_start_jd, horizon_end_jd, step_days=DEFAULT_STEP_DAYS,
             )
+        except DashaBuildRefused:
+            raise
         except Exception as exc:
             logger.error("ka_gochara_sweep: sweep failed for %s year %d: %s", event_class, year_idx, exc)
             return WriterResult(asset_id='ka_gochara_sweep', rows_inserted=0,
@@ -565,6 +572,8 @@ class KaGocharaSweepWriter(WriterBase):
                     (chart_id,),
                 )
                 return [r[0] if not isinstance(r, dict) else r['event_class'] for r in cur.fetchall()]
+        except DashaBuildRefused:
+            raise
         except Exception as exc:
             logger.warning("ka_gochara_sweep: could not discover event_classes for chart %s: %s",
                             chart_id, exc)
@@ -615,6 +624,8 @@ class KaGocharaSweepWriter(WriterBase):
                     bd = row['birth_date'] if isinstance(row, dict) else row[0]
                     if bd is not None:
                         return bd.year
+        except DashaBuildRefused:
+            raise
         except Exception as exc:
             logger.warning("ka_gochara_sweep: public.charts birth_date lookup failed for "
                             "chart %s (%s); falling back to dasha-balance start", chart_id, exc)
@@ -622,16 +633,17 @@ class KaGocharaSweepWriter(WriterBase):
         # only reached when public.charts has no usable birth_date).
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT MIN(start_date) AS birth_date FROM chart_dashas "
-                    "WHERE chart_id = %s AND level_n = 1",
+                execute_governed_dasha_query(
+                    conn, chart_id, dasha_query('sweep_birth_anchor'),
                     (chart_id,),
-                )
+                 ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
                 row = cur.fetchone()
                 if row:
                     bd = row['birth_date'] if isinstance(row, dict) else row[0]
                     if bd:
                         return bd.year
+        except DashaBuildRefused:
+            raise
         except Exception as exc:
             logger.warning("ka_gochara_sweep: could not derive birth_year for chart %s: %s", chart_id, exc)
         return None

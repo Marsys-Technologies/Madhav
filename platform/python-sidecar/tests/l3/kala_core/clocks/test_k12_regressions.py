@@ -89,3 +89,12 @@ def test_coverage_gap_is_typed():
 def test_ambiguous_period_is_typed():
     with pytest.raises(ClockUnavailable, match='ambiguous_period'):
         context([row(),row('overlap')])
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)

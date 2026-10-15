@@ -53,6 +53,7 @@ def _load_writer():
 
 w = _load_writer()
 
+from services.gochara_kernel import dasha_read
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
 
 
@@ -85,7 +86,7 @@ def test_identical_duplicates_collapse_and_record_source_ids():
         _row("r1", "Jupiter", "2020-01-01", "2030-01-01"),
         _row("r2", "Jupiter", "2020-01-01", "2030-01-01"),
     ])
-    rows = DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+    rows = dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
     assert len(rows) == 1
     assert sorted(rows[0]["merged_row_ids"]) == ["r1", "r2"]
 
@@ -98,7 +99,7 @@ def test_conflicting_duplicates_raise_never_silently_pick():
         _row("r2", "Saturn", "2020-01-01", "2030-01-01"),  # lord differs
     ])
     with pytest.raises(DD.DashaReadConflict):
-        DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+        dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
 
 
 def test_db_shape_surprise_is_honest_empty_not_crash():
@@ -106,7 +107,7 @@ def test_db_shape_surprise_is_honest_empty_not_crash():
         def execute(self, *_a):
             raise RuntimeError("relation chart_dashas does not exist")
 
-    assert DD.fetch_dasha_periods_multilevel(_BrokenConn(), "chart-x") == []
+    assert dasha_read._fetch_dasha_periods_multilevel(_BrokenConn(), "chart-x") == []
 
 
 def test_distinct_levels_and_parents_survive():
@@ -115,7 +116,7 @@ def test_distinct_levels_and_parents_survive():
         _row("ad1", "Saturn", "2020-01-01", "2021-06-01", level=2,
              parent="md1"),
     ])
-    rows = DD.fetch_dasha_periods_multilevel(conn, "chart-x")
+    rows = dasha_read._fetch_dasha_periods_multilevel(conn, "chart-x")
     assert {r["dasha_row_id"] for r in rows} == {"md1", "ad1"}
     assert rows[1]["parent_row_id"] == "md1"
 
@@ -775,7 +776,7 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
                 def fetchall(self_inner):
                     return rows
             return _X()
-    out = DD.fetch_dasha_periods_multilevel(_C(), "chart-x", build_id="b1")
+    out = dasha_read._fetch_dasha_periods_multilevel(_C(), "chart-x", build_id="b1")
     assert "AND build_id = %s" in seen["sql"] and seen["params"][-1] == "b1"
     assert seen["params"][4] == DD.READ_CONTRACT_TIER  # tier pinned before duplicates
     assert [r["dasha_row_id"] for r in out] == ["r1"]  # NULL-tier row rejected

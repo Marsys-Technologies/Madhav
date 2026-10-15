@@ -22,8 +22,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
-from services.gochara_grammar.read_tier_policy import (
-    HONEST_COMPUTED_TIERS, row_tier_accepted, tier_accepted)
 
 logger = logging.getLogger(__name__)
 
@@ -34,37 +32,13 @@ DASHA_SYSTEMS = (
 
 
 def fetch_dasha_periods(
-    conn,
-    chart_id: str,
-    ayanamsha_id: str = "lahiri_chitrapaksha",
-    systems: Optional[list[str]] = None,
-    level_n: int = 1,
+    conn, chart_id: str, ayanamsha_id: str = "lahiri_chitrapaksha",
+    systems: Optional[list[str]] = None, level_n: int = 1,
 ) -> list[dict]:
-    """Read `chart_dashas` rows for chart_id across `systems` (defaults to
-    ALL 9 known systems -- the DR-14 plurality requirement). Returns [] on
-    any DB-shape surprise (honest empty, not a crash), same discipline as
-    `resonance_map.fetch_resonance_targets`. MD-only (level_n=1) by default;
-    the multi-level MD/AD/PD read is `fetch_dasha_periods_multilevel`."""
-    if conn is None:
-        return []
-    want_systems = systems or list(DASHA_SYSTEMS)
-    try:
-        cur = conn.execute(
-            """
-            SELECT system_id, level_n, lord_graha, start_iso, end_iso
-              FROM chart_dashas
-             WHERE chart_id = %s AND ayanamsha_id = %s AND level_n = %s
-               AND system_id = ANY(%s)
-             ORDER BY system_id, start_iso
-            """,
-            [chart_id, ayanamsha_id, level_n, want_systems],
-        )
-        rows = cur.fetchall()
-    except Exception as exc:  # noqa: BLE001
-        logger.info("[dasha_data] chart_dashas read failed (table unreachable or unpopulated): %s", exc)
-        return []
-    keys = ["system_id", "level_n", "lord_graha", "start_iso", "end_iso"]
-    return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    """Legacy MD interface over the governed read, retaining row provenance."""
+    return fetch_dasha_periods_multilevel(
+        conn, chart_id, ayanamsha_id=ayanamsha_id, systems=systems,
+        levels=(level_n,), level_tier_policy=True)
 
 
 # GOCHARA_DESIGN_SPECS_v1_4 §4.0 (the daśā read contract): rows are selected
@@ -170,97 +144,23 @@ def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
 
 
 def fetch_dasha_periods_multilevel(
-    conn,
-    chart_id: str,
-    ayanamsha_id: str = "lahiri_chitrapaksha",
-    systems: Optional[list[str]] = None,
-    levels: tuple[int, ...] = DEFAULT_LEVELS,
-    tier: str = READ_CONTRACT_TIER,
-    build_id: Optional[str] = None,
-    canonicalize: bool = True,
-    level_tier_policy: bool = False,
+    conn, chart_id: str, ayanamsha_id: str = "lahiri_chitrapaksha",
+    systems: Optional[list[str]] = None, levels: tuple[int, ...] = DEFAULT_LEVELS,
+    tier: str = READ_CONTRACT_TIER, build_id: Optional[str] = None,
+    canonicalize: bool = True, level_tier_policy: bool = False,
 ) -> list[dict]:
-    """§4.0 multi-level (MD/AD/PD) read of `chart_dashas`, with parent
-    linkage preserved (`parent_row_id`) and the contract's duplicate rules
-    enforced:
+    """Public reads always bind settlement before selecting operands.
 
-      * rows are selected at verification tier `two_pass_verified`;
-      * identical duplicates (equal on every contract field) collapse to one
-        — the surviving row records all source row ids in `merged_row_ids`;
-      * conflicting duplicates (same identity, any contract field differs)
-        raise DashaReadConflict — fail loudly, never silently pick one.
-
-    Returns [] on a DB-shape surprise (honest empty, same discipline as
-    `fetch_dasha_periods`); a CONFLICT is not a DB surprise — it raises.
-    `fetch_dasha_periods` (MD-only) is unchanged for its existing callers.
-
-    Pinning happens IN THE QUERY, before any duplicate handling (ASTRA v1.1
-    P1-2): ayanāṃśa and tier always (a NULL tier never matches the equality
-    predicate), build when `build_id` is given (a NULL build never matches).
-
-    TIER. The default is the STRICT contract tier (`tier`, equality) — what
-    the vimshottari build pin and the '5.0' §4.0 read require, unchanged.
-    `level_tier_policy=True` applies read_tier_policy.LEVEL_TIER_POLICY per
-    (system, level): the listed rows (mudda / narayana level 1) are read at
-    any honestly emitted computed tier and keep their own
-    `verification_pass_status`; EVERY other (system, level) stays strict, so
-    the row set read on today's data is identical. Floored / divergent /
-    pending / unknown / NULL are refused either way.
-    The duplicate rules are `canonicalize_multilevel_rows` — identical
-    collapse, parent-alias canonicalization, sibling `index`, and the
-    `(level, parent, index)` overlap conflict.
+    No connection is an unavailable read. A conflicting or ungoverned live
+    population raises a typed refusal; it is never translated into a vote.
     """
     if conn is None:
         return []
-    want_systems = systems or list(DASHA_SYSTEMS)
-    sql = """
-            SELECT dasha_row_id, system_id, level_n, parent_row_id,
-                   lord_graha, start_iso, end_iso, build_id,
-                   verification_pass_status
-              FROM chart_dashas
-             WHERE chart_id = %s AND ayanamsha_id = %s
-               AND system_id = ANY(%s) AND level_n = ANY(%s)
-               AND verification_pass_status = {tier_pred}
-    """
-    if not level_tier_policy:
-        tier_pred, tier_param = "%s", tier
-    else:  # superset pre-filter; the per-(system, level) policy is applied below
-        tier_pred, tier_param = "ANY(%s)", sorted(HONEST_COMPUTED_TIERS | {tier})
-    sql = sql.replace("{tier_pred}", tier_pred)
-    params: list = [chart_id, ayanamsha_id, want_systems, list(levels), tier_param]
-    if build_id is not None:
-        sql += "           AND build_id = %s\n"
-        params.append(str(build_id))
-    sql += "             ORDER BY system_id, level_n, start_iso\n"
-    try:
-        cur = conn.execute(sql, params)
-        rows = cur.fetchall()
-    except Exception as exc:  # noqa: BLE001
-        logger.info("[dasha_data] multi-level chart_dashas read failed "
-                    "(table unreachable or unpopulated): %s", exc)
-        return []
-    parsed = [row if isinstance(row, dict) else dict(zip(_MULTILEVEL_KEYS, row))
-              for row in rows]
-    # a row that escaped the pin predicates with a NULL contract field is
-    # rejected (never a silently unpinned read)
-    # (and a row whose tier the read policy does not accept — defence in depth
-    # behind the predicate)
-    def _readable(r: dict) -> bool:
-        st = r.get("verification_pass_status")
-        if level_tier_policy:
-            return (row_tier_accepted(r.get("system_id"), r.get("level_n"), st)
-                    or tier_accepted(st, {tier}))
-        return tier_accepted(st, {tier})
-    parsed = [r for r in parsed
-              if _readable(r)
-              and (build_id is None or r.get("build_id") is not None)]
-    if not canonicalize:
-        # RAW pinned rows — for a caller that must SELECT the build pin
-        # first (the §4.0 read contract) and only then canonicalize the
-        # pinned set; canonicalizing across builds would reject a foreign
-        # build's overlapping rows as conflicts (ASTRA v1.2 P1-1).
-        return parsed
-    return canonicalize_multilevel_rows(parsed)
+    from services.gochara_kernel.dasha_read import load_governed_dasha_periods
+    return load_governed_dasha_periods(
+        conn, chart_id, ayanamsha_id=ayanamsha_id, systems=systems,
+        levels=levels, tier=tier, build_id=build_id,
+        canonicalize=canonicalize, level_tier_policy=level_tier_policy)
 
 
 def build_fixture_dasha_periods(chart_id: str) -> list[dict]:

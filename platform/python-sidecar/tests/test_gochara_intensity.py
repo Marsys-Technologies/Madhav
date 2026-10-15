@@ -551,7 +551,7 @@ def test_permission_compute_survives_inside_orchestrator_owned_savepoint():
     `test_gochara_grammar.py::test_primitive_survives_inside_orchestrator_owned_savepoint`:
     a manually-opened outer `SAVEPOINT writer_exec` (mimicking
     `asset_runner.py::_drive_substeps`) must still be releasable after
-    `compute_permission` returns."""
+    `compute_permission` refuses unavailable daśā operands."""
     conn = _sqlite_conn_in_explicit_transaction()
     try:
         conn.execute("SAVEPOINT writer_exec")
@@ -561,10 +561,10 @@ def test_permission_compute_survives_inside_orchestrator_owned_savepoint():
             target_ref="11", weight=0.75, classical_citation="TEST FIXTURE",
             target_sign="Pisces",
         )
-        permission, detail = compute_permission(
-            swe, conn, CHART_ID, "wealth", [target], _jd(2020, 1, 1),
-        )
-        assert isinstance(permission, float)  # degraded, but did not crash
+        from services.gochara_kernel.dasha_read import DashaBuildRefused
+        with pytest.raises(DashaBuildRefused, match="dasha_read_unavailable"):
+            compute_permission(
+                swe, conn, CHART_ID, "wealth", [target], _jd(2020, 1, 1))
 
         # THE critical assertion.
         conn.execute("RELEASE SAVEPOINT writer_exec")

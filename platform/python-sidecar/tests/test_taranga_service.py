@@ -496,3 +496,12 @@ class TestHonestGaps:
         chart = svc.ChartRef(chart_id=_CHART_ID)
         with pytest.raises(ValueError, match="unresolvable"):
             svc.activation(chart, "garbage-target-xyz", datetime(2026, 1, 1, tzinfo=timezone.utc), conn=_mock_conn())
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.taranga_service'),
+                        "execute_governed_dasha_query", emulated_projection)

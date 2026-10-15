@@ -692,3 +692,12 @@ class TestWriteBoundaryRows:
         mock_cursor.executemany.assert_called_once()
         sql = mock_cursor.executemany.call_args.args[0]
         assert 'ON CONFLICT (chart_id, system_id, level, t_boundary) DO UPDATE' in sql
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_kshetra.stage3_clocks'),
+                        "execute_governed_dasha_query", emulated_projection)

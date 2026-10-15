@@ -503,6 +503,13 @@ _GAJAKESARI = {
 
 
 class TestWriterLevelWP3c:
+    @pytest.fixture(autouse=True)
+    def _governed_projection_fixture(self, monkeypatch):
+        """Writer domain specimens begin at the governed projection boundary."""
+        from services.ka_gochara_resonance import writer
+        from tests.l3._dasha_projection import emulated_projection
+        monkeypatch.setattr(writer, "execute_governed_dasha_query", emulated_projection)
+
     def test_r1_r4_end_to_end_states_and_notes(self):
         sink: dict = {}
         sensitive = [
