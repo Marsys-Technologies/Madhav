@@ -128,6 +128,58 @@ def test_insert_also_requires_matching_seal(db, mode):
 
 
 @pytest.mark.parametrize('mode', ['origin', 'replica'])
+def test_fresh_authority_insert_holds_chart_lock_until_transaction_ends(authority_db, mode):
+    # M08: removing INSERT from the row guard must lose serialization here.
+    # Unlike the admission test above, commit DELETE before starting INSERT:
+    # its statement lock must not mask a missing INSERT lock.
+    conn = authority_db
+    previous = conn.execute('SELECT chart_id,authoritative_generation,flipped_at,flipped_by,evidence_ref'
+                            ' FROM public.kala_gochara_authority WHERE chart_id=%s', (CHART_ID,)).fetchone()
+    assert previous is not None and previous[1] == '3.0'
+    conn.execute('DELETE FROM public.kala_gochara_authority WHERE chart_id=%s', (CHART_ID,))
+    # Pin the family key independently of the helper under test (1153:453).
+    lock_sql = "SELECT pg_try_advisory_xact_lock(hashtext('gochara5:chart:' || %s)::bigint)"
+    try:
+        with psycopg.connect(conn.info.dsn, autocommit=True, connect_timeout=3) as observer:
+            assert observer.execute(lock_sql, (CHART_ID,)).fetchone() == (True,)
+            with conn.transaction(force_rollback=True):
+                conn.execute(f"SET LOCAL session_replication_role = '{mode}'")
+                conn.execute("INSERT INTO public.kala_gochara_authority(chart_id,authoritative_generation)"
+                             " VALUES (%s,'5.0')", (CHART_ID,))
+                assert _head(conn) == '5.0'
+                assert observer.execute(lock_sql, (CHART_ID,)).fetchone() == (False,)
+            assert observer.execute(lock_sql, (CHART_ID,)).fetchone() == (True,)
+    finally:
+        conn.execute('INSERT INTO public.kala_gochara_authority'
+                     ' (chart_id,authoritative_generation,flipped_at,flipped_by,evidence_ref)'
+                     ' VALUES (%s,%s,%s,%s,%s)', previous)
+
+
+@pytest.mark.parametrize('mode', ['origin', 'replica'])
+@pytest.mark.parametrize('mutation', [
+    "DELETE FROM public.ka_gochara_generation_seal WHERE chart_id=%s AND generation='5.0'",
+    "UPDATE public.ka_gochara_generation_seal SET manifest_id='00000000-0000-0000-0000-000000000001'"
+    " WHERE chart_id=%s AND generation='5.0'",
+])
+def test_authoritative_seal_cannot_be_removed_or_replaced(db, mode, mutation):
+    # M07: an origin-only seal write guard permits replica DELETE/UPDATE.
+    db.execute(f"SET LOCAL session_replication_role = '{mode}'")
+    _set(db, '5.0')
+    seal_sql = "SELECT * FROM public.ka_gochara_generation_seal WHERE chart_id=%s AND generation='5.0'"
+    before = db.execute(seal_sql, (CHART_ID,)).fetchone()
+    assert before is not None
+    assert db.execute("SELECT public.ka_gochara_authority_admissible(%s,'5.0')",
+                      (CHART_ID,)).fetchone() == (True,)
+    with pytest.raises(psycopg.errors.RaiseException, match='ka_gochara_generation_seal is permanent'):
+        with db.transaction():
+            db.execute(mutation, (CHART_ID,))
+    assert db.execute(seal_sql, (CHART_ID,)).fetchone() == before
+    assert _head(db) == '5.0'
+    assert db.execute("SELECT public.ka_gochara_authority_admissible(%s,'5.0')",
+                      (CHART_ID,)).fetchone() == (True,)
+
+
+@pytest.mark.parametrize('mode', ['origin', 'replica'])
 def test_delete_cannot_silently_restore_implicit_legacy_default(db, mode):
     db.execute(f"SET LOCAL session_replication_role = '{mode}'")
     _set(db, '5.0')
