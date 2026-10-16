@@ -227,6 +227,24 @@ def test_daily_writers_delete_only_after_complete_horizon(
     assert conn.mutations[-1][0] == "executemany"
 
 
+@pytest.mark.parametrize("complete_horizon", [False, True])
+def test_vedha_preserves_legacy_without_explicit_candidate_payload(monkeypatch, complete_horizon):
+    # KA-3a's accepted pre-build dispatch replaces the rolling daily writer.
+    # Even complete legacy inputs cannot activate candidate/publication writes.
+    today = date.today()
+    start = today - timedelta(days=vedha.HORIZON_BACK_DAYS)
+    end = today + timedelta(days=vedha.HORIZON_FORWARD_DAYS)
+    daily = {body: _daily(start, end) for body in vedha.ALL_GRAHAS}
+    if not complete_horizon:
+        daily[vedha.ALL_GRAHAS[0]] = daily[vedha.ALL_GRAHAS[0]][:-1]
+    _patch_daily_writer_dependencies(monkeypatch, vedha, daily)
+    conn = RecordingConnection()
+    result = vedha.KaVedhaGocharaWriter().run(_ctx(conn))
+    assert result.rows_inserted == 0
+    assert result.notes == "KA-3a pre-build: provider binding/activation pending"
+    assert conn.calls == []
+
+
 @pytest.mark.parametrize("dry_run", [False, True])
 def test_vedha_unbound_dispatch_preserves_legacy_rows(dry_run):
     # KA-3a replaced the rolling-day writer with an explicitly bound candidate
