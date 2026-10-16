@@ -31,3 +31,4 @@
 1383_ka_3a_vedha_candidate_intervals.sql
 1387_k5_g2_candidate_field.sql
 1388_k3_2_sealed_negative_space.sql
+1389_k6_taranga_candidate.sql

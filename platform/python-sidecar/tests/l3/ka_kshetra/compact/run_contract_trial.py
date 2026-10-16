@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from services.ka_kshetra.compact.qualification import aggregate, qualify
-from .fixtures import evaluator, primitive, curved_evaluator
+from .fixtures import evaluator, primitive, curved_evaluator, long_horizon_evaluator
 
 
 def build_report():
@@ -27,6 +27,7 @@ def build_report():
             primitive('contact_moon_ref', ((2, .2), (8, .2), (8, .9), (14, .9))),
         ]), (0, 2, 8, 14, 16, 32)),
         ('curved_suppression', curved_evaluator(), (0, 16, 32)),
+        ('long_horizon', long_horizon_evaluator(), (0, 173, 421, 548, 713, 1096)),
         ('shift_seam', evaluator([
             primitive('contact_moon_ref', ((0, .4), (4, 1), (10, .2))),
         ], extra=(30,)), (0, 4, 10, 16, 30, 32)),
