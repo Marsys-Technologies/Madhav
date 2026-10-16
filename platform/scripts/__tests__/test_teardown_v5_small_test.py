@@ -420,6 +420,22 @@ def test_membership_is_read_from_build_run_assets_and_the_scope_target_tokens():
     assert "build_run_assets" in sql and "string_to_array(r.scope_target, ',')" in sql and "triggered_by" in sql
 
 
+def test_c31_ownership_guard_preserves_non_test_and_mixed_asset_runs():
+    """Contract: P01_REWORK_v1_0.md:27 (preserve chart-wide ownership);
+    PACKET_J-1a_v1.md, section 6 (role/ownership/stamp failures unchanged).
+
+    Use the accepted run UUID and a valid original marker, so later scope or
+    stamp checks cannot accidentally substitute for the non-test-origin guard.
+    """
+    for run in (_test_run(assets=[ASSET, "ka_other"]),
+                _test_run(triggered_by="cockpit-manual-build")):
+        h = _Harness(members=[run])
+        with pytest.raises(teardown_mod.TeardownRefused):
+            _run(h)
+        assert not h.deletes() and not h.commits and not h.flipped
+        assert h.closed
+
+
 @pytest.mark.parametrize("run", [
     _test_run(assets=[ASSET, "ga_positions"]),
     _test_run(scope="asset_set", scope_target=f"{ASSET},ga_positions"),
@@ -447,6 +463,20 @@ def test_a_null_linked_receipt_is_refused_and_named_even_when_the_manifest_is_st
     with pytest.raises(teardown_mod.TeardownRefused, match="NO run link.*orphan-part"):
         _run(h)
     assert h.deletes() == []
+
+
+def test_c32_null_link_cannot_borrow_a_surviving_tests_valid_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:19,48-50:
+    no run link means unprovable origin; delete nothing pending steward recovery.
+
+    A valid owned run and stamped candidate do not establish the orphan's origin.
+    Assert preservation, independently of which redundant refusal fires first.
+    """
+    h = _Harness(receipts=[{"partition_key": "orphan-part", "build_id": None}])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        _run(h)
+    assert not h.deletes() and not h.commits and not h.flipped
+    assert h.closed
 
 
 def test_a_receipt_linked_to_a_run_that_is_not_an_owned_test_run_is_refused():
@@ -575,6 +605,21 @@ def test_a_complete_stamp_does_not_authorize_teardown_after_the_run_was_pruned()
     with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
         _run(h)
     assert not h.deletes() and not h.commits
+
+
+def test_c33_ownership_check_itself_requires_a_surviving_original_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:10,29,35:
+    no pruned-run reconstruction. Test the ownership decision before the later
+    request-scope check, which independently refuses a missing staged run.
+    """
+    surviving = _Harness()
+    checked = teardown_mod._refusal_checks(surviving.conn.cursor())
+    assert checked.owned == [RUN_1]
+
+    pruned = _Harness(members=[], receipts=[], run_manifests=[])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        teardown_mod._refusal_checks(pruned.conn.cursor())
+    assert not pruned.deletes() and not pruned.commits and not pruned.flipped
 
 
 
