@@ -236,6 +236,10 @@ def test_production_snapshot_and_timeline_store_the_actual_input_pins(data, monk
     import hashlib, json
     from services.ka_kshetra import g1_inputs
     conn,chart,build = data
+    # Main's G1b snapshot attestation consumes the manifest shape from migration
+    # 1330; match its isolated DB oracle without weakening the production path.
+    conn.execute("ALTER TABLE kala_layer_candidate ADD COLUMN model_digest text NOT NULL DEFAULT 'model', ADD COLUMN rule_registry_version text NOT NULL DEFAULT 'rules'")
+    conn.execute('CREATE TABLE kala_layer_candidate_grain(chart_id uuid,generation text,grain_key text,result_state text,input_vector text,recorded_at timestamptz DEFAULT now(),PRIMARY KEY(chart_id,generation,grain_key))')
     birth = datetime(1984,2,5,5,13,tzinfo=timezone.utc)
     monkeypatch.setattr(S4,'resolve_weights_pin',lambda conn:('v0',{}))
     monkeypatch.setattr(KaKshetraWriter,'_corpus_pin',lambda *a:'test-corpus')

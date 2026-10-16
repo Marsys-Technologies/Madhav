@@ -60,6 +60,10 @@ import math
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Optional, Sequence
 
+from services.kala_core.measure.field import (
+    QuantilePool, select_bucket, null_p, null_resolution, null_exceeding,
+    sliding_window_max,
+)
 from services.ka_kshetra import integrator
 from services.ka_kshetra.contracts import Segment
 from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
@@ -109,102 +113,6 @@ def shift_grid(horizon_days: float, replicates: int) -> list[float]:
         raise ValueError(f'horizon_days must be > 0, got {horizon_days!r}')
     step = horizon_days / (replicates + 1)
     return [r * step for r in range(1, replicates + 1)]
-
-
-def select_bucket(duration_days: float,
-                  buckets: Sequence[int] = DURATION_BUCKETS) -> int:
-    """L* = the smallest bucket ≥ the window's duration.
-
-    Conservative by construction: a longer filter accumulates at least as much,
-    so the p-value it yields is an UPPER bound. A window longer than the largest
-    bucket clamps to that bucket — still the closest available filter, still in
-    the conservative direction.
-    """
-    for b in buckets:
-        if b >= duration_days:
-            return b
-    return max(buckets)
-
-
-# ── the permutation p-value ──────────────────────────────────────────────────
-
-def null_p(max_stats: Sequence[float], lambda_obs: float) -> Optional[float]:
-    """(1 + #{r : M_r ≥ Λ_obs}) / (R + 1), with the standard +1 correction.
-
-    Returns None — an honest not-computed — when no replicates are available.
-    Never 0.0, never a fabricated small number.
-    """
-    stats = list(max_stats)
-    if not stats:
-        return None
-    threshold = lambda_obs * (1.0 - _EXCEEDANCE_REL_TOL)
-    exceed = sum(1 for m in stats if m >= threshold)
-    return (1 + exceed) / (len(stats) + 1)
-
-
-def null_resolution(replicates: int) -> float:
-    """1/(R+1). Served ALONGSIDE null_p so p = 1/1024 is never read as p = 0."""
-    return 1.0 / (replicates + 1)
-
-
-def null_exceeding(p: Optional[float], alpha: float = ALPHA) -> Optional[bool]:
-    return None if p is None else bool(p <= alpha)
-
-
-# ── q_e: an exact streaming quantile with bounded memory ─────────────────────
-
-class QuantilePool:
-    """The EXACT q-quantile of a pooled sample, streamed with bounded memory.
-
-    q_e pools R × N values (1023 × 36 526 ≈ 37.4 M floats ≈ 299 MB), which is more
-    than a build substep should hold and more than is needed: the 0.95 quantile
-    is the k-th largest value with k = n − ceil(0.95·n) + 1, so a bounded
-    min-heap of the top k is sufficient and EXACT. No sketching, no t-digest, no
-    approximation — the number served is the number the definition names.
-
-    Bounded memory matters here for a specific reason: the alternative
-    (subsampling the grid, or approximating the quantile) would make the served
-    `q_threshold` a DIFFERENT statistic from the one §5.5 defines, and every
-    window boundary in the product hangs off it.
-    """
-
-    def __init__(self, quantile: float = Q_QUANTILE, expected_total: int = 0):
-        if not (0.0 < quantile < 1.0):
-            raise ValueError(f'quantile must be in (0,1), got {quantile!r}')
-        self.quantile = quantile
-        self._n = 0
-        self._heap: list[float] = []
-        self._capacity = self._capacity_for(max(expected_total, 1))
-
-    def _capacity_for(self, n: int) -> int:
-        return max(1, n - math.ceil(self.quantile * n) + 1)
-
-    def add(self, values: Iterable[float]) -> None:
-        for v in values:
-            v = float(v)
-            self._n += 1
-            need = self._capacity_for(self._n)
-            if need > self._capacity:
-                self._capacity = need
-            if len(self._heap) < self._capacity:
-                heapq.heappush(self._heap, v)
-            elif v > self._heap[0]:
-                heapq.heapreplace(self._heap, v)
-
-    def value(self) -> Optional[float]:
-        """The exact q-quantile of everything added, or None if nothing was.
-
-        Uses the "k-th smallest of the sorted sample at rank ceil(q·n)"
-        convention — the same one `sorted(sample)[ceil(q*n) - 1]` gives, so the
-        pooled value is reproducible by anyone holding the raw sample.
-        """
-        if self._n == 0:
-            return None
-        rank_from_top = self._n - math.ceil(self.quantile * self._n) + 1
-        ordered = sorted(self._heap)
-        if rank_from_top > len(ordered):
-            return ordered[0]
-        return ordered[len(ordered) - rank_from_top]
 
 
 # ── replicate machinery ──────────────────────────────────────────────────────
@@ -292,19 +200,6 @@ def cumulative_on_grid(
             i += 1
         cum[k + 1] = running
     return cum
-
-
-def sliding_window_max(cum: Sequence[float], bucket_days: int) -> float:
-    """M(L) = max over t on the grid of Λ(t, t+L) — a matched filter at scale L.
-
-    A bucket longer than the whole horizon degenerates to the total integral,
-    which is the honest answer (the longest available filter is the whole span)
-    rather than an error or a skipped bucket.
-    """
-    n = len(cum) - 1
-    if bucket_days >= n:
-        return cum[-1] - cum[0]
-    return max(cum[k + bucket_days] - cum[k] for k in range(n - bucket_days + 1))
 
 
 def replicate_stats(
@@ -442,6 +337,18 @@ class NullAccumulator:
             max_stats={b: [self._stats[b][i] for i in sorted(self._stats[b])]
                        for b in self.buckets},
         )
+
+
+def run_field_block(ev, accumulator, *, start, end):
+    """G1 candidate experiment: geometry retained, measurement owned by core."""
+    from services.kala_core.measure.field import collect_field_block
+    def draw(delta):
+        segments = _null_build_segments(replicate_evaluator(ev, delta))
+        horizon = accumulator.preparation.horizon_days
+        return (replicate_stats(ev, 0., horizon, buckets=accumulator.buckets,
+                                segments=segments),
+                _lambda_grid_fast(segments, horizon))
+    collect_field_block(accumulator, draw, start=start, end=end)
 
 
 # ── §5.6 the robustness vector ───────────────────────────────────────────────
