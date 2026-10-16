@@ -206,6 +206,9 @@ checks AS (
          a.expected, a.observed
   FROM principals p CROSS JOIN LATERAL (VALUES
     ('exists', true, p.oid IS NOT NULL),
+    -- Object ACLs alone do not permit access without namespace USAGE.
+    -- PostgreSQL includes PUBLIC pseudo-role grants in this effective check.
+    ('schema-usage', true, has_schema_privilege(p.oid, 'public', 'USAGE')),
     ('schema-create', false, has_schema_privilege(p.oid, 'public', 'CREATE'))
   ) a(key, expected, observed)
   UNION ALL

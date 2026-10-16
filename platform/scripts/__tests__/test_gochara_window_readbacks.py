@@ -808,3 +808,40 @@ def test_provisioning_sql_runs_through_the_real_executor_readback_sql(provisioni
     observed = [dict(zip(rows[0], row)) for row in rows[1:]]
     assert len(observed) > 1000
     assert all(row['database'] == conn.info.dbname and row['ok'] == 'True' for row in observed)
+
+
+@pytest.mark.parametrize('principal', ['gochara_verifier', 'gochara_sealer', 'data_plane_builder', 'amjis_app'])
+def test_provisioning_readback_requires_effective_schema_usage(provisioning_world, principal):
+    """Object grants cannot compensate for missing namespace access (J4B-R01)."""
+    import psycopg
+    from psycopg import sql
+    conn, mapping, _ = provisioning_world
+    role = mapping[principal]
+    with conn.transaction(force_rollback=True):
+        conn.execute('REVOKE USAGE ON SCHEMA public FROM PUBLIC')
+        for mapped in mapping.values():
+            conn.execute(sql.SQL('GRANT USAGE ON SCHEMA public TO {}').format(sql.Identifier(mapped)))
+        conn.execute(sql.SQL('REVOKE USAGE ON SCHEMA public FROM {}').format(sql.Identifier(role)))
+        if principal in ('gochara_verifier', 'gochara_sealer'):
+            assert conn.execute("SELECT has_table_privilege(%s, 'public.chart_facts', 'SELECT')", (role,)).fetchone()[0]
+            with pytest.raises(psycopg.errors.InsufficientPrivilege, match='schema public'):
+                with conn.transaction():
+                    conn.execute(sql.SQL('SET LOCAL ROLE {}').format(sql.Identifier(role)))
+                    conn.execute('SELECT id FROM public.chart_facts')
+        rows = provisioning_readback(provisioning_world)
+        assert any(r['principal'] == role and r['privilege'] == 'schema-usage' and not r['ok'] for r in rows)
+        # PUBLIC is an ACL pseudo-role, not a row in pg_roles. Its USAGE must count.
+        conn.execute('GRANT USAGE ON SCHEMA public TO PUBLIC')
+        assert all(r['ok'] for r in provisioning_readback(provisioning_world))
+
+
+def test_provisioning_readback_counts_public_table_privileges(provisioning_world):
+    conn, mapping, _ = provisioning_world
+    with conn.transaction(force_rollback=True):
+        conn.execute('REVOKE SELECT ON public.chart_facts FROM ' + mapping['gochara_verifier'])
+        assert any(not r['ok'] for r in provisioning_readback(provisioning_world))
+        conn.execute('GRANT SELECT ON public.chart_facts TO PUBLIC')
+        assert all(r['ok'] for r in provisioning_readback(provisioning_world))
+        conn.execute('GRANT INSERT ON public.ka_gochara_eval_window_verification TO PUBLIC')
+        rows = provisioning_readback(provisioning_world)
+        assert any(r['kind'] == 'builder-write' and r['privilege'] == 'INSERT' and not r['ok'] for r in rows)

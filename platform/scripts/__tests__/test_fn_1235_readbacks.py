@@ -283,7 +283,7 @@ DELETE FROM public._migrations_applied WHERE filename = '{LEDGER_NAME}';
 INSERT INTO public._migrations_applied (filename, sha256) VALUES ('{LEDGER_NAME}', '{SHA_1235}');
 """
 
-def _real_run(disposable_pg, monkeypatch, tmp_path, setup_sql):
+def _real_run(disposable_pg, monkeypatch, tmp_path, setup_sql, extra_args=()):
     point_psql_at(disposable_pg, monkeypatch)
     env = dict(os.environ)
     setup = subprocess.run(["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-c", setup_sql],
@@ -292,13 +292,14 @@ def _real_run(disposable_pg, monkeypatch, tmp_path, setup_sql):
     out = tmp_path / "out-real"
     proc = subprocess.run(
         [str(SCRIPT), "--out", str(out),
-         "--sql-file", "platform/scripts/readbacks/fn_1235_evidence_readback.sql"],
+         "--sql-file", "platform/scripts/readbacks/fn_1235_evidence_readback.sql", *extra_args],
         capture_output=True, text=True, env=env, cwd=REPO)
     return proc
 
 
-def test_real_cluster_fixture_state_passes(disposable_pg, monkeypatch, tmp_path):
-    proc = _real_run(disposable_pg, monkeypatch, tmp_path, SETUP)
+@pytest.mark.parametrize('extra_args', [(), ('--if-applied',)])
+def test_real_cluster_fixture_state_passes(disposable_pg, monkeypatch, tmp_path, extra_args):
+    proc = _real_run(disposable_pg, monkeypatch, tmp_path, SETUP, extra_args)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "PASS FN1235-acl-exact" in proc.stdout and "PASS FN1235-ledger" in proc.stdout
 
@@ -319,3 +320,30 @@ def test_real_cluster_a_missing_ledger_row_stops(disposable_pg, monkeypatch, tmp
     proc = _real_run(disposable_pg, monkeypatch, tmp_path, setup)
     assert proc.returncode == 1
     assert "STOP FN1235-ledger" in proc.stderr
+
+
+@pytest.mark.parametrize('partial', ['absent', 'ledger', 'function'])
+def test_separate_1235_operation_is_explicitly_not_applicable_only_when_wholly_absent(disposable_pg, tmp_path, monkeypatch, partial):
+    cl = disposable_pg
+    point_psql_at(cl, monkeypatch)
+    cl.psql('CREATE TABLE IF NOT EXISTS public._migrations_applied (filename text, sha256 text)')
+    cl.psql("DELETE FROM public._migrations_applied WHERE filename = '" + LEDGER_NAME + "'")
+    cl.psql('DROP FUNCTION IF EXISTS public.ka_gochara_staged_candidate_has_runtime_evidence(text)')
+    try:
+        if partial == 'ledger':
+            cl.psql("INSERT INTO public._migrations_applied (filename,sha256) VALUES ('" + LEDGER_NAME + "','" + SHA_1235 + "')")
+        elif partial == 'function':
+            cl.psql("CREATE FUNCTION public.ka_gochara_staged_candidate_has_runtime_evidence(text) RETURNS boolean LANGUAGE sql AS 'SELECT false'")
+        proc = subprocess.run(['bash', str(SCRIPT), '--out', str(tmp_path / 'conditional'), '--if-applied'],
+                              cwd=REPO, capture_output=True, text=True, timeout=30)
+        assert proc.returncode == (3 if partial == 'absent' else 1), proc.stdout + proc.stderr
+        if partial == 'absent':
+            assert 'NOT_APPLICABLE FN1235' in proc.stdout
+            assert 'all checks PASS' not in proc.stdout
+            assert 'FN1235-applicability.out' in (tmp_path / 'conditional/MANIFEST.sha256').read_text()
+            strict = subprocess.run(['bash', str(SCRIPT), '--out', str(tmp_path / 'strict')],
+                                    cwd=REPO, capture_output=True, text=True, timeout=30)
+            assert strict.returncode == 1
+    finally:
+        cl.psql("DELETE FROM public._migrations_applied WHERE filename = '" + LEDGER_NAME + "'")
+        cl.psql('DROP FUNCTION IF EXISTS public.ka_gochara_staged_candidate_has_runtime_evidence(text)')

@@ -1,10 +1,11 @@
 ---
 artifact: J4B_PREBUILD
-version: "1.0"
+version: "1.1"
 status: BUILT_WAITING_ON_GATE — source preparation only; operational acceptance not earned
 date: 2026-10-16
 authority: "A6 D-40 / SR-A4-01; J-4b and its eight named children"
 changelog:
+  - "1.1: J4B-R01 schema-USAGE detector, maintained offline rehearsal (F3–F8), and conditional separate-operation 1235 readback. Applied migrations unchanged."
   - "1.0: retain P05's inherited ports, repair PUBLIC ACL inspection, prepare independent provisioning readback and local mutation proofs."
 ---
 
@@ -36,7 +37,7 @@ The archived origin refs are locally present at the exact seven inventory heads.
 
 The result has one row per `(kind, principal, object, privilege)` with `expected`, `observed`, `ok` and database/session identity. A missing role/object yields failed observations or a SQL error; either refuses acceptance. Each row must have `ok = true`, the identity must match the request, and the independent reviewer must bind the exact SQL digest to the executor evidence.
 
-The independent expectation covers the complete 1378 v7 relation/column/function grant set for verifier and sealer, their separately owned L1 reads, unexpected Gochara relations/functions, and grant options. It also checks login/no-inherit/elevated attributes, the runbook's verifier/sealer connection limits (4/2), no role memberships, database CONNECT and absence of schema CREATE. Builder table **and column** writes on both verification tables must be false, builder membership in verifier/sealer must be false, sealing EXECUTE must be false and its qualification helper must remain available. No verification-row write is attempted.
+The independent expectation covers the complete 1378 v7 relation/column/function grant set for verifier and sealer, their separately owned L1 reads, unexpected Gochara relations/functions, and grant options. It also checks login/no-inherit/elevated attributes, the runbook's verifier/sealer connection limits (4/2), no role memberships, database CONNECT, effective public-schema USAGE for all four required principals, and absence of schema CREATE. PostgreSQL privilege functions include PUBLIC pseudo-role grants; regressions remove direct/PUBLIC USAGE and exercise PUBLIC table privileges. Table privileges alone cannot make the audit green when namespace access is absent. Builder table **and column** writes on both verification tables must be false, builder membership in verifier/sealer must be false, sealing EXECUTE must be false and its qualification helper must remain available. No verification-row write is attempted.
 
 **(I) INTERPRETATION:** retain the source runbook's explicit starting connection limits 4/2 for the prepared principal audit (`ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md:167,192`). Alternative: a future reviewed resource/concurrency change must update the expected limits with its provisioning specification. The query does not inspect passwords or attest credential activation, authentication, capacity, RLS row visibility, or cloud IAM.
 
@@ -65,3 +66,18 @@ The AM-7 suite has the analogous guarded local lifecycle for `gochara_a51_test`;
 `python3 platform/scripts/gochara/mutation_check_j4b.py --scratch "$JOB_SCRATCH/j4b-mutations"` produces separate fixed/reverted logs, copies and `evidence.json`. It requires a fresh scratch subdirectory and JOB_SCRATCH, uses no Git writes, and modifies only copied source. The PUBLIC-original and audit-original cases are complete production reversions of this job's fixes; the other cases remove or broaden inherited semantics. Every selected oracle must pass fixed and fail mutated; a surviving mutation fails the harness. This is builder evidence, not independent acceptance.
 
 A5.5j needs actual protected-window/grant/L1/principal/credential/job evidence and original prerequisite A5.5e/J-4a before it can close. None is inferred from a code merge. Exact-head independent child review, CI, containing deployment and operation receipts remain separate gates.
+
+
+## Round-1 rehearsal repairs (J4B-R01, F3–F8)
+
+The maintained fixture is now `platform/scripts/gochara/rehearsal/`; its README records the read-only historical source and hash provenance. **(I) INTERPRETATION:** port and maintain the missing harness in this branch, since the archived checkout is read-only. Alternative: an authorized cockpit job later updates the archived runbook. No production route, grant operation, cloud job, credential activation or applied migration is changed.
+
+Run from the repository root with `REPO="$PWD" PGHOST=127.0.0.1 PGPORT=55433 PGUSER=postgres STRICT=1 REHEARSAL_OUT="$JOB_SCRATCH/rehearsal" bash platform/scripts/gochara/rehearsal/run_window_rehearsal.sh`; repeat with `TODAY=1` and a fresh output directory. The latter is a legacy mode name, **not today's observed production ledger**. **(I) INTERPRETATION:** represent current-source predecessors in an explicitly synthetic ledger, applying the relevant Gochara routines for real. Alternative: refresh independently authorized production-ledger evidence before the real sitting. This fixture never executes unrelated layer migrations.
+
+Both modes exercise the real ten-file window, deliberate 1233 failure/retry, complete pre-window runner and unchanged 1378 SQL. The release fixture applies real 1243/1302 and materializes registry, runtime-evidence and monitor tables. Its 129 placeholder rows plus two real 1243 inserts reproduce historical 131/124 expectations; monitor rows are labeled synthetic, not a live census or continuity receipt. **(I) INTERPRETATION:** use this bounded synthetic schema/data fixture; alternative: a separately reviewed full registry census. The independent real sitting still owes its current counts, continuity review and pinned source/ledger evidence.
+
+S4 no longer grants the two functions that 1378 prohibits. **(I) INTERPRETATION:** after the real window runner, apply unchanged 1378 in a fixture-local transaction to measure its ACL closure without representing every later platform migration. Alternative: a full platform schema/prerequisite fixture through 1378. This is no operational migration-runner acceptance. The Node tsx loader avoids CLI IPC sockets under long scratch paths and leaves original migration errors visible. Lifecycle creates a unique database, preserves pre-existing role attributes, and drops only successful CREATEs owned by this invocation, including on failure. A recording SQL guard makes the unsafe historical reversion testable without sending its DROP ROLE commands to PostgreSQL.
+
+For C49, `fn-1235-readbacks.sh` remains strict by default. **(I) INTERPRETATION:** optional `--if-applied` returns **3 / NOT_APPLICABLE** only when both its ledger row and function are absent, records read-only applicability evidence, and issues no PASS/applied receipt. Alternative: run the strict detector only after a separately accepted 1235 operation. Any partial state still fails strict checks; an applied state runs every original pinned signature/owner/ACL/hash check. The ten-file window is unchanged and does not gain 1235.
+
+The complete provisioning, C49 and rehearsal suites are wired into the required readback CI job, retaining skip rejection. Fail-on-revert copies/logs and exact commands are job-folder evidence for independent review; local success does not replace exact-head CI or operation receipts. Migration-runner atomicity and P9 PUBLIC readback remain with `kalayantra/w4-window-fixes`.

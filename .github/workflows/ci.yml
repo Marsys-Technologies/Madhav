@@ -2248,14 +2248,14 @@ jobs:
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02: both ported readback suites, including all five real-cluster cases.
+    # P05-B02 / J4B: complete readbacks and current-source window rehearsals.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Governance Gochara readback tests (throwaway Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -2263,6 +2263,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - name: Install pinned migration-runner dependencies for the offline rehearsal
+        run: npm ci --ignore-scripts
+        working-directory: platform
       - name: Install pytest and disposable PostgreSQL server binaries
         run: |
           python -m pip install pytest 'psycopg[binary]'
@@ -2273,7 +2281,7 @@ jobs:
           DATABASE_URL: ''
           PGHOST: ''
         run: |
-          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
+          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py platform/scripts/__tests__/test_gochara_rehearsal.py -p no:cacheprovider -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
 
   governance-tool-tests:
