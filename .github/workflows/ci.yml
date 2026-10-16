@@ -2251,7 +2251,7 @@ jobs:
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02: both ported readback suites, including all five real-cluster cases.
+    # P05-B02 + P07: readback and publication oracles feed the required governance aggregate.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: changes
@@ -2261,6 +2261,18 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -2278,6 +2290,29 @@ jobs:
         run: |
           python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform-mcp/package-lock.json
+      - name: Install MCP dependencies
+        working-directory: platform-mcp
+        run: npm ci
+      - name: P07 — ported Gochara publication oracles (REQUIRED)
+        working-directory: platform-mcp
+        run: |
+          npx vitest run --no-cache src/tools/retrieval/register_gochara_contact_ledger.test.ts src/tools/retrieval/register_gochara_windows_governed_gate.test.ts --reporter=default --reporter=junit --outputFile=gochara-mcp.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-mcp.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara MCP oracles need 30 executed cases and zero skips" if len(cases) != 30 or skipped else 0)'
+      - name: P07 — migration 1235 protected evidence function (REQUIRED, skips fail)
+        working-directory: platform/python-sidecar
+        env:
+          GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:55433/postgres
+          GOCHARA_REQUIRE_DB: '1'
+        run: |
+          python3 -m pip install -r requirements-ci.txt --quiet
+          python3 -m pytest tests/test_migration_1235_evidence_function.py -q -rs -p no:cacheprovider --junitxml=migration-1235.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("migration-1235.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required migration 1235 needs five executed cases and zero skips" if len(cases) != 5 or skipped else 0)'
 
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard and the ported readbacks above are green (a cancelled or failed shard is not green; a
