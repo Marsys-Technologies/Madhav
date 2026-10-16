@@ -3,7 +3,7 @@
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; exactly four kinds are enabled; every field equals the table at the
     plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; the five P10 entries are present and disabled; `enabled` is the first
-    key of each entry; each of the five model detector patterns (read from the model, not retyped) misses the table and
+    key of each entry; each of the five historical detector patterns (read from the plan pin, not retyped) misses the table and
     hits a copy with that one entry flipped;
   · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
     functions and constants are byte-identical;
@@ -78,8 +78,11 @@ def model_items():
     return {i["id"]: i for i in json.loads(MODEL.read_text())["items"]}
 
 
-def detector_pattern(item_id):
-    det = model_items()[item_id]["detector"]
+def pinned_detector_pattern(item_id):
+    # (I) INTERPRETATION (OPS-NB-03): historical table patterns stay at the plan pin.
+    # Live items now use typed code/artifact evidence and their own detectors.
+    pinned = json.loads(base_text("00_ARCHITECTURE/control/kalayantra/plan_model.json"))
+    det = {i["id"]: i for i in pinned["items"]}[item_id]["detector"]
     assert det["type"] == "file_contains", f"{item_id}: detector is {det['type']}"
     assert det["path"].endswith("/" + OPS_REL), f"{item_id}: detector reads {det['path']}"
     return re.compile(det["pattern"])
@@ -176,15 +179,15 @@ def test_doc_states_what_it_serves_and_assumes_no_enablement_path():
 
 
 @pytest.mark.parametrize("item,kind", sorted(P10.items()))
-def test_model_detector_misses_the_table_and_hits_one_flipped_entry(item, kind):
-    pattern = detector_pattern(item)
+def test_pinned_model_detector_misses_the_table_and_hits_one_flipped_entry(item, kind):
+    pattern = pinned_detector_pattern(item)
     text = OPS_FILE.read_text()
     assert not pattern.search(text), f"{item}'s detector already matches the table"
     flipped = flip(text, kind)
     assert pattern.search(flipped), f"{item}'s detector does not read the flipped {kind} entry"
     for other_item, other_kind in P10.items():
         if other_item != item:
-            assert not detector_pattern(other_item).search(flipped), f"flipping {kind} also trips {other_item}"
+            assert not pinned_detector_pattern(other_item).search(flipped), f"flipping {kind} also trips {other_item}"
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -194,7 +197,7 @@ def test_detector_state_unreadable_is_a_failure():
     with pytest.raises(AssertionError):
         enabled_state("x", {"needs": "none"})
     with pytest.raises(KeyError):
-        detector_pattern("NO-SUCH-ITEM")
+        pinned_detector_pattern("NO-SUCH-ITEM")
 
 
 # ───────────────────────────── the authority boundary ─────────────────────────────
