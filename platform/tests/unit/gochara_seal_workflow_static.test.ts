@@ -1,6 +1,8 @@
 /** The Gochara approved-seal workflow (R12-2): static properties a reviewer must be able to rely on. */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ancestryGit, runWorkflowShell } from './helpers/gochara_workflow_shell'
@@ -83,7 +85,7 @@ describe('gochara-seal-approved.yml', () => {
       if (String(st.run ?? '').includes('set +e')) expect(String(st.name)).toMatch(/^(Cancel a still-running execution|Reconcile)/)
     }
     const reconcile = (seal.steps as any[]).find((st) => String(st.name).startsWith('Reconcile'))
-    expect(String(reconcile.run)).toContain('0|10) exit 0 ;; *) exit "$RC"')
+    expect(String(reconcile.run)).toContain('exit "$RC"')
   })
   it('the seal job calls only the orchestrator, which checks everything BEFORE the seal job and propagates its status', () => {
     const c = code(orch)
@@ -188,6 +190,29 @@ describe('gochara-seal-approved.yml', () => {
 
 
 describe('P08 rebuilt operation boundary', () => {
+  it.each([
+    [0, 'SEALED'], [10, 'NOT_SEALED'], [11, 'INCONSISTENT'], [12, 'UNREADABLE'],
+  ])('requires a measured SEALED result for workflow success (reconcile exit %s)', (exit, state) => {
+    const step = seal.steps.find((s: { name?: string }) => String(s.name).startsWith('Reconcile'))
+    const dir = mkdtempSync(join(process.env.JOB_SCRATCH ?? tmpdir(), 'j5s-reconcile-'))
+    try {
+      // Execute the actual workflow shell; only the read-only DB command is replaced.
+      const python = join(dir, 'python3')
+      writeFileSync(python, `#!/bin/sh\nprintf '%s\\n' '{"state":"${state}"}'\nexit ${exit}\n`)
+      chmodSync(python, 0o755)
+      const result = spawnSync('bash', ['-c', step.run], {
+        cwd: dir, encoding: 'utf8', timeout: 10_000,
+        env: { PATH: `${dir}:${process.env.PATH}`, CHART_ID: '482012f1-710e-4a25-994a-93821f5871aa',
+          GENERATION: '5.0', BRIEF_DIGEST: 'a'.repeat(64), GITHUB_RUN_ID: '17', GITHUB_RUN_ATTEMPT: '1',
+          GITHUB_STEP_SUMMARY: join(dir, 'summary.md') },
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.status).toBe(exit)
+      expect(JSON.parse(readFileSync(join(dir, 'reconcile.json'), 'utf8')).state).toBe(state)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
   it('pins the only full candidate and chart before executing a verifier with comma-separated overrides', () => {
     const step = brief.steps.find((s: any) => s.id === 'candidate')
     expect(step).toBeDefined()
