@@ -259,6 +259,9 @@ def scan_workflows(workflows_dir: Path, repo_root: Path
             continue
         if not isinstance(wf, dict):
             continue
+        if "ci_discovery.py" in wf_path.read_text(encoding="utf-8"):
+            from ci_discovery import expanded_workflow
+            wf["jobs"] = expanded_workflow(wf.get("jobs") or {}, repo_root)
         for job_name, job in (wf.get("jobs") or {}).items():
             if not isinstance(job, dict):
                 continue
