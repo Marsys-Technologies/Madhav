@@ -137,6 +137,7 @@ def test_censoring_ceiling_and_conjunctive_four_way_verdicts():
         "block_when": "censored_times_5_greater_than_selected",
         "zero_selected": "insufficient_evidence", "above_ceiling": "insufficient_evidence",
         "pooled_rescue": False,
+        "chart_aggregation": chart_aggregation_contract(),
     }
     assert d["verdicts"]["allowed"] == ["pass", "fail", "insufficient_evidence", "not_evaluable"]
     assert d["verdicts"]["precedence"] == ["not_evaluable", "insufficient_evidence", "fail", "pass"]
@@ -151,6 +152,59 @@ def test_censoring_ceiling_and_conjunctive_four_way_verdicts():
     assert d["verdicts"]["report_per_arm"] is True
     assert d["evidence"]["actual_scores"] is None
     assert d["evidence"]["actual_verdict"] is None
+
+
+def chart_aggregation_contract():
+    return {
+        "pair_identity": ["chart_id", "pair_index"],
+        "denominator": "unique_selected_eligible_pairs_across_classes_before_censoring",
+        "numerator": "unique_pairs_native_adjudicated_ambiguous_in_any_class",
+        "mixed_class_ambiguity": "count_once_for_chart_keep_scoring_exclusions_stratum_local",
+    }
+
+
+@pytest.mark.parametrize("ambiguous_cells,expected_ambiguous,blocked", [
+    ({(0, 0), (1, 1)}, 2, True),  # 2/5 blocks; pooling gives 2/30 and would pass.
+    ({(0, 0), (1, 0)}, 1, False),  # The same pair in two classes counts once.
+    ({(c, 0) for c in range(6)}, 1, False),  # Exactly 20% remains admissible.
+    (set(), 0, False),
+])
+def test_chart_censoring_deduplicates_pairs_and_unions_class_ambiguity(
+    ambiguous_cells, expected_ambiguous, blocked,
+):
+    # Declaration oracle only: no scorer or checkpoint result is implemented here.
+    # Removing the rule, pooling class observations, or requiring all classes to
+    # agree must fail. Both sealed declarations must carry the same contract.
+    d = declaration()
+    rule = d["censoring"].get("chart_aggregation")
+    assert rule == chart_aggregation_contract(), "chart aggregation must be explicit"
+    text = (VC / DOC).read_text()
+    assert "```json\n" in text, "human-readable chart aggregation must be explicit"
+    human_rule = json.loads(text.split("```json\n", 1)[1].split("\n```", 1)[0])
+    assert human_rule == {"chart_aggregation": rule}
+
+    # Five selected chapter pairs repeated over six synthetic classes; duplicate
+    # judge/arm rows cannot inflate either count. These are arithmetic fixtures.
+    rows = [
+        {"chart_id": "chart-example", "pair_index": pair, "event_class": cls,
+         "ambiguous": (cls, pair) in ambiguous_cells}
+        for cls in range(6) for pair in range(5)
+    ]
+    identity = lambda row: tuple(row[key] for key in rule["pair_identity"])
+    selected = {identity(row) for row in rows + rows}
+    ambiguous = {identity(row) for row in rows + rows if row["ambiguous"]}
+    assert len(selected) == 5
+    assert len(ambiguous) == expected_ambiguous
+    ceiling = d["censoring"]["ceiling"]
+    assert (len(ambiguous) * ceiling["denominator"] >
+            len(selected) * ceiling["numerator"]) is blocked
+    # Each stratum is at most 1/5 even when the chart ceiling blocks 2/5.
+    assert all(sum(row["ambiguous"] for row in rows if row["event_class"] == cls) <= 1
+               for cls in range(6))
+    if blocked:
+        assert sum(row["ambiguous"] for row in rows) == 2
+        assert len(rows) == 30
+        assert 5 * sum(row["ambiguous"] for row in rows) <= len(rows)
 
 
 @pytest.mark.parametrize("section", [

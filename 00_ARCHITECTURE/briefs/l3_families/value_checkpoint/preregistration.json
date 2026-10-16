@@ -87,6 +87,15 @@
   "censoring": {
     "stratum": ["chart_id", "event_class"],
     "also_report_per_chart": true,
+    "chart_aggregation": {
+      "pair_identity": [
+        "chart_id",
+        "pair_index"
+      ],
+      "denominator": "unique_selected_eligible_pairs_across_classes_before_censoring",
+      "numerator": "unique_pairs_native_adjudicated_ambiguous_in_any_class",
+      "mixed_class_ambiguity": "count_once_for_chart_keep_scoring_exclusions_stratum_local"
+    },
     "numerator": "native_adjudicated_ambiguous_pairs",
     "denominator": "all_selected_eligible_pairs_before_censoring",
     "excluded_from_all_scores": true,
