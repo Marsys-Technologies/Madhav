@@ -279,7 +279,7 @@ def test_the_seed_loader_parses_every_asset_and_reproduces_the_measured_family_l
     rows = G.load_registry_from_seed(SEED)
     assert len(rows) > 100 and all(set(r) == {"asset_id", "layer", "depends_on", "active"} for r in rows)
     levels = G.compute_levels(rows)
-    # K8-REG / migration 1387 completes direct Kala read edges and removes the
+    # K8-REG / migration 1392 completes direct Kala read edges and removes the
     # retired grid edge. These are the re-measured bootstrap seed levels;
     # the historical pre-1210 draft is tested separately, without moving it.
     assert [levels[a] for a in ("ka_gochara_resonance", "ka_vedha_gochara", "ka_gochara", "ka_kshetra", "ka_sangam")] == [15, 1, 16, 17, 17]

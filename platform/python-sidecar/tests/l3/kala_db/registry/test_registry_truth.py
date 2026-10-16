@@ -7,7 +7,7 @@ import psycopg
 import pytest
 
 ROOT = Path(__file__).resolve().parents[6]
-MIGRATION = ROOT / 'platform/migrations/1387_k8_registry_truth.sql'
+MIGRATION = ROOT / 'platform/migrations/1392_k8_registry_truth.sql'
 
 
 def sql():

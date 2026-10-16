@@ -1,4 +1,4 @@
--- Migration 1387: K8-REG registry truth (pre-build, SR-A4-01).
+-- Migration 1392: K8-REG registry truth (pre-build, SR-A4-01).
 -- UPDATE existing ka_* rows only; no activation, output deletion or lifecycle cutover.
 -- Number reserved above origin/main and all 188 advertised kalayantra/* heads
 -- inspected 2026-10-16 (highest 1386); no public CREATE/ALTER is required.

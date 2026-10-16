@@ -16,7 +16,7 @@ def sources():
     mod=importlib.util.module_from_spec(spec);sys.modules[spec.name]=mod;spec.loader.exec_module(mod)
     seed=(ROOT/'platform/scripts/seed/asset_registry_seed.ts').read_text()
     graph={r['asset_id']:r['depends_on'] for r in mod.parse_seed_text(seed)}
-    correction=json.loads((ROOT/'platform/migrations/1387_k8_registry_truth.sql').read_text().split('$k8_rows$')[1])
+    correction=json.loads((ROOT/'platform/migrations/1392_k8_registry_truth.sql').read_text().split('$k8_rows$')[1])
     for row in correction:
         assert graph[row['asset_id']]==row['depends_on']
     return seed,graph,correction

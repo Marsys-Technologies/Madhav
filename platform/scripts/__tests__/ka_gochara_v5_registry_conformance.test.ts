@@ -47,8 +47,8 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
     expect(typeof row().sort_order).toBe('number')
   })
 
-  // K8-REG / migration 1387 completes migration 1304's edges with the direct rule-registry read.
-  it('declares real depends_on edges (completed by K8-REG migration 1387)', () => {
+  // K8-REG / migration 1392 completes migration 1304's edges with the direct rule-registry read.
+  it('declares real depends_on edges (completed by K8-REG migration 1392)', () => {
     expect(row().depends_on).toEqual(['ga_positions', 'ga_dashas', 'bg_transit_rules'])
   })
 

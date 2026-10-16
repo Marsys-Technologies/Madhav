@@ -21,7 +21,7 @@ import { ASSETS } from '../seed/asset_registry_seed'
 const A53_ASSET_ID = 'ka_gochara_v5'
 
 describe('A5.3 ka_gochara_v5 asset planner inertness', () => {
-  it('the seed row exists, is inactive, and carries the migration-1387 dependencies (inactive rows are never planned)', () => {
+  it('the seed row exists, is inactive, and carries the migration-1392 dependencies (inactive rows are never planned)', () => {
     const row = ASSETS.find((a) => a.asset_id === A53_ASSET_ID)
     expect(row, 'seed row missing').toBeDefined()
     expect(row!.is_active).toBe(false)

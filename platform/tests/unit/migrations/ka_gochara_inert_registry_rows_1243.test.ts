@@ -98,7 +98,7 @@ const rowOf = (id: string) => tuples.find(r => r.asset_id === id)
 
 // K8-REG: replay the real correction payload over the historical 1243 / 1304
 // rows rather than changing applied migrations or dropping any column checks.
-const K8_SQL = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1387_k8_registry_truth.sql'), 'utf8')
+const K8_SQL = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1392_k8_registry_truth.sql'), 'utf8')
 const K8_ROWS = JSON.parse(K8_SQL.split('$k8_rows$')[1]) as Record<string, Cell>[]
 function afterK8(id: string, row: Record<string, Cell>): Record<string, Cell> {
   const correction = K8_ROWS.find(r => r.asset_id === id)
@@ -148,7 +148,7 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
     expect(tuples.map(r => r.asset_id)).toEqual([...IDS])
   })
 
-  it('every column of ka_gochara_v4_41_candidate equals the seed after K8-REG migration 1387', () => {
+  it('every column of ka_gochara_v4_41_candidate equals the seed after K8-REG migration 1392', () => {
     const want = seedValues('ka_gochara_v4_41_candidate')
     expect(want, 'seed row for ka_gochara_v4_41_candidate').not.toBeNull()
     expect(afterK8('ka_gochara_v4_41_candidate', rowOf('ka_gochara_v4_41_candidate')!)).toEqual(want)

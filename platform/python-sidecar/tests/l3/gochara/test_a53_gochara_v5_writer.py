@@ -430,7 +430,7 @@ def test_seed_row_is_inactive_and_cites_both_planner_predicates():
     block = block.split("asset_id:", 1)[0]  # this asset's entry only
     assert "is_active: false" in block
     assert "is_active: true" not in block
-    # K8-REG / migration 1387 also declares the direct rule-registry read.
+    # K8-REG / migration 1392 also declares the direct rule-registry read.
     # This dependency correction does not activate the staged writer.
     assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules']" in block
     # the inertness comment cites both planner predicates

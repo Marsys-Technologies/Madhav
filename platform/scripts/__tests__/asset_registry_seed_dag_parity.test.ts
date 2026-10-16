@@ -413,7 +413,7 @@ describe('K8 registry truth', () => {
     }
   })
   it('keeps bootstrap equal to the K8 migration, including generation-aware counters', () => {
-    const migration = readFileSync(new URL('../../migrations/1387_k8_registry_truth.sql', import.meta.url),'utf8')
+    const migration = readFileSync(new URL('../../migrations/1392_k8_registry_truth.sql', import.meta.url),'utf8')
     const rows = JSON.parse(migration.split('$k8_rows$')[1]) as {
       asset_id:string; depends_on:string[]; has_writer:boolean; has_substeps:boolean; count_sql?:string
     }[]

@@ -323,7 +323,7 @@ def test_the_seed_and_the_input_differ_on_exactly_sixteen_assets_in_exactly_thes
         # migration 1333's edge: the seed carries it (and the ga_fact_identity row, see R.POST_DRAFT_SEED_ACTIVE), the draft input does not
         "bo_pratijna": ([], ["ga_fact_identity"]),
         "bo_nakshatra_semantic": (["ga_structural"], []),
-        # K8-REG / migration 1387 corrects direct Kala reads in the seed.
+        # K8-REG / migration 1392 corrects direct Kala reads in the seed.
         # The historical active draft stays at its pre-1210 + 1210 basis.
         "ka_avadhi": (["bg_ghatana", "bo_pratijna"], ["ga_positions", "ka_dasha_kala", "ka_yojaka"]),
         "ka_gochara": ([], ["bg_ghatana", "bg_gochara_arcs", "bg_reference"]),
