@@ -1,7 +1,7 @@
 ---
 artifact: KALA_LAYER_CODE_ARCHITECTURE_PLAN
 canonical_id: KALA_LAYER_CODE_ARCHITECTURE_PLAN
-version: "1.1"
+version: "1.1.1"
 status: DRAFT — reconciled against Astra's review (REWORK → this revision); for the native's rulings in reviews/KALA_LAYER_PLAN_RECONCILIATION_v1_0.md §7, then the packet briefs. Nothing here authorises a build, a migration, a data clear, a registry edit, a deploy, or a change to any campaign's state or holds.
 produced_on: 2026-10-06
 produced_in: 'Claude Code (Fable 5.1); reconciliation pass over v1.0 after reviews/ASTRA_REVIEW_KALA_LAYER_PLAN_v1_0.md (gpt-6-astra, xhigh), with every cited detector, runner and ruling line independently re-read (reconciliation §1)'
@@ -16,6 +16,7 @@ supersedes_in_scope: >
   Pravāha (the judge), Strategic Suvarṇa (campaign rules) or a sealed ruling, §12 says so and routes it.
 reviewer_of_record: "Astra (Codex gpt-6), by the native's standing choice for Kāla (2026-10-06: Fable 5.1 + Astra only)"
 changelog:
+  - "1.1.1 (2026-10-16, K6-N2): §7 addendum links current private read-model mappings at registry revision 30, separates legacy/K0a serving claims and preserves independent acceptance. Original design/detector snapshot below remains historical."
   - "1.1 (2026-10-06): reconciliation with Astra's review (24 of 25 findings accepted, one amended; none refuted). §0: the pre-code rulings now include the four semantic corrections and the candidate→publication and issuance contracts; first packet is a vertical slice. §1: principle 3 (common envelope, typed payloads), 5 (declared constants, not 'no default'), 7 (read models: SQL where the stage rows carry the inputs), 8 (builder self-check + separately dispatched verification). §2.2: negative space reads no downstream rate; manifest distinguishes model version / build identity / candidate / published head. §3.1 re-headed as an operation inventory with buckets and legitimate variants. §3.2: assertion, measure, manifest, verify, idempotency, resume rows. §4.1: candidate step, F1 edge on negative space, registrar grain. §4.3 template reads the candidate; new §4.4 candidate → verification → publication. §5 reach stated in three layers. §6.2: invalidation as the runner actually provides it; operator-complete knot set and a numerical contract; shared null preparation with separate estimands; 1,023 + 1 denominator; no promised seconds. §6.3 measures per Astra D3. §7 rewritten against the inspected detectors (registry revision 25) with expected verdicts. §8 Kṣetra and Bhavishya rows. §8.1 B8-6, B8-7, ruling 6, ruling 9, ruling 10 rows and the closing paragraph. §9 re-sequenced (K0a first; value checkpoint before K5). §10 oracles. §11 risks 10–12. §12 R-1…R-12 with recommendations and owners. §13 answered."
   - "1.0 (2026-10-06): first version; reviewed by Astra as REWORK."
 ---
@@ -321,6 +322,49 @@ A fourth `NONE` criterion exists in the registry (`Completeness.depth.dasha_link
 **The certification mapping each implemented writer ships with (K8, incremental):** `kind` · `carriage` (one accepted nature + served-surface read evidence) · `ldgr_source` · `vocab_alias` · `prose_none` or `prose_fields` + `fidelity_tests` · `null_convention` · `produced_tables` · `density_tier_columns` · a semantic-fingerprint declaration (the first for any L3 asset) · a writer-digest entry · a disposition row · **the detector revision it was mapped against**. Any edit to the declarations file invalidates every gate certificate, so the mapping lands once per packet, not per PR. Where a detector is `NONE`, the mapping says `NO_DETECTOR` and names the engine-branch revision that would change it — a dependency, never a claimed PASS.
 
 ---
+
+### K6-N2 · Private read-model mapping addendum (2026-10-16)
+
+The detector table above describes the original revision-25 design snapshot.
+The merged K6 read models now carry separate, current revision-30 mappings:
+
+| Asset | Private output | Version-specific mapping (relative to `platform/python-sidecar/`) |
+|---|---|---|
+| Kalasūtra (`ka_kalasutra`) | `kala_activation_candidate` | `services/ka_kalasutra/certification_mapping.json` |
+| Jīvana (`ka_jivana_parva`) | `kala_jivana_parva_candidate` | `services/ka_jivana_parva/certification_mapping.json` |
+| Darśana (`ka_kala_darshana`) | `kala_darshana_candidate` | `services/kala_core/assertion/k6_certification_mapping.json` |
+
+Each mapping supplies all nine gate/revision bindings, actual produced table,
+embedded provenance and upstream pins, stored tier columns, per-asset null
+behavior, semantic-fingerprint declaration, writer-digest reference and bound
+SQL fidelity oracles. `tests/l3/kala_db/ka_kalasutra/test_k6_certification_mappings.py`
+checks the actual detector registry, source readers and executable test nodes,
+and rejects lost evidence or unearned readings. Current detector source:
+`platform/scripts/governance/asset_census.py:184` (criterion registry section;
+`REGISTRY_REVISION` and `CRITERION_REGISTRY` are read by the shared validator).
+Projection/storage source:
+`platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate.py:358`
+(actual tables), `:368` (build-bound fixture guard), `:388` (acceptance scope),
+`:395` (stored provenance/tier). Integrity pins are specified in
+`pipeline/orchestrator/writers/k6_candidate_contract.json`.
+
+**(I) INTERPRETATION:** these are private preparation mappings, separate from
+live declarations and certificates. The alternative—rewriting mixed legacy
+serving declarations to claim candidate readiness—would assert unmeasured live
+behavior. The private mappings retain `production_certification: null`, no
+blanket no-prose claim (copied source/dossier text can exist), no live tier
+SELECT claim, and unmeasured production gate readings; `Carr.D2` explicitly
+remains `NO_DETECTOR`. Fixture fidelity is evidence, not a live certificate.
+
+Legacy serving remains attached to `kala_activation`, `kala_jivana_parva` and
+`kala_darshana` and their actual readers, cited in each mapping. The revision-26
+`services/kala_core/assertion/certification_mapping.json` still describes only
+the K0a assertion slice and is not the private K6 projection's mapping.
+The registrar mapping is separate: registrar validation alone cannot complete K8-K6.
+K6-4's mapping remains with its implementation. No K8-K6 completion, disposition
+acceptance or parent completion is claimed here. V-K6 dependency, independent
+review at the exact head, deploy containment, live admission, protected
+operations and K9-4b publication remain gates; this work is built, waiting on gate.
 
 ## §8 · Asset-by-asset code dispositions
 
