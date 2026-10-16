@@ -4,7 +4,7 @@ What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
     plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
     key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
-  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
+  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
     functions and constants are byte-identical;
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
     whose origin is a local path — never the campaign checkout, never the network, never the running executor.
@@ -239,9 +239,9 @@ def _segments(src):
     return out
 
 
-# Exact approved Wave 4 additions only. Any other mutation, including a changed
-# admission gate or receipt parser, still fails the pinned boundary detector.
-W4_FUNCTION_HASHES = {'receipt': '32faf16f6fc5600bb667b730c3792ebe7797df5c333e32b498c840263d0349cd', 'validate': '6a497e463815ff701c5ea67a8f20b009c32594d176d074167e88f631da5a4915'}
+# Exact Wave 4 safety-fix candidate additions, for independent review. Every
+# other mutation, including weakening these functions, fails the boundary pin.
+W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
 
 
 def normalize_wave4(base_src, work_src):
@@ -249,14 +249,19 @@ def normalize_wave4(base_src, work_src):
     for name, digest in W4_FUNCTION_HASHES.items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
-            work_src = work_src.replace(segment, base_seg[name], 1)
+            if name in base_seg:
+                work_src = work_src.replace(segment, base_seg[name], 1)
+            else:
+                work_src = work_src.replace(segment + "\n\n\n", "", 1)
     return work_src
 
 
 def boundary_violations(base_src, work_src):
     """Why `work_src` is not the pinned executor.py plus a changed GIT assignment (empty list = boundary holds)."""
+    base_segments, raw_segments = _segments(base_src), _segments(work_src)
+    problems = [f"{name} safety helper missing or changed" for name, digest in W4_FUNCTION_HASHES.items()
+                if name not in base_segments and hashlib.sha256(raw_segments.get(name, "").encode()).hexdigest() != digest]
     work_src = normalize_wave4(base_src, work_src)
-    problems = []
     base_tree, work_tree = ast.parse(base_src), ast.parse(work_src)
     base_git = [n for n in base_tree.body if _is_git_assign(n)]
     work_git = [n for n in work_tree.body if _is_git_assign(n)]
@@ -310,6 +315,13 @@ def test_boundary_test_fails_when_another_code_line_changes(old, new):
     assert work.count(old) == 1, f"mutation anchor not unique in executor.py: {old!r}"
     problems = boundary_violations(base_text(PY_REL), work.replace(old, new))
     assert problems, "the boundary test accepted a changed code line"
+
+
+@pytest.mark.parametrize("name", ["smalltest_policy", "smalltest_policy_problem"])
+def test_boundary_refuses_removal_of_a_new_safety_helper(name):
+    work = EXECUTOR_PY.read_text()
+    segment = _segments(work)[name]
+    assert boundary_violations(base_text(PY_REL), work.replace(segment, "", 1))
 
 
 def test_boundary_test_fails_when_a_second_statement_hides_on_the_git_line():

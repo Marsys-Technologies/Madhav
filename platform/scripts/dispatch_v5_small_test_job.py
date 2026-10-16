@@ -264,6 +264,8 @@ def build_slice_marker(*, run: str, classes: str | None = None,
     WRITER's own _validate_test_slice before it is returned (a TestSliceRefusal propagates by
     name). classes: None / 'all' = every scored class (all_classes_1y, all_classes_full), else a comma list. Horizons
     are tz-aware ISO timestamps, stored in UTC; one_class_full defaults to the full DEFAULT_HORIZON, all_classes_full to the writer's MEASURING_HORIZON."""
+    if run == "all_classes_full":
+        raise RuntimeError("measuring phase is disabled for the small-test dispatch")
     writer = _writer()
     if run not in SLICE_RUNS or tuple(writer.TEST_SLICE_RUNS) != SLICE_RUNS:
         raise RuntimeError(f"--run must be one of {SLICE_RUNS} (writer: {tuple(writer.TEST_SLICE_RUNS)}), got {run!r}")
@@ -514,6 +516,18 @@ def main(argv: list[str] | None = None) -> None:
         print(f"REFUSAL: {exc}", file=sys.stderr)
         sys.exit(2)
 
+    if args.execute:
+        req = shared.operation_request()
+        if req.get("kind") != "smalltest_dispatch":
+            raise shared.Refused("executor operation kind does not authorize small-test staging")
+        problem = shared.smalltest_request_problem(req, shared.evidence_root())
+        if problem:
+            raise shared.Refused(problem)
+        bound_args = req.get("args") or {}
+        bound_marker = build_slice_marker(run=bound_args.get("run"), classes=bound_args.get("classes"),
+            horizon_start=bound_args.get("horizon-start"), horizon_end=bound_args.get("horizon-end"))
+        if bound_marker != slice_marker:
+            raise shared.Refused("staging arguments differ from the accepted small-test request")
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("REFUSAL: DATABASE_URL is not set in the process environment (this script reads no file and takes no URL "

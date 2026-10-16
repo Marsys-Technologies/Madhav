@@ -165,6 +165,7 @@ def test_launch_requires_cloud_capability_as_well_as_builder(monkeypatch):
     req = dict(operation_id="cap-test", kind="smalltest_dispatch", item_id="fixture", idempotency_key="fresh",
                requested_by="adhikarin", kyd="fixture", args={})
     monkeypatch.setattr(executor, "seen", lambda *a: False)
+    monkeypatch.setattr(executor, "smalltest_policy_problem", lambda req: None)  # this non-production fixture isolates capability admission
     assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": False}) == "capability_missing: gcloud"
     assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": True}) is None
 
