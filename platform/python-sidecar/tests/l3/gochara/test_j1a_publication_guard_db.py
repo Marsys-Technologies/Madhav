@@ -143,12 +143,14 @@ def local_ky(pre_guard_db):
     ["--run", "all_classes_1y", "--classes", "all", "--horizon-start", "2025-04-17T00:00:00+00:00",
      "--horizon-end", "2026-04-17T00:00:00+00:00", "--dry-run"],
 ])
-def test_launch_cli_dry_run_rolls_back_on_local_ky_without_claim_or_remote_call(local_ky, tmp_path, monkeypatch, capsys, argv):
+def test_launch_cli_dry_run_rolls_back_on_local_ky_without_claim_or_remote_call(local_ky, publication_template, tmp_path, monkeypatch, capsys, argv):
     path = ROOT / "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     spec = importlib.util.spec_from_file_location("j1a_launch_bridge", path)
     bridge = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(bridge)
-    monkeypatch.setenv("DATABASE_URL", local_ky.info.dsn)
+    # ci-j1a / PR #3585: info.dsn redacts the password CI needs to reconnect.
+    dsn = make_conninfo(publication_template[2], dbname=local_ky.info.dbname)
+    monkeypatch.setenv("DATABASE_URL", dsn)
     monkeypatch.setenv("KY_ROOT", str(tmp_path))
     monkeypatch.delenv("KY_OPERATION_REQUEST", raising=False)
     monkeypatch.setattr(bridge, "launch_staged", lambda **kw: pytest.fail("dry run must never enter the launch path"))
