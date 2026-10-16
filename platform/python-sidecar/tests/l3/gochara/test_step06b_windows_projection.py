@@ -727,7 +727,8 @@ def built(s6b_schema, tmp_path):
             "delta_path": tmp_path / "delta.md"}
 
 
-def _run_writer(chart, ctx_path, *extra, dsn=WP6_DSN):
+def _run_writer(chart, ctx_path, *extra, dsn=None):
+    dsn = WP6_DSN if dsn is None else dsn
     args = [sys.executable, str(WRITER_PATH), "--dsn", dsn, "--chart-id", chart,
             "--horizon-start", "2026-01-01T00:00:00+00:00",
             "--horizon-end", "2026-06-01T00:00:00+00:00"]

@@ -67,7 +67,8 @@ WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
 
-# Legacy freshness consumers still identify the natal operand explicitly.
+# Legacy reader operand declaration for the Step 3 §4 freshness gate.
+# Candidate dispatch remains inert and uses its own complete input ledger.
 L1_OPERANDS = (("graha_position", "MOON", "longitude_sidereal"),)
 
 _FETCH_VEDHA_RULES_SQL = """

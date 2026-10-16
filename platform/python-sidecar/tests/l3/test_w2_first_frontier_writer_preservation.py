@@ -149,15 +149,8 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
         # that swallow). The kernel solver is covered in
         # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
         monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
-    if module is moorti:
-        # P06 fingerprints read node-series and natal identities; the fake
-        # connection here tests replacement ordering, not the digest SQL.
-        monkeypatch.setattr(
-            module, "node_series_identity",
-            lambda conn: {"mode": "true", "n_rows": 2, "digest": "d" * 64})
-        monkeypatch.setattr(
-            module, "l1_operand_identity",
-            lambda conn, cid, ay, ops: {"operands": [], "digest": "e" * 64})
+        monkeypatch.setattr(module, "node_series_identity", lambda *_: {"mode": "true", "n_rows": 1, "digest": "n"})
+        monkeypatch.setattr(module, "l1_operand_identity", lambda *_: {"operands": [], "digest": "l"})
     monkeypatch.setattr(module, "_compute_ayanamsha_offset", lambda *_: 0.0)
 
 
@@ -439,3 +432,24 @@ def test_yojaka_legacy_fixture_deletes_only_after_complete_candidate(monkeypatch
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
     assert conn.mutations[0][2] == ("chart-1", "candidate:CODEX-w2")
     assert conn.mutations[-1][0] == "executemany"
+
+
+def test_moorti_coverage_refusal_precedes_fingerprint_reads(monkeypatch):
+    """Absent upstream identity must not pre-empt the graceful coverage refusal."""
+    from services.w2g.node_series import NodeSeriesError
+
+    today = date.today()
+    start = today - timedelta(days=moorti.HORIZON_BACK_DAYS)
+    end = today + timedelta(days=moorti.HORIZON_FORWARD_DAYS)
+    daily = {body: _daily(start, end)[:-1] for body in moorti.MOORTI_GRAHAS + ("Moon",)}
+    _patch_daily_writer_dependencies(monkeypatch, moorti, daily)
+
+    def absent_node_series(_conn):
+        raise NodeSeriesError("the identity source is absent")
+
+    monkeypatch.setattr(moorti, "node_series_identity", absent_node_series)
+    conn = RecordingConnection()
+    result = moorti.KaMoortiNirnayaWriter().run(_ctx(conn))
+    assert result.rows_inserted == 0
+    assert "incomplete daily ephemeris coverage" in result.notes
+    assert conn.mutations == []

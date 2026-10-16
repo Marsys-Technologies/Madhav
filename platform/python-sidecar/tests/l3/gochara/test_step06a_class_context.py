@@ -374,7 +374,8 @@ def built(s6a_schema, tmp_path):
     return {"chart": S6A_CHART, "ctx_out": tmp_path / "ctx.json"}
 
 
-def _run_producer(chart, *extra, dsn=WP6_DSN):
+def _run_producer(chart, *extra, dsn=None):
+    dsn = WP6_DSN if dsn is None else dsn
     return subprocess.run(
         [sys.executable, str(PRODUCER_PATH), "--dsn", dsn,
          "--chart-id", chart, *extra],

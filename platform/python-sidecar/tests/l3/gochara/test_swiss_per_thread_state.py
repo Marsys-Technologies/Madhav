@@ -201,7 +201,7 @@ def _w30_rahu_sign(jd: float) -> int:
     return result.rahu_sign
 
 
-def _engine_site_runs(jd: float) -> None:
+def _engine_site_runs(jd: float, swiss_module=None) -> None:
     """The fixed gochara_v3 engine site: _evaluate_single_from_context with a
     minimal pre-fetched context (empty rows — PROMISE/PERMISSION neutral; the
     :768 Moon tara-bala calc_ut runs unconditionally inside it)."""
@@ -234,7 +234,7 @@ def _engine_site_runs(jd: float) -> None:
         bindu_contributor_rows=(),
         bindu_sign_rows=(),
     )
-    engine._evaluate_single_from_context(swe, ctx, jd, [])
+    engine._evaluate_single_from_context(swiss_module or swe, ctx, jd, [])
 
 
 @requires_swieph
@@ -266,7 +266,12 @@ def test_reused_thread_contaminated_with_other_mode_still_yields_lahiri(monkeypa
         # Every production path, on this contaminated thread:
         box["kernel"] = _sun_via_kernel(J2000_JD)
         box["ts"] = _sun_via_transit_search(J2000_JD)
+        # Isolate each newly hardened caller: earlier seams must not repair
+        # the state on behalf of W30 or the engine.
+        swe.set_sid_mode(swe.SIDM_FAGAN_BRADLEY)
         box["w30_rahu_sign"] = _w30_rahu_sign(J2000_JD)
+        box["w30_ayan_after"] = swe.get_ayanamsa_ut(J2000_JD)
+        swe.set_sid_mode(swe.SIDM_FAGAN_BRADLEY)
         _engine_site_runs(J2000_JD)
         box["ayan_after"] = swe.get_ayanamsa_ut(J2000_JD)
 
@@ -286,6 +291,7 @@ def test_reused_thread_contaminated_with_other_mode_still_yields_lahiri(monkeypa
         f"contaminated thread / w30_nodal_drishti.compute: rahu_sign "
         f"{box['w30_rahu_sign']} != pinned {PINNED_RAHU_SIGN_INDEX_J2000}"
     )
+    assert abs(box["w30_ayan_after"] - ayan_lahiri) <= TOL_DEG
     # Both fixed gochara_v3 sites prepare their own thread: after the engine
     # call the thread's mode is Lahiri, not the contaminated Fagan/Bradley.
     assert abs(box["ayan_after"] - ayan_lahiri) <= TOL_DEG, (
@@ -293,3 +299,36 @@ def test_reused_thread_contaminated_with_other_mode_still_yields_lahiri(monkeypa
         f"is {box['ayan_after']!r}, not the Lahiri {ayan_lahiri!r} — a site "
         "left the contaminated mode in place"
     )
+
+
+@requires_swieph
+def test_engine_moon_annotation_uses_lahiri_before_later_mechanisms_repair_state(monkeypatch):
+    """A final-mode check misses an early wrong Moon value later repaired by W30.
+
+    Instrument the real Swiss module; every returned longitude is still from
+    the pinned corpus. The Moon literal was measured directly with SIDM_LAHIRI
+    at J2000, independently of the engine, on 2026-10-16.
+    """
+    import swisseph as swe
+    from panchang_engine.swiss_state import SWISS_STATE_LOCK
+
+    assert_real_ephemeris()
+    monkeypatch.setenv("SWE_EPHE_PATH", EPHE_PATH)
+    observed = []
+
+    class RecordingSwiss:
+        def __getattr__(self, name):
+            return getattr(swe, name)
+
+        def calc_ut(self, jd, body, flags):
+            result = swe.calc_ut(jd, body, flags)
+            if body == swe.MOON and flags & swe.FLG_SIDEREAL:
+                observed.append(float(result[0][0]))
+            return result
+
+    with SWISS_STATE_LOCK:
+        swe.set_ephe_path(EPHE_PATH)
+        swe.set_sid_mode(swe.SIDM_FAGAN_BRADLEY)
+        _engine_site_runs(J2000_JD, RecordingSwiss())
+    assert observed, "the engine's Moon annotation was not evaluated"
+    assert abs(observed[0] - 199.47052896032065) <= TOL_DEG

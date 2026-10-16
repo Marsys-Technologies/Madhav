@@ -33,12 +33,21 @@ PINNED_LAHIRI_AYANAMSA_J2000 = 23.85709235370888
 TOL_DEG = 1e-9
 
 
-def test_none_path_raises_before_any_library_call():
+def _refuse_library_calls(monkeypatch):
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("an invalid path must fail before a Swiss library call")
+    for name in ("set_ephe_path", "set_sid_mode", "calc_ut"):
+        monkeypatch.setattr(swe, name, unexpected)
+
+
+def test_none_path_raises_before_any_library_call(monkeypatch):
+    _refuse_library_calls(monkeypatch)
     with pytest.raises(SwissThreadBackendError, match="path is not set"):
         ensure_swiss_thread_backend(None, swe.SIDM_LAHIRI)
 
 
-def test_blank_path_raises_before_any_library_call():
+def test_blank_path_raises_before_any_library_call(monkeypatch):
+    _refuse_library_calls(monkeypatch)
     with pytest.raises(SwissThreadBackendError, match="path is not set"):
         ensure_swiss_thread_backend("   ", swe.SIDM_LAHIRI)
 
@@ -91,3 +100,29 @@ def test_mode_is_reasserted_on_every_call_over_a_contaminated_thread():
     assert abs(swe.get_ayanamsa_ut(J2000_JD) - PINNED_LAHIRI_AYANAMSA_J2000) > 0.8
     ensure_swiss_thread_backend(EPHE_PATH, swe.SIDM_LAHIRI)          # mode on EVERY call
     assert abs(swe.get_ayanamsa_ut(J2000_JD) - PINNED_LAHIRI_AYANAMSA_J2000) <= TOL_DEG
+
+
+@requires_swieph
+def test_planet_files_without_moon_files_are_refused(monkeypatch, tmp_path):
+    """A Sun-only backend check misses a silently substituted node calculation."""
+    from pathlib import Path
+    assert_real_ephemeris()
+    (tmp_path / "sepl_18.se1").symlink_to(Path(EPHE_PATH) / "sepl_18.se1")
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    monkeypatch.delenv("SWE_EPHE_PATH", raising=False)
+    with pytest.raises(SwissThreadBackendError, match=f"body {swe.TRUE_NODE}"):
+        ensure_swiss_thread_backend(str(tmp_path), swe.SIDM_LAHIRI)
+
+
+@requires_swieph
+def test_prepare_repairs_a_contaminated_path_on_every_call(monkeypatch, tmp_path):
+    assert_real_ephemeris()
+    monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    monkeypatch.delenv("SWE_EPHE_PATH", raising=False)
+    swe.set_ephe_path(str(tmp_path))
+    _, fallback = swe.calc_ut(J2000_JD, swe.SUN, swe.FLG_SWIEPH)
+    assert fallback & swe.FLG_MOSEPH  # prove contamination, using the real library
+    prepare_swiss_thread(EPHE_PATH, swe.SIDM_LAHIRI)
+    xx, backend = swe.calc_ut(J2000_JD, swe.SUN, swe.FLG_SIDEREAL | swe.FLG_SWIEPH | swe.FLG_SPEED)
+    assert backend & swe.FLG_SWIEPH and not backend & swe.FLG_MOSEPH
+    assert abs(xx[0] - PINNED_SUN_LAHIRI_LON_J2000) <= TOL_DEG

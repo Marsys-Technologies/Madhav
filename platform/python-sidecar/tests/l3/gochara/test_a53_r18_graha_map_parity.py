@@ -58,3 +58,14 @@ def test_the_verifier_maps_match_their_fixed_literal_expectations_and_nothing_el
                                       "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
     assert inventory_verifier._FACT_SUBJECT == {"SUN": "sun", "MOON": "moon", "MAR": "mars", "MER": "mercury", "JUP": "jupiter",
                                                 "VEN": "venus", "SAT": "saturn", "RAH_MEAN": "rahu", "KET_MEAN": "ketu"}
+
+
+def test_builder_mapping_bytes_equal_the_pre_port_capture():
+    """Canonical bytes captured from the accepted pre-port main maps.
+
+    This is a mapping equality oracle, not the pending full measuring-build
+    class/output proof. Verifier maps keep their independent literals above.
+    """
+    import json
+    actual = {name: value for name, (value, _) in BUILDER_MAPS.items()}
+    assert json.dumps(actual, sort_keys=True, separators=(",", ":")).encode() == b'{"chart_context._SUBJECT_TITLE":{"JUP":"Jupiter","KET_MEAN":"Ketu","MAR":"Mars","MER":"Mercury","MOON":"Moon","RAH_MEAN":"Rahu","SAT":"Saturn","SUN":"Sun","VEN":"Venus"},"substrate.DB_BODY":{"Jupiter":"jupiter","Ketu":"ketu","Mars":"mars","Mercury":"mercury","Moon":"moon","Rahu":"rahu","Saturn":"saturn","Sun":"sun","Venus":"venus"},"window_sweep.GRAHA_TITLE":{"jupiter":"Jupiter","ketu":"Ketu","mars":"Mars","mercury":"Mercury","moon":"Moon","rahu":"Rahu","saturn":"Saturn","sun":"Sun","venus":"Venus"}}'

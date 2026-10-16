@@ -29,7 +29,11 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
   * the candidate manifest's input vector, every component.
 For the P06 capture, evaluation and geometry implementation identities changed
 with main's measuring-build and governed-period updates; the window identity
-remains equal to accepted P06. Both changed identities are pinned below. Exactly one state-guard SELECT is checked
+remains equal to accepted P06. Both changed identities are pinned below.
+(I) INTERPRETATION: main's J4C-A (#3596) graha-mapping source updates are
+already part of the merged tree whose digests are pinned below (computed with
+implementation_registry.compute() after merging origin/main 526fb5f53 and equal
+to the accepted P06 pins), so no separate J4C pin is applied to this capture. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.

@@ -33,16 +33,16 @@ afterEach(() => {
 })
 
 function respond() {
-  execute.mockImplementation(async (sql: string, params?: unknown[]) => {
+  execute.mockImplementation(async (sql: string) => {
     const text = String(sql).replace(/\s+/g, ' ').trim()
     let rows: Record<string, unknown>[] = []
-    if (text.startsWith('UPDATE ai_cli_installations') && text.includes('last_checked_at')) {
-      // PostgreSQL's monotonic timestamp update must survive the validation's
-      // restoration of the old row and must not replace a newer host check.
-      expect(params?.[0]).toBe('claude_code')
-      const attemptedAt = new Date(params?.[1] as Date)
-      if (lastCheckedAt === null || lastCheckedAt < attemptedAt) lastCheckedAt = attemptedAt
-    } else if (text.includes('FROM profiles')) rows = [{ id: 'alice' }]
+    if (text.includes('FROM profiles')) rows = [{ id: 'alice' }]
+    else if (text.startsWith('UPDATE ai_cli_installations')) {
+      if (lastCheckedAt === null || Date.now() - lastCheckedAt.getTime() >= 15 * 60_000) {
+        lastCheckedAt = new Date()
+        rows = [{ cli_id: 'claude_code' }]
+      }
+    }
     else if (text.includes('FROM ai_cli_grants')) rows = [{ cli_id: 'claude_code', revoked_at: null }]
     else if (text.includes('FROM ai_cli_installations') && text.includes('FOR SHARE')) {
       rows = [{ cli_id: 'claude_code', validation_state: storedState }]
@@ -128,8 +128,8 @@ describe('prepare-time revalidation of a latched CLI installation', () => {
     storedState = 'unreachable'
     lastCheckedAt = previousCheck
     validateCli.mockImplementation(async () => {
-      // Match validateCli's failure/abort restoration: the old check time is
-      // still present when it rejects, even after the bounded attempt elapsed.
+      // The bounded attempt elapses before it rejects; the interval was claimed
+      // at its start, so the claim (not the rejection time) opens the window.
       vi.setSystemTime(Date.now() + 20_000)
       throw failure === 'abort' ? new DOMException('validation aborted', 'AbortError') : new Error('bridge refused')
     })
@@ -164,4 +164,28 @@ describe('prepare-time revalidation of a latched CLI installation', () => {
     expect(rollback).toBeGreaterThan(-1)
     expect(installationProbe).toBeGreaterThan(rollback)   // the revalidation read runs after the failed txn
   })
+
+  it('claims an attempt before validation so a thrown attempt is still rate-limited', async () => {
+    storedState = 'unreachable'
+    validateCli.mockRejectedValue(new Error('probe failed before publication'))
+    respond()
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(validateCli).toHaveBeenCalledTimes(1)
+  })
+
+  it('permits one probe when simultaneous prepares encounter the same stale installation', async () => {
+    storedState = 'unreachable'
+    validateCli.mockResolvedValue({ state: 'unreachable' })
+    respond()
+    const results = await Promise.allSettled([
+      repository.loadRoutingResolution('alice', selection),
+      repository.loadRoutingResolution('alice', selection),
+    ])
+    expect(results.every(result => result.status === 'rejected')).toBe(true)
+    expect(validateCli).toHaveBeenCalledTimes(1)
+  })
+
 })

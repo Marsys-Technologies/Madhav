@@ -258,6 +258,11 @@ def disposable_dsn():
     """A brand-new throwaway database on the pinned disposable cluster —
     created for the test, dropped afterwards. Skips (NOT_RUN) unless the
     cluster IS the pinned disposable one."""
+    if os.environ.get("KALA_ADMIN_DSN"):
+        # Current CI convention: the shared guarded fixture owns lifecycle.
+        from tests.l3.kala_db.conftest import isolated_kala_db_dsn
+        yield from isolated_kala_db_dsn.__wrapped__()
+        return
     try:
         admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except UnsafeAdminDSN:
