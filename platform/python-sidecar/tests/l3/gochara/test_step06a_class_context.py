@@ -126,20 +126,7 @@ def test_unresolved_targets_omit_never_fabricate(monkeypatch):
 
 # ── disposable-DB integration ────────────────────────────────────────────────
 
-S6A_CHART = "55555555-6666-7777-8888-999999999999"
-
-DASHA_DDL = """
-DROP TABLE IF EXISTS chart_dashas;
-CREATE TABLE chart_dashas (
-  chart_id UUID NOT NULL,
-  ayanamsha_id TEXT NOT NULL,
-  system_id TEXT NOT NULL,
-  level_n INT NOT NULL,
-  lord_graha TEXT,
-  start_iso TEXT NOT NULL,
-  end_iso TEXT NOT NULL
-);
-"""
+from tests.l3._settled_dasha_fixture import CHART_ID as S6A_CHART, BUILD_ID, DASHA_DDL
 
 
 def _wp6_reachable() -> bool:
@@ -159,6 +146,7 @@ def s6a_schema():
 
     conn = psycopg.connect(WP6_DSN, autocommit=True)
     conn.execute(_WP9_BASE_DDL)
+    conn.execute("ALTER TABLE chart_facts ADD COLUMN IF NOT EXISTS fact_value_text TEXT")
     conn.execute(MIGRATION_1082.read_text())
     conn.execute(EXTRA_DDL)
     conn.execute(DASHA_DDL)
@@ -244,8 +232,31 @@ def built(s6a_schema, tmp_path):
         for table in ("kala_gochara_contacts", "kala_gochara_coverage",
                       "kala_gochara_publication", "gochara_resonance_map",
                       "kala_gochara_windows", "kala_vedha_gochara",
-                      "kala_moorti_nirnaya", "chart_dashas"):
+                      "kala_moorti_nirnaya", "chart_dashas", "chart_facts"):
             cur.execute(f"DELETE FROM {table} WHERE chart_id = %s", (S6A_CHART,))
+        # The v2 per-instant evaluator needs complete chart operands, not
+        # just the legacy target/lord labels. These are controlled fixture
+        # inputs in the isolated database, not native L1 assertions.
+        positions = {
+            "LAGNA": 0.0, "SUN": 10.0, "MOON": 35.0,
+            "MAR": 80.86478454953374, "MER": 100.0,
+            "JUP": 342.4348643612956, "VEN": 335.9409455670717,
+            "SAT": 200.0, "RAH_MEAN": 240.0, "KET_MEAN": 60.0,
+        }
+        cur.executemany("""INSERT INTO chart_facts
+            (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject,
+             fact_key, fact_value_num) VALUES
+            (%s, %s, 'lahiri_chitrapaksha', 'graha_position', %s,
+             'longitude_sidereal', %s)""",
+                        [(f"s6a-position-{s}", S6A_CHART, s, v)
+                         for s, v in positions.items()])
+        cur.executemany("""INSERT INTO chart_facts
+            (fact_id, chart_id, ayanamsha_id, fact_category, fact_subject,
+             fact_key, fact_value_text) VALUES
+            (%s, %s, 'lahiri_chitrapaksha', %s, %s, %s, %s)""", [
+                ("s6a-paksha", S6A_CHART, "panchanga_tithi", "TITHI", "paksha", "Shukla"),
+                ("s6a-day", S6A_CHART, "saham_position", "DAY_BIRTH", "day_birth", "true"),
+            ])
         cur.execute("DELETE FROM bg_transit_rules")
         cur.execute("DELETE FROM bg_vedha_malefic_scale")
         cur.execute("DELETE FROM bg_transit_moorti")
@@ -267,7 +278,7 @@ def built(s6a_schema, tmp_path):
             " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             [(S6A_CHART, "marriage", "karaka", "Venus", 0.9, None, True,
               "resolved", None),
-             (S6A_CHART, "career", "karaka", "Mars", 0.5, None, True,
+             (S6A_CHART, "career_advancement", "karaka", "Mars", 0.5, None, True,
               "resolved", None),
              (S6A_CHART, "litigation", "karaka", "Saturn", 0.6, None, True,
               "resolved", None)])
@@ -345,11 +356,16 @@ def test_producer_wires_from_real_permission_and_feeds_writer(built):
     r = _run_producer(chart, "--out", str(built["ctx_out"]))
     assert r.returncode == 0, r.stderr
     report = json.loads(r.stdout)
-    assert report["classes_wired"] == ["career", "marriage"]
+    assert report["classes_wired"] == ["career_advancement", "marriage"]
     assert report["contacts_null_t_exact_excluded"] == 1  # the litigation contact
 
     ctx = json.loads(built["ctx_out"].read_text())
-    assert set(ctx) == {"marriage", "career"}  # litigation omitted (no usable instants)
+    assert {k for k in ctx if not k.startswith("_")} == {"marriage", "career_advancement"}
+    assert {k for k in ctx if k.startswith("_")} == {
+        "_permission_mode", "_dasha_periods", "_av_donor_matrix", "_chart",
+        "_dasha_read_contract", "_dasha_availability",
+    }
+    assert ctx["_dasha_read_contract"]["build_id"] == BUILD_ID
 
     m = ctx["marriage"]
     assert set(m["permission_systems"]) == set(leg.PERMISSION_SYSTEM_IDS)
@@ -362,10 +378,10 @@ def test_producer_wires_from_real_permission_and_feeds_writer(built):
     assert m["permission_value"] == pytest.approx(
         leg.compute_permission(m["permission_systems"]))
     assert m["permission_value"] > 0.0
-    assert m["context_source"].startswith("l1_permission_wiring:v1")
+    assert m["context_source"].startswith("l1_permission_wiring:v2")
 
     # career: no fixture dasha lord matches Mars -> all twelve honest False
-    c = ctx["career"]
+    c = ctx["career_advancement"]
     assert all(v is False for v in c["permission_systems"].values())
     assert c["permission_value"] == 0.0
 
@@ -387,9 +403,11 @@ def test_producer_wires_from_real_permission_and_feeds_writer(built):
               " AND generation='4.0' AND event_class='litigation'",
               (chart,)) == 0
     by_class = {r["event_class"]: r for r in wrep["class_reports"]}
-    assert by_class["marriage"]["permission"] == pytest.approx(
-        m["permission_value"])
-    assert "vimshottari" in by_class["marriage"]["permission_systems_active"]
+    # The v2 writer evaluates the frozen licence at each window instant;
+    # the class report must not repeat the producer's legacy constant.
+    assert by_class["marriage"]["permission_mode"] == "per_instant_md_ad_pd"
+    assert by_class["marriage"]["permission"] is None
+    assert by_class["marriage"]["permission_systems_active"] is None
     assert _q("SELECT count(*) FROM kala_gochara_windows WHERE chart_id=%s"
               " AND generation='4.0' AND event_class='marriage'",
               (chart,)) > 0
@@ -401,7 +419,7 @@ def test_producer_wires_from_real_permission_and_feeds_writer(built):
     # career wired at honest 0.0 permission projects zero windows (never a
     # fabricated floor)
     assert _q("SELECT count(*) FROM kala_gochara_windows WHERE chart_id=%s"
-              " AND generation='4.0' AND event_class='career'",
+              " AND generation='4.0' AND event_class='career_advancement'",
               (chart,)) == 0
 
 
