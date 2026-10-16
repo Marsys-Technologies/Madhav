@@ -758,6 +758,16 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     # Validate both sides: supplied consumed rows cannot assert a different build
     # from the population selected by our own guarded query.
     population = list(consumed) + list(pinned)
+    # Validate admitted input before horizon clipping or PostgreSQL range
+    # aggregation can erase a zero-length/reversed period (J4P-B4). This is
+    # the verifier's own detector; do not import the reader's validation.
+    for r in population:
+        start, end = r.get("start_iso"), r.get("end_iso")
+        if (not isinstance(start, datetime) or not isinstance(end, datetime)
+                or start.tzinfo is None or end.tzinfo is None or end <= start):
+            out.append(f"row {r['dasha_row_id']}: invalid period (expected positive timezone-aware bounds)")
+    if out:
+        return out
     builds = {str(r["build_id"]) for r in population if r["build_id"] is not None}
     if any(r["build_id"] is None for r in population):
         out.append("dasha_build_null: a daśā row carries a NULL build_id")
