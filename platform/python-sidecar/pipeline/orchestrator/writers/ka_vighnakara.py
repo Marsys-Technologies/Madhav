@@ -1006,11 +1006,18 @@ def _detect_obstructions(peak_date, convergence_score: float = 0.5,
 
 @register('ka_vighnakara')
 class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
-    """Legacy dispatch plus KYD-134 explicitly selected consumer fixtures."""
+    """Explicit sealed-producer candidates, KYD-134 fixtures, legacy dispatch."""
 
     def run(self, ctx) -> WriterResult:
         if ctx.dry_run:
             return WriterResult('ka_vighnakara', 0, notes='dry_run=True')
+        if 'negative_space_sealed' in ctx.config:
+            if ctx.config.get('negative_space_fixture_inputs') is not None:
+                raise ValueError('sealed and fixture dispatch are mutually exclusive')
+            from services.ka_vighnakara.sealed_storage import write_sealed_candidate
+            count = write_sealed_candidate(ctx)
+            return WriterResult('ka_vighnakara', count,
+                                notes='K3-2 sealed producer candidate; publication unchanged')
         if 'negative_space_fixture_inputs' in ctx.config:
             from services.ka_vighnakara.model import Finding
             from services.ka_vighnakara.storage import write_fixture_candidate
