@@ -7,8 +7,7 @@ its contract (sharded 2026-10-08; same discipline as test_ci_shard.py for the go
   * run for real in a subprocess: the K shards' selected tests are exactly the full collection after -m deselection, each test once;
   * ci.yml: every shard runs the unsharded command unchanged plus `-p sidecar_shard --ci-shard I/K`, K agrees with the matrix, the environment
     is the original job's; the static job keeps every other original step in order; the aggregate keeps the required name, needs both
-    jobs plus the changes classifier and Kāla DB job, runs `if: always()` and requires both
-    original parts to succeed plus DB success (or a DB skip on classified docs-only changes).
+    jobs plus K3 SQL, Kāla DB and changes, and always runs. Static/shards must succeed; DB jobs may skip only on explicit docs-only changes.
 """
 from __future__ import annotations
 
@@ -244,14 +243,15 @@ def test_the_sidecar_suite_runs_only_sharded(jobs):
     assert holders == [SHARD_JOB]
 
 
-def test_the_aggregate_keeps_the_required_name_and_needs_both_parts(jobs):
+def test_the_aggregate_keeps_the_required_name_and_needs_all_parts(jobs):
     agg = jobs[AGG_JOB]
     assert agg["name"] == REQUIRED_NAME
-    assert set(agg["needs"]) == {STATIC_JOB, SHARD_JOB, "changes", "kala-db-tests"}
+    assert set(agg["needs"]) == {"changes", STATIC_JOB, SHARD_JOB, "k3-sealed-db-tests", "kala-db-tests"}
     assert str(agg["if"]) == "${{ always() }}"
     step = agg["steps"][0]
     assert step["env"]["STATIC_RESULT"] == f"${{{{ needs.{STATIC_JOB}.result }}}}"
     assert step["env"]["SHARDS_RESULT"] == f"${{{{ needs.{SHARD_JOB}.result }}}}"
+    assert step["env"]["K3_RESULT"] == "${{ needs.k3-sealed-db-tests.result }}"
     assert step["env"]["KALA_DB_RESULT"] == "${{ needs.kala-db-tests.result }}"
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert sum(1 for j in jobs.values() if j.get("name") == REQUIRED_NAME) == 1
@@ -263,16 +263,17 @@ RESULTS = ("success", "failure", "cancelled", "skipped", "")
 @pytest.mark.parametrize("static", RESULTS)
 @pytest.mark.parametrize("shards", RESULTS)
 @pytest.mark.parametrize("kala_db", RESULTS)
+@pytest.mark.parametrize("k3", RESULTS)
 @pytest.mark.parametrize("docs_only", ("true", "false", ""))
-def test_the_aggregate_passes_only_when_both_parts_succeeded(jobs, static, shards, kala_db, docs_only):
-    """Execute the actual gate across all result combinations; only classified docs may skip DB."""
+def test_the_aggregate_requires_static_shards_and_both_db_jobs_or_docs_only_skip(jobs, static, shards, k3, kala_db, docs_only):
+    """Run the real aggregate: only DB jobs may skip, and only on an explicit docs-only change."""
     script = jobs[AGG_JOB]["steps"][0]["run"]
-    env = {"STATIC_RESULT": static, "SHARDS_RESULT": shards, "KALA_DB_RESULT": kala_db,
-           "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"}
-    p = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "SHARDS_RESULT": shards, "K3_RESULT": k3, "KALA_DB_RESULT": kala_db, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"},
+                       capture_output=True, text=True)
     ok = (static == "success" and shards == "success"
-          and (kala_db == "success" or (docs_only == "true" and kala_db == "skipped")))
-    assert (p.returncode == 0) is ok, (static, shards, kala_db, docs_only, p.stdout, p.stderr)
+          and (k3 == "success" or (k3 == "skipped" and docs_only == "true"))
+          and (kala_db == "success" or (kala_db == "skipped" and docs_only == "true")))
+    assert (p.returncode == 0) is ok, (static, shards, k3, kala_db, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 
@@ -286,11 +287,10 @@ def test_no_part_can_turn_red_green_or_narrow_what_runs(jobs):
         job = jobs[jname]
         assert "continue-on-error" not in job, jname
         needs = job.get("needs") or []
-        assert "docs_only" not in str(job.get("if", "")), jname
+        # K3-2 adds a docs-only-aware SQL dependency; the aggregate itself always runs.
         if jname != AGG_JOB:
             assert "changes" not in ([needs] if isinstance(needs, str) else needs), jname
-        else:
-            assert str(job["if"]) == "${{ always() }}"
+        assert "docs_only" not in str(job.get("if", "")), jname
         for st in job["steps"]:
             assert "continue-on-error" not in st, (jname, st.get("name"))
     run = _pytest_step(jobs[SHARD_JOB])["run"]

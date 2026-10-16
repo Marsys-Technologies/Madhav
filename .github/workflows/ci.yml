@@ -311,14 +311,12 @@ jobs:
   # `Initialize containers` buys 7 real DB-integration tests (verified against main:
   # same 713 test files, 670 passed/43 skipped -> 677 passed/36 skipped).
   #
-  # KA-3a oracle follow-up: keep this separate job for diagnosis, and consume its
-  # result in the existing required Governance Gates check. This ensures the
-  # real database detectors must pass before that required check can succeed.
+  # KA-3a: keep this job separate for diagnosis; the existing required
+  # Governance Gates aggregate consumes its result. A skip is accepted only
+  # for classified docs-only changes.
   # ─────────────────────────────────────────────────────────────────────────────
   kala-db-tests:
     needs: changes
-    # KA-3a: required Governance Gates below consumes this result. The only
-    # accepted skip is the existing changes classifier's docs-only case.
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Kāla DB Tests (throwaway Postgres)
     runs-on: ubuntu-latest
@@ -368,18 +366,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        # Recursive collection includes KA-3a's sky/latta/fingerprint oracles,
-        # typed writer dispatch, legacy columns and direct SQL refusal probes.
-        run: >-
-          python -m pytest tests/l3/kala_db
-          tests/l3/ka_bhavishya_lekha/test_certification_mapping.py
-          tests/l3/ka_vedha_gochara
-          tests/l3/ka_taranga
-          tests/l3/ka_adapters
-          tests/l3/gochara_rules/test_am18_vedha.py
-          tests/l3/gochara/test_vedha_interval_relation.py
-          tests/l3/kala_core/ayanamsha/test_ayanamsha.py
-          -q -rs -p no:cacheprovider
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/gochara_rules/test_am18_vedha.py tests/l3/gochara/test_vedha_interval_relation.py tests/l3/kala_core/ayanamsha/test_ayanamsha.py -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -395,6 +382,41 @@ jobs:
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
+
+  # K3-2 pre-build: real SQL evidence is required through governance-gates.
+  # Keep the existing all-Kāla DB selection above unchanged.
+  k3-sealed-db-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: K3 sealed negative-space contract (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+      KALA_REQUIRE_DB: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar CI dependencies
+        run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Run complete K3 consumer and SQL suites; skips fail
+        working-directory: platform/python-sidecar
+        run: python -B -m pytest tests/l3/ka_vighnakara tests/l3/kala_db/ka_vighnakara -q -rs -p no:cacheprovider --basetemp="$RUNNER_TEMP/k3-sealed-pytest"
 
   db-integration-tests:
     needs: changes
@@ -2654,11 +2676,10 @@ jobs:
   governance-gates:
     # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
     # py-sidecar)`; no per-shard context is required, so the shard count can change without touching the ruleset). Green only when the
-    # static gates job, every python-sidecar shard AND the Kāla DB job pass.
-    # A skipped DB job is accepted only for classified docs-only changes;
-    # skipped shards, failed jobs and cancellations never count as success.
+    # static gates job, every python-sidecar shard, K3 SQL and Kāla DB jobs pass.
+    # Only the DB jobs may skip, and only for classified docs-only changes.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, kala-db-tests]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2666,17 +2687,22 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates, every py-sidecar shard and Kāla DB tests passed
+      - name: The static gates, every py-sidecar shard, K3 SQL and Kāla DB suites passed
         env:
-          STATIC_RESULT: ${{ needs.governance-gates-static.result }}
-          SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
+          K3_RESULT: ${{ needs.k3-sealed-db-tests.result }}
           KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          STATIC_RESULT: ${{ needs.governance-gates-static.result }}
+          SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
         run: |
-          kala_db_ok=false
-          if [ "$KALA_DB_RESULT" = "success" ] || { [ "$DOCS_ONLY" = "true" ] && [ "$KALA_DB_RESULT" = "skipped" ]; }; then kala_db_ok=true; fi
-          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ] && [ "$kala_db_ok" = "true" ]; then echo "static gates, all py-sidecar shards and required Kāla DB tests passed"; exit 0; fi
-          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT', Kāla DB tests finished '$KALA_DB_RESULT' (DB skip allowed only when docs_only=true, observed '$DOCS_ONLY')"; exit 1
+          if [ "$K3_RESULT" != "success" ] && ! { [ "$K3_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required K3 SQL suite finished '$K3_RESULT'"; exit 1
+          fi
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required Kāla DB tests finished '$KALA_DB_RESULT'"; exit 1
+          fi
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates, all py-sidecar shards, required K3 SQL and Kāla DB suites passed"; exit 0; fi
+          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:
     needs: changes
