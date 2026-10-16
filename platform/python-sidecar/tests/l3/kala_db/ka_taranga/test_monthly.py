@@ -10,8 +10,10 @@ from types import SimpleNamespace
 
 import psycopg
 import pytest
+from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from pipeline.orchestrator.asset_runner import _data_rows_present
 from pipeline.orchestrator.writers.ka_taranga import KaTarangaWriter
 
 PLATFORM = Path(__file__).resolve().parents[5]
@@ -115,7 +117,25 @@ def test_utc_leap_month_boundary_and_disjoint_segments(db):
     assert [(r[0],r[3]) for r in rows(db)] == [('2000-02-01',29.0),('2000-03-01',2.0)]
 
 
-def test_judge_count_is_distinct_pinned_and_separate_from_integral(db):
+@pytest.mark.parametrize('evidence', ['missing', 'other_chart', 'other_generation', 'other_class', 'partial'])
+def test_unadmitted_judge_generation_is_unavailable_for_every_scope(db, evidence):
+    snapshot(db); segment(db)
+    db.execute("UPDATE kala_layer_candidate SET conventions='{\"taranga_judge_generation\":\"never-produced\"}'")
+    db.execute("INSERT INTO kala_taranga_class_domain VALUES (%s,%s,'gain','money','fixture')", (CHART,GEN))
+    if evidence != 'missing':
+        db.execute("INSERT INTO ka_gochara_eval_window VALUES (%s,%s,%s,%s,tstzrange(%s,%s,'[)'))",
+            ('00000000-0000-0000-0000-000000000650', OTHER if evidence == 'other_chart' else CHART,
+             'wrong' if evidence == 'other_generation' else 'never-produced',
+             'work' if evidence == 'other_class' else 'gain', '2000-02-01T00:00:00+00:00', '2000-03-01T00:00:00+00:00'))
+    KaTarangaWriter().run(context(db))
+    data = rows(db)
+    assert len(data) == 4  # two months, each with event-class and domain output
+    assert all(r[7] is None and r[8] for r in data)
+    assert all(r[10]['judge_generation'] == 'never-produced' for r in data)
+    assert [r[3] for r in data] == [0.5,0.5,1.5,1.5]
+
+
+def test_unadmitted_judge_windows_remain_distinct_pinned_references(db):
     snapshot(db); segment(db)
     db.execute("UPDATE kala_layer_candidate SET conventions='{\"taranga_judge_generation\":\"5.fixture\"}'")
     for identity,gen,start,end in [('00000000-0000-0000-0000-000000000650','5.fixture','2000-02-01','2000-03-01'),
@@ -124,7 +144,10 @@ def test_judge_count_is_distinct_pinned_and_separate_from_integral(db):
             db.execute('INSERT INTO ka_gochara_eval_window VALUES (%s,%s,%s,\'gain\',tstzrange(%s,%s,\'[)\'))',
                        (identity,CHART,gen,start+'T00:00:00+00:00',end+'T00:00:00+00:00'))
     KaTarangaWriter().run(context(db))
-    assert [(r[3],r[7],r[8]) for r in rows(db)] == [(0.5,0,None),(1.5,1,None)]
+    data = rows(db)
+    assert [(r[3],r[7]) for r in data] == [(0.5,None),(1.5,None)]
+    assert all(r[8] for r in data)
+    assert [r[10]['judge_window_ids'] for r in data] == [[],['00000000-0000-0000-0000-000000000650']]
 
 
 def test_rebuild_duplicate_insertion_and_unbound_dispatch_preserve_legacy(db):
@@ -165,15 +188,26 @@ def test_invalid_source_is_rejected_before_replacement(db,invalid):
 def test_count_and_integrity_are_chart_build_bound_after_completion(db):
     snapshot(db); segment(db)
     KaTarangaWriter().run(context(db))
-    count, integrity = db.execute("SELECT count_sql,integrity_check_sql FROM asset_registry WHERE asset_id='ka_taranga'").fetchone()
-    assert db.execute(count.replace('$1','%s'),(CHART,)*count.count('$1')).fetchone()[0] == 2
-    assert db.execute(count.replace('$1','%s'),(OTHER,)*count.count('$1')).fetchone()[0] == 0
+    assert len(rows(db)) == 2
+    with db.cursor(row_factory=dict_row) as cur:
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 2
+        assert _data_rows_present(db, cur, 'ka_taranga', OTHER) == 0
+    integrity = db.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ka_taranga'").fetchone()[0]
     assert db.execute(integrity).fetchone()[0] is True
     db.execute("SELECT set_config('kala.integrity_build_id',%s,true)",(OTHER,))
     assert db.execute(integrity).fetchone()[0] is False
     db.execute("SELECT set_config('kala.integrity_build_id',%s,true)",(BUILD,))
     db.execute("UPDATE kala_taranga_candidate SET source_refs='{}'")
     assert db.execute(integrity).fetchone()[0] is False
+
+
+def test_real_count_consumer_keeps_candidate_precedence_and_legacy_fallback(db):
+    with db.cursor(row_factory=dict_row) as cur:
+        # A bound but empty candidate takes precedence over the one legacy row.
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 0
+        db.execute('DELETE FROM kala_layer_candidate WHERE chart_id=%s', (CHART,))
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 1
+        assert _data_rows_present(db, cur, 'ka_taranga', OTHER) == 0
 
 
 def test_storage_refuses_published_mutation_even_outside_writer(db):

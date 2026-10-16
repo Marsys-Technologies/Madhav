@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4639,26 +4639,22 @@
       "id": "K5-2",
       "track": "K",
       "lane": "K · K5 forecaster",
-      "title": "Compact evaluator trial under the numerical contract, including null-statistic reproduction; dense rows untouched",
+      "title": "JOIN — compact evaluator numerical-contract trial: separately accepted implementations and corrected-workload evidence; dense rows untouched",
       "owner": "K",
       "depends_on": [
-        "D-VC"
+        "D-VC",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract",
+        "K5-2-qualify"
       ],
       "mandatory": true,
-      "detector": {
-        "type": "branch_merged",
-        "ref": "origin/kalayantra/k5-2"
-      },
       "brief": {
         "spec": [
           "PLAN §6.2 item 4",
           "ALGO 3.20 numerical contract",
           "PLAN §10 Forecaster"
-        ],
-        "owns": [
-          "platform/python-sidecar/services/ka_kshetra/compact/** (new)",
-          "platform/python-sidecar/tests/l3/ka_kshetra/compact/**",
-          "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json"
         ],
         "tests": [
           "structural equality of partitions and coefficients where the same representation is claimed",
@@ -4669,14 +4665,18 @@
           "null-statistic reproduction"
         ],
         "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-        "notes": "Records implemented-and-proven or failed-with-the-failing-clause. The result file is D-COMPACT's evidence. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+        "notes": [
+          "K5-2-NB-02: decomposition registered. This parent derives completion only from D-VC and every independently accepted child; no worker claims or branch-merger evidence can complete the join. Existing downstream dependencies remain on K5-2.",
+          "Each source child has one implementation deliverable, an explicit write-set, tests and its own guarded exact-head acceptance. Full corrected-G1/canonical-workload qualification is a separate digest-reviewed evidence child.",
+          "The accepted isolated source pre-build is preserved; no historical verdict is rewritten and no child is marked done by this registration. Records implemented-and-proven or failed-with-the-failing-clause for D-COMPACT; a failed trial retains dense data and earns no activation.",
+          "(I) INTERPRETATION: split along the four existing implementation modules and a separate runtime-evidence deliverable. The alternative is splitting each numerical clause into an item; clauses remain detector obligations within the corresponding deliverable."
+        ]
       },
-      "completion_kind": "code",
-      "producer": "K",
-      "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
-      }
+      },
+      "join": true,
+      "done_by": "join"
     },
     {
       "id": "D-COMPACT",
@@ -20914,7 +20914,13 @@
         "K6-N2",
         "K6-N3",
         "KA3B-N1",
-        "KA3B-N2"
+        "KA3B-N2",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract",
+        "K5-2-qualify",
+        "K5-2-NB-02"
       ],
       "mandatory": true,
       "detector": {
@@ -27829,7 +27835,7 @@
       "id": "K5-2-NB-02",
       "track": "K",
       "lane": "K · K5 forecaster",
-      "title": "The required independently reviewable K5-2 children and parent join remain unregistered",
+      "title": "K5-2 carried finding: register independently reviewable compact children and the parent join",
       "owner": "K",
       "depends_on": [
         "K5-2"
@@ -27842,21 +27848,26 @@
       "brief": {
         "spec": [
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
-          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/result.json:17 (K5-2-NB-02)"
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/result.json:17 (K5-2-NB-02)",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02)",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/run_contract_trial.py:41–45 (activation gates)"
         ],
         "owns": [
-          "00_ARCHITECTURE/control/kalayantra/plan_model.json"
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+          "platform/scripts/governance/__tests__/test_k5_compact_plan.py"
         ],
         "tests": [
           "The required independently reviewable K5-2 children and parent join remain unregistered. Builder explicitly leaves this to the cockpit and exposes it as an activation gate (run_contract_trial.py:43). Register decomposition and track this carried finding before claiming parent completion; this verdict accepts only the isolated source pre-build.",
           "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
-          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "pytest platform/scripts/governance/__tests__/test_k5_compact_plan.py -p no:cacheprovider",
+          "Fail-on-revert proof: a job-local tree with only the plan fix reverted must fail the tracker-state regression; the fixed tree passes."
         ],
-        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "compat": "Plan registration and regression coverage only; compact numerical behaviour, existing downstream parent edges, D-VC and D-COMPACT gates are preserved.",
         "notes": [
-          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
-          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
-          "(I) INTERPRETATION: this child registers the missing-decomposition finding only; independently reviewed K5-2 decomposition and parent-join changes remain its implementation obligation. Alternative: perform that graph redesign during this registration-only batch."
+          "D-17 carry-forward child of K5-2; the parent never depends on this child. Registration and a finished preparation job do not publish guarded completion or rewrite the accepted source verdict.",
+          "(I) INTERPRETATION: retain the established carry-forward depends_on-parent convention. The alternative is depending on K5-2-contract so this follow-up can close before full qualification. The source-preparation job may finish now, while tracker completion still follows the registered dependency and review gates."
         ],
         "contract": "The required independently reviewable K5-2 children and parent join remain unregistered. Builder explicitly leaves this to the cockpit and exposes it as an activation gate (run_contract_trial.py:43). Register decomposition and track this carried finding before claiming parent completion; this verdict accepts only the isolated source pre-build."
       },
@@ -28291,6 +28302,230 @@
       "completion_kind": "code",
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-representation",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact representation: immutable coefficients, indexed one-sided evaluation and stored-segment integrals",
+      "owner": "K",
+      "depends_on": [
+        "D-VC"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/__init__.py",
+          "platform/python-sidecar/services/ka_kshetra/compact/representation.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/__init__.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_representation.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_representation.py -p no:cacheprovider",
+          "Lossless partition/coefficient packing, both discontinuity limits and bitwise integral equality under unchanged operation order; boundary/flat-branch reversions fail."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-compiler",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact compiler: switching roots, complete supplied breakpoints and bounded suppression refinement",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-representation"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/compiler.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_compiler.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/fixtures.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_compiler.py -p no:cacheprovider",
+          "Adversarial max/min switching and interior peaks; supplied seam/mask/scenario/cancellation edges retained; analytic per-segment bounds and honest refinement exhaustion; deleting each detector clause fails."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "fixtures.py is the shared synthetic fixture input; the null and contract children consume it without changing compiler ownership.",
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-null",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact DHARA null adapter: preserve the reference estimand and expose numerical disagreement",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-compiler"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/null.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_null.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_null.py -p no:cacheprovider",
+          "Independent DHARA comparator; daily-midpoint estimand, shift orientation, 1023+observation denominator, pooled quantiles, tail ranks and declared tolerances; comparator/identity mutations fail."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-contract",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact contract harness: clause-level detectors, fixture census and reference/candidate source identity",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-null"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/qualification.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_qualification.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/run_contract_trial.py",
+          "platform/scripts/governance/__tests__/test_k5_compact_ci.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_qualification.py -p no:cacheprovider",
+          "All numerical clauses and fixture census aggregate fail-closed, source hashes bind candidate and reference, and curved_suppression/null_statistics remains rejected while its detector measures disagreement.",
+          "Required CI/isolation test passes; no live module imports the trial."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "This child implements the evidence protocol only. K5-2-qualify separately earns full runtime evidence; passing harness tests is not numerical admission.",
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-qualify",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact numerical-contract evidence on the corrected upstream G1 and canonical workload, with every failed clause retained",
+      "owner": "K",
+      "depends_on": [
+        "D-VC",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json",
+        "min_bytes": 2
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json"
+        ],
+        "tests": [
+          "Rebind the actual completed K5-G1a/G1b interfaces and corrected clocks, canonical vocabulary, suppression inputs and time axis; record exact candidate/reference identities.",
+          "Run structural equality where claimed, per-segment bounds, both discontinuity limits, adversarial switches/peaks, interval integrals and null reproduction on the corrected canonical workload.",
+          "Include nonconstant horizons beyond 730 days and circular shifts so long-duration null buckets exercise distinct sliding maxima (review K5-2-NB-01 remains a separate coverage obligation).",
+          "Record implemented-and-proven or failed-with-the-failing-clause, measured segment counts, declared tolerances and retained dense data; independent review accepts the report digest, never a file-exists signal alone."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "Full runtime evidence only; no schema/protocol implementation or consumer integration. D-VC remains a strict dependency, and its corrected G1 prerequisites must be complete.",
+          "The six synthetic pre-build fixtures are not this qualification. An honestly failed numerical trial can complete the evidence deliverable; only D-COMPACT decides admission, with refusal retaining the dense path."
+        ]
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a"
       }
