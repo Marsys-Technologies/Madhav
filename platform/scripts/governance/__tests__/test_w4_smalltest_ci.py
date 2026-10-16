@@ -8,9 +8,9 @@ CI = Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml'
 SUITE = 'scripts/__tests__/test_w4_smalltest_safety.py'
 
 
-def mandatory_safety_step(jobs):
+def mandatory_safety_step(jobs, suite=SUITE):
     job = jobs['db-integration-tests']
-    steps = [s for s in job['steps'] if SUITE in str(s.get('run', ''))]
+    steps = [s for s in job['steps'] if suite in str(s.get('run', ''))]
     return (len(steps) == 1 and not job.get('continue-on-error')
             and not steps[0].get('if') and not steps[0].get('continue-on-error')
             and 'pytest' in steps[0]['run'] and '||' not in steps[0]['run']
@@ -50,3 +50,10 @@ def _ci_load(text):
     data = yaml.safe_load(text)
     data['jobs'] = _ci_expanded(data['jobs'])
     return data
+
+@pytest.mark.parametrize('suite', [
+    '../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_w4_smalltest_enablement.py',
+    '../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py',
+])
+def test_admission_and_launch_fixtures_run_in_mandatory_ci(suite):
+    assert mandatory_safety_step(_ci_load(CI.read_text())['jobs'], suite)

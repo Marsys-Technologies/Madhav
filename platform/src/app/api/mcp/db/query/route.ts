@@ -83,6 +83,12 @@ const ALLOWED_TABLES = new Set([
   // candidate pipeline (migration 1081) — read-only here, same contract as
   // the two relations above.
   'kala_gochara_contacts',
+  // GOVERNED-GENERATION GATE (Codex rounds 3 and 4 on PR 3110, follow-up (a)): the contact-ledger reader and the windows reader's shared
+  // coverage path serve a governed (5.x) generation only when its manifest is published AND SEALED, so they read whether a seal row
+  // exists (platform-mcp/src/lib/governed_generation_gate.ts: `SELECT EXISTS (SELECT 1 FROM ka_gochara_generation_seal WHERE chart_id =
+  // $1::uuid AND generation = $2) AS sealed`). Read-only; the seal row is written only by the sealing job (ka_gochara_seal_generation), never by an
+  // MCP-served query; the proxy returns the caller whatever the query selects, and the gate selects only that boolean.
+  'ka_gochara_generation_seal',
   'brahma_remedy_corpus',
   // SATYA-ŚEṢA W2 (2026-07-25): gochara_forecast_get/activation_get/election_avoidance_get's
   // new category-coverage attestation (`coverage` block, S4-05 fix) computes, mechanically per

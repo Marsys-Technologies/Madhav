@@ -481,6 +481,25 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     expect(r.rows[0]!.n).toBe(0)
   })
 
+  it('missing 1155 ledger prerequisite refuses both standalone and embedded 1204 gates before DDL', async () => {
+    await resetSchema()
+    await withTempDir(CONTRACT_FILES, async dir => {
+      const c = await pool.connect()
+      try {
+        await runMigrations(c, [dir], { only: new Set(CONTRACT_FILES), disclosures: new Map(), renumberDisclosures: new Map() })
+      } finally { c.release() }
+    })
+    // Keep every prerequisite object valid; only the ordered-execution evidence is absent.
+    await pool.query("DELETE FROM _migrations_applied WHERE filename = '1155_gochara_relationship_record.sql'")
+    const gate = readFileSync(path.resolve(process.cwd(),
+      'python-sidecar/scripts/kala_gochara_cutover/preflight_1204_av_qualifier_object_role.sql'), 'utf8')
+    await expect(pool.query(gate)).rejects.toThrow(/prerequisite_migration_not_applied :: 1155_/)
+    await expect(pool.query(mig(M1204))).rejects.toThrow(/prerequisite_migration_not_applied :: 1155_/)
+    const result = await pool.query("SELECT ka_gochara_object_selector_ok('[{\"agent\":\"mars\",\"relation\":\"residence\",\"object_role\":\"av_qualifier\"}]'::jsonb) AS ok")
+    expect(result.rows[0].ok).toBe(false)
+    expect((await pool.query("SELECT filename FROM _migrations_applied WHERE starts_with(filename, '1204_')")).rows).toEqual([])
+  })
+
   it('replay is BLOCKED: the embedded gate refuses an already-applied file', async () => {
     await resetSchema()
     await withTempDir(WINDOW_FILES, async dir => {

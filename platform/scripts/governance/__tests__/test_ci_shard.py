@@ -192,3 +192,4 @@ def test_tracker_suite_is_mandatory_in_governance_shards():
     assert "-p no:cacheprovider" in tracker[0]["run"]
     assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
     assert "test_kalayantra_control_plane.py" in tracker[0]["run"]
+    assert "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py" in tracker[0]["run"]

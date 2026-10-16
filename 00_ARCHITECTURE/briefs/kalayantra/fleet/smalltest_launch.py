@@ -4,6 +4,8 @@
 Only the credential-bearing executor invokes this entry point after pre-acceptance.
 A durable per-run claim precedes the remote call and survives every outcome. It is
 never cleared automatically: a timeout/interrupt may mean the job was launched.
+The explicit --dry-run rehearses staging and rolls it back, without a claim or
+remote launch; it uses the dispatcher's normal admission checks and report.
 """
 from __future__ import annotations
 
@@ -130,21 +132,25 @@ def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, cl
     parser.add_argument("--classes", default="all")
     parser.add_argument("--horizon-start")
     parser.add_argument("--horizon-end")
+    parser.add_argument("--dry-run", action="store_true", help="rehearse staging and roll back; never launch")
     args = parser.parse_args(argv)
     if dispatcher is None:
         scripts = Path(__file__).resolve().parents[4] / "platform/scripts"
         sys.path.insert(0, str(scripts))
         import dispatch_v5_small_test_job as dispatcher
+    marker = dispatcher.build_slice_marker(run=args.run, classes=args.classes,
+                                            horizon_start=args.horizon_start, horizon_end=args.horizon_end)
+    staging = ["--i-am-steward", "--after-settled-1", "--dry-run" if args.dry_run else "--execute",
+               "--run", args.run, "--classes", args.classes]
+    for key in ("horizon_start", "horizon_end"):
+        if getattr(args, key) is not None:
+            staging += ["--" + key.replace("_", "-"), getattr(args, key)]
+    if args.dry_run:
+        return dispatcher.main(staging)
     if connect is None:
         import psycopg
         import psycopg.rows
         connect = lambda: psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
-    marker = dispatcher.build_slice_marker(run=args.run, classes=args.classes,
-                                            horizon_start=args.horizon_start, horizon_end=args.horizon_end)
-    staging = ["--i-am-steward", "--after-settled-1", "--execute", "--run", args.run, "--classes", args.classes]
-    for key in ("horizon_start", "horizon_end"):
-        if getattr(args, key) is not None:
-            staging += ["--" + key.replace("_", "-"), getattr(args, key)]
     output = io.StringIO()
     # Preserve the dispatcher's safe error/commit-unknown behavior. Never stage
     # again if it throws, even when a run id was printed or COMMIT was sent.
