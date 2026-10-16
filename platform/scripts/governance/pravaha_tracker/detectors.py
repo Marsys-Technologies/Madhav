@@ -33,9 +33,14 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+import concurrent.futures
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, replace
 
 from .events import now_iso
+
+CALL_TIMEOUT_S = 5.0
+_EXTERNAL = threading.local()
 
 ENV_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
@@ -47,6 +52,9 @@ class DetectorResult:
     checked_at: str
     source: str
     progress: float | None = None
+    stale: bool = False
+    age_s: float | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -57,31 +65,106 @@ class Config:
     repo: str              # a checkout of the project repo (for git/gh)
     pgenv: str | None      # path to a read-only DB env file (sourced by bash), or None
     home: str              # PRAVAHA_HOME
+    verify_budget_s: float = 20.0
 
 
-def _run(cmd, cwd: str | None = None, timeout: float = 60, shell: bool = False) -> tuple[int, str]:
+class SourceMonitor:
+    """Per-call outcomes; the lock protects memory only, never external work.
+
+    Keep individual call failures so an unrelated successful git command cannot
+    hide a timed-out fetch. Health groups these by the operator-visible source.
+    """
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._calls: dict[tuple, dict] = {}
+
+    def record(self, source, key, error=None):
+        now = time.time()
+        with self._lock:
+            old = self._calls.get((source, key), {})
+            self._calls[(source, key)] = {
+                "last_success": old.get("last_success") if error else now,
+                "attempted_at": now, "error": error,
+            }
+
+    def snapshot(self):
+        now = time.time()
+        with self._lock:
+            calls = list(self._calls.items())
+        out = {}
+        for (source, _), value in calls:
+            row = out.setdefault(source, {"stale": False, "age_s": None, "error": None})
+            success = value["last_success"]
+            age = round(max(0, now - success), 1) if success is not None else None
+            if value["error"]:
+                was_stale = row["stale"]
+                row.update(stale=True, error=value["error"])
+                # A successful local read cannot supply an age for an
+                # unmeasured fetch. Failed calls determine a degraded source's age.
+                if age is None:
+                    row.update(unmeasured=True, age_s=None)
+                elif not row.get("unmeasured"):
+                    row["age_s"] = max(row["age_s"] or 0, age) if was_stale else age
+            elif not row["stale"]:
+                row["age_s"] = max(row["age_s"] or 0, age or 0)
+        for row in out.values():
+            row["sampled_at"] = now
+        return out
+
+
+@contextmanager
+def external_context(monitor=None, deadline=float("inf")):
+    previous = getattr(_EXTERNAL, "context", (None, float("inf")))
+    _EXTERNAL.context = (monitor, deadline)
+    try:
+        yield
+    finally:
+        _EXTERNAL.context = previous
+
+
+def _remaining():
+    return max(0, getattr(_EXTERNAL, "context", (None, float("inf")))[1] - time.monotonic())
+
+
+def _run(cmd, cwd: str | None = None, timeout: float = CALL_TIMEOUT_S, shell: bool = False) -> tuple[int, str]:
+    # Call sites may ask for a shorter limit, never a longer one. The live
+    # verification deadline also bounds every subprocess in a multi-call detector.
+    timeout = min(CALL_TIMEOUT_S, timeout, _remaining())
+    if timeout <= 0:
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    call_deadline = time.monotonic() + timeout
+    monitor = getattr(_EXTERNAL, "context", (None,))[0]
+    executable = os.path.basename(cmd[0]) if not isinstance(cmd, str) else cmd.split()[0]
+    source = {"pmset": "power", "bash": "db", "psql": "db"}.get(executable, executable)
+    key = (str(cmd), cwd)
     env = dict(os.environ)
     env["PATH"] = env.get("PATH", "") + ":" + ENV_PATH
     env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
-    # A git/psql shell can leave helpers holding its output pipes. Killing only the
-    # immediate child neither stops those helpers nor bounds a subsequent pipe drain.
-    p = subprocess.Popen(cmd, cwd=cwd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         stdin=subprocess.DEVNULL, text=True, env=env, start_new_session=True)
+    p = None
     try:
-        out, err = p.communicate(timeout=timeout)
-    except BaseException:
+        p = subprocess.Popen(cmd, cwd=cwd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             stdin=subprocess.DEVNULL, text=True, env=env, start_new_session=True)
         try:
-            os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        try:
-            p.communicate(timeout=1)
-        except subprocess.TimeoutExpired:
-            # Even a helper that deliberately escaped the group cannot hold us here.
-            p.stdout.close()
-            p.stderr.close()
-            p.wait(timeout=1)
+            out, err = p.communicate(timeout=max(0, call_deadline - time.monotonic()))
+        except BaseException:
+            # Kill the whole session's process group before draining output pipes.
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                p.communicate(timeout=0.2)
+            except subprocess.TimeoutExpired:
+                p.stdout.close()
+                p.stderr.close()
+                p.wait(timeout=0.2)
+            raise
+    except BaseException as exc:
+        if monitor is not None:
+            monitor.record(source, key, "timed out" if isinstance(exc, subprocess.TimeoutExpired) else type(exc).__name__)
         raise
+    if monitor is not None:
+        monitor.record(source, key, None if p.returncode == 0 else f"exit {p.returncode}")
     return p.returncode, (out if p.returncode == 0 else (err or out))
 
 
@@ -103,6 +186,9 @@ class Detectors:
         self._fetching: dict[str, tuple[Future, int]] = {}
         self._live = threading.local()
         self._verifying = 0
+        self._verify_slots = threading.BoundedSemaphore(4)
+        self.sources = SourceMonitor()
+        self._measured_at: dict[str, float] = {}
 
     @staticmethod
     def key(spec: dict) -> str:
@@ -123,41 +209,71 @@ class Detectors:
         typ = spec.get("type", "?")
         try:
             fn = getattr(self, "d_" + typ)
-            res = fn(spec)
-        except subprocess.TimeoutExpired:
-            res = DetectorResult("error", f"{typ}: timed out", now_iso(), f"detector:{typ}")
+            with external_context(self.sources):
+                res = fn(spec)
+        except (subprocess.TimeoutExpired, TimeoutError):
+            with self._lock:
+                previous = self.results.get(k)
+            res = (replace(previous, stale=True, error=f"{typ}: timed out") if previous is not None
+                   else DetectorResult("error", f"{typ}: timed out", now_iso(), f"detector:{typ}", stale=True))
         except Exception as exc:  # isolation: one broken detector never takes down the others
             res = DetectorResult("error", f"{typ}: {type(exc).__name__}: {exc}"[:300], now_iso(), f"detector:{typ}")
         with self._lock:
             prev = self.results.get(k)
             self.results[k] = res
+            if not res.stale:
+                self._measured_at[k] = time.time()
             self._inflight.discard(k)
             self._due[k] = time.time() + (self.TTL.get(typ, 60) if res.status != "error" else 30)
-        if prev is None or (prev.status, prev.detail, prev.progress) != (res.status, res.detail, res.progress):
+        if prev is None or (prev.status, prev.detail, prev.progress, prev.stale, prev.error) != (res.status, res.detail, res.progress, res.stale, res.error):
             self.on_change()
 
     def get(self, spec: dict) -> DetectorResult | None:
         with self._lock:
-            return self.results.get(self.key(spec))
+            key = self.key(spec)
+            result = self.results.get(key)
+            if result is not None and result.stale:
+                measured = self._measured_at.get(key)
+                return replace(result, age_s=round(time.time() - measured, 1) if measured else None)
+            return result
 
-    def verify(self, spec: dict) -> DetectorResult:
-        """Measure once for a guarded completion, bypassing dashboard cache."""
-        requested_at = time.monotonic_ns()
+    def verify(self, spec: dict, requested_at: int | None = None) -> DetectorResult:
+        """Fresh live measurement on a separate, bounded, admission-limited worker.
+
+        A timed-out worker never supplies a late success or updates dashboard
+        results. Slots stay occupied until workers exit, bounding abandoned work.
+        """
+        requested_at = requested_at if requested_at is not None else time.monotonic_ns()
         typ = spec.get("type", "?")
+        budget = min(20.0, max(0.01, self.cfg.verify_budget_s))
+        deadline = time.monotonic() + budget
+        refused = lambda detail: DetectorResult("error", f"{typ}: {detail}", now_iso(), f"detector:{typ}")
+        if not self._verify_slots.acquire(blocking=False):
+            return refused("live verification workers busy; retry")
+        future = concurrent.futures.Future()
         with self._lock:
             self._verifying += 1
-        previous = getattr(self._live, "verify", None)
-        self._live.verify = requested_at
+
+        def measure():
+            self._live.verify = requested_at
+            try:
+                with external_context(self.sources, deadline=deadline):
+                    result = getattr(self, "d_" + typ)(spec)
+                result = result if time.monotonic() < deadline else refused("live measurement timed out")
+            except Exception as exc:
+                result = refused(f"{type(exc).__name__}: {exc}"[:250])
+            finally:
+                self._live.verify = None
+                with self._lock:
+                    self._verifying -= 1
+                self._verify_slots.release()
+            future.set_result(result)
+
+        threading.Thread(target=measure, name="verify-measurement", daemon=True).start()
         try:
-            # Run on the request thread, never behind the dashboard worker pool.
-            return getattr(self, "d_" + typ)(spec)
-        except Exception as exc:
-            return DetectorResult("error", f"{typ}: {type(exc).__name__}: {exc}"[:300],
-                                  now_iso(), f"detector:{typ}")
-        finally:
-            self._live.verify = previous
-            with self._lock:
-                self._verifying -= 1
+            return future.result(timeout=max(0, deadline - time.monotonic()))
+        except concurrent.futures.TimeoutError:
+            return refused("live measurement timed out")
 
     def force(self) -> None:
         """Expire every cached result (used when an event arrives, so evidence is re-checked promptly)."""
@@ -180,16 +296,18 @@ class Detectors:
                 flight, started_at = entry
             if requested_at is None or started_at >= requested_at:
                 # Share only a measurement that qualifies for this request.
-                flight.result()
+                flight.result(timeout=min(CALL_TIMEOUT_S, _remaining()))
                 return
             # Serialize behind an older same-ref fetch, but neither its success
             # nor its failure measures the branch for this verification request.
             try:
-                flight.result()
+                flight.result(timeout=min(CALL_TIMEOUT_S, _remaining()))
+            except concurrent.futures.TimeoutError:
+                raise
             except Exception:
                 pass
         try:
-            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
+            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo)
             if rc != 0:
                 raise RuntimeError(f"git fetch {remote_branch}: {out.strip()[:160]}")
         except BaseException as exc:
@@ -208,7 +326,7 @@ class Detectors:
             self._fetch(ref[len("origin/"):])
         return ref
 
-    def _psql(self, sql: str, timeout: int = 60) -> list[list[str]]:
+    def _psql(self, sql: str, timeout: float = CALL_TIMEOUT_S) -> list[list[str]]:
         if not self.cfg.pgenv or not os.path.exists(self.cfg.pgenv):
             raise RuntimeError("no read-only DB env file configured (PRAVAHA_PGENV) — unmeasured")
         # read-only by construction: every query runs inside a READ ONLY transaction
@@ -254,16 +372,16 @@ class Detectors:
     def d_branch_merged(self, spec):
         self._fetch("main")
         ref = self._resolve_ref(spec["ref"])
-        rc0, _ = _run(["git", "rev-parse", "--verify", "-q", ref], cwd=self.cfg.repo, timeout=30)
+        rc0, _ = _run(["git", "rev-parse", "--verify", "-q", ref], cwd=self.cfg.repo)
         if rc0 != 0:
             return DetectorResult("pending", f"{spec['ref']} does not exist yet", now_iso(), "detector:branch_merged")
-        rc, _ = _run(["git", "merge-base", "--is-ancestor", ref, "origin/main"], cwd=self.cfg.repo, timeout=30)
+        rc, _ = _run(["git", "merge-base", "--is-ancestor", ref, "origin/main"], cwd=self.cfg.repo)
         if rc == 0:
             return DetectorResult("done", f"{spec['ref']} is merged into main", now_iso(), "detector:branch_merged", 1.0)
         # main's merge queue squashes, so a merged branch is never an ancestor of main. Accept a MERGED PR into main
         # whose head commit is exactly the branch's current tip (a later push to the branch is not "merged").
         branch = spec["ref"].split("/", 1)[1] if spec["ref"].startswith("origin/") else spec["ref"]
-        rc_t, tip = _run(["git", "rev-parse", ref], cwd=self.cfg.repo, timeout=30)
+        rc_t, tip = _run(["git", "rev-parse", ref], cwd=self.cfg.repo)
         rc_p, out = _run(["gh", "pr", "list", "--state", "merged", "--base", "main", "--head", branch, "--limit", "5",
                           "--json", "number,headRefOid,mergeCommit,mergedAt"], cwd=self.cfg.repo)
         if rc_t == 0 and rc_p == 0:
@@ -276,12 +394,12 @@ class Detectors:
                     mc = (pr.get("mergeCommit") or {}).get("oid", "")[:9]
                     return DetectorResult("done", f"{spec['ref']} merged via PR #{pr['number']} (squash {mc}, {pr.get('mergedAt', '')})",
                                           now_iso(), "detector:branch_merged", 1.0)
-        rc2, n = _run(["git", "rev-list", "--count", f"origin/main..{ref}"], cwd=self.cfg.repo, timeout=30)
+        rc2, n = _run(["git", "rev-list", "--count", f"origin/main..{ref}"], cwd=self.cfg.repo)
         return DetectorResult("running", f"{n.strip() if rc2 == 0 else '?'} commits on {spec['ref']} not yet on main", now_iso(), "detector:branch_merged")
 
     def d_branch_file_contains(self, spec):
         ref = self._resolve_ref(spec["ref"])
-        rc, out = _run(["git", "show", f"{ref}:{spec['path']}"], cwd=self.cfg.repo, timeout=60)
+        rc, out = _run(["git", "show", f"{ref}:{spec['path']}"], cwd=self.cfg.repo)
         if rc != 0:
             return DetectorResult("pending", f"{os.path.basename(spec['path'])} not on {spec['ref']}", now_iso(), "detector:branch_file_contains")
         if re.search(spec["pattern"], out, re.M):
@@ -343,12 +461,12 @@ def git_activity(worktree: str) -> dict:
     """Last commit (time, hash, subject), branch and dirty-file count of a stream's worktree."""
     if not worktree or not os.path.isdir(worktree):
         return {"error": f"worktree not found: {worktree}"}
-    rc, out = _run(["git", "log", "-1", "--format=%ct|%h|%s"], cwd=worktree, timeout=15)
+    rc, out = _run(["git", "log", "-1", "--format=%ct|%h|%s"], cwd=worktree)
     if rc != 0:
         return {"error": out.strip()[:160]}
     ct, h, subj = (out.strip().split("|", 2) + ["", "", ""])[:3]
-    rc_b, br = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=worktree, timeout=15)
-    rc_s, st = _run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=worktree, timeout=30)
+    rc_b, br = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=worktree)
+    rc_s, st = _run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=worktree)
     return {"worktree": worktree, "branch": br.strip() if rc_b == 0 else "?",
             "last_commit_ts": int(ct) if ct.isdigit() else None, "last_commit": h, "subject": subj[:140],
             "dirty_files": len([l for l in st.splitlines() if l.strip()]) if rc_s == 0 else None}
@@ -370,6 +488,8 @@ def power_source() -> str:
         if "Battery Power" in out:
             m = re.search(r"(\d+)%", out)
             return f"battery {m.group(1)}%" if m else "battery"
+    except subprocess.TimeoutExpired:
+        raise
     except Exception:  # noqa: BLE001
         pass
     return "unknown"

@@ -87,7 +87,10 @@ class Engine:
         self._backup_at = 0.0
         self._backup_info: dict = {}
         self._seen_events = 0
-        self.snapshot: dict = {}
+        # A cold start has a complete, honest empty view before any collector or
+        # external probe runs. Version zero keeps readiness false until a tick
+        # actually completes; a persisted snapshot may replace this below.
+        self.snapshot: dict = {**build_snapshot(self.model, [], {}, {}, {"power": "unknown"}), "version": 0}
         self.version = 0
         self._digest = ""
         self._dirty = True
@@ -104,6 +107,7 @@ class Engine:
         self._dirty_generation = 0
         self.tick_errors: collections.deque = collections.deque(maxlen=20)
         self._load_persisted()
+        self._published = (self.snapshot, self._last_tick)
 
     # ---- lifecycle ---------------------------------------------------------------------------
     def _load_persisted(self) -> None:
@@ -161,9 +165,11 @@ class Engine:
                 # Everything mutated by a collector is private; detector cache and
                 # cfg are intentionally shared services. Published models/snapshots
                 # are replaced, never mutated, by the collector.
-                stage.log = copy.copy(self.log)
-                stage.log.events = list(self.log.events)
-                stage.log._lock = threading.Lock()
+                # Give the staged cursor its own lock at construction. Never
+                # copy a live lock and then replace it on an existing reader.
+                stage.log = EventLog(path=self.log.path, events=list(self.log.events),
+                                     malformed=self.log.malformed, _inode=self.log._inode,
+                                     _offset=self.log._offset, _partial=self.log._partial)
                 stage.cond = threading.Condition()
                 stage.tick_errors = collections.deque(maxlen=20)
                 stage._tick_history = list(self.tick_errors)
@@ -175,7 +181,8 @@ class Engine:
 
             def collect():
                 try:
-                    stage._collect_tick()
+                    with D.external_context(self.det.sources):
+                        stage._collect_tick()
                 except Exception as exc:
                     errors.append(exc)
                 finally:
@@ -198,6 +205,7 @@ class Engine:
                 self._dirty = stage._dirty or generation != self._dirty_generation
                 self.tick_errors.extend(stage.tick_errors)
                 self._last_tick = time.time()
+                self._published = (self.snapshot, self._last_tick)
                 self._tick_abandoned = False
                 self.cond.notify_all()
             if time.time() - self._activity_at > self.cfg["git_every_s"] and not self._activity_running:
@@ -259,7 +267,8 @@ class Engine:
         try:
             out = {}
             for s in self.model.get("streams", []):
-                acts = [D.git_activity(w) for w in s.get("worktrees", []) if os.path.isdir(w)]
+                with D.external_context(self.det.sources):
+                    acts = [D.git_activity(w) for w in s.get("worktrees", []) if os.path.isdir(w)]
                 live = [a for a in acts if a.get("last_commit_ts")]
                 latest = max(live, key=lambda a: a["last_commit_ts"]) if live else (acts[0] if acts else {"error": "no worktree yet"})
                 out[s["id"]] = {**latest, "all": acts}
@@ -292,15 +301,31 @@ class Engine:
         except OSError as exc:
             self.tick_errors.append(f"backup failed: {exc}")
 
+    def read_snapshot(self) -> dict:
+        """Read the last completed publication without acquiring any service lock.
+
+        The collector replaces this tuple in one assignment. Freshness is derived
+        in memory, including when the collector has stalled or been abandoned.
+        """
+        snap, completed_at = self._published
+        age = round(max(0, time.time() - completed_at), 1)
+        health = dict(snap.get("health", {}))
+        sources = {}
+        for name, source in health.get("sources", {}).items():
+            source = dict(source)
+            if source.get("age_s") is not None:
+                source["age_s"] = round(source["age_s"] + max(0, time.time() - source.get("sampled_at", completed_at)), 1)
+            sources[name] = source
+        health.update(server_started_at=self.started_at.isoformat(timespec="seconds"),
+                      initializing=not bool(snap.get("version")),
+                      tick_age_s=age, engine_tick_age_s=age, sources=sources,
+                      degraded=any(source.get("stale") for source in sources.values()),
+                      git_activity_age_s=round(time.time() - self._activity_at, 1) if self._activity_at else None,
+                      tick_abandoned=self._tick_abandoned, tick_errors=list(self.tick_errors)[-3:])
+        return {**snap, "tick_age_s": age, "health": health}
+
     def health(self) -> dict:
-        """Request-safe: only cached values and in-memory freshness, never I/O."""
-        with self.cond:
-            cached = dict(self.snapshot.get("health", {}))
-            cached.update(server_started_at=self.started_at.isoformat(timespec="seconds"),
-                          engine_tick_age_s=round(time.time() - self._last_tick, 1),
-                          git_activity_age_s=round(time.time() - self._activity_at, 1) if self._activity_at else None,
-                          tick_abandoned=self._tick_abandoned, tick_errors=list(self.tick_errors)[-3:])
-        return cached
+        return self.read_snapshot()["health"]
 
     def _sample_health(self) -> dict:
         """External probes run only in the budgeted collector, outside publication locks."""
@@ -310,12 +335,18 @@ class Engine:
                 r = self.det.get(i["detector"])
                 if r and r.status == "error":
                     errs.append({"item": i["id"], "detail": r.detail})
+        power = self.snapshot.get("health", {}).get("power", "unknown")
+        try:
+            power = D.power_source()
+        except D.subprocess.TimeoutExpired:
+            self.tick_errors.append("power: timed out; keeping last measurement")
         return {
+            "sources": self.det.sources.snapshot(),
             "server_started_at": self.started_at.isoformat(timespec="seconds"),
             "engine_tick_age_s": round(time.time() - self._last_tick, 1),
             "db_proxy": D.port_open(self.cfg["db_port"]),
             "db_credentials": bool(self.cfg["pgenv"] and os.path.exists(self.cfg["pgenv"])),
-            "power": D.power_source(),
+            "power": power,
             "hold": os.path.exists(self.cfg["hold"]),
             "event_log": {"path": self.cfg["events"], "events": len(self.log.events), "malformed": self.log.malformed,
                           "exists": os.path.exists(self.cfg["events"])},
@@ -448,7 +479,7 @@ def _check_declarations(model: dict) -> list[str]:
 def _strip_ages(obj):
     if isinstance(obj, dict):
         return {k: _strip_ages(v) for k, v in obj.items()
-                if not (k.endswith("_age_s") or k in ("elapsed_s", "age_s", "power", "liveness"))}
+                if not (k.endswith("_age_s") or k in ("elapsed_s", "age_s", "sampled_at", "liveness"))}
     if isinstance(obj, list):
         return [_strip_ages(v) for v in obj]
     return obj
@@ -473,25 +504,25 @@ def make_handler(engine: Engine):
             return self._send(code, json.dumps(obj, ensure_ascii=False, default=str).encode(), "application/json; charset=utf-8")
 
         def do_GET(self):
+            requested_at = time.monotonic_ns()
             u = urlparse(self.path)
             path, q = u.path, parse_qs(u.query)
             if path in ("/", "/index.html"):
                 return self._static("index.html")
             if path.startswith("/static/"):
                 return self._static(path[len("/static/"):])
-            with engine.cond:
-                snap = engine.snapshot
+            snap = engine.read_snapshot()
             if path == "/api/state":
                 return self._json(snap)
             if path == "/api/health":
-                h = engine.health()
-                h.update(ok=h["engine_tick_age_s"] < 10 and not h["tick_abandoned"], version=snap.get("version", 0))
+                h = snap["health"]
+                h.update(ok=h["engine_tick_age_s"] < 10 and not h["tick_abandoned"] and bool(snap.get("version")), version=snap.get("version", 0))
                 return self._json(h, 200 if h["ok"] else 503)
             if path == "/api/next":
                 sid = (q.get("stream") or [""])[0].upper()
                 flat = [t for tr in snap.get("tracks", []) for t in tr["items"]]
                 mine = [t for t in flat if not sid or t.get("owner") == sid]
-                return self._json({"stream": sid, "version": snap.get("version"),
+                return self._json({"stream": sid, "version": snap.get("version"), "tick_age_s": snap["tick_age_s"],
                                    "running": [t for t in mine if t["status"] in ("running", "review")],
                                    "ready": [t for t in mine if t["status"] == "ready"],
                                    "blocked": [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict")]})
@@ -499,7 +530,7 @@ def make_handler(engine: Engine):
                 iid = (q.get("id") or [""])[0]
                 flat = [t for tr in snap.get("tracks", []) for t in tr["items"]]
                 it = next((t for t in flat if t["id"] == iid), None)
-                return self._json(it or {"error": f"no item {iid}"}, 200 if it else 404)
+                return self._json({**(it or {"error": f"no item {iid}"}), "tick_age_s": snap["tick_age_s"]}, 200 if it else 404)
             if path == "/api/verify" and "step" in parse_qs(u.query, keep_blank_values=True):
                 # plan §6 STEP: measure the step's own named detector; a step whose detector is null has none
                 iid, step = (q.get("id") or [""])[0], (q.get("step") or [""])[0]
@@ -510,7 +541,7 @@ def make_handler(engine: Engine):
                 if not isinstance(spec, dict) or not spec:
                     return self._json({"error": "unknown item or step, or the step has no named detector"}, 404)
                 return self._json({"item": iid, "step": step, "spec": spec,
-                                   "detector": engine.det.verify(spec).to_dict()})
+                                   "detector": engine.det.verify(spec, requested_at=requested_at).to_dict()})
             if path == "/api/verify":
                 iid = (q.get("id") or [""])[0]
                 item = next((row for row in engine.model.get("items", []) if row["id"] == iid), None)
@@ -518,7 +549,7 @@ def make_handler(engine: Engine):
                     return self._json({"error": "unknown item or no detector"}, 404)
                 # This is a fresh check, not a cached dashboard status. The DB detector
                 # executes inside the tracker, so the CLI never handles its credential.
-                return self._json({"item": iid, "detector": engine.det.verify(item["detector"]).to_dict()})
+                return self._json({"item": iid, "detector": engine.det.verify(item["detector"], requested_at=requested_at).to_dict()})
             if path == "/events":
                 return self._sse()
             return self._send(404, b"not found", "text/plain")
@@ -541,16 +572,17 @@ def make_handler(engine: Engine):
             try:
                 while not engine._stop.is_set():
                     with engine.cond:
-                        if engine.version == sent:
+                        if engine._published[0].get("version", 0) == sent:
                             engine.cond.wait(timeout=5)
-                        snap, ver = engine.snapshot, engine.version
+                        snap = engine.read_snapshot()
+                        ver = snap.get("version", 0)
                     if ver != sent and snap:
                         data = json.dumps(snap, ensure_ascii=False, default=str)
                         self.wfile.write(f"id: {ver}\nevent: snapshot\ndata: {data}\n\n".encode())
                         self.wfile.flush()
                         sent, last_ping = ver, time.time()
                     elif time.time() - last_ping >= 5:
-                        alive = json.dumps({"version": ver, "tick_age_s": round(time.time() - engine._last_tick, 1),
+                        alive = json.dumps({"version": ver, "tick_age_s": snap["tick_age_s"],
                                             "server_time": time.time()})
                         self.wfile.write(f"event: alive\ndata: {alive}\n\n".encode())
                         self.wfile.flush()
@@ -562,6 +594,8 @@ def make_handler(engine: Engine):
 
 
 class _QuietServer(ThreadingHTTPServer):
+    # The default backlog of five drops bursts from the campaign's 8–10 jobs.
+    request_queue_size = 128
     daemon_threads = True
     allow_reuse_address = True
 
@@ -580,6 +614,8 @@ def serve(port: int, cfg: dict | None = None) -> tuple[ThreadingHTTPServer, Engi
 
 
 def main() -> None:
+    import faulthandler, signal as _sig
+    faulthandler.register(_sig.SIGUSR1, all_threads=True)
     ap = argparse.ArgumentParser(description="Pravāha real-time tracker")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PRAVAHA_TRACKER_PORT", str(DEFAULT_PORT))))
     a = ap.parse_args()
