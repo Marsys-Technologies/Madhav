@@ -217,6 +217,7 @@ def _build_kernel_arcs(
     from services.gochara_kernel import arcs as kernel_arcs
     from services.gochara_kernel.contacts import find_boundary_roots
     from services.gochara_kernel.knots import EphemerisBackendError
+    from brahmagyan.l0_ephemeris import _tropical_to_jd
 
     index_by_body: dict[str, Any] = {}
     roots_by_body: dict[str, list[Any]] = {}
@@ -225,7 +226,9 @@ def _build_kernel_arcs(
         daily = daily_by_body.get(body) or []
         if len(daily) < 4:
             continue
-        jds = [_date_to_jd(d) for d, _lon in daily]
+        # L0 ephemeris_daily values are sampled at noon UT. The overlay's
+        # DATE-to-midnight seam describes window bounds, not sample instants.
+        jds = [_tropical_to_jd(d) for d, _lon in daily]
         lons = [lon for _d, lon in daily]
         try:
             idx = kernel_arcs.build_arc_index(body, jds, lons)
@@ -355,6 +358,19 @@ class KaMoortiNirnayaWriter(WriterBase):
     asset_id = "ka_moorti_nirnaya"
 
     def run(self, ctx) -> WriterResult:
+        # SR-A4-01: only an explicit typed candidate payload enters the new
+        # path. Normal dispatch keeps the published legacy computation intact.
+        if "ka_adapter_payload" in ctx.config:
+            from services.kala_core.overlays.contested import AdapterPayload
+            from services.kala_core.overlays.contested_storage import replace_candidate
+
+            payload = ctx.config["ka_adapter_payload"]
+            if not isinstance(payload, AdapterPayload) or "ka_" + payload.family != self.asset_id:
+                raise ValueError("candidate payload family does not match registered writer")
+            count = replace_candidate(ctx, payload)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=count,
+                                notes="SR-A4-01 candidate only; publication unchanged")
+
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]
 

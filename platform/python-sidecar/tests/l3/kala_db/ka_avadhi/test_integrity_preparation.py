@@ -128,14 +128,26 @@ def test_full_current_sql_does_not_measure_inherited_candidate_values(db):
     assert inspect(db).passed is False
 
 
-@pytest.mark.parametrize('method,lords,reason', [
-    ('chara_karaka', ['Aries', 'Taurus'], 'method_inapplicable'),
-    ('yogini', ['Mangala', 'Siddha'], 'missing_fact'),
+@pytest.mark.parametrize('method,lords,reason,tier', [
+    ('chara_karaka', ['Aries', 'Taurus'], 'method_inapplicable', 'two_pass_verified'),
+    ('yogini', ['Mangala', 'Siddha'], 'missing_fact', 'two_pass_verified'),
+    ('yogini', ['Mangala', 'Siddha'], 'missing_fact', 'single'),
+    ('yogini', ['Mangala', 'Siddha'], 'missing_fact', 'classical_match'),
 ])
-def test_method_specific_lords_and_null_reasons(db, method, lords, reason):
+def test_method_specific_lords_and_null_reasons(db, method, lords, reason, tier):
     db.execute("UPDATE kala_layer_candidate SET conventions=jsonb_set(conventions,'{f2,systems}',%s)", (Jsonb([method]),))
+    db.execute("UPDATE kala_layer_candidate SET conventions=jsonb_set(conventions,'{f2,tier}',%s)", (Jsonb(tier),))
     for level, lord in enumerate(lords, 1):
-        db.execute('UPDATE chart_dashas SET system_id=%s,lord_graha=%s WHERE level_n=%s', (method, lord, level))
+        # Keep eligible Vimśottarī anchors in the same settled run. Method
+        # coverage is additional data, not a replacement for those anchors.
+        db.execute('''INSERT INTO chart_dashas SELECT gen_random_uuid(),chart_id,build_id,ayanamsha_id,
+            %s,%s,level_n,%s,NULL,start_iso,end_iso,start_date,end_date,
+            applies_to_this_chart_flag,is_truncated_at_window_start,is_truncated_at_window_end,
+            lord_to_parent_relationship FROM chart_dashas WHERE system_id='vimshottari' AND level_n=%s''',
+            (tier, method, lord, level))
+    db.execute('''UPDATE chart_dashas ad SET parent_row_id=md.dasha_row_id
+        FROM chart_dashas md WHERE ad.system_id=%s AND md.system_id=ad.system_id
+        AND ad.level_n=2 AND md.level_n=1''', (method,))
     KaAvdhiWriter().run(ctx(db))
     assert inspect(db).passed is True
     dossier = db.execute('SELECT dossier FROM kala_avadhi WHERE generation=%s AND level_n=1', (GEN,)).fetchone()[0]
@@ -192,3 +204,33 @@ def test_existing_mandatory_db_job_collects_preparation_suite():
     assert not job.get('continue-on-error') and not step.get('continue-on-error')
     assert 'changes' in job['needs'] and "docs_only != 'true'" in job['if']
     assert not any(flag in step['run'] for flag in ('--ignore', '--deselect', ' -k ', '||'))
+
+
+@pytest.mark.parametrize('damage,code', [
+    ('missing_receipt', 'settlement_missing'),
+    ('malformed_receipt', 'settlement_malformed'),
+    ('other_chart', 'chart_not_settled'),
+    ('wrong_build', 'settled_build_absent'),
+    ('null_build', 'dasha_build_null'),
+    ('mixed_build', 'settled_build_ambiguous'),
+    ('no_eligible_rows', 'settled_build_absent'),
+])
+def test_candidate_inspection_propagates_governed_dasha_refusal(db, damage, code):
+    from services.gochara_kernel import dasha_read
+
+    KaAvdhiWriter().run(ctx(db))
+    before = snapshot(db)
+    if damage == 'missing_receipt': dasha_read.SETTLEMENT_PATH.unlink()
+    elif damage == 'malformed_receipt': dasha_read.SETTLEMENT_PATH.write_text('{}')
+    elif damage == 'other_chart':
+        db.execute("UPDATE kala_layer_candidate SET chart_id='00000000-0000-0000-0000-000000000999'")
+    elif damage == 'wrong_build': db.execute("UPDATE chart_dashas SET build_id='00000000-0000-0000-0000-000000000999'")
+    elif damage == 'null_build': db.execute("UPDATE chart_dashas SET build_id=NULL")
+    elif damage == 'mixed_build':
+        db.execute("INSERT INTO chart_dashas(dasha_row_id,chart_id,build_id,ayanamsha_id,system_id,level_n,verification_pass_status) "
+                   "VALUES (gen_random_uuid(),%s,'00000000-0000-0000-0000-000000000999',%s,'vimshottari',4,'unknown')", (CHART, AYA))
+    elif damage == 'no_eligible_rows': db.execute("UPDATE chart_dashas SET verification_pass_status='single'")
+    requested_chart = '00000000-0000-0000-0000-000000000999' if damage == 'other_chart' else CHART
+    with pytest.raises(dasha_read.DashaBuildRefused, match=code):
+        inspect(db, chart=requested_chart)
+    assert snapshot(db) == before

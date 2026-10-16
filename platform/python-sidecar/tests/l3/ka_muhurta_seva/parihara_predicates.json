@@ -3,7 +3,7 @@
     "id": 201,
     "dosha_canonical_id": "mars_eighth",
     "scope": "marriage",
-    "source_citation": "Muhūrta Cintāmaṇi v.88",
+    "source_citation": "Muhūrta Cintāmaṇi, Vivāha v.88 ṭīkā (PG116:C1, printed p.104); literal reading disputed by PG115:C2 reconstruction",
     "source_chunk_id": "muhurta_chintamani_pg0116_c01",
     "cancellation_condition_text": "If Maṅgala (Mars) is in a debilitated sign, or combust, or in the eighth, there is likewise no doṣa.",
     "predicate": {
@@ -33,6 +33,46 @@
     "priority_rank": null,
     "net_standing": "cancellable_by_condition",
     "source_verse": 88
+  },
+  {
+    "id": 206,
+    "dosha_canonical_id": "mars_eighth",
+    "scope": "marriage",
+    "source_citation": "Muhūrta Cintāmaṇi, Vivāha v.88 reconstructed mūla (PG115:C2); damaged text reconstructed from the following ṭīkā",
+    "source_chunk_id": "muhurta_chintamani_pg0115_c02",
+    "source_verse": 88,
+    "cancellation_condition_text": "if Bhauma (Mars) is debilitated or combust, no doṣa arises even in the eighth",
+    "predicate": {
+      "op": "all_of",
+      "terms": [
+        {
+          "planet": "Mars",
+          "house_from_lagna": [
+            8
+          ]
+        },
+        {
+          "op": "any_of",
+          "terms": [
+            {
+              "planet": "Mars",
+              "dignity": "debilitated",
+              "varga": "rasi"
+            },
+            {
+              "planet": "Mars",
+              "dignity": "combust",
+              "varga": "rasi"
+            }
+          ]
+        }
+      ]
+    },
+    "extraction_context": "mula_reconstructed",
+    "conjunction_reading": "mula",
+    "tika_extension": false,
+    "priority_rank": null,
+    "net_standing": "cancellable_by_condition"
   },
   {
     "id": 202,

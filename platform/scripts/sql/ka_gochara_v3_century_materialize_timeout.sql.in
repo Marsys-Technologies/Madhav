@@ -1,0 +1,59 @@
+-- J-GOCHARA-TIMEOUT — INERT PRE-BUILD TEMPLATE (SR-A4-01).
+-- Not a numbered migration; migrate.ts must never discover this file.
+-- (I) INTERPRETATION: D-GOCHARA-TIMEOUT has conditional approval only. Leave
+-- both tokens unresolved until independent registry/run/policy evidence binds
+-- the expected baseline and approved timeout. Neither report figures nor test
+-- fixture values authorize a production value. See the adjacent preparation note.
+--
+-- Once evidence exists, render integer literals into a NEW guard-numbered
+-- migration, review that exact file and execute only through the governed runner.
+-- The runner owns the transaction. No commit, dispatch, hold lift or data cleanup.
+-- Full-table lock protects the snapshot from concurrent registry writes; it does
+-- NOT replace the external running-build lease/quiescence checks.
+
+LOCK TABLE public.asset_registry IN EXCLUSIVE MODE;
+
+DO $ky_timeout$
+DECLARE
+    expected_timeout integer := __EXPECTED_TIMEOUT_SECONDS__;
+    approved_timeout integer := __APPROVED_TIMEOUT_SECONDS__;
+    current_timeout integer;
+    before_rows jsonb;
+    expected_rows jsonb;
+    after_rows jsonb;
+BEGIN
+    IF expected_timeout IS NULL OR expected_timeout <= 0
+       OR approved_timeout IS NULL OR approved_timeout <= expected_timeout THEN
+        RAISE EXCEPTION 'J-GOCHARA-TIMEOUT: invalid timeout parameters';
+    END IF;
+
+    SELECT writer_timeout_seconds INTO current_timeout
+      FROM public.asset_registry
+     WHERE asset_id = 'ka_gochara_v3_century_materialize';
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'J-GOCHARA-TIMEOUT: missing target';
+    END IF;
+    -- An exact replay is harmless; every third value (including NULL) refuses.
+    IF current_timeout IS NULL OR current_timeout NOT IN (expected_timeout, approved_timeout) THEN
+        RAISE EXCEPTION 'J-GOCHARA-TIMEOUT: stale baseline';
+    END IF;
+
+    SELECT jsonb_object_agg(r.asset_id, to_jsonb(r)) INTO before_rows
+      FROM public.asset_registry r;
+    expected_rows := jsonb_set(before_rows,
+        ARRAY['ka_gochara_v3_century_materialize', 'writer_timeout_seconds'],
+        to_jsonb(approved_timeout), false);
+
+    UPDATE public.asset_registry
+       SET writer_timeout_seconds = approved_timeout
+     WHERE asset_id = 'ka_gochara_v3_century_materialize'
+       AND writer_timeout_seconds = expected_timeout;
+
+    -- Independent readback of every column and neighbour, including future
+    -- columns and trigger side effects. Any discrepancy aborts the transaction.
+    SELECT jsonb_object_agg(r.asset_id, to_jsonb(r)) INTO after_rows
+      FROM public.asset_registry r;
+    IF after_rows IS DISTINCT FROM expected_rows THEN
+        RAISE EXCEPTION 'J-GOCHARA-TIMEOUT: registry readback mismatch';
+    END IF;
+END $ky_timeout$;

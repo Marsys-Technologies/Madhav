@@ -2,12 +2,18 @@
 import datetime as dt
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 FLEET = Path(__file__).resolve().parents[1]
+SCRIPTS = FLEET.parents[3] / "platform" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(SCRIPTS / "__tests__"))
+import smalltest_safety_support as evidence
+
 BASE_ENABLED = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
 W4 = {
     "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label"]),
@@ -34,7 +40,8 @@ def executor(tmp_path, monkeypatch):
     spec.loader.exec_module(mod)
     # Only validate() runs. All external observations are injected; execution is forbidden.
     monkeypatch.setattr(mod, "lease_live", lambda _: True)
-    monkeypatch.setattr(mod, "git", lambda *a, **kw: SimpleNamespace(returncode=0))
+    source = (SCRIPTS / "v5_small_test_shared.py").read_text()
+    monkeypatch.setattr(mod, "git", lambda *a, **kw: SimpleNamespace(returncode=0, stdout=source))
     monkeypatch.setattr(mod, "seen", lambda _: False)
     mod.ACC.mkdir(parents=True)
     return mod
@@ -45,6 +52,15 @@ def request(executor, kind, args=None):
                requested_by="adhikarin", kyd="PRE-D-TEARDOWN", chart_id=executor.CANONICAL_CHART,
                lease_id="fixture", reviewed_commit="a" * 40, args=args or {},
                expires_at=(dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=10)).isoformat())
+    # Supply the same file-bound evidence required by main's P01 safety policy.
+    if kind == "smalltest_dispatch":
+        req["absence_receipt"], req["absence_acceptance"] = evidence.absence_for(executor.KY_ROOT)
+    elif kind in ("smalltest_teardown", "smalltest_teardown_dryrun"):
+        scope = evidence.scope_for(executor.KY_ROOT, evidence.RUN, {"fixture": "manifest"}, None)
+        req["smalltest_scope"] = scope
+        if kind == "smalltest_teardown":
+            prior = evidence.request_for(executor.KY_ROOT, scope, rowset_sha256="c" * 64)
+            req.update({key: prior[key] for key in ("dryrun_receipt", "dryrun_acceptance")})
     acceptance = executor.ACC / "w4-proof.json"
     req["acceptance_receipt"] = str(acceptance)
     acceptance.write_text(json.dumps(dict(result="ACCEPTED", by="v1", operation_id=req["operation_id"],
@@ -84,7 +100,9 @@ def test_exact_script_capability_and_argv(table, kind):
 
 @pytest.mark.parametrize("kind", list(W4) + ["readback_sql", "migration_readback"])
 def test_real_validate_accepts_only_listed_arguments(table, executor, kind):
-    args = {name: "fixture" for name in table[kind]["allowed_args"]}
+    values = {"run": "one_class_full", "classes": "marriage",
+              "horizon-start": "1998-01-01T00:00:00+00:00", "horizon-end": "2026-04-17T00:00:00+00:00"}
+    args = {name: values.get(name, "fixture") for name in table[kind]["allowed_args"]}
     req = request(executor, kind, args)
     assert executor.validate(req, table, caps()) is None
     for name in ["execute", "run-id", "operation", "i-am-steward", "sql", "generation"]:

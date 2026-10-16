@@ -1,4 +1,4 @@
-"""Behavioral replacement-safety contracts for the eight W2 row writers."""
+"""Behavioral replacement-safety contracts for W2 writers and inert KA-3a dispatch."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -149,17 +149,6 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
         # that swallow). The kernel solver is covered in
         # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
         monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
-    else:
-        monkeypatch.setattr(module, "_fetch_janma_moon", lambda *_: (0, 0, "fact-1"))
-        monkeypatch.setattr(
-            module,
-            "_fetch_vedha_rules",
-            lambda *_: {("sun", 1): {"vedha_house": 7, "phala": "fixture", "classical_citation": "fixture"}},
-        )
-        monkeypatch.setattr(module, "_fetch_malefic_scale", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_latta_rules", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
-        monkeypatch.setattr(module, "_fetch_school_tagged_vedha_pair", lambda *_: (1, "fixture-school"))
     monkeypatch.setattr(module, "_compute_ayanamsha_offset", lambda *_: 0.0)
 
 
@@ -168,7 +157,6 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
     [
         (kota, kota.ALL_GRAHAS, kota.KaKotaChakraWriter),
         (moorti, moorti.MOORTI_GRAHAS + ("Moon",), moorti.KaMoortiNirnayaWriter),
-        (vedha, vedha.ALL_GRAHAS, vedha.KaVedhaGocharaWriter),
     ],
 )
 def test_daily_writers_reject_gaps_duplicates_and_truncation(
@@ -201,7 +189,6 @@ def test_daily_writers_reject_gaps_duplicates_and_truncation(
     [
         (kota, kota.ALL_GRAHAS, kota.KaKotaChakraWriter),
         (moorti, moorti.MOORTI_GRAHAS + ("Moon",), moorti.KaMoortiNirnayaWriter),
-        (vedha, vedha.ALL_GRAHAS, vedha.KaVedhaGocharaWriter),
     ],
 )
 def test_daily_writers_delete_only_after_complete_horizon(
@@ -240,6 +227,39 @@ def test_daily_writers_delete_only_after_complete_horizon(
     assert conn.mutations[-1][0] == "executemany"
 
 
+@pytest.mark.parametrize("complete_horizon", [False, True])
+def test_vedha_preserves_legacy_without_explicit_candidate_payload(monkeypatch, complete_horizon):
+    # KA-3a's accepted pre-build dispatch replaces the rolling daily writer.
+    # Even complete legacy inputs cannot activate candidate/publication writes.
+    today = date.today()
+    start = today - timedelta(days=vedha.HORIZON_BACK_DAYS)
+    end = today + timedelta(days=vedha.HORIZON_FORWARD_DAYS)
+    daily = {body: _daily(start, end) for body in vedha.ALL_GRAHAS}
+    if not complete_horizon:
+        daily[vedha.ALL_GRAHAS[0]] = daily[vedha.ALL_GRAHAS[0]][:-1]
+    _patch_daily_writer_dependencies(monkeypatch, vedha, daily)
+    conn = RecordingConnection()
+    result = vedha.KaVedhaGocharaWriter().run(_ctx(conn))
+    assert result.rows_inserted == 0
+    assert result.notes == "KA-3a pre-build: provider binding/activation pending"
+    assert conn.calls == []
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_vedha_unbound_dispatch_preserves_legacy_rows(dry_run):
+    # KA-3a replaced the rolling-day writer with an explicitly bound candidate
+    # provider. Without a payload dispatch must not read or mutate legacy data.
+    conn = RecordingConnection()
+    ctx = _ctx(conn)
+    ctx.dry_run = dry_run
+
+    result = vedha.KaVedhaGocharaWriter().run(ctx)
+
+    assert result.rows_inserted == 0
+    assert "provider binding/activation pending" in result.notes
+    assert conn.calls == []
+
+
 def test_avadhi_preserves_published_rows_without_build_candidate():
     conn = RecordingConnection()
     result = avadhi.KaAvdhiWriter().run(_ctx(conn))
@@ -254,14 +274,19 @@ def test_avadhi_preserves_published_rows_without_build_candidate():
 @pytest.mark.parametrize(
     ("tier", "row_build", "error_type", "message"),
     [
-        (TWO_PASS_VERIFIED, "f2-build", RuntimeError,
+        (TWO_PASS_VERIFIED, "f2-build", avadhi.clocks.ClockUnavailable,
          "pinned chart_dashas row has a non-positive period"),
         ("L1", "f2-build", avadhi.clocks.ClockUnavailable, "tier_unavailable"),
         (TWO_PASS_VERIFIED, "other-build", avadhi.clocks.ClockUnavailable, "build_not_pinned"),
     ],
     ids=["invalid-period", "unsupported-tier-first", "wrong-build-first"],
 )
-def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message):
+def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message, monkeypatch):
+    # This oracle starts with F2 projection rows and exercises admission of
+    # their tier/build/interval before output mutation, after settlement.
+    # Real SQL admission is covered by test_j4p_malformed_settled_periods.
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(avadhi, "execute_governed_dasha_query", emulated_projection)
     pins = {
         "f2": {"build_id": "f2-build", "ayanamsha_id": "lahiri",
                "tier": tier, "systems": ["vimshottari"]},

@@ -28,6 +28,8 @@ from pathlib import Path
 
 import psycopg
 import pytest
+
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
 from psycopg.conninfo import make_conninfo
 
 from pipeline.orchestrator.asset_runner import get_writer_source_hash
