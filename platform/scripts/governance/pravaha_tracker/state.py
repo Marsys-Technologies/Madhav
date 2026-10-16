@@ -28,6 +28,14 @@ DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_eviden
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
 
 
+def open_dependencies(item: dict, rows: dict[str, dict]) -> list[str]:
+    """Ordered completion gates; merge/acceptance evidence never closes a dependency."""
+    terminal = ({"done", "not_applicable"}
+                if item.get("accepts_not_applicable_dependencies") is True else {"done"})
+    return [dep for dep in item.get("depends_on", [])
+            if rows.get(dep, {}).get("status") not in terminal]
+
+
 def _age_s(ts: str | None, now: dt.datetime) -> float | None:
     if not ts:
         return None
@@ -225,9 +233,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
-    # Owner direction 2026-10-08: a dependency that is MERGED with an independent ACCEPTED pre-merge verdict lets its
-    # dependants START (readiness), while completion and joins still require it to be DONE (deployed, post-deploy
-    # accepted). `deps_open` is the readiness list; `deps_open_strict` is what completion and joins use.
+    # Start-at-merge/acceptance remains a scheduling policy only. D-39: deps_open
+    # always names strict completion gates, even when work may already start.
+    # deps_open_strict is a compatibility alias with exactly the same meaning.
     merged_accepted = set()
     if model.get("control_plane", {}).get("ready_at_merge") is True:
         accepted = {e.get("item") for e in events if e.get("kind") == "verdict" and e.get("result") == "ACCEPTED"
@@ -249,12 +257,11 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             s = status[iid]
             deps = it.get("depends_on", [])
             accepts_skips = it.get("accepts_not_applicable_dependencies") is True
-            terminal = {"done", "not_applicable"} if accepts_skips else {"done"}
-            strict_open = [d for d in deps if status.get(d, {}).get("status") not in terminal]
-            open_deps = [d for d in strict_open if d not in merged_accepted]
-            s["deps_open"] = open_deps
+            strict_open = open_dependencies(it, status)
+            start_blockers = [d for d in strict_open if d not in merged_accepted]
+            s["deps_open"] = strict_open
             s["deps_open_strict"] = strict_open
-            if strict_open != open_deps:
+            if strict_open != start_blockers:
                 s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
             if decision_outcomes and s["status"] not in ("done", "not_applicable"):
                 origins = []
@@ -285,15 +292,16 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             break
     for iid, it in items.items():
         s = status[iid]
-        if s.pop("soft", False) and s["deps_open"]:
+        start_blockers = [d for d in s["deps_open"] if d not in merged_accepted]
+        if s.pop("soft", False) and start_blockers:
             s["status"] = "waiting"
         # An unmeasured detector on an item that cannot start yet is not an alarm: show it as waiting,
         # keep "unmeasured" in the detail, and raise it only once the item becomes startable.
-        if s["status"] == "unknown" and s["deps_open"] and not ix["items"].get(iid):
+        if s["status"] == "unknown" and start_blockers and not ix["items"].get(iid):
             s["status"] = "waiting"
             s["detail"] = f"unmeasured until startable — {s.get('detail', '')}"
         if s["status"] == "not_started":
-            s["status"] = "ready" if not s["deps_open"] else "waiting"
+            s["status"] = "ready" if not start_blockers else "waiting"
 
         # A5 D-39: display-only merge evidence, never a new completion state.
         # Use strict dependencies: readiness can relax a merged/accepted input
@@ -309,10 +317,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             and s["status"] in ("ready", "waiting", "running", "review")
             and all(step["done"] for step in s.get("steps", []))
             and outcomes_met
-            and s["deps_open_strict"]
-            and all(dep in items for dep in s["deps_open_strict"])
+            and s["deps_open"]
+            and all(dep in items for dep in s["deps_open"])
         )
-        s["gate_blockers"] = list(s["deps_open_strict"]) if s["built_waiting_on_gate"] else []
+        s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)

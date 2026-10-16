@@ -8,6 +8,7 @@ import subprocess
 
 import pytest
 
+from pravaha_tracker import cli
 from pravaha_tracker.completion import CompletionError, guarded_done_event
 from pravaha_tracker.state import build_snapshot
 
@@ -49,17 +50,67 @@ def snapshot(scenario):
 
 
 @pytest.mark.parametrize("detector_type", ["branch_merged", "pr_merged"])
-def test_names_every_strict_blocker_even_when_readiness_relaxes_it(scenario, detector_type):
+def test_names_every_strict_blocker_even_when_start_policy_relaxes_it(scenario, detector_type):
     scenario[0]["items"][0]["detector"]["type"] = detector_type
     snap, rows = snapshot(scenario)
     row = rows["K-BUILT"]
     assert row.get("built_waiting_on_gate") is True
     assert row["gate_blockers"] == ["D-GATE", "V-GATE", "JOIN-GATE", "K-INPUT"]
-    assert row["deps_open"] == ["D-GATE", "V-GATE", "JOIN-GATE"]
+    assert row["deps_open"] == ["D-GATE", "V-GATE", "JOIN-GATE", "K-INPUT"]
     assert row["deps_merged_pending_deploy"] == ["K-INPUT"]
     assert row["status"] == "running"  # the completed step starts work, not guarded completion
     assert snap["overall"]["built_waiting_on_gate"] == 1
     assert snap["overall"]["done"] == 0
+
+
+@pytest.mark.parametrize("ready_at_merge", [False, True])
+@pytest.mark.parametrize("ready_at_accepted", [False, True])
+def test_dashboard_open_dependencies_equal_guarded_done_refusal(
+        scenario, ready_at_merge, ready_at_accepted):
+    """A merged child must name its merged-but-not-done parent as an open gate."""
+    model, events, detectors = scenario
+    model["control_plane"].update(ready_at_merge=ready_at_merge,
+                                  ready_at_accepted=ready_at_accepted)
+    # Exercise both the mixed gate list and the remaining merged-only parent.
+    for close_other_gates in (False, True):
+        if close_other_gates:
+            events.append({"kind": "item", "item": "V-GATE", "state": "done",
+                           "guarded": True, "ts": NOW.isoformat()})
+            events.append({"kind": "decision", "decision": "D-APPROVE",
+                           "state": "decided", "ts": NOW.isoformat()})
+        expected = (["K-INPUT"] if close_other_gates else
+                    ["D-GATE", "V-GATE", "JOIN-GATE", "K-INPUT"])
+        row = snapshot(scenario)[1]["K-BUILT"]
+        with pytest.raises(CompletionError) as refusal:
+            guarded_done_event(model, events, "K-BUILT", "stream-K:builder",
+                               detectors["K-BUILT"], {})
+        assert str(refusal.value) == "dependencies remain open: " + ", ".join(expected)
+        assert row["deps_open"] == expected
+        assert row["deps_open"] == str(refusal.value).removeprefix(
+            "dependencies remain open: ").split(", ")
+        assert row["built_waiting_on_gate"] is True
+        assert row["gate_blockers"] == expected
+        assert row["status"] != "done"
+
+
+def test_cli_done_refusal_matches_dashboard_and_does_not_append(scenario, tmp_path, monkeypatch, capsys):
+    model, events, detectors = scenario
+    # Use local artifact evidence to exercise the real CLI without any network or GitHub call.
+    artifact = tmp_path / "proof.txt"
+    artifact.write_text("built")
+    model["items"][0]["detector"]["path"] = str(artifact)
+    log = tmp_path / "EVENTS.jsonl"
+    log.write_text("".join(json.dumps(event) + "\n" for event in events))
+    before = log.read_bytes()
+    monkeypatch.setattr(cli, "EVENTS", str(log))
+    monkeypatch.setattr(cli, "load_model", lambda: model)
+    monkeypatch.setattr(cli, "get", lambda *args, **kwargs: (
+        {"item": "K-BUILT", "detector": detectors["K-BUILT"]}, "live"))
+    expected = ["D-GATE", "V-GATE", "JOIN-GATE", "K-INPUT"]
+    assert cli.main(["done", "K-BUILT", "--stream", "K", "--artifact-path", str(artifact)]) == 2
+    assert capsys.readouterr().err.strip() == "refused: dependencies remain open: " + ", ".join(expected)
+    assert snapshot(scenario)[1]["K-BUILT"]["deps_open"] == expected
+    assert log.read_bytes() == before
 
 
 @pytest.mark.parametrize("missing", ["unmeasured", "pending", "running", "error", "blocked",
