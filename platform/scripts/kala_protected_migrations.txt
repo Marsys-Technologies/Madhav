@@ -29,6 +29,7 @@
 1380_issued_forecast_immutability_guard.sql
 1382_gochara_authority_no_truncate.sql
 1383_ka_3a_vedha_candidate_intervals.sql
+1384_ka_3b_contested_candidates.sql
 1386_l0_m_parihara_typed_source_prepare.sql
 1387_k5_g2_candidate_field.sql
 1388_k3_2_sealed_negative_space.sql
