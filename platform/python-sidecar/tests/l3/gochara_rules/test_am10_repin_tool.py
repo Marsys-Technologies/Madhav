@@ -364,6 +364,49 @@ def test_capture_and_load_round_trip_and_refuse_a_wrong_or_altered_file(tmp_path
         T.load_capture(str(p), CHART, OLDB)                                      # altered after capture
 
 
+@pytest.mark.parametrize("fault,diagnostic", [
+    ("missing_subject", "natal subjects"),
+    ("duplicate_subject", "natal subjects"),
+    ("foreign_subject", "natal subjects"),
+    ("null_longitude", "no longitude"),
+    ("empty_longitude", "no longitude"),
+])
+def test_capture_loader_refuses_invalid_natal_even_with_a_valid_checksum(tmp_path, fault, diagnostic):
+    natal = natal_dicts()
+    if fault == "missing_subject":
+        natal.pop()
+    elif fault == "duplicate_subject":
+        natal[-1]["fact_subject"] = natal[0]["fact_subject"]
+    elif fault == "foreign_subject":
+        natal[-1]["fact_subject"] = "RAH_TRUE"
+    else:
+        natal[0]["longitude"] = None if fault == "null_longitude" else ""
+    path = tmp_path / "invalid-natal.json"
+    T.write_capture(str(path), old_cap(natal=natal))
+    with pytest.raises(ValueError, match=diagnostic):
+        T.load_capture_full(str(path), CHART, OLDB)
+
+
+@pytest.mark.parametrize("identity", ["chart", "build", "selection"])
+def test_capture_checksum_binds_identity_and_selection(monkeypatch, identity):
+    """Keep row bytes fixed: changing only provenance must change the digest."""
+    cap = old_cap()
+    chart, build_id = CHART, OLDB
+    if identity == "chart":
+        chart = "33333333-3333-4333-8333-333333333333"
+    elif identity == "build":
+        build_id = NEWB
+    else:
+        selection = {**cap["selection"], "ayanamsha_id": "raman"}
+        monkeypatch.setattr(T, "selection_contract", lambda: selection)
+    changed = T.build_capture(chart, build_id, cap["rows"], cap["natal"])
+    assert changed["sha256"] != cap["sha256"]
+    import hashlib
+    import json
+    body = {k: changed[k] for k in ("chart_id", "build_id", "selection", "rows", "natal")}
+    assert changed["sha256"] == hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def _rewrite(p, mutate, recompute=False):
     import json as _j
     d = _j.loads(p.read_text())
@@ -970,6 +1013,15 @@ def test_the_NORMAL_cli_capture_path_against_a_disposable_database_without_a_pre
             for i, subj in enumerate(sorted(T.NATAL_SUBJECTS)):                                          # the ten natal rows (+ one other fact the capture must NOT take)
                 c.execute("INSERT INTO chart_facts VALUES (%s,%s,'lahiri_chitrapaksha','1c092ffb-72eb-4614-8422-552ca6eae985','graha_position',%s,'longitude_sidereal',%s,'single')", (f"f-{subj}", chart, subj, 100.123456789 + i))
             c.execute("INSERT INTO chart_facts VALUES ('f-other',%s,'lahiri_chitrapaksha','1c092ffb-72eb-4614-8422-552ca6eae985','house_chalit','H1','cusp_lon',5,'single')", (chart,))
+            # Each decoy differs from a valid natal fact in ONE selector. Dropping
+            # any individual SQL restriction must break the real CLI capture.
+            for fact_id, ayanamsha, category, key in (
+                ("wrong-key", "lahiri_chitrapaksha", "graha_position", "latitude"),
+                ("wrong-category", "lahiri_chitrapaksha", "house_chalit", "longitude_sidereal"),
+                ("wrong-ayanamsha", "raman", "graha_position", "longitude_sidereal"),
+            ):
+                c.execute("INSERT INTO chart_facts VALUES (%s,%s,%s,'1c092ffb-72eb-4614-8422-552ca6eae985',%s,'SUN',%s,999,'single')",
+                          (fact_id, chart, ayanamsha, category, key))
         monkeypatch.setenv("DATABASE_URL", dsn)
         cap = tmp_path / "old.json"
         assert T.main(["--capture-old", str(cap)]) == 0 and cap.exists()                                  # no conn=, no --new-build-id

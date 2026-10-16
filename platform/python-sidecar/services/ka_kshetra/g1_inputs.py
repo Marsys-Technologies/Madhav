@@ -70,6 +70,8 @@ def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixtu
             source_table='kala_vedha_gochara_interval',source_pk=row.get('source_ref')))
     for row in moorti:
         if row.get('null_reason') or row.get('quality_tier') is None:
+            mask(row['graha'],'kala_moorti_nirnaya_candidate',row.get('source_ref'),
+                 row['t_in'],row['t_out'],'moorti_information_unavailable')
             gaps.append({'source_ref':row.get('source_ref'), 'reason':'moorti_information_unavailable'})
             continue
         lo,hi=field_days(row['t_in'],birth),field_days(row['t_out'],birth)

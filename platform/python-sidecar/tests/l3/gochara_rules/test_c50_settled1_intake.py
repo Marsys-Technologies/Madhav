@@ -129,6 +129,54 @@ def test_a_shift_the_notice_does_not_expect_stops_R2(good, capsys):
     assert "STOP R2-shift" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("level,wrong", [("2", "1234"), ("3", "5678")])
+def test_each_notice_level_is_checked_independently_of_MD(good, capsys, level, wrong):
+    shifts = tuple(f"{lv}={wrong if lv == level else '6993'}" for lv in ("1", "2", "3"))
+    assert C.main(_args(*good, shifts=shifts)) == 1
+    out = capsys.readouterr().out
+    assert "STOP R2-shift" in out
+    assert "PASS R2-shift" not in out and "every rule PASS" not in out
+
+
+@pytest.mark.parametrize("side", ["old", "new"])
+@pytest.mark.parametrize("fault", ["missing_subject", "duplicate_subject", "null_longitude", "empty_longitude"])
+def test_intake_rejects_invalid_natal_with_a_recomputed_checksum(good, capsys, side, fault):
+    path = pathlib.Path(good[0 if side == "old" else 1])
+    d = json.loads(path.read_text())
+    if fault == "missing_subject":
+        d["natal"].pop()
+    elif fault == "duplicate_subject":
+        d["natal"][-1]["fact_subject"] = d["natal"][0]["fact_subject"]
+    else:
+        d["natal"][0]["longitude"] = None if fault == "null_longitude" else ""
+    d["sha256"] = R._capture_digest(d["chart_id"], d["build_id"], d["rows"], d["natal"])
+    path.write_text(json.dumps(d))
+    assert C.main(_args(*good)) == 1
+    out = capsys.readouterr().out
+    assert f"STOP capture-{side}" in out
+    assert ("natal subjects" if fault.endswith("subject") else "no longitude") in out
+    assert "every rule PASS" not in out
+
+
+@pytest.mark.parametrize("identity", ["chart", "build", "selection"])
+def test_intake_capture_checksum_binds_identity_and_selection(good, monkeypatch, identity):
+    """The intake's shared acquisition dependency must bind more than row bytes."""
+    import hashlib
+    d = json.loads(pathlib.Path(good[1]).read_text())
+    chart, build_id = d["chart_id"], d["build_id"]
+    if identity == "chart":
+        chart = "33333333-3333-4333-8333-333333333333"
+    elif identity == "build":
+        build_id = OLD_BUILD
+    else:
+        selection = {**d["selection"], "ayanamsha_id": "raman"}
+        monkeypatch.setattr(R, "selection_contract", lambda: selection)
+    changed = R.build_capture(chart, build_id, d["rows"], d["natal"])
+    assert changed["sha256"] != d["sha256"]
+    body = {k: changed[k] for k in ("chart_id", "build_id", "selection", "rows", "natal")}
+    assert changed["sha256"] == hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def test_a_changed_natal_fact_id_stops_R4(good, tmp_path, capsys):
     old, _ = good
     new = _capture(tmp_path, "new5.json", NEW_BUILD, _rows(NEW_BUILD, shift_s=6993),

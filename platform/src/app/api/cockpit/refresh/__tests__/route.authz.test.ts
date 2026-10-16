@@ -165,4 +165,18 @@ describe("POST /api/cockpit/refresh — scope 'asset' target guard (C32)", () =>
     expect((await res.json()).refreshed.asset_count).toBe(1)
     expect(throughputWrites().length).toBeGreaterThan(0)
   })
+
+  it.each(['ka_avadhi', 'ka_gochara'])('refreshes exactly the requested active asset %s', async (target) => {
+    setupTargetMock({ active: true })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'asset', scope_target: target }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ refreshed: { scope: 'asset', scope_target: target, asset_count: 1 } })
+    const lookup = mockQuery.mock.calls.filter(([sql]) => /FROM asset_registry/.test(sql))
+    expect(lookup).toHaveLength(1)
+    expect(lookup[0][1]).toEqual([target])
+    const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT INTO asset_throughput/.test(sql))
+    expect(writes).toHaveLength(1)
+    expect(writes[0][1]).toEqual([VICTIM_CHART, [target]])
+  })
+
 })
