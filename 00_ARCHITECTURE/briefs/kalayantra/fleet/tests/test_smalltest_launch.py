@@ -158,16 +158,14 @@ def test_executor_receipt_carries_structured_launch_identity(tmp_path, monkeypat
     assert receipt["status"] == "FAILED", "staging-only exit must not become a launch receipt"
 
 
-def test_launch_requires_cloud_capability_as_well_as_builder(monkeypatch):
-    executor = load("executor")
+def test_launch_requires_cloud_capability_as_well_as_builder(tmp_path, monkeypatch):
+    from smalltest_admission_support import ARG_VALUES, caps, load_executor, request
+    executor = load_executor(tmp_path, monkeypatch)
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
-    op = {**table["smalltest_dispatch"], "enabled": True, "production": False}
-    req = dict(operation_id="cap-test", kind="smalltest_dispatch", item_id="fixture", idempotency_key="fresh",
-               requested_by="adhikarin", kyd="fixture", args={})
-    monkeypatch.setattr(executor, "seen", lambda *a: False)
-    monkeypatch.setattr(executor, "smalltest_policy_problem", lambda req: None)  # this non-production fixture isolates capability admission
-    assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": False}) == "capability_missing: gcloud"
-    assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": True}) is None
+    req = request(executor, "smalltest_dispatch",
+                  {key: ARG_VALUES[key] for key in table["smalltest_dispatch"]["allowed_args"]})
+    assert executor.validate(req, table, {**caps(), "gcloud": False}) == "capability_missing: gcloud"
+    assert executor.validate(req, table, caps()) is None
 
 
 def test_stage_once_uses_exact_uuid_and_rolls_back_only_readback(bridge, tmp_path, capsys):

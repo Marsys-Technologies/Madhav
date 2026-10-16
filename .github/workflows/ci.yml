@@ -1150,6 +1150,9 @@ jobs:
         # collisions, foreign tables, large objects and receipt replay BEFORE scratch database work (37-reversion proof).
         run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
 
+      - name: Wave 4 small-test admission and launch — full reviewed evidence fixtures
+        run: python -B -m pytest ../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_w4_smalltest_enablement.py ../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py -q -p no:cacheprovider
+
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
         # The contract test also refuses any non-loopback host or any database
