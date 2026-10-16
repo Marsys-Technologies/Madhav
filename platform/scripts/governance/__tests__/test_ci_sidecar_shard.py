@@ -44,7 +44,7 @@ ORIGINAL_ARGS = (
 )
 #: The steps of the original job other than the sidecar pytest step, in order: they now run in the static job.
 STATIC_STEPS = (
-    "Checkout", "Setup Python", "Install Python dependencies",
+    "Checkout", "Restore source-bound generated files", "Setup Python", "Install Python dependencies",
     "drift_detector — repo scan", "schema_validator — repo scan",
     "msr_referential_integrity — self-test (§N.5 constituent guard)",
     "schema_pin_mimamsa_predictions — self-test (SAMĀPTI B-PB-SCHEMA-PIN)",
@@ -180,7 +180,7 @@ def jobs():
 
 
 def _pytest_step(job: dict) -> dict:
-    steps = [s for s in job["steps"] if "pytest tests/ bodha_writers/__tests__" in str(s.get("run", ""))]
+    steps = [s for s in job["steps"] if "--ci-shard" in str(s.get("run", ""))]
     assert len(steps) == 1
     return steps[0]
 
@@ -188,7 +188,7 @@ def _pytest_step(job: dict) -> dict:
 def _command(run: str) -> str:
     """The pytest command line of the step, continuation lines joined."""
     joined = run.replace("\\\n", " ")
-    line = next(ln for ln in joined.splitlines() if "pytest tests/ bodha_writers/__tests__" in ln)
+    line = next(ln for ln in joined.splitlines() if "--ci-shard" in ln)
     return " ".join(line.split())
 
 
@@ -206,7 +206,19 @@ def test_the_shard_matrix_count_and_name_agree(jobs):
 
 def test_every_shard_runs_the_original_command_unchanged_plus_the_shard_arguments(jobs):
     cmd = _command(_pytest_step(jobs[SHARD_JOB])["run"])
-    assert cmd.startswith('PYTHONPATH="$sidecar_shard_plugin_dir" pytest ' + ORIGINAL_ARGS + " -p sidecar_shard --ci-shard "), cmd
+    assert 'ci_discovery.py" pytest ' in cmd, cmd
+    import ci_discovery
+    key = cmd.split('ci_discovery.py" pytest ', 1)[1].split()[0]
+    selected = ci_discovery.discover(ROOT, ci_discovery.profiles()[key])
+    import shlex
+    for token in shlex.split(ORIGINAL_ARGS):
+        if token.startswith('--') or token in ('-m', 'not integration'):
+            continue
+        assert token.rstrip('/') in {entry.rstrip('/') for entry in selected}, token
+    original_ignores = {token for token in shlex.split(ORIGINAL_ARGS) if token.startswith('--ignore=')}
+    actual_ignores = {token for token in shlex.split(cmd) if token.startswith('--ignore=')}
+    assert actual_ignores == original_ignores
+    assert '-m "not integration"' in cmd
     run = _pytest_step(jobs[SHARD_JOB])["run"]
     assert 'sidecar_shard_plugin_dir="$GITHUB_WORKSPACE/platform/scripts/governance/pytest_plugins"' in run
     assert (ROOT / "platform/scripts/governance/pytest_plugins/sidecar_shard.py").is_file()
@@ -234,12 +246,12 @@ def test_the_static_job_keeps_every_other_original_step_in_order(jobs):
     st = jobs[STATIC_JOB]
     assert tuple(s.get("name") for s in st["steps"]) == STATIC_STEPS
     assert not any("pytest tests/ bodha_writers" in str(s.get("run", "")) for s in st["steps"])
-    assert st["steps"][0]["with"]["fetch-depth"] == 0 and st["steps"][1]["with"]["python-version"] == "3.11"
+    assert st["steps"][0]["with"]["fetch-depth"] == 0 and st["steps"][2]["with"]["python-version"] == "3.11"
 
 
 def test_the_sidecar_suite_runs_only_sharded(jobs):
     """No job runs the whole selection unsharded any more (it would double the runtime), and only the shard job runs it at all."""
-    holders = [name for name, j in jobs.items() for s in j.get("steps", []) if "pytest tests/ bodha_writers/__tests__" in str(s.get("run", ""))]
+    holders = [name for name, j in jobs.items() for s in j.get("steps", []) if "--ci-shard" in str(s.get("run", ""))]
     assert holders == [SHARD_JOB]
 
 

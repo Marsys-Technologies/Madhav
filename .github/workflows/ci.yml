@@ -87,7 +87,49 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
+  generated-artifacts:
+    # A5 D-33: compile once from this exact source; all existing guards check these bytes.
+    name: Generated Artifacts (source-bound)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: platform/python-sidecar/requirements-ci.txt
+      - run: npm ci --prefix platform
+      - run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Generate and independently verify aggregates
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          args=()
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]; then args+=(--base "$BASE_SHA"); fi
+          python platform/scripts/governance/ci_generated.py generate --destination "$RUNNER_TEMP/ci-generated" "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-generated
+          path: ${{ runner.temp }}/ci-generated/
+          if-no-files-found: error
+          retention-days: 90
+
   changes:
     # Fast path: a pull request whose EVERY changed file is documentation/evidence (see platform/scripts/governance/ci_changes.py) skips the
     # heavy jobs below. FAIL-CLOSED: only an explicit `docs_only=true` skips; a failed/empty/unreadable classification, a push, a merge_group
@@ -114,7 +156,7 @@ jobs:
           echo "$out" | tee -a "$GITHUB_OUTPUT"
 
   typecheck:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript (src only)
     runs-on: ubuntu-latest
@@ -123,6 +165,8 @@ jobs:
         working-directory: platform
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -139,7 +183,7 @@ jobs:
           if [ -n "$non_test" ]; then printf '%s\n' "$non_test"; exit 1; fi
 
   typecheck-mcp:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript — platform-mcp
     runs-on: ubuntu-latest
@@ -148,6 +192,8 @@ jobs:
         working-directory: platform-mcp
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -157,7 +203,7 @@ jobs:
       - run: npx tsc --noEmit
 
   unit-tests:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -194,6 +240,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -232,9 +280,9 @@ jobs:
           # PostgreSQL roles are cluster-wide.  These two real suites both
           # exercise fixed production role names, so execute them serially
           # even though each owns a different disposable database.
-          npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
-          npx vitest run tests/integration/nirmana_evidence_ownership_preflight.db.test.ts --reporter=verbose
-          npx vitest run tests/integration/nirmana_egate_definition_scope.db.test.ts --reporter=verbose
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-9 -- --reporter=verbose
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-10 -- --reporter=verbose
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-11 -- --reporter=verbose
 
       # L0M-B1: use the existing required Unit Tests context and its Postgres
       # service. Advisory-only execution cannot establish required DB coverage.
@@ -283,7 +331,7 @@ jobs:
         # whitelisted tool names whose targets were absent from TOOL_NAME_TO_URI → 500).
         # Runs as a dedicated, named gate (also covered by `npm test`) so a regression is
         # unmistakable in CI logs. Mutation-proven: removing a URI makes this step fail.
-        run: npx vitest run src/lib/retrieval/registry/whitelist_resolution_invariant.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-10-0 --
 
       - name: GT-36 — parity_check bridge-failure invariant (RETRIEVAL_PLANE_ELEVATION_PLAN §1.5/§3 R-0.5)
         # DURABLE GUARD. checkParity()/runParityCheck() previously had NO caller anywhere
@@ -295,7 +343,7 @@ jobs:
         # logs" reason as WP-1.7 above. Does NOT hard-gate on pre-existing MCP_TOOL_TO_URI
         # staleness (a separate, larger backlog — see parity_check.test.ts file header);
         # it hard-gates only on the bridge module failing to load.
-        run: npx vitest run src/lib/retrieval/registry/parity_check.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-11-0 --
 
   # ─────────────────────────────────────────────────────────────────────────────
   # SPLIT OUT of `unit-tests` (2026-07-31, CI close-out review of PR #895).
@@ -316,7 +364,7 @@ jobs:
   # and the provision step back onto `unit-tests` and delete this job.
   # ─────────────────────────────────────────────────────────────────────────────
   kala-db-tests:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Kāla DB Tests (throwaway Postgres)
     runs-on: ubuntu-latest
@@ -334,6 +382,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -366,7 +416,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters -q -rs
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest kala-db-tests-5-0 -- -q -rs
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -376,15 +426,14 @@ jobs:
       - name: K5-3 — G2 event models, unavailable inputs and mandatory CI coverage
         working-directory: platform/python-sidecar
         run: >-
-          python -m pytest tests/l3/ka_kshetra/test_g2_model.py
-          tests/l3/ka_kshetra/test_g2_features.py tests/l3/ka_kshetra/test_g2_ci.py
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest kala-db-tests-7-0 --
           -q -rs -p no:cacheprovider
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
-        run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest kala-db-tests-8-0 -- -q -rs
 
   db-integration-tests:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -414,6 +463,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -429,7 +480,7 @@ jobs:
       - name: Nirmāṇa 602 — known-state migration and drift rollback on real Postgres
         env:
           NIRMANA_L0_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_floor_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_achieved_floor_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-4-0 -- --reporter=verbose
 
       - name: SAMĀPTI A5/G3 — provision the SAMĪKṢĀ throwaway test DB
         # Mirrors platform/tests/pariprashna/samiksha/l5_roundtrip_harness.sh's local
@@ -485,7 +536,7 @@ jobs:
           GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gochara_a51_test
           GOCHARA_REQUIRE_DB: '1'
         run: |
-          npx vitest run tests/integration/gochara_b6_v15_migrations.db.test.ts tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --reporter=verbose --no-file-parallelism
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-8-0 -- --reporter=verbose --no-file-parallelism
           python3 scripts/gochara/mutation_check_1206.py
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
@@ -515,14 +566,14 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py tests/l3/gochara/test_j6r_rehearsal_db.py tests/l3/gochara/test_j6r_prebuild_static.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-9-12 -- -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
 
       - name: K7-3 — stage readers before and after protected migration 1376
         env:
           KALA_VIEW_DB_TESTS: '1'
-        run: npx vitest run src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-10-0 -- --reporter=verbose
 
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained
@@ -545,7 +596,7 @@ jobs:
         env:
           MCP_RATE_LIMIT_DB_TEST: '1'
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rate07_test
-        run: npx vitest run src/lib/__tests__/mcp/oauth_rate_limit.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-12-0 -- --reporter=verbose
 
       - name: F-152 — provision the asset_throughput_state_audit test DB
         # The test file itself (tests/integration/asset_throughput_state_audit.db.test.ts)
@@ -567,7 +618,7 @@ jobs:
         # mocked assertion (§N.8).
         env:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
-        run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-14-0 -- --reporter=verbose
 
       - name: B6.0/1211 — provision the asset_throughput_state_audit grants test DB
         env:
@@ -584,7 +635,7 @@ jobs:
         # applied — plus idempotency and no-widening controls (§N.8).
         env:
           M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
-        run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-16-0 -- --reporter=verbose
 
       - name: C3/1225 — provision the bg_transit_av_gates SELECT grant test DB
         env:
@@ -602,7 +653,7 @@ jobs:
         # bg_transit_rules stubbed (as in the 1216 suite).
         env:
           M1225_AV_GATES_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1225_av_gates_grant_test
-        run: npx vitest run tests/integration/bg_transit_av_gates_builder_select_grant.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-18-0 -- --reporter=verbose
 
       - name: C9/1231 — provision the gochara_resonance_map grant-record test DB
         env:
@@ -622,7 +673,7 @@ jobs:
         # stubbed (as in the 1225 suite).
         env:
           M1231_RESONANCE_MAP_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1231_resonance_map_grant_test
-        run: npx vitest run tests/integration/gochara_resonance_map_builder_grant_record.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-20-0 -- --reporter=verbose
 
       - name: C16/1237 — provision the kala_gochara_windows grant-record test DB
         env:
@@ -642,7 +693,7 @@ jobs:
         # 1231 suite).
         env:
           M1237_WINDOWS_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1237_windows_grant_test
-        run: npx vitest run tests/integration/gochara_windows_builder_grant_record.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-22-0 -- --reporter=verbose
 
       - name: C18/1238 — provision the kala_gochara_windows_v2 grant-record test DB
         env:
@@ -663,7 +714,7 @@ jobs:
         # suite).
         env:
           M1238_WINDOWS_V2_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1238_windows_v2_grant_test
-        run: npx vitest run tests/integration/gochara_windows_v2_builder_grant_record.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-24-0 -- --reporter=verbose
 
       - name: C19/1239 — provision the overlay-tables grant-record test DB
         env:
@@ -684,7 +735,7 @@ jobs:
         # in the 1237/1238 suites).
         env:
           M1239_OVERLAY_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1239_overlay_grant_test
-        run: npx vitest run tests/integration/gochara_overlay_builder_grant_record.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-26-0 -- --reporter=verbose
 
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
@@ -703,7 +754,7 @@ jobs:
         # (§N.8); only charts(id) is stubbed, as in the 1211 suite.
         env:
           M1216_GOCHARA_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1216_gochara_grant_test
-        run: npx vitest run tests/integration/gochara_contract_builder_grants.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-28-0 -- --reporter=verbose
 
       - name: Pravāha B/1220 — provision the gochara builder function-EXECUTE test DB
         env:
@@ -721,7 +772,7 @@ jobs:
         # individually necessary, builder cannot seal.
         env:
           M1220_GOCHARA_FN_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1220_gochara_fn_execute_test
-        run: npx vitest run tests/integration/gochara_contract_builder_function_execute.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-30-0 -- --reporter=verbose
 
       - name: C7 — provision the builder-role fixture test DB
         env:
@@ -748,7 +799,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/l3/test_builder_role_resonance_writer.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-32-2 -- -q --tb=short
 
       - name: TI-l1-panchanga-moon-sign-001 — ga_panchanga birth-Moon-sign position-fact read against real Postgres
         # The chandra_bala_natal_baseline birth Moon sign is READ from the upstream
@@ -765,7 +816,7 @@ jobs:
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE ga4_moon_sign_test;"
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/test_ga4_chandra_bala_birth_sign_pg.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-33-3 -- -q --tb=short
 
       - name: C15 — ka_gochara_v4_41_candidate writer SQL layer AS data_plane_builder against real Postgres
         # Pravāha C15 (steward M20261002T040828-9e76): the '4.1' candidate
@@ -784,7 +835,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/l3/test_builder_role_v4_41_candidate.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-34-2 -- -q --tb=short
 
       - name: TI-s-l1-integration-001 — karaka-role readers (ga_vargas, ga_dashas, ga_structural karaka web) against real Postgres
         # ga_vargas and ga_dashas share ONE reader of ga_sensitive's stored kn_rao karaka
@@ -803,7 +854,7 @@ jobs:
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE karaka_reader_test;"
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/test_karaka_readers_pg.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-35-3 -- -q --tb=short
 
       - name: C19 — overlay writers' SQL layer AS data_plane_builder against real Postgres
         # Pravāha C19 (steward M20261002T062943-356e): the ka_moorti_nirnaya
@@ -818,7 +869,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/l3/test_builder_role_overlay_writers.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-36-2 -- -q --tb=short
 
       - name: TI-l1-min-fixes-001 — L1 MV-refresh ownership skip + aborted-transaction guard against real Postgres
         # The S-L1 job runs as data_plane_builder, which is not a member of amjis_app
@@ -834,7 +885,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest ga_writers/__tests__/test_l1_min_fixes_builder_role_pg.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-37-2 -- -q --tb=short
 
       - name: C21 — WP10 cutover rehearsal gate against the CI Postgres service
         # Pravāha C21 (steward M20261002T080256-690e): this suite used to skip
@@ -851,7 +902,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_wp10_cutover.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-38-2 -- -q --tb=short
 
       - name: TI-l1-vichara-writer-001 — provision the migration 920 digest test DB
         env:
@@ -871,7 +922,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/test_ga_vichara_identity_and_asof.py -q --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-40-2 -- -q --tb=short
 
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
@@ -882,7 +933,7 @@ jobs:
       - name: Nirmāṇa T0 — migration 599 source and acyclicity guards against real Postgres
         env:
           NIRMANA_T0_DAG_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_t0_dag_test
-        run: npx vitest run tests/integration/nirmana_t0_l0_hidden_dependencies.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-42-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 601 digest-scope test DB
         env:
@@ -893,7 +944,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 601 digest-scope guards against real Postgres
         env:
           NIRMANA_L0_DIGEST_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_test
-        run: npx vitest run tests/integration/nirmana_l0_output_digest_scopes.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-44-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 603 formula-constants test DB
         env:
@@ -904,7 +955,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 603 sentinel-retirement guards against real Postgres
         env:
           NIRMANA_FORMULA_CONSTANTS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_formula_constants_test
-        run: npx vitest run tests/unit/migrations/nirmana_formula_constants_retire_sentinel.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-46-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 604 registry-scope test DB
         env:
@@ -915,7 +966,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 604 ownership-scope guards against real Postgres
         env:
           NIRMANA_L0_REGISTRY_SCOPE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_registry_scope_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_registry_scope_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-48-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 605 sky-calendar floor test DB
         env:
@@ -926,7 +977,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 605 sky-calendar provenance guards against real Postgres
         env:
           NIRMANA_SKY_CALENDAR_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_sky_calendar_floor_test
-        run: npx vitest run tests/unit/migrations/nirmana_sky_calendar_floor_provenance.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-50-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 606 wave-0 integrity test DB
         env:
@@ -937,7 +988,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 606 executable integrity contracts against real Postgres
         env:
           NIRMANA_L0_WAVE0_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_wave0_integrity_contracts.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-52-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 607 bg_reference integrity test DB
         env:
@@ -960,7 +1011,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
         env:
           NIRMANA_BG_REFERENCE_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_reference_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_bg_reference_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-56-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 608 bg_remedies integrity test DB
         env:
@@ -971,7 +1022,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 608 bg_remedies contract against real Postgres
         env:
           NIRMANA_BG_REMEDIES_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_remedies_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_bg_remedies_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-58-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 609 digest-revision test DB
         env:
@@ -982,7 +1033,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 609 append-only digest revision against real Postgres
         env:
           NIRMANA_L0_DIGEST_REVISION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_revision_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_digest_spec_revision.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-60-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 610 bg_texts integrity test DB
         env:
@@ -993,7 +1044,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 610 bg_texts contract against real Postgres
         env:
           NIRMANA_BG_TEXTS_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_texts_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_bg_texts_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-62-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 611 static-table integrity test DB
         env:
@@ -1004,7 +1055,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 611 closed static-table contracts against real Postgres
         env:
           NIRMANA_L0_STATIC_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_static_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_static_tables_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-64-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 612 Vastu/medical integrity test DB
         env:
@@ -1015,7 +1066,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 612 Vastu/medical contracts against real Postgres
         env:
           NIRMANA_L0_VASTU_MEDICAL_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_vastu_medical_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_vastu_medical_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-66-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 613 transit integrity test DB
         env:
@@ -1026,7 +1077,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 613 transit producer contracts against real Postgres
         env:
           NIRMANA_L0_TRANSIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_transit_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_transit_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-68-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 614 Ghaṭanā integrity test DB
         env:
@@ -1037,7 +1088,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 614 Ghaṭanā producer contract against real Postgres
         env:
           NIRMANA_L0_GHATANA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_ghatana_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_ghatana_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-70-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 615 governance integrity test DB
         env:
@@ -1048,7 +1099,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 615 scoped governance contracts against real Postgres
         env:
           NIRMANA_L0_GOVERNANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_governance_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_governance_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-72-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 616 Prashna integrity test DB
         env:
@@ -1059,7 +1110,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 616 Prashna producer contract against real Postgres
         env:
           NIRMANA_L0_PRASHNA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_prashna_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_prashna_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-74-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 617 text-index integrity test DB
         env:
@@ -1070,7 +1121,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 617 text-index contract against real Postgres
         env:
           NIRMANA_L0_TEXT_INDEX_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_text_index_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_text_index_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-76-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 618 rules integrity test DB
         env:
@@ -1081,7 +1132,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 618 deterministic rules contract against real Postgres
         env:
           NIRMANA_L0_RULES_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_rules_integrity_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_rules_integrity_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-78-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 628 remaining-contract test DB
         env:
@@ -1094,24 +1145,24 @@ jobs:
           NIRMANA_L0_WAVE0_REMAINING_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_remaining_test
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_remaining_test
         run: |
-          npx vitest run tests/unit/migrations/nirmana_l0_wave0_remaining_integrity_contract.test.ts --reporter=verbose
-          python -m pytest python-sidecar/tests/test_l0_ontology.py -q
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-80-0 -- --reporter=verbose
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-80-1 -- -q
 
       - name: L3 dispatcher — writer-digest path resolves inside this repo (F8)
         # dispatch_frozen_rebuild.py once read digests from a hardcoded developer worktree, so a
         # dispatched build would have recorded a provenance receipt for code that never ran.
         # This test fails on that old path (mutation-checked) — keep it collected.
-        run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-81-0 -- -q
 
       - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
         # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
         # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
-        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-82-0 -- -q
 
       - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
         # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
-        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-83-0 -- -q -p no:cacheprovider
 
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1128,7 +1179,7 @@ jobs:
       - name: NTAP monitor — migration 629 append-only contract against real Postgres
         env:
           NIRMANA_MONITOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_monitor_test
-        run: npx vitest run src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/migration-contract.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-85-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 630 wave-one contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1143,7 +1194,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 630 wave-one contracts against real Postgres
         env:
           NIRMANA_L0_WAVE1_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave1_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_wave1_correctness_contract.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-87-0 -- --reporter=verbose
 
       - name: Nirmāṇa L0 — provision the migration 631 gochara citation contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1158,7 +1209,7 @@ jobs:
       - name: Nirmāṇa L0 — migration 631 gochara citation contract against real Postgres
         env:
           NIRMANA_L0_GOCHARA_CITATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_gochara_citation_test
-        run: npx vitest run tests/unit/migrations/nirmana_l0_gochara_citation_chunk_repair.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-89-0 -- --reporter=verbose
 
       - name: Suvarṇa E3.2 (B2) — provision the downstream-dependents test DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1183,7 +1234,7 @@ jobs:
         # exhausts a 512 MB temp_file_limit in 3.1s on the live graph.
         env:
           DOWNSTREAM_DEPENDENTS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/downstream_dependents_test
-        run: npx vitest run tests/integration/downstream_dependents.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-91-0 -- --reporter=verbose
 
       # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
       # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
@@ -1249,7 +1300,7 @@ jobs:
         env:
           PARIPRASHNA_STORE_DB_TEST: '1'
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/p3c_persistence_test
-        run: npx vitest run src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts --reporter=verbose
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-93-0 -- --reporter=verbose
 
   gochara-a55-replace-chain:
     # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
@@ -1268,7 +1319,7 @@ jobs:
     #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
     #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
     #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1290,6 +1341,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: A5.5f - replace-chain suites (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1309,11 +1362,11 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_a55_replace_chain.py tests/l3/gochara/test_a55_replace_chain_populated.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-replace-chain-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-slice-transitions:
     # A5.5f / C46: the test-slice transition suite (see the split note on gochara-a55-replace-chain).
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - test-slice transitions (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1335,6 +1388,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: A5.5f - test-slice transition suite (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1354,12 +1409,12 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c46_slice_transitions.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-slice-transitions-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-teardown:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 10 minutes locally (module test_c38_teardown_real_db plus the populated case); split into three parallel jobs so each stays well inside its budget.
     # See the split note on gochara-a55-replace-chain.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1381,6 +1436,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: C38 - teardown real-database and populated suites (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1400,12 +1457,12 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c38_teardown_real_db.py tests/l3/gochara/test_c38_teardown_populated.py tests/l3/gochara/test_w4_smalltest_safety_db.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-teardown-round2:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 14 minutes locally (26 tests).
     # See the split note on gochara-a55-replace-chain.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara C38 - the small-test teardown, round 2 (ownership, end state, rehearsal) (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1427,6 +1484,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: C38 - teardown round 2 (ownership, end state, rehearsal) (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1446,12 +1505,12 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round2.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-round2-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-teardown-round3:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 9 minutes locally (16 tests).
     # See the split note on gochara-a55-replace-chain.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1473,6 +1532,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: C38 - teardown round 3 (real catalog foreign keys, lock race, interrupted replacement) (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1492,13 +1553,13 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c38_teardown_real_db_round3.py tests/l3/gochara/test_c38_teardown_lit_over_error.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-round3-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-measuring-build:
     # Measuring-build PR (steward MEASURING-BUILD, MB-ADDITIONS, TIMEOUT-RULING): the horizon derivation, the manifest basis, the state guard and the fired cap
     # observed through the REAL runner, on a real database (the real life_events DDL); about 5 minutes.
     # See the split note on gochara-a55-replace-chain.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara measuring build - horizon, basis, state guard, fired cap (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1524,6 +1585,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: Measuring build - real-database suite (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1544,14 +1607,14 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_mb_real_db.py tests/l3/gochara/test_mb_ordinary_golden.py tests/l3/gochara_eval/test_dump_extract_pg.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-measuring-build-1-9 -- -q --tb=short -rs -p no:cacheprovider
           cd ..
           python scripts/gochara/mutation_check_measuring_build.py
 
   gochara-a55-dispatch:
     # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
     # See the split note on gochara-a55-replace-chain.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara C37 - the small-test dispatch (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1573,6 +1636,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: C37 - dispatch real-database suite (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1592,11 +1657,11 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c37_dispatch_real_db.py tests/l3/gochara/test_w4_launch_bridge.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-dispatch-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1618,6 +1683,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: A5.5f - test-slice round-2 and real-runner suites (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1637,11 +1704,11 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c46_slice_round2.py tests/l3/gochara/test_c47_ephe_real_runner.py tests/l3/gochara/test_c49_wrap_cut_support.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-round2-runner-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-verifier-fixes:
     # C48 / PR 3143 (the in-build verifier fixes: P1 exclusion for H-unknown classes, the member-geometry seam and horizon-edge rules, the slice-only graze interim): three real-database suites, about 14 minutes together.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
     runs-on: ubuntu-latest
@@ -1663,6 +1730,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: A5.5f - verifier-fix suites (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1685,10 +1754,10 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_p1_exclusion_h_unknown.py tests/l3/gochara/test_member_geometry_seam.py tests/l3/gochara/test_graze_interim.py tests/l3/gochara_rules/test_am10_repin_tool.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-verifier-fixes-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
   pratijna-v4-fixture-property-tests:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
     # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
@@ -1733,6 +1802,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1771,15 +1842,16 @@ jobs:
         # available (§N.8 Earned-Signal Principle).
         working-directory: platform/python-sidecar
         run: |
-          pytest tests/test_pratijna_v4_snapshot_properties.py -v --tb=short
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest pratijna-v4-fixture-property-tests-5-0 -- -v --tb=short
 
   planner-regression:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Planner Regression Gate
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
 
     defaults:
@@ -1792,6 +1864,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -1815,7 +1889,7 @@ jobs:
         run: npx vitest run tests/planner --reporter=verbose
 
   icr-pr-gate:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: ICR PR Gate (synthetic smoke)
     runs-on: ubuntu-latest
@@ -1830,6 +1904,8 @@ jobs:
         working-directory: platform
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -1846,6 +1922,7 @@ jobs:
           echo "icr_pr_gate_importable: PASS"
 
   secret-scan:
+    needs: generated-artifacts
     # NAME KEPT AS-IS (DVA RULING 82): main's branch protection requires the
     # status-check CONTEXT "Secret Scan (unit 0b.2)" by exact name
     # (strict: true, enforce_admins: true). Renaming this job — even to a more
@@ -1869,11 +1946,14 @@ jobs:
     # block in secret_scan.sh for the current, reconciled bounds.
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
         # DVA RULING 30 — the gate must measure the tree that is actually being
         # merged, never a stale or partial one.
         #   · on pull_request, actions/checkout@v4 checks out refs/pull/N/merge
@@ -1916,17 +1996,21 @@ jobs:
         run: bash platform/scripts/governance/secret_scan.sh
 
   coverage-gate:
+    needs: generated-artifacts
     name: Coverage Gate (COV-S7)
     runs-on: ubuntu-latest
     # continue-on-error removed 2026-05-25: M5 Coverage Campaign is COMPLETE and the
     # baseline is now clean (exit 0). Gate is a hard blocker from this point forward.
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1943,15 +2027,19 @@ jobs:
         run: python platform/scripts/governance/coverage_gate.py
 
   naming-lint:
+    needs: generated-artifacts
     name: Naming Governance Gate (unit 0a.0)
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1973,6 +2061,7 @@ jobs:
         run: python platform/scripts/governance/naming_lint.py
 
   fact-category-pin-lint:
+    needs: generated-artifacts
     # ŚUDDHA-VĀCA Phase C, lane:ci-lint (brief §5 C.7 — the systemic guard).
     # Permanent CI enforcement against the whole "D1 defect class": a selector
     # that picks/reduces a chart_facts row by fact_category alone, without
@@ -1984,11 +2073,14 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2042,6 +2134,7 @@ jobs:
         run: python platform/scripts/governance/check_registry_insert_catalog_status.py
 
   earned-signal-lint:
+    needs: generated-artifacts
     # SAMĀPTI v2.0 §7.5, lane B-N8-LINT — the standing CLAUDE.md §N.8
     # Earned-Signal guard, and a deliberate sibling to fact-category-pin-lint
     # above (same shape: bundled fixtures + self-test, then an allowlist-aware
@@ -2062,11 +2155,14 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2095,6 +2191,7 @@ jobs:
         run: python platform/scripts/governance/check_earned_signal.py
 
   registry-parity-gate:
+    needs: generated-artifacts
     # ADHIṢṬHĀNA Campaign A, Lane A6(i)+(ii) (MASTER_PLAN_v1_0.md §3). Makes
     # the identity-contract convergence Lanes A1-A5 did PERMANENT: future code
     # cannot silently re-fragment graha/varga/house/event_class identity, and
@@ -2111,11 +2208,14 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2147,7 +2247,7 @@ jobs:
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
   governance-tool-tests-shard:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
@@ -2159,6 +2259,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
+      actions: read
       contents: read
     strategy:
       fail-fast: false
@@ -2168,6 +2269,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2194,12 +2297,11 @@ jobs:
       - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
         if: matrix.shard == 1
         run: >-
-          python -m pytest
-          00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-5-0 --
           -q -p no:cacheprovider
       - name: KĀLA-YANTRA operation adapter acceptance harness (OPS-NB-01)
         if: matrix.shard == 1
-        run: python -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py -q -p no:cacheprovider
+        run: python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-6-0 -- -q -p no:cacheprovider
       - name: pytest — tracker guarded completion and concurrency (required)
         if: matrix.shard == 1
         env:
@@ -2207,24 +2309,25 @@ jobs:
           PGHOST: ''
           PYTHONPATH: platform/scripts/governance
         run: >-
-          python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
-          platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
-          platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-7-0 --
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Governance Gochara readback tests (throwaway Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      actions: read
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -2238,7 +2341,7 @@ jobs:
           DATABASE_URL: ''
           PGHOST: ''
         run: |
-          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-readback-tests-3-0 -- -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
 
   governance-tool-tests:
@@ -2267,6 +2370,7 @@ jobs:
           echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
   governance-gates-py-sidecar-shard:
+    needs: generated-artifacts
     # SHARDED 2026-10-08 (owner-approved CI change): the python-sidecar pytest step of `Governance Gates` was ONE serial call that took
     # 21.5-24.9 of the check's 22-26 minutes. It now runs as 4 parallel shards; the aggregate `governance-gates` job below keeps the
     # original required name and is green only when this matrix AND the static gates job are green. Same pattern as the five-shard
@@ -2280,6 +2384,7 @@ jobs:
     # One shard measured ~1/4 of the 21.5-24.9 min serial run; 20 min leaves >2x headroom and still surfaces a runner stall.
     timeout-minutes: 20
     permissions:
+      actions: read
       contents: read
     strategy:
       fail-fast: false
@@ -2291,6 +2396,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2390,18 +2497,12 @@ jobs:
             # including a failed trial retaining the dense path. A passing test
             # suite is not D-COMPACT approval or permission to activate.
             python -m pytest tests/l3/ka_kshetra/compact -q -p no:cacheprovider
-            python -m pytest tests/l3/test_certification_validation.py \
-              tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
-              tests/l3/ka_muhurta_seva/test_certification_mapping.py \
-              tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
+            python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-gates-py-sidecar-shard-3-29 -- \
               -q -p no:cacheprovider
           fi
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
           # the writer digest inventory check above stays (it keeps generated writer hashes honest).
-          PYTHONPATH="$sidecar_shard_plugin_dir" pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
-            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
-            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
+          PYTHONPATH="$sidecar_shard_plugin_dir" python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-gates-py-sidecar-shard-3-33 -- \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
@@ -2411,6 +2512,7 @@ jobs:
             -q -rs --tb=short --no-header
 
   governance-gates-static:
+    needs: generated-artifacts
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
     # v1.2 patch §R5). Each step is non-blocking on the existing baseline
@@ -2422,6 +2524,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
+      actions: read
       contents: read
 
     steps:
@@ -2429,6 +2532,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2636,7 +2741,7 @@ jobs:
           # test_swiss_backend_helper.py also needs the corpus (it skips without it):
           # it proves the .se1 backend fails closed, survives the PyJHora import and
           # holds under threads (SS ruling N-28 / TI-ephemeris-fix-001).
-          SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
+          SWE_EPHE_PATH="$nirmana_ephe_dir" python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-gates-static-13-8 -- -q
 
   governance-gates:
     # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
@@ -2661,7 +2766,7 @@ jobs:
           echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # C23 (Suvarṇa §N.8 finding; steward ruling M20261002T182324-6b9a): the four
     # sidecar gochara test directories sat outside every pytest selection —
@@ -2679,6 +2784,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
+      actions: read
       contents: read
     strategy:
       fail-fast: false
@@ -2690,16 +2796,18 @@ jobs:
           # sync with the slow_real_ephemeris marks —
           # test_ci_slow_shard_coverage.py enforces it.
           - leg: slow-1
-            shard_files: "services/gochara_v3/tests/test_lambda_v3_bounded.py services/gochara_v3/tests/test_mr23_w12_adverse_window_golden.py"
+
           - leg: slow-2
-            shard_files: "services/gochara_v3/tests/test_direction_restored.py services/gochara_v3/tests/test_graded_suppression.py"
+
           - leg: slow-3
-            shard_files: "services/gochara_v3/tests/test_v1_parity.py services/gochara_v3/tests/test_lambda_decomposition.py services/gochara_v3/tests/test_w2g_arc_substrate.py"
+
           - leg: benchmark
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2752,7 +2860,7 @@ jobs:
           # Full-engine JD sweeps (200-1000 samples) with real Swiss positions per
           # planet per JD (transit_search.py:249-251,337). REQUIRED — never
           # continue-on-error.
-          pytest ${{ matrix.shard_files }} -m slow_real_ephemeris \
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" slow ${{ matrix.leg }} -- -m slow_real_ephemeris \
             -q --tb=short --no-header
 
       - name: pytest — non-gating benchmark (continue-on-error; NOT a gate)
@@ -2769,6 +2877,7 @@ jobs:
             -q --tb=short --no-header
 
   density-census:
+    needs: generated-artifacts
     # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).
     # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that
     # implement it (judgment_query, ganita_yogas_get) — offline, no live MCP connector or DB
@@ -2797,6 +2906,8 @@ jobs:
           # from the latest commit touching their source sets. A depth-1 checkout
           # cannot resolve that commit when HEAD only refreshes generated artifacts.
           fetch-depth: 0
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -2816,13 +2927,13 @@ jobs:
         run: npx tsx scripts/audit/density_harness/run.ts
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-6-0 --
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-7-0 --
       - name: kala_elect_get hora_ladder coverage-honesty regression (platform-mcp)
         working-directory: platform-mcp
-        run: npx vitest run src/tools/kala_views/elect.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-8-0 --
       - name: kala_elect_get F-122 budget-trim section-coverage regression (platform-mcp)
         # F-122 follow-up (independent-review fix): none of these three test files was on
         # this allowlist before, so the PR's own "N/N passing" claim for the first two was
@@ -2835,38 +2946,38 @@ jobs:
         # (a surviving candidate's own judgment_ledger must not be emptied by a trim of the
         # lattice_adjudication.ledgers[] bookkeeping copy).
         working-directory: platform-mcp
-        run: npx vitest run src/tools/kala_views/__tests__/elect_budget_trim_f122.test.ts src/tools/kala_views/__tests__/elect_sections_coverage.test.ts src/tools/kala_views/__tests__/elect_ledger_alias_f122.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-9-0 --
       - name: kala_now_get coverage-honesty + F-38 entitlement-gate regression (platform-mcp)
         # Covers the original kala_darshana_confluence coverage-honesty regression AND the
         # PARIŚEṢA-V4 F-38 gate: kala_now_get must reject an unentitled/nonexistent chart_id
         # via remoteAuthorize BEFORE any data fetch, and must never echo a raw upstream
         # error string (which was leaking `HTTP 404: Chart '<uuid>' not found` verbatim).
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/kala_now_get.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-10-0 --
       - name: kala_now_get kota_chakra + sudarshana_varsha serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 16/17
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/kala_now_get_kota_sudarshana_w3.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-11-0 --
       - name: kala_now_get moorti_nirnaya + vedha_gochara serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 4/5 (closes R-19)
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/kala_now_get_moorti_vedha_w3.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-12-0 --
       - name: kala_life_arc_get include_lel_events no-op disclosure regression (platform-mcp) — F-26
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/register_p1_synthesis_life_arc_lel_noop.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-13-0 --
       - name: synth_chart_brief_get top_discoveries honest-fields regression (platform-mcp) — F-129
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/f129_top_discoveries_honest_fields.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-14-0 --
       - name: bodha_pratijna_get MCP tool registration regression (platform-mcp) — F-67
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/f67_bodha_pratijna_get_registration.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-15-0 --
       - name: F-123 kala_explain_get dead-pointer regression (real now.ts/ahead.ts/priority.ts sites) (platform-mcp)
         working-directory: platform-mcp
-        run: npx vitest run src/tools/kala_views/f123_dead_pointer_regression.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-16-0 --
       - name: F-06 ref_remedies_chart_get scope-honesty regression (platform-mcp) — PARIŚEṢA-V4
         # The tool advertised "Chart-specific remedy suggestions" while querying a
         # global L0 corpus table that has no chart_id column. Locks the corrected
         # description and the provenance-only chart_id parameter.
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/f06_remedies_scope_honesty.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-17-0 --
       - name: RATE-07 OAuth rate-limit gate + route wiring (platform-mcp) — PARIŚEṢA-V4
         # Two files, both required: the first proves the gate's BEHAVIOUR (identity
         # derivation vs. XFF spoofing, 429 + Retry-After, fail-closed on store
@@ -2874,7 +2985,7 @@ jobs:
         # actually ATTACHED to all five OAuth mutation routes. A passing behaviour
         # test on an unattached middleware is exactly the §N.8 defect class.
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/rate07_oauth_rate_limit.test.ts src/__tests__/rate07_oauth_route_wiring.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-18-0 --
       - name: F-118 kala_upaya_get duplicate-collapse + actionability regression (platform-mcp) — PARIŚEṢA-V4
         # The tool served intervention_count=100 over 14 distinct labels — 50 byte-identical
         # phala_mitigation severity classifications (empty remedy program) plus 13 bodha_rm
@@ -2883,14 +2994,14 @@ jobs:
         # each read false — §N.8), the tool file proves they are actually WIRED into the served
         # response against a fixture reproducing the live row shape.
         working-directory: platform-mcp
-        run: npx vitest run src/lib/kala_upaya_diagnosis.test.ts src/tools/kala_views/upaya.test.ts src/tools/kala_views/upaya_weak_promise_gate.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-19-0 --
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: signal-glossary codegen drift check (platform) — F-172
         run: npm run codegen:signal-glossary:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
-        run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-22-0 --
       - name: vidhi registry Ω8 parity gate (TS ↔ Python DB-seed writers ↔ Ω8-regen coverage) — PARIŚODHANA B2
         # Keeps the FOUR Vidhi registry copies (canonical TS, generated mirror, SQL seed, Python
         # seed writers) from silently drifting — the Python writers had drifted to 37 primitives /
@@ -2906,7 +3017,7 @@ jobs:
         # artifacts under src/generated/projections/ + a comparison report under
         # 00_ARCHITECTURE/briefs/retrieval_impl/ — nothing here is wired into any live-
         # serving path (see the generator's own header comment).
-        run: npm run codegen:projections
+        run: CI_GENERATED_AT="$(git show -s --format=%cI HEAD)" npm run codegen:projections
       - name: R-1 projection compiler parity/completeness gate
         # Same source, tested directly (r5_codegen_parity discipline): imports the SAME
         # pure builder functions the generator step above calls and asserts (1) every live
@@ -2917,18 +3028,19 @@ jobs:
         # itself sound (mechanical-extractor tripwire against silent breakage). Divergence
         # between generated and hand-written surfaces is EXPECTED and not itself a failure —
         # see R1_PROJECTION_COMPILER_REPORT.md.
-        run: npx vitest run src/lib/retrieval/registry/__tests__/projection_compiler_parity.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-25-0 --
       - name: Planner capability knowledge snapshot drift and integrity gate
         run: npm run codegen:capability-knowledge:check
       - name: Capability estate census drift gate
         run: npm run codegen:capability-estate-census:check
       - name: Planner capability knowledge, census, and Inquiry Contract tests
-        run: npx vitest run src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/compiler.test.ts src/lib/vidhi/inquiry/lifecycle_token.test.ts src/lib/vidhi/inquiry/pagination.test.ts src/lib/vidhi/inquiry/migration_contract.test.ts scripts/__tests__/generate_capability_estate_census.test.ts src/app/api/mcp/inquiry/__tests__/route.test.ts src/app/api/mcp/prashna_ask/__tests__/route.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-28-0 --
       - name: MCP inquiry lifecycle and principal-bound polling tests
         working-directory: platform-mcp
-        run: npx vitest run src/tools/__tests__/register_inquiry_lifecycle.test.ts src/tools/register_prashna_status.test.ts src/tools/register_prashna_ask.test.ts src/__tests__/server_tool_registration.test.ts
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-29-0 --
 
   census-battery:
+    needs: generated-artifacts
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the
     # master-acceptance harness (§G.0 six wealth conclusions + the full paced 135-tool census +
     # completeness-receipt validator + alias-count check) against the DEPLOYED connector — this
@@ -2947,6 +3059,8 @@ jobs:
         working-directory: platform
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

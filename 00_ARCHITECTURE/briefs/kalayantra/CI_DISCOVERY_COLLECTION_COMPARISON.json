@@ -1,0 +1,645 @@
+{
+  "schema": "ci.collection_comparison/1",
+  "source_revision": "5fe009a8ff60f16f57306559a01b9b5a7498e31b",
+  "method": "Real pytest --collect-only (after marker/deselect) and vitest list --json; fixture environments are independently pinned by governance tests. Unchanged directory selections collected once, included in both sets. No database fixtures execute. All 5 governance shards and 4 sidecar shards are compared as their complete unions.",
+  "collection_scope": "Materialized C: every changed explicit selector plus directory suites below. U: the unchanged native Unit Tests command is certified by identity, not included in these numeric counts. Both selectors are collected on the proposed source tree.",
+  "full_ci_superset_proof": {
+    "formula": "C_before subset C_after => (C_before union U) subset (C_after union U)",
+    "C_subset_verified": true,
+    "U_identity": {
+      "job": "unit-tests",
+      "cmd": "npm test -- --reporter=verbose",
+      "cwd": "platform",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "unchanged_config_sha256": {
+        "platform/package.json": "fd64000857fb2be200010420a6f8570c01aa465a3342429f3328a7dbb7de0f1c",
+        "platform/vitest.config.ts": "7705104a3caf1fbad114b12dab0db43f1c0b047e6bdf6857a9d86ed0fa7a5b81"
+      }
+    },
+    "local_limitation": "Whole-platform Vitest list timed out at 180s and 600s; the native Unit Tests invocation and its configuration have no selection edit."
+  },
+  "collected_before": 44150,
+  "collected_after": 46246,
+  "missing": [],
+  "suites": [
+    {
+      "suite": "unit-tests-4-9",
+      "before": 8,
+      "after": 8,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-4-10",
+      "before": 16,
+      "after": 16,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-4-11",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-10-0",
+      "before": 64,
+      "after": 64,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-11-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-5-0",
+      "before": 1018,
+      "after": 1018,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-7-0",
+      "before": 46,
+      "after": 46,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-8-0",
+      "before": 39,
+      "after": 39,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-4-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-8-0",
+      "before": 71,
+      "after": 84,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-9-12",
+      "before": 1900,
+      "after": 2136,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-10-0",
+      "before": 34,
+      "after": 34,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-12-0",
+      "before": 5,
+      "after": 37,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-14-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-16-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-18-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-20-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-22-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-24-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-26-0",
+      "before": 10,
+      "after": 10,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-28-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-30-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-32-2",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-33-3",
+      "before": 19,
+      "after": 228,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-34-2",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-35-3",
+      "before": 136,
+      "after": 136,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-36-2",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-37-2",
+      "before": 41,
+      "after": 93,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-38-2",
+      "before": 18,
+      "after": 20,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-40-2",
+      "before": 59,
+      "after": 70,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-42-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-44-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-46-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-48-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-50-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-52-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-56-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-58-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-60-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-62-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-64-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-66-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-68-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-70-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-72-0",
+      "before": 12,
+      "after": 12,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-74-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-76-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-78-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-80-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-80-1",
+      "before": 39,
+      "after": 341,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-81-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-82-0",
+      "before": 127,
+      "after": 127,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-83-0",
+      "before": 269,
+      "after": 269,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-85-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-87-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-89-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-91-0",
+      "before": 15,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-93-0",
+      "before": 3,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-replace-chain-1-9",
+      "before": 33,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-slice-transitions-1-9",
+      "before": 13,
+      "after": 13,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-1-9",
+      "before": 22,
+      "after": 22,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-round2-1-9",
+      "before": 26,
+      "after": 26,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-round3-1-9",
+      "before": 19,
+      "after": 19,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-measuring-build-1-9",
+      "before": 33,
+      "after": 41,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-dispatch-1-9",
+      "before": 24,
+      "after": 24,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-round2-runner-1-9",
+      "before": 64,
+      "after": 64,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-verifier-fixes-1-9",
+      "before": 192,
+      "after": 200,
+      "missing": []
+    },
+    {
+      "suite": "pratijna-v4-fixture-property-tests-5-0",
+      "before": 24,
+      "after": 24,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-5-0",
+      "before": 69,
+      "after": 87,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-6-0",
+      "before": 69,
+      "after": 87,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-7-0",
+      "before": 50,
+      "after": 135,
+      "missing": []
+    },
+    {
+      "suite": "governance-readback-tests-3-0",
+      "before": 64,
+      "after": 83,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-py-sidecar-shard-3-29",
+      "before": 94,
+      "after": 132,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-py-sidecar-shard-3-33",
+      "before": 20669,
+      "after": 20693,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-static-13-8",
+      "before": 106,
+      "after": 212,
+      "missing": []
+    },
+    {
+      "suite": "density-census-6-0",
+      "before": 3,
+      "after": 2204,
+      "missing": []
+    },
+    {
+      "suite": "density-census-7-0",
+      "before": 16,
+      "after": 16,
+      "missing": []
+    },
+    {
+      "suite": "density-census-8-0",
+      "before": 18,
+      "after": 18,
+      "missing": []
+    },
+    {
+      "suite": "density-census-9-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "density-census-10-0",
+      "before": 37,
+      "after": 95,
+      "missing": []
+    },
+    {
+      "suite": "density-census-11-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-12-0",
+      "before": 15,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "density-census-13-0",
+      "before": 2,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-14-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "density-census-15-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-16-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "density-census-17-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "density-census-18-0",
+      "before": 59,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "density-census-19-0",
+      "before": 130,
+      "after": 130,
+      "missing": []
+    },
+    {
+      "suite": "density-census-22-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "density-census-25-0",
+      "before": 32,
+      "after": 32,
+      "missing": []
+    },
+    {
+      "suite": "density-census-28-0",
+      "before": 250,
+      "after": 278,
+      "missing": []
+    },
+    {
+      "suite": "density-census-29-0",
+      "before": 41,
+      "after": 41,
+      "missing": []
+    },
+    {
+      "suite": "samiksha",
+      "before": 126,
+      "after": 126,
+      "missing": []
+    },
+    {
+      "suite": "planner-regression",
+      "before": 45,
+      "after": 45,
+      "missing": []
+    },
+    {
+      "suite": "governance-shards-full",
+      "before": 20696,
+      "after": 20696,
+      "missing": []
+    },
+    {
+      "suite": "muhurta",
+      "before": 114,
+      "after": 114,
+      "missing": []
+    },
+    {
+      "suite": "compact",
+      "before": 59,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "gochara-fast",
+      "before": 724,
+      "after": 724,
+      "missing": []
+    },
+    {
+      "suite": "gochara-slow",
+      "before": 47,
+      "after": 47,
+      "missing": []
+    },
+    {
+      "suite": "gochara-benchmark",
+      "before": 2,
+      "after": 2,
+      "missing": []
+    }
+  ],
+  "before_nodeids": {
+    "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_BEFORE.nodeids.txt.gz",
+    "sha256": "0130a15113e69d2847efdee31b6f0e6d8e4567b957b6ca84920c015ab149477a"
+  },
+  "after_nodeids": {
+    "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_AFTER.nodeids.txt.gz",
+    "sha256": "e05be2cc6cc1f450f6080c06a58782a6745e1f7b7da2eaa32db270d321e6328f"
+  },
+  "profile_sha256": "ffaeb96ef88a67514fa25215c19182deeb835d50a095b9082642232cf8467822",
+  "required_checks_unchanged": true,
+  "nodeid_format": "collection working directory / native pytest nodeid or Vitest file::name"
+}
