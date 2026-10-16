@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import sys
 import uuid
 
 import psycopg
@@ -203,20 +204,28 @@ def test_migration_is_listed_for_the_protected_public_schema_window():
 
 
 def assert_required_source_ci(ci):
-    # Unit Tests is a documented required context (ci.yml's merge-queue and
-    # DB-split declarations). A step in an advisory job is insufficient.
-    job = ci["jobs"]["unit-tests"]
-    assert job["name"] == "Unit Tests"
+    # D-29 separates DB fixtures from the light Unit Tests context, while the
+    # existing protected Governance Gates verdict now requires their full-suite result.
+    sys.path.insert(0, str(PLATFORM / 'scripts/governance'))
+    sys.path.insert(0, str(PLATFORM / 'scripts/governance/__tests__'))
+    from ci_discovery import expanded_workflow
+    from _ci_gate_test_support import runs_in_full_gate
+    jobs = expanded_workflow(ci['jobs'])
+    assert 'unit-db-tests' in jobs['full-suite']['needs']
+    assert 'full-suite' in jobs['governance-gates']['needs']
+    assert jobs['governance-gates']['name'] == 'Governance Gates (drift / schema / edge / native-literal / py-sidecar)'
+    job = jobs['unit-db-tests']
+    assert job['name'] == 'Unit DB contracts (throwaway Postgres)'
     needs = job["needs"] if isinstance(job["needs"], list) else [job["needs"]]
     assert "changes" in needs  # A5 D-33: may also wait on CI-generated outputs
-    assert job["if"] == "${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}"
+    assert runs_in_full_gate(job)
     assert "postgres" in job["services"]
     assert not job.get("continue-on-error")
     steps = [step for step in job["steps"]
              if "pytest" in step.get("run", "") and "tests/l3/l0_parihara" in step["run"]]
-    assert len(steps) == 1, "entire L0-M DB suite must execute in required Unit Tests"
+    assert len(steps) == 1, "entire L0-M DB suite must execute under the protected full-suite gate"
     step = steps[0]
-    assert not step.get("if") and not step.get("continue-on-error")
+    assert runs_in_full_gate(step) and not step.get("continue-on-error")
     assert str(step["env"]["KALA_REQUIRE_DB"]) == "1"
     assert step["env"]["KALA_ADMIN_DSN"] == "postgresql://postgres:postgres@localhost:5432/postgres"
     # Exact invocation prevents filtered collection, skip-only execution and
@@ -238,9 +247,9 @@ def test_required_ci_executes_all_source_tests_against_postgres():
 ])
 def test_required_ci_detector_rejects_non_gating_execution(mutation):
     ci = deepcopy(yaml.safe_load((PLATFORM.parent / ".github/workflows/ci.yml").read_text()))
-    job = ci["jobs"]["unit-tests"]
+    job = ci["jobs"]["unit-db-tests"]
     step = next(step for step in job["steps"]
-                if "tests/l3/l0_parihara" in step.get("run", ""))
+                if "unit-db-tests-l0-parihara" in step.get("run", ""))
     if mutation in {"advisory_only", "missing_step"}:
         job["steps"].remove(step)
         if mutation == "advisory_only":
