@@ -16,6 +16,14 @@ ROOT=Path(__file__).parents[4]
 MIGRATION=ROOT.parent/'migrations/1388_k3_2_sealed_negative_space.sql'
 
 
+@pytest.fixture(autouse=True)
+def settled_fixture_chart(tmp_path, monkeypatch):
+    # K3-2 reads F2 through the real settlement guard, like the other Kāla SQL suites.
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    from tests.l3.ka_vighnakara.test_sealed import NATAL
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART, build_id=NATAL)
+
+
 def api():
     assert importlib.util.find_spec('services.ka_vighnakara.sealed_storage'), 'sealed storage missing'
     return importlib.import_module('services.ka_vighnakara.sealed_storage')
