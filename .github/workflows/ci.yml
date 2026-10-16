@@ -383,6 +383,41 @@ jobs:
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
 
+  # K3-2 pre-build: real SQL evidence is required through governance-gates.
+  # Keep the existing all-Kāla DB selection above unchanged.
+  k3-sealed-db-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: K3 sealed negative-space contract (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+      KALA_REQUIRE_DB: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar CI dependencies
+        run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Run complete K3 consumer and SQL suites; skips fail
+        working-directory: platform/python-sidecar
+        run: python -B -m pytest tests/l3/ka_vighnakara tests/l3/kala_db/ka_vighnakara -q -rs -p no:cacheprovider --basetemp="$RUNNER_TEMP/k3-sealed-pytest"
+
   db-integration-tests:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
@@ -2679,7 +2714,7 @@ jobs:
     # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
     # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [governance-gates-static, governance-gates-py-sidecar-shard]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2687,12 +2722,17 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates and every py-sidecar shard passed
+      - name: The static gates, every py-sidecar shard and K3 SQL suite passed
         env:
+          K3_RESULT: ${{ needs.k3-sealed-db-tests.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           STATIC_RESULT: ${{ needs.governance-gates-static.result }}
           SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
         run: |
-          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates and all py-sidecar shards passed"; exit 0; fi
+          if [ "$K3_RESULT" != "success" ] && ! { [ "$K3_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required K3 SQL suite finished '$K3_RESULT'"; exit 1
+          fi
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates, all py-sidecar shards and required K3 SQL suite passed"; exit 0; fi
           echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:

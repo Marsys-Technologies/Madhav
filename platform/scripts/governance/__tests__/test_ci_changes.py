@@ -230,7 +230,7 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
@@ -258,7 +258,7 @@ def test_every_heavy_job_needs_changes_and_runs_unless_docs_only_is_exactly_true
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
-    if name != "governance-tool-tests":
+    if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 
 
