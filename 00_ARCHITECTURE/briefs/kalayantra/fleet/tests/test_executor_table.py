@@ -2,7 +2,7 @@
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
+    plan pin except the enumerated K9-23 / Wave 4 / #3607 measuring preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
     key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
   · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
     functions and constants are byte-identical;
@@ -57,6 +57,29 @@ P01_BINDINGS = {
                           "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
 }
 W4_KINDS = set(P01_BINDINGS)
+# #3607 (f847ba24d): exact disabled bindings, not permission to enable measuring.
+MEASURING_BINDINGS = {
+    "measuring_dispatch": {
+        "enabled": False, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+        "fixed_args": [], "allowed_args": ["run", "classes"], "production": True, "enabled_by": "J-3c",
+        "required_rows": ["2", "3", "7", "9", "11"], "also_needs": ["gcloud"],
+    },
+    "measuring_dispatch_dryrun": {
+        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["run", "classes"],
+        "production": True, "enabled_by": "J-3c", "required_rows": ["2", "3", "7", "9", "11"],
+    },
+    "measuring_teardown_dryrun": {
+        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--dry-run"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
+        "required_rows": ["2", "3", "7", "9", "11"],
+    },
+    "measuring_teardown": {
+        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
+        "required_rows": ["2", "3", "7", "9", "11"],
+    },
+}
 ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
@@ -133,10 +156,16 @@ def test_p10_entries_present_with_only_j1a_enabled():
 
 
 def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
+    assert_table_matches_pin(load_ops(OPS_FILE.read_text()))
+
+
+def assert_table_matches_pin(now):
     base = load_ops(base_text(OPS_REL))
-    now = load_ops(OPS_FILE.read_text())
-    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
-    assert list(now["ops"]) == list(base["ops"]), "the order of kinds changed"
+    expected_order = list(base["ops"])
+    pos = expected_order.index("measuring_dispatch") + 1
+    expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
+    assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
+    assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
     for kind in K9_KINDS:
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
@@ -146,12 +175,8 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
     expected["verification_job"]["needs"] = "gcloud"
-    expected["measuring_dispatch"]["staging_dry_run"] = {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
-        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
+    expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
         expected[kind]["prepared_dry_run"] = {
@@ -170,6 +195,27 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
     # the only top-level difference allowed is `_doc`
     assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
+
+
+def test_table_pin_refuses_an_extra_kind():
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"]["measuring_unreviewed"] = dict(MEASURING_BINDINGS["measuring_dispatch_dryrun"])
+    with pytest.raises(AssertionError, match="set of kinds"):
+        assert_table_matches_pin(now)
+
+
+@pytest.mark.parametrize("kind", MEASURING_BINDINGS)
+@pytest.mark.parametrize("field,value", [
+    ("enabled", True), ("script", "platform/scripts/unreviewed.py"),
+    ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
+])
+def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"][kind][field] = value
+    with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
+        assert_table_matches_pin(now)
 
 
 def test_k9_placeholders_name_k9_23_and_none_is_filled():
@@ -243,13 +289,10 @@ def _segments(src):
     return out
 
 
-# Exact Wave 4 safety-fix and J-1a lane candidate additions, for independent review. Every
+# Exact Wave 4 safety-fix, #3607 (f847ba24d) measuring and J-1a lane additions, including the
+# local_schema_seed scratch lifecycle (#3627). Each hash is of the merged executor.py function; every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'receipt': 'd4a3fc33dea26ea837e8679b1a60a103600e6887f49b2680ff9255885594d471', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '5966b5b440608cb18eb6f0dccbad1e28ff20b40d800d178785e4918adea3fe7b', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'fd8dc880cb093690cd3102f3b87a9380a3dd00a038cb6c5b7efc774fd80558fc', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510'}
-
-
-# Exact local_schema_seed scratch lifecycle addition; other Wave 4 pins stay unchanged.
-W4_FUNCTION_HASHES["execute"] = 'bef35ad97d5b019df84c7556f5defda7313875d3eb2313f4819e65ab6004f618'
+W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'cf89fb1564168d7baa010204b899f27b64f4d035bcaf999d162ce12e229e8c6f', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '5966b5b440608cb18eb6f0dccbad1e28ff20b40d800d178785e4918adea3fe7b', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'dba944fbf9e53119f9cf5e9136aa4ecb34519a819cd49b68e0cc0e4267bd21e7', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510'}
 
 
 def normalize_wave4(base_src, work_src):
@@ -330,6 +373,20 @@ def test_boundary_refuses_removal_of_a_new_safety_helper(name):
     work = EXECUTOR_PY.read_text()
     segment = _segments(work)[name]
     assert boundary_violations(base_text(PY_REL), work.replace(segment, "", 1))
+
+
+@pytest.mark.parametrize("name,old,new", [
+    ("receipt", 'proof.get("rollback_confirmed") is True', 'proof.get("rollback_confirmed") is False'),
+    ("fence_quiescent", '"ky.measuring_completion/1"', '"ky.smalltest_completion/1"'),
+    ("smalltest_policy_problem", '"measuring_request_problem"', '"smalltest_request_problem"'),
+])
+def test_boundary_refuses_changes_to_reviewed_measuring_functions(name, old, new):
+    work = EXECUTOR_PY.read_text()
+    base = base_text(PY_REL)
+    assert boundary_violations(base, work) == []
+    segment = _segments(work)[name]
+    assert segment.count(old) == 1
+    assert boundary_violations(base, work.replace(segment, segment.replace(old, new), 1))
 
 
 def test_boundary_test_fails_when_a_second_statement_hides_on_the_git_line():
