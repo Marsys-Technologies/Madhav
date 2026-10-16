@@ -1,0 +1,124 @@
+{
+  "version": "K3-2/v1",
+  "registry_revision": 30,
+  "asset": "ka_vighnakara",
+  "kind": "data",
+  "scope": "Pre-build under SR-A4-01; synthetic source exports and real disposable PostgreSQL, no production activation or live source admission",
+  "carriage": {
+    "nature": "derivation",
+    "served_surface": "legacy only; sealed candidates unpublished",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69"
+  },
+  "ldgr_source": {
+    "column": "assertion.provenance",
+    "state": "full pinned record/coverage/callback/F1/F2 with L1 ids; real export and independent wiring receipt remain activation gates"
+  },
+  "vocab_alias": null,
+  "prose_fields": [
+    "obstruction_detail.$.reason"
+  ],
+  "fidelity_tests": [
+    "tests/l3/ka_vighnakara/test_sealed.py::test_segments_scopes_and_all_source_fields_survive",
+    "tests/l3/kala_db/ka_vighnakara/test_sealed_storage.py::test_live_storage_schema_and_repeat_content",
+    "tests/l3/kala_db/ka_vighnakara/test_sealed_storage.py::test_migration_repeat_and_served_legacy_bytes"
+  ],
+  "null_convention": "Five independent axes; honest unavailable gaps; unknown/conditional releases; not_estimated_here. Compatibility numeric slots are inert zeroes.",
+  "produced_tables": [
+    "kala_obstruction"
+  ],
+  "density_tier_columns": {
+    "kala_obstruction": "verification_pass_status when migration 1376 is present; single, never promoted"
+  },
+  "semantic_fingerprint": {
+    "inputs": "Exact seal/manifest/verifier execution, complete export hash/bytes/independent natural-key inventory, judge/vedha/F1 generations, F2 build/tier/scenario/method/period ids, source fingerprint",
+    "outputs": "Stable candidate assertion identities and exact typed state/provenance/interval keys; no date.today or current-generation inference",
+    "oracles": "tests/l3/ka_vighnakara/test_sealed.py::test_segments_scopes_and_all_source_fields_survive; tests/l3/kala_db/ka_vighnakara/test_sealed_storage.py::test_live_storage_schema_and_repeat_content; tests/l3/kala_db/ka_vighnakara/test_sealed_storage.py::test_migration_repeat_and_served_legacy_bytes"
+  },
+  "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_vighnakara",
+  "disposition": "Explicit sealed-candidate dispatch, fixture and legacy compatibility retained. Migration 1388 is pre-built on the protected list. Real seal/export/correspondence and publication prerequisites remain separate.",
+  "production_certification": null,
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "Explicit candidate writer uses ctx.db_conn and pinned producers. Local SQL dispatch/repeat exercised; canonical build/dependency/registry/count completion UNMEASURED.",
+      "detector_none": []
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 5
+      },
+      "expected_reading": "Candidate-scoped delete-then-insert; candidate lifecycle/advisory/head locks; equal keys/count/content and retained served bytes tested locally. Production UNMEASURED.",
+      "detector_none": []
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "Local tests are rehearsal evidence, not a production build or certificate. Production timing/build state UNMEASURED.",
+      "detector_none": []
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
+      },
+      "expected_reading": "Source natural keys and released graha aliases; no independent L1 values. Live whole-table alias/identity census UNMEASURED.",
+      "detector_none": []
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "Complete record/coverage/callback/F1/F2/source references retained; independent export hash/bytes/keys required. Live locator/source census UNMEASURED.",
+      "detector_none": []
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "Existing legacy serving preserved; new candidates stay private with stored single verification tier when available. No new serving/density PASS; UNMEASURED.",
+      "detector_none": []
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
+        "Narr.lint": 7
+      },
+      "expected_reading": "No new narration; verbatim opaque source payloads retained. Legacy prose declarations retained. New semantic source-output tests; no production Narr PASS; UNMEASURED.",
+      "detector_none": []
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
+      },
+      "expected_reading": "Missing correspondence/coverage/inputs and unscoped protections remain named unavailable; unknown release valid; scalar testimony never state. Full live null grading UNMEASURED.",
+      "detector_none": []
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "Derived states restate referenced producer segments with no astrology computation. Local semantic oracles do not establish independent live carriage. UNMEASURED. NO_DETECTOR for Carr.D2",
+      "detector_none": [
+        "Carr.D2"
+      ],
+      "detector_dependency": "A later registry revision implementing each current NONE detector; no PASS claimed"
+    }
+  }
+}
