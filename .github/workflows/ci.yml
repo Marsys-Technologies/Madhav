@@ -2420,7 +2420,7 @@ jobs:
         working-directory: platform-mcp
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest governance-readback-tests-mcp -- --reporter=default --reporter=junit --outputFile=gochara-mcp.xml
-          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-mcp.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara MCP oracles need 30 executed cases and zero skips", "required Gochara MCP oracles need 50 executed cases and zero skips" if len(cases) != 30 or skipped else 0)'
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-mcp.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara MCP oracles need 50 executed cases and zero skips" if len(cases) != 50 or skipped else 0)'
       - name: P07 — migration 1235 protected evidence function (REQUIRED, skips fail)
         working-directory: platform/python-sidecar
         env:
