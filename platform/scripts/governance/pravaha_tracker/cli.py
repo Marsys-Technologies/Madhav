@@ -343,6 +343,13 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str)
             raise CompletionError("step receipt review_job result escapes the jobs directory")
         with open(result_path, encoding="utf-8") as handle:
             result = json.load(handle)
+        if isinstance(result, dict) and "items" in result:
+            items = result["items"]
+            matching_items = ([row for row in items if isinstance(row, dict) and row.get("item") == item]
+                              if isinstance(items, list) else [])
+            if len(matching_items) != 1:
+                raise CompletionError("step receipt review result does not match the item")
+            result = matching_items[0]
         if not isinstance(result, dict) or result.get("item") != item:
             raise CompletionError("step receipt review result does not match the item")
         steps = result.get("steps")

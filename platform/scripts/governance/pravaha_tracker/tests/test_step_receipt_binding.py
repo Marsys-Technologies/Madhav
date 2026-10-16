@@ -186,3 +186,43 @@ def test_file_exists_steps_keep_existing_behavior(receipt_step):
     unrelated = root / "tests.log"
     unrelated.write_text("tests passed")
     run(unrelated, expected=0)
+
+
+@pytest.mark.parametrize("position", [0, 1])
+def test_accepts_batched_review_for_exactly_one_matching_item(receipt_step, position):
+    _, _, _, result_path, result, _, run = receipt_step
+    items = [{"item": "K-D", "steps": [{"step": "tests", "verdict": "NOT_MET"}]}]
+    items.insert(position, result)
+    result_path.write_text(json.dumps({"head": "reviewed-head", "items": items}))
+    run(expected=0)
+
+
+@pytest.mark.parametrize("problem", [
+    "absent", "duplicate", "not_met", "wrong_step", "no_steps", "duplicate_step",
+    "items_null", "items_object", "items_string",
+])
+def test_refuses_invalid_batched_review_without_single_item_fallback(receipt_step, problem):
+    _, _, _, result_path, result, _, run = receipt_step
+    entry = {"item": "K-C", "steps": [{"step": "tests", "verdict": "MET"}]}
+    items = [entry, {"item": "K-D", "steps": [{"step": "tests", "verdict": "MET"}]}]
+    if problem == "absent":
+        items.pop(0)
+    elif problem == "duplicate":
+        items.append({"item": "K-C", "steps": []})
+    elif problem == "not_met":
+        entry["steps"][0]["verdict"] = "NOT_MET"
+    elif problem == "wrong_step":
+        entry["steps"][0]["step"] = "docs"
+    elif problem == "no_steps":
+        del entry["steps"]
+    elif problem == "duplicate_step":
+        entry["steps"].append({"step": "tests", "verdict": "MET"})
+    elif problem == "items_null":
+        items = None
+    elif problem == "items_object":
+        items = entry
+    else:
+        items = "K-C"
+    # Even valid legacy fields cannot override a present, invalid batch.
+    result_path.write_text(json.dumps({**result, "items": items}))
+    run()
