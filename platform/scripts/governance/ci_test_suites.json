@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "deploy-build-check-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_deploy_build*.py"
+      ]
+    },
     "unit-tests-4-9": {
       "cwd": "platform",
       "engine": "vitest",
