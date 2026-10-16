@@ -569,6 +569,28 @@ def test_a_database_rehearsal_runs_the_statements_rolls_back_and_compares(lane):
     same_count = [("UPDATE runs SET state = ? WHERE id = ?", ("failed", "r1"))]
     assert A.rehearse(lane, same_count, PROBES, HEAD, target=LANE, identity=IDENTITY)["rolled_back"] is True
 
+@pytest.mark.parametrize("failed_probe", ["rows", "head"])
+def test_rehearsal_rolls_back_when_a_during_probe_fails(lane, failed_probe):
+    """OPS-NB-02: a real SELECT failure after mutations must leave no transaction or changes."""
+    def fail_during(value):
+        if lane.in_transaction:
+            raise RuntimeError("during probe unavailable")
+        return value
+
+    lane.create_function("fail_during", 1, fail_during)
+    probes = dict(PROBES)
+    head = HEAD
+    if failed_probe == "rows":
+        probes["rows"] = "SELECT id, fail_during(state) FROM runs ORDER BY id"
+    else:
+        head = "SELECT fail_during(generation) FROM head"
+    try:
+        with pytest.raises(sqlite3.OperationalError, match="user-defined function raised exception"):
+            A.rehearse(lane, STATEMENTS, probes, head, target=LANE, identity=IDENTITY)
+        assert (lane.in_transaction, lane_state(lane)) == (False, ([("r1", "done")], [(7,)]))
+    finally:
+        lane.rollback()
+
 class Committing:
     """A connection whose rollback keeps the work (what an autocommitting or mis-wired handle does)."""
 

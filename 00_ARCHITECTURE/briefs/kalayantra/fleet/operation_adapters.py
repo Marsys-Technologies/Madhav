@@ -345,10 +345,11 @@ def rehearse(conn, statements, probes, head_probe, *, target, identity):
         for sql, params in statements:
             conn.cursor().execute(sql, params)
     except Exception as exc:                                 # the class only: a driver's text can carry the connection
-        conn.rollback()
         raise Refusal("statement_failed", "a rehearsed statement failed (%s); rolled back" % type(exc).__name__) from None
-    during = _snapshot(conn, reads)
-    conn.rollback()
+    else:
+        during = _snapshot(conn, reads)
+    finally:
+        conn.rollback()
     after = _snapshot(conn, reads)
     if after != before:
         raise Refusal("rollback_left_changes", "the probes differ after the rollback: %s"
