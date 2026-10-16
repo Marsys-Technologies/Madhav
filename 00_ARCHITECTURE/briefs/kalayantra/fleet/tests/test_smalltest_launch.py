@@ -248,3 +248,12 @@ def test_smalltest_rollback_binding_has_required_steward_intent():
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["smalltest_dispatch_dryrun"]
     assert op["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
     assert "--execute" not in op["fixed_args"] and op["enabled"] is True
+
+
+def test_table_enables_dispatch_only_through_launch_bridge():
+    ops = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
+    op = ops["smalltest_dispatch"]
+    assert op["script"].endswith("/smalltest_launch.py"), "staging alone is not dispatch"
+    assert op["enabled"] is True and op["needs"] == "builder"
+    assert op["also_needs"] == ["gcloud"]
+    assert op["allowed_args"] == ["run", "classes", "horizon-start", "horizon-end"]
