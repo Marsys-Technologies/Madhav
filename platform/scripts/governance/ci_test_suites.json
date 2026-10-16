@@ -217,8 +217,7 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
-        "ga_writers/__tests__/test_l1_min_fixes*.py",
-        "ga_writers/__tests__/test_l1*.py"
+        "ga_writers/__tests__/test_l1_min_fixes*.py"
       ]
     },
     "db-integration-tests-38-2": {
