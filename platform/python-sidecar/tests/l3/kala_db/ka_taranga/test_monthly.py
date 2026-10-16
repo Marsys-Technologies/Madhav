@@ -115,7 +115,25 @@ def test_utc_leap_month_boundary_and_disjoint_segments(db):
     assert [(r[0],r[3]) for r in rows(db)] == [('2000-02-01',29.0),('2000-03-01',2.0)]
 
 
-def test_judge_count_is_distinct_pinned_and_separate_from_integral(db):
+@pytest.mark.parametrize('evidence', ['missing', 'other_chart', 'other_generation', 'other_class', 'partial'])
+def test_unadmitted_judge_generation_is_unavailable_for_every_scope(db, evidence):
+    snapshot(db); segment(db)
+    db.execute("UPDATE kala_layer_candidate SET conventions='{\"taranga_judge_generation\":\"never-produced\"}'")
+    db.execute("INSERT INTO kala_taranga_class_domain VALUES (%s,%s,'gain','money','fixture')", (CHART,GEN))
+    if evidence != 'missing':
+        db.execute("INSERT INTO ka_gochara_eval_window VALUES (%s,%s,%s,%s,tstzrange(%s,%s,'[)'))",
+            ('00000000-0000-0000-0000-000000000650', OTHER if evidence == 'other_chart' else CHART,
+             'wrong' if evidence == 'other_generation' else 'never-produced',
+             'work' if evidence == 'other_class' else 'gain', '2000-02-01T00:00:00+00:00', '2000-03-01T00:00:00+00:00'))
+    KaTarangaWriter().run(context(db))
+    data = rows(db)
+    assert len(data) == 4  # two months, each with event-class and domain output
+    assert all(r[7] is None and r[8] for r in data)
+    assert all(r[10]['judge_generation'] == 'never-produced' for r in data)
+    assert [r[3] for r in data] == [0.5,0.5,1.5,1.5]
+
+
+def test_unadmitted_judge_windows_remain_distinct_pinned_references(db):
     snapshot(db); segment(db)
     db.execute("UPDATE kala_layer_candidate SET conventions='{\"taranga_judge_generation\":\"5.fixture\"}'")
     for identity,gen,start,end in [('00000000-0000-0000-0000-000000000650','5.fixture','2000-02-01','2000-03-01'),
@@ -124,7 +142,10 @@ def test_judge_count_is_distinct_pinned_and_separate_from_integral(db):
             db.execute('INSERT INTO ka_gochara_eval_window VALUES (%s,%s,%s,\'gain\',tstzrange(%s,%s,\'[)\'))',
                        (identity,CHART,gen,start+'T00:00:00+00:00',end+'T00:00:00+00:00'))
     KaTarangaWriter().run(context(db))
-    assert [(r[3],r[7],r[8]) for r in rows(db)] == [(0.5,0,None),(1.5,1,None)]
+    data = rows(db)
+    assert [(r[3],r[7]) for r in data] == [(0.5,None),(1.5,None)]
+    assert all(r[8] for r in data)
+    assert [r[10]['judge_window_ids'] for r in data] == [[],['00000000-0000-0000-0000-000000000650']]
 
 
 def test_rebuild_duplicate_insertion_and_unbound_dispatch_preserve_legacy(db):
