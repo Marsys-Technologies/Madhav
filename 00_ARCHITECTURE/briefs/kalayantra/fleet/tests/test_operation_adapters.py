@@ -1,6 +1,6 @@
 """Executor operation-adapter acceptance harness. Real validate/run_one/execute/receipt,
 with in-process fake Git, child and remote boundaries; no dispatcher, daemon, Git writes,
-credentials, cloud or production connections. Only copied fixture entries are enabled.
+credentials, cloud or production connections. P01 enables six reviewed small-test bindings; rebuild entries are enabled only in copies.
 SQLite exercises DB-API rollback mechanics; it does not qualify a production DB operation.
 """
 import argparse
@@ -30,7 +30,9 @@ PREFLIGHT_TS = REPO / "platform" / "scripts" / "data-plane-secret-isolation-pref
 OPS_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
+             "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | P01_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -303,7 +305,7 @@ def test_a_disabled_or_placeholder_entry_an_unauthorised_requester_or_disallowed
     req = dict({k: base[k] for k in ("kind", "operation_id", "kyd", "args", "lease_id", "reviewed_commit", "expires_at")},
                item_id=ITEM, idempotency_key="OP-FIX-s2", requested_by="adhikarin", chart_id=CANONICAL_CHART)
     for kind, entry in real.items():
-        if entry["production"]:
+        if entry["production"] and not entry["enabled"]:
             assert X.validate(dict(req, kind=kind, args={}), real, ALL_CAPS).startswith("kind %s is not enabled" % kind)
     placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True))
     assert X.validate(dict(req, kind="publish_head", args={}), placeholder, ALL_CAPS) == "operation script not yet reviewed/landed"
@@ -828,10 +830,10 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
     assert A.remote_execute_argv(A.BUILD_JOB, RUN_ID) == seen[0]
 
 
-def test_production_kinds_stay_disabled_and_wave4_launch_stays_bound(bench):
+def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert all(not v["enabled"] for v in table.values() if v["production"])
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == P01_KINDS
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):

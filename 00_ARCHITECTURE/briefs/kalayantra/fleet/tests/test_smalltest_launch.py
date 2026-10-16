@@ -135,11 +135,11 @@ def test_launcher_uses_fixed_argv_timeout_and_no_shell(bridge, monkeypatch):
     assert kw["timeout"] == 17 and not kw.get("shell")
 
 
-def test_table_binds_dispatch_to_launch_bridge_without_enabling_it():
+def test_table_binds_enabled_p01_dispatch_to_launch_bridge():
     ops = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     op = ops["smalltest_dispatch"]
     assert op["script"].endswith("/smalltest_launch.py"), "staging alone is not dispatch"
-    assert op["enabled"] is False and op["needs"] == "builder"
+    assert op["enabled"] is True and op["needs"] == "builder"
     assert op["allowed_args"] == ["run", "classes", "horizon-start", "horizon-end"]
 
 
@@ -165,6 +165,7 @@ def test_launch_requires_cloud_capability_as_well_as_builder(monkeypatch):
     req = dict(operation_id="cap-test", kind="smalltest_dispatch", item_id="fixture", idempotency_key="fresh",
                requested_by="adhikarin", kyd="fixture", args={})
     monkeypatch.setattr(executor, "seen", lambda *a: False)
+    monkeypatch.setattr(executor, "smalltest_policy_problem", lambda req: None)  # this non-production fixture isolates capability admission
     assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": False}) == "capability_missing: gcloud"
     assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": True}) is None
 
@@ -212,6 +213,7 @@ def test_existing_executor_refusals_remain_closed(monkeypatch):
     req = dict(operation_id="guard", kind="unknown", item_id="fixture", idempotency_key="fresh", requested_by="adhikarin", kyd="fixture", args={})
     assert "unknown kind" in executor.validate(req, table, {"builder": True, "gcloud": True})
     req["kind"] = "smalltest_dispatch"
+    table["smalltest_dispatch"] = {**table["smalltest_dispatch"], "enabled": False}
     assert "not enabled" in executor.validate(req, table, {"builder": True, "gcloud": True})
     table["smalltest_dispatch"] = {**table["smalltest_dispatch"], "enabled": True}
     req["args"] = {"execute": "true"}
@@ -245,4 +247,4 @@ def test_receipt_refuses_multiple_or_invalid_launch_records(tmp_path, monkeypatc
 def test_smalltest_rollback_binding_has_required_steward_intent():
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["smalltest_dispatch_dryrun"]
     assert op["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    assert "--execute" not in op["fixed_args"] and op["enabled"] is False
+    assert "--execute" not in op["fixed_args"] and op["enabled"] is True
