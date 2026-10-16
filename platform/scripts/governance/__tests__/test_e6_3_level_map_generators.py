@@ -279,11 +279,11 @@ def test_the_seed_loader_parses_every_asset_and_reproduces_the_measured_family_l
     rows = G.load_registry_from_seed(SEED)
     assert len(rows) > 100 and all(set(r) == {"asset_id", "layer", "depends_on", "active"} for r in rows)
     levels = G.compute_levels(rows)
-    # arch 6.1 measured 2026-09-28/29 (before migration 1226): family assets at levels 1, 1, 5, 12, 13; 27 levels in all.
-    # The seed now carries 1226's four applied L1 edges (ga_sensitive -> ga_vargas -> ga_dashas / ga_yoga), which lengthen
-    # the longest paths through ga_*: the same seed now yields 1, 1, 7, 14, 15 and 29 levels (re-measured on this seed).
-    assert [levels[a] for a in ("ka_gochara_resonance", "ka_vedha_gochara", "ka_gochara", "ka_kshetra", "ka_sangam")] == [1, 1, 7, 14, 15]
-    assert max(levels.values()) + 1 == 29
+    # K8-REG / migration 1392 completes direct Kala read edges and removes the
+    # retired grid edge. These are the re-measured bootstrap seed levels;
+    # the historical pre-1210 draft is tested separately, without moving it.
+    assert [levels[a] for a in ("ka_gochara_resonance", "ka_vedha_gochara", "ka_gochara", "ka_kshetra", "ka_sangam")] == [15, 1, 16, 17, 17]
+    assert max(levels.values()) + 1 == 31
 
 
 def test_the_seed_loader_handles_comments_strings_and_nested_braces(tmp_path):

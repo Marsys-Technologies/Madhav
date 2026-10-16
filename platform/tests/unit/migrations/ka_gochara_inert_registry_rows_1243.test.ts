@@ -1,8 +1,8 @@
 /**
  * Pravāha B (steward M20261003T020844-29ec) — STATIC contract of migration 1243 (the two INERT Gochara asset_registry rows).
  *
- * What this proves, from the migration's own text: it inserts exactly the rows the seed defines (every column, in the seed upsert's own
- * column order), they are inert, and it contains no statement that could change anything else. The live proof against a real PostgreSQL
+ * What this proves, from the migration's own text: its inserted rows, after the later migration 1304 / K8-REG 1387 corrections, equal the seed
+ * (every column, in the seed upsert's own column order); the original rows are inert and it contains no unrelated mutation. The live proof against a real PostgreSQL
  * (the gap check, the idempotent re-apply, the loud failures, nothing else touched) is
  * python-sidecar/tests/test_migration_1243_inert_registry_rows.py.
  *
@@ -96,6 +96,16 @@ const tuples = (() => {
 })()
 const rowOf = (id: string) => tuples.find(r => r.asset_id === id)
 
+// K8-REG: replay the real correction payload over the historical 1243 / 1304
+// rows rather than changing applied migrations or dropping any column checks.
+const K8_SQL = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1392_k8_registry_truth.sql'), 'utf8')
+const K8_ROWS = JSON.parse(K8_SQL.split('$k8_rows$')[1]) as Record<string, Cell>[]
+function afterK8(id: string, row: Record<string, Cell>): Record<string, Cell> {
+  const correction = K8_ROWS.find(r => r.asset_id === id)
+  expect(correction, `1387 correction for ${id}`).toBeDefined()
+  return { ...row, ...correction }
+}
+
 /** The seed upsert's own INSERT column list — the migration must follow it exactly (names and order). */
 const seedColumns = (() => {
   const m = ASSET_REGISTRY_UPSERT_SQL.match(/INSERT INTO asset_registry \(([\s\S]*?)\)\s*VALUES/)
@@ -138,10 +148,10 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
     expect(tuples.map(r => r.asset_id)).toEqual([...IDS])
   })
 
-  it('every column of ka_gochara_v4_41_candidate equals the seed entry (byte for byte, including the long text)', () => {
+  it('every column of ka_gochara_v4_41_candidate equals the seed after K8-REG migration 1392', () => {
     const want = seedValues('ka_gochara_v4_41_candidate')
     expect(want, 'seed row for ka_gochara_v4_41_candidate').not.toBeNull()
-    expect(rowOf('ka_gochara_v4_41_candidate')).toEqual(want)
+    expect(afterK8('ka_gochara_v4_41_candidate', rowOf('ka_gochara_v4_41_candidate')!)).toEqual(want)
   })
 
   // Reported as SKIPPED, not passed, on a tree whose seed has no ka_gochara_v5 row (main until the a53 branch merges).
@@ -158,8 +168,8 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
     target_table: v1304(/target_table = '([^']+)'/),
   }
 
-  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry once migration 1304 has been applied over the 1243 row', () => {
-    expect({ ...rowOf('ka_gochara_v5'), ...V5_AFTER_1304 }).toEqual(seedValues('ka_gochara_v5'))
+  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry once migrations 1304 and K8-REG 1387 have been applied over the 1243 row', () => {
+    expect(afterK8('ka_gochara_v5', { ...rowOf('ka_gochara_v5'), ...V5_AFTER_1304 })).toEqual(seedValues('ka_gochara_v5'))
     expect(V5_AFTER_1304.writer_timeout_seconds).toBe(28800)
     expect(Object.keys(V5_AFTER_1304).sort()).toEqual(['count_sql', 'depends_on', 'has_substeps', 'size_sql', 'target_table', 'writer_timeout_seconds'])
   })

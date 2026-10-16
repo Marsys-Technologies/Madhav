@@ -791,7 +791,13 @@
     "asset_id": "ka_gochara_v3_century_materialize",
     "layer": "kala",
     "depends_on": [
+      "bg_ghatana",
+      "bg_reference",
       "bg_sky_calendar",
+      "bg_transit_rules",
+      "bg_vedha_malefic_scale",
+      "ga_dashas",
+      "ga_positions",
       "ka_gochara_resonance",
       "ka_kota_chakra",
       "ka_moorti_nirnaya",
@@ -803,13 +809,19 @@
   {
     "asset_id": "ka_gochara_v4_41_candidate",
     "layer": "kala",
-    "depends_on": [],
+    "depends_on": [
+      "bg_transit_rules",
+      "bg_vedha_malefic_scale",
+      "ka_moorti_nirnaya",
+      "ka_vedha_gochara"
+    ],
     "active": false
   },
   {
     "asset_id": "ka_gochara_v5",
     "layer": "kala",
     "depends_on": [
+      "bg_transit_rules",
       "ga_dashas",
       "ga_positions"
     ],
