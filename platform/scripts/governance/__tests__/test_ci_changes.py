@@ -713,17 +713,21 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
-def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
-    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+@pytest.mark.parametrize("step_name,report_name", [
+    ("P07 — ported Gochara publication oracles (REQUIRED)", "gochara-mcp.xml"),
+    ("J4D — governed generation reader oracles (required; skips fail)", "gochara-j4d.xml"),
+])
+@pytest.mark.parametrize("case_count,skipped,ok", [(50, False, True), (50, True, False), (49, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok, step_name, report_name):
+    """Each required reader step executes all 22 + 28 cases; skips cannot earn green."""
     import shlex
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
-             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+             if s.get("name") == step_name]
     assert len(steps) == 1
     command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
-    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr

@@ -7,7 +7,7 @@
  * coverage is withheld as 'unpublished' with the gate's reason, and legacy generations ('3.0', '4.x') are unchanged and issue no seal query.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
-import { computeGocharaActivation, computeGocharaCoverage } from './register_gochara_windows.js'
+import { computeGocharaActivation, computeGocharaCoverage, computeGocharaForecast, computeGocharaElectionAvoidance } from './register_gochara_windows.js'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const PRINCIPAL = { user_uid: 'test', key_id: 'test', role: 'super_admin' as const }
@@ -36,6 +36,7 @@ const COVERAGE_ROWS = [{
 function mockFetch(fetchSpy: Mock, o: { generation: string; status: string; vector?: Record<string, unknown>; seal?: 'sealed' | 'unsealed' | 'fails'; noManifest?: boolean; malformedSeal?: boolean }) {
   fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
     const { sql } = JSON.parse(init.body as string) as { sql: string }
+    if (/FROM kala_gochara_windows\b/.test(sql)) return Promise.resolve(ok([]))
     if (sql.includes('FROM ka_gochara_generation_seal')) return Promise.resolve(o.malformedSeal ? ok([]) : o.seal === 'fails' ? failed() : ok([{ sealed: o.seal === 'sealed' }]))
     if (sql.includes('FROM kala_gochara_authority')) return Promise.resolve(ok([{ authoritative_generation: o.generation }]))
     if (sql.includes('FROM kala_gochara_publication')) return Promise.resolve(ok(o.noManifest ? [] : [manifest(o.generation, o.status, o.vector ?? {})]))
@@ -136,4 +137,36 @@ describe('windows reader coverage — the governed-generation gate (follow-up c)
     expect(coverage.coverage_manifest).toBeTruthy()
     expect(sealQueries(fetchSpy)).toBe(0)
   })
+})
+
+// J4D salvage: refusal must cover the actual served rows, even without a domain filter.
+describe('withheld generations cannot reach any window-serving query', () => {
+  let fetchSpy: Mock
+  beforeEach(() => {
+    fetchSpy = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetchSpy)
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  const readers = [
+    ['activation', () => computeGocharaActivation(CHART, '2026-06-01', PRINCIPAL)],
+    ['forecast', () => computeGocharaForecast(CHART, { start: '2026-01-01', end: '2027-01-01' }, undefined, undefined, 10, PRINCIPAL)],
+    ['election', () => computeGocharaElectionAvoidance(CHART, { start: '2026-01-01', end: '2027-01-01' }, undefined, 10, PRINCIPAL)],
+  ] as const
+
+
+  for (const [label, read] of readers) {
+    it.each(['candidate', 'test_slice', 'unsealed', 'seal_failed', 'missing_manifest'])(`${label} refuses %s before reading windows`, async state => {
+      mockFetch(fetchSpy, { generation: '5.0', status: state === 'candidate' ? 'candidate' : 'published',
+        seal: state === 'seal_failed' ? 'fails' : state === 'unsealed' ? 'unsealed' : 'sealed',
+        vector: state === 'test_slice' ? SLICE_VECTOR : {}, noManifest: state === 'missing_manifest' })
+      const result = await read() as { windows: unknown[]; coverage: { status?: string }; provenance_envelope: { source_citation: string } }
+      expect(result.coverage.status).toBe('unpublished')
+      expect(result.windows).toEqual([])
+      expect(result.provenance_envelope.source_citation).toMatch(/not served/)
+      const sqls = fetchSpy.mock.calls.map(c => (JSON.parse((c[1] as RequestInit).body as string) as { sql: string }).sql)
+      expect(sqls.filter(sql => /FROM kala_gochara_windows\b/.test(sql))).toEqual([])
+      expect(sqls.filter(sql => /FROM kala_gochara_coverage\b/.test(sql))).toEqual([])
+    })
+  }
 })

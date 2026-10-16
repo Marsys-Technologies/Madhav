@@ -755,6 +755,14 @@
       "include": [
         "tests/test_migration_1235_evidence*.py"
       ]
+    },
+    "governance-readback-tests-j4d": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
     }
   }
 }
