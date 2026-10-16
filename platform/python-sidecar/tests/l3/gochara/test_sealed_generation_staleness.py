@@ -70,8 +70,14 @@ def make_router(
     live_l1: str = "L1SNAP",
     live_dasha: str = "DASHASNAP",
     violations: list | None = None,
+    sealed: bool = True,
 ):
     def router(sql: str, params):
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [CHART, GENERATION]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(sealed,)]
         if "FROM public.ka_gochara_search_input_snapshot" in sql:
             return [snap] if snap is not None else []
         if "ka_gochara_search_l1_facts_digest" in sql:
@@ -177,3 +183,26 @@ def test_main_no_database_url_exit3(monkeypatch, capsys) -> None:
     _patch_main(monkeypatch, FakeConn(make_router()), dsn=None)
     assert staleness.main() == 3
     assert "DATABASE_URL is required" in capsys.readouterr().err
+
+
+# J5Q: a snapshot alone is not a seal (1153's seal has no manifest FK).
+def test_snapshot_without_matching_seal_is_never_fresh(monkeypatch, capsys):
+    _patch_main(monkeypatch, FakeConn(make_router(sealed=False)))
+    assert staleness.main() == 3
+    assert "no matching generation seal and manifest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("index", [2, 3])
+def test_unknown_snapshot_digest_is_never_fresh(index, monkeypatch, capsys):
+    snap = list(SNAP_ROW)
+    snap[index] = None
+    _patch_main(monkeypatch, FakeConn(make_router(snap=tuple(snap), **{"live_l1" if index == 2 else "live_dasha": None})))
+    assert staleness.main() == 3
+    assert "missing snapshot digest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("key", ["live_l1", "live_dasha"])
+def test_unknown_live_digest_is_not_fresh(key, capsys):
+    conn = FakeConn(make_router(**{key: None}))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    assert "stale" in capsys.readouterr().out
