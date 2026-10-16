@@ -3,6 +3,7 @@ import itertools
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 import yaml
@@ -12,7 +13,9 @@ SUITE = 'src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts'
 
 
 def jobs():
-    return yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    sys.path.insert(0, str(ROOT / 'platform/scripts/governance'))
+    from ci_discovery import expanded_workflow
+    return expanded_workflow(yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs'])
 
 
 def test_kala_database_proof_is_a_required_aggregate_dependency():

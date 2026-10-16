@@ -104,10 +104,14 @@ def test_handoff_source_citations_resolve_to_real_lines():
 
 
 def test_field_readback_is_in_the_existing_mandatory_database_ci_command():
-    jobs = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"]
+    from ci_discovery import expanded_workflow
+    jobs = expanded_workflow(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())["jobs"])
     job = jobs["db-integration-tests"]
     steps = [step for step in job["steps"] if SUITE in step.get("run", "")]
     assert len(steps) == 1, "J-7b field readback must run in mandatory DB CI"
     assert not job.get("continue-on-error") and not steps[0].get("continue-on-error")
     assert steps[0].get("env", {}).get("GOCHARA_A53_REQUIRE_DB") == "1"
     assert "pytest" in steps[0]["run"] and "-p no:cacheprovider" in steps[0]["run"]
+
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(ROOT / "platform/scripts/governance"))
