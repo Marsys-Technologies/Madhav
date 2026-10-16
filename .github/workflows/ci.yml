@@ -255,7 +255,7 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Own random disposable DB; no cluster-role changes. Real 1376 rollback
         # injection covers both routine and --only; real psql runs the P9 query.
-        run: npx vitest run scripts/__tests__/protected_window.db.test.ts --no-cache
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-protected-window -- --no-cache
       - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
         # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
         # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged

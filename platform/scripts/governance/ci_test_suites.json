@@ -217,6 +217,7 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
+        "ga_writers/__tests__/test_l1_min_fixes*.py",
         "ga_writers/__tests__/test_l1*.py"
       ]
     },
@@ -754,6 +755,13 @@
       "engine": "pytest",
       "include": [
         "tests/test_migration_1235_evidence*.py"
+      ]
+    },
+    "unit-tests-protected-window": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "scripts/__tests__/protected_window*.db.test.ts"
       ]
     }
   }
