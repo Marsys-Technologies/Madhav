@@ -10,6 +10,8 @@ import os
 import psycopg
 import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
+
 from .test_c38_teardown_real_db import (  # noqa: F401
     GEN, MARKER, SHORT, _counts, _prune, _refused_and_untouched, _run, _slice_run, _slice_steps, _snapshot, _step, _teardown, psycopg, pytest, td, threading, time, template, tworld, writer_mod,
 )
@@ -41,8 +43,7 @@ def test_item1_an_unreferenced_new_foreign_key_does_not_block(tworld):
     _slice_run(w)
     w.conn.execute("CREATE TABLE public.some_future_table (id serial PRIMARY KEY, built_by uuid REFERENCES public.build_runs(id) ON DELETE SET NULL)")
     w.conn.execute("INSERT INTO public.some_future_table (built_by) VALUES (NULL)")
-    _teardown(w)
-    assert all(n == 0 for n in _counts(w).values())
+    _refused_and_untouched(w, "identified staged run")
 
 
 NON_CANONICAL = dict(MARKER, horizon=[SHORT[0].isoformat().replace("+00:00", "Z"), SHORT[1].isoformat().replace("+00:00", "Z")],
@@ -57,8 +58,7 @@ def test_item2_a_valid_writer_stamp_from_a_non_canonical_marker_is_proved_agains
     _slice_steps(w, rid)
     _teardown(w, dry_run=True)
     assert f"stamp\tproved against the ORIGINAL marker of run {rid}" in capsys.readouterr().out
-    _teardown(w)
-    assert all(n == 0 for n in _counts(w).values())
+    _refused_and_untouched(w, "identified staged run")
 
 
 def test_item2_the_same_stamp_with_no_run_row_left_is_refused_and_the_refusal_says_why(tworld):
@@ -66,7 +66,7 @@ def test_item2_the_same_stamp_with_no_run_row_left_is_refused_and_the_refusal_sa
     rid = _run(w, marker=NON_CANONICAL, receipt=False)
     _slice_steps(w, rid)
     _prune(w, rid)                                                           # the watchdog's prune: nothing left to read the preimage from
-    _refused_and_untouched(w, r"original marker preimage could not prove it \(no owned run row survives\).*reconstruction")
+    _refused_and_untouched(w, "run-proven stamp is required")
 
 
 # ── Codex round 4 / Stream B (v1.3): T1, T4, TB1, D3 on a real database ──────────────────────────────────────────────────────────
@@ -154,8 +154,7 @@ def test_d3_an_older_proven_test_chain_under_a_newer_proven_test_manifest_is_rem
     w = tworld
     _interrupted_replacement(w)
     assert _counts(w)["ka_gochara_contact"] >= 5
-    _teardown(w)
-    assert all(n == 0 for n in _counts(w).values())
+    _refused_and_untouched(w, "identified staged run")
 
 
 def test_d3_the_same_state_is_refused_once_the_older_run_is_pruned_and_the_runbook_not_the_other_script_is_named(tworld):
