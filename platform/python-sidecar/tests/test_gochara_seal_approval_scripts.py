@@ -907,7 +907,8 @@ def test_p08_the_pre_execution_definition_refuses_multiple_or_invalid_tasks(tmp_
     assert xc.main(['job-image', '--job-file', str(jf), '--image-digest', IMG, '--image-repo', REPO, '--runner-commit', SHA, '--secret-name', 'gochara-verifier-db-url', '--service-account', SA]) == 2
 
 
-def test_p08_reconciliation_uses_one_read_only_snapshot():
+@pytest.mark.parametrize('chart,generation', [(CHART, GEN), ('11111111-1111-1111-1111-111111111111', '5.1')])
+def test_p08_reconciliation_uses_one_read_only_snapshot(chart, generation):
     from contextlib import contextmanager
     class Cursor:
         def __init__(self, rows): self.rows = rows
@@ -925,11 +926,15 @@ def test_p08_reconciliation_uses_one_read_only_snapshot():
             assert self.in_transaction, 'all seal-state reads must share one snapshot'
             self.sql.append(sql)
             if sql.startswith('SET TRANSACTION'): return Cursor([])
+            # a12: all three reads must bind the exact requested chart/generation,
+            # even when another generation has a different publication state.
+            assert ' '.join(sql.split()).endswith('WHERE chart_id = %s::uuid AND generation = %s')
+            assert args == (chart, generation)
             if 'SELECT status' in sql: return Cursor([('candidate',)])
             if 'count(*)' in sql: return Cursor([(0,)])
             return Cursor([])
     conn = Conn()
-    assert rc_.read_state(conn, CHART, GEN) == ('candidate', 0, [])
+    assert rc_.read_state(conn, chart, generation) == ('candidate', 0, [])
     assert conn.sql[0] == 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY'
 
 

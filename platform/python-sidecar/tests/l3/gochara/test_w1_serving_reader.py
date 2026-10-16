@@ -188,6 +188,41 @@ def test_without_event_classes_the_answer_speaks_for_every_class_the_generation_
     assert _read(w, event_classes=[CLS])["classes_source"] == "request"
 
 
+@pytest.mark.parametrize('foreign_chart,foreign_generation', [
+    (CHART_ID, '5.1'),
+    ('11111111-1111-1111-1111-111111111111', GEN),
+])
+def test_window_page_and_counts_exclude_other_charts_and_generations(world, foreign_chart, foreign_generation):
+    """v14: foreign rows must not change either the page or its unbounded count."""
+    w = _sealed(world)
+    before = _read(w, event_classes=[CLS])
+    assert before['counts']['windows_matched'] == 1
+    foreign_id = str(uuid.UUID(int=42))
+    with w.conn.transaction():
+        # Adversarial rows live ONLY in this disposable DB. The canonical-only
+        # constraint/FKs otherwise prevent testing the reader's chart boundary.
+        w.conn.execute('ALTER TABLE public.ka_gochara_eval_window DROP CONSTRAINT kgew_canonical_chart_ck')
+        w.conn.execute('ALTER TABLE public.ka_gochara_eval_window DISABLE TRIGGER ALL')
+        w.conn.execute(
+            'INSERT INTO public.ka_gochara_eval_window '
+            '(window_id, chart_id, generation, event_class, path_id, rule_version, interval, '
+            'outcome_valence_for_native, coverage_partition_kind, coverage_partition_key, coverage_facts, '
+            'null_states_used, objective, qualification) '
+            'SELECT %s, %s, %s, event_class, path_id, rule_version, interval, '
+            'outcome_valence_for_native, coverage_partition_kind, coverage_partition_key, coverage_facts, '
+            'null_states_used, objective, qualification FROM public.ka_gochara_eval_window WHERE window_id = %s',
+            (foreign_id, foreign_chart, foreign_generation, before['windows'][0]['window_id']))
+        w.conn.execute('ALTER TABLE public.ka_gochara_eval_window ENABLE TRIGGER ALL')
+    assert w.conn.execute('SELECT count(*) FROM public.ka_gochara_eval_window').fetchone()[0] == 2
+    for limit in (None, 1):
+        answer = _read(w, event_classes=[CLS], limit=limit)
+        assert answer['refusal'] is None
+        assert answer['windows'] == before['windows']
+        assert answer['counts']['windows_matched'] == answer['counts']['windows_returned'] == 1
+        assert answer['counts']['windows_truncated'] is False
+        assert answer['classes'][0]['windows_matched'] == answer['classes'][0]['windows_returned'] == 1
+
+
 # ── named refusals: never an empty list ──────────────────────────────────────────────────────────────────
 
 def test_an_unknown_generation_is_refused_by_name(world):
@@ -622,6 +657,30 @@ def test_a_present_near_miss_layer_is_a_separate_array_never_merged_or_counted_w
     limited = _read(w, event_classes=[CLS], limit=1)
     assert limited["counts"]["near_miss_matched"] == 3 and limited["counts"]["near_miss_returned"] == 1
     assert limited["counts"]["near_miss_truncated"] is True and limited["counts"]["windows_truncated"] is False
+
+
+def test_scored_near_miss_rows_are_refused_even_when_the_database_allows_them(world):
+    """v17: schema column names/types alone cannot license a near-miss score."""
+    w = _sealed(world)
+    occ, obj = _near_miss_tables(w)
+    ids = _near_miss_rows(w, occ, obj, [(_t(1, 12), _t(1, 14))])
+    # Remove the test fixture's convenience CHECK, keeping the real reader and
+    # SQL validation active. This models a readable but incompatible layer.
+    w.conn.execute(f'ALTER TABLE public.{occ} DROP CONSTRAINT {occ}_score_check')
+    w.conn.execute(f'UPDATE public.{occ} SET score = 0.75 WHERE near_miss_id = %s', (ids[0],))
+    assert w.conn.execute(f'SELECT score FROM public.{occ}').fetchone()[0] == 0.75
+    answer = _read(w, event_classes=[CLS])
+    assert answer['refusal'] is None and len(answer['windows']) == 1
+    assert answer['near_miss_layer'] == 'schema_mismatch'
+    assert answer['near_miss_layer_detail'] == {'rows': 'orphan_object_or_incompatible_standing_score_interval'}
+    assert 'near_miss_intervals' not in answer
+    assert answer['counts']['near_miss_matched'] is None
+    # A compatible unscored row remains readable, so refusal is score-driven.
+    w.conn.execute(f'UPDATE public.{occ} SET score = NULL WHERE near_miss_id = %s', (ids[0],))
+    compatible = _read(w, event_classes=[CLS])
+    assert compatible['near_miss_layer'] == 'present'
+    assert compatible['near_miss_intervals'][0]['score'] is None
+    assert compatible['near_miss_intervals'][0]['score_reason'] == 'near_miss_unscored'
 
 
 def test_near_miss_tables_holding_nothing_for_an_unpinned_generation_are_not_built_not_empty(world):
