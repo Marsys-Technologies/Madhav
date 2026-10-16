@@ -249,6 +249,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Protected window — DDL and ledger atomicity and PUBLIC ACL readback (required)
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        # Own random disposable DB; no cluster-role changes. Real 1376 rollback
+        # injection covers both routine and --only; real psql runs the P9 query.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-protected-window -- --no-cache
       - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
         # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
         # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged

@@ -755,6 +755,13 @@
       "include": [
         "tests/test_migration_1235_evidence*.py"
       ]
+    },
+    "unit-tests-protected-window": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "scripts/__tests__/protected_window*.db.test.ts"
+      ]
     }
   }
 }
