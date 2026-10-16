@@ -172,7 +172,8 @@
       "detector": "services/ka_muhurta_seva/parihara_eval.py::_predicate",
       "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:188",
       "tests": [
-        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_three_sample_term_changes_do_not_clear_even_when_any_of_stays_true"
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_three_sample_term_changes_do_not_clear_even_when_any_of_stays_true",
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_changing_combustion_cannot_become_agreement"
       ],
       "tier": "single",
       "limitation": "Start/mid/end samples detect observed changes; no continuity or interval splitting proof."
@@ -219,6 +220,17 @@
       "tier": "single",
       "limitation": "Synthetic reducer outcomes only; real kartari agents and source reading remain unqualified."
     },
+    "mars_v88_readings": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_dosha",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:237",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_readings_are_evaluated_and_cited_separately",
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_preserves_literal_preparation_reading",
+        "tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py::test_mars_v88_disagreement_survives_read_only_source_roundtrip"
+      ],
+      "tier": "single",
+      "limitation": "Synthetic controls and guarded fixture roundtrip preserve literal and reconstructed readings; neither translation is selected and no L0-M admission is asserted."
+    },
     "source_locator": {
       "detector": "services/ka_muhurta_seva/parihara_eval.py::_rule",
       "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:222",
@@ -248,7 +260,7 @@
         "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_source_fixtures_resolve_verbatim_not_from_memory"
       ],
       "tier": "single",
-      "limitation": "Fixture quotation fidelity only; does not qualify the v.88 rule-201 reading or admit L0-M rows."
+      "limitation": "Fixture quotation fidelity only; does not select either v.88 reading or admit L0-M rows."
     },
     "fact_carriage": {
       "detector": "services/ka_muhurta_seva/parihara_eval.py::_sample",
@@ -351,12 +363,13 @@
     "platform/python-sidecar/services/kala_core/sky/ephemeris.py": "3f511639550f0435778ffeb4250c94779611cc30505aed5fcc6624891725011c",
     "platform/python-sidecar/tests/l3/_disposable_db_guard.py": "a2ead8c7d8dca23b658002830f07264979d2d32aa39632af31a06c591511c231",
     "platform/python-sidecar/tests/l3/ka_muhurta_seva/conftest.py": "ca82b7dcab64b9f507bdc9ee6c1646c9399bc8af6b64c5a79c2a042b92cb7903",
-    "platform/python-sidecar/tests/l3/ka_muhurta_seva/parihara_predicates.json": "a33b79b686118f83fb7ad09cfe8b0901d579dc8a11a2baaf0b66f76584fab3ea",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/parihara_predicates.json": "c9cec3d98109ab7e4285f8b835b7addbf6a0e1eda1765ca2fcfcfa617e4acdce",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_mars_v88_readings.py": "ddd0d892c5a9cce98c30f91b1397b6e11732c328708f46fb6075ba2ace936e42",
     "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_eval.py": "9b22ca088355ff257acc488993a35cb84cf002bed69042c3462081e786a6e80b",
     "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_evaluate.py": "9161ecf4b331b4ca5927cb0b9733b2b541c197797408449d14fe2ace0b8e2554",
     "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py": "6d0d185813fe15a8532846b8c09c4429627cb8e394571c9d06f03f50b6b35396",
     "platform/python-sidecar/tests/l3/kala_db/conftest.py": "9964d8ba7336541025a920fa55679e7e6774ac0fbdb51653d20f03daa022ae96",
-    "platform/python-sidecar/tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py": "46a471282ef25e43546c59342ee04dea195a138ae1608c562ac7e579dce6d3ff",
+    "platform/python-sidecar/tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py": "252fe6b17d4a9941e74c7cc210430dc09aeca7b120c0d37e6a1d4d08f0f2b272",
     "platform/scripts/corpus/data/muhurta_chintamani_translations.json": "7601a048657e0b94de197cb4c8227891d12e673dac630611f1771a42052d1479",
     "platform/scripts/governance/asset_census.py": "523f50ea74e24875f650f13b0659d4ee6165a0ec0eb864124b2e3d3fccf8c60b"
   }

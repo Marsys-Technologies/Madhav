@@ -45,6 +45,7 @@ CLAIMS = {
     ], 'Undefined strength, agents and predicates remain unknown.'),
     'sample_changes': (EVAL + '::_predicate', [
         UNIT + 'test_parihara_eval.py::test_three_sample_term_changes_do_not_clear_even_when_any_of_stays_true',
+        UNIT + 'test_mars_v88_readings.py::test_mars_v88_changing_combustion_cannot_become_agreement',
     ], 'Start/mid/end samples detect observed changes; no continuity or interval splitting proof.'),
     'coordinate_frame': (EVAL + '::_term_value', [
         UNIT + 'test_parihara_eval.py::test_independent_frame_goldens',
@@ -64,6 +65,11 @@ CLAIMS = {
         UNIT + 'test_parihara_verse_locator.py::test_verse_88_still_requires_the_exact_source_reading_pair',
         UNIT + 'test_parihara_verse_locator.py::test_explicit_v88_unknown_reading_does_not_earn_agreement',
     ], 'Synthetic reducer outcomes only; real kartari agents and source reading remain unqualified.'),
+    'mars_v88_readings': (EVAL + '::_dosha', [
+        UNIT + 'test_mars_v88_readings.py::test_mars_v88_readings_are_evaluated_and_cited_separately',
+        UNIT + 'test_mars_v88_readings.py::test_mars_v88_preserves_literal_preparation_reading',
+        DB + 'test_mars_v88_disagreement_survives_read_only_source_roundtrip',
+    ], 'Synthetic controls and guarded fixture roundtrip preserve literal and reconstructed readings; neither translation is selected and no L0-M admission is asserted.'),
     'source_locator': (EVAL + '::_rule', [
         UNIT + 'test_parihara_verse_locator.py::test_invalid_or_missing_verse_locator_cannot_earn_a_rule_verdict',
         UNIT + 'test_parihara_verse_locator.py::test_display_citation_is_preserved_alongside_explicit_locator',
@@ -76,7 +82,7 @@ CLAIMS = {
     ], 'Explicit applies/does_not_apply/unknown rule states; no ranking or subtraction.'),
     'source_text_fidelity': (UNIT + 'test_parihara_eval.py::test_source_fixtures_resolve_verbatim_not_from_memory', [
         UNIT + 'test_parihara_eval.py::test_source_fixtures_resolve_verbatim_not_from_memory',
-    ], 'Fixture quotation fidelity only; does not qualify the v.88 rule-201 reading or admit L0-M rows.'),
+    ], 'Fixture quotation fidelity only; does not select either v.88 reading or admit L0-M rows.'),
     'fact_carriage': (EVAL + '::_sample', [
         UNIT + 'test_parihara_eval.py::test_real_swiss_facts_roundtrip_without_recomputing_source_values',
     ], 'Real Swiss relay fidelity and house calculation; same backend is not a second pass.'),
