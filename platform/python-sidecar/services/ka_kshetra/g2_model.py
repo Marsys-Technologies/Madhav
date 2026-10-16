@@ -101,7 +101,10 @@ class RouteSegment:
     def integral(self) -> float:
         width = self.end - self.start
         x = self.gamma * width
-        return math.exp(self.alpha) * width * (math.expm1(x) / x if x else 1.0)
+        # Factor from the larger endpoint; only exponentiate the final area so
+        # intermediate underflow/overflow cannot erase a representable integral.
+        log_shape = math.log(-math.expm1(-abs(x)) / abs(x)) if x else 0.0
+        return math.exp(self.alpha + max(x, 0.0) + math.log(width) + log_shape)
 
 
 @dataclass(frozen=True)

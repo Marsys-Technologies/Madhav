@@ -34,9 +34,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from urllib.parse import quote
 
@@ -76,7 +78,11 @@ def get(path: str, timeout: float = 3.0):
     try:
         with urllib.request.urlopen(URL + path, timeout=timeout) as r:  # noqa: S310
             return json.loads(r.read().decode()), "live"
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        if path.startswith("/api/verify?"):
+            # Guarded measurements never fall back to a persisted snapshot.
+            reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+            return None, "tracker-timeout" if isinstance(reason, TimeoutError) else "tracker-unreachable"
         try:
             with open(SNAPSHOT, encoding="utf-8") as f:
                 return {"_snapshot": json.load(f)}, "stale-snapshot"
@@ -218,7 +224,14 @@ def cmd_guarded_done(a, actor: str) -> int:
     try:
         model = load_model()
         item = next(row for row in model["items"] if row["id"] == a.item)
-        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=90)
+        timeout = float(os.environ.get("KY_VERIFY_TIMEOUT_S", "300"))
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise CompletionError("KY_VERIFY_TIMEOUT_S must be a positive finite number")
+        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+        if via == "tracker-timeout":
+            raise CompletionError(f"tracker timed out after {timeout:g}s during live detector verification")
+        if via == "tracker-unreachable":
+            raise CompletionError("tracker unreachable during live detector verification")
         if via != "live" or not isinstance(observed, dict) or observed.get("item") != a.item:
             raise CompletionError("live detector verification is unavailable")
         detector = observed.get("detector") or {}
