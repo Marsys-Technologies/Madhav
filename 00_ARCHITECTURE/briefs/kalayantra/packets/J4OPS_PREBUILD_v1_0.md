@@ -1,11 +1,13 @@
 ---
 artifact: J4OPS_PREBUILD
-version: "1.0"
+version: "1.1"
 status: PREPARATION BUILT — production operation bindings and item completion LEFT OUT
 produced_on: 2026-10-16
 source_main: ef14167bcc35a321b11d4d189a6b752bf3c658b8
 items: [J-4a-a25, J-4b-a55j, J-4c-a55m]
 authority: A6 D-40 / SR-A4-01; no production activation
+changelog:
+  - "1.1 (2026-10-16): clarify R-PBJ4OPS-01 CI-glob proof locators; no executable behavior change."
 ---
 
 # J4OPS preparation handoff
@@ -201,3 +203,25 @@ databases; the shared cluster is neither stopped nor reconfigured. The supplied
 worktree remains for the cockpit's commit/review. No generated output, lock,
 FROZEN file or L0–L2 asset changed. Campaign-level session open/close remains with
 the cockpit (charter §8.6); no separate validated session close is claimed.
+
+### R-PBJ4OPS-01 — retained proof clarification
+
+Closure evidence is retained under
+`/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T152605Z-nb-j4ops/`.
+Its `builder-result.corrected.json` supersedes only the two CI-glob `copy_path`
+entries and their explanatory note in the original builder result. Both entries
+now name `revert-proofs/ci-glob-guard-reverted` in the closure job folder.
+The original result and review artifacts remain unchanged.
+
+The distinct reverted snapshot contains the exact parent guard from
+`ef14167bcc35a321b11d4d189a6b752bf3c658b8`; the fixed snapshot contains the
+accepted `43a8f3d7d7a395fd1af7804821c8a11ca7db3494` guard. The named CI-glob
+regression fails with an assertion on the former (exit 1) and passes on the
+latter (exit 0). `source-index.json` binds the bytes and `proof-runs.json`
+records fresh commands and logs.
+
+The review-time observation is not reproducible against the original locator's
+current bytes: its ambiguously named `revert-proofs/fixed` directory also
+contains the exact parent guard and fails that regression. This closure makes
+the retained evidence explicit; no executable code or CI behavior change is
+warranted. The three operational items remain outside completion.
