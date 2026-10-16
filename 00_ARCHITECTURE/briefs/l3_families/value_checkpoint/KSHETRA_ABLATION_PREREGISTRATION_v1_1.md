@@ -8,6 +8,7 @@ supersedes_for: KĀLA-YANTRA VC-1 only; the Nirmāṇa v1.0 source is preserved
 ruling: NR-KALA-R12-20261006
 runtime_effect: none
 changelog:
+  - "VC1-N1 (child of VC-1): specify chart pair identity, deduplication and any-class ambiguity before execution freeze; refresh preparation seal only."
   - "1.1: amend ruling-10 protocol for the full repaired G1 baseline, immutable tracker binding, per-stratum censoring and four-way reporting; preparation only under SR-A4-01."
 ---
 
@@ -152,6 +153,43 @@ also blocks that chart's claim. Report `insufficient_evidence`; pooling never re
 All six intended class strata must be reported, including unavailable ones; repeated chapter pairs
 across classes do not constitute independent persons or extra independent chart-level evidence.
 
+
+**Chart aggregation — VC1-N1, (I) INTERPRETATION:** for each chart, the denominator is the
+number of unique selected eligible chapter pairs across its six intended class strata, **before**
+censoring. Pair identity is `(chart_id, pair_index)`, using the immutable chronological zero-based
+index and chapter identities/bounds fixed in §3's selection inventory. Event class, arm and judge
+are not part of that identity; repeated rows count once. The numerator is the number of those unique
+pairs native-adjudicated `ambiguous` in **any** class. An unambiguous adjudication in another class
+cannot cancel ambiguity. Count a mixed-class pair once in the chart numerator, but retain §4's
+stratum-local scoring exclusion: censor it only in the class strata adjudicated ambiguous, across
+all arms/items there. The chart aggregation does not censor otherwise scored class-pair observations.
+Unresolved or unavailable classes retain the existing four-way verdict rules; never infer they are
+unambiguous or use chart aggregation to rescue them. Zero unique selected pairs is
+`insufficient_evidence`; apply the same strict `5 * ambiguous_n > selected_n` chart ceiling.
+
+The following contract is identical to `censoring.chart_aggregation` in `preregistration.json`:
+
+```json
+{
+  "chart_aggregation": {
+    "pair_identity": [
+      "chart_id",
+      "pair_index"
+    ],
+    "denominator": "unique_selected_eligible_pairs_across_classes_before_censoring",
+    "numerator": "unique_pairs_native_adjudicated_ambiguous_in_any_class",
+    "mixed_class_ambiguity": "count_once_for_chart_keep_scoring_exclusions_stratum_local"
+  }
+}
+```
+
+Distinguishing arithmetic example (synthetic, not chart evidence): five selected eligible pairs
+repeated over six classes give **five**, not thirty, chart denominator pairs. If pair 0 is ambiguous
+only in class 0 and pair 1 only in class 1, each affected stratum is 1/5 = 20%, but the chart is
+**2/5 = 40%** and must report `insufficient_evidence`. Pooling 2/30 would incorrectly admit the chart.
+If instead pair 0 is ambiguous in two (or all six) classes, the chart is **1/5 = 20%**, which does not
+exceed the ceiling; other evidence/verdict requirements still apply.
+
 For evaluable, adequately evidenced strata, all three conditions must hold:
 
 1. **Driver:** B > A′ on a strict majority of scored pairs (`2 * wins > scored_n`), and B < A′ on none.
@@ -200,6 +238,10 @@ The following are **(I) INTERPRETATION**, fixed before outputs, not measured cla
   consenting charts require a separately authorized version and full identities before outcomes.
 - **Strata:** chart × calibrated class, plus per-chart ceiling; alternative: chart-only censoring.
   This prevents a missing class being concealed by pooled evidence. No invented class identifiers.
+- **Chart aggregation (VC1-N1):** deduplicate by chart and selection-inventory pair index; union
+  native-adjudicated ambiguity across classes for the chart ceiling, leaving scoring exclusions
+  stratum-local. Alternative: pool class-pair observations (2/30) or require every class to agree
+  on ambiguity; either can conceal the chart-level ceiling breach (2/5).
 - **Selection:** nearest-rank quartile, stable indices, reserved lowest-hash ordinary pair and a
   minimum of two scored pairs implement “several” plus the ordinary control. Alternative: unreserved
   first-eight selection or an unspecified percentile/minimum that can be chosen after scoring.

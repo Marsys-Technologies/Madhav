@@ -182,6 +182,50 @@ def test_duplicate_json_keys_cannot_replace_a_measured_failure(tool, tmp_path):
         tool.build_report(ROOT, path)
 
 
+@pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity", "1e9999", "-1e9999"])
+@pytest.mark.parametrize("format", ["json", "markdown"])
+@pytest.mark.parametrize("write_file", [False, True], ids=["stdout", "file"])
+def test_nonfinite_measurement_metadata_is_refused(tool, tmp_path, token, format, write_file):
+    path = census(tmp_path, {"Idem.pattern": {"v": "FAIL", "measured": {"samples": ["TOKEN"]}}})
+    path.write_text(path.read_text().replace('"TOKEN"', token))
+    output = tmp_path / "report"
+    output.write_text("previous report")
+    argv = [sys.executable, str(TOOL), "--repo", str(ROOT), "--census", str(path), "--format", format]
+    if write_file:
+        argv += ["--out", str(output)]
+    p = subprocess.run(argv, capture_output=True, text=True)
+    assert p.returncode == 2, f"accepted non-finite measurement metadata: {token}"
+    assert "REFUSED:" in p.stderr and p.stdout == ""
+    assert output.read_text() == "previous report"
+    with pytest.raises(ValueError):
+        tool.build_report(ROOT, path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+@pytest.mark.parametrize("format", ["json", "markdown"])
+def test_nonfinite_report_output_is_refused_before_writing(tool, tmp_path, monkeypatch, capsys, value, format):
+    # Inject an internal report fault to exercise serialization independently of
+    # the input parser; a permissive encoder must never publish invalid JSON.
+    report = tool.build_report(ROOT)
+    report["source"] = {"metadata": {"samples": [value]}}
+    monkeypatch.setattr(tool, "build_report", lambda *args: report)
+    output = tmp_path / "report"
+    output.write_text("previous report")
+    assert tool.main(["--format", format, "--out", str(output)]) == 2
+    captured = capsys.readouterr()
+    assert "REFUSED:" in captured.err and captured.out == ""
+    assert output.read_text() == "previous report"
+
+
+def test_finite_metadata_and_nonfinite_looking_strings_are_preserved(tool, tmp_path):
+    metadata = {"samples": [1.25, 1e308, -1e308, 0.0, None], "labels": ["NaN", "Infinity", "-Infinity", "1e9999"]}
+    path = census(tmp_path, {"Idem.pattern": {"v": "FAIL", "measured": metadata}})
+    p = subprocess.run([sys.executable, str(TOOL), "--repo", str(ROOT), "--census", str(path)],
+                       capture_output=True, text=True)
+    assert p.returncode == 0 and p.stderr == ""
+    assert row(json.loads(p.stdout))["measurements"]["Idem.pattern"]["measured"] == metadata
+
+
 def test_mandatory_governance_ci_discovers_this_suite_exactly_once():
     import ci_shard
     suite = Path(__file__).resolve()
