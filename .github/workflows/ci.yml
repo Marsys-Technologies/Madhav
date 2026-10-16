@@ -1195,7 +1195,7 @@ jobs:
       - name: Gochara v5 dispatch, ephemeris probe and sitting evidence oracles
         # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
         # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
-        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-82-0 -- -q -p no:cacheprovider
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-82-0 -- -q
 
       - name: Gochara v5 small-test teardown and P01 production-reversion oracles (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
