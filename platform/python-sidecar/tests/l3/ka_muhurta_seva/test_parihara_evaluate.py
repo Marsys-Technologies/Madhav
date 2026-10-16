@@ -81,14 +81,27 @@ def test_schema_or_db_error_refuses_instead_of_empty_residual(client,monkeypatch
 def test_ci_runs_the_entire_evaluator_directory_in_required_db_job():
     import yaml
     repo=Path(__file__).resolve().parents[5]
-    job=yaml.safe_load((repo/".github/workflows/ci.yml").read_text())["jobs"]["kala-db-tests"]
+    job=_ci_load((repo/".github/workflows/ci.yml").read_text())["jobs"]["kala-db-tests"]
     steps=[s for s in job["steps"] if "pytest" in str(s.get("run","")) and "tests/l3/ka_muhurta_seva" in s["run"]]
     assert len(steps)==1
     assert str(steps[0]["env"]["KALA_REQUIRE_DB"])=="1"
     run=steps[0]["run"]
     assert not any(token in run.split()[run.split().index("pytest")+1:] for token in ("-k","-m","--deselect","--ignore","||",";","|"))
     assert "postgres" in job["services"]
-    assert job["needs"]=="changes" and "!cancelled()" in str(job["if"])
-    assert "needs.changes.outputs.docs_only != 'true'" in str(job["if"])
+    assert "changes" in ([job["needs"]] if isinstance(job["needs"], str) else job["needs"]) and "!cancelled()" in str(job["if"])
+    assert runs_in_full_gate(job)
     assert steps[0]["env"]["KALA_ADMIN_DSN"]
     assert not steps[0].get("continue-on-error") and not job.get("continue-on-error")
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow as _ci_expanded
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance/__tests__'))
+from _ci_gate_test_support import runs_in_full_gate
+
+def _ci_load(text):
+    import yaml
+    data = yaml.safe_load(text)
+    data['jobs'] = _ci_expanded(data['jobs'])
+    return data
