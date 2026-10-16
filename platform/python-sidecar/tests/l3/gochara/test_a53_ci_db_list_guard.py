@@ -31,8 +31,15 @@ EXCLUDED: dict[str, str] = {}
 
 
 def _ci_db_step_a53_files() -> set[str]:
-    ci = CI_YML.read_text(encoding="utf-8")
-    return set(re.findall(r"tests/l3/gochara/(test_a53_\w+\.py)", ci))
+    import sys
+    import yaml
+    sys.path.insert(0, str(REPO_ROOT / 'platform/scripts/governance'))
+    from ci_discovery import expanded_workflow
+    jobs = expanded_workflow(yaml.safe_load(CI_YML.read_text())['jobs'])
+    return {Path(token).name for job in jobs.values() for step in job.get('steps', [])
+            if str(step.get('env', {}).get('GOCHARA_A53_REQUIRE_DB')) == '1'
+            for token in step.get('run', '').split() if token.startswith('tests/l3/gochara/test_a53_') and token.endswith('.py')}
+
 
 
 def test_every_a53_suite_is_in_the_ci_db_list_or_explicitly_excluded():
@@ -42,7 +49,7 @@ def test_every_a53_suite_is_in_the_ci_db_list_or_explicitly_excluded():
     unaccounted = sorted(f for f in on_disk if f not in listed and f not in EXCLUDED)
     assert not unaccounted, (
         "A5.3 suites that are neither in the CI DB step's file list nor in this guard's "
-        f"exclusion list: {unaccounted} — add each to .github/workflows/ci.yml or exclude it "
+        f"exclusion list: {unaccounted} — repair its automatic DB discovery profile or exclude it "
         "here with a reason; a silent skip is not allowed")
 
     stale = sorted(f for f, reason in EXCLUDED.items() if f in listed)
