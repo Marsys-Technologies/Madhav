@@ -458,10 +458,16 @@ def test_sampled_null_uses_1023_nonidentity_shifts_and_observation():
 def test_production_boundary_oracles_run_in_required_no_skip_ci():
     """§N.8: an optional database job cannot earn a mandatory oracle signal."""
     from pathlib import Path
+    import importlib.util
     import shlex
     import yaml
     root = Path(__file__).resolve().parents[5]
+    # A5 D-33: inspect the real discovered selection, retaining every oracle assertion.
+    spec = importlib.util.spec_from_file_location("ci_discovery", root/"platform/scripts/governance/ci_discovery.py")
+    discovery = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(discovery)
     jobs = yaml.safe_load((root/'.github/workflows/ci.yml').read_text())['jobs']
+    jobs = discovery.expanded_workflow(jobs)
     required = jobs['governance-gates']
     assert 'k3-sealed-db-tests' in required['needs']
     job = jobs['k3-sealed-db-tests']

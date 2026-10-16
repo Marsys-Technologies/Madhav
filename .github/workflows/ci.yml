@@ -487,9 +487,7 @@ jobs:
         # This job is a dependency of required Governance Gates. The local DB
         # fixture creates/drops its own database; missing DB/corpus is fatal.
         run: >-
-          python -B -m pytest tests/l3/ka_kshetra/test_g1a_contract.py
-          tests/l3/ka_kshetra/test_g1a_candidate_sql.py
-          tests/l3/kala_db/ka_kshetra/test_g1a_candidate_storage.py
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest k5-g1a-oracles --
           -q -rs -p no:cacheprovider --basetemp="$RUNNER_TEMP/k5-g1a-pytest"
 
   db-integration-tests:
