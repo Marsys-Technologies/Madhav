@@ -9,6 +9,9 @@ retains Mode A-D behind the legacy shim until a qualified build-safe retirement.
 Stored legacy rows remain available to readers; fixture output is not live jury
 admission or a retirement claim.
 """
+
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
 import hashlib
 import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
@@ -875,10 +878,10 @@ class _LegacyKaSangamWriter(WriterBase):
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
+            execute_governed_dasha_query(
+                conn, chart_id, dasha_query('sangam_birth_anchor'),
                 (chart_id,),
-            )
+             ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             row = cur.fetchone()
             if row and row['birth_date']:
                 return row['birth_date'].year

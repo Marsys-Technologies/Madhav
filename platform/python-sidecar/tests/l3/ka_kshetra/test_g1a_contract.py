@@ -130,6 +130,9 @@ def test_ordinary_build_is_no_write_prebuild_containment():
 
 def test_production_clock_boundaries_share_birth_axis(monkeypatch):
     from services.ka_kshetra import stage3_clocks as S3
+    from tests.l3._dasha_projection import emulated_projection
+    # This oracle checks the birth axis after loading governed operands.
+    monkeypatch.setattr(S3, 'execute_governed_dasha_query', emulated_projection)
     birth=datetime(1984,2,5,5,13,tzinfo=timezone.utc)
     class Conn:
         def execute(self,*a): return self

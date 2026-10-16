@@ -9,6 +9,8 @@ import json
 import re
 from math import isfinite
 
+from brahmagyan.verification_tiers import EXTERNAL_COMPUTATION_REQUIRED
+
 from services.gochara_rules.vedha_derive import pairs_from_rows
 from services.kala_core.overlays import house_intervals, instant, validated_residence
 from services.kala_core.sky.coverage import SkyCoverage
@@ -120,7 +122,7 @@ def build_candidate_payload(*,chart_id,generation,ayanamsha_id,natal_build_id,
         null_reason='information_unavailable' if kind=='sarvatobhadra' or lon is None or not family_cov['complete'] else None
         payload={'schema':'ka_vedha_payload/1','viparita':{'applied':False,'reason':'not applied — no served source'}}
         if lon is None:
-            payload['external_computation_required']={'asset':'ga_positions','fact_category':'graha_position','fact_subject':'MOON',
+            payload[EXTERNAL_COMPUTATION_REQUIRED]={'asset':'ga_positions','fact_category':'graha_position','fact_subject':'MOON',
                 'fact_key':'longitude_sidereal','chart_id':chart_id,'build_id':natal_build_id,'ayanamsha_id':ayanamsha_id}
         if kind=='sarvatobhadra':
             payload['reason']='grid unpopulated; no algorithmic approximation'
