@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -25716,7 +25716,14 @@
           "platform/scripts/teardown_v5_small_test_job.py",
           "platform/scripts/__tests__/test_p01_smalltest_operations.py",
           "platform/scripts/__tests__/test_backup_v5_small_test.py",
-          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py"
+          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py",
+          ".github/workflows/ci.yml",
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
+          "00_ARCHITECTURE/briefs/kalayantra/packets/P01_REWORK_v1_0.md",
+          "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md",
+          "platform/python-sidecar/tests/l3/gochara/test_j4p_dasha_settlement.py",
+          "platform/scripts/__tests__/test_teardown_v5_small_test.py"
         ],
         "tests": [
           "Accepted disposition evidence (observation, not completion): small-test tooling source row; phase-1 prerequisite",
@@ -25725,10 +25732,16 @@
           "Before landing, independently prove inherited prerequisite: A5.5g",
           "Before landing, independently prove inherited prerequisite: B5.5b",
           "Exact proposed head independently reviewed; rerun the inherited tests and a failing mutation for each semantic claim. Historical SUCCESS, absent checks or a draft state never authorizes landing.",
-          "Recheck published-reader compatibility and shared generated-output regeneration against the current accepted main; never edit an already-applied migration."
+          "Recheck published-reader compatibility and shared generated-output regeneration against the current accepted main; never edit an already-applied migration.",
+          "Writable scope is the explicit P01 rework diff; independently review scope/inheritance disposition before guarded child acceptance.",
+          "platform/scripts/__tests__/test_p01_smalltest_operations.py: actual table argv/unsupported arguments/dry-run rollback/absence detector",
+          "platform/scripts/__tests__/test_backup_v5_small_test.py: no-I/O planning, archive identity, real workflow with fake DB/program boundaries, equal-count changed-content refusal, cleanup before receipt",
+          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py: real capture/restore/all-table hash and sequence equality, content mutation; deferred to CI in offline jobs",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py: exactly six J-1a enables; untouched executor G8 authority boundary",
+          "platform/python-sidecar/tests/l3/gochara/test_j4p_dasha_settlement.py: lazy P1 operand/snapshot refuse ungoverned sole builds"
         ],
         "compat": "an ops-table change is inert until a validated request names the kind; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source state:A5.5h; original phase owner J-1a; join J-1a. Carried by P01 PR #3507. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure. (I) INTERPRETATION: exact code residual scope is the named subset observed in the carrying packet diff, under temporal ownership Q17 Q1; packet builder reconciles any additional path before writing. Old empty-owns placeholder is superseded."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source state:A5.5h; original phase owner J-1a; join J-1a. Carried by P01 PR #3507. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure. (I) INTERPRETATION: exact code residual scope is the named subset observed in the carrying packet diff, under temporal ownership Q17 Q1; packet builder reconciles any additional path before writing. Old empty-owns placeholder is superseded. P01 rework scope and explicit test obligations retained during final J-4p/main integration; see P01_REWORK_v1_0.md. (I) INTERPRETATION: retain main's launch bridge and earned child-step receipts while applying P01 operation enablement and additional scope."
       },
       "completion_kind": "code",
       "producer": "K",

@@ -228,3 +228,51 @@ def test_settlement_bytes_are_bound_to_the_implementation_digest(monkeypatch, pa
         return content + " " if p.name == "dasha_settlement.json" else content
     monkeypatch.setattr(Path, "read_text", altered)
     assert digest(modules) != before, "unreviewed settlement edit escaped implementation identity"
+
+
+# P01-B1: exercise the lazy P1 operand and the actual writer snapshot branch.
+# Replacing the governed selector with builds[0] must fail both regressions.
+@pytest.mark.parametrize("build", [UNKNOWN, COLLISION])
+def test_p01_lazy_p1_operand_refuses_ungoverned_sole_build(settlement, monkeypatch, build):
+    conn = Conn([build])
+    calls = []
+    def fetch(c, chart_id, **kw):
+        calls.append(kw)
+        return [row(build)]
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
+    rows_for, contract = reader.make_period_rows_for(conn, CHART)
+    with pytest.raises(reader.DashaBuildRefused, match="settled_build_absent"):
+        rows_for("Saturn", "md")
+    assert contract["read"] is False and contract["build_id"] is None
+    assert len(calls) == 1 and calls[0]["canonicalize"] is False
+
+
+def test_p01_lazy_p1_operand_uses_full_settled_build_once(settlement, monkeypatch):
+    conn = Conn([BUILD])
+    pins = []
+    def fetch(c, chart_id, **kw):
+        pins.append(kw.get("build_id"))
+        return [row(BUILD)]
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
+    rows_for, contract = reader.make_period_rows_for(conn, CHART)
+    assert rows_for("Saturn", "md") == [{"start_iso": LO, "end_iso": HI}]
+    assert rows_for("Saturn", "ad") == []
+    assert contract["build_id"] == BUILD and contract["read"] is True
+    assert pins == [None, BUILD]
+
+
+def test_p01_snapshot_refuses_unknown_build_before_generation_delete(settlement, monkeypatch):
+    from types import SimpleNamespace
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer
+    from pipeline.orchestrator.writers import SubStep
+    conn = Conn([UNKNOWN])
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", lambda *a, **kw: [row(UNKNOWN)])
+    monkeypatch.setattr(writer, "fetch_chart_context", lambda *a: {})
+    monkeypatch.setattr(writer, "require_complete", lambda *a: None)
+    monkeypatch.setattr(writer.SkyEventStore, "register_convention", lambda self: "synthetic-convention")
+    def forbidden(*a, **kw):
+        pytest.fail("ungoverned daśā build reached generation deletion")
+    monkeypatch.setattr(writer.RecordStore, "delete_generation_chain", forbidden)
+    ctx = SimpleNamespace(db_conn=conn, config={})
+    with pytest.raises(reader.DashaBuildRefused, match="settled_build_absent"):
+        writer.GocharaV5Writer()._run_inventory_phase(ctx, SubStep(key=writer.SNAPSHOT_SUBSTEP), CHART)

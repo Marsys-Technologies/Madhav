@@ -79,14 +79,16 @@ CREATE TRIGGER taranga_mapping_no_truncate BEFORE TRUNCATE ON public.kala_tarang
 REVOKE ALL ON public.kala_taranga_candidate,public.kala_taranga_class_domain FROM PUBLIC;
 
 UPDATE public.asset_registry SET count_sql=$count$
+-- The orchestrator binds one chart argument; reuse it through this CTE.
+WITH target_chart AS (SELECT $1::uuid AS chart_id)
 SELECT count(*) FROM (
   SELECT chart_id FROM public.kala_taranga_candidate WHERE generation = (
     SELECT c.generation FROM public.kala_layer_candidate c JOIN public.build_runs b
-      ON b.id=c.build_id AND b.chart_id=c.chart_id WHERE c.chart_id=$1
+      ON b.id=c.build_id AND b.chart_id=c.chart_id WHERE c.chart_id=(SELECT chart_id FROM target_chart)
       ORDER BY b.created_at DESC,b.id DESC LIMIT 1)
   UNION ALL SELECT chart_id FROM public.kala_taranga WHERE NOT EXISTS (
-    SELECT 1 FROM public.kala_layer_candidate c WHERE c.chart_id=$1)
-) rows WHERE chart_id = $1
+    SELECT 1 FROM public.kala_layer_candidate c WHERE c.chart_id=(SELECT chart_id FROM target_chart))
+) rows WHERE chart_id = (SELECT chart_id FROM target_chart)
 $count$,
 -- Structural source-integrity detector, not a claim of numerical verification.
 -- Transaction pins also work for a completed build; no global latest-build guess.
