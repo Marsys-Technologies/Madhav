@@ -233,7 +233,7 @@ def test_cli_fails_closed(tmp_path):
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
-NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
+NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
 
@@ -243,7 +243,8 @@ def jobs():
     yaml = pytest.importorskip("yaml")
     if not CI.is_file():
         pytest.skip("no ci.yml on this tree")
-    return yaml.safe_load(CI.read_text())["jobs"]
+    from ci_discovery import expanded_workflow
+    return expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])
 
 
 @pytest.mark.parametrize("name", HEAVY)
@@ -712,17 +713,21 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
-def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
-    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+@pytest.mark.parametrize("step_name,report_name", [
+    ("P07 — ported Gochara publication oracles (REQUIRED)", "gochara-mcp.xml"),
+    ("J4D — governed generation reader oracles (required; skips fail)", "gochara-j4d.xml"),
+])
+@pytest.mark.parametrize("case_count,skipped,ok", [(50, False, True), (50, True, False), (49, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok, step_name, report_name):
+    """Each required reader step executes all 22 + 28 cases; skips cannot earn green."""
     import shlex
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
-             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+             if s.get("name") == step_name]
     assert len(steps) == 1
     command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
-    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
