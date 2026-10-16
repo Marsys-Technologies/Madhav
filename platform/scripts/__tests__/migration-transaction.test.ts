@@ -15,6 +15,12 @@ describe('runner-owned migration transactions', () => {
       .toBe(`-- header\n${body}${commit.endsWith(';') ? ' -- tail' : ''}`)
   })
 
+  it.each(['\n', '\r\n', '\r'])('recognizes comment terminators %j without hiding transaction control', newline => {
+    expect(() => prepare(`SELECT 1; -- comment${newline}COMMIT;${newline}SELECT 2;`)).toThrow(/transaction/i)
+    const body = ` -- comment${newline}SELECT 1;${newline}`
+    expect(prepare(`BEGIN;${body}COMMIT;`)).toBe(body)
+  })
+
   it('absorbs the unchanged real 1376 wrapper', () => {
     const sql = readFileSync(new URL('../../supabase/migrations/1376_k7_stage_verification_status.sql', import.meta.url), 'utf8')
     expect(prepare(sql)).toBe(sql.replace('BEGIN;', '').replace('COMMIT;', ''))

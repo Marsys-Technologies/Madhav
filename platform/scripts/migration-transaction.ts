@@ -33,8 +33,8 @@ function statements(sql: string, filename: string): Statement[] {
     if (tokenStart === undefined && !/\s/.test(c) && c !== ';'
       && !sql.startsWith('--', i) && !sql.startsWith('/*', i)) tokenStart = i
     if (sql.startsWith('--', i)) {
-      const end = sql.indexOf('\n', i + 2)
-      i = end === -1 ? sql.length : end + 1
+      i += 2
+      while (i < sql.length && sql[i] !== '\n' && sql[i] !== '\r') i++
       code += ' '
     } else if (sql.startsWith('/*', i)) {
       let depth = 1

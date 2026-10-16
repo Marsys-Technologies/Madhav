@@ -940,7 +940,12 @@ export async function runMigrations(
     const transactionSql = transactionalMigrationSql(sql, file.name)
     await client.query('BEGIN')
     try {
+      // Absorbing a historical COMMIT also retains SET LOCAL ROLE. Restore the
+      // entry role for runner bookkeeping without committing the migration DDL.
+      // Preserve an existing SET ROLE too: RESET ROLE would select session_user.
+      const entryRole = await client.query<{ role: string }>("SELECT current_setting('role') AS role")
       await client.query(transactionSql)
+      await client.query("SELECT set_config('role', $1, true)", [entryRole.rows[0].role])
       await client.query(
         'INSERT INTO _migrations_applied (filename, sha256, sql_identity) VALUES ($1, $2, $3)',
         [file.name, sha256, identity]

@@ -134,6 +134,90 @@ describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions
     expect((await client.query("SELECT to_regclass('public.escaped_index_ddl') AS rel")).rows[0].rel).toBeNull()
   })
 
+  it.each([['LF', '\n'], ['CRLF', '\r\n'], ['CR', '\r']])('accepts a wrapped file after a %s comment terminator', async (label, newline) => {
+    const selected = mkdtempSync(path.join(dir, 'comment-wrapper-'))
+    const name = `007_${label.toLowerCase()}_wrapper.sql`
+    const table = `wrapped_comment_${label.toLowerCase()}`
+    writeFileSync(path.join(selected, name), `BEGIN; -- comment${newline}CREATE TABLE ${table} (id int);${newline}COMMIT;`)
+    const options = { kalaProtected: new Set<string>() }
+    expect(await runMigrations(client, [selected], { ...options, dryRun: true })).toEqual([name])
+    expect(await runMigrations(client, [selected], options)).toEqual([name])
+    expect((await client.query('SELECT to_regclass($1)::text AS ddl', [table])).rows[0].ddl).toBe(table)
+    expect((await client.query('SELECT count(*)::int AS n FROM _migrations_applied WHERE filename = $1', [name])).rows[0].n).toBe(1)
+  })
+
+  it.each([['LF', '\n'], ['CRLF', '\r\n'], ['CR', '\r']])('review: %s comment newline preserves DDL-ledger atomicity', async (_label, newline) => {
+    const selected = mkdtempSync(path.join(dir, 'review-cr-'))
+    const name = '005_cr_comment.sql'
+    writeFileSync(path.join(selected, name),
+      `CREATE TABLE review_cr_escaped (id int); -- comment${newline}COMMIT;${newline}SELECT 1;`)
+    await client.query(`ALTER TABLE _migrations_applied ADD CONSTRAINT reject_cr_ledger
+      CHECK (filename <> '${name}')`)
+    try {
+      await expect(runMigrations(client, [selected], { kalaProtected: new Set() }))
+        .rejects.toThrow(/transaction|reject_cr_ledger/)
+      const state = (await client.query(`SELECT to_regclass('public.review_cr_escaped')::text AS ddl,
+        (SELECT count(*)::int FROM _migrations_applied WHERE filename = '${name}') AS ledger_rows`)).rows[0]
+      expect(state).toEqual({ ddl: null, ledger_rows: 0 })
+    } finally {
+      await client.query('ALTER TABLE _migrations_applied DROP CONSTRAINT reject_cr_ledger')
+    }
+  })
+
+
+  it('review: wrapped SET LOCAL ROLE migrations keep the migration actor for the ledger INSERT', async () => {
+    // Built-in role: no CREATE ROLE, ALTER ROLE, or membership changes to the cluster.
+    // This isolates the transaction/role shape of existing 1033, 1037 and 1038.
+    await client.query('CREATE SCHEMA review_owner_schema AUTHORIZATION pg_read_all_data')
+    const selected = mkdtempSync(path.join(dir, 'review-role-'))
+    const name = '006_local_role.sql'
+    writeFileSync(path.join(selected, name), `BEGIN;
+      SET LOCAL ROLE pg_read_all_data;
+      CREATE TABLE review_owner_schema.created_by_owner (id int);
+      COMMIT;`)
+    const options = { kalaProtected: new Set<string>(), only: new Set([name]) }
+    expect((await client.query('SELECT current_user')).rows[0].current_user).toBe('postgres')
+    expect(await runMigrations(client, [selected], options)).toEqual([name])
+    expect((await client.query('SELECT count(*)::int AS n FROM _migrations_applied WHERE filename = $1', [name])).rows[0].n).toBe(1)
+    expect((await client.query("SELECT tableowner FROM pg_tables WHERE schemaname = 'review_owner_schema' AND tablename = 'created_by_owner'")).rows)
+      .toEqual([{ tableowner: 'pg_read_all_data' }])
+    expect((await client.query("SELECT has_table_privilege('pg_read_all_data', '_migrations_applied', 'INSERT') AS allowed")).rows[0].allowed).toBe(false)
+    expect((await client.query('SELECT current_user')).rows[0].current_user).toBe('postgres')
+    await client.query('DROP TABLE review_owner_schema.created_by_owner')
+    await client.query('DELETE FROM _migrations_applied WHERE filename = $1', [name])
+    await client.query(`ALTER TABLE _migrations_applied ADD CONSTRAINT reject_role_ledger CHECK (filename <> '${name}')`)
+    try {
+      await expect(runMigrations(client, [selected], options)).rejects.toThrow('reject_role_ledger')
+      expect((await client.query("SELECT to_regclass('review_owner_schema.created_by_owner') AS ddl, (SELECT count(*)::int FROM _migrations_applied WHERE filename = $1) AS ledger_rows", [name])).rows)
+        .toEqual([{ ddl: null, ledger_rows: 0 }])
+    } finally {
+      await client.query('ALTER TABLE _migrations_applied DROP CONSTRAINT reject_role_ledger')
+    }
+  })
+
+  it('restores an existing entry SET ROLE rather than the session login for ledger writes', async () => {
+    await client.query('CREATE SCHEMA entry_role_schema AUTHORIZATION pg_write_all_data')
+    const selected = mkdtempSync(path.join(dir, 'entry-role-'))
+    const name = '008_entry_role.sql'
+    writeFileSync(path.join(selected, name), `BEGIN;
+      SET LOCAL ROLE pg_write_all_data;
+      CREATE TABLE entry_role_schema.created_by_owner (id int);
+      COMMIT;`)
+    await client.query(`ALTER TABLE _migrations_applied ADD COLUMN ledger_actor text DEFAULT current_user;
+      ALTER TABLE _migrations_applied OWNER TO pg_read_all_data;
+      SET ROLE pg_read_all_data`)
+    try {
+      expect(await runMigrations(client, [selected], { kalaProtected: new Set<string>() })).toEqual([name])
+      expect((await client.query('SELECT ledger_actor FROM _migrations_applied WHERE filename = $1', [name])).rows)
+        .toEqual([{ ledger_actor: 'pg_read_all_data' }])
+      expect((await client.query('SELECT current_user')).rows[0].current_user).toBe('pg_read_all_data')
+    } finally {
+      await client.query(`RESET ROLE;
+        ALTER TABLE _migrations_applied OWNER TO postgres;
+        ALTER TABLE _migrations_applied DROP COLUMN ledger_actor`)
+    }
+  })
+
   // Execute the real shell function, including its PASS/STOP decision, against
   // psql. No fake SQL answers: PostgreSQL resolves PUBLIC/default ACLs itself.
   function publicReadback(): { status: number | null; stdout: string; stderr: string } {
