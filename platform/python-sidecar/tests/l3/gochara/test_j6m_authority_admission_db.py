@@ -9,10 +9,11 @@ from pathlib import Path
 import uuid
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 import pytest
 
-from .test_a53_inventory import CHART_ID, create_am5_database, drop_am5_database
+from .test_a53_inventory import ADMIN_DSN, CHART_ID, create_am5_database, drop_am5_database
 
 ROOT = Path(__file__).resolve().parents[5]
 MIGRATIONS = ROOT / 'platform/migrations'
@@ -140,7 +141,10 @@ def test_fresh_authority_insert_holds_chart_lock_until_transaction_ends(authorit
     # Pin the family key independently of the helper under test (1153:453).
     lock_sql = "SELECT pg_try_advisory_xact_lock(hashtext('gochara5:chart:' || %s)::bigint)"
     try:
-        with psycopg.connect(conn.info.dsn, autocommit=True, connect_timeout=3) as observer:
+        # ConnectionInfo.dsn omits passwords; retain the guarded fixture's CI
+        # authentication while selecting only its disposable database.
+        observer_dsn = make_conninfo(ADMIN_DSN, dbname=conn.info.dbname)
+        with psycopg.connect(observer_dsn, autocommit=True, connect_timeout=3) as observer:
             assert observer.execute(lock_sql, (CHART_ID,)).fetchone() == (True,)
             with conn.transaction(force_rollback=True):
                 conn.execute(f"SET LOCAL session_replication_role = '{mode}'")
