@@ -55,8 +55,12 @@ def _iso(t):
     return t.astimezone(UTC).isoformat()
 
 
-def _seal(w, manifest_id=None):
-    """Mark the generation sealed (the seal PATH is not under test here; precedent: test_c48a_sealed_staleness)."""
+def _seal(w, manifest_id=None, *, approval=False):
+    """Synthetic reader state, not seal acceptance (see test_p09_real_seal).
+
+    Optional receipt data models the approved immutable-attestation read path.
+    The seal/receipt guards are intentionally bypassed only in this fixture.
+    """
     with w.conn.transaction():
         if manifest_id is None:
             manifest_id = w.conn.execute(
@@ -66,11 +70,20 @@ def _seal(w, manifest_id=None):
         w.conn.execute("INSERT INTO public.ka_gochara_generation_seal (chart_id, generation, manifest_id)"
                        " VALUES (%s, %s, %s)", (CHART_ID, GEN, manifest_id))
         w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER USER")
+        if approval:
+            w.conn.execute("ALTER TABLE public.ka_gochara_seal_approval DISABLE TRIGGER USER")
+            w.conn.execute(
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest,"
+                " brief_id, producer_execution_id, approver_login, approved_by_note, run_id, run_attempt, workflow_commit)"
+                " VALUES (%s, %s, %s, repeat('a', 64), 1, 'fixture', 'fixture', 'reader fixture only', 1, 1, 'fixture')",
+                (CHART_ID, GEN, manifest_id))
+            w.conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
+            w.conn.execute("ALTER TABLE public.ka_gochara_seal_approval ENABLE TRIGGER USER")
 
 
 def _sealed(w):
     _complete_world(w)
-    _seal(w)
+    _seal(w, approval=True)
     return w
 
 
@@ -120,7 +133,7 @@ def test_a_sealed_published_generation_is_served_with_its_manifest_seal_horizon_
     assert env["generation"] == GEN and env["chart_id"] == CHART_ID
     assert env["manifest_id"] == manifest_id and env["manifest_status"] == "published"
     assert env["seal"]["manifest_id"] == manifest_id and env["seal"]["sealed_at"]
-    assert env["seal"]["brief_digest"] is None and env["seal"]["brief_digest_reason"] == "no_approval_receipt"
+    assert env["seal"]["brief_digest"] == "a" * 64 and env["seal"]["brief_digest_reason"] is None
     assert env["served_horizon"] == {"start": _iso(lo), "end": _iso(hi)} == {"start": _iso(H0), "end": _iso(H1)}
     assert env["stored_scope"] == "stored_non_moon" and env["horizon_clipped"] is None
 
@@ -466,7 +479,7 @@ def test_a_zero_window_class_reads_differently_in_each_completeness_state(world)
     unverified = {c["event_class"]: c for c in _read(w, event_classes=[CLS], **quiet)["classes"]}[CLS]
     assert unverified["windows_matched"] == 0 and unverified["completeness"] == "unverified"
     assert unverified["zero_window_reading"] == "not_established:unverified"
-    assert [r["code"] for r in unverified["coverage"]["completeness_reasons"]] == ["window_verification_missing"]
+    assert [r["code"] for r in unverified["coverage"]["completeness_reasons"]] == ["sealed_window_attestation_incompatible"]
     assert len({by[CLS]["zero_window_reading"], by["career_entry"]["zero_window_reading"],
                 unverified["zero_window_reading"]}) == 3
     # a POSITIVE answer carries the same honesty: the window is returned, the class is not called complete
@@ -690,3 +703,36 @@ def test_dict_rows_and_tuple_rows_give_the_same_envelope(world):
     assert as_dict == as_tuple
     assert as_tuple["windows"][0]["members"][0]["contact_truncated"] is False      # a positional slip would move this
     assert as_tuple["windows"][0]["members"][0]["solver_method"] and len(as_tuple["near_miss_intervals"]) == 2
+
+
+def test_a_missing_approval_is_unknown_without_request_time_replay(world):
+    w = _sealed(world)
+    _unguarded(w, 'ka_gochara_seal_approval',
+               'DELETE FROM public.ka_gochara_seal_approval WHERE chart_id = %s AND generation = %s',
+               (CHART_ID, GEN))
+    env = _read(w, event_classes=[CLS], date_from=_t(1, 2), date_to=_t(1, 8))
+    cls = env['classes'][0]
+    assert cls['completeness'] == 'evidence_unavailable'
+    assert cls['zero_window_reading'] == 'not_established:evidence_unavailable'
+    assert [r['code'] for r in cls['coverage']['completeness_reasons']] == ['sealed_window_attestation_unavailable']
+
+
+@pytest.mark.parametrize('bounds', ['[]', '()', '(]'])
+def test_stored_non_half_open_windows_are_refused_even_outside_the_requested_page(world, bounds):
+    w = _sealed(world)
+    _unguarded(w, 'ka_gochara_eval_window',
+               'UPDATE public.ka_gochara_eval_window SET interval = tstzrange(lower(interval), upper(interval), %s)',
+               (bounds,))
+    # The bad window does not overlap this range; LIMIT cannot hide bad bounds.
+    env = _read(w, event_classes=[CLS], date_from=_t(1, 2), date_to=_t(1, 8), limit=1)
+    _assert_refused(env, 'stored_window_bounds_incompatible')
+
+
+def test_constructor_scope_refusal_preserves_every_requested_class_detail(world):
+    w = _sealed(world)
+    _set_vector(w, "input_generation_vector - 'stored_scope'")
+    env = _read(w, event_classes=[CLS, 'career_entry'])
+    _assert_refused(env, 'stored_scope_missing')
+    detail = env['refusal']['class_details']
+    assert [c['event_class'] for c in detail] == ['career_entry', CLS]
+    assert all(c['coverage']['refusal'] == 'stored_scope_missing' for c in detail)
