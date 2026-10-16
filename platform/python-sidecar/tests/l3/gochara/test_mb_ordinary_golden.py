@@ -276,5 +276,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
     assert differing == ["evaluation", "geometry"], differing
     assert got["implementation"]["geometry"] == "1313c7d2d6a993987243e9d89831fa913d4161b73fd3cc1fe61bd34b8607ead2"
-    assert got["implementation"]["evaluation"] == "f44272794e9d42148c81c318a306171cd98011fc99a4906359210a66815fcae4"
+    # ci3-p06 (#3516): main's accepted ledger publication guard changes this stage;
+    # pin implementation_registry.compute() from the merged tree, preserving all other components.
+    assert got["implementation"]["evaluation"] == "82e52deb2edd0ab1e9ccc0f305c9f2478fe0dfedc1acb02ef7e998cd5389e6e2"
     assert got["implementation"]["window"] == want["implementation"]["window"]
