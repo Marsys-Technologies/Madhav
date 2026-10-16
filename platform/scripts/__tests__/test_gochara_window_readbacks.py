@@ -105,9 +105,10 @@ WINDOW_FILES = [
     "1206_gochara_search_inventory_completeness.sql",
     "1232_gochara_search_moon_scope_domain.sql",
     "1233_gochara_p1_period_anchor.sql",
+    "1235_ka_gochara_staged_candidate_evidence_function.sql",
     "1240_gochara_window_verification_gate.sql",
 ]
-WINDOW_SHAS = ["ab" * 32, "cd" * 32, "ef" * 32, "01" * 32, "23" * 32]
+WINDOW_SHAS = ["ab" * 32, "cd" * 32, "ef" * 32, "01" * 32, "45" * 32, "23" * 32]
 EXPECTED_SHA_TXT = "".join(f"{s}  {n}\n" for n, s in zip(WINDOW_FILES, WINDOW_SHAS))
 B3A_ANSWER = "\n".join(sorted(f"{n}\t{s}" for n, s in zip(WINDOW_FILES, WINDOW_SHAS)))
 
@@ -125,6 +126,7 @@ MIGRATION_FIXTURES = [
     "1153_a.sql",
     "1206_gochara_search_inventory_completeness.sql",   # a window file: B2 must EXCLUDE it
     "1230_b.sql",
+    "1235_ka_gochara_staged_candidate_evidence_function.sql",  # protected, not a routine predecessor
     "1242_c.sql",                                        # > 1240: B2 must ignore it
     "1300_future.sql",                                   # > 1240: B2 must ignore it
 ]
@@ -328,7 +330,7 @@ def test_pre_dispatch_all_pass(tmp_path: Path) -> None:
         "PASS R3-revoke-1302",
     ):
         assert check in r.stdout, f"{check} missing\n{r.stdout}\n{r.stderr}"
-    assert "5 new" in r.stdout   # only the five window files are new vs the row-2 snapshot
+    assert "6 new" in r.stdout   # only the six window files are new vs the row-2 snapshot
 
 
 def test_post_window_all_pass(tmp_path: Path) -> None:

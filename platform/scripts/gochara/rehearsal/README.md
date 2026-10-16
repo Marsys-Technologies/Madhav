@@ -20,7 +20,7 @@ TODAY=1 REPO="$PWD" PGHOST=127.0.0.1 PGPORT=55433 PGUSER=postgres STRICT=1 \
 refusal followed by represented prerequisite completion; mode 1 builds an
 explicitly synthetic prerequisite ledger from current source file hashes. The
 relevant Gochara routine SQL is executed; unrelated layer SQL is only represented.
-Both modes run the ten-file protected invocation, intentional 1233 failure/retry,
+Both modes run the eleven-file protected invocation, intentional 1233 failure/retry,
 full sitting pre-window gates and the unchanged 1378 ACL closure. 1378 is applied
 in a fixture transaction after the window, never added to its protected list.
 
@@ -32,7 +32,10 @@ The Node tsx loader avoids the CLI's Unix-socket path limit; migration diagnosti
 are preserved. The pytest suite includes a recording psql safety probe: an unsafe
 historical role-drop reversion fails without sending destructive SQL to PostgreSQL.
 
-1235 is a separate operation and remains outside this window. The read-only
+Main P07 includes protected migration 1235 in this window, after 1233 and before
+1240 (`.github/workflows/deploy.yml:1112`; `platform/scripts/migrate.ts:152`). The real runner applies it with the bounded schema-CREATE capability; the
+fixture checks its absence on failure and its callable result after recovery.
+The pre/post-window readbacks track all six pending migrations. The read-only
 `fn-1235-readbacks.sh --if-applied` returns **3 / NOT_APPLICABLE**, without an applied
 receipt, only if both function and migration row are absent. The strict default
 still fails on absence; partial and applied states run all original strict checks.
@@ -42,7 +45,8 @@ still fails on absence; partial and applied states run all original strict check
 Read-only source:
 `/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/rehearsal/`.
 Copied on 2026-10-16. Historical snapshots and pinned SQL/TSV/hash inputs retain
-these original bytes. `run_window_rehearsal.sh` is the maintained port with the
+their original bytes, except `EXPECTED_WINDOW_SHA256.txt`, extended with the
+unchanged 1235 migration digest during the main merge. `run_window_rehearsal.sh` is the maintained port with the
 lifecycle, current-source prerequisites, sitting fixture and 1378 grant repairs.
 No applied migration is copied over or edited.
 

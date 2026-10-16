@@ -66,5 +66,7 @@ def test_current_window_rehearsal(disposable_pg, tmp_path, today):
     assert 'PASS R2-registry-1243 ' in proc.stdout
     assert 'PASS R3-revoke-1302 ' in proc.stdout
     assert '1378 ACL closure' in proc.stdout
+    assert 'Applied: 1235_ka_gochara_staged_candidate_evidence_function.sql' in proc.stdout
+    assert '1235 evidence function is callable after protected apply' in proc.stdout
     assert (tmp_path / 'evidence/pre-window/R2-registry-1243-file.out').read_text().count('source_unavailable') == 2
     assert cl.psql('SELECT oid,rolname,rolcanlogin,rolinherit,rolconnlimit FROM pg_roles ORDER BY oid') == before

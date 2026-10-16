@@ -27,7 +27,7 @@ FINDING() { findings=$((findings+1)); echo "  FINDING $1"; if [ "$STRICT" = 1 ];
 
 echo "== S0 inputs: SYNTHETIC OFFLINE FIXTURE, never production readiness =="
 M="$REPO/platform/migrations"
-WINDOW=(1153_gochara_sky_event_substrate.sql 1154_gochara_rule_path_registry.sql 1155_gochara_relationship_record.sql 1156_gochara_eval_window.sql 1157_gochara_av_polarity_declaration.sql 1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1240_gochara_window_verification_gate.sql)
+WINDOW=(1153_gochara_sky_event_substrate.sql 1154_gochara_rule_path_registry.sql 1155_gochara_relationship_record.sql 1156_gochara_eval_window.sql 1157_gochara_av_polarity_declaration.sql 1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1235_ka_gochara_staged_candidate_evidence_function.sql 1240_gochara_window_verification_gate.sql)
 echo "integration ref: $(GIT_OPTIONAL_LOCKS=0 git -C "$REPO" rev-parse HEAD 2>/dev/null || echo source-copy)  (record this SHA in the rehearsal record)"
 for f in "${WINDOW[@]}"; do printf '  %s  %s\n' "$(shasum -a 256 "$M/$f" | cut -c1-16)" "$f"; done
 if [ -f "$HERE/EXPECTED_WINDOW_SHA256.txt" ]; then
@@ -114,7 +114,7 @@ if [ "${TODAY:-0}" = 1 ]; then
   python3 - "$REPO" <<'PYLEDGER' | $SUDB
 import hashlib, pathlib, sys
 root = pathlib.Path(sys.argv[1])
-window = {'1204','1206','1232','1233','1240'}
+window = {'1204','1206','1232','1233','1235','1240'}
 print('SET ROLE amjis_app;')
 for d in ('platform/migrations', 'platform/supabase/migrations'):
     for f in sorted((root/d).glob('*.sql')):
@@ -144,20 +144,20 @@ ASSERT "the refusal names the unapplied predecessor 1236" "$(echo "$OUT" | grep 
 ASSERT "the refusal does NOT name 1230 (applied in production) nor 1241/1242 (numbered ABOVE the ceiling: not predecessors)" "$(echo "$OUT" | grep -c '1230_ka_gochara\|1241_gochara\|1242_gochara')" "0"
 PRED=$(echo "$OUT" | grep -o "jump unapplied predecessor migration(s): .*" | sed 's/^[^:]*: //' | tr "," "\n" | sed 's/^ *//' | grep "\.sql$" || true)
 echo "  unapplied predecessors named by the refusal: $(echo $PRED | tr "\n" " ")"
-ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql'])")" "0"
+ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1235_ka_gochara_staged_candidate_evidence_function.sql','1240_gochara_window_verification_gate.sql'])")" "0"
 
 echo "== S3b the routine deploy applies the named predecessors first (1234 grants and 1236 authority guard applied for real; 1230 = represented by its ledger row) =="
 for fn in $PRED; do
   h=$(shasum -a 256 "$M/$fn" | cut -d' ' -f1)
   case "$fn" in
-    1234_*|1235_*|1236_*) { echo "SET ROLE amjis_app;"; cat "$M/$fn"; } | $SUDB >/dev/null; echo "  applied $fn (routine)";;
+    1234_*|1236_*) { echo "SET ROLE amjis_app;"; cat "$M/$fn"; } | $SUDB >/dev/null; echo "  applied $fn (routine)";;
     *) echo "  recorded $fn";;
   esac
   $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$h') ON CONFLICT DO NOTHING"
 done
 # Apply any relevant Gochara routine not already handled by the refusal list.
 # The current protected invocation has ceiling 1240; 1234/1236 are predecessors.
-for f in "$M"/1234_*.sql "$M"/1235_*.sql "$M"/1236_*.sql; do
+for f in "$M"/1234_*.sql "$M"/1236_*.sql; do
   [ -f "$f" ] || continue; fn=$(basename "$f"); if printf '%s\n' "$PRED" | grep -qx "$fn"; then continue; fi
   { echo "SET ROLE amjis_app;"; cat "$f"; } | $SUDB >/dev/null; echo "  applied $fn (routine prerequisite below 1240)"
   $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$(shasum -a 256 "$f" | cut -d' ' -f1)') ON CONFLICT DO NOTHING"
@@ -192,12 +192,15 @@ ASSERT "the full window run FAILS at 1233" "$([ $RC -ne 0 ] && echo failed || ec
 ASSERT "and not by the ledger-precondition refusal (no unapplied predecessor named)" "$(echo "$OUT" | grep -c 'jump unapplied predecessor')" "$([ "${TODAY:-0}" = 1 ] && echo 0 || echo 0)"
 ASSERT "1204, 1206 and 1232 stay committed (separate file transactions)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql'])")" "3"
 ASSERT "1233 is NOT recorded and its columns are not half-applied" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1233_gochara_p1_period_anchor.sql'")" "0"
+ASSERT "1235 is NOT recorded and its function is absent (the run stopped at 1233)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1235_ka_gochara_staged_candidate_evidence_function.sql'")$($SUDB -c "SELECT (to_regprocedure('public.ka_gochara_staged_candidate_has_runtime_evidence(text)') IS NOT NULL)::int")" "00"
 ASSERT "1240 is NOT recorded and none of its objects exist (the run stopped at 1233)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1240_gochara_window_verification_gate.sql'")$($SUDB -c "SELECT (to_regclass('public.ka_gochara_eval_window_verification') IS NOT NULL)::int")" "00"
 $SUDB -c "SET ROLE amjis_app; ALTER TABLE ka_gochara_relationship_record DROP COLUMN period_anchor_lord"
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -3 | sed 's/^/    /'
-ASSERT "after the cause is removed, the SAME invocation applies only 1233 and 1240" "$RC" "0"
-ASSERT "all five window files are now recorded exactly once" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql'])")" "5"
+ASSERT "after the cause is removed, the SAME invocation applies only 1233, 1235 and 1240" "$RC" "0"
+ASSERT "all six window files are now recorded exactly once" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1235_ka_gochara_staged_candidate_evidence_function.sql','1240_gochara_window_verification_gate.sql'])")" "6"
+
+ASSERT "1235 evidence function is callable after protected apply and reports no synthetic runtime evidence" "$(AS_OWNER "SELECT public.ka_gochara_staged_candidate_has_runtime_evidence('ka_gochara_v5')")" "f"
 
 echo "== S4 ownership and privilege matrix (deployment-faithful) =="
 ASSERT "amjis_app holds no CREATE on schema public after the window (capability revoked)" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
