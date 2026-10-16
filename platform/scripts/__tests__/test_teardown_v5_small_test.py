@@ -420,6 +420,22 @@ def test_membership_is_read_from_build_run_assets_and_the_scope_target_tokens():
     assert "build_run_assets" in sql and "string_to_array(r.scope_target, ',')" in sql and "triggered_by" in sql
 
 
+def test_c31_ownership_guard_preserves_non_test_and_mixed_asset_runs():
+    """Contract: P01_REWORK_v1_0.md:27 (preserve chart-wide ownership);
+    PACKET_J-1a_v1.md, section 6 (role/ownership/stamp failures unchanged).
+
+    Use the accepted run UUID and a valid original marker, so later scope or
+    stamp checks cannot accidentally substitute for the non-test-origin guard.
+    """
+    for run in (_test_run(assets=[ASSET, "ka_other"]),
+                _test_run(triggered_by="cockpit-manual-build")):
+        h = _Harness(members=[run])
+        with pytest.raises(teardown_mod.TeardownRefused):
+            _run(h)
+        assert not h.deletes() and not h.commits and not h.flipped
+        assert h.closed
+
+
 @pytest.mark.parametrize("run", [
     _test_run(assets=[ASSET, "ga_positions"]),
     _test_run(scope="asset_set", scope_target=f"{ASSET},ga_positions"),
@@ -447,6 +463,20 @@ def test_a_null_linked_receipt_is_refused_and_named_even_when_the_manifest_is_st
     with pytest.raises(teardown_mod.TeardownRefused, match="NO run link.*orphan-part"):
         _run(h)
     assert h.deletes() == []
+
+
+def test_c32_null_link_cannot_borrow_a_surviving_tests_valid_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:19,48-50:
+    no run link means unprovable origin; delete nothing pending steward recovery.
+
+    A valid owned run and stamped candidate do not establish the orphan's origin.
+    Assert preservation, independently of which redundant refusal fires first.
+    """
+    h = _Harness(receipts=[{"partition_key": "orphan-part", "build_id": None}])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        _run(h)
+    assert not h.deletes() and not h.commits and not h.flipped
+    assert h.closed
 
 
 def test_a_receipt_linked_to_a_run_that_is_not_an_owned_test_run_is_refused():
@@ -575,6 +605,21 @@ def test_a_complete_stamp_does_not_authorize_teardown_after_the_run_was_pruned()
     with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
         _run(h)
     assert not h.deletes() and not h.commits
+
+
+def test_c33_ownership_check_itself_requires_a_surviving_original_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:10,29,35:
+    no pruned-run reconstruction. Test the ownership decision before the later
+    request-scope check, which independently refuses a missing staged run.
+    """
+    surviving = _Harness()
+    checked = teardown_mod._refusal_checks(surviving.conn.cursor())
+    assert checked.owned == [RUN_1]
+
+    pruned = _Harness(members=[], receipts=[], run_manifests=[])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        teardown_mod._refusal_checks(pruned.conn.cursor())
+    assert not pruned.deletes() and not pruned.commits and not pruned.flipped
 
 
 
@@ -1255,12 +1300,12 @@ def test_the_ownership_proof_and_the_n137_predicate_are_the_shared_modules_not_a
 def test_the_ci_installs_the_sidecar_requirements_into_the_selected_python_before_the_unit_steps_that_import_the_writer():
     """Codex PR 3097 item 7: the unit steps import the real writer (scipy and the rest); the interpreter selected by setup-python must
     get the sidecar's CI requirements before them."""
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    teardown_step = ci.index("python -m pytest scripts/__tests__/test_teardown_v5_small_test.py")
+    teardown_step = ci.index("scripts/__tests__/test_teardown_v5_small_test.py")
     assert select < install < teardown_step
-    dispatch = ci.find("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch = ci.find("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert dispatch == -1 or select < install < dispatch
 
 
@@ -1515,3 +1560,8 @@ def test_r5_the_proof_returns_every_matching_run_id():
     problem, _source, _sliced, matched = shared.prove_stamp(STAMP, runs)
     assert problem is None and matched == [RUN_1, other]
     assert shared.prove_stamp(STAMP, [])[3] == []                                              # a reconstruction names no run
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

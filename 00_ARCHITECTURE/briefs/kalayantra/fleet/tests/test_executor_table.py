@@ -160,6 +160,9 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
+    for kind in W4_KINDS | {"readback_sql"}:
+        key = "lane_readback" if kind == "readback_sql" else "lane_dry_run"
+        expected[kind][key] = {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -240,9 +243,13 @@ def _segments(src):
     return out
 
 
-# Exact Wave 4 safety-fix candidate additions, for independent review. Every
+# Exact Wave 4 safety-fix and J-1a lane candidate additions, for independent review. Every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
+W4_FUNCTION_HASHES = {'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'receipt': 'd4a3fc33dea26ea837e8679b1a60a103600e6887f49b2680ff9255885594d471', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '5966b5b440608cb18eb6f0dccbad1e28ff20b40d800d178785e4918adea3fe7b', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'fd8dc880cb093690cd3102f3b87a9380a3dd00a038cb6c5b7efc774fd80558fc', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510'}
+
+
+# Exact local_schema_seed scratch lifecycle addition; other Wave 4 pins stay unchanged.
+W4_FUNCTION_HASHES["execute"] = 'bef35ad97d5b019df84c7556f5defda7313875d3eb2313f4819e65ab6004f618'
 
 
 def normalize_wave4(base_src, work_src):
@@ -588,3 +595,87 @@ def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, k
     text = OPS_FILE.read_text()
     assert not pattern.search(text)
     assert pattern.search(flip(text, kind))
+
+
+# Local schema seed scratch belongs to the executor, never to its caller.
+@pytest.mark.parametrize("needs,connection", [
+    ("pgenv", None), ("none", None), ("builder", "fixture-builder"), ("owner", "fixture-owner"),
+])
+@pytest.mark.parametrize("exit_code", [0, 23])
+def test_seed_child_gets_owned_scratch_without_expanding_env(tmp_path, monkeypatch, needs, connection, exit_code):
+    import sys
+    mod = _load_executor(tmp_path)
+    for directory in (mod.TMP, mod.EXEC):
+        directory.mkdir(parents=True)
+    # Entirely synthetic parent environment: no actual connection is read or sent.
+    parent_env = {"HOME": str(tmp_path), "PATH": os.defpath, "LANG": "C", "TZ": "UTC", "TMPDIR": str(tmp_path),
+                  "KY_SCRATCH": "caller-scratch-must-not-be-inherited", "DATABASE_URL": "fixture-unrelated",
+                  "KY_BUILDER_DATABASE_URL": "fixture-builder", "KY_OWNER_DATABASE_URL": "fixture-owner",
+                  "UNLISTED": "must-not-leak", "JOB_SCRATCH": "must-not-leak"}
+    monkeypatch.setattr(mod.os, "environ", parent_env)
+    monkeypatch.setattr(mod, "PY", sys.executable)
+    op = dict(load_ops(OPS_FILE.read_text())["ops"]["local_schema_seed"], script="fixture_seed.py", needs=needs)
+    source = f"""import json, os, pathlib, sys
+value = os.environ.get("KY_SCRATCH", "")
+scratch = pathlib.Path(value)
+assert value and scratch.is_absolute() and scratch.is_dir(), "absolute existing KY_SCRATCH required"
+assert sys.argv[1:] == ["seed"]
+assert os.environ.get("DATABASE_URL") == {connection!r}
+assert not any(key in os.environ for key in ("KY_BUILDER_DATABASE_URL", "KY_OWNER_DATABASE_URL", "UNLISTED", "JOB_SCRATCH"))
+assert os.environ["HOME"] == {str(tmp_path)!r} and os.environ["LANG"] == "C" and os.environ["TZ"] == "UTC"
+assert os.environ["TMPDIR"] == {str(tmp_path)!r}
+(scratch / "nested").mkdir()
+(scratch / "nested" / "seed.log").write_text("fixture")
+print(json.dumps({{"scratch": value}}))
+sys.exit({exit_code})
+"""
+    def git_show(*args):
+        assert args == ("show", "origin/main:fixture_seed.py")
+        return subprocess.CompletedProcess(args, 0, source, "")
+    monkeypatch.setattr(mod, "git", git_show)
+    req = simple_request("local_schema_seed", "sutradhara", operation_id="seed-fixture")
+    rc, output = mod.execute(req, op)
+    assert rc == exit_code, output
+    scratch = Path(json.loads(output)["scratch"])
+    assert scratch.parent == mod.EXEC.resolve()
+    assert not scratch.exists(), "operation scratch survived child completion"
+    assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
+    assert parent_env["KY_SCRATCH"] == "caller-scratch-must-not-be-inherited"
+
+
+@pytest.mark.parametrize("failure", [subprocess.TimeoutExpired("fixture", 1), OSError("fixture spawn failure")])
+def test_seed_scratch_is_removed_when_execution_raises(tmp_path, monkeypatch, failure):
+    mod = _load_executor(tmp_path)
+    for directory in (mod.TMP, mod.EXEC):
+        directory.mkdir(parents=True)
+    monkeypatch.setattr(mod.os, "environ", {})
+    monkeypatch.setattr(mod, "git", lambda *args: subprocess.CompletedProcess(args, 0, "fixture", ""))
+    observed = []
+    def fail_child(argv, cwd, env, timeout):
+        scratch = Path(env["KY_SCRATCH"])
+        assert scratch.is_absolute() and scratch.is_dir()
+        (scratch / "partial.log").write_text("fixture")
+        observed.append(scratch)
+        raise failure
+    monkeypatch.setattr(mod, "run_group", fail_child)
+    with pytest.raises(type(failure)):
+        mod.execute(simple_request("local_schema_seed", "sutradhara"),
+                    load_ops(OPS_FILE.read_text())["ops"]["local_schema_seed"])
+    assert len(observed) == 1 and not observed[0].exists()
+    assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
+
+
+def test_nonseed_child_does_not_inherit_caller_scratch_or_connections(tmp_path, monkeypatch):
+    import sys
+    mod = _load_executor(tmp_path)
+    for directory in (mod.TMP, mod.EXEC):
+        directory.mkdir(parents=True)
+    monkeypatch.setattr(mod.os, "environ", {"TMPDIR": str(tmp_path), "KY_SCRATCH": "caller-scratch", "DATABASE_URL": "fixture-unrelated",
+                                           "KY_BUILDER_DATABASE_URL": "fixture-builder", "KY_OWNER_DATABASE_URL": "fixture-owner"})
+    monkeypatch.setattr(mod, "PY", sys.executable)
+    source = "import os; assert not any(k in os.environ for k in ('KY_SCRATCH', 'DATABASE_URL', 'KY_BUILDER_DATABASE_URL', 'KY_OWNER_DATABASE_URL'))"
+    monkeypatch.setattr(mod, "git", lambda *args: subprocess.CompletedProcess(args, 0, source, ""))
+    rc, output = mod.execute(simple_request("finalize", "sutradhara"),
+                             {"script": "fixture.py", "needs": "none", "production": False})
+    assert rc == 0, output
+    assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
