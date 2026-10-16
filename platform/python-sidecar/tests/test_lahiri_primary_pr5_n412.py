@@ -68,6 +68,10 @@ def _phase_rows(start_iso: str, end_iso: str) -> list[dict]:
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch):
     P.clear_primitive_read_caches()
+    # These chart_facts/Sade-sati fixtures start after daśā admission; the
+    # J4P SQL tests exercise the live settlement guard independently.
+    from services.gochara_kernel import dasha_read
+    monkeypatch.setattr(dasha_read, "validate_live_dasha_periods", lambda *a, **k: None)
     # the point primitives need an ephemeris and are irrelevant here
     for name in ("drishti_contact", "degree_contact", "sign_occupation", "av_threshold_state", "planetary_return"):
         monkeypatch.setattr(P, name, lambda *a, **k: [])

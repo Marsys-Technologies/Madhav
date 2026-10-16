@@ -23,7 +23,9 @@ def api():
 
 
 @pytest.fixture
-def db(isolated_kala_db_dsn):
+def db(isolated_kala_db_dsn, tmp_path, monkeypatch):
+    from tests.l3._dasha_settlement import settle_fixture_chart
+    settle_fixture_chart(tmp_path, monkeypatch, chart_id=CHART, build_id=BUILD)
     with psycopg.connect(isolated_kala_db_dsn) as conn:
         conn.execute('''CREATE TABLE kala_layer_head(chart_id uuid PRIMARY KEY, generation text);
           CREATE TABLE kala_layer_candidate(chart_id uuid, generation text, state text, build_id uuid, conventions jsonb,
@@ -131,10 +133,15 @@ def seed_candidate_sources(db):
       CREATE TABLE ga_yoga_firings(chart_id uuid,ayanamsha_id text,yoga_canonical_id text,fired bool,
           constituent_fact_ids jsonb,constituent_planets jsonb,constituent_houses jsonb,bhanga_active bool,build_id uuid);
       CREATE TABLE chart_dashas(chart_id uuid,ayanamsha_id text,system_id text,level_n int,lord_graha text,build_id uuid,
-          dasha_row_id uuid DEFAULT gen_random_uuid(), verification_pass_status text DEFAULT 'two_pass_verified',
+          dasha_row_id uuid DEFAULT gen_random_uuid(), parent_row_id uuid,
+          verification_pass_status text DEFAULT 'two_pass_verified',
           start_iso timestamptz DEFAULT '2000-01-01Z',end_iso timestamptz DEFAULT '2001-01-01Z');
       CREATE TABLE kala_activation_predicates(chart_id uuid,ayanamsha_id text,generation text,
           event_class_id text,mechanism_id text,derivation_ledger_jsonb jsonb);''')
+    # A settled Vimśottarī population is required even when this class has no
+    # daśā-role target. Sun is outside the fixture's Venus-only signature.
+    db.execute("INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,lord_graha,build_id,start_iso,end_iso) "
+               "VALUES (%s,%s,'vimshottari',1,'Sun',%s,'1900-01-01Z','1901-01-01Z')", (CHART, AYAN, BUILD))
     db.execute('INSERT INTO chart_facts VALUES (%s,%s,%s,%s,%s,%s,%s,NULL,%s,%s)',
                (CHART, AYAN, 'venus', 'graha_position', 'VEN', 'longitude_sidereal', 0, 'degrees', BUILD))
     db.execute('INSERT INTO brahma_event_ontology VALUES (%s,%s,%s)',
@@ -212,6 +219,12 @@ def test_relationship_sources_exclude_other_build_and_ayanamsha(db, table):
     db.execute(f"UPDATE {table} SET build_id='00000000-0000-4000-8000-000000000399'")
     context = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new',
         'ayanamsha_id': 'wrong_config_convention'}, build_id=BUILD)
+    if table == 'chart_dashas':
+        from services.gochara_kernel.dasha_read import DashaBuildRefused
+        with pytest.raises(DashaBuildRefused, match='settled_build_absent'):
+            api().build_candidate_projection(context)
+        assert db.execute('SELECT * FROM kala_f1_relationship').fetchall() == []
+        return
     api().build_candidate_projection(context)
     edges = db.execute('SELECT role FROM kala_f1_relationship').fetchall()
     if table == 'chart_facts':
@@ -228,7 +241,36 @@ def test_relationship_dasha_lords_hash_refuses_changed_inputs(db, mutation):
     context = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'}, build_id=BUILD)
     api().build_candidate_projection(context)
     before = db.execute('SELECT * FROM kala_f1_relationship ORDER BY edge_id').fetchall()
-    db.execute(f"UPDATE chart_dashas SET {mutation}")
+    db.execute(f"UPDATE chart_dashas SET {mutation} WHERE lord_graha='Venus'")
     with pytest.raises(ValueError, match='input'):
         api().build_candidate_projection(context)
     assert db.execute('SELECT * FROM kala_f1_relationship ORDER BY edge_id').fetchall() == before
+
+
+@pytest.mark.parametrize('end', ['2002-01-01Z', '2001-12-31Z', None])
+def test_malformed_period_refuses_before_persisting_resolved_dasha_role(db, end):
+    """J4P-B5: port the independent review's full candidate-writer probe."""
+    from services.gochara_kernel.dasha_read import DashaBuildRefused
+
+    seed_candidate_sources(db)
+    db.execute("""INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,
+        lord_graha,build_id,start_iso,end_iso) VALUES
+        (%s,%s,'vimshottari',1,'Venus',%s,'2002-01-01Z',%s)""", (CHART, AYAN, BUILD, end))
+    ctx = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'},
+                          build_id=BUILD, dry_run=False)
+    with pytest.raises(DashaBuildRefused, match='dasha_period_malformed'):
+        api().build_candidate_projection(ctx)
+    assert db.execute('SELECT * FROM kala_f1_relationship').fetchall() == []
+    assert db.execute('SELECT target_ref, weight FROM gochara_resonance_map').fetchall() == [('legacy', .8)]
+
+
+def test_valid_period_preserves_persisted_resolved_dasha_role(db):
+    seed_candidate_sources(db)
+    db.execute("""INSERT INTO chart_dashas(chart_id,ayanamsha_id,system_id,level_n,
+        lord_graha,build_id,start_iso,end_iso) VALUES
+        (%s,%s,'vimshottari',1,'Venus',%s,'2002-01-01Z','2003-01-01Z')""", (CHART, AYAN, BUILD))
+    ctx = SimpleNamespace(db_conn=db, config={'chart_id': CHART, 'candidate_generation': 'candidate:new'},
+                          build_id=BUILD, dry_run=False)
+    api().build_candidate_projection(ctx)
+    assert db.execute("""SELECT object_id,resolution_state FROM kala_f1_relationship
+        WHERE role='dasha_lord_portfolio'""").fetchall() == [('graha:VEN', 'resolved')]

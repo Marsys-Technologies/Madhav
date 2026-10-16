@@ -319,3 +319,27 @@ def test_detector_change_during_collection_is_not_lost(engine):
     assert engine._dirty, "publishing a tick lost a detector's concurrent change notification"
     engine.tick()
     assert engine.snapshot["tracks"][0]["items"][0]["status"] == "done"
+
+
+def test_http_verify_bypasses_saturated_dashboard_fetches(engine, http, monkeypatch):
+    entered = [threading.Event() for _ in range(4)]
+    release = threading.Event()
+    engine.model = {**engine.model, "items": [
+        {"id": "completion", "detector": {"type": "branch_merged", "ref": "origin/completion"}}]}
+
+    def run(cmd, **kwargs):
+        if cmd[:2] == ["git", "fetch"] and cmd[-1].startswith("dashboard-"):
+            entered[int(cmd[-1][-1])].set()
+            assert release.wait(10)
+        return 0, "marker"
+
+    monkeypatch.setattr(D, "_run", run)
+    engine.det.poll([{"type": "branch_file_contains", "ref": f"origin/dashboard-{i}",
+                      "path": "receipt", "pattern": "marker"} for i in range(4)])
+    try:
+        assert all(e.wait(2) for e in entered)
+        assert get(http + "/api/verify?id=completion")["detector"]["status"] == "done"
+        assert not release.is_set()
+    finally:
+        release.set()
+        engine.det._pool.shutdown(wait=True)

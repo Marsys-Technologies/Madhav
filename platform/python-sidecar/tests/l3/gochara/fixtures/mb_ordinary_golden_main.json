@@ -368,7 +368,7 @@
    },
    "key": "snapshot",
    "outcome": {
-    "notes": "search-input snapshot <hex>\u2026: 10 L1 facts, 4 da\u015b\u0101 rows (build 75524b3e-102a-43ec-8cee-<hex>); no AV declarations (P5 held); chain replaced (windows 0, records 0, contacts 0, coverage 0)",
+    "notes": "search-input snapshot <hex>\u2026: 10 L1 facts, 4 da\u015b\u0101 rows (build ca17639b-f3cf-42c7-9866-<hex>); no AV declarations (P5 held); chain replaced (windows 0, records 0, contacts 0, coverage 0)",
     "rows_inserted": 1
    },
    "statements": {
@@ -451,18 +451,18 @@
     "rows_inserted": 131
    },
    "statements": {
-    "count": 306,
-    "sequence_sha256": "4d25d022827f00e2198eb7cc0a048597a58acb857c532e28689e0bff8786bd80",
+    "count": 310,
+    "sequence_sha256": "ab82c518b66966203c21d1c9d569eafc06b476d969c3b5b912eada2f5a93a4bf",
     "shapes": {
      "0|SELECT path_id, rule_version FROM public.ka_gochara_rule_path_seal ORDER BY path_id, rule_version": 3,
      "0|SELECT public.ka_gochara_lock_global_shared()": 2,
      "0|SELECT to_regprocedure('public.ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)') IS NOT NULL AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conname = 'kgsiv_state_ck' AND c.conrelid = 'public.ka_gochara_search_interval'::regclass AND pg_get_constraintdef(c.oid) LIKE '%excluded_moon_tier%')": 1,
      "10|INSERT INTO public.ka_gochara_search_path_pin (chart_id, generation, event_class, path_id, rule_version, disposition, exclusion_reason, ruling_ref, basis, committed_ob_ids) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::uuid[])": 5,
      "13|INSERT INTO public.ka_gochara_search_obligation (chart_id, generation, event_class, ob_id, path_id, rule_version, agent, relation, object_role, target, frame, person, canonical_bytes) VALUES (%s,%s,%s,%s::uuid,%s,%s,%s,%s,%s,%s,%s,%s,%s)": 126,
+     "13|WITH governed_chart_dashas AS ( SELECT * FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND build_id = %s AND system_id = ANY(%s) AND level_n BETWEEN 1 AND 4 AND start_iso < end_iso AND (verification_pass_status = %s OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s)) OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s)))) SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso FROM governed_chart_dashas d JOIN public.ka_gochara_search_input_snapshot s ON d.chart_id = s.chart_id AND d.dasha_row_id = ANY (s.consumed_dasha_row_ids) WHERE s.chart_id = %s AND s.generation = %s ORDER BY d.level_n, d.start_iso": 1,
      "1|SELECT ephemeris_generation, ayanamsha, node_convention, grid, method_version, domain_start, domain_end FROM public.ka_gochara_sky_convention WHERE convention_id = %s": 1,
      "1|SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s": 2,
      "1|SELECT public.ka_gochara_lock_chart(%s::uuid)": 1,
-     "2|SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso FROM public.chart_dashas d JOIN public.ka_gochara_search_input_snapshot s ON d.chart_id = s.chart_id AND d.dasha_row_id = ANY (s.consumed_dasha_row_ids) WHERE s.chart_id = %s AND s.generation = %s ORDER BY d.level_n, d.start_iso": 1,
      "2|SELECT fact_id, fact_subject, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position' AND fact_key = 'longitude_sidereal'": 1,
      "2|SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s": 1,
      "2|SELECT input_generation_vector FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s": 1,
@@ -476,12 +476,16 @@
      "3|DELETE FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s AND event_class = %s": 1,
      "3|DELETE FROM public.ka_gochara_search_obligation WHERE chart_id = %s AND generation = %s AND event_class = %s": 1,
      "3|DELETE FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s AND event_class = %s": 1,
+     "3|SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = ANY(%s) ORDER BY 1": 1,
+     "3|SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s ORDER BY 1": 1,
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_factor t WHERE (factor_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.factor_id, t.rule_version": 2,
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_predicate t WHERE (predicate_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.predicate_id, t.rule_version": 2,
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_rule_path t WHERE (path_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.path_id, t.rule_version": 2,
      "5|INSERT INTO public.ka_gochara_search_inventory (chart_id, generation, event_class, horizon, input_digest) VALUES (%s,%s,%s,%s::tstzrange,%s)": 1,
+     "5|SELECT dasha_row_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status FROM chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = ANY(%s) AND level_n = ANY(%s) AND verification_pass_status = %s ORDER BY system_id, level_n, start_iso": 1,
      "5|UPDATE public.ka_gochara_search_inventory SET inventory_digest = %s, ledger_digest = %s, finalized_at = now() WHERE chart_id = %s AND generation = %s AND event_class = %s": 1,
      "5|WITH sel AS (SELECT * FROM unnest(%(ids)s::text[], %(vers)s::text[]) AS s(p, v)), pre AS (SELECT t.* FROM public.ka_gochara_rule_path_prerequisite t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)), sf AS (SELECT t.* FROM public.ka_gochara_rule_path_soft_factor t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)) SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(jsonb_build_object( 'schema', %(schema)s::text, 'paths', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.path_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_rule_path t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)), 'prerequisites', (SELECT COALESCE(jsonb_agg(to_jsonb(pre) ORDER BY pre.path_id, pre.rule_version, pre.ordinal), '[]'::jsonb) FROM pre), 'soft_factors', (SELECT COALESCE(jsonb_agg(to_jsonb(sf) ORDER BY sf.path_id, sf.rule_version, sf.factor_id, sf.factor_rule_version), '[]'::jsonb) FROM sf), 'predicates', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.predicate_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_predicate t WHERE (t.predicate_id, t.rule_version) IN (SELECT predicate_id, predicate_rule_version FROM pre)), 'factors', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.factor_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_factor t WHERE (t.factor_id, t.rule_version) IN (SELECT factor_id, factor_rule_version FROM sf)), 'census', COALESCE(%(census)s::jsonb, (SELECT COALESCE(jsonb_agg(jsonb_build_array(s.path_id, s.rule_version) ORDER BY s.path_id, s.rule_version), '[]'::jsonb) FROM public.ka_gochara_rule_path_seal s)) )))": 1,
+     "6|SELECT dasha_row_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status FROM chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = ANY(%s) AND level_n = ANY(%s) AND verification_pass_status = %s AND build_id = %s ORDER BY system_id, level_n, start_iso": 1,
      "6|SELECT public.ka_gochara_search_inventory_digest(%s::uuid,%s,%s), public.ka_gochara_search_ledger_digest(%s::uuid,%s,%s)": 1,
      "8|INSERT INTO public.ka_gochara_search_interval (chart_id, generation, event_class, ob_id, search_range, state, detail, input_digest) VALUES (%s,%s,%s,%s::uuid,%s::tstzrange,%s,%s::jsonb,%s)": 138
     }
@@ -938,8 +942,8 @@
     "message": "contact geometry certification failed marriage: jupiter residence span:2: expected contact [2025-01-01T05:30:00+05:30, 2025-01-20T05:30:00+05:30) is not in the ledger (omitted, bridged or truncated); sun residence span:10: expected contact [2025-01-14T08:55:41.821290+05:30, 2025-01-20T05:30:00+05:30) is not in the ledger (omitted, bridged or truncated)"
    },
    "statements": {
-    "count": 46,
-    "sequence_sha256": "ba3285bc87ee8ed77080e2f391af5990eb2662f1b487044f7a727c049ace1e92",
+    "count": 47,
+    "sequence_sha256": "956730fe803fad62a4160a7c5216bd670cb9b9ad5e5dc770436a2e7c6033dc34",
     "shapes": {
      "0|SELECT path_id, rule_version FROM public.ka_gochara_rule_path_seal ORDER BY path_id, rule_version": 3,
      "0|SELECT public.ka_gochara_lock_global_shared()": 1,
@@ -974,8 +978,9 @@
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_factor t WHERE (factor_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.factor_id, t.rule_version": 2,
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_predicate t WHERE (predicate_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.predicate_id, t.rule_version": 2,
      "3|SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_rule_path t WHERE (path_id, rule_version) IN (SELECT * FROM unnest(%s::text[], %s::text[])) ORDER BY t.path_id, t.rule_version": 2,
+     "5|SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)": 1,
      "5|WITH sel AS (SELECT * FROM unnest(%(ids)s::text[], %(vers)s::text[]) AS s(p, v)), pre AS (SELECT t.* FROM public.ka_gochara_rule_path_prerequisite t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)), sf AS (SELECT t.* FROM public.ka_gochara_rule_path_soft_factor t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)) SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(jsonb_build_object( 'schema', %(schema)s::text, 'paths', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.path_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_rule_path t JOIN sel ON (t.path_id, t.rule_version) = (sel.p, sel.v)), 'prerequisites', (SELECT COALESCE(jsonb_agg(to_jsonb(pre) ORDER BY pre.path_id, pre.rule_version, pre.ordinal), '[]'::jsonb) FROM pre), 'soft_factors', (SELECT COALESCE(jsonb_agg(to_jsonb(sf) ORDER BY sf.path_id, sf.rule_version, sf.factor_id, sf.factor_rule_version), '[]'::jsonb) FROM sf), 'predicates', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.predicate_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_predicate t WHERE (t.predicate_id, t.rule_version) IN (SELECT predicate_id, predicate_rule_version FROM pre)), 'factors', (SELECT COALESCE(jsonb_agg(to_jsonb(t) - %(audit)s::text[] ORDER BY t.factor_id, t.rule_version), '[]'::jsonb) FROM public.ka_gochara_factor t WHERE (t.factor_id, t.rule_version) IN (SELECT factor_id, factor_rule_version FROM sf)), 'census', COALESCE(%(census)s::jsonb, (SELECT COALESCE(jsonb_agg(jsonb_build_array(s.path_id, s.rule_version) ORDER BY s.path_id, s.rule_version), '[]'::jsonb) FROM public.ka_gochara_rule_path_seal s)) )))": 1,
-     "7|SELECT dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, system_id, ayanamsha_id, verification_pass_status FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s) AND (%s::uuid IS NULL OR build_id = %s::uuid)": 1
+     "6|SELECT dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, system_id, ayanamsha_id, verification_pass_status FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s) AND build_id = %s::uuid": 1
     }
    }
   }
