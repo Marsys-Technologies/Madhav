@@ -276,7 +276,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
     assert differing == ["evaluation", "geometry"], differing
     assert got["implementation"]["geometry"] == "1313c7d2d6a993987243e9d89831fa913d4161b73fd3cc1fe61bd34b8607ead2"
-    # ci3-p06 (#3516): main's accepted ledger publication guard changes this stage;
-    # pin implementation_registry.compute() from the merged tree, preserving all other components.
-    assert got["implementation"]["evaluation"] == "82e52deb2edd0ab1e9ccc0f305c9f2478fe0dfedc1acb02ef7e998cd5389e6e2"
+    # ci-kalayantra-w4-p06 (#3516): merge 649ad111f adds scope_response's
+    # sealed-window attestation refusal to this governed stage. Pin the digest
+    # computed by implementation_registry.compute() from this accepted tree;
+    # preserve every other component of the ordinary-build golden exactly.
+    assert got["implementation"]["evaluation"] == "a0402ca0e545ba7ce6b39ed215a6cee2d20d0731f63c0e0fe990fe1cb55abb57"
     assert got["implementation"]["window"] == want["implementation"]["window"]
