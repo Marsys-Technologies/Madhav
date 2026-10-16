@@ -117,6 +117,7 @@ import importlib.util
 import json
 import sys
 import time
+from contextlib import redirect_stdout
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -1353,12 +1354,15 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
     try:
-        episodes, coverage, report = enumerate_core(
-            conn, chart_id=args.chart_id, generation=args.generation,
-            h_start=h_start, h_end=h_end, horizon_text=horizon_text,
-            orb_deg=args.orb_deg, ephe_path=args.ephe_path,
-            refine=not args.no_refine, bodies=bodies,
-            dropped_refs_path=args.episodes_out + ".dropped_refs.json")
+        # Lazy specialist-library imports can print startup diagnostics. Keep
+        # those on stderr; stdout is the CLI's structured JSON report.
+        with redirect_stdout(sys.stderr):
+            episodes, coverage, report = enumerate_core(
+                conn, chart_id=args.chart_id, generation=args.generation,
+                h_start=h_start, h_end=h_end, horizon_text=horizon_text,
+                orb_deg=args.orb_deg, ephe_path=args.ephe_path,
+                refine=not args.no_refine, bodies=bodies,
+                dropped_refs_path=args.episodes_out + ".dropped_refs.json")
     except StaleOverlayRefusal as exc:
         conn.rollback()
         print(f"REFUSED (§12.9): {exc}. Enumeration on stale overlay rows "

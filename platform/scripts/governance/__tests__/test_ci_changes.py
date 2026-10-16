@@ -658,9 +658,10 @@ def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(
     'tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py',
     'tests/l3/kala_db/issued_forecast/test_lifecycle.py',
     'tests/l3/kala_db/idempotency/test_immutable_issue.py',
+    'tests/l3/kala_db/rehearsal/test_rehearsal.py',
 ])
 def test_kala_k6_5_regression_suites_run_in_the_mandatory_db_command(jobs, suite):
-    """Identity, ontology and lifecycle regressions must travel with the mapping oracle."""
+    """Identity, lifecycle and K9 rehearsal regressions travel with the mapping oracle."""
     job = jobs['kala-db-tests']
     assert not job.get('continue-on-error')
     steps = [step for step in job['steps']
