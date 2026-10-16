@@ -1770,7 +1770,7 @@ jobs:
     # P06 G12 snapshot-copy baseline and SQL mutations (four isolated slices).
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-g12-mutations'))) }}
     name: Gochara P06 - G12 mutations (throwaway Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -1793,10 +1793,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/restore-generated
       - name: P06 G12 snapshot-copy baseline and mutation slice (REQUIRED, never skipped)
+        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-g12-mutations-p06'))) }}
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
@@ -1823,7 +1826,7 @@ jobs:
     # P06 final rules, expected-class census, near-miss storage and verifier mutations.
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
     name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -1842,10 +1845,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/restore-generated
       - name: P06 final-rule, census, storage and verifier suites (REQUIRED, never skipped)
+        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-final-rules-p06'))) }}
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
@@ -1874,7 +1880,7 @@ jobs:
     # P06 inherited WP6 ports on a dedicated guarded disposable database.
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-p06-legacy'))) }}
     name: Gochara P06 - legacy ports (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -1895,10 +1901,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/restore-generated
       - name: P06 inherited WP6 integration suites (REQUIRED, never skipped)
+        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-p06-legacy-p06'))) }}
         env:
           WP6_LEDGER_DSN: postgresql://wp6:local@localhost:5432/wp6
           GOCHARA_P06_LEGACY_REQUIRE_DB: '1'
@@ -3492,7 +3501,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-final-rules, gochara-a55-g12-mutations, gochara-a55-measuring-build, gochara-a55-p06-legacy, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
