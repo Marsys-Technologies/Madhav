@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+p01-a55h-scope-20261015",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4639,26 +4639,22 @@
       "id": "K5-2",
       "track": "K",
       "lane": "K · K5 forecaster",
-      "title": "Compact evaluator trial under the numerical contract, including null-statistic reproduction; dense rows untouched",
+      "title": "JOIN — compact evaluator numerical-contract trial: separately accepted implementations and corrected-workload evidence; dense rows untouched",
       "owner": "K",
       "depends_on": [
-        "D-VC"
+        "D-VC",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract",
+        "K5-2-qualify"
       ],
       "mandatory": true,
-      "detector": {
-        "type": "branch_merged",
-        "ref": "origin/kalayantra/k5-2"
-      },
       "brief": {
         "spec": [
           "PLAN §6.2 item 4",
           "ALGO 3.20 numerical contract",
           "PLAN §10 Forecaster"
-        ],
-        "owns": [
-          "platform/python-sidecar/services/ka_kshetra/compact/** (new)",
-          "platform/python-sidecar/tests/l3/ka_kshetra/compact/**",
-          "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json"
         ],
         "tests": [
           "structural equality of partitions and coefficients where the same representation is claimed",
@@ -4669,14 +4665,18 @@
           "null-statistic reproduction"
         ],
         "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
-        "notes": "Records implemented-and-proven or failed-with-the-failing-clause. The result file is D-COMPACT's evidence. S splits this item before any claim into independently reviewable children, each with one implementation or evidence deliverable, an explicit write-set, tests and a detector. The parent becomes a join; existing downstream items continue to depend on the parent. No child may combine multiple adapter families or both a schema/protocol implementation and its full runtime qualification."
+        "notes": [
+          "K5-2-NB-02: decomposition registered. This parent derives completion only from D-VC and every independently accepted child; no worker claims or branch-merger evidence can complete the join. Existing downstream dependencies remain on K5-2.",
+          "Each source child has one implementation deliverable, an explicit write-set, tests and its own guarded exact-head acceptance. Full corrected-G1/canonical-workload qualification is a separate digest-reviewed evidence child.",
+          "The accepted isolated source pre-build is preserved; no historical verdict is rewritten and no child is marked done by this registration. Records implemented-and-proven or failed-with-the-failing-clause for D-COMPACT; a failed trial retains dense data and earns no activation.",
+          "(I) INTERPRETATION: split along the four existing implementation modules and a separate runtime-evidence deliverable. The alternative is splitting each numerical clause into an item; clauses remain detector obligations within the corresponding deliverable."
+        ]
       },
-      "completion_kind": "code",
-      "producer": "K",
-      "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
-      }
+      },
+      "join": true,
+      "done_by": "join"
     },
     {
       "id": "D-COMPACT",
@@ -20914,7 +20914,13 @@
         "K6-N2",
         "K6-N3",
         "KA3B-N1",
-        "KA3B-N2"
+        "KA3B-N2",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract",
+        "K5-2-qualify",
+        "K5-2-NB-02"
       ],
       "mandatory": true,
       "detector": {
@@ -22446,7 +22452,6 @@
       "depends_on": [
         "B-7",
         "K0-SV",
-        "D-KCERT-EXISTING-STATUS-20261015",
         "J-4d-pr3145"
       ],
       "title": "bg_gochara_citation_resolution Dens.served: independently assessed MET from the existing stored status column; bounded structural artifact under SR-A2-11",
@@ -22474,7 +22479,8 @@
         "notes": [
           "Artifact: /Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md; executing assessment evidence: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess. Follow the J-0m artifact declaration and independent digest-bound acceptance route. The detector is evidence, not an automatic terminal transition.",
           "SR-A2-11 explicitly supersedes Q2 only as K-CERT’s structural prerequisite. Existing status represents citation resolution; it is not a synthesized verification tier. K-CERT-2’s #3435 linkage and separate obligations remain unchanged.",
-          "(I) INTERPRETATION: retain K-CERT’s existing K owner/producer and all prerequisites other than KV3-SCHEMA-1; replace the code reviewer rule with the existing artifact-digest rule required by artifact completion. This declaration writes no tracker event and assumes no live completion."
+          "(I) INTERPRETATION: retain K-CERT’s existing K owner/producer and all prerequisites other than KV3-SCHEMA-1; replace the code reviewer rule with the existing artifact-digest rule required by artifact completion. This declaration writes no tracker event and assumes no live completion.",
+          "SR-A2-11 / A4 batch 4: remove D-KCERT-EXISTING-STATUS-20261015 from prerequisites; K-CERT completes through the existing artifact-digest acceptance route. The retirement decision is not an artifact prerequisite."
         ]
       },
       "completion_kind": "artifact",
@@ -22657,7 +22663,7 @@
         ],
         "migration": "additive column on bg_gochara_citation_resolution; protected window if the deploy classifier requires it",
         "compat": "additive only; existing readers and writers are unaffected until K-CERT selects the column",
-        "notes": "RETIRED by SR-A2-11 through D-KCERT-EXISTING-STATUS-20261015. Historical migration packet scope/tests are preserved for audit, not dispatch authority or a claim of a delivered column. A refused decision makes this item not_applicable through requires_outcome, matching the existing B-K-INBOX retirement mechanism. The prior blocked-contract requirement is superseded only for K-CERT structural Dens.served; any independent verification-tier obligation needs a new explicit decision and custodian contract."
+        "notes": "RETIRED / not_applicable by the existing requires_outcome mechanism: never migrated; K-CERT already satisfied on main — SR-A2-11. RETIRED by SR-A2-11 through D-KCERT-EXISTING-STATUS-20261015. Historical migration packet scope/tests are preserved for audit, not dispatch authority or a claim of a delivered column. A refused decision makes this item not_applicable through requires_outcome, matching the existing B-K-INBOX retirement mechanism. The prior blocked-contract requirement is superseded only for K-CERT structural Dens.served; any independent verification-tier obligation needs a new explicit decision and custodian contract."
       },
       "completion_kind": "code",
       "producer": "K",
@@ -22665,7 +22671,7 @@
       "triage": {
         "class": "retired",
         "decision": "D-KCERT-EXISTING-STATUS-20261015",
-        "reason": "SR-A2-11 retires the technically unnecessary K-CERT structural prerequisite; no migration was delivered.",
+        "reason": "never migrated; K-CERT already satisfied on main — SR-A2-11",
         "re_entry": "Only a new explicit custodian/owner decision establishing a separate verification-authority requirement and its admitted schema/value/backfill contract may re-enter this work; structural status selection alone does not reopen it."
       },
       "requires_outcome": {
@@ -27178,7 +27184,7 @@
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md:61–67 (Q2, superseded only as this structural prerequisite)",
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:544–551,760–763"
         ],
-        "notes": "The steward records ky decide D-KCERT-EXISTING-STATUS-20261015 --as steward --outcome refused with SR-A2-11 and the independent assessment evidence. As with D-RETIRE-B-K-INBOX, refused retires the old implementation obligation: KV3-SCHEMA-1 requires approved and becomes not_applicable. K-CERT depends on this decision without requiring approved, then uses independent digest-bound artifact acceptance. No decision event is written by this model edit; no migration was delivered. Supersession is limited to structural Dens.served using the existing stored status column; it grants no computed-value/prose verification or production certification and does not rewrite the historical owner-decisions file."
+        "notes": "Resolved policy under SR-A2-11: outcome refused; retirement reason: never migrated; K-CERT already satisfied on main — SR-A2-11. The cockpit publishes the existing ky decide D-KCERT-EXISTING-STATUS-20261015 --as steward --outcome refused with /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16 and the independent assessment evidence. The existing requires_outcome approved declaration makes KV3-SCHEMA-1 not_applicable; K-CERT has no dependency on this decision and completes as an artifact. No live event is written by this model-only job. Supersession remains limited to structural Dens.served; no delivered migration, computed-value/prose verification or production certification is claimed."
       },
       "done_by": "decision",
       "decision": "D-KCERT-EXISTING-STATUS-20261015",
@@ -27258,6 +27264,1281 @@
           "(I) INTERPRETATION: redirect every executable direct J-2d consumer through this isolated join, retaining every other dependency. JOIN-ALL retains original J-2b/J-2c/J-2d edges and already accepts skips; add the decision and disposition join so campaign closure cannot omit the disposition. J-2d-a55i retains its J-2c edge and automatically skips on clean run 1."
         ]
       },
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K9-23-N2",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Successful execute_run delegation still lacks a fail-on-revert regression",
+      "owner": "K",
+      "depends_on": [
+        "K9-23"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-23-n2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T231013Z-review2-k9-23/result.json:19 (K9-23-N2)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/l3_families/measurements/K9_BENCHMARKS_v1_0.md",
+          "00_ARCHITECTURE/briefs/l3_families/measurements/K9_DRILLS_v1_0.md",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json (orchestrator_rebuild*, layer_verify, layer_publish, layer_rollback)"
+        ],
+        "tests": [
+          "Successful execute_run delegation still lacks a fail-on-revert regression. Unchanged by this fix; retain as a non-blocking child.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Successful execute_run delegation still lacks a fail-on-revert regression. Unchanged by this fix; retain as a non-blocking child."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "W4-SAFETY-N01",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Backup/restore implementation absent at reviewed head",
+      "owner": "K",
+      "depends_on": [
+        "J-2d"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/w4-safety-n01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T230438Z-review-w4-prestage/result.json:82 (W4-SAFETY-N01)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261014T174428Z-wave4-packets/WAVE4_PACKET_PLAN.md:93 (P01 aggregate target: J-2d)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/pravaha/drafts/DRAFT_publication_refuses_test_slice_v1_0.sql",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+          "platform/scripts/backup_v5_small_test_job.py",
+          "platform/scripts/dispatch_v5_small_test_job.py",
+          "platform/scripts/teardown_v5_small_test_job.py",
+          "platform/scripts/__tests__/test_p01_smalltest_operations.py",
+          "platform/scripts/__tests__/test_backup_v5_small_test.py",
+          "platform/python-sidecar/tests/l3/kala_db/test_p01_smalltest_backup.py"
+        ],
+        "tests": [
+          "Documented held P01 dependency. Execution fails closed for absent script; current-head restorability and restore guard-revert proofs cannot be certified. Historical P01 13c6b7368887f32bb2870db31463ced45c11081d was inspected read-only and fixes restore to a new isolated loopback target with equality checks and cleanup; historical inspection does not substitute for landed exact-head execution evidence.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: P01 is not a model id; use its existing aggregate target J-2d, explicitly named in WAVE4_PACKET_PLAN.md:93, matching P06-N1’s aggregate mapping. Alternative: introduce a new P01 parent and alter the phase graph."
+        ],
+        "contract": "Documented held P01 dependency. Execution fails closed for absent script; current-head restorability and restore guard-revert proofs cannot be certified. Historical P01 13c6b7368887f32bb2870db31463ced45c11081d was inspected read-only and fixes restore to a new isolated loopback target with equality checks and cleanup; historical inspection does not substitute for landed exact-head execution evidence."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "W4-SAFETY-N02",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Staging pack matches ordered steps and four clean clauses; activation evidence remains owed",
+      "owner": "K",
+      "depends_on": [
+        "J-2d"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/w4-safety-n02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T230438Z-review-w4-prestage/result.json:91 (W4-SAFETY-N02)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261014T174428Z-wave4-packets/WAVE4_PACKET_PLAN.md:93 (P01 aggregate target: J-2d)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_J-1a_v1.md"
+        ],
+        "tests": [
+          "42 request contracts and 12 single-statement SQL files validated independently. Numerical expected census, full writer-plan comparison, remote terminal evidence, model activation and composite receipt readiness remain explicit gates. Do not infer clean from structural census or staging-only dry run.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: P01 is not a model id; use its existing aggregate target J-2d, explicitly named in WAVE4_PACKET_PLAN.md:93, matching P06-N1’s aggregate mapping. Alternative: introduce a new P01 parent and alter the phase graph."
+        ],
+        "contract": "42 request contracts and 12 single-statement SQL files validated independently. Numerical expected census, full writer-plan comparison, remote terminal evidence, model activation and composite receipt readiness remain explicit gates. Do not infer clean from structural census or staging-only dry run."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "P06B-NB-01",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Occurrence UUID is not independently validated",
+      "owner": "K",
+      "depends_on": [
+        "P06b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/p06b-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T231059Z-review-p06b/result.json:11 (P06B-NB-01)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/gochara_kernel/verification_job.py",
+          "platform/python-sidecar/services/gochara_kernel/near_miss_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/seal_brief.py",
+          "platform/python-sidecar/tests/l3/gochara/test_near_miss_verifier.py",
+          "platform/scripts/migrate.ts",
+          ".github/workflows/deploy.yml"
+        ],
+        "tests": [
+          "Register a child to derive occurrence identity independently and add a named refusal plus fail-on-revert proof.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Replacing only near_miss_id with a random UUID on the real Jupiter candidate still earns VERIFIED, persists its changed digest, and produces no near-miss SQL violations. The object/ordinal identity contract is never checked."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "P06B-NB-02",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Stored ray level is not independently validated",
+      "owner": "K",
+      "depends_on": [
+        "P06b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/p06b-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T231059Z-review-p06b/result.json:26 (P06B-NB-02)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/gochara_kernel/verification_job.py",
+          "platform/python-sidecar/services/gochara_kernel/near_miss_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/seal_brief.py",
+          "platform/python-sidecar/tests/l3/gochara/test_near_miss_verifier.py",
+          "platform/scripts/migrate.ts",
+          ".github/workflows/deploy.yml"
+        ],
+        "tests": [
+          "Register a child to match the stored level to the independently reconstructed ray and add a named refusal plus fail-on-revert proof.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Changing the real Jupiter occurrence's level_deg to 0.0 while retaining its original geometry still earns VERIFIED, persists its changed digest, and produces no near-miss SQL violations. The stage uses derived centres without checking this stored geometric claim."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "P06B-NB-03",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Migration 1381 SQL is not directly repeatable",
+      "owner": "K",
+      "depends_on": [
+        "P06b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/p06b-nb-03"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T231059Z-review-p06b/result.json:41 (P06B-NB-03)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/gochara_kernel/verification_job.py",
+          "platform/python-sidecar/services/gochara_kernel/near_miss_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector.py",
+          "platform/python-sidecar/services/gochara_kernel/input_vector_verifier.py",
+          "platform/python-sidecar/services/gochara_kernel/seal_brief.py",
+          "platform/python-sidecar/tests/l3/gochara/test_near_miss_verifier.py",
+          "platform/scripts/migrate.ts",
+          ".github/workflows/deploy.yml"
+        ],
+        "tests": [
+          "Register a child to establish a guarded, tested replay contract; do not edit any migration already applied.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "Never edit an already-applied migration or a FROZEN path. If an additive migration is required, use only this child’s allocation in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json; absent allocation means needs migration number."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: migration paths in the review identify historical evidence, not permission to edit applied SQL. Establish the replay/guard/consumer contract through tests, documentation or an allocated additive follow-up. Alternative: directly change the reviewed migration, forbidden after application."
+        ],
+        "contract": "Second direct SQL execution on the successfully migrated fixture refuses at the predecessor-definition pin. Supported migrate.ts reruns remain ledger-idempotent and skip hash-matching applied SQL before repeating readback."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K9-5-NB-01",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Strict JSON handling accepts NaN, Infinity and -Infinity in measurement metadata and re-emits invalid JSON with report-production exit 0",
+      "owner": "K",
+      "depends_on": [
+        "K9-5"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k9-5-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k9-5/result.json:13 (K9-5-NB-01)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/l3_families/measurements/K9_CENSUS_v1_0.md"
+        ],
+        "tests": [
+          "Strict JSON handling accepts NaN, Infinity and -Infinity in measurement metadata and re-emits invalid JSON with report-production exit 0. Reject non-finite input/output and add mandatory-CI regression coverage; carry as a tracked child under A2 D-17.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Strict JSON handling accepts NaN, Infinity and -Infinity in measurement metadata and re-emits invalid JSON with report-production exit 0. Reject non-finite input/output and add mandatory-CI regression coverage; carry as a tracked child under A2 D-17."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "OPS-NB-01",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Fake terminal observations do not measure fake remote state",
+      "owner": "K",
+      "depends_on": [
+        "KV3-B-OPS-CONTRACT"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ops-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221217Z-review-kv3-ops/result.json:14 (OPS-NB-01)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py"
+        ],
+        "tests": [
+          "Parse the submitted run-id argument, derive observations from fake remote state, and prove RUNNING/FAILED cannot complete.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "FakeRemote keys its state using the final --format flag; Bench.observation always reports terminal/succeeded. The integration success transition is never read."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "OPS-NB-02",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "During-rehearsal probe exceptions leave mutation transaction open",
+      "owner": "K",
+      "depends_on": [
+        "KV3-B-OPS-CONTRACT"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ops-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221217Z-review-kv3-ops/result.json:28 (OPS-NB-02)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py"
+        ],
+        "tests": [
+          "Guarantee rollback around statements and during probes; test failure cleanup and unchanged state.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "The during snapshot runs outside the exception handler and before rollback. A probe failure after writes bypasses rollback."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "OPS-NB-03",
+      "track": "B",
+      "lane": "B · bootstrap",
+      "title": "Inherited fleet/model drift prevents a green complete suite",
+      "owner": "K",
+      "depends_on": [
+        "KV3-B-OPS-CONTRACT"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ops-nb-03"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221217Z-review-kv3-ops/result.json:42 (OPS-NB-03)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreconcile.py"
+        ],
+        "tests": [
+          "Track and reconcile inherited checks with current governed model semantics; run restricted fixtures in CI.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Five checks expect file_contains but current model detectors are pr_merged; historical item equality check also fails. Exact main-baseline source/model/fixture inputs reproduce all six failures."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K53-NB-02",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "RouteSegment.integral evaluates exp(alpha) before its compensating exponential factor",
+      "owner": "K",
+      "depends_on": [
+        "K5-3"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k53-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221853Z-review-k5-3/result.json:24 (K53-NB-02)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/**",
+          "platform/python-sidecar/tests/l3/ka_kshetra/**",
+          "00_ARCHITECTURE/briefs/l3_families/briefs/KSHETRA_G2_BRIEF_v1_0.md",
+          "platform/src/generated/nirmana-writer-digests.json (regenerate: python -m pipeline.orchestrator.provenance_inventory)",
+          "platform/src/generated/capability_estate_census.json (regenerate: npm run codegen:capability-estate-census)"
+        ],
+        "tests": [
+          "RouteSegment.integral evaluates exp(alpha) before its compensating exponential factor. Valid extreme finite input alpha=-750, gamma=75, width=9 silently returns zero although the integral is 3.571515949077437e-35 and interior rates are positive. Use a stable endpoint/log-domain form or explicitly reject an unsupported numerical range, with an adversarial regression before activation.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "RouteSegment.integral evaluates exp(alpha) before its compensating exponential factor. Valid extreme finite input alpha=-750, gamma=75, width=9 silently returns zero although the integral is 3.571515949077437e-35 and interior rates are positive. Use a stable endpoint/log-domain form or explicitly reject an unsupported numerical range, with an adversarial regression before activation."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2B-R2",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Eight disclosed parity failures reproduced on both head and reverted merge-base copy",
+      "owner": "K",
+      "depends_on": [
+        "K5-2b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2b-r2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T223417Z-review-k5-2b/result.json:17 (K5-2B-R2)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/tests/test_layer0_projection.py"
+        ],
+        "tests": [
+          "Eight disclosed parity failures reproduced on both head and reverted merge-base copy. Small mathematical projection/null tests do not complete corrected G1 numerical acceptance. Carry a tracked disposition and resolve acceptance before activation, publication or dense retirement.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Eight disclosed parity failures reproduced on both head and reverted merge-base copy. Small mathematical projection/null tests do not complete corrected G1 numerical acceptance. Carry a tracked disposition and resolve acceptance before activation, publication or dense retirement."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-NB-01",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "All committed trial fixtures use a 32-day horizon",
+      "owner": "K",
+      "depends_on": [
+        "K5-2"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/result.json:12 (K5-2-NB-01)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/** (new)",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/**",
+          "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json"
+        ],
+        "tests": [
+          "All committed trial fixtures use a 32-day horizon. The 60/90/180/365/730-day null buckets therefore exercise only the total-horizon fallback (stage5_null.py:406-415), not distinct sliding maxima. Add a >730-day nonconstant fixture with circular shifts before full runtime qualification. Nonblocking for the expressly limited, rejected synthetic pre-build.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "All committed trial fixtures use a 32-day horizon. The 60/90/180/365/730-day null buckets therefore exercise only the total-horizon fallback (stage5_null.py:406-415), not distinct sliding maxima. Add a >730-day nonconstant fixture with circular shifts before full runtime qualification. Nonblocking for the expressly limited, rejected synthetic pre-build."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-NB-02",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "K5-2 carried finding: register independently reviewable compact children and the parent join",
+      "owner": "K",
+      "depends_on": [
+        "K5-2"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/result.json:17 (K5-2-NB-02)",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02)",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/run_contract_trial.py:41–45 (activation gates)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+          "platform/scripts/governance/__tests__/test_k5_compact_plan.py"
+        ],
+        "tests": [
+          "The required independently reviewable K5-2 children and parent join remain unregistered. Builder explicitly leaves this to the cockpit and exposes it as an activation gate (run_contract_trial.py:43). Register decomposition and track this carried finding before claiming parent completion; this verdict accepts only the isolated source pre-build.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "pytest platform/scripts/governance/__tests__/test_k5_compact_plan.py -p no:cacheprovider",
+          "Fail-on-revert proof: a job-local tree with only the plan fix reverted must fail the tracker-state regression; the fixed tree passes."
+        ],
+        "compat": "Plan registration and regression coverage only; compact numerical behaviour, existing downstream parent edges, D-VC and D-COMPACT gates are preserved.",
+        "notes": [
+          "D-17 carry-forward child of K5-2; the parent never depends on this child. Registration and a finished preparation job do not publish guarded completion or rewrite the accepted source verdict.",
+          "(I) INTERPRETATION: retain the established carry-forward depends_on-parent convention. The alternative is depending on K5-2-contract so this follow-up can close before full qualification. The source-preparation job may finish now, while tracker completion still follows the registered dependency and review gates."
+        ],
+        "contract": "The required independently reviewable K5-2 children and parent join remain unregistered. Builder explicitly leaves this to the cockpit and exposes it as an activation gate (run_contract_trial.py:43). Register decomposition and track this carried finding before claiming parent completion; this verdict accepts only the isolated source pre-build."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K64-NB-01",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "Three $1 occurrences become three psycopg placeholders, but the frozen real consumer supplies one parameter; the new golden bypasses this mismatch",
+      "owner": "K",
+      "depends_on": [
+        "K6-4"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k64-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214901Z-review-k6-4/result.json:12 (K64-NB-01)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py",
+          "one additive migration",
+          "platform/python-sidecar/tests/l3/ka_taranga/**",
+          "platform/src/generated/nirmana-writer-digests.json",
+          "platform/src/generated/capability_estate_census.json (regenerated by npm run codegen:capability-estate-census; it hashes the writer-digest inventory)",
+          "platform/python-sidecar/tests/l3/kala_db/ka_taranga/**",
+          "platform/scripts/migrate.ts (this file's name in the Kāla protected public-schema set) and .github/workflows/deploy.yml (this file's name appended, in ascending order, to the Kāla protected-window array) — one line each, after the Kāla window input exists"
+        ],
+        "tests": [
+          "Three $1 occurrences become three psycopg placeholders, but the frozen real consumer supplies one parameter; the new golden bypasses this mismatch. _data_rows_present returns None with two candidate rows. Fix the new SQL and test the real consumer before activation.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "Never edit an already-applied migration or a FROZEN path. If an additive migration is required, use only this child’s allocation in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json; absent allocation means needs migration number."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: migration paths in the review identify historical evidence, not permission to edit applied SQL. Establish the replay/guard/consumer contract through tests, documentation or an allocated additive follow-up. Alternative: directly change the reviewed migration, forbidden after application."
+        ],
+        "contract": "Three $1 occurrences become three psycopg placeholders, but the frozen real consumer supplies one parameter; the new golden bypasses this mismatch. _data_rows_present returns None with two candidate rows. Fix the new SQL and test the real consumer before activation."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K64-NB-02",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "Any truthy judge pin yields a non-null count; a nonexistent generation produces zero with no gap reason",
+      "owner": "K",
+      "depends_on": [
+        "K6-4"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k64-nb-02"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214901Z-review-k6-4/result.json:19 (K64-NB-02)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+        ],
+        "tests": [
+          "Any truthy judge pin yields a non-null count; a nonexistent generation produces zero with no gap reason. Admit generation/completeness evidence or emit an unavailable null before publication. Inactive candidate output is not served.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Any truthy judge pin yields a non-null count; a nonexistent generation produces zero with no gap reason. Admit generation/completeness evidence or emit an unavailable null before publication. Inactive candidate output is not served."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-G1b-N1",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Once-per-candidate preparation shared with the jury remains unfinished",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-g1b-n1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214901Z-review-k5-g1b/result.json:87 (K5-G1b-N1)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/stage5_null.py",
+          "platform/python-sidecar/services/ka_kshetra/writer.py",
+          "platform/python-sidecar/services/kala_core/measure/__init__.py"
+        ],
+        "tests": [
+          "Carry as a tracked child under A2 D-17. The full reference callback is reasonable for the inactive pre-build and preserves the separate field estimand, but it does not establish the plan's once-per-candidate sharing or any performance claim.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Once-per-candidate preparation shared with the jury remains unfinished. The field shares the schedule and numerical reducers, but prepare_field builds a separate per-class preparation and run_field_block rebuilds field geometry per draw; it does not consume the jury prepare_draws Preparation."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5G1A-R1",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Sampled candidate changes the pinned null experiment",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5g1a-r1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T204858Z-review-k5-g1a/result.json:13 (K5G1A-R1)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/writer.py",
+          "platform/python-sidecar/services/ka_kshetra/stage5_null.py"
+        ],
+        "tests": [
+          "Retain the complete evaluator while using the pinned non-identity schedule and consistent denominator/resolution; derive provenance from the executed configuration and add a mandatory dispatch-level experiment test.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "The new _candidate_engine() forces sampled. Its stage-5 dispatch uses DEFAULT_REPLICATES=256 and shift_grid includes delta=H, an identity shift. Candidate output therefore uses 256 shifts, one identity, denominator 257, while constant_provenance.null says 1023 non-identity shifts + observation. Requiring the full reference partition does not authorize changing this experiment."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5G1A-R2",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Unavailable mūrti intervals lose their mask edges",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5g1a-r2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T204858Z-review-k5-g1a/result.json:38 (K5G1A-R2)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/stage4_field.py"
+        ],
+        "tests": [
+          "Preserve the unavailable mūrti interval as a neutral mask with its source reference, retaining the gap and no numeric testimony bridge. Add a mandatory null-entry breakpoint and circular-shift test.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "For a stored mūrti entry with null_reason or no quality_tier, suppression_primitives adds a disclosure then continues, emitting no neutral input_mask. KA-3b actually emits these leading unavailable intervals. Their endpoints disappear from EnvelopeIndex.breakpoints(), unlike unavailable vedha/K3 intervals. This also contradicts the helper promise that all referenced interval edges survive."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "JGT-NB-01",
+      "track": "J",
+      "lane": "J · ordinary registry timeout",
+      "title": "The documented exclusive registry-write exclusion has no concurrent-session regression: removing only LOCK TABLE leaves all 20 SQL tests green",
+      "owner": "K",
+      "depends_on": [
+        "J-GOCHARA-TIMEOUT"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/jgt-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214902Z-review-j-gochara-timeout/result.json:12 (JGT-NB-01)"
+        ],
+        "owns": [
+          "platform/scripts/sql/ka_gochara_v3_century_materialize_timeout.sql.in"
+        ],
+        "tests": [
+          "The documented exclusive registry-write exclusion has no concurrent-session regression: removing only LOCK TABLE leaves all 20 SQL tests green. Add a bounded competing-writer test with fail-on-revert proof before promoting the inert template; carry as a tracked child under A2 D-17.3.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "The documented exclusive registry-write exclusion has no concurrent-session regression: removing only LOCK TABLE leaves all 20 SQL tests green. Add a bounded competing-writer test with fail-on-revert proof before promoting the inert template; carry as a tracked child under A2 D-17.3."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "VC1-N1",
+      "track": "K",
+      "lane": "K · value checkpoint",
+      "title": "Per-class ambiguity is defined, but the additional per-chart censoring ceiling has no chart aggregation/deduplication rule",
+      "owner": "K",
+      "depends_on": [
+        "VC-1"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/vc1-n1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214902Z-review-vc-1/result.json:15 (VC1-N1)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/l3_families/value_checkpoint/KSHETRA_ABLATION_PREREGISTRATION_v1_1.md",
+          "00_ARCHITECTURE/briefs/l3_families/value_checkpoint/preregistration.json",
+          "platform/scripts/governance/__tests__/test_vc1_preregistration.py"
+        ],
+        "tests": [
+          "Track a child under A2 D-17. Freeze an explicit chart numerator/denominator, pair identity/deduplication and mixed-class ambiguity rule in both declarations, with a distinguishing example test and refreshed preparation seal before execution freeze.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "Per-class ambiguity is defined, but the additional per-chart censoring ceiling has no chart aggregation/deduplication rule. Five pairs repeated over six classes with two different class-specific ambiguous pairs can yield 2/5 or 2/30, changing the chart decision."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J4P-B4-NB1",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "The two supplementary CLI tests stay green after restoring the parent CLI code on the reviewer source copy; their red result depends on import-time stdout diagnostics or copy layout",
+      "owner": "K",
+      "depends_on": [
+        "J-4p-B4"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j4p-b4-nb1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T204858Z-review-j-4p-b4/result.json:35 (J4P-B4-NB1)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/gochara_kernel/dasha_read.py",
+          "platform/python-sidecar/tests/l3/gochara/test_a53_dasha_read.py"
+        ],
+        "tests": [
+          "Track a deterministic CLI stdout regression that causes a dependency diagnostic during the core call, so removing stdout redirection reliably breaks JSON output. The builder historical red logs are retained as historical evidence, not independently reproduced CLI mutation kills.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ],
+        "contract": "The two supplementary CLI tests stay green after restoring the parent CLI code on the reviewer source copy; their red result depends on import-time stdout diagnostics or copy layout."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "KA3A-NB-01",
+      "track": "K",
+      "lane": "K · KA adapters and services",
+      "title": "UPDATE overlap guard excludes a different graha row sharing OLD.t_in",
+      "owner": "K",
+      "depends_on": [
+        "KA-3a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ka3a-nb-01"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T180354Z-review-ka-3a/result.json:13 (KA3A-NB-01)"
+        ],
+        "owns": [
+          "platform/migrations/1383_ka_3a_vedha_candidate_intervals.sql"
+        ],
+        "tests": [
+          "In a follow-up, make interval identity immutable or exclude the complete OLD primary key when checking overlap; add this cross-graha/start UPDATE regression.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "Never edit an already-applied migration or a FROZEN path. If an additive migration is required, use only this child’s allocation in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json; absent allocation means needs migration number."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: migration paths in the review identify historical evidence, not permission to edit applied SQL. Establish the replay/guard/consumer contract through tests, documentation or an allocated additive follow-up. Alternative: directly change the reviewed migration, forbidden after application."
+        ],
+        "contract": "The self-row exclusion uses only i.t_in <> OLD.t_in, although graha and t_in can both change. With Sun [A,B) and Mars [A,D), UPDATE the Sun row to Mars [B,C): the existing Mars [A,D) is excluded because its start equals OLD.t_in, and overlapping Mars rows are accepted."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J6M-R1",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Raw migration SQL is not replay-idempotent",
+      "owner": "K",
+      "depends_on": [
+        "J-6m"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j6m-r1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T174958Z-review-j6m/result.json:14 (J6M-R1)"
+        ],
+        "owns": [
+          "platform/migrations/1382_gochara_authority_no_truncate.sql"
+        ],
+        "tests": [
+          "Track a follow-up to make unapplied migration SQL replay-safe while validating the existing trigger definition, or explicitly specify and test runner-level idempotency as the intended contract. Never edit an already-applied migration.",
+          "Independently reproduce the cited finding and verify its distinguishing negative case; preserve the reviewed parent’s valid behavior and all stated activation prerequisites.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4).",
+          "Never edit an already-applied migration or a FROZEN path. If an additive migration is required, use only this child’s allocation in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json; absent allocation means needs migration number."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: migration paths in the review identify historical evidence, not permission to edit applied SQL. Establish the replay/guard/consumer contract through tests, documentation or an allocated additive follow-up. Alternative: directly change the reviewed migration, forbidden after application."
+        ],
+        "contract": "The unconditional CREATE TRIGGER raises DuplicateObject (SQLSTATE 42710) when 1382 is executed twice. This misses the requested raw SQL idempotency property. Supported deployments remain safe because migrate.ts:893-898 verifies the recorded hash and skips an applied filename; the replay probe also proves authority rows and the ALWAYS trigger survive the refused attempt."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-representation",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact representation: immutable coefficients, indexed one-sided evaluation and stored-segment integrals",
+      "owner": "K",
+      "depends_on": [
+        "D-VC"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/__init__.py",
+          "platform/python-sidecar/services/ka_kshetra/compact/representation.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/__init__.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_representation.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_representation.py -p no:cacheprovider",
+          "Lossless partition/coefficient packing, both discontinuity limits and bitwise integral equality under unchanged operation order; boundary/flat-branch reversions fail."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-compiler",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact compiler: switching roots, complete supplied breakpoints and bounded suppression refinement",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-representation"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/compiler.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_compiler.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/fixtures.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_compiler.py -p no:cacheprovider",
+          "Adversarial max/min switching and interior peaks; supplied seam/mask/scenario/cancellation edges retained; analytic per-segment bounds and honest refinement exhaustion; deleting each detector clause fails."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "fixtures.py is the shared synthetic fixture input; the null and contract children consume it without changing compiler ownership.",
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-null",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact DHARA null adapter: preserve the reference estimand and expose numerical disagreement",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-compiler"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/null.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_null.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_null.py -p no:cacheprovider",
+          "Independent DHARA comparator; daily-midpoint estimand, shift orientation, 1023+observation denominator, pooled quantiles, tail ranks and declared tolerances; comparator/identity mutations fail."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-contract",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact contract harness: clause-level detectors, fixture census and reference/candidate source identity",
+      "owner": "K",
+      "depends_on": [
+        "K5-2-null"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-2"
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/compact/qualification.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/test_qualification.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/compact/run_contract_trial.py",
+          "platform/scripts/governance/__tests__/test_k5_compact_ci.py"
+        ],
+        "tests": [
+          "pytest tests/l3/ka_kshetra/compact/test_qualification.py -p no:cacheprovider",
+          "All numerical clauses and fixture census aggregate fail-closed, source hashes bind candidate and reference, and curved_suppression/null_statistics remains rejected while its detector measures disagreement.",
+          "Required CI/isolation test passes; no live module imports the trial."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "This child implements the evidence protocol only. K5-2-qualify separately earns full runtime evidence; passing harness tests is not numerical admission.",
+          "(I) INTERPRETATION: use the existing origin/kalayantra/k5-2 source-branch detector for this isolated implementation deliverable; require a separate child-scoped exact-head verdict and guarded completion. The alternative is a duplicate implementation branch per child. The parent source review is not child acceptance.",
+          "Source preparation only; no full corrected-G1/canonical-workload qualification, parent completion, D-COMPACT approval or production activation is inferred."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-2-qualify",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Compact numerical-contract evidence on the corrected upstream G1 and canonical workload, with every failed clause retained",
+      "owner": "K",
+      "depends_on": [
+        "D-VC",
+        "K5-2-representation",
+        "K5-2-compiler",
+        "K5-2-null",
+        "K5-2-contract"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json",
+        "min_bytes": 2
+      },
+      "brief": {
+        "spec": [
+          "PLAN §6.2 item 4",
+          "ALGO 3.20 numerical contract",
+          "PLAN §10 Forecaster",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T221120Z-review-k5-2/REVIEW.md:30–48 (K5-2-NB-02; source pre-build versus parent completion)"
+        ],
+        "owns": [
+          "/Users/Dev/kalayantra/run/COMPACT_CONTRACT_RESULT.json"
+        ],
+        "tests": [
+          "Rebind the actual completed K5-G1a/G1b interfaces and corrected clocks, canonical vocabulary, suppression inputs and time axis; record exact candidate/reference identities.",
+          "Run structural equality where claimed, per-segment bounds, both discontinuity limits, adversarial switches/peaks, interval integrals and null reproduction on the corrected canonical workload.",
+          "Include nonconstant horizons beyond 730 days and circular shifts so long-duration null buckets exercise distinct sliding maxima (review K5-2-NB-01 remains a separate coverage obligation).",
+          "Record implemented-and-proven or failed-with-the-failing-clause, measured segment counts, declared tolerances and retained dense data; independent review accepts the report digest, never a file-exists signal alone."
+        ],
+        "compat": "new code with no importer on a live path until its consumer item lands — compatible by construction; verify no existing module import changes",
+        "notes": [
+          "Full runtime evidence only; no schema/protocol implementation or consumer integration. D-VC remains a strict dependency, and its corrected G1 prerequisites must be complete.",
+          "The six synthetic pre-build fixtures are not this qualification. An honestly failed numerical trial can complete the evidence deliverable; only D-COMPACT decides admission, with refusal retaining the dense path."
+        ]
+      },
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a"
       }
@@ -27370,7 +28651,7 @@
       "id": "D-KCERT-EXISTING-STATUS-20261015",
       "title": "Supersede owner-decisions Q2 only as the K-CERT structural prerequisite; retire KV3-SCHEMA-1",
       "owner": "ADHIKĀRIN (N); steward records SR-A2-11 under owner full-authority delegation 2026-10-14",
-      "default": "refused — retire KV3-SCHEMA-1 as this structural prerequisite, never as a delivered migration; adopt the independently assessed existing-status K-CERT artifact (SR-A2-11)"
+      "default": "refused — never migrated; K-CERT already satisfied on main — SR-A2-11"
     },
     {
       "id": "D-RETIRE-B-DB-BASELINE",
