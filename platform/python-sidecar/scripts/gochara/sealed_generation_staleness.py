@@ -25,7 +25,7 @@ Exit codes:
     0 — FRESH (snapshot digests match live, zero completeness violations)
     4 — STALE (a digest drifted or the completeness census is non-empty)
     3 — the check could not run (no DATABASE_URL, no driver, no sealed snapshot,
-        or a database error) — an ERROR is never reported as FRESH
+        unmatched generation seal/manifest, missing digest, or a database error) — an ERROR is never reported as FRESH
 """
 from __future__ import annotations
 
@@ -36,16 +36,29 @@ import sys
 
 
 class SnapshotMissing(Exception):
-    """No ka_gochara_search_input_snapshot row — the generation is not sealed."""
+    """Missing snapshot, digest, or matching seal/manifest; cannot check freshness."""
 
 
 def check_staleness(conn, chart_id: str, generation: str) -> dict:
     """Run the read-only staleness check on an open connection.
 
     Returns a report dict: {chart_id, generation, status, reasons[]}.
-    Raises SnapshotMissing when the generation has no sealed input snapshot.
+    Raises SnapshotMissing for an absent matching seal/manifest or incomplete snapshot.
     """
     with conn.cursor() as cur:
+        # 1153 deliberately has no FK from seal.manifest_id into publication.
+        # A candidate snapshot is not proof that this generation was sealed.
+        cur.execute(
+            "SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s "
+            "JOIN public.kala_gochara_publication p ON p.manifest_id = s.manifest_id "
+            "AND p.chart_id = s.chart_id AND p.generation = s.generation "
+            "WHERE s.chart_id = %s AND s.generation = %s)",
+            [chart_id, generation],
+        )
+        if cur.fetchone()[0] is not True:
+            raise SnapshotMissing(
+                f"no matching generation seal and manifest for chart {chart_id} generation {generation}"
+            )
         cur.execute(
             "SELECT consumed_fact_ids, consumed_dasha_row_ids, l1_facts_digest, dasha_digest "
             "FROM public.ka_gochara_search_input_snapshot "
@@ -60,6 +73,9 @@ def check_staleness(conn, chart_id: str, generation: str) -> dict:
         consumed_fact_ids, consumed_dasha_row_ids, snap_l1, snap_dasha = (
             snap[0], snap[1], snap[2], snap[3],
         )
+
+        if not snap_l1 or not snap_dasha:
+            raise SnapshotMissing("missing snapshot digest — freshness cannot be established")
 
         cur.execute(
             "SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
