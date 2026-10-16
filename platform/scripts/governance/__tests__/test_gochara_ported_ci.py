@@ -25,7 +25,7 @@ AM7 = 'tests/integration/gochara_b6_v15_migrations.db.test.ts'
 
 @pytest.fixture
 def jobs():
-    return yaml.safe_load(CI.read_text())['jobs']
+    return _ci_load(CI.read_text())['jobs']
 
 
 def _commands(step):
@@ -110,3 +110,14 @@ def test_the_ci_junit_check_rejects_skipped_oracles(jobs, tmp_path, skipped):
     assert (proc.returncode != 0) is skipped
     if skipped:
         assert 'required Gochara readback oracles skipped' in proc.stderr
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[4] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow as _ci_expanded
+
+def _ci_load(text):
+    import yaml
+    data = yaml.safe_load(text)
+    data['jobs'] = _ci_expanded(data['jobs'])
+    return data
