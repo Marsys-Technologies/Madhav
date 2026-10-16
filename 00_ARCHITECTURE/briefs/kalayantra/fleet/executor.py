@@ -248,13 +248,23 @@ def utc_time(value: str) -> dt.datetime:
     return parsed.astimezone(dt.timezone.utc)
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None) -> None:
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, *, preserve_existing: bool = False) -> None:
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
          "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
+    receipt_path = REC / f"{name}.json"
+    separate_refusal = preserve_existing and status == "REFUSED" and receipt_path.exists()
+    if separate_refusal:
+        import uuid
+        # A rejected request must not replace evidence retained for readback or rollback,
+        # even when it is refused before the enabled-kind / request-policy checks.
+        r["preserved_receipt"] = {"path": str(receipt_path), "sha256": digest_bytes(receipt_path.read_bytes())}
+        refusal_dir = REC / "refusals"
+        refusal_dir.mkdir(exist_ok=True)
+        receipt_path = refusal_dir / f"{name}.{uuid.uuid4().hex}.json"
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
-        body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
+        body = redact(out); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_text(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
@@ -313,8 +323,19 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
         else:
             r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
+    if req.get("kind") in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun") and status == "COMPLETED":
+        try:
+            if rc != 0:
+                raise ValueError("non-zero head adapter exit")
+            proof = head_policy(req)["child_proof"](req, out)
+            r["head_change"] = proof
+            if not req["kind"].endswith("_dryrun"):
+                r["status"] = "AWAITING_READBACK"
+        except Exception:
+            r.update(status="FAILED", reason="bound head-change proof missing; reconcile through independent readback")
     if extra: r.update(extra)
-    with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
+    with _lock, receipt_path.open("x" if separate_refusal else "w") as f:
+        f.write(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
 
 
@@ -343,6 +364,25 @@ def smalltest_policy_problem(req: dict) -> str | None:
         return "reviewed small-test evidence policy unavailable or invalid"
 
 
+def head_policy(req: dict):
+    """Load the authority policy from the operation's exact reviewed source."""
+    source = git("show", f"{req['reviewed_commit']}:00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py")
+    if source.returncode or not getattr(source, "stdout", ""):
+        raise ValueError("reviewed head policy unavailable")
+    namespace = {"__name__": "reviewed_head_policy", "__file__": "reviewed_head_policy.py"}
+    exec(compile(source.stdout, "reviewed head evidence policy", "exec"), namespace)
+    return namespace
+
+
+def head_policy_problem(req: dict) -> str | None:
+    if req.get("kind") not in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        return None
+    try:
+        return head_policy(req)["request_problem"](req, OPS)
+    except Exception:
+        return "reviewed head evidence policy unavailable or invalid"
+
+
 def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str | None:
     for k in ("operation_id", "kind", "item_id", "idempotency_key", "requested_by", "kyd"):
         if not req.get(k): return f"missing field {k}"
@@ -350,6 +390,17 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     op = table.get(req["kind"])
     if not op: return f"unknown kind {req['kind']}"
     if not op.get("enabled"): return f"kind {req['kind']} is not enabled (enabled_by {op.get('enabled_by')})"
+    if req["kind"] in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        prior_path = REC / f"{req['operation_id']}.json"
+        if prior_path.exists():
+            if not reserved:
+                return "head operation_id already has a receipt; reconcile instead of re-requesting"
+            try:
+                prior = json.loads(prior_path.read_text())
+                if prior.get("status") != "RUNNING" or prior.get("request_sha256") != request_digest(req):
+                    return "reserved head operation no longer matches its RUNNING receipt"
+            except Exception:
+                return "reserved head operation receipt unreadable"
     if "TO_BE_SET" in op.get("script", "") or "TO_BE_SET" in str(op.get("needs", "")): return "operation script not yet reviewed/landed"
     if req["requested_by"] not in op.get("requesters", ["adhikarin"]): return f"requested_by {req['requested_by']} may not request {req['kind']}"
     if not caps.get(op["needs"], False): return f"capability_missing: {op['needs']}"
@@ -386,7 +437,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
             if any((a.get("rows") or {}).get(k) is not True for k in op.get("required_rows", [])): return "required pre-acceptance rows are not all true"
         if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return smalltest_policy_problem(req)
+    return smalltest_policy_problem(req) or head_policy_problem(req)
 
 
 def run_group(argv: list[str], cwd: pathlib.Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
@@ -499,7 +550,7 @@ def main() -> int:
             if production and FENCE.exists(): continue      # the single production slot is taken; the request waits where it is
             why = validate(req, table, caps)
             if why:
-                receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue
+                receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue
             if production: FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
             flight = INFLIGHT / f.name; shutil.move(str(f), flight)

@@ -307,7 +307,7 @@ def test_a_disabled_or_placeholder_entry_an_unauthorised_requester_or_disallowed
     for kind, entry in real.items():
         if entry["production"] and not entry["enabled"]:
             assert X.validate(dict(req, kind=kind, args={}), real, ALL_CAPS).startswith("kind %s is not enabled" % kind)
-    placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True))
+    placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True, script="TO_BE_SET_FIXTURE"))
     assert X.validate(dict(req, kind="publish_head", args={}), placeholder, ALL_CAPS) == "operation script not yet reviewed/landed"
     for changes, reason in [
         ({"kind": "no_such_kind"}, "unknown kind"),

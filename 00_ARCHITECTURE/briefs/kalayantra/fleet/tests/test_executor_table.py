@@ -133,40 +133,39 @@ def test_p10_entries_present_with_only_j1a_enabled():
 
 
 def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
-    base = load_ops(base_text(OPS_REL))
+    # J6 preparation starts from this independently landed main, including the
+    # measuring bindings that postdate PLAN_PIN. Every unrelated entry is exact.
+    base = load_ops(git_show("ef14167bcc35a321b11d4d189a6b752bf3c658b8:" + OPS_REL))
     now = load_ops(OPS_FILE.read_text())
-    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
-    assert list(now["ops"]) == list(base["ops"]), "the order of kinds changed"
-    expected = json.loads(json.dumps(base["ops"]))
-    for kind in K9_KINDS:
-        assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
-        expected[kind]["enabled_by"] = "K9-23"
-        assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
-        expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
-    expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
-    expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
-    expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
-    expected["verification_job"]["needs"] = "gcloud"
-    expected["measuring_dispatch"]["staging_dry_run"] = {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
-        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
-    for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
-                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
-        expected[kind]["prepared_dry_run"] = {
-            "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
-            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
-            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
-    for kind, binding in P01_BINDINGS.items():
-        expected[kind].update(enabled=True, **binding)
-    for kind, entry in now["ops"].items():
-        assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
-        assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
-        for key in entry:
-            assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
-    # the only top-level difference allowed is `_doc`
-    assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
+    assert set(now) == set(base)
+    expected = {}
+    g6_rows = ["exact_generation_manifest_sealed", "every_included_grain_verified",
+        "evaluation_recorded_no_open_engineering_defect", "authority_constraint_deployed",
+        "reader_deployed_sealed_only_no_test_slice", "reader_horizon_and_rollback_probed",
+        "rollback_rehearsal_accepted", "previous_head_retained",
+        "deployed_image_and_migrations_identified", "D-FLIP_approved"]
+    rollback_rows = ["retained_head_bound_to_publish_receipt", "rollback_rehearsal_accepted",
+                     "deployed_image_and_migrations_identified"]
+    for kind, original in base["ops"].items():
+        expected[kind] = json.loads(json.dumps(original))
+        if kind == "readback_sql":
+            expected[kind]["allowed_args"] = ["sql_file", "sql_sha256"]
+        if kind not in ("publish_head", "rollback_head"):
+            continue
+        for dry in (False, True):
+            name = kind + ("_dryrun" if dry else "")
+            entry = {"enabled": False, "needs": "builder",
+                "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py",
+                "fixed_args": ["--kind", kind, "--dry-run" if dry else "--execute"],
+                "allowed_args": ["generation", "manifest-id", "expected-head-sha256"],
+                "production": True, "enabled_by": original["enabled_by"],
+                "required_rows": g6_rows if kind == "publish_head" else rollback_rows}
+            if not dry:
+                entry["prepared_dry_run"] = original["prepared_dry_run"]
+            expected[name] = entry
+    assert list(now["ops"]) == list(expected)
+    assert now["ops"] == expected
+    assert now["_doc"] == base["_doc"]
 
 
 def test_k9_placeholders_name_k9_23_and_none_is_filled():
@@ -242,7 +241,8 @@ def _segments(src):
 
 # Exact Wave 4 safety-fix candidate additions, for independent review. Every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
+# J6B-NB-01 updates only receipt/main for separately recorded duplicate refusals.
+W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': '27ac5f30da45c2246d5adfa42c45f13365e4d0a210d3b649ec6407fe70bcdc06', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'validate': 'f0c856ce0954d350a024d8cef9ced20b36319e89c7f2bd7a1857e038b1be0979', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '0b37ff955b700f68324b8f5a0c20b704711ec5cb53c6b66f72611927c98bd96e'}
 
 
 def normalize_wave4(base_src, work_src):
