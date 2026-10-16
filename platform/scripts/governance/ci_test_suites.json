@@ -765,6 +765,53 @@
         "tests/l3/ka_kshetra/test_g1a*.py",
         "tests/l3/kala_db/ka_kshetra/test_g1a*.py"
       ]
+    },
+    "unit-db-tests-l0-parihara": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/l0_parihara"
+      ]
+    },
+    "kala-db-tests-parihara": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/ka_muhurta_seva"
+      ]
+    },
+    "k3-sealed-db-tests-all": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/ka_vighnakara",
+        "tests/l3/kala_db/ka_vighnakara"
+      ]
+    },
+    "db-integration-tests-7-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/pariprashna/samiksha/**/*.test.[jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
     }
   }
 }
