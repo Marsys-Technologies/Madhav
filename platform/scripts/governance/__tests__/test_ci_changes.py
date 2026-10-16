@@ -376,7 +376,16 @@ def _pytest_suites(step_run: str) -> list[str]:
         line = line.strip()
         if line.startswith("#") or "pytest" not in line:
             continue
-        out += [t for t in line.split() if t.startswith("tests/") and t.endswith(".py")]
+        for token in line.split():
+            if not (token.startswith("tests/") and token.endswith(".py")):
+                continue
+            # Shell-expanded globs are real suite selections too. Resolve them
+            # against the same sidecar directory the required CI step uses.
+            if any(char in token for char in "*?["):
+                sidecar = GOCHARA_TESTS.parents[2]
+                out += [path.relative_to(sidecar).as_posix() for path in sorted(sidecar.glob(token)) if path.is_file()]
+            else:
+                out.append(token)
     return out
 
 
