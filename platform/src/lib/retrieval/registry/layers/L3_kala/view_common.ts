@@ -133,6 +133,8 @@ export function makePublicView(view: ViewName): CapabilityDescriptor {
     emits_references: false, grounds_to: { l1_fact_ids: false }, lel_capable: false,
     required_inputs: ['chart_id'], input_schema: contract.input_schema,
     annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
+    // Applies to explicit published_request responses; legacy envelopes remain verbatim.
+    density_contract: { paginated: true, facets: ['event_class', 'source_table'], empty_reason: true },
     semantic_capabilities: [{
       scu_id: `scu.catalog.${contract.public_name}`, version: 1, label: `Kāla ${view} public compatibility contract`,
       description: 'Explicit published_request selectors opt into the published-stage envelope. Established requests retain their authenticated legacy contract.',
