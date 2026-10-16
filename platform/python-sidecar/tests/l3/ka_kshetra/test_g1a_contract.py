@@ -130,6 +130,9 @@ def test_ordinary_build_is_no_write_prebuild_containment():
 
 def test_production_clock_boundaries_share_birth_axis(monkeypatch):
     from services.ka_kshetra import stage3_clocks as S3
+    from tests.l3._dasha_projection import emulated_projection
+    # This oracle checks the birth axis after loading governed operands.
+    monkeypatch.setattr(S3, 'execute_governed_dasha_query', emulated_projection)
     birth=datetime(1984,2,5,5,13,tzinfo=timezone.utc)
     class Conn:
         def execute(self,*a): return self
@@ -137,9 +140,6 @@ def test_production_clock_boundaries_share_birth_axis(monkeypatch):
             'lord_sign':None,'parent_row_id':None,'start_iso':birth+timedelta(days=100.25),'duration_days':1000}]
     monkeypatch.setattr(S3.U,'fetch_sigma_t_days',lambda *a:(.1,'test'))
     monkeypatch.setattr(S3,'_system_sigma_t',lambda *a,**kw:(.1,'test'))
-    # Domain fixture starts after main's governed loader; refusal coverage is J4P's.
-    from tests.l3._dasha_projection import emulated_projection
-    monkeypatch.setattr(S3, 'execute_governed_dasha_query', emulated_projection)
     rows=S3.compute_boundaries_for_system('chart','vimshottari',Conn(),
         birth_params={'datetime_iso':birth.isoformat(),'tz_offset_hours':5.5})
     assert rows[0].t_boundary==100.25

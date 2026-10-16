@@ -4,6 +4,14 @@ of ka_gochara_v5 (staged by the C37 small-test dispatch).
 
 Pinned chart only (482012f1-710e-4a25-994a-93821f5871aa; there is no chart argument), ONE transaction, fail-closed.
 
+WAVE 4 SAFETY BOUNDARY (supersedes generic historical cleanup notes below):
+  The governed executor must provide KY_OPERATION_REQUEST with verifier-bound staged-launch/candidate identities. Only that ONE surviving
+  run is authorized; pruned-run stamp reconstruction and additional tagged runs never grant deletion authority. A real execution also
+  requires its own preceding, rollback-confirmed dry-run receipt with the same scope, reviewed source and row-content digest. Bounded table
+  locks prevent direct DML during validation/deletion. A confirmed commit reports COMMITTED_AWAITING_ABSENCE: independent readback and its
+  verifier acceptance are required for the executor's separate completion receipt. CLI flags and unreferenced booleans alone are insufficient.
+
+
 RUNNING IT
   DESTRUCTION NEEDS INTENT. The default is a dry run. A dry run and an execution run the SAME statements and validations in the
   same transaction — every lock, every refusal check, every DELETE, the registry UPDATE and the end-state validation — and differ
@@ -99,6 +107,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 
@@ -146,13 +155,16 @@ GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + (MANIFEST_TABLE,)
 LEGACY_GUARD_TABLES = ("kala_gochara_windows", "kala_gochara_contacts")
 
 #: THE list of what the script needs, by object (schema public). The runbook's table states the same; a real-database test creates a role
-#: holding EXACTLY this and runs the script as it. The two verification tables are deliberately absent: they go by foreign-key cascade.
+#: holding EXACTLY this and runs the script as it. The cascade children need SELECT for measured absence, but no DELETE privilege.
 REQUIRED_PRIVILEGES = {
     "select_delete": ("asset_provenance_receipts", "asset_freshness", "build_run_assets", "build_runs", "asset_throughput",
                       *(t for t, _ in GENERATION_TABLES)),
-    "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES),
+    "select": ("ka_gochara_generation_seal", "kala_gochara_authority", "asset_registry", *LEGACY_GUARD_TABLES,
+               "ka_gochara_eval_window_record", "ka_gochara_record_prerequisite",
+               "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"),
     # T1 (Codex round 4): the rows are locked FOR UPDATE before validation and held through the delete, which needs UPDATE on them
-    "update": ("build_runs", "kala_gochara_publication"),
+    "update": ("build_runs", "kala_gochara_publication", "ka_gochara_eval_window_record",
+               "ka_gochara_record_prerequisite", "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"),
     # the catalog-found tables that reference a build_runs row (counted, to refuse by name if any row references an owned run): on
     # production these are the ones the data-plane builder cannot read today (Stream B, 2026-10-05)
     "select_referencing": ("conversations", "event_chart_state_index", "mimamsa_predictions", "mimamsa_calibration_snapshot",
@@ -379,7 +391,7 @@ def _refusal_checks(cur) -> "Checked":
     # OWNERSHIP of the generation's output: the SHARED proof (v5_small_test_shared, the one copy the dispatch uses too): the CURRENT
     # manifest must PROVE this test's slice, and the stored snapshot and inventory headers must carry the SAME vector identity
     manifest, _rows = shared.generation_ownership(
-        cur, owned, notes=notes, lock=True, remedy=f"see the runbook {RUNBOOK}",
+        cur, owned, notes=notes, lock=True, require_run=True, remedy=f"see the runbook {RUNBOOK}",
         unproven="this script never touches output it cannot prove is a small test's")
     if manifest is not None:
         # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
@@ -454,6 +466,40 @@ def _delete_everything(cur, owned: list[str]) -> None:
         cur.execute(f"DELETE FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
 
 
+# These children are deleted by foreign-key cascade, but absence is measured too.
+CASCADE_PROOF_TABLES = ("ka_gochara_eval_window_record", "ka_gochara_record_prerequisite",
+                        "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification")
+
+
+def _absence_counts(cur, owned: list[str]) -> dict[str, int]:
+    """Read every deleted scope after deletion, under the same locks/transaction.
+
+    Moon coverage is deliberately retained; only event_class coverage is absent.
+    Run IDs remain in memory after DELETE, so both parent and child absence can
+    be checked without a join to the now-absent parent.
+    """
+    counts = {}
+    for table in ("asset_provenance_receipts", "asset_freshness", "asset_throughput"):
+        counts[table] = _count(cur, f"SELECT count(*) AS n FROM {table} WHERE asset_id = %s AND chart_id = %s",
+                               (ASSET_ID, CHART_ID))
+    counts["build_run_assets"] = _count(cur, "SELECT count(*) AS n FROM build_run_assets WHERE run_id = ANY(%s::uuid[])", (owned,))
+    counts["build_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE id = ANY(%s::uuid[])", (owned,))
+    counts["owned_test_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE chart_id = %s AND triggered_by = %s",
+                                       (CHART_ID, TRIGGERED_BY))
+    for table, extra in GENERATION_TABLES + tuple((t, "") for t in CASCADE_PROOF_TABLES):
+        counts[table] = _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
+                               (CHART_ID, GENERATION))
+    return counts
+
+
+def _prove_absence(cur, owned: list[str]) -> dict[str, int]:
+    counts = _absence_counts(cur, owned)
+    remaining = {table: n for table, n in counts.items() if n != 0}
+    if remaining:
+        raise TeardownRefused(f"absence proof failed: surviving rows {remaining}; success is not claimed")
+    return counts
+
+
 def _note_outcome(exc: BaseException, outcome: str) -> None:
     """Attach what is KNOWN about the transaction to the exception, for the process boundary to report."""
     try:
@@ -481,6 +527,74 @@ def _AFTER_COMMIT() -> None:
     """The point right after a confirmed COMMIT. Does nothing; it exists so a test can fail exactly here (Codex round 4 T3)."""
 
 
+def _bound_scope(cur, owned, req):
+    scope = shared.staged_scope(req, shared.evidence_root())
+    if scope.get("empty") is True:
+        rows, manifest = shared.generation_exists(cur)
+        if owned or rows or manifest or any(_plan_counts(cur, owned)[t] for t in
+                ("asset_provenance_receipts", "asset_freshness", "asset_throughput", "build_run_assets")):
+            raise TeardownRefused("empty rehearsal cannot select existing rows")
+        return scope
+    if owned != [scope["run_id"]]:
+        raise TeardownRefused("only the identified staged run may be deleted; additional or pruned runs refuse")
+    cur.execute("SELECT id, plan_manifest, plan_manifest_digest FROM build_runs WHERE id = ANY(%s::uuid[]) ORDER BY created_at DESC", (owned,))
+    runs = cur.fetchall()
+    if (len(runs) != 1 or str(runs[0]["id"]) != scope["run_id"]
+            or runs[0]["plan_manifest_digest"] != scope["plan_manifest_digest"]
+            or shared.evidence_digest(runs[0]["plan_manifest"]) != scope["plan_manifest_digest"]):
+        raise TeardownRefused("staged launch UUID/manifest does not match the surviving run")
+    cur.execute("SELECT manifest_id, status, input_generation_vector, horizon FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s FOR UPDATE", (CHART_ID, GENERATION))
+    manifest = cur.fetchone()
+    if manifest is None and scope.get("manifest_id") is None and scope.get("input_vector_sha256") is None:
+        if shared.generation_rows(cur):
+            raise TeardownRefused("staged run has output without an identified candidate")
+        try:
+            _writer()._validate_test_slice(runs[0]["plan_manifest"][_writer().TEST_SLICE_KEY])
+        except Exception:
+            raise TeardownRefused("surviving staged run has no valid original small-test marker") from None
+        return scope
+    if (not manifest or manifest["status"] != "candidate" or str(manifest["manifest_id"]) != scope["manifest_id"]
+            or shared.evidence_digest(manifest["input_generation_vector"]) != scope["input_vector_sha256"]):
+        raise TeardownRefused("candidate manifest/vector differs from the identified staged run")
+    # No reconstruction: the original surviving run is the only stamp preimage.
+    problem, _, _, matched = shared.prove_stamp(manifest["input_generation_vector"],
+        [(scope["run_id"], runs[0]["plan_manifest"], runs[0]["plan_manifest_digest"])], require_run=True)
+    if problem or matched != owned:
+        raise TeardownRefused("candidate is not proved by the identified staged run's original marker")
+    foreign_coverage = _count(cur,
+        "SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
+        " AND partition_kind = 'event_class' AND build_id IS DISTINCT FROM %s", (CHART_ID, GENERATION, scope["run_id"]))
+    if foreign_coverage:
+        raise TeardownRefused("generation coverage was not created by the identified staged run")
+    return scope
+
+
+def _lock_delete_tables(cur):
+    tables = {t for t, _ in GENERATION_TABLES} | set(CASCADE_PROOF_TABLES) | {
+        "build_runs", "build_run_assets", "asset_provenance_receipts", "asset_freshness", "asset_throughput"}
+    cur.execute("LOCK TABLE " + ", ".join(sorted(tables)) + " IN SHARE ROW EXCLUSIVE MODE")
+
+
+def _rowset_digest(cur, owned):
+    """Content identity, including cascade children; equal counts cannot pass.
+
+    Table locks stop non-cooperating direct DML between hashing and DELETE.
+    Existing advisory/row locks remain in force. SHARE ROW EXCLUSIVE also
+    excludes a second teardown and is bounded by the existing lock_timeout.
+    """
+    tables = [(t, "asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID)) for t in
+              ("asset_provenance_receipts", "asset_freshness", "asset_throughput")]
+    tables += [("asset_registry", "asset_id = %s", (ASSET_ID,)), ("build_runs", "id = ANY(%s::uuid[])", (owned,)),
+               ("build_run_assets", "run_id = ANY(%s::uuid[])", (owned,))]
+    tables += [(t, "chart_id = %s AND generation = %s" + extra, (CHART_ID, GENERATION)) for t, extra in
+               GENERATION_TABLES + tuple((t, "") for t in CASCADE_PROOF_TABLES)]
+    rows = {}
+    for table, where, params in tables:
+        cur.execute(f"SELECT to_jsonb(t)::text AS row FROM {table} t WHERE {where}", params)
+        rows[table] = sorted(r["row"] for r in cur.fetchall())
+    return shared.evidence_digest(rows)
+
+
 def teardown(*, dry_run: bool = True) -> None:
     import psycopg
     import psycopg.rows
@@ -497,11 +611,24 @@ def teardown(*, dry_run: bool = True) -> None:
     try:
         _require_direct_connection(conn)                   # refuses a pooled connection (the session lock would hold nothing)
         _take_locks(cur)                                   # BEFORE any ownership check; held to commit / rollback
+        _lock_delete_tables(cur)
         checked = _refusal_checks(cur)
         owned, registry_active = checked.owned, checked.registry_active
         _validate_registry_row(cur, check_active=False)
         retention = _retention_lines(cur, owned)
         counts = _plan_counts(cur, owned)
+        req = shared.operation_request()
+        if req.get("kind") not in (("smalltest_teardown", "smalltest_teardown_dryrun") if dry_run else ("smalltest_teardown",)):
+            raise TeardownRefused("executor operation kind and teardown mode differ")
+        scope = _bound_scope(cur, owned, req)
+        rowset_sha256 = _rowset_digest(cur, owned)
+        if not dry_run:
+            shared.dryrun_evidence(req, shared.evidence_root(), scope, rowset_sha256)
+        proof = {"schema": "ky.smalltest_teardown/1", "operation_id": req["operation_id"],
+                 "request_sha256": shared.request_hash(req), "scope": scope,
+                 "scope_sha256": shared.evidence_digest(scope), "rowset_sha256": rowset_sha256,
+                 "status": "ROLLED_BACK" if dry_run else "COMMITTED_AWAITING_ABSENCE",
+                 "rollback_confirmed": dry_run}
         # THE SAME STATEMENTS in both modes: the deletes, the registry restore and the end-state validation run in this transaction
         _delete_everything(cur, owned)
         if registry_active:                                # ONLY a row found active is touched: no UPDATE privilege otherwise needed
@@ -510,8 +637,13 @@ def teardown(*, dry_run: bool = True) -> None:
         post = _end_state_problems(cur)
         if post:
             raise TeardownRefused("the N-137 end state does not hold after the deletes, so success is not claimed: " + "; ".join(post))
+        absence = _prove_absence(cur, owned)
         # the report is prepared BEFORE the COMMIT: nothing after the COMMIT can fail for want of data or work
-        report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes])
+        report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes],
+                  {"schema": "ky.smalltest_absence/1", "chart_id": CHART_ID, "generation": GENERATION,
+                   "owned_run_ids": owned, "counts": absence,
+                   "status": "rehearsed_then_rolled_back" if dry_run else "committed",
+                   "observation": "after deletion, before commit, under teardown locks"})
         if dry_run:
             conn.rollback()
         else:
@@ -544,8 +676,10 @@ def teardown(*, dry_run: bool = True) -> None:
         if interrupted is not None and sys.exc_info()[1] is None:
             _note_outcome(interrupted, {"committed": "committed", "committing": "commit_unknown"}.get(phase, "rolled_back"))
             raise interrupted
-    kind, counts, retention = report
+    kind, counts, retention, absence_proof = report
     try:                                          # a failure while REPORTING keeps the outcome that is already known (item 3)
+        print("teardown_proof\t" + json.dumps(proof, sort_keys=True))
+        print("absence_proof\t" + json.dumps(absence_proof, sort_keys=True))
         if kind == "dry_run":
             print(f"[dry-run] the SAME statements an execution runs (locks, checks, every DELETE, the registry restore when the row is "
                   f"active, the end-state validation) ran for chart {CHART_ID} and were ROLLED BACK — zero commits; pass --execute "
@@ -573,8 +707,9 @@ def _safe_failure(exc: BaseException) -> str:
             f"connection error can carry credentials. {known}")
 
 
-def main(argv: list[str] | None = None) -> int:
+def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
+        allow_abbrev=False,
         prog="teardown_v5_small_test_job.py",
         description="Fail-closed teardown of the ka_gochara_v5 SMALL TEST run (pinned chart only). Dry run by default (the SAME "
                     "statements as an execution, rolled back); deleting needs --execute AND --i-am-steward. DATABASE_URL comes "
@@ -586,6 +721,11 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     if args.execute and not args.i_am_steward:
         p.error("--execute needs --i-am-steward (destruction requires explicit steward intent)")
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(sys.argv[1:] if argv is None else argv)
     if not os.environ.get("DATABASE_URL"):
         print("teardown refused: DATABASE_URL is not set in the process environment (this script reads no file and takes no "
               "URL argument).", file=sys.stderr)

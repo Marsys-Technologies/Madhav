@@ -1,5 +1,6 @@
 """Real PostgreSQL constraints and transactions; losing a guard fails these."""
 from dataclasses import replace
+from datetime import datetime
 from importlib import import_module
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
-from tests.l3.ka_vedha_gochara.conftest import CHART, NATAL, BUILD, MIGRATION
+from tests.l3.kala_db.ka_vedha_gochara.conftest import CHART, NATAL, BUILD, MIGRATION
 from tests.l3.ka_vedha_gochara.test_overlays import bundle, residence, A, B, C, D
 
 
@@ -90,6 +91,38 @@ def test_db_trigger_refuses_direct_mutation_after_publication(conn):
         conn.execute('DELETE FROM kala_vedha_gochara_interval')
 
 
+def test_update_cannot_create_overlap_when_graha_and_start_change(conn):
+    store(conn,active_bundle())
+    row=conn.execute("SELECT to_jsonb(t) FROM kala_vedha_gochara_interval t WHERE graha='Sun' ORDER BY t_in LIMIT 1").fetchone()[0]
+    conn.execute('DELETE FROM kala_vedha_gochara_interval')
+    # Distinct primary keys can share a start. Only the old Sun row may be
+    # excluded when moving it to Mars [B,C), inside the existing Mars [A,D).
+    for graha,end in [('Sun',B),('Mars',D)]:
+        value={**row,'graha':graha,'t_in':A,'t_out':end}
+        keys=list(value)
+        conn.execute('INSERT INTO kala_vedha_gochara_interval ('+','.join(keys)+') VALUES ('+','.join(['%s']*len(keys))+')',
+            [Jsonb(v) if k=='detail' else v for k,v in value.items()])
+    before=snapshot(conn,'kala_vedha_gochara_interval')
+    with pytest.raises(psycopg.errors.RaiseException,match='overlapping intervals'),conn.transaction():
+        conn.execute("UPDATE kala_vedha_gochara_interval SET graha='Mars',t_in=%s,t_out=%s WHERE graha='Sun'",(B,C))
+    assert snapshot(conn,'kala_vedha_gochara_interval')==before
+    # The same identity change is valid when the other row only touches B.
+    conn.execute("UPDATE kala_vedha_gochara_interval SET t_out=%s WHERE graha='Mars'",(B,))
+    conn.execute("UPDATE kala_vedha_gochara_interval SET graha='Mars',t_in=%s,t_out=%s WHERE graha='Sun'",(B,C))
+    assert conn.execute("SELECT graha,t_in,t_out FROM kala_vedha_gochara_interval ORDER BY t_in").fetchall()==[
+        ('Mars',datetime.fromisoformat(A),datetime.fromisoformat(B)),
+        ('Mars',datetime.fromisoformat(B),datetime.fromisoformat(C))]
+
+
+@pytest.mark.parametrize('start',[A,B])
+def test_update_excludes_its_own_interval_with_unchanged_or_changed_start(conn,start):
+    store(conn,active_bundle())
+    conn.execute("DELETE FROM kala_vedha_gochara_interval WHERE graha<>'Sun' OR t_in<>%s",(B,))
+    assert conn.execute('SELECT count(*) FROM kala_vedha_gochara_interval').fetchone()[0]==1
+    conn.execute('UPDATE kala_vedha_gochara_interval SET t_in=%s,t_out=%s',(start,D))
+    assert conn.execute('SELECT t_in=%s,t_out=%s FROM kala_vedha_gochara_interval',(start,D)).fetchone()==(True,True)
+
+
 def test_dispatch_unbound_or_without_provider_is_inert(conn):
     from services.ka_vedha_gochara.writer import KaVedhaGocharaWriter
     before=snapshot(conn,'kala_vedha_gochara')
@@ -161,20 +194,21 @@ def test_direct_header_mutations_cannot_bypass_natal_or_identity_guard(conn,patc
         conn.execute('UPDATE kala_vedha_gochara_candidate SET '+patch)
 
 
-def test_writer_keeps_candidate_row_locked_against_concurrent_publication(conn):
+def test_writer_keeps_candidate_row_locked_against_concurrent_publication(conn, kala_db_dsn):
     # Fixture setup is committed solely to expose this disposable schema to a
     # second session. Neither the writer nor the provider commits anything.
     conn.commit()
     schema=conn.execute('SELECT current_schema()').fetchone()[0]
     store(conn,active_bundle())
-    with psycopg.connect(conn.info.dsn) as other:
+    # ConnectionInfo.dsn omits passwords; reuse the guarded fixture DSN in CI.
+    with psycopg.connect(kala_db_dsn) as other:
         other.execute(f'SET search_path TO "{schema}", public')
         other.execute("SET LOCAL lock_timeout='100ms'")
         with pytest.raises(psycopg.errors.LockNotAvailable),other.transaction():
             other.execute("UPDATE kala_layer_candidate SET state='published' WHERE generation='candidate-1'")
         other.rollback()
     conn.rollback()
-    with psycopg.connect(conn.info.dsn) as other:
+    with psycopg.connect(kala_db_dsn) as other:
         other.execute(f'SET search_path TO "{schema}", public')
         other.execute("UPDATE kala_layer_candidate SET state='published' WHERE generation='candidate-1'")
     with pytest.raises(ValueError,match='building|mutable'):

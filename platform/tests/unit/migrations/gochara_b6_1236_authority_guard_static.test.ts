@@ -1,6 +1,6 @@
 /**
  * Pravāha B6.0 — STATIC contract of migration 1236, and the writer allow-list gate: no code path other than the operator flip script
- * writes kala_gochara_authority (the serving pointer). Live proof: tests/integration/gochara_b6_1236_authority_guard.db.test.ts.
+ * or declared local rehearsal writes kala_gochara_authority (the serving pointer). Live proof: tests/integration/gochara_b6_1236_authority_guard.db.test.ts.
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
@@ -32,11 +32,12 @@ describe('migration 1236 — static contract', () => {
   })
 })
 
-// The writer allow-list: the serving pointer is written ONLY by operator-run flip/rollback scripts (five today, listed below; test fixtures excepted). NOTE: flip_authority.py takes the generation as an argument — before 1236 nothing stopped it naming '5.0'. A new writer anywhere is a
+// The writer allow-list: the serving pointer is written ONLY by the declared operator-run flip/rollback scripts or guarded local rehearsal (test fixtures excepted). NOTE: flip_authority.py takes the generation as an argument — before 1236 nothing stopped it naming '5.0'. A new writer anywhere is a
 // governance event, not a drive-by change — this gate fails until the allow-list is amended in review.
 describe('kala_gochara_authority writers — allow-list gate', () => {
   const ALLOWED = new Set([
     'platform/python-sidecar/scripts/kala_gochara_cutover/step08_flip.py',                       // the operator flip (D-FLIP is the native's)
+    'platform/python-sidecar/scripts/kala_gochara_cutover/j6r_rehearsal.py',                     // J-6r: guarded lane/test DB rehearsal; executor remains disabled
     'platform/scripts/gochara/flip_authority.py',                                                // chart-agnostic operator flip tooling (MR-08)
     'platform/scripts/gochara/rollback_authority.py',                                            // its rollback (DELETE the row)
     'platform/scripts/dispatch_utkarsha_w63_authority_flip_abhinandan.py',                       // one-off W6.3 flip (historical, operator-run)
@@ -50,7 +51,7 @@ describe('kala_gochara_authority writers — allow-list gate', () => {
       else if (/\.(py|ts|tsx|js|mjs)$/.test(e.name)) out.push(p)
     }
   }
-  it('no source file outside the operator flip/rollback scripts INSERTs or UPDATEs the authority table', () => {
+  it('no source file outside the declared operator/rehearsal scripts INSERTs or UPDATEs the authority table', () => {
     const files: string[] = []
     for (const d of ['platform/python-sidecar', 'platform/src', 'platform/scripts', 'platform-mcp/src']) if (fs.existsSync(path.join(ROOT, d))) walk(path.join(ROOT, d), files)
     const writers = files.filter(f => {
