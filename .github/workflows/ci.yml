@@ -2189,7 +2189,7 @@ jobs:
   governance-tool-tests-shard:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): discovers governance/__tests__ and pravaha_tracker/tests, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
     # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
     # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 5 shards (3 until the 2026-10-05 L0-L2 build-out grew the suite to ~48 min of shard time) by
@@ -2214,6 +2214,11 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Setup Node for tracker browser regressions
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
@@ -2225,11 +2230,12 @@ jobs:
         env:
           DATABASE_URL: ''
           PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
         run: |
           # a failing or empty ci_shard.py must stop here: `pytest $(…)` would swallow its exit status and collect the whole repo
           mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 5 --index ${{ matrix.shard }})
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
-          python -m pytest "${FILES[@]}" -q --no-header -rs
+          python -m pytest "${FILES[@]}" -q --no-header -rs -p no:cacheprovider
 
       - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
         if: matrix.shard == 1

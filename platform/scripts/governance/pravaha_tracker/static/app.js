@@ -8,7 +8,7 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const LABEL = { done: "done", running: "running", review: "in review", ready: "ready", waiting: "waiting",
+  const LABEL = { built_waiting_on_gate: "built, waiting on gate", done: "done", running: "running", review: "in review", ready: "ready", waiting: "waiting",
     blocked: "blocked", parked: "parked", failed: "failed", unknown: "unmeasured", conflict: "conflict" };
   const LIVE = { active: ["ok", "active"], idle: ["idle", "idle — nothing running"], stale: ["warn", "stale — no heartbeat"], silent: ["bad", "silent — work running, no heartbeat"] };
 
@@ -71,7 +71,7 @@
 
   // ---- rendering --------------------------------------------------------------------------
   function card(it) {
-    const st = it.status;
+    const st = it.display_status || it.status;
     const prog = it.progress != null && st !== "done" ? `<div class="p"><div style="width:${Math.round(it.progress * 100)}%"></div></div>` : "";
     const steps = it.steps ? `<div class="steps">${it.steps.map((s) => `<span class="${s.done ? "on" : ""}">${esc(s.name)}</span>`).join("")}</div>` : "";
     const gateWait = it.built_waiting_on_gate && it.gate_blockers?.length
@@ -85,7 +85,7 @@
   }
 
   function mini(it) {
-    return `<div class="mini st-${it.status}" title="${esc(it.detail || "")}"><span class="id">${esc(it.id)}</span> ${esc(it.title)}${it.elapsed_s != null ? ` <span class="sub">· ${dur(it.elapsed_s)}</span>` : ""}</div>`;
+    return `<div class="mini st-${it.display_status || it.status}" title="${esc(it.detail || "")}"><span class="id">${esc(it.id)}</span> ${esc(it.title)}${it.elapsed_s != null ? ` <span class="sub">· ${dur(it.elapsed_s)}</span>` : ""}</div>`;
   }
 
   function renderStreams() {
@@ -103,6 +103,7 @@
         <div class="sline">${hb}</div><div class="sline">${le}</div><div class="sline">${gl}</div>
         <div class="scols">
           <div><h3>Running</h3>${s.running.length ? s.running.map(mini).join("") : '<div class="empty">nothing</div>'}</div>
+          <div><h3>Built, waiting on gate</h3>${s.built_waiting_on_gate?.length ? s.built_waiting_on_gate.map(mini).join("") : '<div class="empty">none</div>'}</div>
           <div><h3>Ready</h3>${s.ready.length ? s.ready.map(mini).join("") : '<div class="empty">nothing ready</div>'}</div>
           <div><h3>Blocked</h3>${s.blocked.length ? s.blocked.map(mini).join("") : '<div class="empty">none</div>'}</div>
         </div></div>`;
@@ -146,6 +147,7 @@
   }
   function renderWhere() {
     rows("now", snap.now, "Nothing running.", (it) => [esc(LABEL[it.status]), it.owner ? "Stream " + esc(it.owner) : "", it.elapsed_s != null ? `for ${dur(it.elapsed_s)}` : "", esc(it.detail || "")].filter(Boolean).join(" · "));
+    rows("built-waiting", snap.built_waiting_on_gate || [], "Nothing built waiting on a gate.", (it) => `waiting on: ${esc((it.gate_blockers || []).join(", "))}`);
     rows("next", snap.next.slice(0, 14), "Nothing ready — everything is waiting on something.", (it) => `${it.owner ? "Stream " + esc(it.owner) + " · " : ""}${esc(it.source)}`);
     rows("attention", snap.attention, "Nothing needs attention.", (it) => `${esc(LABEL[it.status] || it.status)}${it.detail ? " · " + esc(it.detail) : ""}`);
     rows("done", snap.done.slice(0, 25), "Nothing completed yet.", (it) => `${esc(it.evidence || it.detail || "")}`);
@@ -157,7 +159,7 @@
     $("pct-bar").style.width = `${o.pct}%`;
     const chip = (k, v) => `<span class="chip st-${k}"><b>${v}</b>${esc(LABEL[k] || k)}</span>`;
     $("counts").innerHTML = [chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
-      `<span class="chip"><b>${o.built_waiting_on_gate ?? 0}</b>built, waiting on gate</span>`,
+      chip("built_waiting_on_gate", o.built_waiting_on_gate ?? 0),
       chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>items in plan</span>`].join("");
   }
 
