@@ -1,15 +1,12 @@
-"""KV3-B-EXECUTOR-TABLE (relaunch plan v2.7 §2, §5, §6 EXECUTE, §14 B-1): the executor table and the executor's git handle.
+"""K923B executor/table boundary against immutable starting main.
 
-What this proves, and what it deliberately does not touch:
-  · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
-    key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
-  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
-    functions and constants are byte-identical;
-  · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
-    whose origin is a local path — never the campaign checkout, never the network, never the running executor.
-
-An entry whose state the test cannot read is a failure, not a pass."""
+The table differs only in disabled K9 bindings and prepared-readback hashing.
+The executor differs only in the explicit verifier capability/connection and
+K9-4b digest refusal. Negative mutations still detect every other code change.
+Historical PLAN_PIN executor bytes remain independently checked. World fixtures
+create local Git repositories in CI; this preparation runs only the read-only
+static cases and the separate in-process fake-Git executor harness.
+"""
 import ast
 import hashlib
 import importlib.util
@@ -34,6 +31,7 @@ PY_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
+MAIN_PIN = "ef14167bcc35a321b11d4d189a6b752bf3c658b8"  # K923B immutable starting main
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
@@ -75,7 +73,7 @@ def git_show(rev_path):
 
 
 def base_text(rel):
-    return git_show(f"{PLAN_PIN}:{rel}").decode()
+    return git_show(f"{MAIN_PIN if rel == PY_REL else PLAN_PIN}:{rel}").decode()
 
 
 def load_ops(text):
@@ -133,33 +131,20 @@ def test_p10_entries_present_with_only_j1a_enabled():
 
 
 def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
-    base = load_ops(base_text(OPS_REL))
+    base = load_ops(git_show(f"{MAIN_PIN}:{OPS_REL}"))
     now = load_ops(OPS_FILE.read_text())
-    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
-    assert list(now["ops"]) == list(base["ops"]), "the order of kinds changed"
+    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"])
+    assert list(now["ops"]) == list(base["ops"])
     expected = json.loads(json.dumps(base["ops"]))
     for kind in K9_KINDS:
-        assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
-        expected[kind]["enabled_by"] = "K9-23"
-        assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
-        expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
-    expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
-    expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
-    expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
-    expected["verification_job"]["needs"] = "gcloud"
-    expected["measuring_dispatch"]["staging_dry_run"] = {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
-        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
-    for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
-                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
-        expected[kind]["prepared_dry_run"] = {
-            "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
-            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
-            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
-    for kind, binding in P01_BINDINGS.items():
-        expected[kind].update(enabled=True, **binding)
+        assert expected[kind]["enabled_by"] == "K9-23"
+        expected[kind].update(script="platform/python-sidecar/services/kala_core/publication.py",
+                              cwd="platform/python-sidecar", python_module="services.kala_core.publication",
+                              fixed_args=[{"orchestrator_rebuild_dryrun":"rebuild-dryrun","orchestrator_rebuild":"rebuild",
+                                           "layer_verify":"verify","layer_publish":"publish","layer_rollback":"rollback"}[kind]])
+    expected["layer_verify"].update(needs="layer_verifier",allowed_args=["run-id","generation","independently-derived-digest","semantic-source"])
+    expected["layer_publish"]["allowed_args"]=["run-id","generation","expected-head","semantic-source"]
+    expected["readback_sql"]["allowed_args"]=["sql_file","sql-sha256"]
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -169,11 +154,12 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_prebuilt_bindings_name_k9_23_and_remain_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for kind in K9_KINDS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
+        assert ops[kind]["script"] == "platform/python-sidecar/services/kala_core/publication.py", kind
+        assert ops[kind]["enabled"] is False
         assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
@@ -246,6 +232,10 @@ W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f0
 
 
 def normalize_wave4(base_src, work_src):
+    # K923B: two exact additions, leaving all prior safety hashes intact.
+    work_src = work_src.replace('"layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),\n            ', '', 1)
+    work_src = work_src.replace('    elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]\n', '', 1)
+    work_src = work_src.replace('    if req["kind"] == "readback_sql" and req["item_id"] == "K9-4b" and not re.fullmatch(r"[0-9a-f]{64}", str(args.get("sql-sha256", ""))):\n        return "K9-4b readback requires a prepared SQL digest"\n', '', 1)
     base_seg, work_seg = _segments(base_src), _segments(work_src)
     for name, digest in W4_FUNCTION_HASHES.items():
         segment = work_seg.get(name, "")
@@ -285,19 +275,12 @@ def test_pinned_executor_has_the_pinned_sha256():
     assert hashlib.sha256(git_show(f"{PLAN_PIN}:{PY_REL}")).hexdigest() == PINNED_EXECUTOR_SHA256
 
 
-def test_executor_py_changes_are_only_git_and_exact_reviewed_w4_functions():
+def test_executor_py_changes_are_only_exact_reviewed_k923b_additions():
     assert boundary_violations(base_text(PY_REL), EXECUTOR_PY.read_text()) == []
 
 
-def test_executor_py_remaining_line_diff_is_the_git_line_only():
-    import difflib
-    base_src = base_text(PY_REL)
-    base, work = base_src.splitlines(), normalize_wave4(base_src, EXECUTOR_PY.read_text()).splitlines()
-    changed = [l for l in difflib.unified_diff(base, work, lineterm="", n=0) if l[:1] in "+-" and l[:3] not in ("+++", "---")]
-    for line in changed:
-        body = line[1:].strip()
-        assert body.startswith("GIT = ") or body.startswith("#"), f"unexpected changed line: {line}"
-    assert any(l.startswith("+GIT = ") for l in changed), "the GIT assignment did not change"
+def test_executor_py_normalized_bytes_equal_immutable_starting_main():
+    assert normalize_wave4(base_text(PY_REL), EXECUTOR_PY.read_text()) == base_text(PY_REL)
 
 
 @pytest.mark.parametrize("old,new", [
@@ -375,7 +358,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 
 
 def _git(cwd, *args):
@@ -479,7 +462,7 @@ def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind)
 @pytest.mark.parametrize("kind", K9_KINDS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"
