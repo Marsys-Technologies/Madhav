@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import io
 import json
+from pathlib import Path
 import os
 import subprocess
 import sys
@@ -494,6 +495,20 @@ class GuardedCompletionCases(unittest.TestCase):
             self.assertEqual(events[-1]["state"], "done")
             self.assertTrue(events[-1]["guarded"])
             self.assertEqual(events[-1]["completion"]["pr"]["mergeCommit"]["oid"], self.merge)
+
+    def test_cli_refuses_failed_live_measurement_despite_ready_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+            for event in (self.step, self.review, self.verdict, self.post):
+                append(path, event, self.model)
+            before = Path(path).read_bytes()
+            live = ({"item": "K-1", "detector": {"status": "error", "detail": "fetch failed"}}, "live")
+            gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
+            with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
+                                           "--reviewed-head", self.head]), 2)
+            self.assertEqual(Path(path).read_bytes(), before)
 
 
 class StructuredDecisionCases(unittest.TestCase):

@@ -6,10 +6,9 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
-from tests.l3.kala_db.conftest import kala_db_dsn, pytest_sessionfinish  # noqa: F401
 from tests.l3.ka_adapters.test_candidates import CHART,NATAL,BUILD,MOORTI,RINGS
 
-MIGRATION=Path(__file__).resolve().parents[4]/'migrations/1384_ka_3b_contested_candidates.sql'
+MIGRATION=Path(__file__).resolve().parents[5]/'migrations/1384_ka_3b_contested_candidates.sql'
 
 
 @pytest.fixture

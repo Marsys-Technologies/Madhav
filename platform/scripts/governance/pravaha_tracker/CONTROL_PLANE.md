@@ -60,6 +60,15 @@ its late result is discarded and replacement collectors do not accumulate. The
 next successful tick restores health. Stream git activity remains independent of
 the tick and uses the same subprocess timeout cleanup.
 
+Guarded `done` calls `/api/verify` with `KY_VERIFY_TIMEOUT_S` (positive finite
+seconds, default 300). A timeout reports “tracker timed out”; a connection failure
+reports “tracker unreachable”. Verification never accepts a persisted snapshot or
+a completed fetch's TTL. Same-ref fetches already in flight share their live
+result (including failure); unrelated refs fetch independently. Verification runs
+on the request thread outside the four dashboard workers, and new dashboard polls
+defer until active verifications finish. Failed fetches refuse completion rather
+than measuring stale refs.
+
 ## Acceptance command
 
 From the repository root:
