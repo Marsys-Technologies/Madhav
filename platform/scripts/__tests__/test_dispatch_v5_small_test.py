@@ -933,10 +933,10 @@ def test_the_execute_within_ten_minutes_notice_is_printed_and_documented(capsys)
 
 
 def test_r7_the_ci_installs_the_sidecar_requirements_before_the_step_that_imports_the_writer():
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    dispatch_step = ci.index("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch_step = ci.index("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert select < install < dispatch_step
 
 
@@ -1165,3 +1165,9 @@ def test_dedicated_measuring_marker_refuses_widened_or_short_scope(kwargs):
     import dispatch_v5_measuring_job as measuring
     with pytest.raises(RuntimeError):
         measuring.build_slice_marker(**kwargs)
+
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text
