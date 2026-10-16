@@ -2173,6 +2173,17 @@ jobs:
           python -m pytest
           00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
           -q -p no:cacheprovider
+      - name: pytest — tracker guarded completion and concurrency (required)
+        if: matrix.shard == 1
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
+        run: >-
+          python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
+          platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
+          -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
@@ -2343,7 +2354,7 @@ jobs:
           # sidecar-owned writer hashes. Any Python writer change must regenerate
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
-          # Required Governance Gates: both mappings use the shared production
+          # Required Governance Gates: these mappings use the shared production
           # validator; missing semantic evidence must fail without a DB or skips.
           # K6-5 / SR-A4-03: the seven independent-review survivors (empty
           # contract data and contradictory Idem PASS) are mandatory here.
@@ -2354,6 +2365,7 @@ jobs:
             python -m pytest tests/l3/ka_kshetra/compact -q -p no:cacheprovider
             python -m pytest tests/l3/test_certification_validation.py \
               tests/l3/ka_bhavishya_lekha/test_certification_mapping.py \
+              tests/l3/ka_muhurta_seva/test_certification_mapping.py \
               tests/l3/test_ka_tulana.py::test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse \
               -q -p no:cacheprovider
           fi
