@@ -53,7 +53,7 @@ _K, _R = "services.gochara_kernel.", "services.gochara_rules."
 # the vector). Verifiers sit with the stage they verify; nothing here is "optional".
 IMPLEMENTATION_MODULES = {
     "geometry": tuple(_K + m for m in (
-        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store", "stretch_sink",
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "near_miss_verifier", "record_store", "stretch_sink",
         "substrate", "targets")),
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",
@@ -196,6 +196,12 @@ def _require_policy(policy):
     return policy
 
 
+def _near_miss_layer_component(version):
+    if type(version) is not int or version != 1:
+        raise InputDrift(f"near_miss_layer_version {version!r} is unsupported")
+    return version
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -221,7 +227,8 @@ def assemble_vector(inp: dict) -> dict:
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
         "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
     } | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
-      | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {})
+      | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {}) \
+      | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {})
 
 
 # ── node series / ephemeris ──────────────────────────────────────────────────
@@ -453,6 +460,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        files_probe=None, series_probe=None, modules: dict | None = None,
                        l0_consumed: Iterable[str] = (), census_override=None,
                        result_policy: str = DEFAULT_RESULT_POLICY,
+                       near_miss_layer_version: int | None | str = "auto",
                        stored_scope: str = STORED_SCOPE, test_slice: dict | None = None, horizon_basis: dict | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
     none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census.
@@ -485,6 +493,10 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "impl_modules": _implementation_modules(modules),
         "test_slice": test_slice,
         "horizon_basis": horizon_basis,
+        "near_miss_layer_version": near_miss_layer_version if near_miss_layer_version != "auto" else (
+            1 if conn.execute("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL").fetchone()[0] else None),
     })
 
 
@@ -523,6 +535,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
+    kw.setdefault("near_miss_layer_version", stored.get("near_miss_layer_version"))
     replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
     diff = diff_vectors(stored, replayed)
     if diff:
@@ -542,6 +555,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
+    kw.setdefault("near_miss_layer_version", stored.get("near_miss_layer_version"))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:

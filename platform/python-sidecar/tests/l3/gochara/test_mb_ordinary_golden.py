@@ -16,8 +16,8 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except the evaluation implementation identity. Geometry and
-window identities must remain equal. Exactly one state-guard SELECT is checked
+HEAD must equal it except the evaluation, geometry and window implementation
+identities changed by B4/P06b. P06b adds exactly one manifest catalogue probe. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.
@@ -47,6 +47,9 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -224,15 +227,17 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the pre-B4 baseline"
         assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the pre-B4 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
+        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
+        assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
-        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
+        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11], [LAYER_SELECT, 0])]
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the pre-B4 baseline"
+        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the pre-B4 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Preserve valid-data inputs; only B4's evaluation implementation changes.
+    """Preserve valid-data inputs; B4/P06b change exactly the three governed implementations.
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
@@ -251,6 +256,4 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert comparable(got) == comparable(want), "non-implementation components equal the pre-B4 baseline (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation"], differing
-    assert got["implementation"]["geometry"] == want["implementation"]["geometry"]
-    assert got["implementation"]["window"] == want["implementation"]["window"]
+    assert differing == ["evaluation", "geometry", "window"], differing

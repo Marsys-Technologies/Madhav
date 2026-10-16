@@ -1150,6 +1150,9 @@ jobs:
             exit 1
           fi
           only="$(IFS=,; echo "${migrations[*]}")"
+          # P06b: migrate.ts emits a per-migration readback before advancing the chain:
+          # readback_1305_snapshot_copy.sql, readback_1306_class_census.sql,
+          # readback_1308_near_miss_storage.sql, readback_1381_near_miss_seal.sql.
           cd platform && npx tsx scripts/migrate.ts --only "$only"
 
       - name: Revoke temporary public-schema capability
