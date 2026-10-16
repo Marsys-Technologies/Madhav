@@ -39,3 +39,21 @@ def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()
+
+
+def test_j6mr1_specifies_runner_idempotency_without_changing_applied_sql_or_activation():
+    import hashlib
+    import yaml
+
+    contract = ROOT / '00_ARCHITECTURE/briefs/kalayantra/J6M_R1_REPLAY_CONTRACT_v1_0.md'
+    assert contract.is_file(), 'J6M-R1 needs an explicit replay contract, not an inferred runner exemption'
+    metadata = yaml.safe_load(contract.read_text().split('---', 2)[1])
+    assert metadata['version'] == '1.0'
+    assert metadata['status'] == 'PREBUILD_WAITING_ON_GATE'
+    assert metadata['item'] == 'J6M-R1'
+    assert metadata['idempotency'] == 'runner_ledger'
+    assert metadata['raw_replay_sqlstate'] == '42710'
+    assert metadata['requires_catalog_readback'] is True
+    assert metadata['activation'] is False
+    assert metadata['migration'] == MIGRATION
+    assert metadata['migration_sha256'] == hashlib.sha256((ROOT / 'platform/migrations' / MIGRATION).read_bytes()).hexdigest()
