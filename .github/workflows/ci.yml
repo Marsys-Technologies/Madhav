@@ -2276,6 +2276,21 @@ jobs:
           python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
 
+      # J4D: keep the ported reader oracles in the required governance aggregate.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform-mcp/package-lock.json
+      - name: Install MCP dependencies for J4D reader oracles
+        working-directory: platform-mcp
+        run: npm ci
+      - name: J4D — governed generation reader oracles (required; skips fail)
+        working-directory: platform-mcp
+        run: |
+          npx vitest run src/tools/retrieval/register_gochara_contact_ledger.test.ts src/tools/retrieval/register_gochara_windows_governed_gate.test.ts --no-cache --reporter=default --reporter=junit --outputFile=gochara-j4d.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-j4d.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("J4D needs 50 executed reader cases and zero skips" if len(cases) != 50 or skipped else 0)'
+
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard and the ported readbacks above are green (a cancelled or failed shard is not green; a
     # SKIPPED shard is green ONLY on a docs-only pull request, where the `changes` job skipped it on purpose). The Suvarṇa plan's
