@@ -114,6 +114,8 @@ def assemble_knot_set_with_decade_seams(evaluator: 'FieldEvaluator') -> np.ndarr
         if math.isfinite(t):
             pts.add(t)
 
+    pts.update(float(t) for t in getattr(evaluator, 'extra_breakpoints', ()) if math.isfinite(t))
+
     # K_d: 9 interior decade seam knots.
     for d in range(1, 10):
         seam = d * H / 10.0
