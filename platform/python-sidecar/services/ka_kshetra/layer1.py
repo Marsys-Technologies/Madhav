@@ -121,7 +121,7 @@ def project_layer1(
                 if lord:  # '' means no lord at this knot
                     lord_stack.append((level, lord))
 
-        r = relevance(lord_stack, routes, depth_weights)
+        r = relevance(lord_stack, routes, depth_weights, system_id=clock.system_id)
         clock_log += clock_log_factor(float(clock.quality or 0.0), r, w_s)
 
     # ── Modifier term: Σ_j β_j * x_j(t_k) ────────────────────────────────────
