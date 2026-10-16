@@ -452,6 +452,56 @@ def test_the_required_a55_jobs_exist_and_every_a55_job_is_a_mandatory_database_e
         assert _a55_problems(job, tuple(_job_suites(job))) == [], name
 
 
+AM10_SUITE = "tests/l3/gochara_rules/test_am10_repin_tool.py"
+
+
+def _am10_db_problems(jobs):
+    """The inherited AM-10 DB oracles must run, with no optional-DB skip path."""
+    for name, job in _a55_jobs(jobs).items():
+        if AM10_SUITE not in _job_suites(job):
+            continue
+        problems = _a55_problems(job, (AM10_SUITE,))
+        if "needs.changes.outputs.docs_only != 'true'" not in str(job.get("if", "")):
+            problems.append("AM-10 job can skip a code change")
+        for step in job["steps"]:
+            if AM10_SUITE not in _pytest_suites(step.get("run", "")):
+                continue
+            env = step.get("env") or {}
+            if str(env.get("GOCHARA_REQUIRE_DB")) != "1":
+                problems.append("AM-10 missing-URL failures are not required")
+            if not env.get("GOCHARA_A51_TEST_DATABASE_URL"):
+                problems.append("AM-10 has no disposable database URL")
+            if step.get("if"):
+                problems.append("AM-10 step can be skipped")
+        return problems
+    return ["AM-10 suite is in no mandatory gochara-a55 DB command"]
+
+
+def test_am10_inherited_db_oracles_run_in_a_mandatory_fail_closed_command(jobs):
+    assert _am10_db_problems(jobs) == []
+
+
+@pytest.mark.parametrize("mutation", ["drop_suite", "drop_url", "drop_required", "optional_step", "filter", "swallow"])
+def test_am10_ci_detector_rejects_silent_skip_paths(jobs, mutation):
+    import copy
+    changed = copy.deepcopy(jobs)
+    job = next(j for j in _a55_jobs(changed).values() if AM10_SUITE in _job_suites(j))
+    step = next(s for s in job["steps"] if AM10_SUITE in _pytest_suites(s.get("run", "")))
+    if mutation == "drop_suite":
+        step["run"] = step["run"].replace(AM10_SUITE, "")
+    elif mutation == "drop_url":
+        step["env"].pop("GOCHARA_A51_TEST_DATABASE_URL")
+    elif mutation == "drop_required":
+        step["env"].pop("GOCHARA_REQUIRE_DB")
+    elif mutation == "optional_step":
+        step["if"] = "false"
+    elif mutation == "filter":
+        step["run"] = step["run"].replace(AM10_SUITE, AM10_SUITE + " -m 'not integration'")
+    elif mutation == "swallow":
+        step["run"] = step["run"].replace(AM10_SUITE, AM10_SUITE + " || true")
+    assert _am10_db_problems(changed), mutation
+
+
 def _db_suites_on_disk() -> set[str]:
     out = set()
     for p in GOCHARA_TESTS.glob("test_*.py"):
@@ -577,9 +627,10 @@ def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(
     'tests/l3/kala_db/ka_bhavishya_lekha/test_registrar.py',
     'tests/l3/kala_db/issued_forecast/test_lifecycle.py',
     'tests/l3/kala_db/idempotency/test_immutable_issue.py',
+    'tests/l3/kala_db/rehearsal/test_rehearsal.py',
 ])
 def test_kala_k6_5_regression_suites_run_in_the_mandatory_db_command(jobs, suite):
-    """Identity, ontology and lifecycle regressions must travel with the mapping oracle."""
+    """Identity, lifecycle and K9 rehearsal regressions travel with the mapping oracle."""
     job = jobs['kala-db-tests']
     assert not job.get('continue-on-error')
     steps = [step for step in job['steps']
