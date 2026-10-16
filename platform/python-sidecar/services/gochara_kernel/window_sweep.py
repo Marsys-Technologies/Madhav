@@ -46,6 +46,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterable
 
 from .result_policy import ALL_NULL_REASON, POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
+from .substrate import DB_BODY
 
 UNQUALIFIED = "unqualified"
 OMIT = "omit"
@@ -128,10 +129,10 @@ class SweepRecord:
 # ── R4: the boundary adapters and the geometry contract ──────────────────────
 
 # The persisted graha tokens are lowercase (kgrr_agent_ck); the rule helpers speak Title case. A CLOSED,
-# tested adapter — never `.title()` on whatever arrives.
-GRAHA_TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury",
-               "jupiter": "Jupiter", "venus": "Venus", "saturn": "Saturn",
-               "rahu": "Rahu", "ketu": "Ketu"}
+# tested adapter — never `.title()` on whatever arrives. Derived from the brahmagyan.graha_vocabulary SSoT via
+# substrate.DB_BODY (R17 adoption over addition — the local literal retired onto the SSoT helpers after the
+# protected window).
+GRAHA_TITLE = {db_value: title for title, db_value in DB_BODY.items()}
 
 
 def graha_title(token: str) -> str:
