@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -119,11 +120,12 @@ def test_ci_matrix_count_and_name_agree(jobs):
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
     agg = jobs["governance-tool-tests"]
     assert agg["name"] == "Governance Tool Tests (pytest)"
-    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests"}
+    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests", "gochara-j5s-full-class-seal"}
     assert "always()" in str(agg["if"])
     step = agg["steps"][0]
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
     assert step["env"]["READBACK_RESULT"] == "${{ needs.governance-readback-tests.result }}"
+    assert step["env"]["J5S_RESULT"] == "${{ needs.gochara-j5s-full-class-seal.result }}"
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert "exit 1" in step["run"]
 
@@ -144,8 +146,8 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
-    ok = ok and (readback == "success" if result == "success" else readback == "skipped")
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false", "J5S_RESULT": "success", "J5S_EXPECTED": "true"}, capture_output=True, text=True)
+    ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
     assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 

@@ -1,7 +1,12 @@
 """Live completion must stay independent of slow dashboard fetches."""
 from concurrent.futures import Future, ThreadPoolExecutor
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import hashlib
+import json
+import socket
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import threading
 import time
 import urllib.error
@@ -158,6 +163,7 @@ def test_guarded_done_transport_refusal_never_falls_back_to_snapshot(tmp_path, m
     with patch.object(cli, "load_model", return_value={"control_plane": {"guarded_completion": True},
                                                      "items": [{"id": "X"}]}), \
          patch.object(cli.urllib.request, "urlopen", side_effect=error), \
+         patch.object(cli, "time", SimpleNamespace(sleep=lambda _: None), create=True), \
          patch.object(cli, "_locked") as lock:
         assert cli.main(["done", "X", "--stream", "K", "--pr", "1"]) == 2
     assert message in capsys.readouterr().err
@@ -328,3 +334,170 @@ def test_verify_shares_flight_started_after_its_request(det, monkeypatch, failur
             fetching.result(timeout=2)
         assert verifying.result(timeout=2).status == ("error" if failure else "done")
     assert len(calls) == 1, "qualifying flight should be shared, including its error"
+
+
+@pytest.fixture
+def verify_server(tmp_path, monkeypatch):
+    """Closed loopback port: genuine connection refusal before server recovery."""
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.server.requests.append(self.path)
+            status, body = self.server.replies.pop(0)
+            self.send_response(status)
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler, bind_and_activate=False)
+    server.server_bind()
+    server.server_address = server.socket.getsockname()
+    server.server_close()
+    server.requests = []
+    server.replies = [(200, b'{"item":"K-RETRY","detector":{"status":"done"}}')]
+    thread = None
+
+    def start():
+        nonlocal thread
+        server.socket = socket.socket(server.address_family, server.socket_type)
+        server.server_bind()
+        server.server_activate()
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
+        thread.start()
+
+    attempts, delays = [], []
+    urlopen = cli.urllib.request.urlopen
+
+    def request(url, *, timeout):
+        attempts.append((url, timeout))
+        return urlopen(url, timeout=timeout)
+
+    def sleep(seconds):
+        delays.append(seconds)
+        server.on_sleep()
+
+    server.on_sleep = lambda: None
+    monkeypatch.setattr(cli, "URL", f"http://127.0.0.1:{server.server_port}")
+    monkeypatch.setattr(cli.urllib.request, "urlopen", request)
+    # Replace only the CLI's clock, leaving the fake server's real clock alone.
+    monkeypatch.setattr(cli, "time", SimpleNamespace(sleep=sleep), raising=False)
+    monkeypatch.setenv("KY_VERIFY_TIMEOUT_S", "0.2")
+    artifact = tmp_path / "proof.txt"
+    artifact.write_text("independently accepted artifact")
+    model = {"campaign": "retry", "control_plane": {"guarded_completion": True, "verdict_stream": "V"},
+             "streams": [], "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+             "items": [{"id": "K-RETRY", "track": "K", "title": "retry", "owner": "K",
+                        "detector": {"type": "file_exists", "path": str(artifact)}}]}
+    events = tmp_path / "EVENTS.jsonl"
+    events.write_text(json.dumps({"kind": "verdict", "actor": "stream-V:reviewer", "item": "K-RETRY",
+                                  "phase": "artifact", "result": "ACCEPTED",
+                                  "artifact_digest": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+                                  "detail": "accepted", "ts": "2026-10-16T00:00:00Z"}) + "\n")
+    monkeypatch.setattr(cli, "load_model", lambda: model)
+    monkeypatch.setattr(cli, "EVENTS", str(events))
+    # A tempting stale success must never become authority after a transport error.
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_text('{"item":"K-RETRY","detector":{"status":"done"}}')
+    monkeypatch.setattr(cli, "SNAPSHOT", str(snapshot))
+    fixture = SimpleNamespace(server=server, start=start, attempts=attempts, delays=delays,
+                              events=events, before=events.read_bytes(),
+                              run=lambda: cli.main(["done", "K-RETRY", "--stream", "K",
+                                                    "--artifact-path", str(artifact)]))
+    try:
+        yield fixture
+    finally:
+        if thread is not None:
+            server.shutdown()
+            thread.join(2)
+            assert not thread.is_alive()
+        server.server_close()
+
+
+@pytest.mark.parametrize("failures", [1, 2, 3])
+def test_guarded_done_retries_refused_connection_then_records_done(verify_server, failures):
+    fixture = verify_server
+    fixture.server.on_sleep = lambda: fixture.start() if len(fixture.delays) == failures else None
+    assert fixture.run() == 0
+    assert len(fixture.attempts) == failures + 1
+    assert fixture.delays == [2, 4, 8][:failures]
+    assert fixture.server.requests == ["/api/verify?id=K-RETRY"]
+    event = json.loads(fixture.events.read_text().splitlines()[-1])
+    assert event["state"] == "done" and event["guarded"] is True
+
+
+def test_guarded_done_persistent_unreachable_is_bounded(verify_server, capsys):
+    fixture = verify_server
+    assert fixture.run() == 2
+    assert capsys.readouterr().err == "refused: tracker unreachable during live detector verification\n"
+    assert len(fixture.attempts) == 4
+    assert fixture.delays == [2, 4, 8]
+    assert sum(fixture.delays) == 14
+    assert [timeout for _, timeout in fixture.attempts] == [0.2] * 4
+    assert fixture.events.read_bytes() == fixture.before
+
+
+@pytest.mark.parametrize("status", ["pending", "error", "NOT_MET", False])
+@pytest.mark.parametrize("transport_first", [False, True])
+def test_guarded_done_never_retries_a_received_false(verify_server, capsys, status, transport_first):
+    fixture = verify_server
+    fixture.server.replies.insert(0, (200, json.dumps({"item": "K-RETRY", "detector": {"status": status}}).encode()))
+    if transport_first:
+        fixture.server.on_sleep = fixture.start
+    else:
+        fixture.start()
+    assert fixture.run() == 2
+    assert "declared detector has not passed" in capsys.readouterr().err
+    assert len(fixture.attempts) == (2 if transport_first else 1)
+    assert fixture.delays == ([2] if transport_first else [])
+    assert fixture.server.requests == ["/api/verify?id=K-RETRY"]
+    assert fixture.events.read_bytes() == fixture.before
+
+
+@pytest.mark.parametrize("reply", [(503, b"unavailable"), (200, b"invalid JSON"), (200, b"{}")])
+def test_guarded_done_never_retries_http_or_invalid_responses(verify_server, reply):
+    fixture = verify_server
+    fixture.server.replies.insert(0, reply)
+    fixture.start()
+    assert fixture.run() == 2
+    assert len(fixture.attempts) == 1
+    assert fixture.delays == []
+    assert fixture.events.read_bytes() == fixture.before
+
+
+@pytest.mark.parametrize("error", [ConnectionResetError("reset"), urllib.error.URLError(ConnectionRefusedError("down"))])
+def test_guarded_done_retries_connection_error_before_live_answer(verify_server, monkeypatch, error):
+    fixture = verify_server
+    fixture.start()
+    urlopen = cli.urllib.request.urlopen
+    calls = []
+
+    def interrupted(url, *, timeout):
+        calls.append(url)
+        if len(calls) == 1:
+            raise error
+        return urlopen(url, timeout=timeout)
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", interrupted)
+    assert fixture.run() == 0
+    assert len(calls) == 2
+    assert fixture.delays == [2]
+
+
+@pytest.mark.parametrize("transport_first", [False, True])
+def test_guarded_done_timeout_is_not_retried(verify_server, monkeypatch, capsys, transport_first):
+    fixture = verify_server
+    calls = []
+
+    def timed_out(url, *, timeout):
+        calls.append(timeout)
+        if transport_first and len(calls) == 1:
+            raise urllib.error.URLError(ConnectionRefusedError("down"))
+        raise urllib.error.URLError(TimeoutError("slow"))
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", timed_out)
+    assert fixture.run() == 2
+    assert capsys.readouterr().err == "refused: tracker timed out after 0.2s during live detector verification\n"
+    assert calls == ([0.2, 0.2] if transport_first else [0.2])
+    assert fixture.delays == ([2] if transport_first else [])
+    assert fixture.events.read_bytes() == fixture.before

@@ -258,13 +258,12 @@ def test_the_sidecar_suite_runs_only_sharded(jobs):
 def test_the_aggregate_keeps_the_required_name_and_needs_all_parts(jobs):
     agg = jobs[AGG_JOB]
     assert agg["name"] == REQUIRED_NAME
-    assert set(agg["needs"]) == {"changes", STATIC_JOB, SHARD_JOB, "k3-sealed-db-tests"}
+    assert set(agg["needs"]) == {"full-suite", STATIC_JOB}
+    assert {SHARD_JOB, "k3-sealed-db-tests"} <= set(jobs["full-suite"]["needs"])
     assert str(agg["if"]) == "${{ always() }}"
     step = agg["steps"][0]
     assert step["env"]["STATIC_RESULT"] == f"${{{{ needs.{STATIC_JOB}.result }}}}"
-    assert step["env"]["SHARDS_RESULT"] == f"${{{{ needs.{SHARD_JOB}.result }}}}"
-    assert step["env"]["K3_RESULT"] == "${{ needs.k3-sealed-db-tests.result }}"
-    assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
+    assert step["env"]["FULL_SUITE_RESULT"] == "${{ needs.full-suite.result }}"
     assert sum(1 for j in jobs.values() if j.get("name") == REQUIRED_NAME) == 1
 
 
@@ -272,17 +271,14 @@ RESULTS = ("success", "failure", "cancelled", "skipped", "")
 
 
 @pytest.mark.parametrize("static", RESULTS)
-@pytest.mark.parametrize("shards", RESULTS)
-@pytest.mark.parametrize("k3", RESULTS)
-@pytest.mark.parametrize("docs_only", ("true", "false", ""))
-def test_the_aggregate_requires_static_and_shards_and_k3_or_docs_only_skip(jobs, static, shards, k3, docs_only):
-    """Run the real aggregate: only K3 may skip, and only on an explicit docs-only change."""
+@pytest.mark.parametrize("full_suite", RESULTS)
+def test_the_aggregate_requires_static_and_the_full_suite_event_contract(jobs, static, full_suite):
+    """The protected check consumes the measured event contract, including K3 and all shards."""
     script = jobs[AGG_JOB]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "SHARDS_RESULT": shards, "K3_RESULT": k3, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"},
+    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "FULL_SUITE_RESULT": full_suite, "PATH": "/usr/bin:/bin"},
                        capture_output=True, text=True)
-    ok = (static == "success" and shards == "success"
-          and (k3 == "success" or (k3 == "skipped" and docs_only == "true")))
-    assert (p.returncode == 0) is ok, (static, shards, k3, docs_only, p.stdout, p.stderr)
+    ok = static == "success" and full_suite == "success"
+    assert (p.returncode == 0) is ok, (static, full_suite, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 
@@ -297,7 +293,7 @@ def test_no_part_can_turn_red_green_or_narrow_what_runs(jobs):
         assert "continue-on-error" not in job, jname
         needs = job.get("needs") or []
         # K3-2 adds a docs-only-aware SQL dependency; the aggregate itself always runs.
-        if jname != AGG_JOB:
+        if jname == STATIC_JOB:
             assert "changes" not in ([needs] if isinstance(needs, str) else needs), jname
         assert "docs_only" not in str(job.get("if", "")), jname
         for st in job["steps"]:

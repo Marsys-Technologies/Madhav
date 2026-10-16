@@ -604,6 +604,7 @@ def _rowset_digest(cur, owned):
 
 
 def teardown(*, dry_run: bool = True) -> None:
+    lane_req = shared.lane_rehearsal_request() if dry_run else None
     import psycopg
     import psycopg.rows
 
@@ -617,6 +618,13 @@ def teardown(*, dry_run: bool = True) -> None:
     phase = "open"                                # open -> committing (COMMIT sent) -> committed
     report: tuple | None = None
     try:
+        if lane_req is not None:
+            import ipaddress
+            cur.execute("SELECT current_database() AS db, inet_server_addr()::text AS address, inet_server_port() AS port")
+            endpoint = cur.fetchone()
+            if (endpoint["db"] != lane_req["lane_target"]["database"] or endpoint["port"] != 55433
+                    or not ipaddress.ip_interface(endpoint["address"]).ip.is_loopback):
+                raise TeardownRefused("lane rehearsal server identity differs")
         _require_direct_connection(conn)                   # refuses a pooled connection (the session lock would hold nothing)
         _take_locks(cur)                                   # BEFORE any ownership check; held to commit / rollback
         _lock_delete_tables(cur)
@@ -625,7 +633,7 @@ def teardown(*, dry_run: bool = True) -> None:
         _validate_registry_row(cur, check_active=False)
         retention = _retention_lines(cur, owned)
         counts = _plan_counts(cur, owned)
-        req = shared.operation_request()
+        req = lane_req if lane_req is not None else shared.operation_request()
         if req.get("kind") not in (("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") if dry_run else ("smalltest_teardown", "measuring_teardown")):
             raise TeardownRefused("executor operation kind and teardown mode differ")
         scope = _bound_scope(cur, owned, req)
