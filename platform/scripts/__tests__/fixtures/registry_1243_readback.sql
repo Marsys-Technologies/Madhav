@@ -1,0 +1,20 @@
+-- Read-only post-apply readback for migration 1243 (steward M20261003T020909-6c15). Run with psql against production AFTER the migration applied.
+-- (1) both rows present, with the seed-identical 28 columns: the md5 must equal the value below (derived from the migration's own literals on a copy of production's asset_registry).
+SELECT asset_id,
+       md5(row(asset_id, layer, sort_order, sanskrit_name, english_name, english_description, storage_type, target_table, count_sql, size_sql, target_floor,
+               expected_volume_formula, expected_volume_inputs, volume_explanation, depends_on, scope, is_active, estimated_seconds, asset_type, layer_name,
+               layer_index, provides_apis, health_probe, catalog_status, asset_kind, has_writer, has_substeps, writer_timeout_seconds)::text) AS fingerprint,
+       CASE asset_id WHEN 'ka_gochara_v4_41_candidate' THEN 'a0f3e234dff2fdd9e4c9a90897e00e13' WHEN 'ka_gochara_v5' THEN '49995b52b7c416c8e0ef8f43b1158b57' END AS expected_fingerprint,
+       is_active, has_writer, depends_on
+  FROM asset_registry WHERE asset_id IN ('ka_gochara_v4_41_candidate', 'ka_gochara_v5') ORDER BY 1;          -- expect 2 rows, fingerprint = expected_fingerprint, is_active f, has_writer t, depends_on {}
+-- (2) the registry row count: 129 before (measured read-only 2026-10-03) -> EXACTLY 131 after, and nothing else added.
+SELECT count(*) AS registry_rows FROM asset_registry;                                                         -- expect 131
+SELECT count(*) AS rows_with_writer FROM asset_registry WHERE has_writer;                                     -- expect 124 (122 + the two)
+-- (3) nothing depends on either row.
+SELECT count(*) FROM asset_registry WHERE depends_on && ARRAY['ka_gochara_v4_41_candidate','ka_gochara_v5']::text[];   -- expect 0
+-- (4) F-R20-4: ZERO runtime-evidence rows for the two ids (the exclusion property), straight from the tables (run as the data-plane owner / a role that reads them).
+SELECT (SELECT count(*) FROM public.asset_provenance_receipts WHERE asset_id IN ('ka_gochara_v4_41_candidate','ka_gochara_v5')) AS receipts,
+       (SELECT count(*) FROM public.build_run_assets            WHERE asset_id IN ('ka_gochara_v4_41_candidate','ka_gochara_v5')) AS build_run_assets,
+       (SELECT count(*) FROM public.asset_throughput            WHERE asset_id IN ('ka_gochara_v4_41_candidate','ka_gochara_v5')) AS throughput;   -- expect 0 | 0 | 0
+-- (5) CONTINUITY EVIDENCE (round-21 F-R21-4 / Codex R21-3): the monitor has read source_unavailable at every observation since 2026-09-24, for a PRE-EXISTING reason (ka_gochara_v3_century_materialize has an unresolved execution obligation; reproduced offline on production's 131 rows — the two staged candidates ARE excluded). The Nirmāṇa monitor still reads the registry: its latest observation AFTER the apply (the monitor runs on its own schedule — re-read until a row newer than the apply appears).
+SELECT observed_at, status FROM nirmana_elevation_monitor_observations ORDER BY observed_at DESC LIMIT 12;   -- CONTINUITY EVIDENCE, not a blanket 'not source_unavailable': record this output BEFORE and AFTER the apply with timestamps; before 1243 the monitor already read source_unavailable at every observation since 2026-09-24 (pre-existing: ka_gochara_v3_century_materialize has an unresolved execution obligation). PASS = the status sequence after the apply is the same unavailable continuity (no NEW status/regression introduced by 1243); an UNEXPLAINED NEW state or a changed source_error_code = STOP; a recovery to any other status is an improvement to be explained.

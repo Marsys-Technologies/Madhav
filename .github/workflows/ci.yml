@@ -1150,6 +1150,9 @@ jobs:
         # collisions, foreign tables, large objects and receipt replay BEFORE scratch database work (37-reversion proof).
         run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
 
+      - name: Wave 4 small-test admission and launch — full reviewed evidence fixtures
+        run: python -B -m pytest ../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_w4_smalltest_enablement.py ../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py -q -p no:cacheprovider
+
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
         # The contract test also refuses any non-loopback host or any database
@@ -2251,7 +2254,7 @@ jobs:
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02 / J4B + P07: readback, current-source rehearsal and publication oracles feed the required governance aggregate.
+    # P05-B02 / J4B + P07 / A6: readback (including populated real-DB negatives), current-source rehearsal and publication oracles feed the required governance aggregate.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: changes
