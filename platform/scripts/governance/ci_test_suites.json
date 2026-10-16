@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "deploy-build-check-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_deploy_build*.py"
+      ]
+    },
     "unit-tests-4-9": {
       "cwd": "platform",
       "engine": "vitest",
@@ -547,7 +554,8 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py"
       ]
     },
     "governance-readback-tests-3-0": {
