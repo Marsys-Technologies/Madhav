@@ -2,15 +2,18 @@
 from pathlib import Path
 import os
 import subprocess
+import sys
 
 import pytest
 import yaml
 
 ROOT=Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow
 
 
 def jobs():
-    return yaml.safe_load((ROOT/'.github/workflows/ci.yml').read_text())['jobs']
+    return expanded_workflow(yaml.safe_load((ROOT/'.github/workflows/ci.yml').read_text())['jobs'])
 
 
 @pytest.mark.parametrize('db,docs,exit_code', [('success','false',0),('failure','false',1),('cancelled','false',1),('skipped','false',1),('skipped','true',0)])

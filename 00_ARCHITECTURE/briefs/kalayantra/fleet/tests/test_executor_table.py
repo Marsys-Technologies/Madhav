@@ -2,7 +2,7 @@
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
+    immutable merge target except the enumerated K9-23 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
     key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
   · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
     functions and constants are byte-identical;
@@ -35,6 +35,7 @@ SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
+TABLE_PIN = "cc9f509b480461880be80b225ff44b084995b3d7"  # reviewed Wave 4/measuring preparation
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
 DEFAULT_SOURCE_REPO = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
@@ -133,15 +134,15 @@ def test_p10_entries_present_with_only_j1a_enabled():
 
 
 def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
-    base = load_ops(base_text(OPS_REL))
+    # Immutable merge target includes reviewed Wave 4 safety and measuring prep;
+    # K9-23 may change only its five still-disabled operation bindings.
+    base = load_ops(git_show(f"{TABLE_PIN}:{OPS_REL}").decode())
     now = load_ops(OPS_FILE.read_text())
-    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
-    assert list(now["ops"]) == list(base["ops"]), "the order of kinds changed"
+    assert set(now) == set(base) and list(now["ops"]) == list(base["ops"])
     expected = json.loads(json.dumps(base["ops"]))
     for kind in K9_KINDS:
-        assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
-        expected[kind]["enabled_by"] = "K9-23"
-        assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
+        assert expected[kind]["enabled_by"] == "K9-23"
+        assert "TO_BE_SET_BY_K9-23" in expected[kind]["script"]
         expected[kind]["script"] = "platform/python-sidecar/services/kala_core/publication.py"
         expected[kind]["cwd"] = "platform/python-sidecar"
         expected[kind]["python_module"] = "services.kala_core.publication"
@@ -150,29 +151,9 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             "layer_rollback": "rollback"}[kind]]
     expected["layer_verify"]["needs"] = "layer_verifier"
     expected["layer_verify"]["allowed_args"] = ["run-id", "generation", "independently-derived-digest"]
-    expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
-    expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
-    expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
-    expected["verification_job"]["needs"] = "gcloud"
-    expected["measuring_dispatch"]["staging_dry_run"] = {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
-        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
-    for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
-                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
-        expected[kind]["prepared_dry_run"] = {
-            "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
-            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
-            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
-    for kind, binding in P01_BINDINGS.items():
-        expected[kind].update(enabled=True, **binding)
-    for kind, entry in now["ops"].items():
-        assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
-        assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
-        for key in entry:
-            assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
-    # the only top-level difference allowed is `_doc`
+    assert now["ops"] == expected
+    for entry in now["ops"].values():
+        assert next(iter(entry)) == "enabled", "enabled must remain first"
     assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
 
 
@@ -248,9 +229,9 @@ def _segments(src):
     return out
 
 
-# Exact Wave 4 safety-fix candidate additions, for independent review. Every
+# Exact reviewed Wave 4/measuring safety functions at immutable main cc9f509b. Every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
+W4_FUNCTION_HASHES = {'receipt': '16cee0ce58015283e795bb33d38f3629211f69c85bb76197816eea721634d994', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7'}
 
 
 # Exact K9-23 additions: a distinct verifier capability and one-connection injection.

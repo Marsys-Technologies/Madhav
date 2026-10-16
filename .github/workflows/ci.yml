@@ -2339,7 +2339,7 @@ jobs:
 
       - name: K9-23 disabled layer bindings and credential isolation
         if: ${{ matrix.shard == 1 }}
-        run: python -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication_bindings.py -q -p no:cacheprovider
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-k9-publication -- -q -p no:cacheprovider
       - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
         if: matrix.shard == 1
         run: >-

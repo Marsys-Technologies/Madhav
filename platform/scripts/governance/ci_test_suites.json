@@ -217,6 +217,7 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
+        "ga_writers/__tests__/test_l1_min_fixes*.py",
         "ga_writers/__tests__/test_l1*.py"
       ]
     },
@@ -754,6 +755,13 @@
       "engine": "pytest",
       "include": [
         "tests/test_migration_1235_evidence*.py"
+      ]
+    },
+    "governance-tool-tests-k9-publication": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication*.py"
       ]
     }
   }
