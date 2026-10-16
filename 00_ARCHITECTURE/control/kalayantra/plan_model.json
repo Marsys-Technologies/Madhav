@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -3371,7 +3371,6 @@
         "K0a-4",
         "KA-1w",
         "KA-2",
-        "J-4b-pr2817",
         "J-4c-pr3141",
         "J-4c-pr3191",
         "J-4c-pr3193",
@@ -3379,6 +3378,7 @@
       ],
       "mandatory": true,
       "steps": [
+        "p05_code_merged",
         "overlays_module",
         "vedha_intervals",
         "coverage_and_qualification",
@@ -3424,12 +3424,25 @@
         "migration": "additive",
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "contract": "kala_vedha_gochara (prod_schema.sql:16308): id, chart_id, ayanamsha_id, vedha_kind, graha, window_start, window_end, start_truncated, end_truncated, janma_reference_fact_id, classical_citation, uncited_extension, grid_basis, grid_school_tag, detail jsonb, formula_version, computed_at, source_qualification, precision_regime, corpus_verifiable. Missing for ALGO 3.12: state (active|inactive|unqualified), unqualified_reason, moon_scope, coverage, method_qualification, upstream_fingerprint, a dedicated interval table (ALGO: \"replaces the JSON column\"); not in kala_core.idempotency's replaceable-table list.",
-        "migration_class": "NEEDS-PROTECTED-WINDOW — the three ADD COLUMNs on kala_vedha_gochara are routine, but ALGO 3.12's dedicated interval table (CREATE TABLE) and any candidate re-key of UNIQUE (chart_id, ayanamsha_id, vedha_kind, graha, window_start) need the window; split the file if both are done."
+        "migration_class": "NEEDS-PROTECTED-WINDOW — the three ADD COLUMNs on kala_vedha_gochara are routine, but ALGO 3.12's dedicated interval table (CREATE TABLE) and any candidate re-key of UNIQUE (chart_id, ayanamsha_id, vedha_kind, graha, window_start) need the window; split the file if both are done.",
+        "notes": [
+          "SR-A6-EDGES (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES, 2026-10-16T14:33:11Z)): replace only the J-4b-pr2817 strict completion edge with required step p05_code_merged using its existing merged-code detector. Evidence: P05 #3508 / SR-A4-01: squash d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1 contained in origin/main. J0_FILE_OWNERSHIP.json proposed_waits/18,21,24,27,30,31 and waits/7,10,13,16,19,20 identify shared-path waits; ruling cites deploy predecessor failures 10:52Z–14:02Z for 1235.",
+          "(I) INTERPRETATION: express the merged-code precondition through the existing required-step / step_evidence live-detector mechanism (platform/scripts/governance/pravaha_tracker/cli.py:364–406; platform/scripts/governance/pravaha_tracker/completion.py:206–215), reusing the producer item's branch_merged / pr_merged detector identity. The alternative is new tracker precondition semantics or a synthetic campaign item; neither is needed. This replaces a scheduling/completion edge with an earned intra-item obligation; all other dependencies, consumer completion detector and independent acceptance remain unchanged.",
+          "SR-A6-EDGES retains J-4d-pr3018 (1235 protected production window) and J-4c-pr3141, J-4c-pr3191, J-4c-pr3193 (P06 #3516 adds 1305/1306/1308 below 1383; hold #3516 until 1383 applied). No production gate or hold is waived."
+        ]
       },
       "completion_kind": "code",
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "step_evidence": {
+        "p05_code_merged": {
+          "evidence": "pr_head_evidence",
+          "detector": {
+            "type": "branch_merged",
+            "ref": "d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1",
+            "measures": "P05 #3508 / SR-A4-01: squash d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1 contained in origin/main; SR-A6-EDGES merged-code precondition only, independent of J-4b-pr2817 guarded campaign completion."
+          }
+        },
         "overlays_module": {
           "evidence": "pr_head_evidence",
           "detector": {
@@ -22451,8 +22464,7 @@
       "mandatory": true,
       "depends_on": [
         "B-7",
-        "K0-SV",
-        "J-4d-pr3145"
+        "K0-SV"
       ],
       "title": "bg_gochara_citation_resolution Dens.served: independently assessed MET from the existing stored status column; bounded structural artifact under SR-A2-11",
       "detector": {
@@ -22480,7 +22492,9 @@
           "Artifact: /Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md; executing assessment evidence: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess. Follow the J-0m artifact declaration and independent digest-bound acceptance route. The detector is evidence, not an automatic terminal transition.",
           "SR-A2-11 explicitly supersedes Q2 only as K-CERT’s structural prerequisite. Existing status represents citation resolution; it is not a synthesized verification tier. K-CERT-2’s #3435 linkage and separate obligations remain unchanged.",
           "(I) INTERPRETATION: retain K-CERT’s existing K owner/producer and all prerequisites other than KV3-SCHEMA-1; replace the code reviewer rule with the existing artifact-digest rule required by artifact completion. This declaration writes no tracker event and assumes no live completion.",
-          "SR-A2-11 / A4 batch 4: remove D-KCERT-EXISTING-STATUS-20261015 from prerequisites; K-CERT completes through the existing artifact-digest acceptance route. The retirement decision is not an artifact prerequisite."
+          "SR-A2-11 / A4 batch 4: remove D-KCERT-EXISTING-STATUS-20261015 from prerequisites; K-CERT completes through the existing artifact-digest acceptance route. The retirement decision is not an artifact prerequisite.",
+          "SR-A6-EDGES (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES, 2026-10-16T14:33:11Z)): replace only the J-4d-pr3145 strict completion edge with required step p07_code_merged using its existing merged-code detector. Evidence: merge predicate for P07 carrying PR #3512; K-CERT owns [] under SR-A2-11. J0_FILE_OWNERSHIP.json proposed_waits/18,21,24,27,30,31 and waits/7,10,13,16,19,20 identify shared-path waits; ruling cites deploy predecessor failures 10:52Z–14:02Z for 1235.",
+          "(I) INTERPRETATION: express the merged-code precondition through the existing required-step / step_evidence live-detector mechanism (platform/scripts/governance/pravaha_tracker/cli.py:364–406; platform/scripts/governance/pravaha_tracker/completion.py:206–215), reusing the producer item's branch_merged / pr_merged detector identity. The alternative is new tracker precondition semantics or a synthetic campaign item; neither is needed. This replaces a scheduling/completion edge with an earned intra-item obligation; all other dependencies, consumer completion detector and independent acceptance remain unchanged."
         ]
       },
       "completion_kind": "artifact",
@@ -22488,6 +22502,19 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a"
+      },
+      "steps": [
+        "p07_code_merged"
+      ],
+      "step_evidence": {
+        "p07_code_merged": {
+          "evidence": "pr_head_evidence",
+          "detector": {
+            "type": "pr_merged",
+            "pr": 3512,
+            "measures": "P07 carrying PR #3512 merged; K-CERT owns [] under SR-A2-11; SR-A6-EDGES merged-code precondition only, independent of J-4d-pr3145 guarded campaign completion."
+          }
+        }
       }
     },
     {
@@ -28674,6 +28701,12 @@
       "title": "Run 1 clean disposition (D-30(1))",
       "owner": "ADHIKĀRIN (N); owner surrogate per D-29",
       "default": "conditional approval only on J-2b evidence: clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. Approved = waive run 2; refused = execute run 2; inconclusive = open. Bind J-2b’s recorded run/request/operation identity, expected and actual census, zero-residual absence readback, dispatch history and dry-run/real-plan comparison; include the J-2b detector evidence at /Users/Dev/kalayantra/run/ops/receipts/J-2b.absence.json plus its digest and independently accepted step receipts. Record these references and digests on the decision event; skip_origin D-RUN2 then attaches the same evidence to both skipped items by reference, never invented run-2 receipts."
+    },
+    {
+      "id": "SR-A6-EDGES",
+      "title": "Replace two shared-path campaign-completion waits with merged-code preconditions",
+      "owner": "ADHIKĀRIN (N); surrogate via cockpit, 2026-10-16T14:33:11Z",
+      "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES, 2026-10-16T14:33:11Z); KA-3a uses required p05_code_merged (branch_merged d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1, P05 #3508 / SR-A4-01); K-CERT uses required p07_code_merged (pr_merged 3512, P07; owns [] since SR-A2-11). Preserve every other edge, including KA-3a <- J-4d-pr3018 and J-4c-pr3141/3191/3193; the 1235 protected window and #3516 hold until 1383 applied remain. Evidence: J0_FILE_OWNERSHIP.json proposed_waits/18,21,24,27,30,31 and waits/7,10,13,16,19,20; deploy predecessor failures 10:52Z–14:02Z for 1235. (I) INTERPRETATION: existing required-step live-detector evidence is the merged-code precondition; no new tracker semantics or automatic completion."
     }
   ],
   "coordination": {
