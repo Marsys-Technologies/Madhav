@@ -680,6 +680,59 @@ def absence_evidence(req, root, *, teardown_receipt=None):
     return p
 
 
+# J-2a SCOPED backup (backup_v5_small_test_job.py --scope small_test; spec fleet/J2A_SCOPED_BACKUP_v1_0.md).
+# The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
+# loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
+# backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
+SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_VALIDITY_S = 4 * 3600
+
+
+def scoped_backup_problem(req, root, now=None):
+    """A dispatch that names its backup (`backup_label` + the restore proof's `backup_restore_sha256`) must name a
+    verified SCOPED proof of the pinned scope, taken no more than SCOPED_BACKUP_VALIDITY_S ago. Raises Refused.
+
+    (I) INTERPRETATION J2A-S2: a request that names no backup label is not checked here (the executor's boolean
+    backup/restore attestations still apply unchanged); the scoped step 10 pack always names it. A proof of the full
+    backup (schema /1) carries no window and passes unchanged."""
+    label = req.get('backup_label')
+    if label is None:
+        return
+    import re
+    from datetime import datetime, timedelta, timezone
+    if not isinstance(label, str) or not re.fullmatch(r'[a-z][a-z0-9_]{2,39}', label):
+        raise Refused('backup label malformed')
+    folder = 'backups/' + label
+    proof = read_evidence(root, folder, {'name': 'restore.json', 'sha256': req.get('backup_restore_sha256')})
+    if proof.get('schema') == 'ky.smalltest_restore/1':
+        return
+    if (proof.get('schema') != 'ky.smalltest_restore/2' or proof.get('status') != 'verified' or proof.get('label') != label
+            or proof.get('scoped') is not True or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('scoped backup restore proof is not a verified proof for this label')
+    if proof.get('scope_sha256') != SCOPED_BACKUP_SCOPE_SHA256:
+        raise Refused('scoped backup covers a scope other than the reviewed one')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    scope = capture.get('scope') or {}
+    window = capture.get('validity') or {}
+    try:
+        start = datetime.fromisoformat(window['not_before'])
+        end = datetime.fromisoformat(window['not_after'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if (start.tzinfo is None or end.tzinfo is None or taken.tzinfo is None
+                or end - start != timedelta(seconds=SCOPED_BACKUP_VALIDITY_S) or window.get('seconds') != SCOPED_BACKUP_VALIDITY_S):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('scoped backup validity window missing or malformed') from None
+    if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
+            or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
+            or proof.get('validity') != window):
+        raise Refused('scoped backup restore proof does not match its capture')
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= end:
+        raise Refused('scoped backup is outside its validity window; a fresh backup and restore proof are required')
+
+
 def smalltest_request_problem(req, root):
     """Pure file evidence admission; used from the reviewed source by executor."""
     try:
@@ -703,6 +756,7 @@ def smalltest_request_problem(req, root):
                     raise Refused('annual small test requires timezone-qualified bounds of at most 366 days') from None
             if kind == 'smalltest_dispatch':
                 absence_evidence(req, root)
+                scoped_backup_problem(req, root)
         elif kind in ('smalltest_teardown', 'smalltest_teardown_dryrun'):
             scope = staged_scope(req, root)
             if kind == 'smalltest_teardown':
