@@ -51,6 +51,33 @@ def year_rows(unknown_a=False, unknown_other=False):
 
 
 class TestAdapter:
+    def test_baseline_cli_rejects_a_wrong_pin_and_scores_the_measured_pin(self, tmp_path, capsys):
+        """The CLI must forward the declared pin to the real adapter (review 2923-022)."""
+        import hashlib
+        from services.gochara_eval.candidate_score import run
+
+        registry = write_json(tmp_path / "registry.json", synth_registry())
+        extract = write_json(tmp_path / "baseline.json", {
+            "predicate": "generation='3.0'", "rows": year_rows(),
+        })
+        output = tmp_path / "result.json"
+        args = ["--baseline-dry-run", "--registry", str(registry), "--extract", str(extract),
+                "--output", str(output), "--declared-pin"]
+        assert run(args + ["0" * 64]) == 1
+        refused = json.loads(output.read_text())
+        assert refused["input_adapter"]["status"] == "INPUT_REJECTED"
+        assert "sha256" in refused["input_adapter"]["reason"]
+        assert "t_cover" not in refused
+        assert "INPUT_REJECTED" in capsys.readouterr().err
+
+        pin = hashlib.sha256(extract.read_bytes()).hexdigest()
+        assert run(args + [pin]) == 0
+        scored = json.loads(output.read_text())
+        assert scored["mode"] == "BASELINE_DRY_RUN"
+        assert scored["extract_sha256"] == {"declared_pin": pin, "measured": pin, "match": True}
+        assert scored["input_adapter"]["status"] == "PASS"
+        assert scored["t_cover"]["hits"] == 1
+
     def test_unknown_si_stays_in_the_candidate_set_and_in_n(self, tmp_path):
         reg = reg_one_exact(tmp_path)
         known = ext(tmp_path, year_rows())

@@ -211,6 +211,135 @@ def test_unavailable_and_cancelled_masks_keep_edges_without_a_scalar():
     assert env.obstructions_at(8)=={} and env.obstructions_at(24)=={}
 
 
+@pytest.mark.parametrize('unavailable', [
+    {'null_reason': 'information_unavailable', 'quality_tier': 4},
+    {'quality_tier': None},
+    {},
+])
+def test_unavailable_moorti_mask_survives_null_entry_and_wrap(unavailable):
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    from services.ka_kshetra import stage5_null as S5
+    from services.ka_kshetra.contracts import PromisePrior
+    birth = datetime(2001, 1, 1, tzinfo=timezone.utc)
+    # Real KA-3b entries use Julian dates, including a leading unavailable span.
+    row = dict(graha='Mars', t_in=2451910.5, t_out=2451914.5,
+               moorti_name='loha', source_ref='candidate:moorti:Mars:2451910.5',
+               **unavailable)
+    prims, gaps = suppression_primitives('chart', birth, [], [row], [])
+    assert gaps == [{'source_ref': row['source_ref'], 'reason': 'moorti_information_unavailable'}]
+    assert len(prims) == 1
+    mask = prims[0]
+    assert (mask.primitive_kind, mask.polarity, mask.source_table, mask.source_pk) == (
+        'input_mask', 'neutral', 'kala_moorti_nirnaya_candidate', row['source_ref'])
+    assert mask.envelope == [(0., 0.), (4., 0.)]
+    env = S4.EnvelopeIndex([S4.Primitive(p.primitive_kind, p.subject, p.object_ref,
+        p.polarity, p.class_label, tuple(p.envelope), p.source_pk,
+        p.source_fact_id, p.source_table) for p in prims], 10.)
+    ev = S4.FieldEvaluator(event_class='career', lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=env, weights={'beta:x7': 99.}, horizon_days=10.)
+    empty = S4.FieldEvaluator(event_class='career', lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=S4.EnvelopeIndex([], 10.), weights=ev.weights, horizon_days=10.)
+    assert {0., 4., 10.} <= set(S5._null_breakpoints(ev))
+    shifted = S5.replicate_evaluator(ev, 1.5)
+    assert {0., 2.5, 8.5, 10.} <= set(S5._null_breakpoints(shifted))
+    for index in (env, shifted.envelopes):
+        assert all(p.source_pk == row['source_ref'] and p.source_table == mask.source_table
+                   for p in index.supportive)
+        for t in (0., 1., 2.5, 4., 8.5, 9.9):
+            assert index.covariates_at(t) == {} and index.obstructions_at(t) == {}
+    for t in (0., 1., 3., 5., 9.):
+        assert ev.ln_lambda(t) == empty.ln_lambda(t) == shifted.ln_lambda(t)
+    segments = S5._null_build_segments(shifted)
+    assert {0., 2.5, 8.5, 10.} <= {s.t_start for s in segments} | {s.t_end for s in segments}
+
+
+def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monkeypatch):
+    from services.ka_kshetra import writer as W, stage5_null as S5
+    from services.ka_kshetra.contracts import PromisePrior
+    from .fake_db import FakeConn, FakeCtx
+    from .fixtures import build_tables, CHART_ID, EVENT_CLASS
+    monkeypatch.setattr(W, 'HORIZON_DAYS', 10.)
+    monkeypatch.setattr(W.KaKshetraWriter, '_optional_stage_plugins', lambda *a: [])
+    conn = FakeConn(build_tables())
+    ctx = FakeCtx(conn, CHART_ID)
+    writer = W.KaKshetraWriter()
+    steps = writer.plan_substeps(ctx)
+    assert writer._pins.config_pin['segment_engine'] == 'sampled'
+    ev = S4.FieldEvaluator(event_class=EVENT_CLASS, lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=S4.EnvelopeIndex([
+            primitive('contact_moon_ref', [(2.31, 0.), (2.37, 1.), (2.43, 0.)])], 10.),
+        weights={'beta:x1': 2.}, horizon_days=10., extra_breakpoints=(4.13,))
+    acc = writer._new_null_accumulator(EVENT_CLASS)
+    cctx = SimpleNamespace(evaluator=ev, null_accumulator=acc,
+        temporal_shape='punctual', baseline_is_synthetic=False)
+    monkeypatch.setattr(writer, '_class_context', lambda *a: cctx)
+    # Stage 5 must read the committed observation; store the real reference segments.
+    conn.tables['kala_field'] = [dict(chart_id=CHART_ID, event_class=EVENT_CLASS,
+        segment_index=i, **vars(s)) for i, s in enumerate(ev.build_segments())]
+    shifts, partitions = [], []
+    real_replicate, real_build = S5.replicate_evaluator, S5._null_build_segments
+    def replicate(field, delta):
+        shifts.append(delta)
+        return real_replicate(field, delta)
+    def build(field):
+        actual = real_build(field)
+        reference = field.build_segments()
+        assert actual == reference
+        partitions.append(tuple(field.breakpoints()))
+        return actual
+    monkeypatch.setattr(S5, 'replicate_evaluator', replicate)
+    monkeypatch.setattr(S5, '_null_build_segments', build)
+    blocks = [s for s in steps if s.key.startswith('stage5:')]
+    assert len(blocks) == 64
+    for step in blocks[:-1]:
+        writer.run_substep(ctx, step)
+    finalize = next(s for s in steps if s.key.startswith('stage5finalize:'))
+    with pytest.raises(S4.UpstreamStageIncomplete, match='1008/1023'):
+        writer.run_substep(ctx, finalize)
+    writer.run_substep(ctx, blocks[-1])
+    assert shifts == [r * (10. / 1024) for r in range(1, 1024)]
+    assert S5.shift_grid(10., S5.DEFAULT_REPLICATES) == shifts
+    assert all(0. < delta < 10. for delta in shifts)
+    assert len(partitions) == 1023 and all(4.13 in p for p in partitions)
+    result = acc.finalize()
+    assert result.replicates == 1023 and result.denominator == 1024
+    assert result.shift_grid_step == 10. / 1024
+    assert result.resolution == 1. / 1024
+    assert all(len(stats) == 1023 for stats in result.max_stats.values())
+    assert S5.null_p([0.] * 1023, 1.) == result.resolution
+    assert S5.null_p([1.] * 1023, 1.) == 1.
+    writer.run_substep(ctx, finalize)
+    assert len(conn.tables['kala_field_null']) == 10
+    assert all(r['replicates'] == 1023 and len(r['null_max_stats']) == 1023
+               and r['shift_grid_step'] == 10. / 1024 for r in conn.tables['kala_field_null'])
+    assert conn.tables['kala_field_windows'], 'the real peak must exercise persisted window resolution'
+    assert all(r['null_R'] == 1023 and r['null_resolution'] == 1. / 1024
+               and r['null_p'] >= r['null_resolution'] for r in conn.tables['kala_field_windows'])
+
+
+@pytest.mark.parametrize('replicates', [8, 1024])
+def test_sampled_experiment_provenance_is_derived_from_execution_config(monkeypatch, replicates):
+    from services.ka_kshetra import writer as W, stage5_null as S5
+    from .fake_db import FakeConn, FakeCtx
+    from .fixtures import build_tables, CHART_ID
+    monkeypatch.setattr(W, 'candidate_null_shifts', lambda: replicates - 1)
+    monkeypatch.setattr(W.KaKshetraWriter, '_optional_stage_plugins', lambda *a: [])
+    writer = W.KaKshetraWriter()
+    writer.plan_substeps(FakeCtx(FakeConn(build_tables()), CHART_ID))
+    config = writer._pins.config_pin
+    assert config['null_replicates'] == replicates - 1
+    assert config['null_experiment'] == 'class_specific_field_maximum'
+    assert config['null_denominator'] == replicates
+    assert config['null_configuration'] == {
+        'replicates': replicates, 'shift_count': replicates - 1,
+        'denominator': replicates, 'resolution': 1. / replicates,
+        'shift_grid_step': W.HORIZON_DAYS / replicates,
+        'schedule': 'delta_r=r*H/R; r=1..R-1; observation counted once',
+    }
+    assert f'{replicates - 1} non-identity shifts + observation' in config['constant_provenance']['null']
+    assert f'denominator={replicates}' in config['constant_provenance']['null']
+
+
 def test_lagna_contact_target_inherits_the_real_pinned_L1_key():
     class Conn:
         def execute(self,sql,params): self.sql=sql;return self

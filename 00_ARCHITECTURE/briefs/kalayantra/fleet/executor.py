@@ -131,10 +131,10 @@ def fence_quiescent() -> bool:
         committed = json.loads(commit_bytes)
         if committed.get("operation_id") != operation_id or committed.get("request_sha256") != request_sha256:
             return False
-        if committed.get("kind") == "smalltest_teardown":
+        if committed.get("kind") in ("smalltest_teardown", "measuring_teardown"):
             policy = smalltest_policy(committed)
             observed = policy["absence_evidence"](proof, OPS, teardown_receipt=committed)
-            completion = dict(schema="ky.smalltest_completion/1", status="COMPLETED", operation_id=operation_id,
+            completion = dict(schema="ky.measuring_completion/1" if committed["kind"] == "measuring_teardown" else "ky.smalltest_completion/1", status="COMPLETED", operation_id=operation_id,
                 request_sha256=request_sha256, reviewed_commit=committed["reviewed_commit"],
                 commit_receipt_sha256=digest_bytes(commit_bytes), run_id=observed["run_id"],
                 scope_sha256=observed["scope_sha256"], rowset_sha256=observed["rowset_sha256"],
@@ -257,7 +257,24 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
         body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
-    if req.get("kind") == "smalltest_dispatch" and status == "COMPLETED":
+    if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
+        try:
+            proof = json.loads(out)
+            manifest = proof.get("plan_manifest") or {}
+            valid = (rc == 0 and proof.get("schema") == "ky.measuring_staging/1"
+                and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
+                and proof.get("operation_id") == req["operation_id"] and proof.get("request_sha256") == request_digest(req)
+                and proof.get("args") == req.get("args") and manifest.get("chart_id") == CANONICAL_CHART
+                and manifest.get("scope_target") == "ka_gochara_v5"
+                and (manifest.get("gochara_v5_test_slice") or {}).get("run") == "all_classes_full"
+                and proof.get("plan_manifest_digest") == digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()))
+        except (ValueError, TypeError, AttributeError):
+            valid = False
+        if valid:
+            r["staging"] = proof
+        else:
+            r.update(status="FAILED", reason="bound measuring staging rollback proof missing; reconcile transaction outcome")
+    if req.get("kind") in ("smalltest_dispatch", "measuring_dispatch") and status == "COMPLETED":
         # A staging UUID/exit zero is never launch evidence. Only the reviewed
         # wrapper's machine record binds the exact run and remote execution.
         records = []
@@ -266,7 +283,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
                 value = json.loads(line)
             except (ValueError, TypeError):
                 continue
-            if isinstance(value, dict) and value.get("schema") == "ky.smalltest_launch/1":
+            if isinstance(value, dict) and value.get("schema") == ("ky.measuring_launch/1" if req["kind"] == "measuring_dispatch" else "ky.smalltest_launch/1"):
                 records.append(value)
         launch = records[0] if len(records) == 1 else {}
         if (rc == 0 and launch.get("status") == "LAUNCHED" and launch.get("chart_id") == CANONICAL_CHART
@@ -277,7 +294,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["launch"] = launch
         else:
             r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
-    if req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun") and status == "COMPLETED":
+    if req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") and status == "COMPLETED":
         records = []
         for line in out.splitlines():
             if line.startswith("teardown_proof\t"):
@@ -285,10 +302,12 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
                 except ValueError: pass
         proof = records[0] if len(records) == 1 else {}
         expected = "ROLLED_BACK" if req["kind"].endswith("_dryrun") else "COMMITTED_AWAITING_ABSENCE"
-        if (rc == 0 and isinstance(proof, dict) and proof.get("schema") == "ky.smalltest_teardown/1" and proof.get("status") == expected
+        measuring = req["kind"].startswith("measuring_")
+        scope = req.get("measuring_scope" if measuring else "smalltest_scope")
+        if (rc == 0 and isinstance(proof, dict) and proof.get("schema") == ("ky.measuring_teardown/1" if measuring else "ky.smalltest_teardown/1") and proof.get("status") == expected
                 and proof.get("request_sha256") == request_digest(req) and proof.get("operation_id") == req["operation_id"]
-                and proof.get("scope") == req.get("smalltest_scope")
-                and proof.get("scope_sha256") == digest_bytes(json.dumps(req.get("smalltest_scope"), sort_keys=True, separators=(",", ":")).encode())
+                and proof.get("scope") == scope
+                and proof.get("scope_sha256") == digest_bytes(json.dumps(scope, sort_keys=True, separators=(",", ":")).encode())
                 and proof.get("rollback_confirmed") is (expected == "ROLLED_BACK")
                 and re.fullmatch(r"[0-9a-f]{64}", str(proof.get("rowset_sha256", "")))):
             r["teardown"] = proof
@@ -315,10 +334,12 @@ def smalltest_policy(req: dict):
 
 
 def smalltest_policy_problem(req: dict) -> str | None:
-    if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun"):
+    if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun",
+                               "measuring_dispatch", "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun"):
         return None
     try:
-        return smalltest_policy(req)["smalltest_request_problem"](req, OPS)
+        policy_name = "measuring_request_problem" if req["kind"].startswith("measuring_") else "smalltest_request_problem"
+        return smalltest_policy(req)[policy_name](req, OPS)
     except Exception:
         return "reviewed small-test evidence policy unavailable or invalid"
 

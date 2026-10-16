@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .events import actor_stream
-from .state import build_snapshot
+from .state import build_snapshot, open_dependencies
 from .verdicts import accepted_verdict
 
 
@@ -203,7 +203,7 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError("item is already done")
     if rows[item_id]["status"] == "not_applicable":
         raise CompletionError("item is not applicable")
-    strict = rows[item_id].get("deps_open_strict", rows[item_id]["deps_open"])
+    strict = open_dependencies(item, rows)
     if strict:
         raise CompletionError("dependencies remain open: " + ", ".join(strict))
     steps = item.get("steps", [])
