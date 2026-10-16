@@ -1,9 +1,12 @@
 ---
 artifact: CANONICAL_L1_OFFLINE_FIXTURE_SPEC
-version: "1.0"
-status: PREPARATION_ONLY — approved canonical bundle not supplied
+version: "1.1"
+status: PREPARATION_ONLY — no canonical bundle inspected by this job
 produced_on: 2026-10-16
-changelog: Initial J3C-BINDINGS offline rehearsal input contract.
+changelog:
+  - "1.1 clarification (2026-10-16): ruling (4) permits empty profiles catalog/DDL work; ruling (2)(b) adds a gated, connection-local synthetic rehearsal settlement with explicit receipt qualification."
+  - "1.1 (2026-10-16): madhav-6d ruling — profiles excluded, transactional replica-mode row load, exhaustive post-restore FK audit, exact schema/grants coverage and exclusion provenance."
+  - "1.0 (2026-10-16): Initial J3C-BINDINGS offline rehearsal input contract."
 ---
 
 # Canonical L1 offline rehearsal input
@@ -26,6 +29,11 @@ ayanamsha identity, provenance/build references, timestamps and period bounds.
 No rounding, synthetic replacement, chart re-computation or fallback data.
 Only chart `482012f1-710e-4a25-994a-93821f5871aa` is included. The chart, facts and
 dashas arrays are nonempty; life events may be empty under MB-1's explicit rule.
+**`public.profiles` is never exported.** Its parent rows contain personal data
+outside the four-table rehearsal scope; the madhav-6d ruling (2026-10-16)
+excludes them. Preserve `charts.client_id` exactly as approved, including a
+reference to an excluded parent. Do not fabricate a profile, null the key,
+rewrite an ID, or copy personal parent data to make the FK resolve.
 
 `manifest.json` uses `schema=ky.canonical_l1_snapshot/1`, `chart_id`,
 `source=governed_offline_export`, `canonical=true`, `builder_role=data_plane_builder`,
@@ -53,7 +61,17 @@ inventory, production-only digest-spec seeds and referenced authority relations;
 it must not truncate migration 598 as `_runner_world.py:10` describes for its
 minimal test fixture. `grants.sql` holds the corresponding reviewed grants for
 `data_plane_builder`, verifier, and sealer, including PUBLIC revocations, ownership,
-column grants, RLS, and function EXECUTE permissions. No passwords, connection
+column grants, RLS, and function EXECUTE permissions. It covers **exactly the
+objects that `schema.sql` creates**, with neither grants for absent objects nor
+silent omissions of restored objects. The independently reviewed
+`grants_origin.json` records `excluded_relations` and `excluded_objects`, with
+the identity and reason for every exclusion from the source export's grant
+surface. Excluded objects are not restored merely to satisfy source grants;
+the reviewer reconciles the created-object inventory, grant targets and both
+exclusion lists. Excluding profile **rows** does not itself exclude a schema
+object or excuse missing grants on an object that `schema.sql` creates. A
+schema-only parent definition may retain the FK without exporting its rows.
+No passwords, connection
 strings, role memberships or credentials are exported. Referenced upstream receipt
 and registry rows required by these inputs must be supplied by the existing
 suite's governed seed path, with stable IDs and independent parity readback;
@@ -67,6 +85,73 @@ its own database and leaves the cluster configuration unchanged. Rehearse throug
 `SET ROLE data_plane_builder` with the exact production privileges; admin can
 construct the fixture but cannot substitute for the measured build principal.
 
+### Row restore and session boundary (madhav-6d)
+
+After independently qualified schema/grants and governed seed restoration,
+load `charts.json`, `chart_facts.json`, `chart_dashas.json` and `life_events.json`
+into the throwaway database inside **one transaction**. Check that the load
+session starts at `session_replication_role = origin`, then run
+`SET LOCAL session_replication_role = replica` inside that transaction. FK
+triggers do not fire **for the row load only**. Insert the four approved row
+arrays without altering or inventing a row; keep the input file bytes exactly
+as approved and compare their manifest digests before and after restoration.
+Do not reserialize them to produce replacement bundle bytes. A load failure
+rolls back all four tables' inserts together.
+
+Commit that transaction, then assert `SHOW session_replication_role` returns
+`origin` on the **same load session** before running any other rehearsal step.
+`SET LOCAL` also unwinds on rollback. Do not use a session-wide `SET`, disable
+constraints permanently, or run measured build operations while in replica mode.
+The admin's load privilege is not the measured builder's privilege.
+
+### Mandatory post-restore FK audit
+
+Before permitting the rehearsal, call
+`audit_foreign_keys(throwaway_dsn)` from
+`platform/scripts/gochara/canonical_l1_snapshot.py`. The guarded suite supplies
+the DSN of its own newly created database on `127.0.0.1:55433` (CI's guarded
+loopback service may use port 5432); the inspector never creates, drops or
+repairs a database. It uses a read-only, repeatable-read transaction, checks
+its own session is at `origin`, and refuses incomplete restored-table inventory,
+hidden RLS rows, unsupported FK forms, connection/query errors and timeouts.
+A fresh audit connection does not replace the load-session `origin` check above.
+
+The audit enumerates **every FK touching any restored table** through
+`pg_catalog.pg_constraint`: incoming and outgoing edges, including edges to
+governed seed tables, self-references, composite keys and `NOT VALID` constraints.
+It measures actual dangling rows, using the FK's equality operators and
+`MATCH SIMPLE` / `MATCH FULL` NULL semantics; re-enabling triggers alone does
+not validate rows inserted under replica mode. Any unresolved reference other
+than the exact single-column edge
+`public.charts(client_id) → public.profiles(id)` fails closed.
+Constraint names are not an allowlist: both relation and column identities
+must match that edge exactly. Record it with this exact reason:
+
+> intentional: parent personal data excluded by ruling (madhav-6d 2026-10-16)
+
+**(I) INTERPRETATION:** the allowed edge is classified
+`intentional_exclusion`, with `unresolved_rows=null`. Its resolution is not
+probed: reading profile rows just to count missing parents would violate the
+ruling. It passes whether the excluded parent happens to resolve or dangles;
+all other FK counts must be zero. Alternative: probe `public.profiles` for a
+numeric count, which violates the no-read scope and §N.7.6's honest-null rule.
+Any other FK requiring a profiles read is reported as `profiles_scope_defect`,
+without querying that table.
+
+The returned `ky.canonical_l1_fk_audit/1` verdict includes `passed`, `status`
+(`FK_AUDIT_PASSED` or `FK_AUDIT_FAILED`), a `constraints` inventory with relation/
+column identities, classification and unresolved-row count, and `errors`.
+The suite must require `passed is True`, retain the verdict through independent
+review/teardown, and refuse to continue on failure. No row values are emitted;
+`production_acceptance` remains false. A pass proves the FK condition only.
+
+**No profile read means no profile ROW data is required, loaded or queried; catalog/DDL work on the empty profiles table (for example FK definition validation during schema restore) is permitted (madhav-6d ruling (4)).**
+
+If any rehearsal step queries profile rows, even if it returns zero rows, report a scope defect.
+Do not satisfy such a dependency by exporting, seeding, synthesizing or granting
+access to personal parent rows. A need for profiles is not canonical-fixture
+readiness, even if every other check passes.
+
 Before execution, compare the restored row IDs, counts and exact values against
 the approved source, and read back migrations, grants, role identity and the
 writer digest. Pin `SE_EPHE_PATH=/Users/Dev/kalayantra/ephe`; verify the corpus
@@ -74,17 +159,72 @@ manifest, use one worker, and route all temp/cache output under JOB_SCRATCH.
 The offline bundle must retain its approval and manifest through teardown and
 independent absence. The suite drops its own database in `finally`.
 
+### Rehearsal-only synthetic settlement (madhav-6d ruling (2)(b))
+
+After approved restore/parity and the FK audit, the J-4e/J-3c harness may call
+`services.gochara_kernel.rehearsal_settlement.synthetic_settlement_connection`
+with its open connection, `chart_id`, approved `manifest_sha256`, retained
+`receipt` dictionary and **explicit `enabled=True`**. Use the returned wrapper
+as the measured writer's `ctx.db_conn` (and for subsequent rehearsal readers).
+Within the harness's existing transaction call
+`wrapped_conn.run_substep(writer, ctx, step)` instead of invoking the writer
+directly; it delegates to that same writer and records the snapshot outcome.
+No environment setting changes the production loader. The wrapper verifies the
+local lane endpoint, the actual server address/port and database OID, and the
+harness's `ky.job=<JOB_SCRATCH basename>` database ownership comment, rechecking
+custody on every settlement use. Database name alone is insufficient. The suite
+still owns creation, tagging and finally teardown; the adapter changes no rows,
+roles or transactions. Ordinary connections, including other connections to the
+same database, still require the governed settlement.
+
+The record uses its own synthetic schema, `synthetic=true` and
+`provenance.source="SYNTHETIC-REHEARSAL-ONLY"`; it binds only the restored single
+non-NULL Vimśottarī build, never fabricates an `L1_SETTLED` line or replaces the
+governed receipt. The retained receipt records **"snapshot stage rehearsed on
+synthetic settlement"** only when the actual snapshot invocation consumes synthetic authority, with
+`snapshot_stage_outcome=completed|failed` and `production_acceptance=false`.
+A dry-run/no-op does not qualify. This qualifies the attempt; its separate
+outcome determines stage success and supplies no complete-rehearsal claim.
+Neither this record nor a passing rehearsal supplies production settlement.
+
+The harness's `profiles_scope` check uses
+`services.gochara_kernel.rehearsal_settlement.profiles_scope`, with explicit
+`profile_rows_loaded` and `profile_row_queries` counts from the loader/query
+census across **all** restore/build/observer sessions. Include zero-result row
+queries; omit catalog queries and schema DDL. After flushing the contributing
+sessions' statistics, the helper also checks catalog tuple-read counters, without
+querying `profiles` rows. Empty DDL scans alone do not fail. Missing query/load
+census yields an honest unmeasured result, never inferred zeros from counters.
+Keep this verdict and require `passed is True` for the scope claim.
+
+**(I) INTERPRETATION:** pass a connection wrapper explicitly rather than use a
+process-wide loader override. Alternative: an environment-driven global override,
+which could affect another connection. A manifest digest here binds custody; the
+existing independent approval and typed restored-row parity remain prerequisites.
+
 ## Validation and limits
 
 `python3 platform/scripts/gochara/canonical_l1_snapshot.py <offline-bundle>`
 reads only local files, verifies the inventory/approval byte binding and row
 identity envelopes, and emits `OFFLINE_BYTES_VALIDATED` with
 `production_acceptance=false`. It never connects, exports, restores, executes
-SQL, or recomputes L1. It cannot establish the source's truth, grant parity or
-runtime readiness by itself. Synthetic transport fixtures in its unit tests are
-explicitly not canonical data.
+SQL, or recomputes L1. The separate `audit_foreign_keys(dsn)` API connects only
+when explicitly called after restore; the byte-validation CLI never invokes it.
+Neither can establish the source's truth, grant parity or runtime readiness by
+itself. Synthetic transport fixtures in their tests are explicitly not canonical
+data.
 
-**(I) INTERPRETATION:** this job delivers the input specification and fail-closed
-byte validator; the approved data and deployment-faithful restored fixture remain
-external inputs. Alternative: treating the existing synthetic AM5 fixture as
-canonical, which would contradict the rehearsal finding and §N.8.
+**(I) INTERPRETATION:** `grants_origin.json` is separately reviewed provenance
+whose bytes are bound in the independent schema/grant review evidence. It is
+required for that review, but is not a seventh member of the unchanged v1
+manifest inventory. The byte validator does not inspect or certify its content;
+the reviewer must check its binding and reconcile its exclusions before restore.
+Alternative: change the byte-validator inventory/schema, contrary to this
+ruling's requirement to keep its behavior unchanged otherwise.
+
+**(I) INTERPRETATION:** restoration remains owned by the guarded rehearsal suite;
+this preparation delivers its contract and reusable FK inspector, without adding
+a loader to the offline byte CLI. The approved data and deployment-faithful
+restored fixture remain external inputs. Alternative: add a loader to the CLI,
+changing its offline-only boundary. Treating synthetic AM5 fixtures as canonical
+would still contradict the rehearsal finding and §N.8.
