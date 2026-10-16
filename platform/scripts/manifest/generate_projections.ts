@@ -89,7 +89,10 @@ function writeJson(name: string, data: unknown): void {
 
 function main(): void {
   const caps = getCatalog()
-  const generatedAt = new Date().toISOString()
+  // CI binds all projections to one reviewed source timestamp, so independent
+  // generation passes and every consuming job receive identical bytes.
+  const generatedAt = process.env.CI_GENERATED_AT ?? new Date().toISOString()
+  if (Number.isNaN(Date.parse(generatedAt))) throw new Error('CI_GENERATED_AT must be an ISO timestamp')
 
   console.log(`[generate_projections] getCatalog() returned ${caps.length} live capabilities`)
 
